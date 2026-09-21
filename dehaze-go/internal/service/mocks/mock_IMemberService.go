@@ -226,6 +226,53 @@ func (_c *MockIMemberService_CheckAndDeductQuota_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// EnsureMemberProfile provides a mock function with given fields: ctx, userID
+func (_m *MockIMemberService) EnsureMemberProfile(ctx context.Context, userID int64) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for EnsureMemberProfile")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIMemberService_EnsureMemberProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'EnsureMemberProfile'
+type MockIMemberService_EnsureMemberProfile_Call struct {
+	*mock.Call
+}
+
+// EnsureMemberProfile is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIMemberService_Expecter) EnsureMemberProfile(ctx interface{}, userID interface{}) *MockIMemberService_EnsureMemberProfile_Call {
+	return &MockIMemberService_EnsureMemberProfile_Call{Call: _e.mock.On("EnsureMemberProfile", ctx, userID)}
+}
+
+func (_c *MockIMemberService_EnsureMemberProfile_Call) Run(run func(ctx context.Context, userID int64)) *MockIMemberService_EnsureMemberProfile_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIMemberService_EnsureMemberProfile_Call) Return(_a0 error) *MockIMemberService_EnsureMemberProfile_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIMemberService_EnsureMemberProfile_Call) RunAndReturn(run func(context.Context, int64) error) *MockIMemberService_EnsureMemberProfile_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBatchLimit provides a mock function with given fields: ctx, levelCode
 func (_m *MockIMemberService) GetBatchLimit(ctx context.Context, levelCode string) (int, error) {
 	ret := _m.Called(ctx, levelCode)
@@ -279,6 +326,122 @@ func (_c *MockIMemberService_GetBatchLimit_Call) Return(_a0 int, _a1 error) *Moc
 }
 
 func (_c *MockIMemberService_GetBatchLimit_Call) RunAndReturn(run func(context.Context, string) (int, error)) *MockIMemberService_GetBatchLimit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetMaxDevices provides a mock function with given fields: ctx, userID
+func (_m *MockIMemberService) GetMaxDevices(ctx context.Context, userID int64) (int, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMaxDevices")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (int, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) int); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMemberService_GetMaxDevices_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxDevices'
+type MockIMemberService_GetMaxDevices_Call struct {
+	*mock.Call
+}
+
+// GetMaxDevices is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIMemberService_Expecter) GetMaxDevices(ctx interface{}, userID interface{}) *MockIMemberService_GetMaxDevices_Call {
+	return &MockIMemberService_GetMaxDevices_Call{Call: _e.mock.On("GetMaxDevices", ctx, userID)}
+}
+
+func (_c *MockIMemberService_GetMaxDevices_Call) Run(run func(ctx context.Context, userID int64)) *MockIMemberService_GetMaxDevices_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIMemberService_GetMaxDevices_Call) Return(_a0 int, _a1 error) *MockIMemberService_GetMaxDevices_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMemberService_GetMaxDevices_Call) RunAndReturn(run func(context.Context, int64) (int, error)) *MockIMemberService_GetMaxDevices_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBenefitSummary provides a mock function with given fields: ctx, userID
+func (_m *MockIMemberService) GetBenefitSummary(ctx context.Context, userID int64) (*vo.MemberBenefitSummaryVO, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBenefitSummary")
+	}
+
+	var r0 *vo.MemberBenefitSummaryVO
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*vo.MemberBenefitSummaryVO, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *vo.MemberBenefitSummaryVO); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vo.MemberBenefitSummaryVO)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMemberService_GetBenefitSummary_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBenefitSummary'
+type MockIMemberService_GetBenefitSummary_Call struct {
+	*mock.Call
+}
+
+// GetBenefitSummary is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIMemberService_Expecter) GetBenefitSummary(ctx interface{}, userID interface{}) *MockIMemberService_GetBenefitSummary_Call {
+	return &MockIMemberService_GetBenefitSummary_Call{Call: _e.mock.On("GetBenefitSummary", ctx, userID)}
+}
+
+func (_c *MockIMemberService_GetBenefitSummary_Call) Run(run func(ctx context.Context, userID int64)) *MockIMemberService_GetBenefitSummary_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIMemberService_GetBenefitSummary_Call) Return(_a0 *vo.MemberBenefitSummaryVO, _a1 error) *MockIMemberService_GetBenefitSummary_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMemberService_GetBenefitSummary_Call) RunAndReturn(run func(context.Context, int64) (*vo.MemberBenefitSummaryVO, error)) *MockIMemberService_GetBenefitSummary_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -519,6 +682,65 @@ func (_c *MockIMemberService_GetSignInCalendar_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetTrialStatus provides a mock function with given fields: ctx, userID
+func (_m *MockIMemberService) GetTrialStatus(ctx context.Context, userID int64) (*vo.MemberTrialStatusVO, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTrialStatus")
+	}
+
+	var r0 *vo.MemberTrialStatusVO
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*vo.MemberTrialStatusVO, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *vo.MemberTrialStatusVO); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vo.MemberTrialStatusVO)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMemberService_GetTrialStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTrialStatus'
+type MockIMemberService_GetTrialStatus_Call struct {
+	*mock.Call
+}
+
+// GetTrialStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIMemberService_Expecter) GetTrialStatus(ctx interface{}, userID interface{}) *MockIMemberService_GetTrialStatus_Call {
+	return &MockIMemberService_GetTrialStatus_Call{Call: _e.mock.On("GetTrialStatus", ctx, userID)}
+}
+
+func (_c *MockIMemberService_GetTrialStatus_Call) Run(run func(ctx context.Context, userID int64)) *MockIMemberService_GetTrialStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIMemberService_GetTrialStatus_Call) Return(_a0 *vo.MemberTrialStatusVO, _a1 error) *MockIMemberService_GetTrialStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMemberService_GetTrialStatus_Call) RunAndReturn(run func(context.Context, int64) (*vo.MemberTrialStatusVO, error)) *MockIMemberService_GetTrialStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // InitDefaultMember provides a mock function with given fields: ctx, userID
 func (_m *MockIMemberService) InitDefaultMember(ctx context.Context, userID int64) error {
 	ret := _m.Called(ctx, userID)
@@ -680,6 +902,67 @@ func (_c *MockIMemberService_ListGrowthLogs_Call) Return(_a0 *vo.PageResult[vo.G
 }
 
 func (_c *MockIMemberService_ListGrowthLogs_Call) RunAndReturn(run func(context.Context, int64, *query.GrowthLogQuery) (*vo.PageResult[vo.GrowthLogVO], error)) *MockIMemberService_ListGrowthLogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListMemberAuditLogs provides a mock function with given fields: ctx, userID, page, pageSize
+func (_m *MockIMemberService) ListMemberAuditLogs(ctx context.Context, userID int64, page int, pageSize int) (*vo.MemberAuditLogPageVO, error) {
+	ret := _m.Called(ctx, userID, page, pageSize)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListMemberAuditLogs")
+	}
+
+	var r0 *vo.MemberAuditLogPageVO
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) (*vo.MemberAuditLogPageVO, error)); ok {
+		return rf(ctx, userID, page, pageSize)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) *vo.MemberAuditLogPageVO); ok {
+		r0 = rf(ctx, userID, page, pageSize)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vo.MemberAuditLogPageVO)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) error); ok {
+		r1 = rf(ctx, userID, page, pageSize)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMemberService_ListMemberAuditLogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListMemberAuditLogs'
+type MockIMemberService_ListMemberAuditLogs_Call struct {
+	*mock.Call
+}
+
+// ListMemberAuditLogs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+//   - page int
+//   - pageSize int
+func (_e *MockIMemberService_Expecter) ListMemberAuditLogs(ctx interface{}, userID interface{}, page interface{}, pageSize interface{}) *MockIMemberService_ListMemberAuditLogs_Call {
+	return &MockIMemberService_ListMemberAuditLogs_Call{Call: _e.mock.On("ListMemberAuditLogs", ctx, userID, page, pageSize)}
+}
+
+func (_c *MockIMemberService_ListMemberAuditLogs_Call) Run(run func(ctx context.Context, userID int64, page int, pageSize int)) *MockIMemberService_ListMemberAuditLogs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockIMemberService_ListMemberAuditLogs_Call) Return(_a0 *vo.MemberAuditLogPageVO, _a1 error) *MockIMemberService_ListMemberAuditLogs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMemberService_ListMemberAuditLogs_Call) RunAndReturn(run func(context.Context, int64, int, int) (*vo.MemberAuditLogPageVO, error)) *MockIMemberService_ListMemberAuditLogs_Call {
 	_c.Call.Return(run)
 	return _c
 }

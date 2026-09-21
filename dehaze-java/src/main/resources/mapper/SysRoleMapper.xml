@@ -15,24 +15,6 @@
         <result property="updateBy" column="update_by"/>
     </resultMap>
 
-    <!-- ==================== 原生SQL：绕过@TableLogic软删过滤 ==================== -->
-
-    <!-- 按编码查询角色数（含已软删行） -->
-    <select id="countByCodeAll" resultType="java.lang.Long">
-        SELECT COUNT(*) FROM sys_role WHERE code = #{code}
-    </select>
-
-    <!-- 按名称或编码查询角色数（含已软删行），排除指定 ID（编辑时排除自身） -->
-    <select id="countByNameOrCodeAll" resultType="java.lang.Long">
-        SELECT COUNT(*) FROM sys_role
-        WHERE (name = #{name} OR code = #{code})
-        <if test="excludeId != null">
-            AND id != #{excludeId}
-        </if>
-    </select>
-
-    <!-- ==================== 已有方法 ==================== -->
-
     <!-- 获取最大范围的数据权限 -->
     <select id="getMaximumDataScope" resultType="java.lang.Integer">
         SELECT MAX(data_scope) FROM sys_role

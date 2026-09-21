@@ -3,7 +3,8 @@
 对应表 sys_ai_skill_file：承载 SKILL 目录内除 SKILL.md 外的文件清单
 （reference/ script/ assets/ README.md 等，遵循业界 Agent Skills 规范）。
 path 为相对 SKILL 根目录的路径，唯一约束 (skill_id, path)。
-文件内容存对象存储（MinIO，对象 key = skills/{name}/{path}），本表只存清单
+文件内容存对象存储（MinIO，对象 key = skills/{skill_id}/{path}；key 用 skill_id
+而非 name，改名后资源仍可定位），本表只存清单
 （path/file_size/file_type），支持渐进披露第三级（资源按需加载）。
 """
 

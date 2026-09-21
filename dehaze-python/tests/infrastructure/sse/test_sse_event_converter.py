@@ -28,7 +28,6 @@ def conv(monkeypatch):
 
 
 class TestEventMapping:
-
     async def test_text_delta(self, conv):
         converter, emitter = conv
         await converter.handle(
@@ -38,7 +37,7 @@ class TestEventMapping:
                 "data": [AIMessageChunk(content="你好")],
             }
         )
-        delta = [e for e in emitter.events if e[0] == "content_block.delta"][0]
+        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
         assert delta[1]["delta"] == {"type": "text_delta", "text": "你好"}
 
     async def test_content_block_start_before_first_text_delta(self, conv):
@@ -91,7 +90,8 @@ class TestEventMapping:
             tool_call_chunks=[{"name": "search", "args": '{"query":', "id": "c1", "index": None}],
         )
         chunk2 = AIMessageChunk(
-            content="", tool_call_chunks=[{"args": '"去雾"}', "id": "c1", "index": None}]
+            content="",
+            tool_call_chunks=[{"name": None, "args": '"去雾"}', "id": "c1", "index": None}],
         )
         await converter.handle({"type": "messages", "ns": [], "data": [chunk1]})
         await converter.handle({"type": "messages", "ns": [], "data": [chunk2]})
@@ -129,13 +129,14 @@ class TestEventMapping:
     async def test_no_stream_session_skips_emit(self, monkeypatch):
         converter = SseEventConverter({"stream_session_id": None})
         emitter = RecorderEmitter()
-        monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter)
+        monkeypatch.setattr(
+            "app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter
+        )
         await converter.handle({"type": "custom", "ns": [], "data": {"x": 1}})
         assert emitter.events == []
 
 
 class TestInterrupt:
-
     async def test_interrupt_mapping_contract(self, conv):
         from langgraph.types import Interrupt
 
@@ -177,6 +178,128 @@ class TestInterrupt:
         )
         assert emitter.events[0] == ("interrupt", {"type": "confirm", "data": {"foo": "bar"}})
 
+    async def test_plan_approve_payload_normalized(self, conv):
+        """plan_approve 的 plan 在中断点内是内部 snake_case，仅在 SSE 出口归一，
+        且不带 phase（phase 只属于 plan 事件）。"""
+        from langgraph.types import Interrupt
+
+        converter, emitter = conv
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": [],
+                "data": {
+                    "__interrupt__": [
+                        Interrupt(
+                            value={
+                                "type": "plan_approve",
+                                "stream_session_id": "s1",
+                                "data": {
+                                    "plan": {
+                                        "tasks": [
+                                            {
+                                                "id": "A",
+                                                "description": "分析",
+                                                "depends_on": ["B"],
+                                                "tool_hint": "analyze",
+                                                "paradigm": "react",
+                                                "status": "pending",
+                                                "result": None,
+                                            }
+                                        ],
+                                        "status": "pending",
+                                        "revisions": [
+                                            {
+                                                "revisionNo": 1,
+                                                "reason": "B",
+                                                "changedTaskIds": ["B2"],
+                                            }
+                                        ],
+                                    }
+                                },
+                            }
+                        )
+                    ]
+                },
+            }
+        )
+        assert emitter.events[0] == (
+            "interrupt",
+            {
+                "type": "plan_approve",
+                "data": {
+                    "plan": {
+                        "tasks": [
+                            {
+                                "id": "A",
+                                "description": "分析",
+                                "dependsOn": ["B"],
+                                "status": "pending",
+                                "paradigm": "react",
+                                "toolHint": "analyze",
+                            }
+                        ],
+                        "status": "pending",
+                        "revisions": [{"revisionNo": 1, "reason": "B", "changedTaskIds": ["B2"]}],
+                    }
+                },
+            },
+        )
+
+
+class TestPiiMaskingAtStreamExit:
+    """PII 脱敏必须在 SSE 推送前完成：事后脱敏等于已经把敏感信息推给了客户端。"""
+
+    @staticmethod
+    def _texts(emitter):
+        return "".join(
+            e[1]["delta"]["text"]
+            for e in emitter.events
+            if e[0] == "content_block.delta" and e[1]["delta"].get("type") == "text_delta"
+        )
+
+    async def test_phone_split_across_chunks_masked(self, conv):
+        converter, emitter = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="联系138")]}
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="12345678，谢谢")]}
+        )
+        await converter.finish()
+        text = self._texts(emitter)
+        assert "13812345678" not in text
+        assert text == "联系***，谢谢"
+
+    async def test_secret_key_masked(self, conv):
+        converter, emitter = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="key: sk-abcdef123456")]}
+        )
+        await converter.finish()
+        assert self._texts(emitter) == "key: ***"
+
+    async def test_thinking_channel_masked(self, conv):
+        converter, emitter = conv
+        chunk = AIMessageChunk(content="", additional_kwargs={"thinking": "手机号13812345678"})
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        await converter.finish()
+        thinking = "".join(
+            e[1]["delta"]["thinking"]
+            for e in emitter.events
+            if e[0] == "content_block.delta" and e[1]["delta"].get("type") == "thinking_delta"
+        )
+        assert "13812345678" not in thinking
+        assert thinking == "手机号***"
+
+    async def test_plain_text_not_delayed(self, conv):
+        """无敏感串前缀时不得压住不推送（尾部保留窗口只用于跨 chunk 的敏感串）。"""
+        converter, emitter = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="你好")]}
+        )
+        assert self._texts(emitter) == "你好"
+
 
 class TestSubagentAttribution:
     """子 Agent/Team 推理步骤归属：ns 非空即子图事件，agent_code 取末段节点名"""
@@ -186,7 +309,7 @@ class TestSubagentAttribution:
 
         async def _capture(db, **kw):
             captured.append(kw)
-            return None
+            return
 
         monkeypatch.setattr(
             "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository",
@@ -195,7 +318,7 @@ class TestSubagentAttribution:
         return captured
 
     async def test_subagent_thought_attribution(self, conv, monkeypatch):
-        converter, emitter = conv
+        converter, _emitter = conv
         captured = await self._capture_create(monkeypatch)
         # 子图事件（ns 非空，段格式"节点名:task_id"）：归属子 Agent
         await converter.handle(
@@ -204,9 +327,7 @@ class TestSubagentAttribution:
                 "ns": ["task:abc123"],
                 "data": {
                     "tool_node": {
-                        "messages": [
-                            ToolMessage(content="ok", tool_call_id="c9", name="search")
-                        ]
+                        "messages": [ToolMessage(content="ok", tool_call_id="c9", name="search")]
                     }
                 },
             }
@@ -220,9 +341,7 @@ class TestSubagentAttribution:
                 "ns": [],
                 "data": {
                     "tool_node": {
-                        "messages": [
-                            ToolMessage(content="ok", tool_call_id="c10", name="search")
-                        ]
+                        "messages": [ToolMessage(content="ok", tool_call_id="c10", name="search")]
                     }
                 },
             }
@@ -232,7 +351,7 @@ class TestSubagentAttribution:
 
     async def test_nested_subgraph_takes_last_segment(self, conv, monkeypatch):
         """嵌套子图 ns 多段，取最后一段去 task_id 后缀"""
-        converter, emitter = conv
+        converter, _emitter = conv
         captured = await self._capture_create(monkeypatch)
         await converter.handle(
             {
@@ -240,9 +359,7 @@ class TestSubagentAttribution:
                 "ns": ["task:a", "inner:b"],
                 "data": {
                     "tool_node": {
-                        "messages": [
-                            ToolMessage(content="ok", tool_call_id="c11", name="search")
-                        ]
+                        "messages": [ToolMessage(content="ok", tool_call_id="c11", name="search")]
                     }
                 },
             }
@@ -251,7 +368,7 @@ class TestSubagentAttribution:
         assert captured[-1]["is_subagent"] == 1
 
     async def test_plan_recorded_to_collector(self, conv):
-        converter, emitter = conv
+        converter, _emitter = conv
         collector = trace_collector.start(
             conversation_id=1, message_id=1, user_id=1, agent_code=None, model_id="m"
         )
@@ -261,3 +378,70 @@ class TestSubagentAttribution:
             assert collector.context_events[-1]["phase"] == "plan"
         finally:
             trace_collector._current_collector.set(None)
+
+
+class TestRecordPlanTaskFields:
+    """plan 事件任务项：既有字段保口径，paradigm/toolHint/result 补齐且缺失不下发。"""
+
+    async def _plan_task(self, conv, task):
+        converter, emitter = conv
+        await converter.record_plan({"tasks": [task]}, phase="plan")
+        event = next(e for e in emitter.events if e[0] == "plan")[1]
+        return event["tasks"][0]
+
+    async def test_optional_fields_present_when_provided(self, conv):
+        task = await self._plan_task(
+            conv,
+            {
+                "id": "A",
+                "description": "分析",
+                "depends_on": [],
+                "paradigm": "reflexion",
+                "tool_hint": "analyze",
+                "result": "结论",
+                "status": "done",
+            },
+        )
+        assert task["id"] == "A"
+        assert task["dependsOn"] == []
+        assert task["status"] == "done"
+        assert task["paradigm"] == "reflexion"
+        assert task["toolHint"] == "analyze"
+        assert task["result"] == "结论"
+
+    async def test_missing_optional_fields_omitted(self, conv):
+        """plan task 缺 paradigm/tool_hint/result：整个键不下发（不塞 None）。"""
+        task = await self._plan_task(conv, {"id": "A", "description": "分析"})
+        assert set(task.keys()) == {"id", "description", "dependsOn", "status"}
+        assert task["dependsOn"] == []
+        assert task["status"] == "pending"
+
+    async def test_none_optional_fields_omitted(self, conv):
+        """可选字段显式为 None 时同样不下发，既有 dependsOn 不受影响。"""
+        task = await self._plan_task(
+            conv,
+            {
+                "id": "A",
+                "description": "分析",
+                "depends_on": ["X"],
+                "paradigm": None,
+                "tool_hint": None,
+                "result": None,
+            },
+        )
+        assert "paradigm" not in task
+        assert "toolHint" not in task
+        assert "result" not in task
+        assert task["dependsOn"] == ["X"]
+
+    async def test_empty_string_result_emitted(self, conv):
+        """空串 result 非 None：按有值下发（'null 不下发'仅针对 None）。"""
+        task = await self._plan_task(conv, {"id": "A", "description": "分析", "result": ""})
+        assert task["result"] == ""
+
+    async def test_no_tasks_emits_empty_list(self, conv):
+        converter, emitter = conv
+        await converter.record_plan({}, phase="plan")
+        event = next(e for e in emitter.events if e[0] == "plan")[1]
+        assert event["tasks"] == []
+        assert event["status"] == "pending"

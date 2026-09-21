@@ -372,6 +372,63 @@ func (_c *MockICache_Get_Call) RunAndReturn(run func(context.Context, string) (s
 	return _c
 }
 
+// GetDel provides a mock function with given fields: ctx, key
+func (_m *MockICache) GetDel(ctx context.Context, key string) (string, error) {
+	ret := _m.Called(ctx, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDel")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (string, error)); ok {
+		return rf(ctx, key)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) string); ok {
+		r0 = rf(ctx, key)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, key)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockICache_GetDel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetDel'
+type MockICache_GetDel_Call struct {
+	*mock.Call
+}
+
+// GetDel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - key string
+func (_e *MockICache_Expecter) GetDel(ctx interface{}, key interface{}) *MockICache_GetDel_Call {
+	return &MockICache_GetDel_Call{Call: _e.mock.On("GetDel", ctx, key)}
+}
+
+func (_c *MockICache_GetDel_Call) Run(run func(ctx context.Context, key string)) *MockICache_GetDel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockICache_GetDel_Call) Return(_a0 string, _a1 error) *MockICache_GetDel_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockICache_GetDel_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockICache_GetDel_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HDel provides a mock function with given fields: ctx, key, fields
 func (_m *MockICache) HDel(ctx context.Context, key string, fields ...string) error {
 	_va := make([]interface{}, len(fields))

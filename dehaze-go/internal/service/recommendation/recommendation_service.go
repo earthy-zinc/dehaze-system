@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -33,7 +34,6 @@ var (
 )
 
 type RecommendationService struct {
-	algoClient    *algorithm.Client
 	recRepo       recrepo.RecommendationRepository
 	ruleRepo      recrepo.RuleRepository
 	algorithmRepo algorepo.IAlgorithmRepository
@@ -42,40 +42,41 @@ type RecommendationService struct {
 }
 
 func NewRecommendationService(
-	algoClient *algorithm.Client,
 	recRepo recrepo.RecommendationRepository,
 	ruleRepo recrepo.RuleRepository,
 	algorithmRepo algorepo.IAlgorithmRepository,
 ) *RecommendationService {
 	return &RecommendationService{
-		algoClient:    algoClient,
 		recRepo:       recRepo,
 		ruleRepo:      ruleRepo,
 		algorithmRepo: algorithmRepo,
 	}
 }
 
-// Analyze 调用 Python 图像特征分析服务提取真实特征
-// Python 服务不可用时返回错误，不降级为伪特征，避免误导用户
+// Analyze 提取图像特征。
+//
+// 特征由本端确定性算法产出（`algorithm.AnalyzeImage` 逐位对齐 python recommendation_service.analyze），
+// 不再委托 python `/recommendations/analyze`：该端点要求用户 token，内部调用必然 A0230。
 func (s *RecommendationService) Analyze(ctx context.Context, form *bo.AnalyzeForm) (*vo.ImageFeatureAnalysisVO, error) {
-	imageURL := s.resolveImageURL(form)
+	// python `_resolve_and_validate_image_url` 对 imageId>0 抛 RESOURCE_NOT_FOUND(A0401)
+	if form.ImageID != nil && *form.ImageID > 0 {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "imageId方式暂不支持，请使用imageUrl")
+	}
+	imageURL := form.ImageURL
 	if err := s.validateImageFormat(imageURL); err != nil {
 		return nil, err
 	}
 
-	resp, err := s.algoClient.AnalyzeImage(ctx, imageURL)
-	if err != nil {
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "图像特征分析服务不可用", err)
-	}
+	resp := algorithm.AnalyzeImage(imageURL)
 
 	return &vo.ImageFeatureAnalysisVO{
-		ImageMd5:         resp.ImageMd5,
-		HazeLevel:        resp.HazeLevel,
-		HazeConfidence:   resp.HazeConfidence,
-		SceneType:        resp.SceneType,
-		SceneConfidence:  resp.SceneConfidence,
-		Lighting:         resp.Lighting,
-		Complexity:       resp.Complexity,
+		ImageMd5:        resp.ImageMd5,
+		HazeLevel:       resp.HazeLevel,
+		HazeConfidence:  resp.HazeConfidence,
+		SceneType:       resp.SceneType,
+		SceneConfidence: resp.SceneConfidence,
+		Lighting:        resp.Lighting,
+		Complexity:      resp.Complexity,
 		ColorDistribution: vo.ColorDistribution{
 			Temperature: resp.ColorDistribution.Temperature,
 			Saturation:  resp.ColorDistribution.Saturation,
@@ -205,8 +206,12 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 		})
 	}
 
+	// 主排序 matchScore 降序，次排序 algorithmId 升序，保证跨端排序一致
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].MatchScore > result[j].MatchScore
+		if result[i].MatchScore != result[j].MatchScore {
+			return result[i].MatchScore > result[j].MatchScore
+		}
+		return result[i].AlgorithmID < result[j].AlgorithmID
 	})
 
 	if len(result) > topN {
@@ -244,12 +249,13 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 	return result, nil
 }
 
-func (s *RecommendationService) SubmitFeedback(ctx context.Context, form *bo.FeedbackForm) (int64, error) {
+func (s *RecommendationService) SubmitFeedback(ctx context.Context, userID int64, form *bo.FeedbackForm) (int64, error) {
 	rec, err := s.recRepo.FindByID(ctx, form.RecommendationID)
 	if err != nil {
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询推荐记录失败", err)
 	}
-	if rec == nil {
+	// 仅允许反馈本人产生的推荐记录；他人/不存在记录统一 404，不泄露存在性
+	if rec == nil || rec.UserID != userID {
 		return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "推荐记录不存在")
 	}
 
@@ -277,7 +283,52 @@ func (s *RecommendationService) GetRules(ctx context.Context) ([]vo.Recommendati
 
 func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *bo.RuleForm) (int64, error) {
 	if form.Weight == nil || *form.Weight < 0 || *form.Weight > 100 {
-		return 0, common.NewBizError(common.BUSINESS_ERROR, "规则权重必须在0-100之间")
+		return 0, common.NewBizError(common.PARAM_ERROR, "规则权重必须在0-100之间")
+	}
+	if !containsString(validSceneTypes, form.SceneType) {
+		return 0, common.NewBizError(common.PARAM_ERROR,
+			"场景类型不合法，仅支持："+strings.Join(validSceneTypes, "/"))
+	}
+	if len(form.AlgorithmIds) == 0 {
+		return 0, common.NewBizError(common.PARAM_ERROR, "候选算法ID列表不能为空")
+	}
+
+	if id != 0 {
+		existing, err := s.ruleRepo.FindByID(ctx, id)
+		if err != nil {
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
+		}
+		if existing == nil {
+			return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "规则不存在")
+		}
+	}
+
+	rules, err := s.ruleRepo.FindAll(ctx)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
+	}
+	target := make(map[int64]struct{}, len(form.AlgorithmIds))
+	for _, v := range form.AlgorithmIds {
+		target[v] = struct{}{}
+	}
+	for _, r := range rules {
+		if r.ID == id || r.SceneType != form.SceneType || r.Enabled != 1 {
+			continue
+		}
+		var ids []int64
+		if err := json.Unmarshal([]byte(r.AlgorithmIds), &ids); err != nil || len(ids) != len(target) {
+			continue
+		}
+		dup := true
+		for _, v := range ids {
+			if _, ok := target[v]; !ok {
+				dup = false
+				break
+			}
+		}
+		if dup {
+			return 0, common.NewBizError(common.DATA_EXISTS, "同场景下已存在相同算法组合的规则")
+		}
 	}
 
 	if id == 0 {
@@ -332,7 +383,10 @@ func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *
 }
 
 func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDate string) (*vo.RecommendationReportVO, error) {
-	startTime, endTime := s.parseDateRange(startDate, endDate)
+	startTime, endTime, err := s.parseDateRange(startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
 
 	total, err := s.recRepo.CountTotal(ctx, startTime, endTime)
 	if err != nil {
@@ -350,6 +404,11 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计采纳算法数失败", err)
 	}
+	// 采纳数：带推荐来源（recommended_by）的预测记录数
+	adoptedPredCount, err := s.recRepo.CountRecommended(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计推荐采纳数失败", err)
+	}
 
 	// 获取已发布算法总数
 	publishedCount, err := s.algorithmRepo.CountPublished(ctx)
@@ -361,24 +420,40 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 		TotalRecommendations: total,
 		ColdStartSuccessRate: 0.0,
 	}
+	// 采纳率口径：带推荐来源的预测记录数 / 推荐总数（用户从推荐入口真正发起去雾处理的比例）
+	if total > 0 {
+		report.AdoptionRate = float64(adoptedPredCount) / float64(total)
+	}
+	// 满意度：有用反馈占比（有用即满意）
 	if feedbackTotal > 0 {
-		report.AdoptionRate = float64(usefulCount) / float64(feedbackTotal)
 		report.SatisfactionRate = float64(usefulCount) / float64(feedbackTotal)
 	}
 	if publishedCount > 0 {
 		report.CoverageRate = float64(adoptedDistinct) / float64(publishedCount)
 	}
 
-	// 趋势按日聚合
-	dailyRows, err := s.recRepo.FindDailyAdoptionRate(ctx, startTime, endTime)
+	// 趋势按日聚合：当日采纳预测数 / 当日推荐总数
+	dailyAdoptedRows, err := s.recRepo.FindDailyRecommended(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询每日采纳数失败", err)
+	}
+	dailyTotalRows, err := s.recRepo.FindDailyTotal(ctx, startTime, endTime)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询每日趋势失败", err)
 	}
-	trend := make([]vo.TrendItem, 0, len(dailyRows))
-	for _, row := range dailyRows {
+	adoptedMap := make(map[string]int64, len(dailyAdoptedRows))
+	for _, row := range dailyAdoptedRows {
+		adoptedMap[row.Date] = row.Count
+	}
+	trend := make([]vo.TrendItem, 0, len(dailyTotalRows))
+	for _, row := range dailyTotalRows {
+		rate := 0.0
+		if row.Count > 0 {
+			rate = float64(adoptedMap[row.Date]) / float64(row.Count)
+		}
 		trend = append(trend, vo.TrendItem{
 			Date:         row.Date,
-			AdoptionRate: row.AdoptionRate,
+			AdoptionRate: rate,
 		})
 	}
 	report.Trend = trend
@@ -387,16 +462,6 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 }
 
 // ==================== 内部方法 ====================
-
-func (s *RecommendationService) resolveImageURL(form *bo.AnalyzeForm) string {
-	if form.ImageID != nil && *form.ImageID > 0 {
-		return "" // 触发 imageId 不支持错误
-	}
-	if form.ImageURL != "" {
-		return form.ImageURL
-	}
-	return ""
-}
 
 func (s *RecommendationService) validateImageFormat(imageURL string) error {
 	if imageURL == "" {
@@ -492,16 +557,24 @@ func (s *RecommendationService) toRuleVO(entity *model.SysRecommendationRule) vo
 	}
 }
 
-func (s *RecommendationService) parseDateRange(startDate, endDate string) (string, string) {
+// parseDateRange 校验 yyyy-MM-dd 格式并转换为查询用时间边界
+func (s *RecommendationService) parseDateRange(startDate, endDate string) (string, string, error) {
+	const layout = "2006-01-02"
 	startTime := ""
 	endTime := ""
 	if startDate != "" {
+		if _, err := time.Parse(layout, startDate); err != nil {
+			return "", "", common.NewBizError(common.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd")
+		}
 		startTime = startDate + " 00:00:00"
 	}
 	if endDate != "" {
+		if _, err := time.Parse(layout, endDate); err != nil {
+			return "", "", common.NewBizError(common.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd")
+		}
 		endTime = endDate + " 23:59:59"
 	}
-	return startTime, endTime
+	return startTime, endTime, nil
 }
 
 func containsString(slice []string, s string) bool {

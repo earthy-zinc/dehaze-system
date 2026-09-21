@@ -8,7 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ class SysDictServiceImplTest {
         SysDictServiceImpl service = new SysDictServiceImpl(
                 mock(DictConverter.class),
                 mock(SysDictTypeMapper.class),
-                mock(RedisTemplate.class));
+                mock(StringRedisTemplate.class));
         SysDictServiceImpl spy = spy(service);
         lenient().doReturn(options).when(spy).listDictOptions("favorite_capacity");
         lenient().doReturn(options).when(spy).listDictOptions("member_growth_rules");

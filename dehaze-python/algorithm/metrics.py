@@ -1,4 +1,5 @@
 import logging
+import math
 from io import BytesIO
 
 import torch
@@ -119,18 +120,25 @@ def calculate(haze_image: BytesIO, clear_image: BytesIO = None):
     """
     计算图像质量指标
     遍历所有指标，根据指标是否需要清晰图像，以及清晰图像是否已提供，决定是否调用 calculate_metric 进行计算。
-    :param haze_image: 雾化图像路径
-    :param clear_image: 清晰图像路径（可选）
+    :param haze_image: 雾化图像字节流
+    :param clear_image: 清晰图像字节流（可选）
     :return: 计算结果列表
     """
-    haze = _to_tensor(haze_image)
-    clear = _to_tensor(clear_image) if clear_image else None
+    haze_img = Image.open(haze_image)
+    clear_img = Image.open(clear_image) if clear_image else None
+    if clear_img is not None and haze_img.size != clear_img.size:
+        raise ValueError(
+            f"预测图与参考图尺寸不一致: 预测图{haze_img.size} vs 参考图{clear_img.size}"
+        )
+
+    haze = _to_tensor(haze_img)
+    clear = _to_tensor(clear_img) if clear_img is not None else None
 
     # 动态计算所有指标
     result = [
         calculate_metric(name, haze, clear)
         for name, metric in METRICS_CONFIG.items()
-        if metric["requires_clear"] and clear is not None or not metric["requires_clear"]
+        if (metric["requires_clear"] and clear is not None) or not metric["requires_clear"]
     ]
     return result
 
@@ -159,6 +167,14 @@ def calculate_metric(metric_name: str, haze, clear=None):
         logger.error(f"计算指标 {metric_name} 时出错: {e}")
         raise
 
+    # JSON 无法承载非有限值（写库/序列化均失败）：全同图 MSE=0 → PSNR=inf，钳制到 100 dB
+    # 上界（与前端雷达图固定上限口径一致）；其余非有限值视为计算异常，任务置为 failed
+    if not math.isfinite(value):
+        if metric_name == "psnr" and math.isinf(value):
+            value = 100.0
+        else:
+            raise ValueError(f"指标 {metric_config['label']} 计算结果非有限值: {value}")
+
     # 组织返回结果
     return {
         "id": metric_config["id"],
@@ -169,5 +185,5 @@ def calculate_metric(metric_name: str, haze, clear=None):
     }
 
 
-def _to_tensor(image_bytes: BytesIO) -> torch.Tensor:
-    return ToTensor()(Image.open(image_bytes).convert("RGB"))[None, ::]
+def _to_tensor(image: Image.Image) -> torch.Tensor:
+    return ToTensor()(image.convert("RGB"))[None, ::]

@@ -25,8 +25,8 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.api_key_repository import api_key_repository
 from app.service.ai.service.compatible_audit import record_call
 from app.service.ai.service.compatible_governance import (
-    compatible_governance_service,
     GovernanceError,
+    compatible_governance_service,
 )
 from app.service.ai_conversation_service import ai_conversation_service
 from app.service.ai_message_service import ai_message_service
@@ -50,6 +50,9 @@ def _parse_internal_sse(chunk: str) -> tuple[str, dict]:
             try:
                 data = json.loads(line[5:].strip())
             except json.JSONDecodeError:
+                # 内部 SSE data 行非合法 JSON（序列化异常/分片截断）：按空 data 继续，
+                # 必记日志暴露——否则该事件被静默丢弃会导致下游内容缺失且无从排查
+                logger.warning("内部 SSE data 行解析失败，事件按空 data 处理: %r", line)
                 data = {}
     return event_type, data
 
@@ -158,7 +161,7 @@ def _record_audit(
             client_ip=audit.get("client_ip", ""),
             duration_ms=duration_ms,
         )
-    except Exception:  # noqa: BLE001 - 审计失败不影响主流程
+    except Exception:
         logger.warning("兼容 API 调用审计记录失败", exc_info=True)
 
 
@@ -617,7 +620,9 @@ class CompatibleApiService:
             return
         used_model = settings.AI_DEFAULT_MODEL
         if conv_id is not None:
-            convs = await self.ai_conversation_repository.get_by_ids(db, user_id, [conv_id])
+            convs = await self.ai_conversation_repository.get_by_ids_and_user(
+                db, [conv_id], user_id
+            )
             if convs and convs[0].model:
                 used_model = convs[0].model
         await compatible_governance_service.check_model_allowed(db, api_key, used_model)
@@ -752,7 +757,6 @@ class CompatibleApiService:
             "last_id": None,
         }
 
-
     async def run_compatible_call(
         self,
         request,
@@ -817,7 +821,7 @@ class CompatibleApiService:
                 status_code=status_code,
                 content=_format_error(protocol, e.message, _error_type_for(e.code), e.code.code),
             )
-        except Exception as e:  # noqa: BLE001 - 兜底保证审计不遗漏，映射为 500
+        except Exception as e:
             logger.exception("兼容 API 处理失败 protocol=%s endpoint=%s", protocol, endpoint)
             _record_audit(audit, status_code=500, error_msg=str(e))
             return JSONResponse(
@@ -834,7 +838,8 @@ class CompatibleApiService:
         protocol: str,
         handler,
     ):
-        """模型列表端点统一入口：治理预检 + 白名单过滤 + 审计（对齐 §2.3.1 endpoint 枚举含 models）。
+        """模型列表端点统一入口：治理预检 + 白名单过滤 + 审计
+        （对齐 §2.3.1 endpoint 枚举含 models）。
 
         models 为轻量 GET（无 body/无 token 消耗），但仍纳入 Key 级配额/RPM 计数——
         否则狂刷 models 可绕过治理；调用记录 tokens=0、model=None。
@@ -847,7 +852,11 @@ class CompatibleApiService:
             api_key = await self._get_api_key(db, api_key_info.get("key_id"))
         audit = {
             "user_id": user.id if user else None,
-            "key_id": api_key.id if api_key else api_key_info.get("key_id") if api_key_info else None,
+            "key_id": api_key.id
+            if api_key
+            else api_key_info.get("key_id")
+            if api_key_info
+            else None,
             "key_prefix": (api_key_info.get("key_prefix", "") or "") if api_key_info else "",
             "endpoint": "models",
             "protocol": protocol,
@@ -878,7 +887,7 @@ class CompatibleApiService:
                 status_code=status_code,
                 content=_format_error(protocol, e.message, _error_type_for(e.code), e.code.code),
             )
-        except Exception as e:  # noqa: BLE001 - 兜底保证审计不遗漏，映射为 500
+        except Exception as e:
             logger.exception("兼容 API 模型列表处理失败 protocol=%s", protocol)
             _record_audit(audit, status_code=500, error_msg=str(e))
             return JSONResponse(

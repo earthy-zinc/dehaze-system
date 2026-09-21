@@ -191,22 +191,19 @@ class OrderService:
 
         try:
             pkg = await self.package_repository.get_by_id(db, package_id)
-            if not pkg or pkg.deleted == 1:
+            if not pkg or pkg.deleted != 0:
                 raise BusinessException(ResultCode.PACKAGE_NOT_FOUND)
             if pkg.status != 1:
                 raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
 
-            price = await self.package_service.calculate_price(
-                db, package_id, coupon_id, user_id
-            )
+            price = await self.package_service.calculate_price(db, package_id, coupon_id, user_id)
             original_price = price["originalPrice"]
             discount_amount = price["discountAmount"]
             coupon_amount = price["couponAmount"]
             payable_amount = price["payableAmount"]
 
-            if pay_method == "combined":
-                if not (0 < balance_amount < payable_amount):
-                    raise BusinessException(ResultCode.PARAM_ERROR, "组合支付余额部分金额非法")
+            if pay_method == "combined" and not (0 < balance_amount < payable_amount):
+                raise BusinessException(ResultCode.PARAM_ERROR, "组合支付余额部分金额非法")
 
             if coupon_id:
                 locked = await self.user_coupon_repository.lock_coupon(db, coupon_id)
@@ -243,7 +240,7 @@ class OrderService:
                 target_id=order.order_no,
                 action="create",
                 module="order",
-                after_value=form if not hasattr(form, "dict") else form,
+                after_value=form,
             )
 
             return {
@@ -269,6 +266,23 @@ class OrderService:
         if account and account.frozen_balance >= frozen:
             await self.balance_account_service.unfreeze(db, order.user_id, frozen)
 
+    async def _close_channel_order(self, db: AsyncSession, order) -> None:
+        """取消/超时关单时同步关闭渠道订单（组合支付需按支付流水中实际渠道关闭）。"""
+        if order.pay_method not in ("wechat", "alipay", "combined"):
+            return
+        channel = order.pay_method
+        if channel == "combined":
+            payments = await self.payment_record_repository.list_by_order_id(db, order.id)
+            if not payments:
+                return
+            channel = payments[0].channel
+            if channel not in ("wechat", "alipay"):
+                return
+        try:
+            await self.payment_channel_service.close_order(channel, order.order_no)
+        except Exception as e:
+            logger.warning("关闭渠道订单失败 orderNo=%s: %s", order.order_no, e)
+
     async def cancel(self, db: AsyncSession, order_no: str, reason: str, user_id: int) -> None:
         order = await self.order_repository.get_by_order_no(db, order_no)
         if not order:
@@ -282,11 +296,7 @@ class OrderService:
         if order.coupon_id:
             await self.user_coupon_repository.release_coupon(db, order.coupon_id)
 
-        if order.pay_method in ("wechat", "alipay"):
-            try:
-                await self.payment_channel_service.close_order(order.pay_method, order_no)
-            except Exception as e:
-                logger.warning("关闭渠道订单失败 orderNo=%s: %s", order_no, e)
+        await self._close_channel_order(db, order)
 
         # 与超时取消同规则：解冻余额/组合支付已冻结的余额部分
         await self._unfreeze_if_frozen(db, order)
@@ -310,8 +320,7 @@ class OrderService:
 
         async def _get_cache():
             redis = await get_redis_client()
-            data = await redis.get(cache_key)
-            return data
+            return await redis.get(cache_key)
 
         cached_raw = await redis_operation_with_fallback(
             _get_cache, default=None, operation_name="order_cache_get"
@@ -319,11 +328,15 @@ class OrderService:
         if cached_raw:
             try:
                 cached = json.loads(cached_raw)
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as exc:
+                # 订单详情缓存损坏：按未命中回源重建（降级是契约，不是掩盖），
+                # 必须留痕以定位缓存写入方/序列化不一致
+                logger.warning(
+                    "订单详情缓存解析失败，回源重建: orderNo=%s, error=%s", order_no, exc
+                )
                 cached = None
-            if cached and (
-                user_id is None or cached.get("userId") == user_id or cached.get("_admin") is True
-            ):
+            # 缓存归属判定：管理员放行，普通用户仅本人订单命中（VO 对管理员/属主视角内容一致）
+            if cached and (user_id is None or cached.get("userId") == user_id):
                 return cached
 
         data = await self.order_repository.get_with_user(db, order_no)
@@ -347,8 +360,6 @@ class OrderService:
         refund = await self.refund_record_repository.get_by_order_id(db, order.id)
         if refund:
             vo["refundRecord"] = _refund_to_vo(refund, order.order_no, data.get("username") or "")
-
-        vo["_admin"] = user_id is None
 
         async def _set_cache():
             redis = await get_redis_client()
@@ -394,17 +405,22 @@ class OrderService:
         ]
         return {"list": list_data, "total": total}
 
-    async def get_stats(self, db: AsyncSession, start_time: str | None, end_time: str | None) -> dict:
+    async def get_stats(
+        self, db: AsyncSession, start_time: str | None, end_time: str | None
+    ) -> dict:
         base_stats = await self.order_repository.get_stats(db, start_time, end_time)
         total_orders = base_stats["total_orders"]
         total_revenue = base_stats["total_revenue"]
         total_refund = base_stats["total_refund"]
-        refund_rate = (total_refund / total_revenue) if total_revenue > 0 else 0
+        # 退款率口径（需求规格 §6.4.2）：退款成功订单数 / 支付成功订单数（含已退款）
+        paid_order_count = base_stats["paid_order_count"]
+        refunded_order_count = base_stats["refunded_order_count"]
+        refund_rate = refunded_order_count / paid_order_count if paid_order_count > 0 else 0
 
-        status_distribution = {s: 0 for s in ORDER_STATUS_MAP.keys()}
+        status_distribution = dict.fromkeys(ORDER_STATUS_MAP.keys(), 0)
         status_distribution.update(base_stats["status_distribution"])
 
-        pay_method_distribution = {m: 0 for m in PAY_METHODS}
+        pay_method_distribution = dict.fromkeys(PAY_METHODS, 0)
         pay_method_distribution.update(base_stats["pay_method_distribution"])
 
         pkg_dist_stmt = (
@@ -505,9 +521,7 @@ class OrderService:
                 SysRefundRecord.apply_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
             )
         refund_reason_rows = (await db.execute(refund_reason_stmt)).all()
-        refund_reason_distribution = {
-            reason_type: count for reason_type, count in refund_reason_rows
-        }
+        refund_reason_distribution = {r[0]: r[1] for r in refund_reason_rows}
 
         return {
             "totalOrders": total_orders,
@@ -528,11 +542,7 @@ class OrderService:
         for order in orders:
             if order.coupon_id:
                 await self.user_coupon_repository.release_coupon(db, order.coupon_id)
-            if order.pay_method in ("wechat", "alipay"):
-                try:
-                    await self.payment_channel_service.close_order(order.pay_method, order.order_no)
-                except Exception as e:
-                    logger.warning("超时关单失败 orderNo=%s: %s", order.order_no, e)
+            await self._close_channel_order(db, order)
             await self._unfreeze_if_frozen(db, order)
             order.status = 4
             order.cancel_reason = "超时未支付，系统自动取消"

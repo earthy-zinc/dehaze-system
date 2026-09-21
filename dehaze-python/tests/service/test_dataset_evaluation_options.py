@@ -1,5 +1,13 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.repository.dataset_repository import dataset_repository
 from app.service.dataset.dataset_service import dataset_service
+
+# 测试替身：仓储 find_datasets_with_clear_gt 已 monkeypatch，db 仅传参占位
+_DB: AsyncSession = AsyncMock(spec=AsyncSession)
 
 
 def _make_repo(datasets):
@@ -15,13 +23,7 @@ def _make_repo(datasets):
 
 
 def _ds(did, name):
-    class _D:
-        pass
-
-    d = _D()
-    d.id = did
-    d.name = name
-    return d
+    return SimpleNamespace(id=did, name=name)
 
 
 async def test_returns_label_value_flat_list(monkeypatch):
@@ -29,7 +31,7 @@ async def test_returns_label_value_flat_list(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await dataset_service.get_evaluation_options(None)
+    result = await dataset_service.get_evaluation_options(_DB)
     assert result == [
         {"value": 1, "label": "去雾测试集"},
         {"value": 2, "label": "去雨测试集"},
@@ -42,7 +44,7 @@ async def test_task_type_passed_to_repository(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await dataset_service.get_evaluation_options(None, task_type="dehaze")
+    result = await dataset_service.get_evaluation_options(_DB, task_type="dehaze")
     assert len(result) == 1
     assert repo.calls == ["dehaze"]
 
@@ -52,5 +54,5 @@ async def test_empty_result_returns_empty_list(monkeypatch):
     monkeypatch.setattr(
         dataset_repository, "find_datasets_with_clear_gt", repo.find_datasets_with_clear_gt
     )
-    result = await dataset_service.get_evaluation_options(None, task_type="denoise")
+    result = await dataset_service.get_evaluation_options(_DB, task_type="denoise")
     assert result == []

@@ -18,4 +18,7 @@ public class OrderCreateForm {
     @Schema(description = "支付方式(wechat/alipay/balance/combined)", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "支付方式不能为空")
     private String payMethod;
+
+    @Schema(description = "组合支付时余额部分金额(分)")
+    private Long balanceAmount;
 }

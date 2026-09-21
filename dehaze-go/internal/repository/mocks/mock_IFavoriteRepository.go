@@ -26,64 +26,6 @@ func (_m *MockIFavoriteRepository) EXPECT() *MockIFavoriteRepository_Expecter {
 	return &MockIFavoriteRepository_Expecter{mock: &_m.Mock}
 }
 
-// CountByUserAndType provides a mock function with given fields: ctx, userID, targetType
-func (_m *MockIFavoriteRepository) CountByUserAndType(ctx context.Context, userID int64, targetType string) (int64, error) {
-	ret := _m.Called(ctx, userID, targetType)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CountByUserAndType")
-	}
-
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) (int64, error)); ok {
-		return rf(ctx, userID, targetType)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) int64); ok {
-		r0 = rf(ctx, userID, targetType)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int64, string) error); ok {
-		r1 = rf(ctx, userID, targetType)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIFavoriteRepository_CountByUserAndType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountByUserAndType'
-type MockIFavoriteRepository_CountByUserAndType_Call struct {
-	*mock.Call
-}
-
-// CountByUserAndType is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-//   - targetType string
-func (_e *MockIFavoriteRepository_Expecter) CountByUserAndType(ctx interface{}, userID interface{}, targetType interface{}) *MockIFavoriteRepository_CountByUserAndType_Call {
-	return &MockIFavoriteRepository_CountByUserAndType_Call{Call: _e.mock.On("CountByUserAndType", ctx, userID, targetType)}
-}
-
-func (_c *MockIFavoriteRepository_CountByUserAndType_Call) Run(run func(ctx context.Context, userID int64, targetType string)) *MockIFavoriteRepository_CountByUserAndType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockIFavoriteRepository_CountByUserAndType_Call) Return(_a0 int64, _a1 error) *MockIFavoriteRepository_CountByUserAndType_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIFavoriteRepository_CountByUserAndType_Call) RunAndReturn(run func(context.Context, int64, string) (int64, error)) *MockIFavoriteRepository_CountByUserAndType_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // CountByUserID provides a mock function with given fields: ctx, userID
 func (_m *MockIFavoriteRepository) CountByUserID(ctx context.Context, userID int64) (int64, error) {
 	ret := _m.Called(ctx, userID)
@@ -358,24 +300,24 @@ func (_c *MockIFavoriteRepository_FindByUserAndTarget_Call) RunAndReturn(run fun
 }
 
 // FindPage provides a mock function with given fields: ctx, userID, q
-func (_m *MockIFavoriteRepository) FindPage(ctx context.Context, userID int64, q *query.FavoritePageQuery) ([]favorite.FavoriteWithAlgorithm, int64, error) {
+func (_m *MockIFavoriteRepository) FindPage(ctx context.Context, userID int64, q *query.FavoritePageQuery) ([]favorite.FavoriteWithTarget, int64, error) {
 	ret := _m.Called(ctx, userID, q)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindPage")
 	}
 
-	var r0 []favorite.FavoriteWithAlgorithm
+	var r0 []favorite.FavoriteWithTarget
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, *query.FavoritePageQuery) ([]favorite.FavoriteWithAlgorithm, int64, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *query.FavoritePageQuery) ([]favorite.FavoriteWithTarget, int64, error)); ok {
 		return rf(ctx, userID, q)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, *query.FavoritePageQuery) []favorite.FavoriteWithAlgorithm); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *query.FavoritePageQuery) []favorite.FavoriteWithTarget); ok {
 		r0 = rf(ctx, userID, q)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]favorite.FavoriteWithAlgorithm)
+			r0 = ret.Get(0).([]favorite.FavoriteWithTarget)
 		}
 	}
 
@@ -414,12 +356,12 @@ func (_c *MockIFavoriteRepository_FindPage_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockIFavoriteRepository_FindPage_Call) Return(_a0 []favorite.FavoriteWithAlgorithm, _a1 int64, _a2 error) *MockIFavoriteRepository_FindPage_Call {
+func (_c *MockIFavoriteRepository_FindPage_Call) Return(_a0 []favorite.FavoriteWithTarget, _a1 int64, _a2 error) *MockIFavoriteRepository_FindPage_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockIFavoriteRepository_FindPage_Call) RunAndReturn(run func(context.Context, int64, *query.FavoritePageQuery) ([]favorite.FavoriteWithAlgorithm, int64, error)) *MockIFavoriteRepository_FindPage_Call {
+func (_c *MockIFavoriteRepository_FindPage_Call) RunAndReturn(run func(context.Context, int64, *query.FavoritePageQuery) ([]favorite.FavoriteWithTarget, int64, error)) *MockIFavoriteRepository_FindPage_Call {
 	_c.Call.Return(run)
 	return _c
 }

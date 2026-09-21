@@ -75,10 +75,20 @@ async def delete_memory(
     return success(msg="一切ok")
 
 
+@router.post("/{memory_id}/unarchive", response_model=Result[MemoryResult], summary="取消归档记忆")
+async def unarchive_memory(
+    memory_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    result = await ai_memory_service.unarchive_memory(db, memory_id, user.id)
+    return success(result)
+
+
 @router.get("/search", response_model=Result[list[MemoryResult]], summary="关键词搜索记忆")
 async def search_memories(
     keyword: str,
-    limit: int = 5,
+    limit: int = Query(default=5, ge=1, description="返回条数（正整数）"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

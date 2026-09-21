@@ -13,7 +13,11 @@ async def _seed_run_ctx(db):
     db.add(conv)
     await db.flush()
     user_msg = SysAiMessage(
-        conversation_id=conv.id, parent_message_id=None, role="user", content="帮我处理雾图", status=2
+        conversation_id=conv.id,
+        parent_message_id=None,
+        role="user",
+        content="帮我处理雾图",
+        status=2,
     )
     db.add(user_msg)
     await db.flush()
@@ -34,7 +38,7 @@ async def _seed_run_ctx(db):
 async def test_async_wait_suspend_skips_finalize_but_pushes_end(db, monkeypatch):
     interrupt_data = {
         "type": "async_wait",
-        "data": {"task_id": "batch:1:2:1", "stream_session_id": "s1"},
+        "data": {"taskId": "batch:1:2:1", "stream_session_id": "s1"},
     }
     conv, asst_msg = await _seed_run_ctx(db)
     service, emitter, _ = patch_reasoning_boundaries(monkeypatch, interrupt=interrupt_data)

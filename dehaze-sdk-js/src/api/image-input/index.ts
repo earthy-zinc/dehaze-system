@@ -46,12 +46,11 @@ class ImageInputHistoryAPI {
     });
   }
 
-  /** 清空所有历史记录 */
-  static clearAll(confirm: boolean) {
+  /** 清空当前用户所有历史记录 */
+  static clearAll() {
     return request<number>({
       url: "/api/v1/image-input/history/clear",
       method: "delete",
-      params: { confirm },
     });
   }
 }

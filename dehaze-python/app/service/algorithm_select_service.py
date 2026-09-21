@@ -22,24 +22,21 @@ class AlgorithmSelectService:
     """算法选择服务"""
 
     async def get_algorithm_tree(self, db: AsyncSession) -> list[dict[str, Any]]:
-        """获取算法选择树（仅已发布状态）"""
+        """获取算法选择树（仅已发布状态，全量返回；leaf 按是否有子节点判定）"""
         algorithms = await algorithm_repository.list_published(db, order_by_tree=True)
 
         if not algorithms:
             return []
 
-        # 收集父节点ID（即分类节点）
-        parent_ids = {a.parent_id for a in algorithms if a.parent_id and a.parent_id > 0}
-
-        # 构建节点映射
+        # 构建节点映射（leaf 字段名对齐 Java AlgorithmSelectNodeVO / 文档 §3.1）
         node_map: dict[int, dict] = {}
         for algo in algorithms:
             node_map[algo.id] = {
                 "id": algo.id,
-                "name": algo.name,
                 "parentId": algo.parent_id or 0,
+                "name": algo.name,
                 "type": algo.type,
-                "isLeaf": algo.parent_id is not None and algo.parent_id > 0,
+                "leaf": True,
                 "children": [],
             }
 
@@ -47,35 +44,22 @@ class AlgorithmSelectService:
         for algo in algorithms:
             node = node_map[algo.id]
             parent_id = algo.parent_id or 0
-
             if parent_id == 0 or parent_id not in node_map:
                 # 顶层节点（分类节点或直接挂在根下的算法）
-                if algo.id not in parent_ids:
-                    node["isLeaf"] = True
-                else:
-                    node["isLeaf"] = False
                 tree.append(node)
             else:
                 parent_node = node_map[parent_id]
-                parent_node["isLeaf"] = False
+                parent_node["leaf"] = False
                 parent_node["children"].append(node)
 
-        def clean_children(nodes):
-            for n in nodes:
-                if n["children"]:
-                    clean_children(n["children"])
-                else:
-                    n.pop("children", None)
-                n.pop("parentId", None)
-            return nodes
-
-        return clean_children(tree)
+        return tree
 
     async def get_algorithm_detail(self, db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
-        """获取算法详情（含评分、使用次数、最近成功预测样例图）"""
+        """获取算法详情（含评分、使用次数、最近成功预测样例图；对齐 Java getDetail 字段）"""
         algo = await self._require_published(db, algorithm_id)
 
         avg_rating = await rating_repository.get_avg_rating(db, algorithm_id)
+        rating_count = await rating_repository.count_by_algorithm(db, algorithm_id)
         usage_count = await pred_log_repository.count_by_algorithm(db, algorithm_id)
         sample_images = await pred_log_repository.list_recent_pred_urls(db, algorithm_id)
 
@@ -85,10 +69,14 @@ class AlgorithmSelectService:
             "type": algo.type,
             "description": algo.description,
             "img": algo.img,
+            "path": algo.path,
             "params": algo.params,
             "flops": algo.flops,
             "size": algo.size,
+            "version": algo.version,
+            "status": algo.status,
             "avgRating": round(avg_rating, 1),
+            "ratingCount": rating_count,
             "usageCount": usage_count,
             "sampleImages": sample_images,
         }
@@ -97,30 +85,36 @@ class AlgorithmSelectService:
         self,
         db: AsyncSession,
         algorithm_id: int,
-        image_url: str,
+        image_url: str | None,
+        file_id: int | None = None,
         user_id: int | None = None,
     ) -> dict[str, Any]:
-        """上传图片测试算法效果（同步等待结果，超时返回 B0100）"""
+        """上传图片测试算法效果（fileId/imageUrl 二选一；异步任务契约，
+        返回 PredictionResultVO 形状）"""
         await self._require_published(db, algorithm_id)
 
-        image_url_lower = image_url.lower()
-        allowed_extensions = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif")
-        if not any(
-            image_url_lower.endswith(ext)
-            or f".{ext}?" in image_url_lower
-            or f".{ext}&" in image_url_lower
-            for ext in allowed_extensions
-        ):
-            # 尝试从URL路径提取扩展名
-            has_valid_ext = False
-            for ext in allowed_extensions:
-                if ext in image_url_lower:
-                    has_valid_ext = True
-                    break
-            if not has_valid_ext:
-                raise BusinessException(
-                    ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件格式不支持"
-                )
+        if not image_url and file_id is None:
+            raise BusinessException(ResultCode.PARAM_ERROR, "imageUrl 与 fileId 至少提供一个")
+
+        if image_url:
+            image_url_lower = image_url.lower()
+            allowed_extensions = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tiff", ".tif")
+            if not any(
+                image_url_lower.endswith(ext)
+                or f".{ext}?" in image_url_lower
+                or f".{ext}&" in image_url_lower
+                for ext in allowed_extensions
+            ):
+                # 尝试从URL路径提取扩展名
+                has_valid_ext = False
+                for ext in allowed_extensions:
+                    if ext in image_url_lower:
+                        has_valid_ext = True
+                        break
+                if not has_valid_ext:
+                    raise BusinessException(
+                        ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "文件格式不支持"
+                    )
 
         from app.service.prediction.prediction_service import prediction_service
 
@@ -128,8 +122,9 @@ class AlgorithmSelectService:
             pred_result = await asyncio.wait_for(
                 prediction_service.predict(
                     algorithm_id=algorithm_id,
-                    image_url=image_url,
+                    image_url=image_url or "",
                     user_id=user_id,
+                    file_id=file_id,
                     skip_quota_check=True,  # 测试不计入配额
                 ),
                 timeout=30.0,
@@ -139,18 +134,19 @@ class AlgorithmSelectService:
                 ResultCode.SYSTEM_EXECUTION_TIMEOUT, "算法测试超时，请稍后重试"
             ) from None
 
-        return {
-            "resultUrl": pred_result.get("resultUrl", ""),
-            "processTime": pred_result.get("time", 0),
-        }
+        # 透传异步任务契约字段（response_model 过滤多余字段）
+        return pred_result
 
     async def search_algorithms(
         self,
         db: AsyncSession,
         keyword: str | None = None,
     ) -> list[dict[str, Any]]:
-        """搜索算法（关键词/拼音/标签，仅已发布）"""
-        algorithms = await algorithm_repository.list_published(db, keyword=keyword)
+        """搜索算法（关键词匹配名称/描述/类型，仅已发布；空关键词返回空列表）"""
+        if not keyword or not keyword.strip():
+            return []
+
+        algorithms = await algorithm_repository.list_published(db, keyword=keyword.strip())
 
         search_results = []
         for algo in algorithms:
@@ -171,35 +167,47 @@ class AlgorithmSelectService:
         self,
         db: AsyncSession,
         algorithm_ids: list[int],
+        image_url: str | None = None,
+        file_id: int | None = None,
+        user_id: int | None = None,
     ) -> list[dict[str, Any]]:
-        """算法对比（T-AS-055：数量需在 2-3 个之间）"""
+        """算法对比（T-AS-055：数量需在 2-3 个之间）
+
+        对同一图片（fileId/imageUrl）逐算法执行预测，单算法失败异常隔离置空，
+        返回契约字段 {algorithmId, algorithmName, resultUrl, time}（对齐 Java/文档 §3.3）。
+        """
         if len(algorithm_ids) > 3 or len(algorithm_ids) < 2:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "算法对比数量需在 2-3 个之间")
+        if not image_url and file_id is None:
+            raise BusinessException(ResultCode.PARAM_ERROR, "imageUrl 与 fileId 至少提供一个")
 
-        algorithms = await algorithm_repository.list_by_ids_include_unpublished(
-            db, algorithm_ids
-        )
+        from app.service.prediction.prediction_service import prediction_service
 
-        algo_map = {a.id: a for a in algorithms}
         result_list = []
         for aid in algorithm_ids:
-            algo = algo_map.get(aid)
-            if not algo:
-                continue
+            algo = await self._require_published(db, aid)
 
-            avg_rating = await rating_repository.get_avg_rating(db, algo.id)
-            usage_count = await pred_log_repository.count_by_algorithm(db, algo.id)
+            try:
+                pred_result = await prediction_service.predict(
+                    algorithm_id=aid,
+                    image_url=image_url or "",
+                    user_id=user_id,
+                    file_id=file_id,
+                )
+                result_url = pred_result.get("resultUrl")
+                elapsed = pred_result.get("time")
+            except Exception as e:
+                # 异常隔离：单算法预测失败不影响整体对比
+                logger.warning("算法[%s]对比预测失败: %s", aid, e)
+                result_url = None
+                elapsed = None
 
             result_list.append(
                 {
                     "algorithmId": algo.id,
                     "algorithmName": algo.name,
-                    "type": algo.type,
-                    "params": algo.params,
-                    "flops": algo.flops,
-                    "description": algo.description,
-                    "avgRating": round(avg_rating, 1),
-                    "usageCount": usage_count,
+                    "resultUrl": result_url,
+                    "time": elapsed,
                 }
             )
 
@@ -229,9 +237,7 @@ class AlgorithmSelectService:
 
         sample_algo: SysAlgorithm | None = None
         if sample_algorithm_id is not None:
-            sample_algo = await self._require_published(
-                db, sample_algorithm_id
-            )
+            sample_algo = await self._require_published(db, sample_algorithm_id)
 
         algorithms = await algorithm_repository.list_published(db)
 
@@ -262,7 +268,8 @@ class AlgorithmSelectService:
         for a in algorithms:
             if sample_algo is not None and a.id == sample_algo.id:
                 continue
-            # taskType 过滤：若指定 taskType，仅保留类型匹配或为空类型的算法（T-AS-064 跨类型需不传 taskType）
+            # taskType 过滤：若指定 taskType，仅保留类型匹配或为空类型的算法
+            # （T-AS-064 跨类型需不传 taskType）
             if task_type and a.type and a.type != task_type:
                 continue
             score = _score(a)

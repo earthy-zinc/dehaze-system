@@ -541,6 +541,65 @@ func (_c *MockIDatasetRepository_FindByParentIDs_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// FindDatasetsWithClearGT provides a mock function with given fields: ctx, taskType
+func (_m *MockIDatasetRepository) FindDatasetsWithClearGT(ctx context.Context, taskType string) ([]model.SysDataset, error) {
+	ret := _m.Called(ctx, taskType)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindDatasetsWithClearGT")
+	}
+
+	var r0 []model.SysDataset
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.SysDataset, error)); ok {
+		return rf(ctx, taskType)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.SysDataset); ok {
+		r0 = rf(ctx, taskType)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.SysDataset)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, taskType)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIDatasetRepository_FindDatasetsWithClearGT_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDatasetsWithClearGT'
+type MockIDatasetRepository_FindDatasetsWithClearGT_Call struct {
+	*mock.Call
+}
+
+// FindDatasetsWithClearGT is a helper method to define mock.On call
+//   - ctx context.Context
+//   - taskType string
+func (_e *MockIDatasetRepository_Expecter) FindDatasetsWithClearGT(ctx interface{}, taskType interface{}) *MockIDatasetRepository_FindDatasetsWithClearGT_Call {
+	return &MockIDatasetRepository_FindDatasetsWithClearGT_Call{Call: _e.mock.On("FindDatasetsWithClearGT", ctx, taskType)}
+}
+
+func (_c *MockIDatasetRepository_FindDatasetsWithClearGT_Call) Run(run func(ctx context.Context, taskType string)) *MockIDatasetRepository_FindDatasetsWithClearGT_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockIDatasetRepository_FindDatasetsWithClearGT_Call) Return(_a0 []model.SysDataset, _a1 error) *MockIDatasetRepository_FindDatasetsWithClearGT_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIDatasetRepository_FindDatasetsWithClearGT_Call) RunAndReturn(run func(context.Context, string) ([]model.SysDataset, error)) *MockIDatasetRepository_FindDatasetsWithClearGT_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindRootPage provides a mock function with given fields: ctx, q
 func (_m *MockIDatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQuery) ([]model.SysDataset, int64, error) {
 	ret := _m.Called(ctx, q)

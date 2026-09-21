@@ -107,7 +107,7 @@ func (r *UserCouponRepository) DeleteByCouponIDs(ctx context.Context, couponIDs 
 	return r.db.WithContext(ctx).
 		Model(&model.SysUserCoupon{}).
 		Where("coupon_id IN ? AND status = 1 AND deleted = 0", couponIDs).
-		Update("deleted", 1).Error
+		Update("deleted", gorm.Expr("id")).Error
 }
 
 func (r *UserCouponRepository) CountUsedByCouponIDs(ctx context.Context, couponIDs []int64) (int64, error) {
@@ -120,6 +120,29 @@ func (r *UserCouponRepository) CountUsedByCouponIDs(ctx context.Context, couponI
 		Where("coupon_id IN ? AND status = 2 AND deleted = 0", couponIDs).
 		Count(&count).Error
 	return count, err
+}
+
+// FindActiveTrialCouponExpireTime 有效体验券（未使用且未过期）的最晚到期时间；无券返回 nil。
+// 对齐 python `user_coupon_repository.get_active_trial_coupon`：join sys_coupon 限定 type='trial'，
+// user_coupon.status=1（未使用）、未删除，到期时间为空或晚于当前，按到期时间倒序取一张。
+func (r *UserCouponRepository) FindActiveTrialCouponExpireTime(ctx context.Context, userID int64) (*time.Time, error) {
+	var row struct {
+		ExpireTime *time.Time `gorm:"column:expire_time"`
+	}
+	err := r.db.WithContext(ctx).
+		Table("sys_user_coupon").
+		Select("sys_user_coupon.expire_time").
+		Joins("JOIN sys_coupon ON sys_coupon.id = sys_user_coupon.coupon_id AND sys_coupon.deleted = 0").
+		Where("sys_user_coupon.user_id = ? AND sys_user_coupon.deleted = 0 AND sys_user_coupon.status = 1 AND sys_coupon.type = ?",
+			userID, "trial").
+		Where("sys_user_coupon.expire_time IS NULL OR sys_user_coupon.expire_time > ?", time.Now()).
+		Order("sys_user_coupon.expire_time DESC").
+		Limit(1).
+		Scan(&row).Error
+	if err != nil {
+		return nil, err
+	}
+	return row.ExpireTime, nil
 }
 
 var _ IUserCouponRepository = (*UserCouponRepository)(nil)

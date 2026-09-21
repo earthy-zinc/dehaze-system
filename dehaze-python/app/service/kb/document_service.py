@@ -9,10 +9,12 @@
 """
 
 import asyncio
+import ipaddress
 import logging
-import os
 import re
+import socket
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
@@ -24,6 +26,7 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
+from app.infrastructure.embedding import embedding_client
 from app.infrastructure.es.kb_chunk_index import (
     bulk_index_chunks,
     delete_doc_chunks,
@@ -37,7 +40,7 @@ from app.repository.knowledge_chunk_repository import knowledge_chunk_repository
 from app.repository.knowledge_document_repository import knowledge_document_repository
 from app.service.file_service import file_service
 from app.service.kb import chunking_engine, document_parser
-from app.infrastructure.embedding import embedding_client
+from app.service.kb.kb_billing_service import kb_billing_service
 from app.service.kb.knowledge_base_service import _check_manage_permission
 from app.service.storage.factory import get_storage_by_name
 
@@ -63,9 +66,38 @@ def _validate_url(url: str) -> None:
         raise BusinessException(ResultCode.PARAM_ERROR, "URL 格式不合法，仅支持 http/https")
 
 
+async def _ensure_public_url(url: str) -> None:
+    """SSRF 防护：域名解析后逐一校验 IP，命中私网/环回/链路本地段即拒绝。
+
+    仅字符串匹配 host 会漏掉解析到内网的域名（如 localtest.me→127.0.0.1），
+    故必须 getaddrinfo 取全部解析结果校验。
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        raise BusinessException(ResultCode.PARAM_ERROR, "URL 缺少主机名")
+    default_port = 443 if parsed.scheme == "https" else 80
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(
+            hostname, parsed.port or default_port, proto=socket.IPPROTO_TCP
+        )
+    except socket.gaierror:
+        raise BusinessException(ResultCode.BUSINESS_ERROR, "网页地址无法解析") from None
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "不允许导入内网地址")
+
+
+def _ensure_file_owner(file_info, user) -> None:
+    """文件归属校验（与文件模块 B0407 口径一致）：管理员全量，普通用户仅本人上传的文件。"""
+    if not user.is_admin and file_info.create_by != user.id:
+        raise BusinessException(ResultCode.FILE_ACCESS_DENIED, "无权访问该文件")
+
+
 def _validate_file_type(filename: str | None) -> None:
     """上传时同步校验文件格式白名单（复用 parser 的支持列表，非法格式立即拒绝）。"""
-    ext = os.path.splitext(filename or "")[1].lower()
+    ext = Path(filename or "").suffix.lower()
     if ext not in document_parser.SUPPORTED_EXTENSIONS:
         raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "不支持的文件格式")
 
@@ -76,7 +108,7 @@ async def _push_ws(owner_id: int, payload: dict) -> None:
         from app.service.websocket_service import manager
 
         await manager.send_personal(owner_id, payload)
-    except Exception as e:  # noqa: BLE001 - WS 推送失败不影响处理结果
+    except Exception as e:
         logger.debug("WS 推送失败: %s", e)
 
 
@@ -106,8 +138,8 @@ class DocumentService:
 
     # ==================== 创建 ====================
 
-    async def upload(self, 
-        db: AsyncSession, redis: Redis, kb_id: int, file_id: int, title: str | None, user
+    async def upload(
+        self, db: AsyncSession, redis: Redis, kb_id: int, file_id: int, title: str | None, user
     ) -> dict:
         """上传文档（file_id 关联已上传文件）。返回调度所需信息。"""
         kb = await self._validate_kb(db, kb_id, user)
@@ -124,10 +156,11 @@ class DocumentService:
                 ResultCode.BUSINESS_ERROR, f"单库文档数已达上限({KB_MAX_DOCUMENTS})"
             )
 
-        # 文件必须存在，且上传时即校验文件格式白名单
+        # 文件必须存在，且上传时即校验文件格式白名单与归属（B0407）
         file_info = await self.file_service.get_file_by_id(db, file_id)
         if not file_info:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
+        _ensure_file_owner(file_info, user)
         _validate_file_type(file_info.name)
 
         document = SysKnowledgeDocument(
@@ -141,11 +174,11 @@ class DocumentService:
         created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
-        await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
+        await redis.delete(f"kb:list:{owner_id}")
         return {"document_id": created.id, "kb_id": kb_id, "owner_id": owner_id}
 
-    async def batch_upload(self, 
-        db: AsyncSession, redis: Redis, kb_id: int, file_ids: list[int], user
+    async def batch_upload(
+        self, db: AsyncSession, redis: Redis, kb_id: int, file_ids: list[int], user
     ) -> list[dict]:
         """批量上传文档：逐个走 upload 逻辑，单个失败不影响其余，返回逐条结果。"""
         results = []
@@ -155,21 +188,28 @@ class DocumentService:
                 results.append({"fileId": file_id, "success": True, **result})
             except BusinessException as e:
                 results.append(
-                    {"fileId": file_id, "success": False, "code": e.code, "message": e.msg}
+                    {"fileId": file_id, "success": False, "code": e.code, "message": e.message}
                 )
         return results
 
-    async def import_url(self, 
-        db: AsyncSession, redis: Redis, kb_id: int, url: str, title: str | None, user
+    async def import_url(
+        self, db: AsyncSession, redis: Redis, kb_id: int, url: str, title: str | None, user
     ) -> dict:
         """导入网页为文档：抓取失败抛 A0500 不创建记录；异步任务从分块开始（跳过解析）。"""
         kb = await self._validate_kb(db, kb_id, user)
         _validate_url(url)
 
-        # 抓取网页正文（httpx），失败则拒绝创建
+        # 抓取网页正文（httpx）；关闭自动重定向跟随，逐跳校验目标防 30x 跳内网绕过 SSRF 拦截
         try:
-            async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
                 resp = await client.get(url)
+                for _ in range(5):
+                    if not resp.is_redirect:
+                        break
+                    assert resp.next_request is not None
+                    redirect_url = str(resp.next_request.url)
+                    await _ensure_public_url(redirect_url)
+                    resp = await client.get(redirect_url)
                 resp.raise_for_status()
                 cleaned = document_parser.parse_html(resp.text)
         except Exception as e:
@@ -197,11 +237,11 @@ class DocumentService:
         created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
-        await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
+        await redis.delete(f"kb:list:{owner_id}")
         return {"document_id": created.id, "kb_id": kb_id, "owner_id": owner_id}
 
-    async def create_text(self, 
-        db: AsyncSession, redis: Redis, kb_id: int, title: str, content: str, user
+    async def create_text(
+        self, db: AsyncSession, redis: Redis, kb_id: int, title: str, content: str, user
     ) -> dict:
         """自定义文本创建文档：content 直接入库，异步任务跳过解析。"""
         kb = await self._validate_kb(db, kb_id, user)
@@ -228,7 +268,7 @@ class DocumentService:
         created = await self.knowledge_document_repository.create(db, document)
 
         owner_id = kb.create_by or user.id
-        await redis.delete(f"kb:list:{owner_id}", f"kb:config:{kb_id}")
+        await redis.delete(f"kb:list:{owner_id}")
         return {"document_id": created.id, "kb_id": kb_id, "owner_id": owner_id}
 
     async def _validate_kb(self, db: AsyncSession, kb_id: int, user) -> SysKnowledgeBase:
@@ -243,8 +283,14 @@ class DocumentService:
 
     # ==================== 查询 ====================
 
-    async def get_page(self, 
-        db: AsyncSession, kb_id: int, processing_status: str | None, page: int, size: int, user
+    async def get_page(
+        self,
+        db: AsyncSession,
+        kb_id: int,
+        processing_status: str | None,
+        page: int,
+        size: int,
+        user,
     ) -> dict:
         """文档列表（校验知识库可见性）。"""
         kb = await self.knowledge_base_repository.get_by_id(db, kb_id)
@@ -307,11 +353,12 @@ class DocumentService:
         token_total = await self._sum_document_tokens(db, document_id)
 
         await self.knowledge_document_repository.soft_delete_by_ids(db, [document_id])
+        await self.knowledge_chunk_repository.delete_by_document(db, document_id)
         await delete_doc_chunks(kb.id, document_id)
 
         # 统计 CAS 递减（document_count-1, chunk_count-N, total_tokens-N）
         await self._update_kb_stats_cas(db, kb.id, -1, -chunk_count, -token_total)
-        await redis.delete(f"kb:list:{kb.create_by}", f"kb:detail:{kb.id}", f"kb:config:{kb.id}")
+        await redis.delete(f"kb:list:{kb.create_by}", f"kb:detail:{kb.id}")
 
     async def reprocess(self, db: AsyncSession, redis: Redis, document_id: int, user) -> dict:
         """重新处理文档：仅 failed 允许；先删旧分块(MySQL+ES)，重置 pending，返回调度信息。"""
@@ -335,10 +382,10 @@ class DocumentService:
         await db.flush()
 
         owner_id = kb.create_by or user.id
-        await redis.delete(f"kb:config:{kb.id}")
         return {"document_id": document_id, "kb_id": kb.id, "owner_id": owner_id}
 
-    async def update_document(self, 
+    async def update_document(
+        self,
         db: AsyncSession,
         redis: Redis,
         document_id: int,
@@ -361,14 +408,13 @@ class DocumentService:
         new_file_id = doc.file_id
         if file_id is not None:
             # 同库同文件已存在（且不是本文档自身）→ 拒绝
-            duplicate = await self.knowledge_document_repository.get_by_file_id(
-                db, kb.id, file_id
-            )
+            duplicate = await self.knowledge_document_repository.get_by_file_id(db, kb.id, file_id)
             if duplicate and duplicate.id != document_id:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, "该文件已存在于知识库中")
             file_info = await self.file_service.get_file_by_id(db, file_id)
             if not file_info:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
+            _ensure_file_owner(file_info, user)
             _validate_file_type(file_info.name)
             new_file_id = file_id
 
@@ -391,7 +437,6 @@ class DocumentService:
         await db.flush()
 
         owner_id = kb.create_by or user.id
-        await redis.delete(f"kb:config:{kb.id}")
         return {
             "document_id": document_id,
             "kb_id": kb.id,
@@ -401,7 +446,9 @@ class DocumentService:
 
     # ==================== 分块管理 ====================
 
-    async def list_chunks(self, db: AsyncSession, document_id: int, page: int, size: int, user) -> dict:
+    async def list_chunks(
+        self, db: AsyncSession, document_id: int, page: int, size: int, user
+    ) -> dict:
         """文档分块列表。"""
         doc = await self.knowledge_document_repository.get_by_id(db, document_id)
         if not doc:
@@ -427,11 +474,11 @@ class DocumentService:
             "total": total,
         }
 
-    async def preview_chunks(self, 
-        file_id: int, chunking_strategy: str, chunk_size: int, chunk_overlap: int
+    async def preview_chunks(
+        self, file_id: int, chunking_strategy: str, chunk_size: int, chunk_overlap: int, user
     ) -> list[dict]:
         """分块预览：下载→解析→分块，不向量化不写索引，返回 [{content, token_count, index}]。"""
-        file_bytes, filename = await self._download_file(file_id)
+        file_bytes, filename = await self._download_file(file_id, user)
         parsed = await asyncio.get_running_loop().run_in_executor(
             _parse_executor,
             document_parser.parse_document,
@@ -457,7 +504,7 @@ class DocumentService:
         """异步流水线入口：兜底捕获异常，避免后台任务未处理异常导致告警。"""
         try:
             await self._process_document(document_id, kb_id, owner_id)
-        except Exception as e:  # noqa: BLE001 - 流水线兜底，置 failed
+        except Exception as e:
             logger.exception("文档 %s 处理异常", document_id)
             try:
                 async with get_db_session() as db:
@@ -499,6 +546,8 @@ class DocumentService:
         # Step 2-3: 获取内容并解析（manual/url 直接用 content，跳过解析）
         content = doc.content
         if content is None:
+            if doc.file_id is None:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文档缺少文件引用，无法解析")
             file_bytes, filename = await self._download_file(doc.file_id)
             parsed = await asyncio.get_running_loop().run_in_executor(
                 _parse_executor,
@@ -526,7 +575,14 @@ class DocumentService:
             )
         total_tokens = sum(c.token_count for c in chunks)
 
-        # 分块写 MySQL（含 chunk_index 元数据）
+        # Step 6.5: 向量化计费预校验（后扣费模式：调用前校验、成功后实扣；
+        # 计费主体为知识库 owner，local 零成本模型照常校验权益但最终不计费）
+        if kb.embedding_provider != "local":
+            await kb_billing_service.ensure(
+                owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
+            )
+
+        # 分块写 MySQL（含 chunk_index 元数据与父子分块小节归属）
         async with get_db_session() as db:
             await self.knowledge_chunk_repository.delete_by_document(db, document_id)
             chunk_entities = []
@@ -537,6 +593,8 @@ class DocumentService:
                         document_id=document_id,
                         knowledge_base_id=kb_id,
                         chunk_index=metadata.get("chunk_index", 0),
+                        section_index=c.section_index,
+                        section_path=c.section_path,
                         content=c.content,
                         token_count=c.token_count,
                         metadata_=metadata,
@@ -575,6 +633,8 @@ class DocumentService:
                             "doc_id": document_id,
                             "chunk_id": chunk_ent.id,
                             "chunk_index": c.metadata.get("chunk_index", 0),
+                            "section_index": c.section_index,
+                            "section_path": c.section_path,
                             "version": doc_version,
                             "metadata": metadata,
                             "tags": metadata.get("tags", []),
@@ -591,6 +651,12 @@ class DocumentService:
                 if retry < 0:
                     raise
 
+        # 向量化+索引成功后按分块精确 token 总量实扣（失败路径不扣）
+        if kb.embedding_provider != "local":
+            await kb_billing_service.charge_embedding(
+                owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
+            )
+
         # Step 8: CAS 更新知识库统计 + 文档 completed
         async with get_db_session() as db:
             doc = await self.knowledge_document_repository.get_by_id(db, document_id)
@@ -599,9 +665,7 @@ class DocumentService:
             doc.processing_status = "completed"
             doc.error = None
             await db.flush()
-            await self._update_kb_stats_cas(
-                db, kb_id, 1, len(chunk_entities), total_tokens
-            )
+            await self._update_kb_stats_cas(db, kb_id, 1, len(chunk_entities), total_tokens)
             await _push_ws(
                 owner_id,
                 {"type": "kb_doc_status", "documentId": document_id, "status": "completed"},
@@ -609,12 +673,17 @@ class DocumentService:
 
     # ==================== 工具方法 ====================
 
-    async def _download_file(self, file_id: int) -> tuple[bytes, str]:
-        """通过 file_id → sys_file → 存储读取文件字节，返回 (bytes, 文件名)。"""
+    async def _download_file(self, file_id: int, user=None) -> tuple[bytes, str]:
+        """通过 file_id → sys_file → 存储读取文件字节，返回 (bytes, 文件名)。
+
+        user 非空时校验文件归属（B0407）；异步流水线后台任务已在上传时校验过，传 None 跳过。
+        """
         async with get_db_session() as db:
             file_info = await self.file_service.get_file_by_id(db, file_id)
             if not file_info:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "文件不存在")
+            if user is not None:
+                _ensure_file_owner(file_info, user)
             object_name = file_info.object_name
             filename = file_info.name
             storage = file_info.storage or settings.FILE_STORAGE_TYPE
@@ -638,8 +707,8 @@ class DocumentService:
         )
         return (await db.execute(stmt)).scalar() or 0
 
-    async def _update_kb_stats_cas(self, 
-        db: AsyncSession, kb_id: int, document_delta: int, chunk_delta: int, token_delta: int
+    async def _update_kb_stats_cas(
+        self, db: AsyncSession, kb_id: int, document_delta: int, chunk_delta: int, token_delta: int
     ) -> None:
         """CAS 更新知识库统计，冲突时重试（CAS 返回 False 表示并发覆盖，重读后重试）。"""
         for _ in range(3):

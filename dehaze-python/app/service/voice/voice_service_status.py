@@ -16,9 +16,9 @@ from typing import Any
 from redis.asyncio import Redis
 
 from app.config import settings
-from app.infrastructure.voice.provider.registry import voice_engine_registry
 from app.infrastructure.voice.funasr_engine import engine_status as funasr_status
 from app.infrastructure.voice.piper_tts_engine import engine_status as piper_status
+from app.infrastructure.voice.provider.registry import voice_engine_registry
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class VoiceServiceStatusService:
     async def _engine_status(self, engine_type: str, redis: Redis) -> dict[str, Any]:
         try:
             row = await self.engine_registry.resolve_default_engine(engine_type)
-        except Exception:  # noqa: BLE001 - 状态聚合不抛异常，解析失败视为引擎不可用
+        except Exception:
             logger.warning("解析默认%s引擎失败，按 offline 上报", engine_type, exc_info=True)
             return {}
         if row is None:

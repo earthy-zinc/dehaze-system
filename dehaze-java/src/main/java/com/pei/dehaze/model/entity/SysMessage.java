@@ -47,8 +47,8 @@ public class SysMessage extends BaseEntity {
 
     private LocalDateTime readTime;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     private LocalDateTime expiresAt;
 

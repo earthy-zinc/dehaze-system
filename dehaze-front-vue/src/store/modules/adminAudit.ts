@@ -1,13 +1,11 @@
-// 管理端会话审计 Store：审计筛选、全量会话列表、异常概览、详情抽屉与链路追踪
+// 管理端会话审计 Store：审计筛选、全量会话列表、异常概览、详情抽屉与会话时间线
 // 列表数据经 chatStore(scope=admin) 拉取（view=admin 返回审计字段），异常概览消费可观测性 summary
 import {
   AiConversationAPI,
   AiObservabilityAPI,
-  type AiMessageContextSnapshot,
-  type AiMessageLlmCall,
-  type AiMessageThought,
   type AiMessageVO,
   type AiObservabilitySummary,
+  type AiObservabilityTimeline,
   type ConversationStatus,
   type ConversationVO,
 } from "dehaze-sdk-js";
@@ -19,23 +17,6 @@ import {
 } from "@/store/modules/chat";
 
 export type AuditAnomalyType = "failed" | "quota" | "canceled" | "";
-
-/** LLM 调用明细（SDK 将 toolCall/outputSnapshot 声明为 unknown，这里收敛实际结构） */
-export interface AuditLlmCall extends AiMessageLlmCall {
-  toolCall?: {
-    has_tool_call?: boolean;
-    tools?: Array<{ name: string; arguments: string }>;
-  } | null;
-  outputSnapshot?: { text?: string } | null;
-}
-
-/** 链路追踪结果：thought 推理步骤 + LLM 调用回放 */
-export interface AuditTraceChain {
-  traceId: string | null;
-  contextSnapshot: AiMessageContextSnapshot | null;
-  thoughts: AiMessageThought[];
-  llmCalls: AuditLlmCall[];
-}
 
 const DETAIL_PAGE_SIZE = 50;
 
@@ -63,16 +44,18 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
   const detailConversation = ref<ConversationVO | null>(null);
   const detailMessages = ref<AiMessageVO[]>([]);
   const detailTotal = ref(0);
-  /** 下一次要加载的消息页码 */
-  const detailPageNum = ref(1);
+  /** 是否还有更早消息（游标分页 hasMore，驱动"滚动到顶加载更多"） */
+  const detailHasMore = ref(false);
   const detailLoading = ref(false);
   const detailError = ref("");
 
-  // ===== 链路追踪 =====
-  const traceMessage = ref<AiMessageVO | null>(null);
-  const traceChainData = ref<AuditTraceChain | null>(null);
-  const traceLoading = ref(false);
-  const traceError = ref("");
+  // ===== 会话审计时间线 =====
+  const timelineVisible = ref(false);
+  const timelineData = ref<AiObservabilityTimeline | null>(null);
+  const timelineLoading = ref(false);
+  const timelineError = ref("");
+  /** 当前选中轮次下标（RoundNavigator 与 RoundTimeline 联动） */
+  const timelineRoundIndex = ref(0);
 
   /** 用户/时间/异常类型筛选（审计列表接口暂无对应查询参数，在已加载页内过滤） */
   function matchesAuditFilter(conversation: ConversationVO) {
@@ -145,28 +128,31 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
     }
   }
 
+  /**
+   * 加载详情消息（只读游标分页）。首次缺省 before 取最新一页；加载更早历史时以当前
+   * 最早一条消息的 id 作为 before（仅返回 id 更小的）。`hasMore` 直接取响应。
+   */
   async function fetchDetailMessages() {
     if (!detailConversation.value) return;
     detailLoading.value = true;
     try {
+      const earliest = detailMessages.value[0];
       // 管理端跨用户查看需显式 view=admin
       const result = await AiConversationAPI.getMessages(
         detailConversation.value.id,
         {
-          pageNum: detailPageNum.value,
-          pageSize: DETAIL_PAGE_SIZE,
+          ...(earliest ? { before: earliest.id } : {}),
+          limit: DETAIL_PAGE_SIZE,
           view: "admin",
         }
       );
-      // 后端消息列表为倒序分页（pageNum=1=最新一页、页内最新在前），
-      // 展示需时间正序（最早在上）：每页反转；加载更早页时插到已有列表之前
+      // 后端按 id 倒序返回，展示需时间正序（最早在上）：本页反转；加载更早页时前置于已有列表
       const pageList = (result.list ?? []).slice().reverse();
-      detailMessages.value =
-        detailPageNum.value === 1
-          ? pageList
-          : [...pageList, ...detailMessages.value];
+      detailMessages.value = earliest
+        ? [...pageList, ...detailMessages.value]
+        : pageList;
       detailTotal.value = result.total ?? 0;
-      detailPageNum.value += 1;
+      detailHasMore.value = result.hasMore;
     } catch (error) {
       detailError.value = (error as Error).message || "会话消息加载失败";
     } finally {
@@ -175,10 +161,7 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
   }
 
   function loadMoreDetailMessages() {
-    if (
-      detailLoading.value ||
-      detailMessages.value.length >= detailTotal.value
-    ) {
+    if (detailLoading.value || !detailHasMore.value) {
       return;
     }
     return fetchDetailMessages();
@@ -188,11 +171,10 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
   async function openConversationDetail(conversation: ConversationVO) {
     detailVisible.value = true;
     detailConversation.value = conversation;
-    detailPageNum.value = 1;
     detailMessages.value = [];
     detailTotal.value = 0;
+    detailHasMore.value = false;
     detailError.value = "";
-    closeChainTrace();
     try {
       detailConversation.value = await AiConversationAPI.getConversation(
         conversation.id,
@@ -204,34 +186,34 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
     await fetchDetailMessages();
   }
 
-  /** 单条消息链路追踪：复用消息详情接口（含 thoughts/llmCalls，无过程链为空态） */
-  async function startChainTrace(message: AiMessageVO) {
-    traceMessage.value = message;
-    traceChainData.value = null;
-    traceError.value = "";
-    traceLoading.value = true;
+  /** 打开会话时间线（include=raw 拉取 wire 原始报文，raw 缺失时组件显示空态） */
+  async function openConversationTimeline(conversationId: number) {
+    timelineVisible.value = true;
+    timelineData.value = null;
+    timelineError.value = "";
+    timelineRoundIndex.value = 0;
+    timelineLoading.value = true;
     try {
-      // 管理端跨用户查看需显式 view=admin
-      const detail = await AiConversationAPI.getMessageDetail(message.id, {
-        view: "admin",
-      });
-      traceChainData.value = {
-        traceId: detail.traceId ?? null,
-        contextSnapshot: detail.contextSnapshot ?? null,
-        thoughts: detail.thoughts ?? [],
-        llmCalls: (detail.llmCalls ?? []) as AuditLlmCall[],
-      };
+      timelineData.value = await AiObservabilityAPI.getConversationTimeline(
+        conversationId,
+        { include: "raw" }
+      );
     } catch (error) {
-      traceError.value = (error as Error).message || "链路追踪数据加载失败";
+      timelineError.value = (error as Error).message || "会话时间线加载失败";
     } finally {
-      traceLoading.value = false;
+      timelineLoading.value = false;
     }
   }
 
-  function closeChainTrace() {
-    traceMessage.value = null;
-    traceChainData.value = null;
-    traceError.value = "";
+  function closeConversationTimeline() {
+    timelineVisible.value = false;
+    timelineData.value = null;
+    timelineError.value = "";
+    timelineRoundIndex.value = 0;
+  }
+
+  function selectTimelineRound(index: number) {
+    timelineRoundIndex.value = index;
   }
 
   return {
@@ -245,20 +227,23 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
     detailConversation,
     detailMessages,
     detailTotal,
+    detailHasMore,
     detailLoading,
     detailError,
-    traceMessage,
-    traceChainData,
-    traceLoading,
-    traceError,
+    timelineVisible,
+    timelineData,
+    timelineLoading,
+    timelineError,
+    timelineRoundIndex,
     applyAuditFilter,
     fetchAuditList,
     fetchAnomalySummary,
     openConversationDetail,
     fetchDetailMessages,
     loadMoreDetailMessages,
-    startChainTrace,
-    closeChainTrace,
+    openConversationTimeline,
+    closeConversationTimeline,
+    selectTimelineRound,
     resetAuditFilter,
   };
 });

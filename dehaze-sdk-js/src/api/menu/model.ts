@@ -8,10 +8,9 @@ export interface MenuQuery {
   perm?: string;
   path?: string;
   /**
-   * 菜单类型查询参数。后端接收整数（1=菜单；2=目录；3=外链；4=按钮），
-   * 为兼容枚举名也允许传 MenuTypeEnum，故定义为联合类型。
+   * 菜单类型查询参数，后端接收整数（1=菜单；2=目录；3=外链；4=按钮）
    */
-  type?: MenuTypeEnum | number;
+  type?: number;
   visible?: number;
 }
 
@@ -51,6 +50,10 @@ export interface MenuVO {
    * 按钮权限标识
    */
   perm?: string;
+  /**
+   * 系统预置标识(1:预置;0:普通)
+   */
+  isPreset?: number;
   /**
    * 跳转路径
    */
@@ -125,6 +128,11 @@ export interface MenuForm {
    * 【目录】只有一个子路由是否始终显示
    */
   alwaysShow?: number;
+
+  /**
+   * 系统预置标识(1:预置;0:普通)，仅表单回显读取，不接受写入
+   */
+  isPreset?: number;
 }
 
 /**
@@ -132,13 +140,13 @@ export interface MenuForm {
  */
 export interface RouteVO {
   /**
-   * 子路由列表
+   * 子路由列表（叶子节点为 null）
    */
-  children: RouteVO[];
+  children?: RouteVO[];
   /**
-   * 组件路径，可为字符串路径或动态加载的 React 组件
+   * 组件路径（"Layout" 表示布局组件，其余为 src/views 下的页面路径）
    */
-  component?: any;
+  component?: string;
   meta?: Meta;
   /**
    * 路由名称

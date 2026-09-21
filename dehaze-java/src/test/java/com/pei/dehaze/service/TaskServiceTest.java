@@ -95,7 +95,20 @@ class TaskServiceTest {
         when(fileService.getUrl(anyString())).thenAnswer(inv -> "http://test.com/files/" + inv.getArgument(0));
 
         // 使用Spy创建TaskServiceImpl，通过构造器注入依赖
-        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, storageServiceFactory, redisTemplate, wsMessageRelay, meterRegistry));
+        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, new com.pei.dehaze.service.strategy.TaskStrategyFactory(java.util.List.of(new com.pei.dehaze.service.strategy.TaskStrategy() {
+                    @Override
+                    public java.util.List<String> getTaskTypes() {
+                        return java.util.List.of("dataset_export", "user_export", "role_export", "user_import",
+                                "dept_export", "dept_import", "menu_export", "menu_import",
+                                "dict_export", "dict_import", "algorithm_export", "algorithm_import");
+                    }
+
+                    @Override
+                    public com.pei.dehaze.service.strategy.TaskResult execute(com.pei.dehaze.model.entity.SysTask task,
+                            java.util.Map<String, Object> params, com.pei.dehaze.service.strategy.ProgressCallback callback) {
+                        return null;
+                    }
+                })), storageServiceFactory, redisTemplate, wsMessageRelay, meterRegistry));
 
         // 注入 baseMapper（ServiceImpl 父类字段）
         try {

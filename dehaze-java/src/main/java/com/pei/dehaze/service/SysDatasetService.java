@@ -16,6 +16,9 @@ import java.util.Map;
 
 public interface SysDatasetService extends IService<SysDataset> {
 
+    /** 测试集选项查询（评估接入）：含清晰图 GT 且启用的数据集，按 taskType 过滤 */
+    java.util.List<java.util.Map<String, Object>> getEvaluationOptions(String taskType);
+
     IPage<DatasetVO> listPagedDatasets(DatasetQuery queryParams);
 
     List<DatasetVO> listChildren(Long parentId);

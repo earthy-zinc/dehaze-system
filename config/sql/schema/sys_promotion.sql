@@ -23,7 +23,7 @@ CREATE TABLE `sys_promotion`
     `activity_rules`    json                                                           NULL DEFAULT NULL COMMENT '活动规则（JSON，如满减门槛、折扣比例）',
     `new_user_only`     tinyint                                                        NOT NULL DEFAULT 0 COMMENT '是否新用户专享(0:否;1:是)',
     `status`            tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`           tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`           bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`       datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`       datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`         bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',

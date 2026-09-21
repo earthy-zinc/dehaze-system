@@ -51,22 +51,20 @@ async def invalidate_prediction_cache(algorithm_id: int) -> int:
     """
 
     async def _raise_failure():
-        raise BusinessException(
-            "预测缓存失效失败：Redis 不可用，算法版本更新后可能命中旧预测数据"
-        )
+        raise BusinessException("预测缓存失效失败：Redis 不可用，算法版本更新后可能命中旧预测数据")
 
     async def _invalidate():
         redis = await get_redis_client()
         pattern = f"prediction:{algorithm_id}:*"
-        keys = []
-        async for key in redis.scan_iter(match=pattern, count=100):
-            keys.append(key)
+        keys = [key async for key in redis.scan_iter(match=pattern, count=100)]
         if keys:
             await redis.delete(*keys)
         return len(keys)
 
-    return await redis_operation_with_fallback(
+    result = await redis_operation_with_fallback(
         operation=_invalidate,
         fallback=_raise_failure,
         operation_name="prediction_cache_invalidate",
     )
+    # fallback 为 _raise_failure（Redis 不可用时抛异常），正常路径必为 int
+    return result if result is not None else 0

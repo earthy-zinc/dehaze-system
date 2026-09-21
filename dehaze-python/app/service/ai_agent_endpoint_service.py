@@ -17,15 +17,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.database import defer_after_commit
+from app.infrastructure.a2a.a2a_client import A2AClientError, a2a_client
 from app.infrastructure.crypto.aes_cipher import encrypt
+from app.models.base import get_current_user_id
 from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.repository.ai_agent_endpoint_repository import (
     ai_agent_endpoint_repository,
 )
-from app.infrastructure.a2a.a2a_client import A2AClientError, a2a_client
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.utils.ssrf import is_safe_url
 
 logger = logging.getLogger(__name__)
+
+
+def _defer_audit(db: AsyncSession, **kwargs) -> None:
+    """登记提交后写审计日志（回滚不留痕）；create_audit_async 为同步方法，需包成协程。"""
+
+    async def _write() -> None:
+        mongo_audit_log_repository.create_audit_async(**kwargs)
+
+    defer_after_commit(db, _write)
 
 
 class AiAgentEndpointService:
@@ -37,19 +49,34 @@ class AiAgentEndpointService:
                 ResultCode.PARAM_ERROR, "base_url/agent_card_url 仅支持 https 且禁止内网地址"
             )
 
-        if await ai_agent_endpoint_repository.get_by_base_url(db, base_url):
-            raise BusinessException(ResultCode.DATA_EXISTS, "该端点地址已注册")
-
         credential_cipher = encrypt(form.credential) if form.credential else None
-        endpoint = SysAiAgentEndpoint(
-            name=form.name,
-            agent_card_url=form.agent_card_url,
-            base_url=base_url,
-            auth_type=form.auth_type,
-            credential=credential_cipher,
-            status=form.status,
+
+        existing = await ai_agent_endpoint_repository.get_by_base_url(
+            db, base_url, include_deleted=True
         )
-        endpoint = await ai_agent_endpoint_repository.create(db, endpoint)
+        if existing:
+            if existing.deleted == 0:
+                raise BusinessException(ResultCode.DATA_EXISTS, "该端点地址已注册")
+            # 软删行占用唯一键 base_url，复活原行并覆盖为新表单值
+            existing.name = form.name
+            existing.agent_card_url = form.agent_card_url
+            existing.auth_type = form.auth_type
+            existing.credential = credential_cipher
+            existing.status = form.status
+            existing.deleted = 0
+            await db.flush()
+            await db.refresh(existing)
+            endpoint = existing
+        else:
+            endpoint = SysAiAgentEndpoint(
+                name=form.name,
+                agent_card_url=form.agent_card_url,
+                base_url=base_url,
+                auth_type=form.auth_type,
+                credential=credential_cipher,
+                status=form.status,
+            )
+            endpoint = await ai_agent_endpoint_repository.create(db, endpoint)
         # 注册成功后拉取并校验 Agent Card（失败不阻断创建，仅告警）
         await AiAgentEndpointService._refresh_agent_card(db, endpoint.id)
         return endpoint
@@ -71,7 +98,7 @@ class AiAgentEndpointService:
             raise BusinessException(
                 ResultCode.PARAM_ERROR, "agent_card_url 仅支持 https 且禁止内网地址"
             )
-        if "credential" in data and data["credential"]:
+        if data.get("credential"):
             data["credential"] = encrypt(data["credential"])
         for field, value in data.items():
             setattr(endpoint, field, value)
@@ -86,6 +113,16 @@ class AiAgentEndpointService:
         if not endpoint:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "端点不存在")
         await ai_agent_endpoint_repository.soft_delete_by_ids(db, [endpoint_id])
+
+        _defer_audit(
+            db,
+            operator_id=get_current_user_id(),
+            target_type="ai_agent_endpoint",
+            target_id=endpoint_id,
+            action="delete",
+            module="ai_agent",
+            before_value={"name": endpoint.name, "base_url": endpoint.base_url},
+        )
 
     @staticmethod
     async def list_endpoints(

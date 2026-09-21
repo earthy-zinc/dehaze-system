@@ -36,8 +36,14 @@ public class RefundRecordVO {
     @Schema(description = "退款原因")
     private String reason;
 
-    @Schema(description = "申请时已用权益次数")
-    private Integer usedQuota;
+    @Schema(description = "售后原因类型(after_sale/force_majeure/merchant/other)")
+    private String reasonType;
+
+    @Schema(description = "会员卡:申请时已使用天数")
+    private Integer usedDays;
+
+    @Schema(description = "积分卡:申请时已消耗积分")
+    private Long usedCredits;
 
     @Schema(description = "退款状态(refunding/refunded/refund_failed)")
     private String status;

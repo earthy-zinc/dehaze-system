@@ -32,6 +32,8 @@ class RecommendationServiceImplTest {
     @Mock
     private SysRecommendationRuleMapper ruleMapper;
     @Mock
+    private com.pei.dehaze.mapper.SysPredLogMapper predLogMapper;
+    @Mock
     private SysAlgorithmService sysAlgorithmService;
     @Mock
     private PythonAlgorithmClient pythonAlgorithmClient;
@@ -40,7 +42,7 @@ class RecommendationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new RecommendationServiceImpl(ruleMapper, sysAlgorithmService, pythonAlgorithmClient);
+        service = new RecommendationServiceImpl(ruleMapper, predLogMapper, sysAlgorithmService, pythonAlgorithmClient);
     }
 
     private JSONObject pythonFeatureData() {

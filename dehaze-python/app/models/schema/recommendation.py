@@ -58,10 +58,11 @@ class RecommendationRuleVO(BaseModel):
 
 
 class RecommendationRuleForm(BaseModel):
-    id: int | None = Field(default=0, description="规则ID(0表示新增)")
     ruleName: str = Field(..., description="规则名称")
-    sceneType: str = Field(..., description="场景类型")
-    algorithmIds: list[int] = Field(..., description="候选算法ID列表")
+    sceneType: str = Field(
+        ..., description="场景类型(urban/landscape/building/night/backlight/indoor)"
+    )
+    algorithmIds: list[int] = Field(..., min_length=1, description="候选算法ID列表")
     weight: int = Field(..., ge=0, le=100, description="规则权重(0-100)")
     enabled: bool = Field(default=True, description="是否启用")
 

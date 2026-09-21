@@ -225,7 +225,8 @@ describe("useSettingsStore", () => {
     it("应该处理changeSetting的undefined值", () => {
       const store = useSettingsStore();
 
-      store.changeSetting({ key: "tagsView", value: "1" });
+      // @ts-ignore - 测试运行时行为：非法类型原样写入，不抛错
+      store.changeSetting({ key: "tagsView", value: undefined });
 
       expect(store.tagsView).toBeUndefined();
     });

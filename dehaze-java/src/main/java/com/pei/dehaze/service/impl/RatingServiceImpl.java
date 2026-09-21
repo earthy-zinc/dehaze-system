@@ -30,6 +30,7 @@ import com.pei.dehaze.model.vo.RatingPageVO;
 import com.pei.dehaze.model.vo.RatingStatsVO;
 import com.pei.dehaze.mq.RabbitMQPublisher;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.RatingService;
 import com.pei.dehaze.service.SysDictService;
@@ -37,7 +38,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,9 +77,7 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
     private final MemberService memberService;
     private final SysDictService sysDictService;
     private final ObjectProvider<RabbitMQPublisher> rabbitMQPublisherProvider;
-
-    @Value("${file.baseUrl:}")
-    private String fileBaseUrl;
+    private final List<FileService> fileServices;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -159,6 +157,8 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         }
         SysRating rating = this.getOne(new LambdaQueryWrapper<SysRating>()
                 .eq(SysRating::getPredLogId, predLogId)
+                // 用户端仅返回可见评价（被后台隐藏的评价不展示，对齐 python get_visible_by_pred_log_id）
+                .eq(SysRating::getIsHidden, 0)
                 .last("LIMIT 1"));
         if (rating == null) {
             return null;
@@ -473,12 +473,19 @@ public class RatingServiceImpl extends ServiceImpl<SysRatingMapper, SysRating> i
         if (urls.size() > maxCount) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "图片数量不能超过" + maxCount + "张");
         }
+        // 允许前缀 = 各存储后端 baseUrl（带尾 /，对齐 python _get_allowed_image_url_prefixes）
+        List<String> allowedPrefixes = fileServices.stream()
+                .map(FileService::getBaseUrl)
+                .filter(CharSequenceUtil::isNotBlank)
+                .map(base -> CharSequenceUtil.removeSuffix(base.trim(), "/") + "/")
+                .distinct()
+                .toList();
         for (String url : urls) {
             if (CharSequenceUtil.isBlank(url)) {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL不能为空");
             }
-            if (CharSequenceUtil.isNotBlank(fileBaseUrl) && !url.startsWith(fileBaseUrl)) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL必须为MinIO域名");
+            if (allowedPrefixes.stream().noneMatch(url::startsWith)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL域名不合法");
             }
             String path = url.split("[?#]")[0].toLowerCase();
             boolean validExt = ALLOWED_IMAGE_EXTENSIONS.stream().anyMatch(path::endsWith);

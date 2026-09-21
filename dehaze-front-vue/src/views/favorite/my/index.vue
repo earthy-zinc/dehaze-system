@@ -27,16 +27,6 @@
           style="width: 240px"
           @keyup.enter="handleQuery"
         />
-        <el-select
-          v-model="queryParams.sortBy"
-          placeholder="排序"
-          style="width: 160px"
-          @change="handleQuery"
-        >
-          <el-option label="按时间" value="createTime" />
-          <el-option label="按评分" value="rating" />
-          <el-option label="按使用频率" value="usageCount" />
-        </el-select>
       </div>
 
       <div v-loading="loading" class="favorite-grid">
@@ -132,6 +122,7 @@ import {
 } from "dehaze-sdk-js";
 import { Delete } from "@element-plus/icons-vue";
 import { usePagination } from "@/composables/usePagination";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "MyFavorites" });
 
@@ -152,31 +143,24 @@ const queryParams = reactive<FavoriteQuery>({
   sortOrder: "desc",
 });
 
+const targetTypeOptions: {
+  label: string;
+  value: FavoriteTargetType;
+  tag: TagType;
+}[] = [
+  { label: "算法", value: "algorithm", tag: "primary" },
+  { label: "处理结果", value: "result", tag: "success" },
+  { label: "数据集", value: "dataset", tag: "warning" },
+  { label: "图片", value: "image", tag: "danger" },
+  { label: "预设", value: "preset", tag: "info" },
+];
+
 function getTargetTypeLabel(type: FavoriteTargetType): string {
-  const labels: Record<FavoriteTargetType, string> = {
-    algorithm: "算法",
-    result: "处理结果",
-    dataset: "数据集",
-    image: "图片",
-    preset: "预设",
-  };
-  return labels[type] || type;
+  return targetTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
-function getTargetTypeBadgeType(
-  type: FavoriteTargetType
-): "info" | "primary" | "success" | "warning" | "danger" {
-  const types: Record<
-    FavoriteTargetType,
-    "info" | "primary" | "success" | "warning" | "danger"
-  > = {
-    algorithm: "primary",
-    result: "success",
-    dataset: "warning",
-    image: "danger",
-    preset: "info",
-  };
-  return types[type] || "info";
+function getTargetTypeBadgeType(type: FavoriteTargetType): TagType {
+  return targetTypeOptions.find((o) => o.value === type)?.tag ?? "info";
 }
 
 function formatDate(dateStr: string): string {

@@ -33,10 +33,27 @@ func NewSysTaskApi(taskService *taskservice.TaskService) *SysTaskApi {
 // @Param Idempotency-Key header string false "客户端幂等键"
 // @Success 200 {object} common.Response{data=vo.TaskVO}
 // @Router /api/v1/tasks [post]
+// supportedTaskTypes 用户侧可创建的任务类型白名单（与 import_export 已注册模块对齐，
+// python task factory 未注册的类型在创建时即拒绝）
+var supportedTaskTypes = map[string]bool{
+	"user_export": true, "user_import": true,
+	"role_export": true, "role_import": true,
+	"dept_export": true, "dept_import": true,
+	"menu_export": true, "menu_import": true,
+	"dict_export": true, "dict_import": true,
+	"dataset_export":   true,
+	"algorithm_export": true, "algorithm_import": true,
+}
+
 func (api *SysTaskApi) CreateTask(c *gin.Context) {
 	var form bo.TaskCreateForm
 	if err := c.ShouldBindJSON(&form); err != nil {
 		_ = c.Error(err)
+		return
+	}
+
+	if !supportedTaskTypes[form.Type] {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "不支持的任务类型: "+form.Type))
 		return
 	}
 
@@ -59,7 +76,10 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 // GetTaskPage 任务分页列表
 func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 	ctx := c.Request.Context()
-	pageNum, pageSize := getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	userID, err := security.RequireUserID(c)
 	if err != nil {
 		_ = c.Error(err)
@@ -176,23 +196,6 @@ func (api *SysTaskApi) RetryTask(c *gin.Context) {
 	}
 	taskVO := api.taskService.ConvertToTaskVO(c.Request.Context(), task)
 	common.OkWithDetailed(taskVO, "任务已重新提交", c)
-}
-
-// getPageParams 从请求中提取分页参数
-func getPageParams(c *gin.Context) (int, int) {
-	pageNum := 1
-	pageSize := 10
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			pageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			pageSize = n
-		}
-	}
-	return pageNum, pageSize
 }
 
 // parseIDsFromCSV 将逗号分隔的 ID 字符串解析为 []int64

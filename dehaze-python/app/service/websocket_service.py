@@ -10,6 +10,7 @@ WebSocket 服务（跨 Worker 支持）
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -58,6 +59,7 @@ class DistributedConnectionManager:
         self._redis: Redis | None = None
         self._pubsub_task: asyncio.Task | None = None
         self._heartbeat_task: asyncio.Task | None = None
+        self._cleanup_tasks: set[asyncio.Task] = set()
         self._started = False
 
     async def start(self, redis: Redis):
@@ -66,7 +68,7 @@ class DistributedConnectionManager:
             return
         self._redis = redis
         self._started = True
-        self._pubsub_task = asyncio.create_task(self._subscribe_loop())
+        self._pubsub_task = asyncio.create_task(self._subscribe_loop(redis))
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         logger.info("WebSocket 跨 Worker 通信已启动")
 
@@ -76,10 +78,8 @@ class DistributedConnectionManager:
         for task in (self._pubsub_task, self._heartbeat_task):
             if task:
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
         self._pubsub_task = None
         self._heartbeat_task = None
         logger.info("WebSocket 跨 Worker 通信已停止")
@@ -119,7 +119,9 @@ class DistributedConnectionManager:
 
         if not has_local:
             # 主动从 Redis 清除（延迟，防止重连瞬间被清）
-            asyncio.create_task(self._delayed_cleanup_online(user_id))
+            task = asyncio.create_task(self._delayed_cleanup_online(user_id))
+            self._cleanup_tasks.add(task)
+            task.add_done_callback(self._cleanup_tasks.discard)
 
         logger.debug(f"WebSocket 断开连接: user_id={user_id}")
 
@@ -208,7 +210,8 @@ class DistributedConnectionManager:
                             }
                         )
                     except (ValueError, TypeError):
-                        pass
+                        # Redis 在线集合存在非用户 ID 成员（数据污染）：跳过该成员，记日志暴露
+                        logger.debug("在线用户集合含非法成员，已跳过: %r", uid_str)
                 return users
             except RedisError as e:
                 logger.warning(f"获取在线用户失败，降级为本地查询: {e}")
@@ -222,7 +225,6 @@ class DistributedConnectionManager:
                     seen.add(user_id)
                     users.append(connections[0].to_dict())
             return users
-
 
     # ===== 内部方法 =====
 
@@ -266,11 +268,11 @@ class DistributedConnectionManager:
             except Exception as e:
                 logger.warning(f"广播消息失败: user_id={conn.user_id}, error={e}")
 
-    async def _subscribe_loop(self):
-        """订阅 Redis Pub/Sub 频道，接收跨 Worker 消息"""
+    async def _subscribe_loop(self, redis: Redis):
+        """订阅 Redis Pub/Sub 频道，接收跨 Worker 消息（redis 由 start 注入，必非空）"""
         while self._started:
             try:
-                pubsub = self._redis.pubsub()
+                pubsub = redis.pubsub()
                 await pubsub.subscribe(settings.WS_REDIS_CHANNEL)
                 logger.debug(f"已订阅 WebSocket 频道: {settings.WS_REDIS_CHANNEL}")
 
@@ -490,6 +492,8 @@ class WebSocketService:
                 await websocket.send_json({"type": "error", "message": f"未知消息类型: {msg_type}"})
 
         except json.JSONDecodeError:
+            # 已回错误帧给客户端；记日志便于排查客户端/协议问题，避免静默处理
+            logger.debug("WebSocket 收到非法 JSON 消息，已回错误帧: user_id=%s", user_id)
             await websocket.send_json({"type": "error", "message": "无效的 JSON 格式"})
         except Exception as e:
             logger.error(f"处理消息失败: {e}")

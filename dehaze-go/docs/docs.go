@@ -2311,7 +2311,7 @@ const docTemplate = `{
             }
         },
         "/api/v1/roles/{roleId}/status": {
-            "put": {
+            "patch": {
                 "description": "修改角色状态",
                 "consumes": [
                     "application/json"

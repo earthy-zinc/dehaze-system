@@ -17,15 +17,8 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
     model = SysAiSkill
 
     async def get_by_name(self, db: AsyncSession, name: str) -> SysAiSkill | None:
-        """按名称查询（不含已删，用于唯一性校验与获取）。"""
+        """按名称查询（活跃行，用于唯一性校验与获取）。"""
         stmt = select(SysAiSkill).where(SysAiSkill.name == name)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def get_by_name_with_deleted(self, db: AsyncSession, name: str) -> SysAiSkill | None:
-        """按名称查询（含已删，删除后 name 不可复用，用于判重）。"""
-        stmt = select(SysAiSkill).where(SysAiSkill.name == name)
-        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -39,11 +32,7 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
 
     async def list_market_shared(self, db: AsyncSession) -> list[SysAiSkill]:
         """查询已共享至市场的 Skill（market_shared=1，按 id 升序）。"""
-        stmt = (
-            select(SysAiSkill)
-            .where(SysAiSkill.market_shared == 1)
-            .order_by(SysAiSkill.id.asc())
-        )
+        stmt = select(SysAiSkill).where(SysAiSkill.market_shared == 1).order_by(SysAiSkill.id.asc())
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -53,12 +42,15 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
         page: int,
         size: int,
         keyword: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysAiSkill], int]:
-        """分页 + 名称模糊搜索（含全部状态，按 id 倒序）。"""
+        """分页 + 名称模糊搜索 + 状态筛选（status=None 含全部状态，按 id 倒序）。"""
         stmt = select(SysAiSkill)
         if keyword:
             escaped = escape_like(keyword)
             stmt = stmt.where(SysAiSkill.name.like(f"%{escaped}%", escape="\\"))
+        if status is not None:
+            stmt = stmt.where(SysAiSkill.status == status)
         stmt = stmt.order_by(SysAiSkill.id.desc())
         return await self.paginate(db, stmt, page, size)
 
@@ -98,7 +90,7 @@ class AiSkillRepository(BaseRepository[SysAiSkill]):
             .group_by(SysAiAgentSkill.skill_name)
         )
         rows = (await db.execute(stmt)).all()
-        return {skill_name: count for skill_name, count in rows}
+        return {row[0]: row[1] for row in rows}
 
 
 ai_skill_repository = AiSkillRepository()

@@ -9,6 +9,7 @@ import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.form.CompareReportForm;
 import com.pei.dehaze.model.vo.CompareReportResultVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.CompareService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +20,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Objects;
 
 @Tag(name = "19.效果对比")
 @RestController
@@ -43,7 +46,8 @@ public class CompareController {
             @Parameter(description = "下载标识（true时返回HTML文件流，否则返回JSON状态）")
             @RequestParam(required = false, defaultValue = "false") boolean download) {
         SysEvalLog reportTask = evalLogMapper.selectById(taskId);
-        if (reportTask == null) {
+        // 非本人报告按不存在处理，不泄露资源存在性
+        if (reportTask == null || !Objects.equals(reportTask.getCreateBy(), SecurityUtils.getUserId())) {
             return ResponseEntity.ok(Result.failed(ResultCode.RESOURCE_NOT_FOUND, "报告不存在"));
         }
 

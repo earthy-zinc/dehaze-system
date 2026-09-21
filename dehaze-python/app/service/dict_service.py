@@ -15,13 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.database import defer_after_commit
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.dict_repository import dict_repository, dict_type_repository
 
 logger = logging.getLogger(__name__)
 
-DICT_OPTIONS_CACHE_PREFIX = "dict:options:"
+DICT_OPTIONS_CACHE_PREFIX = "dict:data:"
 DICT_OPTIONS_CACHE_TTL = CACHE_TTL_HOUR
 
 # 系统预置字典类型编码（T-DM-025：预置类型不可删除），与 config/sql/data/sys_dict_type.sql 种子一致
@@ -62,22 +63,50 @@ _SYSTEM_DICT_ITEM_SEEDS: list[tuple[str, str, str, int, int, str]] = [
     ("ai_provider_health", "min_window_calls", "20", 3, 1, "错误率判定最小调用窗口"),
     ("ai_provider_health", "consecutive_failures", "5", 4, 1, "连续失败熔断阈值"),
     ("ai_provider_health", "circuit_cooldown", "60", 5, 1, "熔断冷却时长(秒)"),
-    ("ai_embedding", "provider_code", "openai", 1, 1, "Embedding 供应商编码(经 ai_provider 体系取 Key)"),
+    (
+        "ai_embedding",
+        "provider_code",
+        "openai",
+        1,
+        1,
+        "Embedding 供应商编码(经 ai_provider 体系取 Key)",
+    ),
     ("ai_embedding", "model", "text-embedding-3-small", 2, 1, "Embedding 模型标识"),
     ("ai_embedding", "dims", "1536", 3, 1, "向量维度(ES dense_vector dims 联动)"),
     # 会员成长值规则（会员管理 §9.1；营销激励参数）
     ("member_growth_rules", "sign_in_value", "3", 1, 1, "每日签到获得成长值"),
     ("member_growth_rules", "sign_in_streak_bonus", "20", 2, 1, "连续签到奖励（连续7天额外获得）"),
     ("member_growth_rules", "rating_growth_value", "5", 3, 1, "单次评价获得成长值"),
-    ("member_growth_rules", "rating_growth_daily_limit", "5", 4, 1, "评价成长值上限（每日评价获得成长值次数上限）"),
+    (
+        "member_growth_rules",
+        "rating_growth_daily_limit",
+        "5",
+        4,
+        1,
+        "评价成长值上限（每日评价获得成长值次数上限）",
+    ),
     # 收藏容量（收藏管理 §11.1；各会员等级收藏容量上限）
     ("favorite_capacity", "default", "200", 1, 1, "普通用户(level_0)收藏容量"),
     ("favorite_capacity", "vip1", "500", 2, 1, "VIP1(level_1)收藏容量"),
     ("favorite_capacity", "vip2", "1000", 3, 1, "VIP2(level_2)收藏容量"),
     ("favorite_capacity", "svip", "3000", 4, 1, "SVIP(level_3)收藏容量"),
     # AI 评测质量参数（评测中心 F-M08-014；阈值均为百分比/百分制整数）
-    ("ai_eval", "regression_threshold", "5", 1, 1, "相对退化阈值(%,相对上次评测总分下降超此值判定退化)"),
-    ("ai_eval", "judge_consistency_threshold", "90", 2, 1, "判分一致性阈值(%,人工复核一致率低于此值判定漂移)"),
+    (
+        "ai_eval",
+        "regression_threshold",
+        "5",
+        1,
+        1,
+        "相对退化阈值(%,相对上次评测总分下降超此值判定退化)",
+    ),
+    (
+        "ai_eval",
+        "judge_consistency_threshold",
+        "90",
+        2,
+        1,
+        "判分一致性阈值(%,人工复核一致率低于此值判定漂移)",
+    ),
     ("ai_eval", "judge_review_ratio", "1", 3, 1, "人工复核抽样比例(%,通过样本按此比例确定性抽样)"),
 ]
 
@@ -86,13 +115,14 @@ async def ensure_system_dict_defaults(db: AsyncSession, redis: Redis) -> None:
     """幂等补齐系统预置字典类型与默认项（缺失才补，不覆盖管理员修改）。
 
     覆盖 AI 护栏开关默认值、供应商健康阈值、Embedding、会员成长值规则、收藏容量、AI 评测质量参数；
-    数据库种子可能未同步，这里在启动时按 sys_dict.sql 契约补齐，保证消费链路不因缺默认参数而快速失败。
+    数据库种子可能未同步，这里在启动时按 sys_dict.sql 契约补齐，
+    保证消费链路不因缺默认参数而快速失败。
     """
     for code, display_name in _SYSTEM_DICT_TYPE_SEEDS:
         if await dict_type_repository.get_by_code(db, code) is None:
             db.add(SysDictType(name=display_name, code=code, status=1))
     for type_code, name, value, sort, defaulted, remark in _SYSTEM_DICT_ITEM_SEEDS:
-        # 仅缺项补齐；已存在的（含管理员改过值）一律保留，避免覆盖人工配置
+        # 仅缺项补齐；已存在（含管理员改过值）一律保留，避免覆盖人工配置
         existing = await dict_repository.get_by_type_code_and_name(db, type_code, name)
         if existing is None:
             db.add(
@@ -108,10 +138,11 @@ async def ensure_system_dict_defaults(db: AsyncSession, redis: Redis) -> None:
             )
     try:
         await db.flush()
-    except IntegrityError:
+    except IntegrityError as exc:
         # 多进程并发启动时的 check-then-insert 竞态：另一进程已插入相同种子
         # （uk_type_value 唯一键冲突）。丢弃本批插入即可——库中已存在等价数据。
         await db.rollback()
+        logger.warning("系统字典种子并发写入冲突，已回滚本批插入: %s", exc)
     # 失效护栏默认值缓存，避免补齐后仍命中旧的空缓存
     from app.service.ai.strategies.agent_config_resolver import invalidate_guardrail_defaults
 
@@ -126,7 +157,7 @@ DICT_VALUE_CACHE_TTL = CACHE_TTL_HOUR
 async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int) -> int:
     """读取 sys_dict 中 int 型字典键值，带缓存（TTL 1 小时）。
 
-    字典更新时由 DictService/DictTypeService 失效 `dict:options:` 前缀缓存，
+    字典更新时由 DictService/DictTypeService 失效 `dict:data:` 前缀缓存，
     但本读路径独立缓存，故此处以 `dict:value:` 前缀 + 1 小时 TTL 自洽；
     运营调整后最长 1 小时生效。缺键或读取失败时记录 warning 并回退设计默认值
     （与 config/sql/data/sys_dict.sql 种子一致），不抛异常阻断业务。
@@ -143,7 +174,7 @@ async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int)
         item = await dict_repository.get_by_type_code_and_name(db, type_code, key)
         if item is not None:
             value = int(item.value)
-    except Exception as exc:  # noqa: BLE001 - 读取失败回退默认值
+    except Exception as exc:
         logger.warning("读取字典[%s:%s]失败，回退默认值 %d: %s", type_code, key, default, exc)
     await cache.set_json(cache_key, value, DICT_VALUE_CACHE_TTL)
     return value
@@ -152,6 +183,16 @@ async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int)
 async def _invalidate_dict_value_cache(redis: Redis, type_code: str) -> None:
     """失效某类型下的 dict:value 前缀缓存（业务读路径与下拉共用失效钩子）。"""
     await CacheService(redis).delete_pattern(f"{DICT_VALUE_CACHE_PREFIX}{type_code}:*")
+
+
+def _defer_invalidate_dict_caches(db: AsyncSession, redis: Redis, type_code: str) -> None:
+    """登记事务提交后失效某类型的下拉与业务读缓存（L1+L2 双清），回滚自动丢弃。"""
+
+    async def _invalidate():
+        await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
+        await _invalidate_dict_value_cache(redis, type_code)
+
+    defer_after_commit(db, _invalidate)
 
 
 class DictService:
@@ -164,9 +205,10 @@ class DictService:
         page_size: int,
         keywords: str | None = None,
         type_code: str | None = None,
+        status: int | None = None,
     ) -> tuple[list, int]:
         """获取字典分页列表"""
-        return await dict_repository.get_page(db, page, page_size, keywords, type_code)
+        return await dict_repository.get_page(db, page, page_size, keywords, type_code, status)
 
     async def get_dict_form(self, db: AsyncSession, dict_id: int) -> dict[str, Any] | None:
         """获取字典表单数据"""
@@ -178,16 +220,20 @@ class DictService:
 
         业务规则:
         1. 检查类型编码是否存在
-        2. 检查同一类型下键值是否唯一
-        3. 创建成功后清除缓存
+        2. 检查同一类型下键值唯一（软删行 value 可复用）
+        3. 检查同一类型下标签唯一（uk_type_name 含软删行占用）
+        4. 事务提交后清除缓存
         """
         type_code = data.get("typeCode")
         value = data.get("value")
+        name = data.get("name")
 
         if not type_code:
             raise BusinessException("字典类型编码不能为空")
         if not value:
             raise BusinessException("字典值不能为空")
+        if not name:
+            raise BusinessException("字典名称不能为空")
 
         dict_type = await dict_type_repository.get_by_code(db, type_code)
         if not dict_type:
@@ -197,10 +243,13 @@ class DictService:
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典值已存在")
 
+        existing_name = await dict_repository.get_by_type_code_and_name(db, type_code, name)
+        if existing_name:
+            raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典名称已存在")
+
         result = await dict_repository.create_dict(db, data)
 
-        await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
-        await _invalidate_dict_value_cache(redis, type_code)
+        _defer_invalidate_dict_caches(db, redis, type_code)
 
         return result
 
@@ -222,21 +271,26 @@ class DictService:
 
         # typeCode 只读，移除 form 传入的 typeCode
         data.pop("typeCode", None)
+        type_code = old_dict.type_code
+        if type_code is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "字典类型编码不能为空")
         new_value = data.get("value", old_dict.value)
+        new_name = data.get("name", old_dict.name)
 
         if new_value != old_dict.value:
-            existing = await dict_repository.get_by_type_code_and_value(
-                db, old_dict.type_code, new_value
-            )
+            existing = await dict_repository.get_by_type_code_and_value(db, type_code, new_value)
             if existing and existing.id != dict_id:
                 raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典值已存在")
 
+        if new_name != old_dict.name:
+            existing_name = await dict_repository.get_by_type_code_and_name(db, type_code, new_name)
+            if existing_name and existing_name.id != dict_id:
+                raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典名称已存在")
+
         result = await dict_repository.update_by_id(db, dict_id, data)
 
-        # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
-            await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_dict.type_code}")
-            await _invalidate_dict_value_cache(redis, old_dict.type_code)
+            _defer_invalidate_dict_caches(db, redis, old_dict.type_code)
 
         return result
 
@@ -254,15 +308,13 @@ class DictService:
 
         type_codes = await dict_repository.get_type_codes_by_ids(db, dict_ids)
 
-        result = await dict_repository.delete_by_ids(db, dict_ids)
+        await dict_repository.soft_delete_by_ids(db, dict_ids)
 
-        cache = CacheService(redis)
-        for type_code in type_codes:
+        for type_code in set(type_codes):
             if type_code:
-                await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
-                await _invalidate_dict_value_cache(redis, type_code)
+                _defer_invalidate_dict_caches(db, redis, type_code)
 
-        return result > 0
+        return True
 
     async def list_dict_options(
         self, db: AsyncSession, redis: Redis, type_code: str
@@ -298,20 +350,27 @@ class DictTypeService:
         page: int,
         page_size: int,
         keywords: str | None = None,
+        status: int | None = None,
     ) -> tuple[list, int]:
         """获取字典类型分页列表"""
-        return await dict_type_repository.get_page(db, page, page_size, keywords)
+        return await dict_type_repository.get_page(db, page, page_size, keywords, status)
 
     async def get_dict_type_form(self, db: AsyncSession, type_id: int) -> dict[str, Any] | None:
         """获取字典类型表单数据"""
-        return await dict_type_repository.get_form_by_id(db, type_id)
+        form = await dict_type_repository.get_form_by_id(db, type_id)
+        if form:
+            form["isPreset"] = form["code"] in SYSTEM_PRESET_DICT_TYPE_CODES
+        return form
 
-    async def create_dict_type(self, db: AsyncSession, data: dict[str, Any]) -> SysDictType:
+    async def create_dict_type(
+        self, db: AsyncSession, redis: Redis, data: dict[str, Any]
+    ) -> SysDictType:
         """
         创建字典类型
 
         业务规则:
-        1. 检查编码唯一性
+        1. 编码唯一性（含软删行：uk_code 含软删占用，A0501 含软删唯一口径）
+        2. 创建成功后失效下拉缓存（防历史空值缓存）
         """
         code = data.get("code")
 
@@ -320,9 +379,10 @@ class DictTypeService:
 
         existing = await dict_type_repository.get_by_code(db, code)
         if existing:
-            raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已被历史记录占用")
+            raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
 
         result = await dict_type_repository.create_type(db, data)
+        _defer_invalidate_dict_caches(db, redis, code)
         return result
 
     async def update_dict_type(
@@ -349,7 +409,7 @@ class DictTypeService:
         result = await dict_type_repository.update_by_id(db, type_id, data)
 
         if result and old_type.code:
-            await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_type.code}")
+            _defer_invalidate_dict_caches(db, redis, old_type.code)
 
         return result
 
@@ -373,17 +433,15 @@ class DictTypeService:
         type_codes = [dt.code for dt in dict_types if dt.code]
 
         # T-DM-025：系统预置字典类型不可删除
-        preset_hit = next((dt.code for dt in dict_types if dt.code in SYSTEM_PRESET_DICT_TYPE_CODES), None)
+        preset_hit = next(
+            (dt.code for dt in dict_types if dt.code in SYSTEM_PRESET_DICT_TYPE_CODES), None
+        )
         if preset_hit:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "系统预置字典类型不可删除")
 
         if type_codes:
             if force:
-                await dict_repository.delete_by_type_codes(db, type_codes)
-                cache = CacheService(redis)
-                for code in type_codes:
-                    await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{code}")
-                    await _invalidate_dict_value_cache(redis, code)
+                await dict_repository.soft_delete_by_type_codes(db, type_codes)
             else:
                 counts = await dict_repository.count_by_type_codes(db, type_codes)
                 for dt in dict_types:
@@ -392,8 +450,12 @@ class DictTypeService:
                             ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除"
                         )
 
-        result = await dict_type_repository.delete_by_ids(db, type_ids)
-        return result > 0
+        await dict_type_repository.soft_delete_by_ids(db, type_ids)
+
+        for code in set(type_codes):
+            _defer_invalidate_dict_caches(db, redis, code)
+
+        return True
 
 
 dict_service = DictService()

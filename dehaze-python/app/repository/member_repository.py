@@ -31,6 +31,17 @@ class MemberRepository(BaseRepository[SysMember]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_user_ids(self, db: AsyncSession, user_ids: list[int]) -> dict[int, SysMember]:
+        """按用户 ID 批量查询活跃会员记录（用户列表会员字段聚合，避免 N+1）"""
+        if not user_ids:
+            return {}
+        stmt = select(SysMember).where(
+            SysMember.user_id.in_(user_ids),
+            SysMember.deleted == 0,
+        )
+        result = await db.execute(stmt)
+        return {m.user_id: m for m in result.scalars().all()}
+
     async def get_or_init_member(
         self,
         db: AsyncSession,
@@ -38,7 +49,8 @@ class MemberRepository(BaseRepository[SysMember]):
     ) -> SysMember:
         """确保会员记录存在：已存在且未删除时直接返回（保留全部数据）；
         软删记录复活（重置 deleted=0、降级 level_0、清空成长值与月度配额，保留
-        total_consumption）；不存在时初始化 level_0 记录"""
+        total_consumption）；不存在时初始化 level_0 记录（配额快照由每日重置任务
+        按等级权益刷新）"""
         # 含软删行一起查，避免全局软删过滤器遮蔽待复活记录
         existing = (
             await db.execute(

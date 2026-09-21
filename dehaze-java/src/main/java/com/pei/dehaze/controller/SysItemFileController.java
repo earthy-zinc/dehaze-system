@@ -1,6 +1,9 @@
 package com.pei.dehaze.controller;
 
+import cn.hutool.core.util.StrUtil;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileDTOFactory;
 import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.model.form.BatchDeleteForm;
@@ -16,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -46,6 +50,7 @@ public class SysItemFileController {
     }
 
     @PostMapping
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "上传数据项图片",
             description = "向指定的数据项添加图片文件，支持上传清晰图或有雾图。" +
@@ -57,6 +62,31 @@ public class SysItemFileController {
             @Valid @ModelAttribute
             ItemFileUploadForm form
     ) {
+        // 上传安全校验链（对齐 python：类型枚举 → 扩展名白名单 → 内容有效性，全部 A0400）
+        java.util.Set<String> itemFileTypes = java.util.Set.of("clear", "hazy", "trans", "depth", "segment");
+        if (form.getType() == null || !itemFileTypes.contains(form.getType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "图片类型仅支持 clear/hazy/trans/depth/segment");
+        }
+        String originalName = form.getFile() != null ? form.getFile().getOriginalFilename() : null;
+        if (StrUtil.isBlank(originalName)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "文件名不能为空");
+        }
+        String ext = originalName.contains(".") ? originalName.substring(originalName.lastIndexOf('.') + 1).toLowerCase() : "";
+        java.util.Set<String> imageExtensions = java.util.Set.of("jpg", "jpeg", "png", "gif", "bmp", "webp");
+        if (!imageExtensions.contains(ext)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "仅支持图片格式（jpg/png/gif/bmp/webp）");
+        }
+        try {
+            byte[] head = new byte[12];
+            int read = form.getFile().getInputStream().read(head);
+            boolean valid = validateMagic(ext, head, read);
+            if (!valid) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "文件内容不是有效的图片");
+            }
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "文件内容不是有效的图片");
+        }
+
         // 获取数据集名称用于存储路径
         String datasetName = sysDatasetService.getDatasetNameByItemId(form.getItemId());
         ItemFileDTO itemBO = fileDTOFactory.createItemFileDTO(
@@ -69,6 +99,7 @@ public class SysItemFileController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "修改图片信息",
             description = "更新图片的标注信息，支持修改图片类型、场景类型、雾霾程度、描述等字段。" +
@@ -87,6 +118,7 @@ public class SysItemFileController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     @Operation(
             summary = "删除图片",
             description = "删除指定的图片文件，同时删除对应的缩略图文件。" +
@@ -103,6 +135,7 @@ public class SysItemFileController {
     }
 
     @DeleteMapping("/batch")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     @Operation(
             summary = "批量删除图片",
             description = "批量删除指定的图片文件，同时删除对应的缩略图文件。" +
@@ -116,5 +149,21 @@ public class SysItemFileController {
     ) {
         BatchDeleteResultVO result = sysItemFileService.batchDelete(form.getIds());
         return Result.success(result);
+    }
+
+    /** 图片扩展名 → 文件头魔数一致性校验（python validate_image_magic_bytes 同款） */
+    private boolean validateMagic(String ext, byte[] head, int read) {
+        if (read < 4) {
+            return false;
+        }
+        return switch (ext) {
+            case "jpg", "jpeg" -> (head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8 && (head[2] & 0xFF) == 0xFF;
+            case "png" -> (head[0] & 0xFF) == 0x89 && head[1] == 'P' && head[2] == 'N' && head[3] == 'G';
+            case "gif" -> head[0] == 'G' && head[1] == 'I' && head[2] == 'F';
+            case "bmp" -> head[0] == 'B' && head[1] == 'M';
+            case "webp" -> head[0] == 'R' && head[1] == 'I' && head[2] == 'F' && head[3] == 'F'
+                    && head[8] == 'W' && head[9] == 'E' && head[10] == 'B' && head[11] == 'P';
+            default -> true;
+        };
     }
 }

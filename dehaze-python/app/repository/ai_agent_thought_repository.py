@@ -31,9 +31,7 @@ class AiAgentThoughtRepository(BaseRepository[SysAiAgentThought]):
         """
         if not message_ids:
             return {}
-        stmt = select(SysAiAgentThought).where(
-            SysAiAgentThought.message_id.in_(message_ids)
-        )
+        stmt = select(SysAiAgentThought).where(SysAiAgentThought.message_id.in_(message_ids))
         stmt = stmt.order_by(SysAiAgentThought.position.asc())
         result = await db.execute(stmt)
         grouped: dict[int, list[SysAiAgentThought]] = {}

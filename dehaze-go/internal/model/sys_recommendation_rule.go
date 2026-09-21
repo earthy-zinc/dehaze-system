@@ -8,7 +8,7 @@ type SysRecommendationRule struct {
 	AlgorithmIds string `gorm:"column:algorithm_ids;type:json;not null;comment:候选算法ID列表(JSON数组)" json:"algorithmIds"`
 	Weight       int    `gorm:"column:weight;type:int;not null;default:0;comment:规则权重" json:"weight"`
 	Enabled      int8   `gorm:"column:enabled;type:tinyint;not null;default:1;index:idx_enabled;comment:是否启用" json:"enabled"`
-	Deleted      int8   `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted      int64  `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysRecommendationRule) TableName() string {

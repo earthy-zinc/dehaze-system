@@ -102,6 +102,9 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             validateTemplateVariables(template, variables);
             title = renderTemplate(template.getTitleTemplate(), variables);
             content = renderTemplate(template.getContentTemplate(), variables);
+            if (form.getPriority() == null && template.getPriority() != null) {
+                form.setPriority(template.getPriority());
+            }
         } else {
             if (CharSequenceUtil.isBlank(title)) {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "消息标题不能为空");
@@ -128,7 +131,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             message.setJumpUrl(form.getJumpUrl());
             message.setExtra(form.getExtra());
             message.setReadStatus(0);
-            message.setDeleted(0);
+            message.setDeleted(0L);
             message.setExpiresAt(expiresAt);
             this.save(message);
             messageIds.add(message.getId());
@@ -287,13 +290,18 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(String ids) {
         Long userId = SecurityUtils.getUserId();
-        List<Long> idList = Arrays.stream(ids.split(","))
-                .map(String::trim)
-                .filter(CharSequenceUtil::isNotBlank)
-                .map(Long::parseLong)
-                .toList();
+        List<Long> idList;
+        try {
+            idList = Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .filter(CharSequenceUtil::isNotBlank)
+                    .map(Long::parseLong)
+                    .toList();
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息ID格式不正确");
+        }
         if (idList.isEmpty()) {
-            return;
+            throw new BusinessException(ResultCode.PARAM_ERROR, "消息ID列表不能为空");
         }
         long unreadDeleted = this.count(new LambdaQueryWrapper<SysMessage>()
                 .in(SysMessage::getId, idList)
@@ -311,16 +319,26 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     public Page<MessageVO> search(MessageSearchQuery query) {
         Long userId = SecurityUtils.getUserId();
         String keyword = query.getKeyword();
+        String pattern = "%" + escapeLike(keyword) + "%";
         Page<SysMessage> page = new Page<>(query.getPageNum(), query.getPageSize());
         this.page(page, new LambdaQueryWrapper<SysMessage>()
                 .eq(SysMessage::getRecipientId, userId)
-                .and(w -> w.like(SysMessage::getTitle, keyword).or().like(SysMessage::getContent, keyword))
+                .and(w -> w.apply("title LIKE {0} ESCAPE '\\\\'", pattern)
+                        .or()
+                        .apply("content LIKE {0} ESCAPE '\\\\'", pattern))
                 .orderByAsc(SysMessage::getReadStatus)
                 .orderByDesc(SysMessage::getCreateTime));
 
         Page<MessageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(this::toMessageVO).toList());
         return result;
+    }
+
+    static String escapeLike(String keyword) {
+        if (keyword == null || keyword.isEmpty()) {
+            return keyword;
+        }
+        return keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     private MessageVO toMessageVO(SysMessage message) {

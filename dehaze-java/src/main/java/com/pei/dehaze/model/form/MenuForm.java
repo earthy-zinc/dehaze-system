@@ -2,6 +2,8 @@ package com.pei.dehaze.model.form;
 
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -18,8 +20,10 @@ public class MenuForm {
     private Long parentId;
 
     @Schema(description = "菜单名称")
+    @NotBlank(message = "菜单名称不能为空")
     @Size(max = 64, message = "菜单名称长度不能超过64")
-    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "菜单名称不能包含特殊字符")
+    // (?s) 允许名称原样存储 CRLF 等换行类脏语料（与 python validate_no_xss 口径一致，仅挡 XSS 特征）
+    @Pattern(regexp = "^(?s)(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "菜单名称不能包含特殊字符")
     private String name;
 
     @Schema(description = "菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
@@ -39,6 +43,7 @@ public class MenuForm {
     private Integer visible;
 
     @Schema(description = "排序(数字越小排名越靠前)")
+    @Min(value = 0, message = "排序不能为负数")
     private Integer sort;
 
     @Schema(description = "菜单图标")

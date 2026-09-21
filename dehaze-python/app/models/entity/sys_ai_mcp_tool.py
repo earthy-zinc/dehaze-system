@@ -17,12 +17,8 @@ class SysAiMcpTool(BaseModel):
     server_id: Mapped[int] = mapped_column(
         BigInteger, nullable=False, comment="关联Server ID(关联sys_ai_mcp_server.id)"
     )
-    name: Mapped[str] = mapped_column(
-        String(128), nullable=False, comment="工具名(Server内唯一)"
-    )
-    description: Mapped[str | None] = mapped_column(
-        String(512), nullable=True, comment="工具描述"
-    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False, comment="工具名(Server内唯一)")
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="工具描述")
     input_schema: Mapped[Any | None] = mapped_column(
         JSON, nullable=True, comment="参数schema概要(JSON)"
     )

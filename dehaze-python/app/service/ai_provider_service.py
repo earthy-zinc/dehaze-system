@@ -6,14 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
-from app.models.entity.sys_ai_provider import SysAiProvider
-from app.models.schema.ai_provider import ProviderCreate, ProviderResult, ProviderUpdate
-from app.models.schema.common import PageResult
-from app.repository.ai_provider_repository import ai_provider_repository
 from app.infrastructure.provider.provider_health_service import (
     clear_provider_health,
     set_health_check_enabled,
 )
+from app.models.entity.sys_ai_provider import SysAiProvider
+from app.models.schema.ai_provider import (
+    ProviderCreate,
+    ProviderEnabledResult,
+    ProviderResult,
+    ProviderUpdate,
+)
+from app.models.schema.common import PageResult
+from app.repository.ai_provider_repository import ai_provider_repository
 
 # 启用供应商列表缓存（供应商配置低频变更，缓存降低模型选择时的 DB 压力）
 PROVIDER_LIST_CACHE_KEY = "ai:provider:list"
@@ -44,16 +49,17 @@ class AiProviderService:
             items.append(item)
         return PageResult(list=items, total=total)
 
-    async def list_enabled(self, db: AsyncSession, redis: Redis) -> list[ProviderResult]:
+    async def list_enabled(self, db: AsyncSession, redis: Redis) -> list[ProviderEnabledResult]:
+        """启用供应商列表（登录用户可见），仅返回精简字段防内部配置泄漏。"""
         cache = CacheService(redis)
         cached = await cache.get_json(PROVIDER_LIST_CACHE_KEY)
         if cached is None:
             providers = await ai_provider_repository.list_enabled(db)
             cached = [
-                ProviderResult.model_validate(p).model_dump(mode="json") for p in providers
+                ProviderEnabledResult.model_validate(p).model_dump(mode="json") for p in providers
             ]
             await cache.set_json(PROVIDER_LIST_CACHE_KEY, cached, PROVIDER_LIST_CACHE_TTL)
-        return [ProviderResult.model_validate(item) for item in cached]
+        return [ProviderEnabledResult.model_validate(item) for item in cached]
 
     async def create_provider(
         self,
@@ -119,11 +125,11 @@ class AiProviderService:
         provider = await ai_provider_repository.get_by_id(db, provider_id)
         if not provider:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "供应商不存在")
-        active = await ai_provider_repository.count_enabled_models(db, provider_id)
-        if active > 0:
+        bound = await ai_provider_repository.count_models(db, provider_id)
+        if bound > 0:
             raise BusinessException(
                 ResultCode.DATA_BIND_EXISTS,
-                "存在启用模型引用该供应商，请先禁用或删除关联模型",
+                "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型",
             )
         await ai_provider_repository.soft_delete_by_ids(db, [provider_id])
         await _clear_provider_cache(redis)

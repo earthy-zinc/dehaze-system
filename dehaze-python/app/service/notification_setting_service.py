@@ -66,11 +66,11 @@ class NotificationSettingService:
             setting.push_enabled = 1 if data["pushEnabled"] else 0
         if "dndEnabled" in data:
             setting.dnd_enabled = 1 if data["dndEnabled"] else 0
-        if "dndStart" in data and data["dndStart"]:
+        if data.get("dndStart"):
             setting.dnd_start = datetime.strptime(data["dndStart"], "%H:%M:%S").time()
-        if "dndEnd" in data and data["dndEnd"]:
+        if data.get("dndEnd"):
             setting.dnd_end = datetime.strptime(data["dndEnd"], "%H:%M:%S").time()
-        if "preferences" in data and data["preferences"]:
+        if data.get("preferences"):
             setting.preferences = _deep_merge_preferences(setting.preferences, data["preferences"])
         await db.flush()
 

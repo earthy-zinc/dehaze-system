@@ -21,6 +21,7 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
+from app.models.entity.sys_file import SysFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.file_repository import file_repository
 from app.service.import_export.models import ExportContext, ExportFieldConfig
@@ -176,7 +177,7 @@ def _should_include_type(include_types: list[str] | None, file_type: str | None)
 async def _add_file_to_zip(
     zos: zipfile.ZipFile,
     item_file: SysItemFile,
-    file_map: dict,
+    file_map: dict[int, SysFile],
     structure: str,
     item_name: str,
     subfolder: str | None,
@@ -191,9 +192,7 @@ async def _add_file_to_zip(
         return
 
     entry_path = _build_zip_entry_path(structure, item_name, subfolder, item_file.id, file_obj.name)
-    content = await _download_from_minio(
-        file_obj.object_name, getattr(file_obj, "storage", None)
-    )
+    content = await _download_from_minio(file_obj.object_name, file_obj.storage)
     if content is None:
         logger.warning("从存储下载文件失败，跳过: objectName=%s", file_obj.object_name)
         return
@@ -224,9 +223,7 @@ def _get_extension(filename: str) -> str:
     return "." + filename.rsplit(".", 1)[-1].lower()
 
 
-async def _download_from_minio(
-    object_name: str, storage_name: str | None = None
-) -> bytes | None:
+async def _download_from_minio(object_name: str, storage_name: str | None = None) -> bytes | None:
     import asyncio
 
     storage = get_storage_by_name(storage_name or settings.FILE_STORAGE_TYPE)

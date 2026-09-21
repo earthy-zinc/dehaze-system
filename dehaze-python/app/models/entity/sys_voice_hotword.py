@@ -11,9 +11,7 @@ class SysVoiceHotword(BaseModel, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True, autoincrement=True, comment="主键"
     )
-    word: Mapped[str] = mapped_column(
-        String(64), nullable=False, comment="热词内容(XSS转义后存储)"
-    )
+    word: Mapped[str] = mapped_column(String(64), nullable=False, comment="热词内容(XSS转义后存储)")
     scope: Mapped[str] = mapped_column(
         String(16), nullable=False, default="user", comment="作用域(global:全局;user:用户级)"
     )

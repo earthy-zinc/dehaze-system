@@ -26,7 +26,7 @@ CREATE TABLE `sys_ai_schedule`
     `status`            tinyint                                                         NOT NULL DEFAULT 1 COMMENT '任务状态(1:正常;2:熔断停用,连续失败自动停用)',
     `circuit_streak`    int                                                             NOT NULL DEFAULT 0 COMMENT '连续失败计数(达到阈值自动熔断停用,重新启用后清零)',
     `next_trigger_time` datetime                                                        NULL DEFAULT NULL COMMENT '下次触发时间(按任务时区计算,供排序与预览)',
-    `deleted`           tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`           bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`         bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`         bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`       datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

@@ -8,8 +8,10 @@ type SysRefundRecord struct {
 	OrderID         int64      `gorm:"column:order_id;type:bigint;not null;uniqueIndex:uk_order_id;comment:订单ID" json:"orderId"`
 	UserID          int64      `gorm:"column:user_id;type:bigint;not null;index:idx_user_id;comment:用户ID" json:"userId"`
 	RefundAmount    int64      `gorm:"column:refund_amount;type:bigint;not null;comment:退款金额" json:"refundAmount"`
+	ReasonType      string     `gorm:"column:reason_type;type:varchar(16);not null;comment:售后原因类型" json:"reasonType"`
 	Reason          string     `gorm:"column:reason;type:varchar(256);not null;comment:退款原因" json:"reason"`
-	UsedQuota       int        `gorm:"column:used_quota;type:int;not null;default:0;comment:申请时已用权益次数" json:"usedQuota"`
+	UsedDays        *int       `gorm:"column:used_days;type:int;comment:会员卡已使用天数(按天折算依据)" json:"usedDays"`
+	UsedCredits     *int64     `gorm:"column:used_credits;type:bigint;comment:积分卡已消耗积分(按用量折算依据)" json:"usedCredits"`
 	Status          int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:退款状态" json:"status"`
 	Channel         *string    `gorm:"column:channel;type:varchar(16);comment:退款渠道" json:"channel"`
 	ChannelRefundNo string     `gorm:"column:channel_refund_no;type:varchar(64);comment:渠道退款流水号" json:"channelRefundNo"`
@@ -20,7 +22,7 @@ type SysRefundRecord struct {
 	RefundTime      *time.Time `gorm:"column:refund_time;type:datetime;comment:退款完成时间" json:"refundTime"`
 	ErrorMessage    string     `gorm:"column:error_message;type:varchar(512);comment:错误信息" json:"errorMessage"`
 	RetryCount      int8       `gorm:"column:retry_count;type:tinyint;not null;default:0;comment:自动重试次数" json:"retryCount"`
-	Deleted         int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted         int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysRefundRecord) TableName() string {

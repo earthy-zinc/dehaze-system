@@ -1,13 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AiConversationAPI, { type MessageStreamHandlers } from "@/api/ai-conversation";
+import type {
+  InterruptData,
+  InterruptEvent,
+  MessageResumeForm,
+  Plan,
+  PlanPayload,
+  PlanRevision,
+  PlanTask,
+} from "@/api/ai-conversation/model";
 
 /**
- * SSE 流式事件分发单元测试。
+ * SSE 流式事件分发与传输注入单元测试。
  *
- * `dispatchSSEEvent` 是模块私有函数，只能经 `AiConversationAPI` 的流式入口驱动，
- * 这里 mock 全局 `fetch` 返回手工拼装的 SSE 原文，锁定两类行为：
- * 1. 事件 ID 透出（`onEventId`）——断线重连 Last-Event-ID 的精度依赖，易在重构中静默丢失
+ * 通过 `sendMessage`/`reconnectStream` 的 `options.fetchImpl` 注入假 fetch 返回手工拼装的
+ * SSE 原文，不再 mock 全局 `fetch`（注入生效后全局 fetch 完全不被触碰）。锁定：
+ * 1. 事件 ID 透出（`onEventId`）——断线重连 Last-Event-ID 的精度依赖
  * 2. 各事件类型的 payload 分发——流式消息与断线重连的命脉路径
+ * 3. plan 事件（`Plan`）与 plan_approve 中断计划（`PlanPayload`）同形、仅 `phase` 为事件增量
+ * 4. InterruptData 全 camelCase 键透传
  */
 
 const originalFetch = globalThis.fetch;
@@ -39,9 +50,9 @@ function sseResponse(text: string, chunkSize = 7): Response {
   } as unknown as Response;
 }
 
-/** 以 SSE 原文驱动一次 sendMessage，返回流结束的 Promise */
+/** 以 SSE 原文驱动一次 sendMessage（经 fetchImpl 注入假 fetch），返回流结束的 Promise */
 function stream(text: string, handlers: MessageStreamHandlers, chunkSize?: number): Promise<void> {
-  globalThis.fetch = (async () => sseResponse(text, chunkSize)) as typeof fetch;
+  const fetchImpl = (async () => sseResponse(text, chunkSize)) as typeof fetch;
   return new Promise<void>((resolve, reject) => {
     AiConversationAPI.sendMessage(
       1,
@@ -53,7 +64,8 @@ function stream(text: string, handlers: MessageStreamHandlers, chunkSize?: numbe
           resolve();
         },
         onNetworkError: (error) => reject(error),
-      }
+      },
+      { fetchImpl }
     );
   });
 }
@@ -198,7 +210,7 @@ describe("SSE 事件分发", () => {
   });
 
   it("非 text/event-stream 响应走直返分支，不触发任何事件回调", async () => {
-    globalThis.fetch = (async () =>
+    const fetchImpl = (async () =>
       ({
         ok: true,
         headers: { get: () => "application/json" },
@@ -217,7 +229,8 @@ describe("SSE 事件分发", () => {
             closed();
             resolve();
           },
-        }
+        },
+        { fetchImpl }
       );
     });
     expect(start).not.toHaveBeenCalled();
@@ -225,17 +238,161 @@ describe("SSE 事件分发", () => {
   });
 });
 
+describe("SSE 传输注入", () => {
+  it("注入 fetchImpl 后由注入实现承载请求，全局 fetch 不被触碰", async () => {
+    const globalSpy = vi.fn(() => {
+      throw new Error("全局 fetch 不应被调用");
+    });
+    globalThis.fetch = globalSpy as unknown as typeof fetch;
+
+    const injected = vi.fn(async () => sseResponse(""));
+    const done = new Promise<void>((resolve) => {
+      AiConversationAPI.sendMessage(
+        1,
+        { content: "注入" },
+        { onClose: () => resolve() },
+        { fetchImpl: injected }
+      );
+    });
+    await done;
+
+    expect(injected).toHaveBeenCalledTimes(1);
+    expect(globalSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("plan 事件与 plan_approve 中断的统一契约", () => {
+  it("plan 事件任务项透传 camelCase（dependsOn/paradigm/toolHint/result/revisions）", async () => {
+    const plan = vi.fn<(data: Plan) => void>();
+    const task: PlanTask = {
+      id: "t1",
+      description: "步骤",
+      dependsOn: ["t0"],
+      status: "pending",
+      paradigm: "react",
+      toolHint: "dehaze",
+      result: "ok",
+    };
+    const revision: PlanRevision = {
+      revisionNo: 1,
+      reason: "子任务失败",
+      changedTaskIds: ["t1"],
+    };
+    const payload: Plan = {
+      tasks: [task],
+      status: "pending",
+      revisions: [revision],
+      phase: "plan",
+    };
+    await stream(`event: plan\ndata: ${JSON.stringify(payload)}\n\n`, { onPlan: plan });
+    expect(plan).toHaveBeenCalledWith(payload);
+    expect(plan.mock.calls[0]?.[0]?.tasks[0]).toHaveProperty("dependsOn");
+    expect(plan.mock.calls[0]?.[0]?.tasks[0]).not.toHaveProperty("depends_on");
+  });
+
+  it("plan_approve 中断 data.plan 为 PlanPayload 形状（dependsOn/toolHint，无 phase）", async () => {
+    const interrupt = vi.fn<(data: InterruptEvent) => void>();
+    const task: PlanTask = {
+      id: "t1",
+      description: "步骤",
+      dependsOn: ["t0"],
+      toolHint: "dehaze",
+      paradigm: "react",
+      result: "ok",
+    };
+    const plan: PlanPayload = { tasks: [task], status: "pending", revisions: [] };
+    await stream(
+      `event: interrupt\ndata: ${JSON.stringify({ type: "plan_approve", data: { plan } })}\n\n`,
+      { onInterrupt: interrupt }
+    );
+    const data = interrupt.mock.calls[0]?.[0]?.data;
+    expect(data?.plan).toEqual(plan);
+    expect(data?.plan?.tasks[0]).toHaveProperty("dependsOn");
+    expect(data?.plan?.tasks[0]).not.toHaveProperty("depends_on");
+    expect(data?.plan).not.toHaveProperty("phase");
+  });
+
+  it("InterruptData 按统一后的 camelCase 键透传（quota/写冲突/授权/异步等待）", async () => {
+    const interrupt = vi.fn<(data: InterruptEvent) => void>();
+    const quota: InterruptData = {
+      upgradeTip: "升级会员",
+      usedDaily: 10,
+      dailyLimit: 10,
+      usedMonthly: 100,
+      monthlyLimit: 1000,
+      quotaDataError: false,
+    };
+    const writeConflict: InterruptData = {
+      confirmKind: "dangerous_op",
+      action: "write_conflict",
+      tool: "write_file",
+      resource: "report.md",
+      previousWriter: "agent-A",
+      impact: "覆盖写入",
+      reason: "写冲突",
+    };
+    const permission: InterruptData = {
+      confirmKind: "tool_permission",
+      tool: "shell_exec",
+      reason: "危险操作",
+      detail: "需授权",
+    };
+    const algorithm: InterruptData = {
+      confirmKind: "algorithm_recommend",
+      artifactId: 9,
+      recommendation: {
+        recommendationId: 1,
+        algorithmId: 9,
+        algorithmName: "DCP",
+        reason: "适合浓雾",
+        effectDescription: "提升清晰度",
+      },
+      alternatives: [{ algorithmId: 3, algorithmName: "AOD", matchScore: 0.8, reason: "备选" }],
+      imageFeatures: { hazeLevel: 2, sceneType: "outdoor", lighting: "bright" },
+    };
+    const asyncWait: InterruptData = {
+      taskId: "task-1",
+      taskType: "image_process",
+      estDuration: "30s",
+      imageCount: 3,
+    };
+
+    for (const [type, data] of [
+      ["quota", quota],
+      ["confirm", writeConflict],
+      ["confirm", permission],
+      ["confirm", algorithm],
+      ["async_wait", asyncWait],
+    ] as const) {
+      await stream(`event: interrupt\ndata: ${JSON.stringify({ type, data })}\n\n`, {
+        onInterrupt: interrupt,
+      });
+    }
+
+    expect(interrupt.mock.calls.map(([evt]) => evt.data)).toEqual([
+      quota,
+      writeConflict,
+      permission,
+      algorithm,
+      asyncWait,
+    ]);
+  });
+});
+
 describe("断线重连 Last-Event-ID 请求头", () => {
-  /** 驱动一次 reconnectStream，返回 fetch mock 与流结束 Promise */
+  /** 驱动一次 reconnectStream（经 fetchImpl 注入假 fetch），返回 fetch mock 与流结束 Promise */
   function reconnect(lastEventId: string) {
     const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
       sseResponse("")
     );
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
     const done = new Promise<void>((resolve) => {
-      AiConversationAPI.reconnectStream(1, "stream-1", lastEventId, {
-        onClose: () => resolve(),
-      });
+      AiConversationAPI.reconnectStream(
+        1,
+        "stream-1",
+        lastEventId,
+        { onClose: () => resolve() },
+        { fetchImpl: fetchMock as unknown as typeof fetch }
+      );
     });
     return { fetchMock, done };
   }
@@ -252,5 +409,51 @@ describe("断线重连 Last-Event-ID 请求头", () => {
     await done;
     const headers = fetchMock.mock.calls[0]?.[1]?.headers as Record<string, string>;
     expect(headers["Last-Event-ID"]).toBeUndefined();
+  });
+});
+
+describe("resume 上行请求体键名（对外契约 camelCase）", () => {
+  /** 驱动一次 resumeMessage（经 fetchImpl 注入假 fetch），返回 fetch mock 与流结束 Promise */
+  function resume(data: MessageResumeForm) {
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+      sseResponse("")
+    );
+    const done = new Promise<void>((resolve) => {
+      AiConversationAPI.resumeMessage(
+        7,
+        data,
+        { onClose: () => resolve() },
+        { fetchImpl: fetchMock as unknown as typeof fetch }
+      );
+    });
+    return { fetchMock, done };
+  }
+
+  it("planEdit 外层以 plan_edit 上行，add 内层为 camelCase（dependsOn/toolHint/paradigm）", async () => {
+    const planEdit: MessageResumeForm["planEdit"] = {
+      remove: ["t2"],
+      reorder: ["t1"],
+      add: { description: "新增任务", dependsOn: ["t0"], toolHint: "dehaze", paradigm: "react" },
+    };
+    const { fetchMock, done } = resume({ planEdit });
+    await done;
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url).endsWith("/api/v1/ai/messages/7/resume")).toBe(true);
+    expect(init?.method).toBe("POST");
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    expect(body).toEqual({ plan_edit: planEdit });
+    // 内层不留旧 snake_case 键
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain("depends_on");
+    expect(raw).not.toContain("tool_hint");
+  });
+
+  it("仅 confirm/params 时不带 plan_edit 键", async () => {
+    const { fetchMock, done } = resume({ confirm: true, params: { algorithmId: 9 } });
+    await done;
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    expect(body).toEqual({ confirm: true, params: { algorithmId: 9 } });
+    expect(body).not.toHaveProperty("plan_edit");
   });
 });

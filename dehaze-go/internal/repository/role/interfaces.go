@@ -32,8 +32,11 @@ type IRoleRepository interface {
 	// FindPage 分页查询角色列表
 	FindPage(ctx context.Context, q *query.RolePageQuery) (*read.PageResult[read.RolePage], error)
 
-	// FindOptions 获取角色下拉选项（isRoot 为 false 时排除 ROOT 角色）
-	FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error)
+	// FindOptions 获取启用角色的下拉选项数据（含编码，可见性过滤由服务层按 isRoot 处理）
+	FindOptions(ctx context.Context) ([]read.Option, error)
+
+	// FindUsernamesByRoleIDs 批量查询角色关联的活跃用户名（软删用户不参与权限传播）
+	FindUsernamesByRoleIDs(ctx context.Context, roleIDs []int64) ([]string, error)
 
 	// Create 创建角色
 	Create(ctx context.Context, role *model.SysRole) error

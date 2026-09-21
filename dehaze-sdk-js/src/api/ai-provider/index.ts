@@ -3,6 +3,7 @@ import request from "@/utils/request";
 import type {
   ConnectionTestResult,
   ProviderCreateForm,
+  ProviderEnabledVO,
   ProviderKeyCreateForm,
   ProviderKeyUpdateForm,
   ProviderKeyVO,
@@ -33,9 +34,9 @@ class AiProviderAPI {
     });
   }
 
-  /** 启用供应商列表（供调用方下拉选择，无特殊权限） */
+  /** 启用供应商列表（精简视图，不含供应商内部配置，无特殊权限） */
   static listEnabledProviders() {
-    return request<ProviderVO[]>({
+    return request<ProviderEnabledVO[]>({
       url: "/api/v1/ai/providers/enabled",
       method: "get",
     });

@@ -18,6 +18,9 @@ public class PackagePageVO {
     @Schema(description = "套餐名称")
     private String name;
 
+    @Schema(description = "商品类型(vip/credit)")
+    private String packageType;
+
     @Schema(description = "会员等级编码")
     private String levelCode;
 
@@ -30,6 +33,9 @@ public class PackagePageVO {
     @Schema(description = "有效期天数")
     private Integer periodDays;
 
+    @Schema(description = "可得积分（积分卡）")
+    private Long creditAmount;
+
     @Schema(description = "原价（分）")
     private Long originalPrice;
 
@@ -38,6 +44,9 @@ public class PackagePageVO {
 
     @Schema(description = "日均价格（分）")
     private Long dailyPrice;
+
+    @Schema(description = "每积分单价（分）")
+    private Long creditUnitPrice;
 
     @Schema(description = "销量")
     private Long salesCount;

@@ -160,7 +160,25 @@ func (m *MultiLevelCache) Set(ctx context.Context, key string, value any, expira
 }
 
 // Delete 删除缓存
-// Cache-Aside模式：先删L2，再删L1
+// Cache-Aside模式：先删L2，再删L1，最后广播其他实例清理各自 L1
+// GetDel 原子取走并删除（一次性凭证消费）。
+// 刻意**只作用于 L2（Redis GETDEL）**：L1 是本进程副本，先读 L1 再删会让同进程的两个并发请求都读到值，
+// 原子性失效；L2 消费后再清一次两级（L1 只是副本），下次读自然不会命中。
+// 未配置 L2 时退化为"读+删"（纯本地多级部署不承载一次性凭证场景）。
+func (m *MultiLevelCache) GetDel(ctx context.Context, key string) (string, error) {
+	if m.opts.L2Cache == nil {
+		val, err := m.Get(ctx, key)
+		_ = m.Delete(ctx, key)
+		return val, err
+	}
+
+	val, err := m.opts.L2Cache.GetDel(ctx, key)
+	if delErr := m.Delete(ctx, key); delErr != nil && err == nil {
+		return "", delErr
+	}
+	return val, err
+}
+
 func (m *MultiLevelCache) Delete(ctx context.Context, keys ...string) error {
 	var allErrs []error
 
@@ -177,6 +195,13 @@ func (m *MultiLevelCache) Delete(ctx context.Context, keys ...string) error {
 		if err := m.opts.L1Cache.Delete(ctx, keys...); err != nil {
 			allErrs = append(allErrs, err)
 			logger.Warn("删除L1缓存失败", zap.Strings("keys", keys), zap.Error(err))
+		}
+	}
+
+	// 广播其他实例清理各自 L1（L2 已由上面删除，本实例 L1 由上面删除，消息会被 senderId 过滤）
+	if m.opts.InvalidationPublisher != nil {
+		for _, key := range keys {
+			m.opts.InvalidationPublisher(ctx, key)
 		}
 	}
 

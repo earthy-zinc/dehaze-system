@@ -45,8 +45,17 @@ func (r *MenuRepository) FindAll(ctx context.Context, q *query.MenuQuery) ([]mod
 			keyword := "%" + q.Keywords + "%"
 			db = db.Where("name LIKE ?", keyword)
 		}
-		if q.Status != nil {
-			db = db.Where("visible = ?", *q.Status)
+		if q.Perm != "" {
+			db = db.Where("perm LIKE ?", "%"+q.Perm+"%")
+		}
+		if q.Path != "" {
+			db = db.Where("path LIKE ?", "%"+q.Path+"%")
+		}
+		if q.Type != nil {
+			db = db.Where("type = ?", *q.Type)
+		}
+		if q.Visible != nil {
+			db = db.Where("visible = ?", *q.Visible)
 		}
 	}
 
@@ -253,8 +262,8 @@ func (r *MenuRepository) GetMenuRoutes(ctx context.Context, roles []string) ([]r
 			Model(&model.SysMenu{}).
 			Select("sys_menu.id, sys_menu.parent_id, sys_menu.name, sys_menu.type, sys_menu.path, sys_menu.component, sys_menu.perm, sys_menu.visible, sys_menu.sort, sys_menu.icon, sys_menu.redirect, sys_menu.always_show, sys_menu.keep_alive, GROUP_CONCAT(DISTINCT sr.code) as roles").
 			Joins("LEFT JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
-			Joins("LEFT JOIN sys_role sr ON srm.role_id = sr.id AND sr.status = 1 AND sr.deleted = 0").
-			Where("sys_menu.type IN (1, 2) AND sys_menu.visible = 1").
+			Joins("LEFT JOIN sys_role sr ON srm.role_id = sr.id AND sr.deleted = 0").
+			Where("sys_menu.type IN (1, 2)").
 			Group("sys_menu.id").
 			Order("sys_menu.sort ASC").
 			Scan(&routes).Error
@@ -268,9 +277,9 @@ func (r *MenuRepository) GetMenuRoutes(ctx context.Context, roles []string) ([]r
 		Joins("JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
 		Joins("JOIN sys_role sr ON srm.role_id = sr.id").
 		Joins("LEFT JOIN sys_role_menu srm2 ON sys_menu.id = srm2.menu_id").
-		Joins("LEFT JOIN sys_role sr2 ON srm2.role_id = sr2.id AND sr2.status = 1 AND sr2.deleted = 0").
-		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roleCodes).
-		Where("sys_menu.type IN (1, 2) AND sys_menu.visible = 1").
+		Joins("LEFT JOIN sys_role sr2 ON srm2.role_id = sr2.id AND sr2.deleted = 0").
+		Where("sr.code IN ? AND sr.deleted = 0", roleCodes).
+		Where("sys_menu.type IN (1, 2)").
 		Group("sys_menu.id").
 		Order("sys_menu.sort ASC").
 		Scan(&routes).Error
@@ -282,7 +291,7 @@ func (r *MenuRepository) GetFormData(ctx context.Context, menuID int64) (*bo.Men
 	var form bo.MenuForm
 	err := r.db.WithContext(ctx).
 		Model(&model.SysMenu{}).
-		Select("id, parent_id, name, type, path, component, perm, visible, sort, icon, redirect, always_show, keep_alive").
+		Select("id, parent_id, name, type, path, component, perm, visible, sort, icon, redirect, always_show, keep_alive, is_preset").
 		Where("id = ?", menuID).
 		Scan(&form).Error
 	if err != nil {
@@ -303,6 +312,20 @@ func (r *MenuRepository) FindPermsByRoleCode(ctx context.Context, roleCode strin
 		Joins("INNER JOIN sys_role_menu ON sys_menu.id = sys_role_menu.menu_id").
 		Joins("INNER JOIN sys_role ON sys_role.id = sys_role_menu.role_id").
 		Where("sys_role.deleted = 0 AND sys_menu.deleted = 0 AND sys_role.code = ? AND sys_menu.perm IS NOT NULL AND sys_menu.perm != ''", roleCode).
+		Pluck("perm", &perms).Error
+	return perms, err
+}
+
+// FindPermsByMenuIDs 获取菜单集合的非空权限标识（权限提升校验用）
+func (r *MenuRepository) FindPermsByMenuIDs(ctx context.Context, menuIDs []int64) ([]string, error) {
+	if len(menuIDs) == 0 {
+		return nil, nil
+	}
+	var perms []string
+	err := r.db.WithContext(ctx).
+		Model(&model.SysMenu{}).
+		Distinct("perm").
+		Where("id IN ? AND perm IS NOT NULL AND perm != ''", menuIDs).
 		Pluck("perm", &perms).Error
 	return perms, err
 }
@@ -361,6 +384,19 @@ func (r *MenuRepository) CountByIDs(ctx context.Context, ids []int64) (int64, er
 	err := r.db.WithContext(ctx).
 		Model(&model.SysMenu{}).
 		Where("id IN ?", ids).
+		Count(&count).Error
+	return count, err
+}
+
+// CountPresetsByIDs 统计给定ID集合中系统预置菜单的数量（预置菜单删除保护）
+func (r *MenuRepository) CountPresetsByIDs(ctx context.Context, ids []int64) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.SysMenu{}).
+		Where("id IN ? AND is_preset = 1", ids).
 		Count(&count).Error
 	return count, err
 }

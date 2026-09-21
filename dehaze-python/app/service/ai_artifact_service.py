@@ -57,9 +57,7 @@ class AiArtifactService:
         size: int,
     ) -> PageResult[ArtifactResult]:
         """查询会话产物列表（校验会话归属）"""
-        conv = await self.ai_conversation_repository.get_by_id_and_user(
-            db, conv_id, user_id
-        )
+        conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
 
@@ -67,10 +65,7 @@ class AiArtifactService:
             db, conv_id, page, size
         )
 
-        return PageResult(
-            list=[ArtifactResult.model_validate(a) for a in artifacts],
-            total=total
-        )
+        return PageResult(list=[ArtifactResult.model_validate(a) for a in artifacts], total=total)
 
     async def list_by_message(
         self,
@@ -247,10 +242,10 @@ class AiArtifactService:
         file_id = None
         if artifact.ref_type == "sys_file":
             file_id = artifact.ref_id
-        elif artifact.ref_type == "sys_pred_log":
+        elif artifact.ref_type == "sys_pred_log" and artifact.ref_id is not None:
             pred = await pred_log_repository.get_by_id(db, artifact.ref_id)
             file_id = pred.pred_file_id if pred else None
-        elif artifact.ref_type == "sys_eval_log":
+        elif artifact.ref_type == "sys_eval_log" and artifact.ref_id is not None:
             eval_log = await eval_log_repository.get_by_id(db, artifact.ref_id)
             file_id = eval_log.pred_file_id if eval_log else None
         if not file_id:
@@ -323,7 +318,9 @@ class AiArtifactService:
         ]
         text_parts: list[str] = []
         usage: dict = {}
-        async for chunk in llm_client.stream_chat(db, multimodal_model_id, messages):
+        async for chunk in llm_client.stream_chat(
+            db, multimodal_model_id, messages, user_id=user_id
+        ):
             if chunk.type == "text_delta":
                 text_parts.append(chunk.content)
             elif chunk.type == "done" and chunk.usage:

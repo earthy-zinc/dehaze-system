@@ -24,9 +24,9 @@ var announcementTypeLabels = map[string]string{
 }
 
 var targetScopeLabels = map[string]string{
-	"all":        "全体用户",
-	"level":      "按会员等级",
-	"specified":  "指定用户",
+	"all":       "全体用户",
+	"level":     "按会员等级",
+	"specified": "指定用户",
 }
 
 var announcementStatusLabels = map[int]string{

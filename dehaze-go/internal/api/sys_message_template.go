@@ -20,21 +20,16 @@ func NewMessageTemplateApi(tplService msgservice.IMessageTemplateService) *Messa
 }
 
 func (api *MessageTemplateApi) GetPage(c *gin.Context) {
+	// python message_template.py:20-21 默认 pageSize 20
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 20)
+	if !ok {
+		return
+	}
 	q := &query.MessageTemplateQuery{
 		Name:     c.Query("name"),
 		Type:     c.Query("type"),
-		PageNum:  1,
-		PageSize: 20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 	if v := c.Query("status"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {

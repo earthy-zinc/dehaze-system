@@ -80,6 +80,9 @@ class SysMemberBenefit(BaseModel, SoftDeleteMixin):
     multimodal_limit: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="多模态视觉读取日限额(次/天，每日0点重置)"
     )
+    max_devices: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, comment="同时在线设备数上限(登录超限踢最早会话)"
+    )
     sort: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="排序值")
     status: Mapped[int] = mapped_column(
         mysql_types.TINYINT, nullable=False, default=1, comment="状态(1:启用;0:禁用)"

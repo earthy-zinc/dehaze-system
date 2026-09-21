@@ -1,9 +1,13 @@
 """OpenAI 兼容协议流式对话客户端"""
 
 import json
+import logging
 from collections.abc import AsyncGenerator, Iterator
 
 from app.infrastructure.llm.common import LlmStreamChunk, build_auth_headers
+from app.service.ai.service.trace_collector import record_wire_request, record_wire_response
+
+logger = logging.getLogger(__name__)
 
 _THINK_OPEN = "<think>"
 _THINK_CLOSE = "</think>"
@@ -100,6 +104,7 @@ class OpenAiCompatClient:
         tools: list[dict] | None,
         tool_choice: str | None,
         temperature: float = 0.7,
+        user_identity: tuple[str, str] | None = None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """构建 OpenAI 兼容请求并解析 SSE 流，按 tool_call 索引聚合 function calling。
 
@@ -123,10 +128,25 @@ class OpenAiCompatClient:
             payload["tools"] = tools
             if tool_choice is not None:
                 payload["tool_choice"] = tool_choice
+        # 用户身份透传：按配置字段注入请求体顶层；与 extra_request_params 同受
+        # 核心键保护，字段已存在（核心键或厂商私有参数）时不覆盖（§2.5）
+        if user_identity is not None:
+            field, value = user_identity
+            if field not in payload:
+                payload[field] = value
         url = provider.api_base_url.rstrip("/") + "/chat/completions"
         headers = build_auth_headers(provider, api_key)
+        # wire 级原始报文采集（旁路）：上报实际发送的完整请求体（不存 headers/URL/API Key）
+        record_wire_request(payload)
         pending_tool_calls: dict[int, dict] = {}  # index -> {id, name, arguments}
         think_splitter = _ThinkSplitter()
+        # 流式聚合为等价非流式结构所需字段（响应原文取 provider 下发值）
+        wire_id: str | None = None
+        wire_model: str | None = None
+        finish_reason: str | None = None
+        raw_content_parts: list[str] = []
+        reasoning_parts: list[str] = []
+        usage_raw: dict | None = None
         async with self._client.stream("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
@@ -138,16 +158,27 @@ class OpenAiCompatClient:
                 try:
                     chunk = json.loads(data)
                 except json.JSONDecodeError:
+                    # 非 JSON 的 data 分片（厂商扩展/被截断）：跳过但留痕，
+                    # 避免流解析异常被完全掩盖（只记分片长度，不记分片内容）
+                    logger.warning("SSE 分片无法解析为 JSON，已跳过: len=%d", len(data))
                     continue
+                if wire_id is None and chunk.get("id"):
+                    wire_id = chunk["id"]
+                if wire_model is None and chunk.get("model"):
+                    wire_model = chunk["model"]
                 choices = chunk.get("choices") or []
+                if choices and choices[0].get("finish_reason"):
+                    finish_reason = choices[0]["finish_reason"]
                 # usage 随无 choices 的最终 chunk 单独下发（stream_options.include_usage），
                 # 不能因无 choices 而跳过
                 if not choices:
                     if chunk.get("usage"):
+                        usage_raw = chunk["usage"]
                         yield LlmStreamChunk(type="done", usage=chunk["usage"])
                     continue
                 delta = choices[0].get("delta") or {}
                 if delta.get("content"):
+                    raw_content_parts.append(delta["content"])
                     for kind, seg in think_splitter.feed(delta["content"]):
                         yield LlmStreamChunk(
                             type="thinking_delta" if kind == "thinking" else "text_delta",
@@ -156,6 +187,7 @@ class OpenAiCompatClient:
                 # 推理模型思考流：openai_compat 推理模型（如 deepseek-r1）
                 # 经 reasoning_content 增量下发
                 if delta.get("reasoning_content"):
+                    reasoning_parts.append(delta["reasoning_content"])
                     yield LlmStreamChunk(type="thinking_delta", content=delta["reasoning_content"])
                 for tool_call in delta.get("tool_calls") or []:
                     index = tool_call.get("index", 0)
@@ -182,7 +214,33 @@ class OpenAiCompatClient:
                         tc["arguments"] += arguments
                         yield LlmStreamChunk(type="tool_call_delta", content=arguments)
                 if chunk.get("usage"):
+                    usage_raw = chunk["usage"]
                     yield LlmStreamChunk(type="done", usage=chunk["usage"])
+            # 流式结束：聚合等价非流式响应结构上报（tool_calls arguments 为原文）
+            message: dict = {"role": "assistant", "content": "".join(raw_content_parts) or None}
+            if reasoning_parts:
+                message["reasoning_content"] = "".join(reasoning_parts)
+            tool_calls_wire = [
+                {
+                    "id": pending_tool_calls[i]["id"],
+                    "type": "function",
+                    "function": {
+                        "name": pending_tool_calls[i]["name"],
+                        "arguments": pending_tool_calls[i]["arguments"],
+                    },
+                }
+                for i in sorted(pending_tool_calls)
+            ]
+            if tool_calls_wire:
+                message["tool_calls"] = tool_calls_wire
+            record_wire_response(
+                {
+                    "id": wire_id,
+                    "model": wire_model or payload["model"],
+                    "choices": [{"index": 0, "finish_reason": finish_reason, "message": message}],
+                    "usage": usage_raw,
+                }
+            )
             # 流式结束：输出切分器滞留的尾部内容，再对每个未完成的 tool_call 发 complete
             for kind, seg in think_splitter.flush():
                 yield LlmStreamChunk(

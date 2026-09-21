@@ -14,11 +14,11 @@ const (
 type AlgorithmFormBO struct {
 	ID          int64  `json:"id"`
 	ParentID    int64  `json:"parentId"`
-	Type        string `json:"type" binding:"required,max=32"`
-	Name        string `json:"name" binding:"required,max=128"`
+	Type        string `json:"type" binding:"required,max=100"`
+	Name        string `json:"name" binding:"required,max=64"`
 	Path        string `json:"path" binding:"omitempty,max=255"`
 	ImportPath  string `json:"importPath" binding:"omitempty,max=255"`
-	Description string `json:"description" binding:"omitempty,max=255"`
+	Description string `json:"description" binding:"omitempty,max=2048"`
 	Status      int8   `json:"status" binding:"oneof=1 2 3 4 5 6"`
 }
 
@@ -51,4 +51,19 @@ func CanTransitionTo(currentStatus, targetStatus int8) bool {
 // IsDeletable 校验算法状态是否允许删除
 func IsDeletable(status int8) bool {
 	return DeletableStatuses[status]
+}
+
+// AlgorithmAuditForm 算法审核表单（对齐 python AlgorithmAuditForm）
+// approved 必填；remark 的"驳回时必填"由 service 按 python 语义校验，故不设 binding。
+type AlgorithmAuditForm struct {
+	Approved *bool   `json:"approved" binding:"required"`
+	Remark   *string `json:"remark" binding:"omitempty,max=500"`
+}
+
+// AlgorithmVersionForm 新增版本表单（对齐 python AlgorithmVersionForm）
+type AlgorithmVersionForm struct {
+	Version     string  `json:"version" binding:"required,max=50"`
+	ChangeLog   *string `json:"changeLog"`
+	ConfigJSON  *string `json:"configJson"`
+	ModelFileID *int64  `json:"modelFileId"`
 }

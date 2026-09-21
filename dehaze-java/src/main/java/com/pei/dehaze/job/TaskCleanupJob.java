@@ -6,6 +6,7 @@ import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.security.util.SystemSecurityContext;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -33,6 +35,8 @@ public class TaskCleanupJob {
     private final SysTaskMapper sysTaskMapper;
 
     private final RedisTemplate<String, Object> redisTemplate;
+
+    private final StorageServiceFactory storageServiceFactory;
 
     /**
      * 每天凌晨2点执行清理任务
@@ -103,7 +107,7 @@ public class TaskCleanupJob {
     }
 
     /**
-     * 物理删除任务记录并清除 Redis 缓存
+     * 物理删除任务记录并清除 Redis 缓存与存储产物文件
      */
     private void physicalDeleteTasks(LambdaQueryWrapper<SysTask> wrapper, String logLabel) {
         List<SysTask> tasks = sysTaskMapper.selectList(wrapper);
@@ -119,9 +123,37 @@ public class TaskCleanupJob {
         for (SysTask task : tasks) {
             if (StrUtil.isNotBlank(task.getTaskId())) {
                 redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
+                deleteExportFiles(task);
             }
         }
         log.debug("清理{}: 共清理{}条记录", logLabel, tasks.size());
+    }
+
+    /**
+     * best-effort 删除任务产物文件（exports/{taskId}/{module}_export.{xlsx|csv|zip} 与
+     * {module}_import_errors.csv）。存储后端不支持删除或对象不存在时仅记录日志，不阻塞清理。
+     */
+    private void deleteExportFiles(SysTask task) {
+        String taskType = task.getTaskType();
+        if (StrUtil.isBlank(taskType)) {
+            return;
+        }
+        int sep = taskType.lastIndexOf('_');
+        if (sep <= 0) {
+            return;
+        }
+        String base = "exports/" + task.getTaskId() + "/" + taskType.substring(0, sep).toLowerCase(Locale.ROOT) + "_";
+        String[] candidates = {
+                base + "export.xlsx", base + "export.csv",
+                base + "export.zip", base + "import_errors.csv"
+        };
+        for (String objectName : candidates) {
+            try {
+                storageServiceFactory.getDefault().deleteFile(objectName);
+            } catch (Exception e) {
+                log.debug("任务产物删除失败（不影响清理）: {}", objectName);
+            }
+        }
     }
 
     /**

@@ -60,6 +60,7 @@
         t1.deleted = 0
           AND t1.type = '${@com.pei.dehaze.common.enums.MenuTypeEnum@BUTTON.getValue()}'
           AND t1.perm IS NOT NULL
+          AND t1.perm != ''
           <choose>
             <when test="roles!=null and roles.size()>0">
                 AND t3.CODE IN
@@ -71,5 +72,26 @@
                 AND t1.id = -1
             </otherwise>
           </choose>
+    </select>
+
+    <!-- 同级菜单名称计数（含软删行，唯一性口径与唯一键一致） -->
+    <select id="countSameNameIncludeDeleted" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_menu
+        WHERE parent_id = #{parentId}
+          AND name = #{name}
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
+    </select>
+
+    <!-- 权限标识计数（含软删行，全局唯一） -->
+    <select id="countByPermIncludeDeleted" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_menu
+        WHERE perm = #{perm}
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
     </select>
 </mapper>

@@ -39,10 +39,6 @@ export interface DeptVO {
    */
   status?: number;
   /**
-   * 父节点ID路径(逗号分隔)
-   */
-  treePath?: string;
-  /**
    * 修改时间
    */
   updateTime?: Date;

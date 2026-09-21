@@ -8,13 +8,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.database import get_db
-
-pytestmark = pytest.mark.api
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.models.schema.ai_mcp import McpHealthResult, McpServerResult
 from app.models.schema.common import PageResult
 from app.router import ai_mcp
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -24,17 +24,17 @@ class _FakeUser:
 
 
 def _server(**overrides) -> McpServerResult:
-    base = dict(
-        id=1,
-        name="测试Server",
-        description="描述",
-        protocolType="streamable-http",
-        endpoint="https://example.com/mcp",
-        authType="api_key",
-        status=1,
-        health=None,
-        toolCount=0,
-    )
+    base = {
+        "id": 1,
+        "name": "测试Server",
+        "description": "描述",
+        "protocolType": "streamable-http",
+        "endpoint": "https://example.com/mcp",
+        "authType": "api_key",
+        "status": 1,
+        "health": None,
+        "toolCount": 0,
+    }
     base.update(overrides)
     return McpServerResult(**base)
 
@@ -106,7 +106,11 @@ async def test_create_server_admin_success(mcp_client, monkeypatch):
     monkeypatch.setattr(ai_mcp.ai_mcp_server_service, "create_server", fake_create)
     resp = await client.post(
         "/api/v1/ai/mcp/servers",
-        json={"name": "新Server", "protocolType": "streamable-http", "endpoint": "https://x.com/mcp"},
+        json={
+            "name": "新Server",
+            "protocolType": "streamable-http",
+            "endpoint": "https://x.com/mcp",
+        },
     )
     assert resp.status_code == 200
     assert captured["name"] == "新Server"

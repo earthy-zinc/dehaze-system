@@ -1,12 +1,15 @@
 """智能体管理服务：CRUD、启停、复制、删除校验、默认 Agent、关联管理、缓存"""
 
+from langchain_core.runnables import RunnableConfig
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.database import defer_after_commit
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
+from app.models.base import get_current_user_id
 from app.models.entity.sys_ai_agent import SysAiAgent
 from app.models.entity.sys_ai_agent_version import SysAiAgentVersion
 from app.models.schema.ai_agent import (
@@ -18,11 +21,18 @@ from app.models.schema.ai_agent import (
     SubAgentItem,
 )
 from app.models.schema.common import PageResult
+from app.repository.ai_agent_eval_repository import (
+    ai_agent_eval_dataset_repository,
+    ai_agent_eval_run_repository,
+    ai_agent_eval_sample_repository,
+)
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
+from app.repository.ai_mcp_namespace_repository import ai_mcp_namespace_repository
 from app.repository.ai_skill_repository import ai_skill_repository
-from app.service.ai_agent_version_service import agent_version_service
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
+from app.service.ai_agent_version_service import agent_version_service
 
 # 默认 Agent 编码（后端实现 §2.1 / §2.11.12，系统预置且不可删除）
 DEFAULT_AGENT_CODE = "default"
@@ -45,15 +55,47 @@ _AGENT_ENABLED_LIST_KEY = "ai:agent:list:enabled"
 _AGENT_ENABLED_LIST_TTL = 600
 
 
-async def _clear_agent_caches(redis: Redis, agent: SysAiAgent) -> None:
-    """Agent 更新/启停/删除时失效相关缓存。"""
-    cache = CacheService(redis)
-    await cache.delete(_AGENT_DETAIL_KEY.format(agent_code=agent.agent_code))
-    await cache.delete(_AGENT_SKILLS_KEY.format(agent_id=agent.id))
-    await cache.delete(_AGENT_MCP_KEY.format(agent_id=agent.id))
-    await cache.delete(_AGENT_SUBAGENTS_KEY.format(agent_id=agent.id))
-    await cache.delete(_AGENT_PUBLISHED_KEY.format(agent_id=agent.id))
-    await cache.delete(_AGENT_ENABLED_LIST_KEY)
+def _defer_audit(db: AsyncSession, **kwargs) -> None:
+    """登记提交后写审计日志。
+
+    危险操作若在事务回滚后仍留痕，会误导事后追溯；故审计与缓存失效同挂提交后回调。
+    回调契约是协程（defer_after_commit 会 await），而 create_audit_async 是同步
+    fire-and-forget，需在此包装为 async。
+    """
+
+    async def _write() -> None:
+        mongo_audit_log_repository.create_audit_async(**kwargs)
+
+    defer_after_commit(db, _write)
+
+
+def _defer_cache_delete(db: AsyncSession, redis: Redis, *keys: str) -> None:
+    """登记事务提交后的缓存失效。
+
+    提交前失效会被并发请求击穿回填：此时新值尚未提交，读到的是旧数据，回填的脏缓存
+    将存活到 TTL 到期。
+    """
+
+    async def _delete() -> None:
+        cache = CacheService(redis)
+        for key in keys:
+            await cache.delete(key)
+
+    defer_after_commit(db, _delete)
+
+
+def _defer_clear_agent_caches(db: AsyncSession, redis: Redis, agent: SysAiAgent) -> None:
+    """Agent 更新/启停/删除时失效相关缓存（事务提交后执行）。"""
+    _defer_cache_delete(
+        db,
+        redis,
+        _AGENT_DETAIL_KEY.format(agent_code=agent.agent_code),
+        _AGENT_SKILLS_KEY.format(agent_id=agent.id),
+        _AGENT_MCP_KEY.format(agent_id=agent.id),
+        _AGENT_SUBAGENTS_KEY.format(agent_id=agent.id),
+        _AGENT_PUBLISHED_KEY.format(agent_id=agent.id),
+        _AGENT_ENABLED_LIST_KEY,
+    )
 
 
 async def _get_agent_or_404(repository, db: AsyncSession, agent_id: int) -> SysAiAgent:
@@ -64,7 +106,9 @@ async def _get_agent_or_404(repository, db: AsyncSession, agent_id: int) -> SysA
     return agent
 
 
-async def _load_subagent_items(repository, db: AsyncSession, parent_agent_id: int) -> list[SubAgentItem]:
+async def _load_subagent_items(
+    repository, db: AsyncSession, parent_agent_id: int
+) -> list[SubAgentItem]:
     """加载子 Agent 关联详情（含名称/编码/描述，供 AgentDetail 展示）。"""
     links = await repository.list_subagents(db, parent_agent_id)
     if not links:
@@ -137,20 +181,10 @@ class AgentService:
             if "max_steps_react" not in snapshot_cfg:
                 need_publish = True
         if need_publish:
-            snapshot = await self.agent_version_service._build_snapshot(db, redis, existing)
-            version_no = await self.ai_agent_version_repository.next_version_no(db, existing.id)
-            db.add(
-                SysAiAgentVersion(
-                    agent_id=existing.id,
-                    version_no=version_no,
-                    snapshot=snapshot,
-                    status=2,
-                    change_note="默认 Agent 初始发布",
-                    operator_id=None,
-                )
+            await self.agent_version_service._write_draft(
+                db, redis, existing, None, "默认 Agent 初始发布", status=2
             )
-            await db.flush()
-        await _clear_agent_caches(redis, existing)
+        _defer_clear_agent_caches(db, redis, existing)
 
     async def _build_detail(self, db: AsyncSession, agent: SysAiAgent) -> AgentDetail:
         skills = await self.ai_agent_repository.list_skill_names(db, agent.id)
@@ -198,9 +232,7 @@ class AgentService:
             agent_ids = [a.id for a in agents]
             skill_counts = await self.ai_agent_repository.count_skills_by_agent_ids(db, agent_ids)
             mcp_counts = await self.ai_agent_repository.count_mcp_by_agent_ids(db, agent_ids)
-            sub_counts = await self.ai_agent_repository.count_subagents_by_agent_ids(
-                db, agent_ids
-            )
+            sub_counts = await self.ai_agent_repository.count_subagents_by_agent_ids(db, agent_ids)
             for a in agents:
                 item = AgentListItem.model_validate(a)
                 item.skill_count = skill_counts.get(a.id, 0)
@@ -240,16 +272,10 @@ class AgentService:
         await cache.set_json(key, detail.model_dump(mode="json"), _AGENT_DETAIL_TTL)
         return detail
 
-    async def create_agent(
-        self, db: AsyncSession, redis: Redis, form: AgentCreate
-    ) -> AgentDetail:
-        # agent_code 唯一性校验绕过软删查全表（类别②，删除后不可复用）
+    async def create_agent(self, db: AsyncSession, redis: Redis, form: AgentCreate) -> AgentDetail:
+        # agent_code 唯一性校验（活跃行；唯一键含 deleted，软删后可重建同 code）
         existing = await self.ai_agent_repository.get_by_code(db, form.agent_code)
         if existing:
-            if existing.deleted:
-                raise BusinessException(
-                    ResultCode.DATA_EXISTS, "该 Agent 编码已被历史记录占用，不可复用"
-                )
             raise BusinessException(ResultCode.DATA_EXISTS, "Agent 编码已存在")
         agent = SysAiAgent(
             agent_code=form.agent_code,
@@ -268,7 +294,7 @@ class AgentService:
             status=form.status,
         )
         await self.ai_agent_repository.create(db, agent)
-        await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
+        _defer_cache_delete(db, redis, _AGENT_ENABLED_LIST_KEY)
         return await self._build_detail(db, agent)
 
     async def update_agent(
@@ -285,16 +311,14 @@ class AgentService:
             if hasattr(agent, key) and key not in ("id", "agent_code"):
                 setattr(agent, key, value)
         await db.flush()
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
         return await self._build_detail(db, agent)
 
-    async def set_status(
-        self, db: AsyncSession, redis: Redis, agent_id: int, status: int
-    ) -> None:
+    async def set_status(self, db: AsyncSession, redis: Redis, agent_id: int, status: int) -> None:
         agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         agent.status = status
         await db.flush()
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
 
     async def delete_agent(self, db: AsyncSession, redis: Redis, agent_id: int) -> None:
         agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
@@ -314,8 +338,36 @@ class AgentService:
                 ResultCode.DATA_BIND_EXISTS,
                 f"该 Agent 被 {subagent_refs} 个 Agent 作为子 Agent 引用，请先解绑",
             )
+        # 评测资产按 agent_id 挂载，Agent 软删后即失去清理入口：评测集列表与评测中心
+        # 聚合会残留无人认领的孤儿数据（agent_id 不复用，重建同 agent_code 得到新 id），
+        # 故删除 Agent 时一并清理。样本表无逻辑删除列，随所属评测集物理删除；评测执行
+        # 记录为只追加轨迹、同样无逻辑删除列，随 Agent 整体物理清理。
+        eval_datasets = await ai_agent_eval_dataset_repository.list_by_agent(db, agent_id)
+        eval_dataset_ids = [d.id for d in eval_datasets]
+        sample_count = 0
+        if eval_dataset_ids:
+            sample_count = await ai_agent_eval_sample_repository.delete_by_datasets(
+                db, eval_dataset_ids
+            )
+            await ai_agent_eval_dataset_repository.soft_delete_by_ids(db, eval_dataset_ids)
+        run_count = await ai_agent_eval_run_repository.delete_by_agent(db, agent_id)
+
         await self.ai_agent_repository.soft_delete_by_ids(db, [agent_id])
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
+        _defer_audit(
+            db,
+            operator_id=get_current_user_id(),
+            target_type="ai_agent",
+            target_id=agent_id,
+            action="delete",
+            module="ai_agent",
+            before_value={"agent_code": agent.agent_code, "name": agent.name},
+            after_value={
+                "eval_datasets_soft_deleted": len(eval_dataset_ids),
+                "eval_samples_deleted": sample_count,
+                "eval_runs_deleted": run_count,
+            },
+        )
 
     async def copy_agent(
         self, db: AsyncSession, redis: Redis, agent_id: int, new_code: str
@@ -342,7 +394,7 @@ class AgentService:
             status=1,
         )
         await self.ai_agent_repository.create(db, copy)
-        await CacheService(redis).delete(_AGENT_ENABLED_LIST_KEY)
+        _defer_cache_delete(db, redis, _AGENT_ENABLED_LIST_KEY)
         return await self._build_detail(db, copy)
 
     # ── 关联管理（覆盖式更新）────────────────────────────
@@ -353,28 +405,35 @@ class AgentService:
         agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
         # 引用完整性：关联的 Skill 必须存在于 sys_ai_skill（未删）
         if skill_names:
-            existing = set(
-                await self.ai_skill_repository.list_names_existing(db, skill_names)
-            )
+            existing = set(await self.ai_skill_repository.list_names_existing(db, skill_names))
             missing = sorted(set(skill_names) - existing)
             if missing:
                 raise BusinessException(
-                    ResultCode.DATA_NOT_FOUND,
+                    ResultCode.RESOURCE_NOT_FOUND,
                     f"以下 Skill 不存在: {', '.join(missing[:5])}",
                 )
         await self.ai_agent_repository.replace_skills(db, agent_id, skill_names)
         await db.flush()
-        await CacheService(redis).delete(_AGENT_SKILLS_KEY.format(agent_id=agent_id))
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
 
     async def set_mcp(
         self, db: AsyncSession, redis: Redis, agent_id: int, mcp_namespaces: list[str]
     ) -> None:
         agent = await _get_agent_or_404(self.ai_agent_repository, db, agent_id)
+        # 引用完整性：命名空间必须已在注册 MCP Server 下声明，否则运行时装载不到任何工具
+        if mcp_namespaces:
+            registered = set(
+                await ai_mcp_namespace_repository.list_registered_names(db, mcp_namespaces)
+            )
+            missing = sorted(set(mcp_namespaces) - registered)
+            if missing:
+                raise BusinessException(
+                    ResultCode.RESOURCE_NOT_FOUND,
+                    f"以下 MCP 命名空间未注册: {', '.join(missing[:5])}",
+                )
         await self.ai_agent_repository.replace_mcp_namespaces(db, agent_id, mcp_namespaces)
         await db.flush()
-        await CacheService(redis).delete(_AGENT_MCP_KEY.format(agent_id=agent_id))
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
 
     async def set_subagents(
         self, db: AsyncSession, redis: Redis, agent_id: int, form: AgentSubAgentsForm
@@ -384,10 +443,53 @@ class AgentService:
             {"agent_id": s.agent_id, "endpoint_id": s.endpoint_id, "priority": s.priority}
             for s in form.subagents
         ]
+        child_ids = [item["agent_id"] for item in items]
+        if agent_id in child_ids:
+            raise BusinessException(ResultCode.PARAM_ERROR, "子 Agent 不能是自身")
+        await self._ensure_subagents_exist(db, child_ids)
+        await self._ensure_subagents_acyclic(db, agent_id, child_ids)
         await self.ai_agent_repository.replace_subagents(db, agent_id, items)
         await db.flush()
-        await CacheService(redis).delete(_AGENT_SUBAGENTS_KEY.format(agent_id=agent_id))
-        await _clear_agent_caches(redis, agent)
+        _defer_clear_agent_caches(db, redis, agent)
+
+    async def _ensure_subagents_exist(self, db: AsyncSession, child_ids: list[int]) -> None:
+        if not child_ids:
+            return
+        found = {a.id for a in await self.ai_agent_repository.get_by_ids(db, child_ids)}
+        missing = sorted(set(child_ids) - found)
+        if missing:
+            raise BusinessException(
+                ResultCode.RESOURCE_NOT_FOUND,
+                f"以下子 Agent 不存在: {', '.join(str(i) for i in missing[:5])}",
+            )
+
+    async def _ensure_subagents_acyclic(
+        self, db: AsyncSession, agent_id: int, child_ids: list[int]
+    ) -> None:
+        """校验绑定后不形成子 Agent 环：环会让推理期子 Agent 展开无限递归。"""
+        path: list[int] = []
+        settled: set[int] = set()
+
+        async def _walk(node: int) -> None:
+            if node in settled:
+                return
+            if node in path:
+                cycle = "→".join(str(i) for i in [*path[path.index(node) :], node])
+                raise BusinessException(ResultCode.PARAM_ERROR, f"子 Agent 绑定存在环: {cycle}")
+            path.append(node)
+            if node == agent_id:
+                children = child_ids
+            else:
+                children = [
+                    link.subagent_agent_id
+                    for link in await self.ai_agent_repository.list_subagents(db, node)
+                ]
+            for child in children:
+                await _walk(child)
+            path.pop()
+            settled.add(node)
+
+        await _walk(agent_id)
 
     # ── 版本快照读取（契约）──────────────────────────────
 
@@ -454,9 +556,7 @@ class AgentService:
             await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
             return self.ai_agent_version_repository.resolve_snapshot(snapshot)
 
-        version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(
-            agent_id=agent_id, version_no=version_no
-        )
+        version_key = _AGENT_VERSION_SNAPSHOT_KEY.format(agent_id=agent_id, version_no=version_no)
         cached = await cache.get_json(version_key)
         if cached is not None:
             return self.ai_agent_version_repository.resolve_snapshot(cached)
@@ -469,9 +569,7 @@ class AgentService:
         await cache.set_json(version_key, snapshot, _AGENT_VERSION_SNAPSHOT_TTL)
         return self.ai_agent_version_repository.resolve_snapshot(snapshot)
 
-    async def test_agent(
-        self, db: AsyncSession, redis: Redis, agent_id: int, message: str
-    ) -> dict:
+    async def test_agent(self, db: AsyncSession, redis: Redis, agent_id: int, message: str) -> dict:
         """测试预览：构建独立会话运行当前已发布版本，返回 final_response + usage。
 
         与评测执行器同机制：独立线程上下文，不落库、不污染生产会话。
@@ -496,7 +594,9 @@ class AgentService:
             "thoughts": [],
             "isolated_token_pool": True,
         }
-        run_config = {"configurable": {"thread_id": f"test:{agent_id}:{uuid.uuid4()}"}}
+        run_config: RunnableConfig = {
+            "configurable": {"thread_id": f"test:{agent_id}:{uuid.uuid4()}"}
+        }
         result = await graph.ainvoke(initial_state, config=run_config)
         return {
             "final_response": result.get("final_response", ""),

@@ -39,6 +39,7 @@ const PERIOD_DAYS_MAP: Record<string, number> = {
 
 const DEFAULT_FORM: PackageForm = {
   name: "",
+  packageType: "vip",
   levelCode: "level_1",
   period: "monthly",
   periodDays: 30,
@@ -46,7 +47,6 @@ const DEFAULT_FORM: PackageForm = {
   salePrice: 0,
   description: "",
   sort: 1,
-  status: 1,
   benefitOverrides: {
     monthlyDehazeQuota: 0,
     monthlyEvaluateQuota: 0,
@@ -90,14 +90,16 @@ const PackageFormDialog = forwardRef<
           form.setFieldsValue({
             id: data.id ?? id,
             name: data.name,
+            packageType: data.packageType,
+            creditAmount: data.creditAmount,
             levelCode: data.levelCode,
             period: data.period,
             periodDays: data.periodDays,
-            originalPrice: data.originalPrice,
-            salePrice: data.salePrice,
+            // 接口金额单位为分，表单以元为单位展示
+            originalPrice: (data.originalPrice ?? 0) / 100,
+            salePrice: (data.salePrice ?? 0) / 100,
             description: data.description,
             sort: data.sort ?? 1,
-            status: data.status ?? 1,
             benefitOverrides: {
               monthlyDehazeQuota: 0,
               monthlyEvaluateQuota: 0,
@@ -137,12 +139,31 @@ const PackageFormDialog = forwardRef<
     try {
       const values = await form.validateFields();
       setConfirmLoading(true);
+      // 按商品类型裁剪字段：积分卡无等级/周期/权益，会员卡无积分
+      const isCredit = values.packageType === "credit";
+      const payload: PackageForm = {
+        id: values.id,
+        name: values.name,
+        packageType: values.packageType,
+        // 表单以元为单位输入，接口金额单位为分
+        originalPrice: Math.round(values.originalPrice * 100),
+        salePrice: Math.round(values.salePrice * 100),
+        description: values.description,
+        sort: values.sort,
+        benefitOverrides: isCredit ? undefined : values.benefitOverrides,
+      };
+      if (isCredit) {
+        payload.creditAmount = values.creditAmount;
+      } else {
+        payload.levelCode = values.levelCode;
+        payload.period = values.period;
+        payload.periodDays = values.periodDays;
+      }
       if (dialogType === "edit") {
-        const id = form.getFieldValue("id");
-        await PackageAPI.update(id, values);
+        await PackageAPI.update(payload.id!, payload);
         message.success("修改套餐成功");
       } else {
-        await PackageAPI.add(values);
+        await PackageAPI.add(payload);
         message.success("新增套餐成功");
       }
       handleCancel();
@@ -156,6 +177,9 @@ const PackageFormDialog = forwardRef<
       setConfirmLoading(false);
     }
   }, [form, dialogType, handleCancel, onSuccess]);
+
+  const watchPackageType = Form.useWatch("packageType", form);
+  const isCredit = watchPackageType === "credit";
 
   return (
     <Modal
@@ -188,37 +212,62 @@ const PackageFormDialog = forwardRef<
           <Input placeholder="请输入套餐名" />
         </Form.Item>
 
-        <Form.Item
-          name="levelCode"
-          label="等级"
-          rules={[{ required: true, message: "请选择等级" }]}
-        >
-          <Select placeholder="请选择等级" options={LEVEL_OPTIONS} />
+        <Form.Item name="packageType" label="商品类型">
+          <Radio.Group disabled={dialogType === "edit"}>
+            <Radio value="vip">会员卡</Radio>
+            <Radio value="credit">积分卡</Radio>
+          </Radio.Group>
         </Form.Item>
 
-        <Form.Item
-          name="period"
-          label="计费周期"
-          rules={[{ required: true, message: "请选择计费周期" }]}
-        >
-          <Select
-            placeholder="请选择计费周期"
-            options={PERIOD_OPTIONS}
-            onChange={handlePeriodChange}
-          />
-        </Form.Item>
+        {!isCredit && (
+          <>
+            <Form.Item
+              name="levelCode"
+              label="等级"
+              rules={[{ required: true, message: "请选择等级" }]}
+            >
+              <Select placeholder="请选择等级" options={LEVEL_OPTIONS} />
+            </Form.Item>
 
-        <Form.Item
-          name="periodDays"
-          label="周期天数"
-          rules={[{ required: true, message: "请输入周期天数" }]}
-        >
-          <InputNumber
-            min={1}
-            style={{ width: "100%" }}
-            placeholder="请输入周期天数"
-          />
-        </Form.Item>
+            <Form.Item
+              name="period"
+              label="计费周期"
+              rules={[{ required: true, message: "请选择计费周期" }]}
+            >
+              <Select
+                placeholder="请选择计费周期"
+                options={PERIOD_OPTIONS}
+                onChange={handlePeriodChange}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="periodDays"
+              label="周期天数"
+              rules={[{ required: true, message: "请输入周期天数" }]}
+            >
+              <InputNumber
+                min={1}
+                style={{ width: "100%" }}
+                placeholder="请输入周期天数"
+              />
+            </Form.Item>
+          </>
+        )}
+
+        {isCredit && (
+          <Form.Item
+            name="creditAmount"
+            label="可得积分"
+            rules={[{ required: true, message: "请输入可得积分" }]}
+          >
+            <InputNumber
+              min={1}
+              style={{ width: "100%" }}
+              placeholder="请输入可得积分"
+            />
+          </Form.Item>
+        )}
 
         <Form.Item
           name="originalPrice"
@@ -256,75 +305,72 @@ const PackageFormDialog = forwardRef<
           />
         </Form.Item>
 
-        <Form.Item name="status" label="状态">
-          <Radio.Group>
-            <Radio value={1}>在售</Radio>
-            <Radio value={0}>下架</Radio>
-          </Radio.Group>
-        </Form.Item>
-
         <Form.Item name="description" label="描述" wrapperCol={{ span: 16 }}>
           <Input.TextArea rows={2} placeholder="套餐描述" />
         </Form.Item>
 
-        <Divider orientation="left" plain>
-          权益覆盖配置
-        </Divider>
+        {!isCredit && (
+          <>
+            <Divider orientation="left" plain>
+              权益覆盖配置
+            </Divider>
 
-        <Form.Item
-          name={["benefitOverrides", "monthlyDehazeQuota"]}
-          label="去雾配额"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "monthlyEvaluateQuota"]}
-          label="评估配额"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "historyRetention"]}
-          label="历史保留(天)"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "batchLimit"]}
-          label="批量上限"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "priority"]}
-          label="优先级"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "advancedParams"]}
-          label="高级参数"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "hdExport"]}
-          label="高清导出"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "reportExport"]}
-          label="报告导出"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item
-          name={["benefitOverrides", "batchDownload"]}
-          label="批量下载"
-        >
-          <InputNumber min={0} style={{ width: "100%" }} />
-        </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "monthlyDehazeQuota"]}
+              label="去雾配额"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "monthlyEvaluateQuota"]}
+              label="评估配额"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "historyRetention"]}
+              label="历史保留(天)"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "batchLimit"]}
+              label="批量上限"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "priority"]}
+              label="优先级"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "advancedParams"]}
+              label="高级参数"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "hdExport"]}
+              label="高清导出"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "reportExport"]}
+              label="报告导出"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name={["benefitOverrides", "batchDownload"]}
+              label="批量下载"
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+          </>
+        )}
       </Form>
     </Modal>
   );

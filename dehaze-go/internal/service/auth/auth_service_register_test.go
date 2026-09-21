@@ -91,7 +91,7 @@ func TestRegister_CaptchaWrong_ReturnsError(t *testing.T) {
 	ctx := context.Background()
 
 	captchaKey := "ck-register-fail"
-	// 不预置验证码，VerifyCaptcha 必然失败
+	// 不预置验证码：Key 不存在属"已过期"（A0213），与 Python 端 verify_captcha_status 口径一致
 	req := &bo.RegisterRequest{
 		Username:    "newuser",
 		Nickname:    "新用户",
@@ -102,7 +102,7 @@ func TestRegister_CaptchaWrong_ReturnsError(t *testing.T) {
 	result, err := f.authService.Register(ctx, req, "10.0.0.22")
 
 	assert.Nil(t, result)
-	assertBizError(t, err, common.VERIFY_CODE_ERROR)
+	assertBizError(t, err, common.VERIFY_CODE_TIMEOUT)
 	// 验证码错误时不创建用户、不初始化会员
 	f.userService.AssertNotCalled(t, "Register", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	memberSvc.AssertNotCalled(t, "InitDefaultMember", mock.Anything, mock.Anything)

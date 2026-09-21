@@ -40,7 +40,7 @@ CREATE TABLE `sys_ai_message`
     `used_memory_ids`      json                                                            NULL COMMENT '本次注入引用的记忆ID列表(JSON数组,注入可见性)',
     `edited`               tinyint                                                         NOT NULL DEFAULT 0 COMMENT '是否已编辑(0:否;1:是，编辑重发后原消息标记)',
     `original_content`     LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NULL COMMENT '编辑前原文(edited=1时填充，支撑已编辑标识和编辑历史)',
-    `deleted`              tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`              bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`            bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`            bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`          datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

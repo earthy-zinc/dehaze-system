@@ -11,7 +11,7 @@ type SysFile struct {
 	Size       string  `gorm:"column:size;type:varchar(100);not null;default:'0';comment:文件大小（格式化显示）" json:"size"`
 	SizeBytes  *int64  `gorm:"column:size_bytes;type:bigint;comment:文件大小（原始字节数）" json:"sizeBytes"`
 	MD5        string  `gorm:"column:md5;type:char(32);not null;uniqueIndex:uk_md5;comment:文件的MD5值，用于比对文件是否相同" json:"md5"`
-	Deleted    int8    `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	Deleted    int64   `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysFile) TableName() string {

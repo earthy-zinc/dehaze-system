@@ -110,4 +110,6 @@ type MenuForm struct {
 	KeepAlive int `json:"keepAlive" binding:"oneof=0 1"`
 	// 【目录】只有一个子路由是否始终显示(1:是 0:否)
 	AlwaysShow int `json:"alwaysShow" binding:"oneof=0 1"`
+	// 系统预置标识(1:预置;0:普通)，仅表单回显读取，不接受写入
+	IsPreset int `json:"isPreset"`
 }

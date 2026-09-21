@@ -12,7 +12,7 @@ public class PredictionResultVO {
     private Long logId;
 
     @Schema(description = "任务状态：1=处理中,2=已完成,3=失败")
-    private LogStatusEnum status;
+    private Integer status;
 
     @Schema(description = "处理后的图片URL（status=completed 时返回）")
     private String resultUrl;

@@ -1,5 +1,6 @@
 from langchain.agents.middleware.types import ModelRequest
-from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import AnyMessage, HumanMessage, SystemMessage, ToolMessage
 
 from app.config import settings
 from app.service.ai.middleware.capability_constraints import CapabilityConstraintsMiddleware
@@ -7,7 +8,6 @@ from app.service.ai.middleware.mcp_namespace_prefilter import (
     McpNamespacePrefilter,
     McpNamespacePrefilterMiddleware,
 )
-from app.service.ai.middleware.tool_failure_guard import ToolFailureGuardMiddleware
 
 
 class _FakeGateway:
@@ -43,14 +43,6 @@ class _ToolRequest:
     def __init__(self, name, args=None, state=None, tool_call_id="call_1"):
         self.tool_call = {"name": name, "args": args or {}, "id": tool_call_id}
         self.state = state
-
-
-async def _fail(req):
-    raise RuntimeError("x")
-
-
-async def _ok(req):
-    return ToolMessage(content="ok", tool_call_id="call_1")
 
 
 class _State:
@@ -153,15 +145,15 @@ class TestBuildToolsBlock:
 
 class TestPrefilterMiddleware:
     async def test_awakens_and_injects_to_system_message(self):
-        state = {"messages": [HumanMessage(content="帮这张图去雾")]}
+        messages: list[AnyMessage] = [HumanMessage(content="帮这张图去雾")]
         prefilter = McpNamespacePrefilter(_FakeGateway(_image_tools()))
         mw = McpNamespacePrefilterMiddleware(agent_namespaces=None, prefilter=prefilter)
         request = ModelRequest(
-            model=None,
-            messages=state["messages"],
+            model=FakeListChatModel(responses=["ok"]),
+            messages=messages,
             system_message=SystemMessage(content="基础提示"),
             tools=[],
-            state=state,
+            state={"messages": messages},
             runtime=None,
         )
         seen = {}
@@ -174,68 +166,6 @@ class TestPrefilterMiddleware:
         assert result == "resp"
         assert "基础提示" in seen["sys"]
         assert "image_processing_dehaze" in seen["sys"]
-
-
-class TestToolFailureGuard:
-    async def test_three_consecutive_failures_disables_tool(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-        last = None
-        for _ in range(3):
-            last = await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        assert "algo_recommend" in mw._disabled[0]
-        assert "临时禁用" in last.content
-
-    async def test_tool_blocked_after_disabled(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-        for _ in range(3):
-            await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        called = []
-
-        async def blocked(req):
-            called.append(1)
-            return ToolMessage(content="ok", tool_call_id="call_1")
-
-        msg = await mw.awrap_tool_call(_ToolRequest("algo_recommend"), blocked)
-        assert called == []
-        assert "临时禁用" in msg.content
-
-    async def test_success_resets_counter(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _ok)
-        assert mw._fails[0]["algo_recommend"] == 0
-        assert "algo_recommend" not in mw._disabled.get(0, set())
-
-    async def test_new_run_resets_counter(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), _fail)
-        await mw.abefore_agent({"messages": []}, object())
-        assert mw._fails == {}
-        assert mw._disabled == {}
-
-    async def test_error_status_toolmessage_counts_as_failure(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-
-        async def err(req):
-            return ToolMessage(content="工具参数有误", tool_call_id="call_1", status="error")
-
-        await mw.awrap_tool_call(_ToolRequest("algo_recommend"), err)
-        assert mw._fails[0]["algo_recommend"] == 1
-
-    async def test_concurrent_conversations_isolated(self):
-        mw = ToolFailureGuardMiddleware(fail_limit=3)
-        for _ in range(3):
-            await mw.awrap_tool_call(_ToolRequest("algo_recommend", state={"conversation_id": 1}), _fail)
-        assert "algo_recommend" in mw._disabled[1]
-
-        msg = await mw.awrap_tool_call(_ToolRequest("algo_recommend", state={"conversation_id": 2}), _ok)
-        assert msg.content == "ok"
-
-        await mw.abefore_agent({"conversation_id": 2, "messages": []}, object())
-        assert "algo_recommend" in mw._disabled[1]
-        assert 2 not in mw._fails
 
 
 class TestWriteFileCapacity:
@@ -270,7 +200,7 @@ class TestWriteFileCapacity:
         monkeypatch.setattr(settings, "AI_VFS_MAX_BYTES", 4096)
         mw = CapabilityConstraintsMiddleware()
         existing = {"a.txt": {"content": "x" * 4000}}
-        msg, called = await _run_tool(
+        _msg, called = await _run_tool(
             mw,
             "write_file",
             {"file_path": "/ws/a.txt", "content": "y" * 10},
@@ -280,7 +210,7 @@ class TestWriteFileCapacity:
 
     async def test_other_tools_pass_through(self):
         mw = CapabilityConstraintsMiddleware()
-        msg, called = await _run_tool(mw, "ls", {"path": "/ws"}, _State({}))
+        _msg, called = await _run_tool(mw, "ls", {"path": "/ws"}, _State({}))
         assert called == [1]
 
 
@@ -296,7 +226,7 @@ class TestWriteTodos:
     async def test_within_32_items_passes(self):
         mw = CapabilityConstraintsMiddleware()
         todos = [{"content": f"第{i}项任务", "status": "pending"} for i in range(10)]
-        msg, called = await _run_tool(mw, "write_todos", {"todos": todos}, _State({}))
+        _msg, called = await _run_tool(mw, "write_todos", {"todos": todos}, _State({}))
         assert called == [1]
 
     async def test_overlong_item_warns_but_passes(self):

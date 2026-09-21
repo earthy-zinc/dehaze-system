@@ -36,6 +36,10 @@ public class BenefitForm {
     @Min(value = 0, message = "批量处理上限不能为负数")
     private Integer batchLimit;
 
+    @Schema(description = "同时在线设备数上限")
+    @Min(value = 1, message = "同时在线设备数上限不能小于1")
+    private Integer maxDevices;
+
     @Schema(description = "处理优先级(1:普通;2:优先;3:高优先;4:最高)")
     @Min(value = 1, message = "处理优先级最小为1")
     @Max(value = 4, message = "处理优先级最大为4")

@@ -18,7 +18,9 @@ class CloudTtsProvider(TTSProvider, CloudBase):
     async def synthesize(
         self, text: str, voice_id: str | None, speed: float, format_: str, sample_rate: int
     ) -> bytes:
-        raise NotImplementedError("云端 TTS 合成：需厂商 API 规格（合成端点/音色映射/音频格式）适配")
+        raise NotImplementedError(
+            "云端 TTS 合成：需厂商 API 规格（合成端点/音色映射/音频格式）适配"
+        )
 
     async def engine_status(self) -> dict:
         return {

@@ -31,24 +31,24 @@ from app.infrastructure.metrics.task_metrics import (
 )
 
 __all__ = [
+    # 缓存指标
+    "CACHE_HITS_TOTAL",
+    "CACHE_LOADER_TOTAL",
+    "CACHE_MISSES_TOTAL",
+    # 推理指标
+    "INFERENCE_DURATION",
+    "INFERENCE_REQUESTS_TOTAL",
+    "TASK_DURATION",
+    # 任务指标
+    "TASK_QUEUE_DEPTH",
+    "TASK_TOTAL",
     # GPU 指标
     "GPUMetricsCollector",
     "collect_gpu_metrics",
     "get_gpu_metrics_collector",
-    # 推理指标
-    "INFERENCE_DURATION",
-    "INFERENCE_REQUESTS_TOTAL",
-    "record_inference_metrics",
-    # 任务指标
-    "TASK_QUEUE_DEPTH",
-    "TASK_TOTAL",
-    "TASK_DURATION",
-    "update_task_queue_depth",
-    # 缓存指标
-    "CACHE_HITS_TOTAL",
-    "CACHE_MISSES_TOTAL",
-    "CACHE_LOADER_TOTAL",
     "record_hit",
-    "record_miss",
+    "record_inference_metrics",
     "record_loader",
+    "record_miss",
+    "update_task_queue_depth",
 ]

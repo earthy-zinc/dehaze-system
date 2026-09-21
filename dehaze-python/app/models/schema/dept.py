@@ -13,7 +13,7 @@ class DeptForm(BaseModel):
     id: int | None = Field(default=None, description="部门ID")
     parentId: int = Field(..., description="父部门ID")
     name: str = Field(..., min_length=1, max_length=64, description="部门名称")
-    sort: int | None = Field(default=0, ge=0, description="排序(数字越小排名越靠前)")
+    sort: int = Field(default=1, ge=1, description="排序(正整数，数字越小排名越靠前)")
     status: int | None = Field(default=1, ge=0, le=1, description="状态(1-启用；0-禁用)")
 
     name_no_xss_validator = field_validator("name")(validate_no_xss)

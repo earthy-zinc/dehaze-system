@@ -1,4 +1,4 @@
-<!-- Skill 试运行：输入测试数据预览指令执行效果，不入库不推送、不触发真实 LLM 推理 -->
+<!-- Skill 试运行：以 Skill 指令为系统提示词真实推理一次，独立调试会话不入库不推送 -->
 <script lang="ts" setup>
 import { useAdminSkillStore } from "@/store/modules/adminSkill";
 
@@ -8,13 +8,15 @@ const skillStore = useAdminSkillStore();
 const inputText = ref("");
 
 const skill = computed(() => skillStore.testDialog.skill);
-const instruction = computed(() =>
-  String(skillStore.testResult?.instruction ?? "")
+const result = computed(() => skillStore.testResult);
+const instruction = computed(
+  () => result.value?.instruction ?? skill.value?.instruction ?? ""
 );
 const inputPreview = computed(() =>
-  skillStore.testResult
-    ? JSON.stringify(skillStore.testResult.input ?? null, null, 2)
-    : ""
+  result.value ? JSON.stringify(result.value.input ?? null, null, 2) : ""
+);
+const usageText = computed(() =>
+  JSON.stringify(result.value?.usage ?? {}, null, 2)
 );
 
 watch(
@@ -26,16 +28,14 @@ watch(
 
 async function run() {
   const current = skill.value;
-  if (!current) return;
   const text = inputText.value.trim();
+  if (!current || !text) return;
   // 测试输入可填 JSON 结构，也可直接填原始文本
-  let inputData: unknown = text;
-  if (text) {
-    try {
-      inputData = JSON.parse(text);
-    } catch {
-      inputData = text;
-    }
+  let inputData: unknown;
+  try {
+    inputData = JSON.parse(text);
+  } catch {
+    inputData = text;
   }
   await skillStore.testSkill(current.id, inputData);
 }
@@ -53,7 +53,7 @@ async function run() {
       class="mb-3"
       type="info"
       :closable="false"
-      title="试运行仅构造指令与输入预览，不入库、不推送、不触发真实 LLM 推理"
+      title="试运行以该 Skill 指令作为系统提示词真实调用一次模型推理（独立调试会话，不入库、不推送、不污染生产会话）"
     />
     <el-alert
       v-if="skill && skill.status !== 1"
@@ -74,14 +74,24 @@ async function run() {
       </el-form-item>
     </el-form>
 
-    <template v-if="skillStore.testResult">
-      <el-divider content-position="left">预览结果</el-divider>
+    <template v-if="result">
+      <el-divider content-position="left">推理结果</el-divider>
+      <el-form label-width="90px">
+        <el-form-item label="模型输出">
+          <pre class="preview-block">{{
+            result.output || "（未返回内容）"
+          }}</pre>
+        </el-form-item>
+      </el-form>
       <el-collapse>
-        <el-collapse-item title="指令预览" name="instruction">
+        <el-collapse-item title="指令（本次系统提示词）" name="instruction">
           <pre class="preview-block">{{ instruction }}</pre>
         </el-collapse-item>
         <el-collapse-item title="输入预览" name="input">
           <pre class="preview-block">{{ inputPreview }}</pre>
+        </el-collapse-item>
+        <el-collapse-item title="用量" name="usage">
+          <pre class="preview-block">{{ usageText }}</pre>
         </el-collapse-item>
       </el-collapse>
     </template>
@@ -92,7 +102,7 @@ async function run() {
         v-hasPerm="['ai:skill:manage']"
         type="primary"
         :loading="skillStore.testLoading"
-        :disabled="skill?.status !== 1"
+        :disabled="skill?.status !== 1 || !inputText.trim()"
         @click="run"
       >
         运行

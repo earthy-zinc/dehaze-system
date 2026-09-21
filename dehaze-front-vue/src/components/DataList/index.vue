@@ -4,7 +4,7 @@ import {
   Algorithm,
   AlgorithmAPI,
   AlgorithmQuery,
-  Dataset,
+  DatasetVO,
   DatasetAPI,
   DatasetQuery,
 } from "dehaze-sdk-js";
@@ -32,7 +32,7 @@ const queryParams = reactive<any>({
   pageNum: 1,
   pageSize: 20,
 });
-const list = ref<Algorithm[] | Dataset[]>([]);
+const list = ref<Algorithm[] | DatasetVO[]>([]);
 const total = ref(0);
 const selectedId = ref<number>();
 const ids = ref<number[]>([]);
@@ -116,13 +116,13 @@ function loadChildren(
     });
 }
 
-function onRowClick<T extends Algorithm | Dataset>(row: T) {
+function onRowClick<T extends Algorithm | DatasetVO>(row: T) {
   selectedId.value = row.id;
 }
 
 const router = useRouter();
 
-function handleShow<T extends Algorithm | Dataset>(row: T) {
+function handleShow<T extends Algorithm | DatasetVO>(row: T) {
   selectedId.value = row.id;
   router.push(`/dataset/${selectedId.value}`);
 }
@@ -178,7 +178,7 @@ function handleSelectionChange(selection: any) {
 
 const dialogRef = ref();
 
-function openDialog<T extends Algorithm | Dataset>(type: string, dataset: T) {
+function openDialog<T extends Algorithm | DatasetVO>(type: string, dataset: T) {
   dialogRef.value.open(type, dataset);
 }
 
@@ -245,7 +245,7 @@ onMounted(() => {
       <div class="toolbar">
         <el-button
           type="success"
-          @click="openDialog('新增', {} as Algorithm | Dataset)"
+          @click="openDialog('新增', {} as Algorithm | DatasetVO)"
         >
           <el-icon><Plus /></el-icon>
           新增
@@ -344,7 +344,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="handleShow(scope.row as Dataset | Algorithm)"
+              @click="handleShow(scope.row as DatasetVO | Algorithm)"
             >
               <svg-icon icon-class="eye-open" />
               查看
@@ -354,7 +354,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('新增', scope.row as Dataset | Algorithm)"
+              @click="openDialog('新增', scope.row as DatasetVO | Algorithm)"
             >
               <el-icon><Plus /></el-icon>
               新增
@@ -364,7 +364,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('编辑', scope.row as Dataset | Algorithm)"
+              @click="openDialog('编辑', scope.row as DatasetVO | Algorithm)"
             >
               <el-icon><Edit /></el-icon>
               编辑

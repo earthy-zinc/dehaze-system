@@ -1,21 +1,44 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import cast
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
+from langchain.agents.middleware.types import ModelRequest, ModelResponse
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, SystemMessage
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_memory import SysAiMemory
 from app.models.entity.sys_ai_message import SysAiMessage
+from app.models.entity.sys_ai_model import SysAiModel
+from app.models.entity.sys_ai_provider import SysAiProvider
+from app.repository.member_benefit_repository import MemberBenefitRepository
+from app.repository.member_repository import MemberRepository
 from app.service.ai.builders.context_manager import context_manager
-from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.service import memory_injection as injection
+from app.service.ai.service import trace_collector
 from app.service.ai.service.reasoning_service import reasoning_service
-from tests.stubs.fakes import MemberBenefitRepo
+from app.service.ai.service.summary_service import summary_service
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from tests.stubs.factories import make_benefit, make_member, make_orm_mem
+from tests.stubs.fakes import LLMChunk, MemberBenefitRepo
 from tests.stubs.mocks import patch_reasoning_boundaries
 
 pytestmark = pytest.mark.requires_db
+
+
+class _FakeGraph:
+    """create_deep_agent 的替身：真实产物 CompiledStateGraph 可被弱引用，故用可弱引用对象。"""
+
+
+@pytest.fixture(autouse=True)
+def _reset_trace_collector():
+    """窗口测试会启动采集器记录截断事件，结束后重置防泄漏到后续用例"""
+    yield
+    trace_collector._current_collector.set(None)
 
 
 class TestAlwaysOnLimit:
@@ -43,12 +66,15 @@ class TestAlwaysOnLimit:
         monkeypatch.setattr(injection.ai_memory_repository, "touch", _touch)
         monkeypatch.setattr(injection, "search_memories", _empty)
 
-        text, injected = await injection.inject_memories(object(), 1, "处理雾图")
+        text, injected = await injection.inject_memories(
+            AsyncMock(spec=AsyncSession), 1, "处理雾图"
+        )
         prefs_injected = [i for i in injected if i["source"] == "preference"]
         assert len(prefs_injected) == 25
         assert {i["memory_id"] for i in prefs_injected} == set(range(1, 26))
         assert text is not None
-        assert "偏好0" in text and "偏好24" in text
+        assert "偏好0" in text
+        assert "偏好24" in text
 
 
 class TestLayerFilterCompleteness:
@@ -69,7 +95,11 @@ class TestLayerFilterCompleteness:
                 captured["stmt"] = stmt
                 return _Rows()
 
-        await ai_memory_repository.list_preferences(_DB(), 1, limit=20)
+        await ai_memory_repository.list_preferences(
+            cast(AsyncSession, _DB()),  # 替身：_DB 仅实现 execute，无法子类化 AsyncSession
+            1,
+            limit=20,
+        )
         sql = str(captured["stmt"].compile(compile_kwargs={"literal_binds": True}))
         assert "deleted = 0" in sql
         assert "status = 1" in sql
@@ -92,16 +122,22 @@ class TestMultimodalAccumulation:
     async def test_quota_accumulates_across_conversations(self, mock_redis):
         import app.service.ai_artifact_service as mod
 
-        quota = MemberBenefitRepo(member=make_member("level_1"), benefit=make_benefit(multimodal_limit=10))
-        svc = mod.AiArtifactService(member_repository=quota, member_benefit_repository=quota)
+        quota = MemberBenefitRepo(
+            member=make_member("level_1"), benefit=make_benefit(multimodal_limit=10)
+        )
+        # 测试替身：同一对象仅实现 get_by_user_id / get_by_level_code，兼满足会员与权益仓储契约
+        svc = mod.AiArtifactService(
+            member_repository=cast(MemberRepository, quota),  # 替身：tests/stubs 的结构型桩
+            member_benefit_repository=cast(MemberBenefitRepository, quota),  # 替身：同上
+        )
 
         key = "ai:multimodal:1:20260101"
-        svc._visual_quota_key = staticmethod(lambda uid: key)
+        svc._visual_quota_key = staticmethod(lambda user_id: key)
         for _ in range(3):
             ok = await svc._consume_visual_quota(mock_redis, 1, limit=10)
             assert ok is True
 
-        used, limit = await svc.check_visual_quota(None, mock_redis, 1)
+        used, limit = await svc.check_visual_quota(AsyncMock(spec=AsyncSession), mock_redis, 1)
         assert used == 3
         assert limit == 10
 
@@ -123,21 +159,30 @@ class TestSummaryNoReSummarize:
             _get_chain,
         )
 
+        # 窗口起点 41（40 条已被 token 预算裁剪出窗口）：水位 0 → 摘要 1..40
         first = await summary_service._load_messages_to_summarize(
-            None,
-            SimpleNamespace(
-                id=1, summary_upto_message_id=0, current_branch_message_id=60
-            ),
+            AsyncMock(spec=AsyncSession),
+            SimpleNamespace(id=1, summary_upto_message_id=0, current_branch_message_id=60),
+            window_start_id=41,
         )
-        assert first[0]["id"] == 1 and first[-1]["id"] == 40
+        assert first[0]["id"] == 1
+        assert first[-1]["id"] == 40
 
+        # 水位推进到 40 后：窗口外无未摘要消息 → 不再重复压缩
         second = await summary_service._load_messages_to_summarize(
-            None,
-            SimpleNamespace(
-                id=1, summary_upto_message_id=40, current_branch_message_id=60
-            ),
+            AsyncMock(spec=AsyncSession),
+            SimpleNamespace(id=1, summary_upto_message_id=40, current_branch_message_id=60),
+            window_start_id=41,
         )
         assert second == []
+
+        # 窗口覆盖全链（起点为链首消息）：无窗口外消息，不触发压缩
+        third = await summary_service._load_messages_to_summarize(
+            AsyncMock(spec=AsyncSession),
+            SimpleNamespace(id=1, summary_upto_message_id=0, current_branch_message_id=60),
+            window_start_id=1,
+        )
+        assert third == []
 
 
 class TestUsedMemoryIdsE2E:
@@ -148,7 +193,11 @@ class TestUsedMemoryIdsE2E:
         db.add(conv)
         await db.flush()
         user_msg = SysAiMessage(
-            conversation_id=conv.id, parent_message_id=None, role="user", content="处理雾图", status=2
+            conversation_id=conv.id,
+            parent_message_id=None,
+            role="user",
+            content="处理雾图",
+            status=2,
         )
         db.add(user_msg)
         await db.flush()
@@ -170,11 +219,17 @@ class TestUsedMemoryIdsE2E:
         # 常驻偏好记忆（is_preference=1，按重要性倒序注入）
         prefs = [
             SysAiMemory(
-                user_id=1, memory_type="semantic", content="偏好", metadata_={"is_preference": 1},
+                user_id=1,
+                memory_type="semantic",
+                content="偏好",
+                metadata_={"is_preference": 1},
                 importance=90,
             ),
             SysAiMemory(
-                user_id=1, memory_type="semantic", content="习惯", metadata_={"is_preference": 1},
+                user_id=1,
+                memory_type="semantic",
+                content="习惯",
+                metadata_={"is_preference": 1},
                 importance=70,
             ),
         ]
@@ -241,9 +296,13 @@ class TestScenePromptOnConversationCreate:
                 captured["title"] = conv.title
                 return conv
 
-        monkeypatch.setattr(ai_conversation_service, "_resolve_agent_anchor", staticmethod(_resolve))
+        monkeypatch.setattr(
+            ai_conversation_service, "_resolve_agent_anchor", staticmethod(_resolve)
+        )
         monkeypatch.setattr(ai_conversation_service, "ai_conversation_repository", _Repo())
-        result = await ai_conversation_service.create_conversation(SimpleNamespace(info={}), 1, form)
+        result = await ai_conversation_service.create_conversation(
+            AsyncMock(spec=AsyncSession), 1, form
+        )
         return result, captured
 
     async def test_create_conversation_writes_scene_prompt(self, monkeypatch):
@@ -279,7 +338,7 @@ class TestConversationPromptInjection:
 
         def _fake_create_deep_agent(**kwargs):
             captured["system_prompt"] = kwargs["system_prompt"]
-            return object()
+            return _FakeGraph()
 
         monkeypatch.setattr(builder_mod, "create_deep_agent", _fake_create_deep_agent)
 
@@ -324,27 +383,22 @@ class TestConversationPromptInjection:
             async def run_hooks(self, point, state):
                 return None
 
-        monkeypatch.setattr("app.service.ai.middleware.dehaze_hooks_middleware.agent_hooks", _Hooks())
+        monkeypatch.setattr(
+            "app.service.ai.middleware.dehaze_hooks_middleware.agent_hooks", _Hooks()
+        )
 
-        class _Request:
-            state = {"messages": []}
-            system_message = SystemMessage(content="你是 dehaze 助手")
+        request = ModelRequest(
+            model=FakeListChatModel(responses=["ok"]),
+            messages=[],
+            system_message=SystemMessage(content="你是 dehaze 助手"),
+        )
+        seen: dict[str, str] = {}
 
-            def override(self, system_message=None):
-                self.system_message = system_message
-                return self
+        async def _handler(req):
+            seen["system"] = req.system_message.content
+            return ModelResponse(result=[AIMessage(content="ok")])
 
-        class _Resp:
-            def __init__(self):
-                self.result = [AIMessage(content="ok")]
-
-        seen = {}
-
-        async def _handler(request):
-            seen["system"] = request.system_message.content
-            return _Resp()
-
-        await mw.awrap_model_call(request=_Request(), handler=_handler)
+        await mw.awrap_model_call(request=request, handler=_handler)
         assert seen["system"] == "你是 dehaze 助手\n\n请用 RIDCP 算法处理图像"
         assert seen["system"].count("RIDCP") == 1
 
@@ -368,3 +422,184 @@ class TestBuildContextCallCount:
         await db.refresh(asst_msg)
         assert len(calls) == 1  # 单次发送仅执行一次 build_context
         assert asst_msg.status == 2  # 且整条链路真实完成落库
+
+
+def _llm_stream(*chunks):
+    async def _gen(*args, **kwargs):
+        for c in chunks:
+            yield c
+
+    return _gen
+
+
+class TestTokenBudgetWindow:
+    """上下文窗口按模型 token 预算裁剪（替代旧固定 20 条截断），截断事件写过程链"""
+
+    @staticmethod
+    async def _seed_small_model(db) -> str:
+        provider = SysAiProvider(
+            provider_code=f"winprov-{uuid4().hex[:8]}",
+            display_name="窗口测试供应商",
+            api_base_url="http://localhost:9/v1",
+            protocol_type="openai_compat",
+            auth_type="bearer",
+            status=1,
+        )
+        db.add(provider)
+        await db.flush()
+        model = SysAiModel(
+            provider_id=provider.id,
+            model_id="win-m1",
+            display_name="窗口测试模型",
+            max_context_tokens=4000,
+            max_output_tokens=500,
+            status=1,
+        )
+        db.add(model)
+        await db.flush()
+        return model.model_id
+
+    @staticmethod
+    async def _seed_chain(db, conv_id: int, count: int, content: str) -> list[SysAiMessage]:
+        """落库 count 条首尾相接的长消息（每条 1000 token）"""
+        msgs = []
+        parent = None
+        for i in range(count):
+            msg = SysAiMessage(
+                conversation_id=conv_id,
+                parent_message_id=parent,
+                role="user" if i % 2 == 0 else "assistant",
+                content=content,
+                model="win-m1",
+                status=2,
+            )
+            db.add(msg)
+            await db.flush()
+            msgs.append(msg)
+            parent = msg.id
+        return msgs
+
+    async def test_window_trims_oldest_within_budget_and_records_event(self, db, monkeypatch):
+        model_id = await self._seed_small_model(db)
+        conv = SysAiConversation(user_id=1, model=model_id)
+        db.add(conv)
+        await db.flush()
+        # 6 条 × 4000 字符（约 1000 token）：总 6000 token 超出预算（≈1300），从最早裁剪
+        msgs = await self._seed_chain(db, conv.id, 6, "x" * 4000)
+        conv.current_branch_message_id = msgs[-1].id
+        await db.flush()
+
+        monkeypatch.setattr(
+            "app.service.ai.builders.context_manager.inject_memories",
+            AsyncMock(return_value=(None, [])),
+        )
+        collector = trace_collector.start(
+            conversation_id=conv.id, message_id=None, user_id=1, agent_code=None, model_id=model_id
+        )
+        messages, _system_prompt, _injected = await context_manager.build_context(
+            db, conv, model_id
+        )
+
+        # 最早消息被裁出窗口，最新消息保留（本轮输入不空）
+        assert len(messages) < 6
+        assert messages[-1]["id"] == msgs[-1].id
+        assert messages[0]["id"] > msgs[0].id
+        # 截断事件写过程链（消费可观测性：前后 token 与裁剪条数）
+        truncate_events = [e for e in collector.context_events if e.get("event") == "truncate"]
+        assert len(truncate_events) == 1
+        assert truncate_events[0]["count"] == 6 - len(messages)
+        assert truncate_events[0]["before_tokens"] > truncate_events[0]["after_tokens"]
+
+    async def test_window_keeps_all_messages_when_within_budget(self, db, monkeypatch):
+        model_id = await self._seed_small_model(db)
+        conv = SysAiConversation(user_id=1, model=model_id)
+        db.add(conv)
+        await db.flush()
+        msgs = await self._seed_chain(db, conv.id, 3, "y" * 100)  # 总量远小于预算
+        conv.current_branch_message_id = msgs[-1].id
+        await db.flush()
+
+        monkeypatch.setattr(
+            "app.service.ai.builders.context_manager.inject_memories",
+            AsyncMock(return_value=(None, [])),
+        )
+        trace_collector.start(
+            conversation_id=conv.id, message_id=None, user_id=1, agent_code=None, model_id=model_id
+        )
+        messages, _system_prompt, _injected = await context_manager.build_context(
+            db, conv, model_id
+        )
+        assert [m["id"] for m in messages] == [m.id for m in msgs]
+
+
+class TestSummaryOverflowFallback:
+    """摘要保底（§4.1）：窗口外存在未摘要消息即触发压缩，不再依赖 token 阈值"""
+
+    @staticmethod
+    async def _seed_conv_with_chain(db) -> tuple[SysAiConversation, list[SysAiMessage]]:
+        provider = SysAiProvider(
+            provider_code=f"sumprov-{uuid4().hex[:8]}",
+            display_name="摘要测试供应商",
+            api_base_url="http://localhost:9/v1",
+            protocol_type="openai_compat",
+            auth_type="bearer",
+            status=1,
+        )
+        db.add(provider)
+        await db.flush()
+        db.add(
+            SysAiModel(
+                provider_id=provider.id,
+                model_id="sum-m1",
+                display_name="摘要测试模型",
+                max_context_tokens=128000,
+                max_output_tokens=4096,
+                status=1,
+            )
+        )
+        conv = SysAiConversation(user_id=1, model="sum-m1")
+        db.add(conv)
+        await db.flush()
+        parent = None
+        msgs = []
+        for i in range(5):
+            msg = SysAiMessage(
+                conversation_id=conv.id,
+                parent_message_id=parent,
+                role="user" if i % 2 == 0 else "assistant",
+                content=f"消息{i}",
+                model="sum-m1",
+                status=2,
+            )
+            db.add(msg)
+            await db.flush()
+            msgs.append(msg)
+            parent = msg.id
+        conv.current_branch_message_id = msgs[-1].id
+        await db.flush()
+        return conv, msgs
+
+    async def test_overflow_messages_summarized_beyond_watermark(self, db, monkeypatch):
+        """窗口只保留最后 2 条：前 3 条（水位后、窗口外）被增量摘要，水位推进"""
+        conv, msgs = await self._seed_conv_with_chain(db)
+        window_messages = [
+            {"id": msgs[-2].id, "role": "user", "content": "消息3"},
+            {"id": msgs[-1].id, "role": "assistant", "content": "消息4"},
+        ]
+        with patch(
+            "app.service.ai.service.summary_service.llm_client.stream_chat",
+            side_effect=_llm_stream(LLMChunk("text_delta", "这是压缩后的摘要"), LLMChunk("done")),
+        ):
+            await summary_service.maybe_compress(db, conv, "sum-m1", window_messages)
+
+        assert conv.summary == "这是压缩后的摘要"
+        assert conv.summary_upto_message_id == msgs[-3].id
+
+    async def test_no_summary_when_window_covers_all(self, db, monkeypatch):
+        """窗口覆盖全链（无裁剪）：不触发压缩，LLM 不被调用"""
+        conv, msgs = await self._seed_conv_with_chain(db)
+        window_messages = [{"id": m.id, "role": m.role, "content": m.content} for m in msgs]
+        with patch("app.service.ai.service.summary_service.llm_client.stream_chat") as stream:
+            await summary_service.maybe_compress(db, conv, "sum-m1", window_messages)
+        stream.assert_not_called()
+        assert conv.summary is None

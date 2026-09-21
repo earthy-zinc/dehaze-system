@@ -145,6 +145,7 @@ const queryParams = reactive<GrowthLogQuery>({
 const changeTypeOptions: Array<{ value: GrowthChangeType; label: string }> = [
   { value: "process", label: "图像处理" },
   { value: "evaluate", label: "指标评估" },
+  { value: "ai_consume", label: "AI 对话" },
   { value: "rating", label: "评价奖励" },
   { value: "sign_in", label: "每日签到" },
   { value: "sign_in_bonus", label: "签到奖励" },
@@ -222,7 +223,7 @@ onMounted(() => {
   font-size: 12px;
   border-radius: 4px;
 
-  &.tag-dehaze {
+  &.tag-process {
     color: #409eff;
     background: #ecf5ff;
   }
@@ -230,6 +231,11 @@ onMounted(() => {
   &.tag-evaluate {
     color: #13c2c2;
     background: #e6fffb;
+  }
+
+  &.tag-ai_consume {
+    color: #722ed1;
+    background: #f9f0ff;
   }
 
   &.tag-rating {

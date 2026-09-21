@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	datasetStructureByItem   = "by_item"
-	datasetDefaultFileExt    = ".jpg"
-	datasetZipBufferSize     = 8192
+	datasetStructureByItem    = "by_item"
+	datasetDefaultFileExt     = ".jpg"
+	datasetZipBufferSize      = 8192
 	datasetThumbnailSubfolder = "thumbnail"
 )
 
@@ -73,14 +73,14 @@ type emptyDataProvider struct{}
 func (emptyDataProvider) FetchBatch(int, int) [][]interface{} { return nil }
 
 type datasetExportOptions struct {
-	structure       string
-	includeTypes    []string
+	structure        string
+	includeTypes     []string
 	includeThumbnail bool
 }
 
 func parseDatasetOptions(params map[string]interface{}) datasetExportOptions {
 	opts := datasetExportOptions{
-		structure:       datasetStructureByItem,
+		structure:        datasetStructureByItem,
 		includeThumbnail: false,
 	}
 	if optsRaw, ok := params["options"].(map[string]interface{}); ok {
@@ -356,7 +356,7 @@ func buildZipEntryPath(structure, itemName, subfolder string, fileID int64, file
 	baseName := fmt.Sprintf("%d%s", fileID, extension)
 	if structure == datasetStructureByItem {
 		if subfolder != "" {
-			return strings.TrimSpace(itemName+"/"+subfolder+"/"+baseName)
+			return strings.TrimSpace(itemName + "/" + subfolder + "/" + baseName)
 		}
 		return strings.TrimSpace(itemName + "/" + baseName)
 	}

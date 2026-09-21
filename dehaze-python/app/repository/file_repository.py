@@ -81,6 +81,7 @@ class FileRepository(BaseRepository[SysFile]):
         page: int,
         size: int,
         keywords: str | None = None,
+        owner_id: int | None = None,
     ) -> tuple[list[SysFile], int]:
         """
         分页查询文件列表
@@ -88,16 +89,20 @@ class FileRepository(BaseRepository[SysFile]):
         Args:
             page: 页码（从 1 开始）
             size: 每页数量
-            keywords: 搜索关键词（模糊匹配文件名）
+            keywords: 搜索关键词（模糊匹配文件名/类型）
+            owner_id: 归属过滤（普通用户仅见自己上传的文件，None=全量）
 
         Returns:
             (items, total) 元组
         """
         stmt = select(SysFile).order_by(SysFile.create_time.desc())
 
+        if owner_id is not None:
+            stmt = stmt.where(SysFile.create_by == owner_id)
+
         stmt = self.apply_keyword_filter(
             stmt,
-            [SysFile.name],
+            [SysFile.name, SysFile.type],
             keywords,
         )
 
@@ -111,5 +116,6 @@ class FileRepository(BaseRepository[SysFile]):
         stmt = select(SysFile.object_name)
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
+
 
 file_repository = FileRepository()

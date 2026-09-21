@@ -2,6 +2,7 @@ package order
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -54,9 +55,10 @@ func createTestPackage(t *testing.T, db *gorm.DB, levelCode string, salePrice in
 	t.Helper()
 	pkg := &model.SysPackage{
 		Name:          uniqueName("test-pkg"),
-		LevelCode:     levelCode,
-		Period:        "month",
-		PeriodDays:    30,
+		PackageType:   "vip",
+		LevelCode:     sql.NullString{String: levelCode, Valid: true},
+		Period:        sql.NullString{String: "monthly", Valid: true},
+		PeriodDays:    sql.NullInt64{Int64: 30, Valid: true},
 		OriginalPrice: salePrice * 2,
 		SalePrice:     salePrice,
 		Description:   "测试套餐",
@@ -97,16 +99,16 @@ func createTestUserCoupon(t *testing.T, db *gorm.DB, userID, couponID int64) *mo
 func createTestMember(t *testing.T, db *gorm.DB, userID int64, levelCode string, expire *time.Time) *model.SysMember {
 	t.Helper()
 	m := &model.SysMember{
-		UserID:              userID,
-		LevelCode:           levelCode,
-		LevelSource:         "growth",
-		TotalConsumption:    0,
-		ExpireTime:          expire,
-		MonthlyDehazeQuota:  20,
-		MonthlyDehazeUsed:   0,
+		UserID:               userID,
+		LevelCode:            levelCode,
+		LevelSource:          "growth",
+		TotalConsumption:     0,
+		ExpireTime:           expire,
+		MonthlyDehazeQuota:   20,
+		MonthlyDehazeUsed:    0,
 		MonthlyEvaluateQuota: 20,
 		MonthlyEvaluateUsed:  0,
-		Status:              1,
+		Status:               1,
 	}
 	require.NoError(t, db.Create(m).Error)
 	return m
@@ -121,7 +123,8 @@ func createTestOrder(t *testing.T, db *gorm.DB, userID, pkgID int64, couponID *i
 		PackageID:      pkgID,
 		PackageName:    "test-pkg",
 		PackageLevel:   "level_1",
-		PeriodDays:     30,
+		PackageType:    "vip",
+		PeriodDays:     intPtr(30),
 		OriginalPrice:  19900,
 		DiscountAmount: 0,
 		CouponID:       couponID,
@@ -191,7 +194,7 @@ func TestHandlePaymentCallback_Success_FullChain(t *testing.T) {
 	var savedMember model.SysMember
 	require.NoError(t, db.Where("user_id = ?", userID).First(&savedMember).Error)
 	assert.Equal(t, "level_1", savedMember.LevelCode)
-	assert.Equal(t, "package", savedMember.LevelSource)
+	assert.Equal(t, "purchase", savedMember.LevelSource)
 	assert.Equal(t, int64(8900), savedMember.TotalConsumption, "累计消费应加上实付金额")
 	assert.Equal(t, 100, savedMember.MonthlyDehazeQuota, "level_1 权益去雾配额")
 	assert.Equal(t, 100, savedMember.MonthlyEvaluateQuota)
@@ -323,6 +326,8 @@ func TestPay_Balance_Success(t *testing.T) {
 	pkg := createTestPackage(t, db, "level_1", 9900)
 	_ = createTestMember(t, db, userID, "level_0", nil)
 	order := createTestOrder(t, db, userID, pkg.ID, nil, 0, 9900)
+	// 余额支付真实扣减，先预置充足余额
+	require.NoError(t, db.Create(&model.SysBalance{UserID: userID, Balance: 99000}).Error)
 
 	ctx := database.SetUserID(context.Background(), userID)
 	result, err := svc.Pay(ctx, order.OrderNo, &bo.PayRequest{PayMethod: "balance"})
@@ -336,4 +341,8 @@ func TestPay_Balance_Success(t *testing.T) {
 	var savedPkg model.SysPackage
 	require.NoError(t, db.First(&savedPkg, pkg.ID).Error)
 	assert.Equal(t, int64(1), savedPkg.SalesCount, "支付成功套餐销量应 +1")
+}
+
+func intPtr(v int) *int {
+	return &v
 }

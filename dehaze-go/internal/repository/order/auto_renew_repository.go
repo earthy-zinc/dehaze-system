@@ -45,13 +45,13 @@ func (r *AutoRenewRepository) Upsert(ctx context.Context, ar *model.SysAutoRenew
 	return r.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "user_id"}, {Name: "package_id"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"status":         ar.Status,
-			"pay_method":     ar.PayMethod,
+			"status":          ar.Status,
+			"pay_method":      ar.PayMethod,
 			"next_renew_time": ar.NextRenewTime,
-			"fail_count":     0,
-			"close_reason":   ar.CloseReason,
-			"deleted":        0,
-			"update_time":    now,
+			"fail_count":      0,
+			"close_reason":    ar.CloseReason,
+			"deleted":         0,
+			"update_time":     now,
 		}),
 	}).Create(ar).Error
 }

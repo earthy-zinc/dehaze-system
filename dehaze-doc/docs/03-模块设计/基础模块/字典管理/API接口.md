@@ -47,7 +47,7 @@
 | `sys:dict:data:delete` | 删除字典数据 |
 | - | 字典查询接口登录用户即可访问 |
 
-> **业务规则**：字典类型 `code` 与字典数据 `typeCode` 创建后只读（尝试修改返回 `A0503`）；系统预置字典类型（如 gender 等种子类型）不可删除（返回 `A0503`）；字典新增 `sort` 默认 1；下拉选项 `GET /dict/{typeCode}/options` 仅返回启用（status=1）字典项，且当所属字典类型被禁用（status=0）时整体不返回。
+> **业务规则**：字典类型 `code` 与字典数据 `typeCode` 创建后只读（尝试修改返回 `A0503`）；系统预置字典类型（如 gender 等种子类型）不可删除（返回 `A0503`）；字典类型分页与表单响应携带 `isPreset` 字段供前端 UI 保护；字典新增 `sort` 默认 1（正整数）；下拉选项 `GET /dict/{typeCode}/options` 仅返回启用（status=1）字典项，且当所属字典类型被禁用（status=0）时整体不返回；字典类型/字典数据分页接口均支持 `status` 筛选参数；删除为逻辑删除（`deleted` 写为行 id），软删行不占唯一键位（`uk_code`、`uk_type_name` 均含 `deleted`），删除后可重建同唯一键。
 
 ## 4. 业务错误码
 

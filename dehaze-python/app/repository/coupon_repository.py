@@ -92,9 +92,7 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_active_trial_coupon(
-        self, db: AsyncSession, user_id: int
-    ) -> SysUserCoupon | None:
+    async def get_active_trial_coupon(self, db: AsyncSession, user_id: int) -> SysUserCoupon | None:
         """查询用户持有的有效体验券（未使用且未过期），取最晚到期的一张。"""
         stmt = (
             select(SysUserCoupon)
@@ -205,7 +203,7 @@ class UserCouponRepository(BaseRepository[SysUserCoupon]):
                 SysUserCoupon.status == 1,
                 SysUserCoupon.deleted == 0,
             )
-            .values(deleted=1)
+            .values(deleted=SysUserCoupon.id)
         )
         await db.execute(stmt)
         await db.flush()

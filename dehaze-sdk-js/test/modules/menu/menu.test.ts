@@ -1,4 +1,4 @@
-import { MenuAPI, MenuForm, MenuVO } from "../../../index";
+import { MenuAPI, MenuForm, MenuVO, RouteVO } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createMenuForm, createMenuQuery, createMenuChain } from "#/factories/menu";
 import { uniqueCode } from "#/factories/common";
@@ -22,6 +22,31 @@ function findMenu(menus: MenuVO[], predicate: (menu: MenuVO) => boolean): MenuVO
 /** 在菜单树中按名称递归查找菜单 */
 function findMenuByName(menus: MenuVO[], name: string): MenuVO | null {
   return findMenu(menus, (menu) => menu.name === name);
+}
+
+/** 递归收集路由树中的全部 path */
+function collectRoutePaths(routes: RouteVO[]): string[] {
+  const paths: string[] = [];
+  const traverse = (list: RouteVO[]) => {
+    list.forEach((r) => {
+      if (typeof r.path === "string" && r.path.length > 0) paths.push(r.path);
+      if (r.children && r.children.length > 0) traverse(r.children);
+    });
+  };
+  traverse(routes);
+  return paths;
+}
+
+/** 在路由树中按 path 递归查找路由 */
+function findRouteByPath(routes: RouteVO[], path: string): RouteVO | null {
+  for (const r of routes) {
+    if (r.path === path) return r;
+    if (r.children && r.children.length > 0) {
+      const found = findRouteByPath(r.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 describe("菜单管理接口测试", () => {
@@ -157,25 +182,33 @@ describe("菜单管理接口测试", () => {
       verifyKeyword(result, searchKeyword);
     });
 
-    test("正向测试：按权限标识筛选菜单", async () => {
-      // 自建带 perm 的按钮类型菜单（type=4），确保筛选有可断言的目标
+    test("正向测试：按权限标识筛选菜单（命中目标且排除无关菜单）", async () => {
+      // 自建两个不同 perm 的按钮菜单，验证 perm 模糊筛选真正生效（T-MM-007）
       const parentId = await createMenuAndGetId(
         createMenuForm({ parentId: 0, type: MenuTypeEnum.MENU })
       );
-      const permValue = uniqueCode("test:perm");
-      const buttonForm = createMenuForm({
-        parentId,
-        type: MenuTypeEnum.BUTTON,
-        perm: permValue,
-      });
-      await createMenuAndGetId(buttonForm);
+      const permA = uniqueCode("test:perm");
+      const permB = uniqueCode("test:perm");
+      const buttonAId = await createMenuAndGetId(
+        createMenuForm({ parentId, type: MenuTypeEnum.BUTTON, perm: permA })
+      );
+      const buttonBId = await createMenuAndGetId(
+        createMenuForm({ parentId, type: MenuTypeEnum.BUTTON, perm: permB })
+      );
 
-      const result = await MenuAPI.getList(createMenuQuery({ perm: permValue }));
-      expect(result.length).toBeGreaterThan(0);
+      const result = await MenuAPI.getList(createMenuQuery({ perm: permA }));
 
-      // 筛选结果中应能找到该按钮菜单
-      const found = findMenu(result, (m) => m.perm === permValue);
-      expect(found).not.toBeNull();
+      const ids: number[] = [];
+      const collectIds = (menus: MenuVO[]) => {
+        menus.forEach((m) => {
+          if (m.id) ids.push(m.id);
+          if (m.children) collectIds(m.children);
+        });
+      };
+      collectIds(result);
+
+      expect(ids).toContain(buttonAId);
+      expect(ids).not.toContain(buttonBId);
     });
 
     test("正向测试：按菜单类型筛选菜单", async () => {
@@ -585,30 +618,132 @@ describe("菜单管理接口测试", () => {
     });
 
     test("特殊字符菜单名称不应污染存储", async () => {
-      const specialName = "测试<>&\"'菜单";
+      // 名称唯一生成：删除为逻辑删除且重名校验含软删行，固定名称跨运行复创必撞 A0501
+      const specialName = `测试<>&"'菜单${uniqueCode("t")}`;
       const form = createMenuForm({ name: specialName, parentId: 0 });
-
-      // 清理历史运行残留的同名菜单，避免重复数据
-      const existingList = await MenuAPI.getList(createMenuQuery());
-      for (const m of existingList) {
-        if (m.name === specialName && m.id) {
-          try {
-            await MenuAPI.deleteByIds(String(m.id));
-          } catch {
-            // 可能已被删除，忽略
-          }
-        }
-      }
 
       await MenuAPI.add(form);
 
-      const menuList = await MenuAPI.getList(createMenuQuery());
-      const found = menuList.find((m) => m.name === specialName);
-      expect(found).toBeDefined();
+      const menuList = await MenuAPI.getList(createMenuQuery({ keywords: specialName }));
+      const found = findMenuByName(menuList, specialName);
+      expect(found).not.toBeNull();
       if (found?.id) {
         createdMenuIds.push(found.id);
         expect(found.name).not.toMatch(/<[^>]+>/);
       }
+    });
+  });
+
+  describe("参数边界与对抗性语料", () => {
+    test("边界：菜单名称长度上限 64 字符应创建成功且原样存储", async () => {
+      // 唯一后缀占位，避免逻辑删除软删行导致的跨运行重名 A0501
+      const suffix = uniqueCode("n");
+      const name64 = "m".repeat(64 - suffix.length) + suffix;
+      const form = createMenuForm({ name: name64, parentId: 0 });
+      const id = await createMenuAndGetId(form);
+      const info = await MenuAPI.getFormData(id);
+      expect(info.name).toBe(name64);
+    });
+
+    test("参数校验：超长菜单名称（65 字符）应被拒绝", async () => {
+      const form = createMenuForm({ name: "m".repeat(65), parentId: 0 });
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("对抗性脏语料名称应原样存储（全半角/CRLF/BOM/零宽/emoji/注入特征）", async () => {
+      const parentId = await createMenuAndGetId(
+        createMenuForm({ parentId: 0, type: MenuTypeEnum.MENU })
+      );
+      // 各名称附加唯一可见后缀：MySQL utf8mb4 ai_ci 排序规则将 BOM/零宽字符视为
+      // ignorable，纯零宽差异的同父名称会被重名校验判重（防伪装，合理行为）
+      const dirtyNames = [
+        `ＭＥＮＵ／测试${uniqueCode("t")}`, // 全角字符
+        `menu\r\n测试${uniqueCode("t")}`, // CRLF
+        `\uFEFFmenu测试${uniqueCode("t")}`, // BOM
+        `menu\u200B测试${uniqueCode("t")}`, // 零宽空格
+        `菜单🚀🧪test${uniqueCode("t")}`, // emoji
+        `menu'"-- ;测试${uniqueCode("t")}`, // SQL 注入特征字符（应被参数化查询安全处理）
+      ];
+      for (const name of dirtyNames) {
+        const form = createMenuForm({ parentId, type: MenuTypeEnum.MENU, name });
+        const id = await createMenuAndGetId(form);
+        const info = await MenuAPI.getFormData(id);
+        expect(info.name).toBe(name);
+      }
+    });
+
+    test("边界：sort=0 允许（排在同级最前，T-MM-052）", async () => {
+      const form = createMenuForm({ parentId: 0, sort: 0 });
+      const id = await createMenuAndGetId(form);
+      const info = await MenuAPI.getFormData(id);
+      expect(info.sort).toBe(0);
+    });
+
+    test("参数校验：sort 为负数应被拒绝（T-MM-051）", async () => {
+      const form = createMenuForm({ parentId: 0, sort: -1 });
+      await expectBizError(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("参数校验：显示状态 visible=2 应被拒绝", async () => {
+      const id = await createMenuAndGetId(createMenuForm({ parentId: 0 }));
+      await expectBizError(MenuAPI.updateVisible(id, 2), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+  });
+
+  describe("路由过滤与缓存失效链路", () => {
+    test("验证：隐藏菜单路由以 meta.hidden 标记，恢复显示后解除（T-MM-059）", async () => {
+      // 行为变更：隐藏菜单保留在路由列表中（前端可做灰度/隐藏展示），由 meta.hidden 标记
+      const form = createMenuForm({ parentId: 0, type: MenuTypeEnum.MENU });
+      const id = await createMenuAndGetId(form);
+
+      await MenuAPI.updateVisible(id, 0);
+      let hit = findRouteByPath(await MenuAPI.getRoutes(), form.path!);
+      expect(hit).not.toBeNull();
+      expect(hit!.meta?.hidden).toBe(true);
+
+      await MenuAPI.updateVisible(id, 1);
+      hit = findRouteByPath(await MenuAPI.getRoutes(), form.path!);
+      expect(hit).not.toBeNull();
+      expect(hit!.meta?.hidden).toBe(false);
+    });
+
+    test("验证：删除菜单后路由缓存失效，不再返回该路由（T-MM-042）", async () => {
+      const form = createMenuForm({ parentId: 0, type: MenuTypeEnum.MENU });
+      const id = await createMenuAndGetId(form);
+
+      expect(collectRoutePaths(await MenuAPI.getRoutes())).toContain(form.path!);
+
+      await MenuAPI.deleteByIds(String(id));
+      const idx = createdMenuIds.indexOf(id);
+      if (idx >= 0) createdMenuIds.splice(idx, 1);
+
+      expect(collectRoutePaths(await MenuAPI.getRoutes())).not.toContain(form.path!);
+    });
+
+    test("回归：批量删除重复 ID 应去重成功而非误报菜单不存在（T-MM-044）", async () => {
+      // 曾暴露缺陷：count_by_ids 去重计数与 len(menu_ids) 比对不一致 → 误报 A0401，已修复
+      const id = await createMenuAndGetId(createMenuForm({ parentId: 0 }));
+      await MenuAPI.deleteByIds(`${id},${id}`);
+      await expectBizError(MenuAPI.getFormData(id), ["A0401"]);
+    });
+
+    test("回归：删除非数字 ID 应返回参数错误 A0400 而非 500", async () => {
+      // 曾暴露缺陷：int() 转换未捕获 ValueError → 500，已修复为 A0400
+      await expectBizError(MenuAPI.deleteByIds("abc"), ["A0400"]);
+    });
+  });
+
+  describe("路由 meta.roles 角色可见性标注（T-MM-062）", () => {
+    test("新建菜单路由 meta.roles 仅含默认分配的 ROOT+ADMIN，不含未分配角色", async () => {
+      // 契约：/menus/routes 返回全量路由，每条路由 meta.roles 标注可见角色编码，
+      // 前端按当前用户角色过滤（后端不按用户裁剪，安全性依赖 meta.roles 标注正确）
+      const form = createMenuForm({ parentId: 0, type: MenuTypeEnum.MENU });
+      await createMenuAndGetId(form);
+
+      const hit = findRouteByPath(await MenuAPI.getRoutes(), form.path!);
+      expect(hit).not.toBeNull();
+      expect(hit!.meta?.roles).toEqual(["ADMIN", "ROOT"]);
+      expect(hit!.meta?.roles).not.toContain("USER");
     });
   });
 

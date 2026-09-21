@@ -41,8 +41,7 @@ class LowQualityService:
         )
         return {
             "list": [
-                LowQualityChunkVO(**row).model_dump(mode="json", by_alias=True)
-                for row in rows
+                LowQualityChunkVO(**row).model_dump(mode="json", by_alias=True) for row in rows
             ],
             "total": total,
         }

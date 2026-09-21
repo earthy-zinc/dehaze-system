@@ -97,15 +97,11 @@ async def execute_task_background(
                         else:
                             if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
                                 metrics_ctx.set_status("failed")
-                            await update_task_failed(
-                                db, redis, task_id, "任务执行未返回结果"
-                            )
+                            await update_task_failed(db, redis, task_id, "任务执行未返回结果")
 
                 except asyncio.CancelledError:
                     logger.warning("任务被取消（服务关闭）: taskId=%s", task_id)
-                    await update_task_failed(
-                        db, redis, task_id, "服务关闭，任务中断"
-                    )
+                    await update_task_failed(db, redis, task_id, "服务关闭，任务中断")
                     raise
 
                 except TaskCancelledException:

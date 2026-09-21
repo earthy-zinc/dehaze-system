@@ -1,14 +1,24 @@
 import json
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
-
-pytestmark = pytest.mark.requires_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.entity.sys_ai_billing import SysAiBilling
+from app.models.entity.sys_ai_credit_log import SysAiCreditLog
+from app.models.entity.sys_member import SysMember
+from app.models.entity.sys_member_benefit import SysMemberBenefit
+from app.repository.ai_billing_repository import AiBillingRepository
+from app.repository.ai_credit_log_repository import AiCreditLogRepository
+from app.repository.ai_model_repository import AiModelRepository
+from app.repository.member_benefit_repository import MemberBenefitRepository
+from app.repository.member_repository import MemberRepository
+from app.service.ai_model_price_service import AiModelPriceService
 from app.service.billing import balance_service as bm
 from app.service.billing import bill_service as blm
 from app.service.billing import billing_anomaly_service as am
@@ -18,30 +28,129 @@ from app.service.billing import quota_service as qm
 from app.service.billing import rate_provider as rpm
 from app.service.billing import refund_service as rf
 from app.service.billing.quota_service import _quota_keys_and_ttl
+from app.service.billing.rate_provider import RateProvider
 from tests.stubs.fakes import StubAsyncSession
 
+pytestmark = pytest.mark.requires_db
 
-def _member_benefit(daily=10000, monthly=100000, status=1):
-    return SimpleNamespace(
-        status=status, ai_credits_daily=daily, ai_credits_monthly=monthly
-    )
+# 直连测试的 db 替身：仓储被 mock、db 不真正落库，用真实会话实例占位
+_DB = AsyncSession()
+_NO_DB = cast(AsyncSession, None)  # 替身：settle 据 db is None 跳过成本回填（保持 None 语义）
 
 
-def _quota_svc(member="exists", benefit=None):
-    """构造注入 mock 仓储的 QuotaService（member=None 表示无会员记录）"""
-    member_obj = SimpleNamespace(level_code="level_0") if member else None
-    benefit_obj = _member_benefit() if benefit is None else benefit
+class _MemberRepo(MemberRepository):
+    """测试替身：仅覆写 get_by_user_id（返回注入的会员记录）。"""
+
+    def __init__(self, member=None):
+        self._member = member
+
+    async def get_by_user_id(self, db, user_id):
+        return self._member
+
+
+class _BenefitRepo(MemberBenefitRepository):
+    """测试替身：仅覆写 get_by_level_code（返回注入的权益配置）。"""
+
+    def __init__(self, benefit=None):
+        self._benefit = benefit
+
+    async def get_by_level_code(self, db, level_code):
+        return self._benefit
+
+
+class _AiModelRepo(AiModelRepository):
+    """测试替身：仅覆写 get_by_model_id（返回注入模型并记录调用次数）。"""
+
+    def __init__(self, model=None):
+        self._model = model
+        self.calls = 0
+
+    async def get_by_model_id(self, db, model_id):
+        self.calls += 1
+        return self._model
+
+
+class _PriceService(AiModelPriceService):
+    """测试替身：仅覆写 calculate（返回注入售价结果）。"""
+
+    def __init__(self, result=None):
+        self._result = result or {"credits": 0, "credits_saved": 0, "configured": False}
+
+    async def calculate(self, *args, **kwargs):
+        return self._result
+
+
+class _RateProvider(RateProvider):
+    """测试替身：仅覆写 get_rates（返回注入费率）。"""
+
+    def __init__(self, rates):
+        self._rates = rates
+
+    async def get_rates(self, db, model_id):
+        return self._rates
+
+
+class _BillingRepo(AiBillingRepository):
+    """测试替身：仅覆写 list_by_message/update（内存计费记录）。"""
+
+    def __init__(self, billing: SysAiBilling):
+        self._billing = billing
+
+    async def list_by_message(self, db, message_id):
+        return [self._billing]
+
+    async def update(self, db, entity, data):
+        for k, v in data.items():
+            setattr(entity, k, v)
+        return entity
+
+
+class _CreditLogRepo(AiCreditLogRepository):
+    """测试替身：仅覆写 create_log（落一条内存流水并返回）。"""
+
+    async def create_log(
+        self,
+        db,
+        *,
+        user_id,
+        source,
+        amount,
+        balance_after,
+        related_id=None,
+        reason=None,
+        operator_id=None,
+    ):
+        return SysAiCreditLog(
+            user_id=user_id,
+            source=source,
+            amount=amount,
+            balance_after=balance_after,
+            related_id=related_id,
+            reason=reason,
+            operator_id=operator_id,
+        )
+
+
+def _member_benefit(daily=10000, monthly=100000, status=1) -> SysMemberBenefit:
+    return SysMemberBenefit(status=status, ai_credits_daily=daily, ai_credits_monthly=monthly)
+
+
+_DEFAULT = "default"
+
+
+def _quota_svc(member: object = "exists", benefit: object = _DEFAULT):
+    """构造注入 mock 仓储的 QuotaService（member=None 表示无会员记录；
+    benefit=None 表示权益未配置）
+    """
+    member_obj = SysMember(level_code="level_0") if member else None
+    benefit_obj = _member_benefit() if benefit is _DEFAULT else benefit
     return qm.QuotaService(
-        member_repository=SimpleNamespace(
-            get_by_user_id=AsyncMock(return_value=member_obj)
-        ),
-        member_benefit_repository=SimpleNamespace(
-            get_by_level_code=AsyncMock(return_value=benefit_obj)
-        ),
+        member_repository=_MemberRepo(member_obj),
+        member_benefit_repository=_BenefitRepo(benefit_obj),
     )
 
 
-def _quota_setup(mock_redis, benefit=None, member="exists"):
+def _quota_setup(mock_redis, benefit: object = _DEFAULT, member: object = "exists"):
     return mock_redis, _quota_svc(member=member, benefit=benefit)
 
 
@@ -49,15 +158,8 @@ class TestRateCalculate:
     @staticmethod
     def _rate_svc(price_result=None):
         return rpm.RateProvider(
-            ai_model_repository=SimpleNamespace(
-                get_by_model_id=AsyncMock(return_value=None)
-            ),
-            ai_model_price_service=SimpleNamespace(
-                calculate=AsyncMock(
-                    return_value=price_result
-                    or {"credits": 0, "credits_saved": 0, "configured": False}
-                )
-            ),
+            ai_model_repository=_AiModelRepo(),
+            ai_model_price_service=_PriceService(price_result),
         )
 
     async def test_calculate_delegates_to_price_service(self):
@@ -84,11 +186,11 @@ class TestRateCalculate:
                 '"cached_rate": 1.0, "max_output_tokens": 1024}'
             }
         )
-        repo = SimpleNamespace(get_by_model_id=AsyncMock())
+        repo = _AiModelRepo()
         svc = rpm.RateProvider(ai_model_repository=repo)
         rates = await svc.get_rates(None, "gpt-4o")
         assert rates["input_rate"] == 2.0
-        repo.get_by_model_id.assert_not_called()
+        assert repo.calls == 0
 
 
 class TestQuotaService:
@@ -96,45 +198,67 @@ class TestQuotaService:
         redis, svc = _quota_setup(mock_redis)
         daily_key, _, _, _ = _quota_keys_and_ttl(1)
         await redis.set(daily_key, "9000")
-        assert not await svc.check_quota(None, 1, 3000)
+        assert not await svc.check_quota(_DB, 1, 3000)
 
     async def test_check_quota_monthly_exceeded(self, mock_redis):
         redis, svc = _quota_setup(mock_redis)
         _, monthly_key, _, _ = _quota_keys_and_ttl(1)
         await redis.set(monthly_key, "98000")
-        assert not await svc.check_quota(None, 1, 3000)
+        assert not await svc.check_quota(_DB, 1, 3000)
 
     async def test_check_quota_sufficient(self, mock_redis):
         _, svc = _quota_setup(mock_redis)
-        assert await svc.check_quota(None, 1, 3000)
+        assert await svc.check_quota(_DB, 1, 3000)
 
     async def test_check_quota_zero_limit_means_unlimited(self, mock_redis):
-        redis, svc = _quota_setup(mock_redis, member=None)
+        redis, svc = _quota_setup(mock_redis, benefit=_member_benefit(daily=0, monthly=0))
         daily_key, monthly_key, _, _ = _quota_keys_and_ttl(1)
         await redis.set(daily_key, "999999999")
         await redis.set(monthly_key, "999999999")
-        assert await svc.check_quota(None, 1, 3000) is True
+        assert await svc.check_quota(_DB, 1, 3000) is True
 
     async def test_get_limits_no_member(self):
         svc = _quota_svc(member=None)
-        assert await svc.get_limits(None, 1) == (0, 0)
+        assert await svc.get_limits(_DB, 1) is None
+
+    async def test_get_limits_missing_benefit(self):
+        svc = _quota_svc(benefit=None)
+        assert await svc.get_limits(_DB, 1) is None
 
     async def test_get_limits_disabled_benefit(self):
         svc = _quota_svc(benefit=_member_benefit(status=0))
-        assert await svc.get_limits(None, 1) == (0, 0)
+        assert await svc.get_limits(_DB, 1) is None
+
+    async def test_check_quota_fail_closed_without_member(self, mock_redis):
+        """fail-closed：无会员记录（权益缺失）时配额校验拒绝"""
+        _redis, svc = _quota_setup(mock_redis, member=None)
+        assert await svc.check_quota(_DB, 1, 1) is False
+
+    async def test_check_quota_fail_closed_disabled_benefit(self, mock_redis):
+        """fail-closed：权益停用时配额校验拒绝"""
+        _redis, svc = _quota_setup(mock_redis, benefit=_member_benefit(status=0))
+        assert await svc.check_quota(_DB, 1, 1) is False
+
+    async def test_pre_deduct_fail_closed_no_redis_side_effect(self, mock_redis):
+        """fail-closed：权益缺失时预扣拒绝且不写任何 Redis 键"""
+        redis, svc = _quota_setup(mock_redis, member=None)
+        assert await svc.pre_deduct(_DB, 1, 100) is False
+        daily_key, monthly_key, _, _ = _quota_keys_and_ttl(1)
+        assert await redis.get(daily_key) is None
+        assert await redis.get(monthly_key) is None
 
     async def test_pre_deduct_insufficient(self, mock_redis):
         redis, svc = _quota_setup(mock_redis)
         daily_key, monthly_key, _, _ = _quota_keys_and_ttl(1)
         await redis.set(daily_key, "9000")
-        assert not await svc.pre_deduct(None, 1, 2000)
+        assert not await svc.pre_deduct(_DB, 1, 2000)
         assert int(await redis.get(daily_key)) == 9000
         assert await redis.get(monthly_key) is None
 
     async def test_pre_deduct_sufficient(self, mock_redis):
         redis, svc = _quota_setup(mock_redis)
         daily_key, monthly_key, _, _ = _quota_keys_and_ttl(1)
-        assert await svc.pre_deduct(None, 1, 2000)
+        assert await svc.pre_deduct(_DB, 1, 2000)
         assert int(await redis.get(daily_key)) == 2000
         assert int(await redis.get(monthly_key)) == 2000
 
@@ -142,7 +266,7 @@ class TestQuotaService:
 class TestBalanceService:
     async def test_pre_deduct_insufficient_rollback(self, mock_redis):
         await mock_redis.mset({"ai:balance:1": "100"})
-        ok = await bm.balance_service.pre_deduct(None, 1, 300)
+        ok = await bm.balance_service.pre_deduct(_DB, 1, 300)
         assert not ok
         assert int(await mock_redis.get("ai:balance:1")) == 100
 
@@ -157,7 +281,7 @@ class TestBalanceService:
         from app.repository.ai_credit_log_repository import ai_credit_log_repository as log_repo
 
         monkeypatch.setattr(log_repo, "create_log", AsyncMock(return_value=None))
-        await bm.balance_service.deduct(None, 1, 300)
+        await bm.balance_service.deduct(_DB, 1, 300)
         assert int(await mock_redis.get("ai:balance:1")) == 0
         assert int(await mock_redis.get("ai:arrears:1")) == 1
         assert cas["amount"] == 100
@@ -173,9 +297,11 @@ class TestBalanceService:
         from app.repository.ai_credit_log_repository import ai_credit_log_repository as log_repo
 
         monkeypatch.setattr(log_repo, "create_log", _create_log)
-        await bm.balance_service.increase(None, 1, 500, source="recharge")
+        await bm.balance_service.increase(_DB, 1, 500, source="recharge")
         assert await mock_redis.get("ai:arrears:1") is None
-        assert logs and logs[0]["source"] == "recharge" and logs[0]["amount"] == 500
+        assert logs
+        assert logs[0]["source"] == "recharge"
+        assert logs[0]["amount"] == 500
 
     async def test_is_arrears(self, mock_redis):
         await mock_redis.set("ai:arrears:1", "1")
@@ -186,22 +312,31 @@ class TestBalanceService:
 class TestPreCharge:
     @staticmethod
     def _patch_base(monkeypatch, estimated=1000):
+        mocks = {
+            "check_quota": AsyncMock(return_value=True),
+            "pre_deduct": AsyncMock(return_value=True),
+            "balance_pre_deduct": AsyncMock(return_value=True),
+        }
         monkeypatch.setattr(
             bs.estimate_service, "estimate_credits", AsyncMock(return_value=estimated)
         )
         monkeypatch.setattr(
-            bs.ai_billing_repository, "create_billing", AsyncMock(return_value=SimpleNamespace(id=99))
+            bs.ai_billing_repository,
+            "create_billing",
+            AsyncMock(return_value=SimpleNamespace(id=99)),
         )
         monkeypatch.setattr(bs.balance_service, "is_arrears", AsyncMock(return_value=False))
-        monkeypatch.setattr(bs.quota_service, "check_quota", AsyncMock(return_value=True))
+        monkeypatch.setattr(bs.quota_service, "get_limits", AsyncMock(return_value=(10000, 100000)))
+        monkeypatch.setattr(bs.quota_service, "check_quota", mocks["check_quota"])
         monkeypatch.setattr(bs.balance_service, "check_balance", AsyncMock(return_value=True))
-        monkeypatch.setattr(bs.quota_service, "pre_deduct", AsyncMock(return_value=True))
-        monkeypatch.setattr(bs.balance_service, "pre_deduct", AsyncMock(return_value=True))
+        monkeypatch.setattr(bs.quota_service, "pre_deduct", mocks["pre_deduct"])
+        monkeypatch.setattr(bs.balance_service, "pre_deduct", mocks["balance_pre_deduct"])
+        return mocks
 
     async def test_arrears_blocks(self, monkeypatch):
         self._patch_base(monkeypatch)
         monkeypatch.setattr(bs.balance_service, "is_arrears", AsyncMock(return_value=True))
-        result = await bs.billing_service.pre_charge(None, 1, 2, 3, "hi", "gpt-4o")
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
         assert result["stop_reason"] == "arrears"
 
     async def test_quota_fail_records_anomaly(self, monkeypatch):
@@ -213,14 +348,24 @@ class TestPreCharge:
             fail_calls.append(uid)
 
         monkeypatch.setattr(bs.billing_anomaly_service, "record_quota_fail", _fail)
-        result = await bs.billing_service.pre_charge(None, 1, 2, 3, "hi", "gpt-4o")
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
         assert result["stop_reason"] == "quota_exceeded"
         assert fail_calls == [1]
+
+    async def test_missing_benefit_fail_closed(self, monkeypatch):
+        """fail-closed：权益数据缺失/停用时预校验拒绝且不做配额/余额扣减"""
+        mocks = self._patch_base(monkeypatch)
+        monkeypatch.setattr(bs.quota_service, "get_limits", AsyncMock(return_value=None))
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
+        assert result["stop_reason"] == "quota_exceeded"
+        mocks["check_quota"].assert_not_called()
+        mocks["pre_deduct"].assert_not_called()
+        mocks["balance_pre_deduct"].assert_not_called()
 
     async def test_balance_insufficient_blocks(self, monkeypatch):
         self._patch_base(monkeypatch)
         monkeypatch.setattr(bs.balance_service, "check_balance", AsyncMock(return_value=False))
-        result = await bs.billing_service.pre_charge(None, 1, 2, 3, "hi", "gpt-4o")
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
         assert result["stop_reason"] == "balance_exceeded"
 
     async def test_balance_prededuct_fail_rolls_back_quota(self, monkeypatch):
@@ -232,13 +377,13 @@ class TestPreCharge:
             refunds.append(c)
 
         monkeypatch.setattr(bs.quota_service, "refund", _refund)
-        result = await bs.billing_service.pre_charge(None, 1, 2, 3, "hi", "gpt-4o")
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
         assert result["stop_reason"] == "balance_exceeded"
         assert refunds == [1000]
 
     async def test_success_returns_context(self, monkeypatch):
         self._patch_base(monkeypatch, estimated=2000)
-        result = await bs.billing_service.pre_charge(None, 1, 2, 3, "hi", "gpt-4o")
+        result = await bs.billing_service.pre_charge(_DB, 1, 2, 3, "hi", "gpt-4o")
         assert result["billing_id"] == 99
         assert result["budget_pool"] == 2000
         assert result["remaining_budget"] == 2000
@@ -247,19 +392,8 @@ class TestPreCharge:
 class TestSettleDiff:
     @staticmethod
     def _patch_settle(monkeypatch, actual_credits, billing=None):
-        billing = billing or SimpleNamespace(
-            id=1, pre_deduct=2000, bill_type="chat", user_id=1
-        )
+        billing = billing or SysAiBilling(id=1, pre_deduct=2000, bill_type="chat", user_id=1)
         ops = {"quota_refund": 0, "balance_refund": 0, "quota_deduct": 0, "balance_deduct": 0}
-
-        class _Repo:
-            async def list_by_message(self, db, mid):
-                return [billing]
-
-            async def update(self, db, entity, data):
-                for k, v in data.items():
-                    setattr(entity, k, v)
-                return entity
 
         class _Quota:
             async def refund(self, uid, c):
@@ -286,15 +420,16 @@ class TestSettleDiff:
                 return None
 
         svc = bs.BillingService(
-            ai_billing_repository=_Repo(),
-            ai_credit_log_repository=SimpleNamespace(create_log=AsyncMock(return_value=None)),
+            ai_billing_repository=_BillingRepo(billing),
+            ai_credit_log_repository=_CreditLogRepo(),
         )
         # 服务引用仍为方法体内模块级查找，故 patch 模块对象 bs
         monkeypatch.setattr(
-            bs, "rate_provider",
-            SimpleNamespace(calculate=AsyncMock(return_value=
-                {"credits": actual_credits, "credits_saved": 0}
-            )),
+            bs,
+            "rate_provider",
+            SimpleNamespace(
+                calculate=AsyncMock(return_value={"credits": actual_credits, "credits_saved": 0})
+            ),
         )
         monkeypatch.setattr(bs, "quota_service", _Quota())
         monkeypatch.setattr(bs, "balance_service", _Balance())
@@ -304,34 +439,41 @@ class TestSettleDiff:
     async def test_overestimate_refunds_difference(self, monkeypatch):
         svc, ops = self._patch_settle(monkeypatch, actual_credits=1500)
         result = await svc.settle(
-            None, 1, 2, 3, "gpt-4o", None, {"input_tokens": 100, "output_tokens": 50}
+            _NO_DB, 1, 2, 3, "gpt-4o", None, {"input_tokens": 100, "output_tokens": 50}
         )
         assert result["quota_consumed"] == 1500
-        assert ops["quota_refund"] == 500 and ops["balance_refund"] == 500
-        assert ops["quota_deduct"] == 0 and ops["balance_deduct"] == 0
+        assert ops["quota_refund"] == 500
+        assert ops["balance_refund"] == 500
+        assert ops["quota_deduct"] == 0
+        assert ops["balance_deduct"] == 0
 
     async def test_underestimate_deducts_extra(self, monkeypatch):
-        billing = SimpleNamespace(id=1, pre_deduct=1000, bill_type="chat", user_id=1)
+        billing = SysAiBilling(id=1, pre_deduct=1000, bill_type="chat", user_id=1)
         svc, ops = self._patch_settle(monkeypatch, actual_credits=2000, billing=billing)
         await svc.settle(
-            None, 1, 2, 3, "gpt-4o", None, {"input_tokens": 100, "output_tokens": 50}
+            _NO_DB, 1, 2, 3, "gpt-4o", None, {"input_tokens": 100, "output_tokens": 50}
         )
-        assert ops["quota_deduct"] == 1000 and ops["balance_deduct"] == 1000
-        assert ops["quota_refund"] == 0 and ops["balance_refund"] == 0
+        assert ops["quota_deduct"] == 1000
+        assert ops["balance_deduct"] == 1000
+        assert ops["quota_refund"] == 0
+        assert ops["balance_refund"] == 0
 
     async def test_zero_usage_refunds_all(self, monkeypatch):
         svc, ops = self._patch_settle(monkeypatch, actual_credits=0)
-        result = await svc.settle(None, 1, 2, 3, "gpt-4o", None, {})
+        result = await svc.settle(_NO_DB, 1, 2, 3, "gpt-4o", None, {})
         assert result["credits"] == 0
-        assert ops["quota_refund"] == 2000 and ops["balance_refund"] == 2000
+        assert ops["quota_refund"] == 2000
+        assert ops["balance_refund"] == 2000
 
 
 class TestAnomalyRules:
     @staticmethod
-    def _record(credits=0, input_tokens=0, output_tokens=0, billing_id=10):
-        return SimpleNamespace(
-            id=billing_id, credits=credits,
-            input_tokens=input_tokens, output_tokens=output_tokens,
+    def _record(credits=0, input_tokens=0, output_tokens=0, billing_id=10) -> SysAiBilling:
+        return SysAiBilling(
+            id=billing_id,
+            credits=credits,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     @staticmethod
@@ -350,12 +492,11 @@ class TestAnomalyRules:
         rows = await self._all_anomalies(db)
         assert len(rows) == 1
         assert rows[0].anomaly_type == "single_high"
-        assert rows[0].user_id == 1 and rows[0].billing_id == 10
+        assert rows[0].user_id == 1
+        assert rows[0].billing_id == 10
 
     async def test_burst_peak_triggers(self, db, mock_redis):
-        await am.billing_anomaly_service.check(
-            db, 1, self._record(credits=6000), daily_limit=10000
-        )
+        await am.billing_anomaly_service.check(db, 1, self._record(credits=6000), daily_limit=10000)
         assert int(await mock_redis.get("ai:anomaly:count:burst:1")) == 1
         rows = await self._all_anomalies(db)
         assert len(rows) == 1
@@ -372,8 +513,11 @@ class TestAnomalyRules:
 
     async def test_normal_usage_no_alert(self, db, mock_redis):
         await am.billing_anomaly_service.check(
-            db, 1, self._record(credits=500, input_tokens=1000, output_tokens=200),
-            monthly_limit=100000, daily_limit=10000,
+            db,
+            1,
+            self._record(credits=500, input_tokens=1000, output_tokens=200),
+            monthly_limit=100000,
+            daily_limit=10000,
         )
         keys = [k async for k in mock_redis.scan_iter(match="ai:anomaly:count:*")]
         assert not keys
@@ -393,9 +537,7 @@ class TestAnomalyRules:
             raise ConnectionError("redis down")
 
         monkeypatch.setattr(am, "get_redis_client", _broken)
-        await am.billing_anomaly_service.check(
-            db, 1, self._record(credits=999999), monthly_limit=1
-        )
+        await am.billing_anomaly_service.check(db, 1, self._record(credits=999999), monthly_limit=1)
         await am.billing_anomaly_service.record_quota_fail(db, 1)
         # 单次超高规则不依赖 Redis，仍应落库
         rows = await self._all_anomalies(db)
@@ -409,10 +551,10 @@ class TestRefundService:
         from app.core.exceptions import BusinessException
 
         with pytest.raises(BusinessException) as exc:
-            await rf.refund_service.apply_refund(None, 1, 5, 0, "误扣")
+            await rf.refund_service.apply_refund(_DB, 1, 5, 0, "误扣")
         assert exc.value.code == ResultCode.PARAM_ERROR
         with pytest.raises(BusinessException) as exc2:
-            await rf.refund_service.apply_refund(None, 1, 5, -100, "误扣")
+            await rf.refund_service.apply_refund(_DB, 1, 5, -100, "误扣")
         assert exc2.value.code == ResultCode.PARAM_ERROR
 
     async def test_apply_refund_duplicate_rejected(self, monkeypatch):
@@ -420,54 +562,119 @@ class TestRefundService:
         from app.core.exceptions import BusinessException
 
         monkeypatch.setattr(
-            rf.ai_billing_repository, "get_by_id",
-            AsyncMock(return_value=SimpleNamespace(id=5, user_id=1)),
+            rf.ai_billing_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=5, user_id=1, credits=100)),
         )
         monkeypatch.setattr(
             rf.ai_refund_repository, "get_pending_by_billing_id", AsyncMock(return_value=object())
         )
         with pytest.raises(BusinessException) as exc:
-            await rf.refund_service.apply_refund(None, 1, 5, 100, "误扣")
+            await rf.refund_service.apply_refund(_DB, 1, 5, 100, "误扣")
         assert exc.value.code == ResultCode.AI_REFUND_ALREADY_EXISTS
 
     async def test_apply_refund_other_users_record_rejected(self, monkeypatch):
         from app.core.exceptions import BusinessException
 
         monkeypatch.setattr(
-            rf.ai_billing_repository, "get_by_id",
+            rf.ai_billing_repository,
+            "get_by_id",
             AsyncMock(return_value=SimpleNamespace(id=5, user_id=2)),
         )
         monkeypatch.setattr(
             rf.ai_refund_repository, "get_pending_by_billing_id", AsyncMock(return_value=None)
         )
         with pytest.raises(BusinessException):
-            await rf.refund_service.apply_refund(None, 1, 5, 100, "误扣")
+            await rf.refund_service.apply_refund(_DB, 1, 5, 100, "误扣")
+
+    async def test_apply_refund_amount_exceeds_credits_rejected(self, monkeypatch):
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
+        monkeypatch.setattr(
+            rf.ai_billing_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=5, user_id=1, credits=80)),
+        )
+        monkeypatch.setattr(
+            rf.ai_refund_repository, "get_pending_by_billing_id", AsyncMock(return_value=None)
+        )
+        with pytest.raises(BusinessException) as exc:
+            await rf.refund_service.apply_refund(_DB, 1, 5, 100, "误扣")
+        assert exc.value.code == ResultCode.PARAM_ERROR
+
+    async def test_audit_refund_billing_record_missing_rejected(self, monkeypatch):
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
+        monkeypatch.setattr(
+            rf.ai_refund_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=9, status=1, billing_id=5)),
+        )
+        monkeypatch.setattr(rf.ai_billing_repository, "get_by_id", AsyncMock(return_value=None))
+        with pytest.raises(BusinessException) as exc:
+            await rf.refund_service.audit_refund(_DB, 9, True, None, 2)
+        assert exc.value.code == ResultCode.REFUND_AUDIT_FAILED
+
+    async def test_audit_refund_already_refunded_rejected(self, monkeypatch):
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
+        monkeypatch.setattr(
+            rf.ai_refund_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=10, status=1, billing_id=5)),
+        )
+        monkeypatch.setattr(
+            rf.ai_billing_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=5, user_id=1, credits=100)),
+        )
+        monkeypatch.setattr(
+            rf.ai_refund_repository,
+            "has_approved_by_billing_id",
+            AsyncMock(return_value=True),
+        )
+        with pytest.raises(BusinessException) as exc:
+            await rf.refund_service.audit_refund(_DB, 10, True, None, 2)
+        assert exc.value.code == ResultCode.REFUND_AUDIT_FAILED
 
     async def test_audit_refund_already_audited_rejected(self, monkeypatch):
         from app.core.code import ResultCode
         from app.core.exceptions import BusinessException
 
         monkeypatch.setattr(
-            rf.ai_refund_repository, "get_by_id",
+            rf.ai_refund_repository,
+            "get_by_id",
             AsyncMock(return_value=SimpleNamespace(id=9, status=2)),
         )
         with pytest.raises(BusinessException) as exc:
-            await rf.refund_service.audit_refund(None, 9, True, None, 2)
+            await rf.refund_service.audit_refund(_DB, 9, True, None, 2)
         assert exc.value.code == ResultCode.REFUND_AUDIT_FAILED
 
     async def test_audit_refund_approve_increases_balance(self, db, monkeypatch):
         from app.models.entity.sys_ai_refund import SysAiRefund
 
-        refund = SysAiRefund(
-            id=9, user_id=1, billing_id=5, amount=2000, reason="误扣", status=1
-        )
+        refund = SysAiRefund(id=9, user_id=1, billing_id=5, amount=2000, reason="误扣", status=1)
         db.add(refund)
         await db.flush()
         monkeypatch.setattr(rf.ai_refund_repository, "get_by_id", AsyncMock(return_value=refund))
+        monkeypatch.setattr(
+            rf.ai_billing_repository,
+            "get_by_id",
+            AsyncMock(return_value=SimpleNamespace(id=5, user_id=1, credits=2000)),
+        )
+        monkeypatch.setattr(
+            rf.ai_refund_repository,
+            "has_approved_by_billing_id",
+            AsyncMock(return_value=False),
+        )
         increases = []
 
-        async def _increase(db, uid, amount, source=None, related_id=None,
-                            reason=None, operator_id=None):
+        async def _increase(
+            db, uid, amount, source=None, related_id=None, reason=None, operator_id=None
+        ):
             increases.append(
                 {"uid": uid, "amount": amount, "source": source, "related": related_id}
             )
@@ -536,7 +743,7 @@ class TestBillService:
             },
             balances=Decimal(1500),
         )
-        bill = await blm.bill_service.generate_monthly_bill(None, 1, "2026-07")
+        bill = await blm.bill_service.generate_monthly_bill(_DB, 1, "2026-07")
         assert bill.total_consume == 3500
         assert bill.total_recharge == 1150
         assert bill.total_refund == 300
@@ -546,12 +753,17 @@ class TestBillService:
     async def test_get_bill_cache_hit(self, monkeypatch, mock_redis):
         self._patch_bill(monkeypatch, by_type=[], by_source={}, balances=Decimal(0))
         cached = {
-            "user_id": 1, "month": "2026-07", "total_consume": 100,
-            "total_recharge": 0, "total_refund": 0, "balance_start": "0",
-            "balance_end": "0", "item_summary": {},
+            "user_id": 1,
+            "month": "2026-07",
+            "total_consume": 100,
+            "total_recharge": 0,
+            "total_refund": 0,
+            "balance_start": "0",
+            "balance_end": "0",
+            "item_summary": {},
         }
         await mock_redis.set("ai:bill:1:2026-07", json.dumps(cached, default=str))
-        bill = await blm.bill_service.get_bill(None, 1, "2026-07")
+        bill = await blm.bill_service.get_bill(_DB, 1, "2026-07")
         assert bill.total_consume == 100
 
     async def test_get_bill_empty_history_month_not_found(self, monkeypatch, mock_redis):
@@ -560,11 +772,11 @@ class TestBillService:
 
         self._patch_bill(monkeypatch, by_type=[], by_source={}, balances=Decimal(0))
         with pytest.raises(BusinessException) as exc:
-            await blm.bill_service.get_bill(None, 1, "2020-01")
+            await blm.bill_service.get_bill(_DB, 1, "2020-01")
         assert exc.value.code == ResultCode.RESOURCE_NOT_FOUND
         assert await mock_redis.get("ai:bill:1:2020-01") is None
         with pytest.raises(BusinessException) as exc2:
-            await blm.bill_service.get_bill(None, 1, "2020-01")
+            await blm.bill_service.get_bill(_DB, 1, "2020-01")
         assert exc2.value.code == ResultCode.RESOURCE_NOT_FOUND
 
     async def test_get_bill_stale_empty_cache_not_found(self, monkeypatch, mock_redis):
@@ -573,28 +785,34 @@ class TestBillService:
 
         self._patch_bill(monkeypatch, by_type=[], by_source={}, balances=Decimal(0))
         cached = {
-            "user_id": 1, "month": "2020-01", "total_consume": 0,
-            "total_recharge": 0, "total_refund": 0, "balance_start": "0",
-            "balance_end": "0", "item_summary": {},
+            "user_id": 1,
+            "month": "2020-01",
+            "total_consume": 0,
+            "total_recharge": 0,
+            "total_refund": 0,
+            "balance_start": "0",
+            "balance_end": "0",
+            "item_summary": {},
         }
         await mock_redis.set("ai:bill:1:2020-01", json.dumps(cached, default=str))
         with pytest.raises(BusinessException) as exc:
-            await blm.bill_service.get_bill(None, 1, "2020-01")
+            await blm.bill_service.get_bill(_DB, 1, "2020-01")
         assert exc.value.code == ResultCode.RESOURCE_NOT_FOUND
 
 
 class TestEstimateService:
     async def test_new_conversation_conservative_estimate(self):
         rates = {
-            "input_rate": 1.0, "output_rate": 4.0,
-            "cached_rate": 0.5, "max_output_tokens": 4096,
+            "input_rate": 1.0,
+            "output_rate": 4.0,
+            "cached_rate": 0.5,
+            "max_output_tokens": 4096,
         }
-        estimated = await es.EstimateService(
-            rate_provider=SimpleNamespace(get_rates=AsyncMock(return_value=rates))
-        ).estimate_credits(
-            None, 1, 100, "请帮我总结今天的工作会议记录并提取待办事项", "gpt-4o"
+        estimated = await es.EstimateService(rate_provider=_RateProvider(rates)).estimate_credits(
+            _DB, 1, 100, "请帮我总结今天的工作会议记录并提取待办事项", "gpt-4o"
         )
-        expected = int(706 * 1.0 + 1228.8 * 4.0)
+        # 21 个中文字符按 1 字符 ≈ 1 token 保守估算：21 × 1.2 + 记忆 200 + 工具 500
+        expected = int(725.2 * 1.0 + 1228.8 * 4.0)
         assert estimated == expected
 
     async def test_ctx_avg_read_failure_treated_as_no_history(self, monkeypatch):
@@ -612,13 +830,13 @@ class TestEstimateService:
 
         monkeypatch.setattr(es, "get_redis_client", _get)
         rates = {
-            "input_rate": 1.0, "output_rate": 4.0,
-            "cached_rate": 0.5, "max_output_tokens": 4096,
+            "input_rate": 1.0,
+            "output_rate": 4.0,
+            "cached_rate": 0.5,
+            "max_output_tokens": 4096,
         }
-        estimated = await es.EstimateService(
-            rate_provider=SimpleNamespace(get_rates=AsyncMock(return_value=rates))
-        ).estimate_credits(
-            None, 1, 100, "hi", "gpt-4o"
+        estimated = await es.EstimateService(rate_provider=_RateProvider(rates)).estimate_credits(
+            _DB, 1, 100, "hi", "gpt-4o"
         )
         assert estimated > 0
 
@@ -657,7 +875,7 @@ class TestBillingJobs:
 
         result = await h.clear_vip_gift_expire()
         assert "清零=1" in result
-        create_log_call = [entry for entry in logs if "source" in entry][0]
+        create_log_call = next(entry for entry in logs if "source" in entry)
         assert create_log_call["amount"] == -300
         assert create_log_call["source"] == "vip_gift_expire"
 
@@ -733,7 +951,13 @@ class TestRegisterTrialCredits:
         monkeypatch.setattr(auth_mod, "hash_password_async", _hash)
 
         result = await auth_mod.auth_service.register(
-            StubAsyncSession(), mock_redis, "newuser", "Passw0rd!", "昵称", "test-key", "ABCD"
+            cast(AsyncSession, StubAsyncSession()),  # 替身：StubAsyncSession（实现 add/flush/info）
+            mock_redis,
+            "newuser",
+            "Passw0rd!",
+            "昵称",
+            "test-key",
+            "ABCD",
         )
         assert result["user"]["id"] == 1
         assert grants == [1]

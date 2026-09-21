@@ -11,11 +11,11 @@ type UnifiedOrderRequest struct {
 }
 
 type UnifiedOrderResult struct {
-	OrderNo   string
-	PayURL    string
-	QRCode    string
-	PrepayID  string
-	Paid      bool
+	OrderNo  string
+	PayURL   string
+	QRCode   string
+	PrepayID string
+	Paid     bool
 }
 
 type CallbackResult struct {

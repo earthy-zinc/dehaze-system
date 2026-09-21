@@ -81,7 +81,7 @@ class ImportHandler(abc.ABC):
         return []
 
 
-T = TypeVar("T")
+T = TypeVar("T", bound=ExportHandler | ImportHandler)
 
 
 class _HandlerRegistry(Generic[T]):

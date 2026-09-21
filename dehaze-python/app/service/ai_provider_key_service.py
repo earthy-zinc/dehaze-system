@@ -95,4 +95,5 @@ class AiProviderKeyService:
                 )
         await ai_provider_key_repository.delete_by_ids(db, [key_id])
 
+
 ai_provider_key_service = AiProviderKeyService()

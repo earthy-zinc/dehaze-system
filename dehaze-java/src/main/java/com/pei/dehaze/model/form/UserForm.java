@@ -3,6 +3,7 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -24,6 +25,7 @@ public class UserForm {
 
     @Schema(description="用户名")
     @NotBlank(message = "用户名不能为空")
+    @Size(max = 64, message = "用户名长度不能超过64")
     private String username;
 
     @Schema(description="昵称")
@@ -44,13 +46,18 @@ public class UserForm {
     private String avatar;
 
     @Schema(description="邮箱")
+    @Pattern(regexp = "^$|^[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}$", message = "邮箱格式不正确")
     private String email;
 
     @Schema(description="用户状态(1:正常;0:禁用)")
     private Integer status;
 
     @Schema(description="部门ID")
+    @NotNull(message = "部门ID不能为空")
     private Long deptId;
+
+    @Schema(description="用户类型(personal:个人;enterprise:企业)")
+    private String userType;
 
     @Schema(description="角色ID集合")
     @NotEmpty(message = "用户角色不能为空")

@@ -21,6 +21,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -98,6 +99,17 @@ public class GlobalExceptionHandler {
         return Result.failed(ResultCode.PARAM_ERROR, msg);
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    @ResponseStatus(org.springframework.http.HttpStatus.NOT_FOUND)
+    public <T> Result<T> processNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        MDC.put("code", ResultCode.RESOURCE_NOT_FOUND.getCode());
+        MDC.put("status", "404");
+        log.warn("静态资源不存在: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.RESOURCE_NOT_FOUND);
+    }
+
     @ExceptionHandler(NoHandlerFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public <T> Result<T> processException(NoHandlerFoundException e) {
@@ -137,7 +149,7 @@ public class GlobalExceptionHandler {
     public <T> Result<T> processException(ServletException e) {
         MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());
         MDC.put("status", "400");
-        log.error("HTTP 异常: {}", e.getMessage());
+        log.error("HTTP 异常: {}", e.getMessage(), e);
         MDC.remove("code");
         MDC.remove("status");
         return Result.failed(e.getMessage());
@@ -243,6 +255,17 @@ public class GlobalExceptionHandler {
         return Result.failed(e.getMessage());
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        MDC.put("code", ResultCode.FILE_TOO_LARGE.getCode());
+        MDC.put("status", "400");
+        log.warn("上传文件超过大小限制: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.FILE_TOO_LARGE, "文件大小超过限制");
+    }
+
     @ExceptionHandler(RateLimitException.class)
     @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public Result<Void> handleRateLimitException(RateLimitException ex) {
@@ -286,12 +309,29 @@ public class GlobalExceptionHandler {
         return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR, "数据完整性约束违反: " + e.getMessage());
     }
 
+    /**
+     * 越权访问（授权失败）：403 + A0301 信封。
+     *
+     * <p>口径对齐 dehaze-python 的 HTTPException 处理器（403 映射为 ACCESS_UNAUTHORIZED），
+     * 与过滤器链拒绝（{@code MyAccessDeniedHandler}）保持同一状态码与信封，
+     * 使控制层内主动抛出的越权异常（如会话审计视角越权）在跨端表现一致。
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public <T> Result<T> handleAccessDeniedException(AccessDeniedException e) {
+        MDC.put("code", ResultCode.ACCESS_UNAUTHORIZED.getCode());
+        MDC.put("status", "403");
+        log.warn("越权访问: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.ACCESS_UNAUTHORIZED);
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public <T> Result<T> handleException(Exception e) throws Exception {
-        // 将 Spring Security 异常继续抛出，以便交给自定义处理器处理
-        if (e instanceof AccessDeniedException
-                || e instanceof AuthenticationException) {
+        // 认证异常继续抛出，交给 Security 的 AuthenticationEntryPoint（AccessDeniedException 已由专用处理器返回 403 信封）
+        if (e instanceof AuthenticationException) {
             throw e;
         }
         MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());

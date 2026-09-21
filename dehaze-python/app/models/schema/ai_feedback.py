@@ -3,7 +3,7 @@ AI 对话模块 - 消息反馈 Schema 模型
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,6 @@ class FeedbackResult(OrmResult):
 
 
 class FeedbackCreateRequest(BaseModel):
-    rating: int = Field(..., ge=-1, le=1, description="评分(1:点赞;-1:点踩)")
+    rating: Literal[1, -1] = Field(..., description="评分(1:点赞;-1:点踩)")
     tags: list[str] | None = Field(default=None, description="预设标签")
     comment: str | None = Field(default=None, max_length=2000, description="反馈内容")

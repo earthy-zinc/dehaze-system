@@ -82,6 +82,22 @@ class ProviderResult(OrmResult):
     update_time: datetime | None = Field(default=None, description="更新时间")
 
 
+class ProviderEnabledResult(OrmResult):
+    """启用供应商列表（/providers/enabled，登录用户可见）的精简视图。
+
+    不含 api_base_url/default_headers/user_identity_forward/remark 等供应商内部配置。
+    """
+
+    id: int = Field(description="主键")
+    provider_code: str = Field(description="供应商编码")
+    display_name: str = Field(description="显示名称")
+    protocol_type: str = Field(description="协议类型")
+    health: str | None = Field(
+        default=None, description="健康状态(healthy:健康;suspicious:可疑;open:熔断)"
+    )
+    status: int = Field(description="状态(1:启用;0:禁用)")
+
+
 class ProviderKeyCreate(OrmResult):
     name: str = Field(..., min_length=1, max_length=128, description="Key名称")
     key: str = Field(..., min_length=1, description="Key明文(service层加密后不存储此字段)")
@@ -126,7 +142,6 @@ class ProviderKeyResult(OrmResult):
 class UsageStatsQuery(OrmResult):
     start_time: datetime | None = Field(default=None, description="开始时间")
     end_time: datetime | None = Field(default=None, description="结束时间")
-    granularity: str = Field(default="day", description="聚合粒度(day:按日;month:按月)")
 
 
 class ProviderHealthStatResult(OrmResult):
@@ -155,7 +170,9 @@ class DowngradeStatResult(OrmResult):
 
 
 class DegradeFaultStatResult(OrmResult):
-    downgrade_frequency: list[DowngradeStatResult] = Field(default_factory=list, description="各模型降级频率")
+    downgrade_frequency: list[DowngradeStatResult] = Field(
+        default_factory=list, description="各模型降级频率"
+    )
     key_failover_count: int = Field(default=0, description="Key失败切换次数")
 
 

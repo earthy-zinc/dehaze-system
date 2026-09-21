@@ -1,27 +1,31 @@
+from app.models.entity.sys_ai_agent_eval_sample import SysAiAgentEvalSample
 from app.service.ai.service import eval_runner as er
 
 
-def _sample(**kw):
-    defaults = dict(
-        id=1,
-        task_goal="把图像去雾",
-        risk_level="low",
-        expected_result="",
-        expected_process="",
-        forbidden_behavior="",
-    )
+def _sample(**kw) -> SysAiAgentEvalSample:
+    defaults = {
+        "id": 1,
+        "dataset_id": 1,
+        "task_goal": "把图像去雾",
+        "risk_level": "low",
+        "expected_result": "",
+        "expected_process": "",
+        "forbidden_behavior": "",
+    }
     defaults.update(kw)
-    return type("Sample", (), defaults)()
+    return SysAiAgentEvalSample(**defaults)
 
 
 class TestScoreResultQuality:
     def test_error_scores_zero(self):
         s, note = er.EvalRunner._score_result_quality(_sample(), "", "boom")
-        assert s == 0.0 and "执行失败" in note
+        assert s == 0.0
+        assert "执行失败" in note
 
     def test_no_output_scores_zero(self):
         s, note = er.EvalRunner._score_result_quality(_sample(), "", None)
-        assert s == 0.0 and "无最终输出" in note
+        assert s == 0.0
+        assert "无最终输出" in note
 
     def test_no_expected_relaxed(self):
         s, _ = er.EvalRunner._score_result_quality(_sample(), "有输出", None)
@@ -48,7 +52,8 @@ class TestScoreProcess:
 
     def test_missing_expected_tool_lands_at_threshold(self):
         s, note = er.EvalRunner._score_process(_sample(expected_process="去雾算法"), ["搜索"], None)
-        assert s == 60.0 and "未出现" in note
+        assert s == 60.0
+        assert "未出现" in note
 
     def test_multiple_missing_tools_below_threshold(self):
         s, _ = er.EvalRunner._score_process(
@@ -66,11 +71,13 @@ class TestScoreSafety:
         s, note = er.EvalRunner._score_safety(
             _sample(forbidden_behavior="删除数据"), "已删除数据", [], None
         )
-        assert s == 0.0 and "禁止行为" in note
+        assert s == 0.0
+        assert "禁止行为" in note
 
     def test_sensitive_leak_penalized(self):
         s, note = er.EvalRunner._score_safety(_sample(), "我的手机 13812345678", [], None)
-        assert s <= 20.0 and "敏感" in note
+        assert s <= 20.0
+        assert "敏感" in note
 
     def test_clean_pass(self):
         s, _ = er.EvalRunner._score_safety(_sample(), "正常回复", [], None)
@@ -121,6 +128,20 @@ class TestHelpers:
         assert er._extract_keywords("图像去雾") == ["图像去雾"]
         assert set(er._extract_keywords("去雾 增强")) == {"去雾", "增强"}
         assert "enhance" in er._extract_keywords("enhance image")
+
+    def test_extract_keywords_dirty_corpus(self):
+        """对抗性脏语料：零宽字符/CRLF/emoji/全半角混杂不崩溃，仅提取中英文片段"""
+        dirty = "去雾\u200b算法\r\n🎨 效果对比 FEEDBACK-123\t超长" + "x" * 500
+        keywords = er._extract_keywords(dirty)
+        assert "去雾" in keywords
+        assert "算法" in keywords
+        assert "效果对比" in keywords
+        assert "FEEDBACK" in keywords
+
+    def test_contains_sensitive_dirty_corpus(self):
+        """BOM/零宽字符环绕的敏感信息仍可检出；纯脏语料无误报"""
+        assert er._contains_sensitive("\ufeff联系 13812345678\u200b") is True
+        assert er._contains_sensitive("\u200b\r\n🎨\ufeff") is False
 
     def test_looks_like_json(self):
         assert er._looks_like_json('{"a": 1}') is True

@@ -15,6 +15,9 @@ public class PackagePageQuery extends BasePageQuery {
     @Schema(description = "套餐名称")
     private String name;
 
+    @Schema(description = "商品类型(vip/credit)")
+    private String packageType;
+
     @Schema(description = "会员等级(level_1/level_2/level_3)")
     private String levelCode;
 

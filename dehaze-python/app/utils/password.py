@@ -27,11 +27,10 @@ async def hash_password_async(password: str) -> str:
         哈希后的密码
     """
     loop = asyncio.get_running_loop()
-    hashed = await loop.run_in_executor(
+    return await loop.run_in_executor(
         _password_executor,
         lambda: bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
     )
-    return hashed
 
 
 async def check_password_async(password: str, hashed: str) -> bool:

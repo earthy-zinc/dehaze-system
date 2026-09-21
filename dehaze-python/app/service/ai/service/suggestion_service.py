@@ -22,8 +22,8 @@ from app.infrastructure.llm.call.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
-from app.service.ai.service.credits_service import calculate_credits
 from app.service.ai.service import trace_collector
+from app.service.ai.service.credits_service import calculate_credits
 from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,11 @@ class SuggestionService:
 
     @staticmethod
     async def _parse_questions(content: str) -> list[str] | None:
-        """从 LLM 输出解析推荐问题 JSON 数组，解析失败返回 None。"""
+        """从 LLM 输出解析推荐问题 JSON 数组，解析失败返回 None（best-effort 契约）。
+
+        该功能为回复后的可选引导，失败不阻断主回复；但解析失败必记日志暴露 LLM 输出
+        不合规，否则"suggestions 事件长期不推"将无从归因。
+        """
         if not content:
             return None
         try:
@@ -61,10 +65,12 @@ class SuggestionService:
         except (json.JSONDecodeError, TypeError):
             match = _JSON_ARRAY_RE.search(content)
             if not match:
+                logger.debug("推荐问题 LLM 输出不含 JSON 数组，跳过: %r", content[:200])
                 return None
             try:
                 data = json.loads(match.group(0))
             except (json.JSONDecodeError, TypeError):
+                logger.warning("推荐问题 LLM 输出 JSON 解析失败，跳过: %r", content[:200])
                 return None
         if not isinstance(data, list):
             return None
@@ -72,7 +78,13 @@ class SuggestionService:
         return questions if questions else None
 
     async def _generate_questions(
-        self, db: AsyncSession, model_id: str, reply_content: str
+        self,
+        db: AsyncSession,
+        model_id: str,
+        reply_content: str,
+        conversation_id: int,
+        message_id: int,
+        user_id: int,
     ) -> tuple[list[str], dict] | None:
         """调用 LLM 生成推荐问题，返回 (questions, usage)；失败/超时返回 None。"""
         content = ""
@@ -95,6 +107,7 @@ class SuggestionService:
                     system_prompt="你是对话助手，负责生成推荐追问",
                     temperature=0.7,
                     max_tokens=200,
+                    user_id=user_id,
                 ):
                     if chunk.type == "text_delta":
                         content += chunk.content

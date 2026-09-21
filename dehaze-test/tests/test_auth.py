@@ -1,7 +1,7 @@
 """登录/登出/验证码集成测试。"""
 from __future__ import annotations
 
-from utils import auth, api, config, redis
+from utils import auth, config, redis
 
 
 class TestAuth:

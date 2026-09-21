@@ -14,14 +14,11 @@ from pydantic.alias_generators import to_camel
 
 from app.models.schema.common import BasePageQuery, OrmResult
 
-
 # 分块策略(fixed:固定长度;semantic:语义切分;recursive:递归切分;qa:问答对;table:表格感知)
 CHUNKING_STRATEGY_VALUES = ("fixed", "semantic", "recursive", "qa", "table")
 ChunkingStrategy = Literal["fixed", "semantic", "recursive", "qa", "table"]
 # 检索策略(vector:纯向量;keyword:纯关键词;hybrid:混合检索)
 SearchStrategy = Literal["vector", "keyword", "hybrid"]
-# 支持的 Embedding 模型标识(与 embedding_client._KNOWN_DIMS 对齐)
-EMBEDDING_MODEL_VALUES = ("text-embedding-3-small", "text-embedding-3-large", "bge-m3")
 
 
 class KnowledgeBaseCreateForm(BaseModel):
@@ -34,12 +31,7 @@ class KnowledgeBaseCreateForm(BaseModel):
     visibility: Literal["public", "private"] = Field(
         ..., description="可见性(public:平台公共库;private:私有库)"
     )
-    embedding_provider: str = Field(
-        default="openai", max_length=32, description="Embedding提供商(openai;qwen;cohere;local)"
-    )
-    embedding_model: str = Field(
-        ..., min_length=1, max_length=64, description="Embedding模型标识"
-    )
+    embedding_model: str = Field(..., min_length=1, max_length=64, description="Embedding模型标识")
     chunking_strategy: ChunkingStrategy = Field(
         ..., description="分块策略(fixed/semantic/recursive/qa/table)"
     )
@@ -48,19 +40,11 @@ class KnowledgeBaseCreateForm(BaseModel):
     search_strategy: SearchStrategy = Field(
         default="hybrid", description="检索策略(vector/keyword/hybrid)"
     )
-    hybrid_weight: float = Field(
-        default=0.7, ge=0, le=1, description="混合检索中向量权重(0-1)"
-    )
+    hybrid_weight: float = Field(default=0.7, ge=0, le=1, description="混合检索中向量权重(0-1)")
     top_k: int = Field(default=5, ge=1, le=100, description="默认检索Top-K数")
-    score_threshold: float = Field(
-        default=0.5, ge=0, lt=1, description="相似度阈值"
-    )
-    enable_rerank: bool = Field(
-        default=False, description="是否启用重排序(需额外Rerank模型)"
-    )
-    rerank_model: str | None = Field(
-        default=None, max_length=64, description="重排序模型标识"
-    )
+    score_threshold: float = Field(default=0.5, ge=0, lt=1, description="相似度阈值")
+    enable_rerank: bool = Field(default=False, description="是否启用重排序(需额外Rerank模型)")
+    rerank_model: str | None = Field(default=None, max_length=64, description="重排序模型标识")
 
 
 class KnowledgeBaseUpdateForm(BaseModel):
@@ -77,17 +61,13 @@ class KnowledgeBaseUpdateForm(BaseModel):
         default=None, ge=0, le=1, description="混合检索中向量权重(0-1)"
     )
     top_k: int | None = Field(default=None, ge=1, le=100, description="默认检索Top-K数")
-    score_threshold: float | None = Field(
-        default=None, ge=0, lt=1, description="相似度阈值"
-    )
-    enable_rerank: bool | None = Field(
-        default=None, description="是否启用重排序"
-    )
-    rerank_model: str | None = Field(
-        default=None, max_length=64, description="重排序模型标识"
-    )
+    score_threshold: float | None = Field(default=None, ge=0, lt=1, description="相似度阈值")
+    enable_rerank: bool | None = Field(default=None, description="是否启用重排序")
+    rerank_model: str | None = Field(default=None, max_length=64, description="重排序模型标识")
     # 以下两项用于服务端拒绝校验（创建后不可修改），不允许真正更新
-    embedding_model: str | None = Field(default=None, max_length=64, description="Embedding模型标识")
+    embedding_model: str | None = Field(
+        default=None, max_length=64, description="Embedding模型标识"
+    )
     chunking_strategy: ChunkingStrategy | None = Field(
         default=None, description="分块策略(fixed/semantic/recursive/qa/table)"
     )

@@ -246,9 +246,7 @@ async function handleUpload(options: UploadRequestOptions) {
         status: "success",
       } as UploadUserFile,
     ];
-  } catch (err: any) {
-    ElMessage.error("图片上传失败：" + (err?.message || "未知错误"));
-  }
+  } catch {}
 }
 
 function handleExceed() {

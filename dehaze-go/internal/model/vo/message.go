@@ -2,16 +2,16 @@ package vo
 
 // MessageVO 消息列表项
 type MessageVO struct {
-	ID            int64  `json:"id"`
-	Type          string `json:"type"`
-	TypeLabel     string `json:"typeLabel"`
-	Title         string `json:"title"`
-	Summary       string `json:"summary"`
-	Priority      int    `json:"priority"`
-	ReadStatus    int    `json:"readStatus"`
-	SenderType    int    `json:"senderType"`
-	JumpURL       string `json:"jumpUrl"`
-	CreateTime    string `json:"createTime"`
+	ID         int64  `json:"id"`
+	Type       string `json:"type"`
+	TypeLabel  string `json:"typeLabel"`
+	Title      string `json:"title"`
+	Summary    string `json:"summary"`
+	Priority   int    `json:"priority"`
+	ReadStatus int    `json:"readStatus"`
+	SenderType int    `json:"senderType"`
+	JumpURL    string `json:"jumpUrl"`
+	CreateTime string `json:"createTime"`
 }
 
 // MessageDetailVO 消息详情

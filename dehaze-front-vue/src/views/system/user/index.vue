@@ -29,8 +29,8 @@
                 clearable
                 placeholder="全部"
               >
-                <el-option label="启用" value="1" />
-                <el-option label="禁用" value="0" />
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="0" />
               </el-select>
             </el-form-item>
 
@@ -113,6 +113,19 @@
               width="120"
             />
 
+            <el-table-column align="center" label="用户类型" width="100">
+              <template #default="scope">
+                <el-tag
+                  :type="
+                    scope.row.userType === 'enterprise' ? 'warning' : 'info'
+                  "
+                  disable-transitions
+                >
+                  {{ userTypeLabels[scope.row.userType ?? "personal"] }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
             <el-table-column
               align="center"
               label="性别"
@@ -124,6 +137,29 @@
               align="center"
               label="部门"
               prop="deptName"
+              width="120"
+            />
+            <el-table-column align="center" label="会员等级" width="100">
+              <template #default="scope">
+                <el-tag
+                  :type="
+                    memberLevelMap[scope.row.memberLevel ?? 'level_0'].tagType
+                  "
+                  disable-transitions
+                >
+                  {{ memberLevelMap[scope.row.memberLevel ?? "level_0"].label }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column align="center" label="会员到期" width="160">
+              <template #default="scope">
+                {{ scope.row.memberExpireTime ?? "-" }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              align="center"
+              label="配额使用"
+              prop="quotaUsage"
               width="120"
             />
             <el-table-column
@@ -218,6 +254,17 @@
           <el-input v-model="formData.nickname" placeholder="请输入用户昵称" />
         </el-form-item>
 
+        <el-form-item label="用户类型" prop="userType">
+          <el-select v-model="formData.userType" placeholder="请选择用户类型">
+            <el-option
+              v-for="(label, value) in userTypeLabels"
+              :key="value"
+              :label="label"
+              :value="value"
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="所属部门" prop="deptId">
           <el-tree-select
             v-model="formData.deptId"
@@ -305,6 +352,7 @@ import {
 } from "@element-plus/icons-vue";
 
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
+import type { TagType } from "@/enums/TagType";
 
 const queryFormRef = ref(ElForm); // 查询表单
 const userFormRef = ref(ElForm); // 用户表单
@@ -320,6 +368,18 @@ const total = ref(0); // 数据总数
 const pageData = ref<UserPageVO[]>(); // 用户分页数据
 const deptList = ref<OptionType[]>(); // 部门下拉数据源
 const roleList = ref<OptionType[]>(); // 角色下拉数据源
+
+const userTypeLabels: Record<string, string> = {
+  personal: "个人",
+  enterprise: "企业",
+};
+
+const memberLevelMap: Record<string, { label: string; tagType: TagType }> = {
+  level_0: { label: "普通", tagType: "info" },
+  level_1: { label: "VIP1", tagType: "success" },
+  level_2: { label: "VIP2", tagType: "warning" },
+  level_3: { label: "SVIP", tagType: "danger" },
+};
 
 watch(dateTimeRange, (newVal) => {
   if (newVal) {
@@ -342,15 +402,16 @@ const dialog = reactive({
 // 用户表单数据
 const formData = reactive<UserForm>({
   status: 1,
+  userType: "personal",
 });
 
 // 校验规则
 const rules = reactive({
   username: [{ required: true, message: "用户名不能为空", trigger: "blur" }],
   nickname: [{ required: true, message: "用户昵称不能为空", trigger: "blur" }],
-  deptId: [{ required: true, message: "所属部门不能为空", trigger: "blur" }],
+  deptId: [{ required: true, message: "所属部门不能为空", trigger: "change" }],
   gender: [{ required: true, message: "性别不能为空", trigger: "change" }],
-  roleIds: [{ required: true, message: "用户角色不能为空", trigger: "blur" }],
+  roleIds: [{ required: true, message: "用户角色不能为空", trigger: "change" }],
   email: [
     {
       pattern: /\w[-\w.+]*@([A-Za-z0-9][-A-Za-z0-9]+\.)+[A-Za-z]{2,14}/,
@@ -410,7 +471,7 @@ function handleSelectionChange(selection: any) {
   removeIds.value = selection.map((item: any) => item.id);
 }
 
-/** 重置密码 */
+/** 重置密码（密码策略：8-20 位含字母和数字） */
 function resetPassword(row: { [key: string]: any }) {
   ElMessageBox.prompt(
     "请输入用户「" + row.username + "」的新密码",
@@ -418,15 +479,13 @@ function resetPassword(row: { [key: string]: any }) {
     {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
+      inputPattern: /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/,
+      inputErrorMessage: "密码需为 8-20 位且同时包含字母和数字",
     }
   )
     .then(({ value }) => {
-      if (!value) {
-        ElMessage.warning("请输入新密码");
-        return false;
-      }
       UserAPI.updatePassword(row.id, value).then(() => {
-        ElMessage.success("密码重置成功，新密码是：" + value);
+        ElMessage.success("密码重置成功");
       });
     })
     .catch(() => {});
@@ -453,9 +512,23 @@ async function openDialog(type: string, id?: number) {
   dialog.type = type;
 
   if (dialog.type === "user-form") {
+    // 清空上次表单数据，避免新增时残留上一次编辑的用户信息
+    Object.assign(formData, {
+      id: undefined,
+      username: undefined,
+      nickname: undefined,
+      avatar: undefined,
+      userType: "personal",
+      deptId: undefined,
+      gender: undefined,
+      roleIds: undefined,
+      mobile: undefined,
+      email: undefined,
+      status: 1,
+    });
+
     // 用户表单弹窗
-    await loadDeptOptions();
-    await loadRoleOptions();
+    await Promise.all([loadDeptOptions(), loadRoleOptions()]);
     if (id) {
       dialog.title = "修改用户";
       const data = await UserAPI.getFormData(id);
@@ -476,9 +549,6 @@ function closeDialog() {
   if (dialog.type === "user-form") {
     userFormRef.value.resetFields();
     userFormRef.value.clearValidate();
-
-    formData.id = undefined;
-    formData.status = 1;
   }
 }
 
@@ -518,14 +588,14 @@ function handleDelete(row?: any) {
 
   if (row) {
     userIds = String(row.id);
-    confirmText = `确认删除用户「${row.username}」吗？删除后不可恢复。`;
+    confirmText = `确认删除用户「${row.username}」吗？删除后该用户不可登录，数据保留。`;
   } else {
     if (removeIds.value.length === 0) {
       ElMessage.warning("请勾选删除项");
       return;
     }
     userIds = removeIds.value.join(",");
-    confirmText = `确认删除选中的 ${removeIds.value.length} 个用户吗？删除后不可恢复。`;
+    confirmText = `确认删除选中的 ${removeIds.value.length} 个用户吗？删除后不可登录，数据保留。`;
   }
 
   ElMessageBox.confirm(confirmText, "警告", {

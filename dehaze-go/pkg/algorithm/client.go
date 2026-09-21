@@ -115,7 +115,7 @@ func (c *Client) doPost(ctx context.Context, path string, reqBody any, respBody 
 
 	// 通过熔断器包装执行（熔断打开时快速失败）
 	exec := func() error {
-		return c.doPostWithRetry(ctx, url, body, idempotencyKey, respBody, path)
+		return classifyBusinessError(c.doPostWithRetry(ctx, url, body, idempotencyKey, respBody, path))
 	}
 	if c.breaker != nil {
 		if err := c.breaker.Execute(exec); err != nil {
@@ -134,7 +134,7 @@ func (c *Client) doGet(ctx context.Context, path string, respBody any) error {
 	url := c.baseURL + path
 
 	exec := func() error {
-		return c.doGetWithRetry(ctx, url, respBody)
+		return classifyBusinessError(c.doGetWithRetry(ctx, url, respBody))
 	}
 	if c.breaker != nil {
 		if err := c.breaker.Execute(exec); err != nil {
@@ -385,6 +385,18 @@ func (e *businessError) Error() string {
 }
 
 // isRetryable 判断错误是否可重试
+// classifyBusinessError 把上游 4xx 业务拒绝标记为业务性错误，使其不参与熔断失败统计。
+// 现场（run8）：SDK 业务负例连发 `400 A0400 图片地址不允许访问内网资源`，5 条即把熔断器打到 open（30s），
+// 之后**正向**预测/评估全部"熔断速败"（model.test.ts:328/441/471、core-flow:123 同一根因）。
+// 只在错误链上套一层标记：`Unwrap` 保留，上层仍可用 errors.As 取回 *httpStatusError。
+func classifyBusinessError(err error) error {
+	var he *httpStatusError
+	if errors.As(err, &he) && he.status < 500 {
+		return protection.MarkBusiness(err)
+	}
+	return err
+}
+
 func isRetryable(err error) bool {
 	// 业务错误 → 不可重试
 	var be *businessError

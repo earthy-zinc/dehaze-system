@@ -1,9 +1,13 @@
 """Anthropic 协议流式对话客户端"""
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 from app.infrastructure.llm.common import LlmStreamChunk, build_auth_headers
+from app.service.ai.service.trace_collector import record_wire_request, record_wire_response
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicClient:
@@ -44,6 +48,13 @@ class AnthropicClient:
                     try:
                         input_obj = json.loads(fn.get("arguments") or "{}")
                     except json.JSONDecodeError:
+                        # 历史 tool_call 的 arguments 非合法 JSON（上游截断/损坏）：
+                        # 不阻断本次请求构建，但必须留痕以定位数据来源（不记录参数内容）
+                        logger.warning(
+                            "tool_call arguments 非合法 JSON，按空对象处理: tool=%s, call_id=%s",
+                            fn.get("name", ""),
+                            tc.get("id", ""),
+                        )
                         input_obj = {}
                     content.append(
                         {
@@ -69,9 +80,7 @@ class AnthropicClient:
                 {
                     "name": fn.get("name", ""),
                     "description": fn.get("description", ""),
-                    "input_schema": fn.get(
-                        "parameters", {"type": "object", "properties": {}}
-                    ),
+                    "input_schema": fn.get("parameters", {"type": "object", "properties": {}}),
                 }
             )
         return converted
@@ -101,12 +110,14 @@ class AnthropicClient:
         max_tokens: int | None,
         tools: list[dict] | None,
         tool_choice: str | None,
-        temperature: float = 0.7,  # noqa: ARG002 anthropic 无需显式传温度
+        temperature: float = 0.7,
+        user_identity: tuple[str, str] | None = None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """构建 Anthropic 原生请求并解析 SSE 流，聚合 tool_use 内容块为三段式 tool_call 事件。
 
         模型启用 Prompt Caching 时，对稳定前缀（system + 最后一个工具定义）
-        注入 cache_control，命中缓存按 cached 档位价计费（sys_ai_model_price，见 AI模型管理 §2.12）。
+        注入 cache_control，命中缓存按 cached 档位价计费
+        （sys_ai_model_price，见 AI模型管理 §2.12）。
         """
         payload = {
             "model": model.model_id,
@@ -136,11 +147,30 @@ class AnthropicClient:
             anthropic_choice = self._convert_tool_choice_anthropic(tool_choice)
             if anthropic_choice is not None:
                 payload["tool_choice"] = anthropic_choice
+        # 用户身份透传：field 支持嵌套路径（如 metadata.user_id），中间层不存在时初始化；
+        # 首段字段已存在（核心键）时不覆盖
+        if user_identity is not None:
+            field, value = user_identity
+            parts = field.split(".")
+            if parts[0] not in payload:
+                node = payload
+                for part in parts[:-1]:
+                    node = node.setdefault(part, {})
+                node[parts[-1]] = value
         url = provider.api_base_url.rstrip("/") + "/messages"
         headers = build_auth_headers(provider, api_key)
         headers.setdefault("anthropic-version", "2023-06-01")
+        # wire 级原始报文采集（旁路）：上报实际发送的完整请求体（不存 headers/URL/API Key）
+        record_wire_request(payload)
         usage: dict = {}
         pending: dict[int, dict] = {}  # index -> {id, name, arguments}
+        # 流式聚合为等价非流式结构所需字段（响应原文取 provider 下发值）
+        wire_id: str | None = None
+        wire_model: str | None = None
+        stop_reason: str | None = None
+        text_parts: list[str] = []
+        thinking_parts: list[str] = []
+        completed_tool_calls: list[dict] = []
         async with self._client.stream("POST", url, json=payload, headers=headers) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
@@ -150,10 +180,18 @@ class AnthropicClient:
                 try:
                     event = json.loads(data)
                 except json.JSONDecodeError:
+                    # 非 JSON 的 data 分片（厂商扩展/被截断）：跳过但留痕，
+                    # 避免流解析异常被完全掩盖（只记分片长度，不记分片内容）
+                    logger.warning("SSE 分片无法解析为 JSON，已跳过: len=%d", len(data))
                     continue
                 etype = event.get("type")
                 if etype == "message_start":
-                    usage.update(event.get("message", {}).get("usage") or {})
+                    msg = event.get("message", {})
+                    if msg.get("id") and wire_id is None:
+                        wire_id = msg["id"]
+                    if msg.get("model") and wire_model is None:
+                        wire_model = msg["model"]
+                    usage.update(msg.get("usage") or {})
                 elif etype == "content_block_start":
                     cb = event.get("content_block") or {}
                     if cb.get("type") == "tool_use":
@@ -172,12 +210,15 @@ class AnthropicClient:
                         # 推理模型思考流：initial thinking 文本一次下发，signature 丢弃
                         thinking = cb.get("thinking") or ""
                         if thinking:
+                            thinking_parts.append(thinking)
                             yield LlmStreamChunk(type="thinking_delta", content=thinking)
                 elif etype == "content_block_delta":
                     delta = event.get("delta") or {}
                     if delta.get("type") == "text_delta" and delta.get("text"):
+                        text_parts.append(delta["text"])
                         yield LlmStreamChunk(type="text_delta", content=delta["text"])
                     elif delta.get("type") == "thinking_delta" and delta.get("thinking"):
+                        thinking_parts.append(delta["thinking"])
                         yield LlmStreamChunk(type="thinking_delta", content=delta["thinking"])
                     elif delta.get("type") == "input_json_delta":
                         index = event.get("index", 0)
@@ -189,6 +230,7 @@ class AnthropicClient:
                     index = event.get("index", 0)
                     if index in pending:
                         tc = pending.pop(index)
+                        completed_tool_calls.append(tc)
                         yield LlmStreamChunk(
                             type="tool_call_complete",
                             content=tc["arguments"],
@@ -196,5 +238,40 @@ class AnthropicClient:
                             tool_call_name=tc["name"],
                         )
                 elif etype == "message_delta":
+                    delta = event.get("delta") or {}
+                    if delta.get("stop_reason"):
+                        stop_reason = delta["stop_reason"]
                     usage.update(event.get("usage") or {})
+        # 流式结束：聚合等价非流式响应结构上报（tool_calls arguments 为原文）
+        message: dict = {"role": "assistant", "content": "".join(text_parts) or None}
+        if thinking_parts:
+            message["thinking"] = "".join(thinking_parts)
+        if completed_tool_calls:
+            message["tool_calls"] = [
+                {
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                }
+                for tc in completed_tool_calls
+            ]
+        record_wire_response(
+            {
+                "id": wire_id,
+                "model": wire_model or payload["model"],
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": {
+                            "end_turn": "stop",
+                            "stop_sequence": "stop",
+                            "max_tokens": "length",
+                            "tool_use": "tool_calls",
+                        }.get(stop_reason or ""),
+                        "message": message,
+                    }
+                ],
+                "usage": usage or None,
+            }
+        )
         yield LlmStreamChunk(type="done", usage=usage)

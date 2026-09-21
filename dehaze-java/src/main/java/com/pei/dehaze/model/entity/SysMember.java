@@ -37,6 +37,30 @@ public class SysMember extends BaseEntity {
 
     private Integer monthlyDehazeUsed;
 
+    private Integer monthlyDerainQuota;
+
+    private Integer monthlyDerainUsed;
+
+    private Integer monthlyDesnowQuota;
+
+    private Integer monthlyDesnowUsed;
+
+    private Integer monthlyLowlightQuota;
+
+    private Integer monthlyLowlightUsed;
+
+    private Integer monthlySuperResolutionQuota;
+
+    private Integer monthlySuperResolutionUsed;
+
+    private Integer monthlyDenoiseQuota;
+
+    private Integer monthlyDenoiseUsed;
+
+    private Integer monthlyInpaintQuota;
+
+    private Integer monthlyInpaintUsed;
+
     private Integer monthlyEvaluateQuota;
 
     private Integer monthlyEvaluateUsed;
@@ -49,8 +73,8 @@ public class SysMember extends BaseEntity {
 
     private LocalDateTime frozenTime;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

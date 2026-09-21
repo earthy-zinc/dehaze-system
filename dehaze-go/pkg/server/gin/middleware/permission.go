@@ -22,28 +22,36 @@ func Permission(perms ...string) gin.HandlerFunc {
 			return
 		}
 
-		// 超级管理员放行（与 Java 后端 SecurityUtils.isRoot() 逻辑一致）
-		if security.IsRoot(c) {
-			c.Next()
-			return
-		}
-
-		// 检查是否有任一权限
-		hasPerm, err := security.HasAnyPermission(c, perms...)
-		if err != nil {
-			_ = c.Error(common.WrapBizError(common.AUTHORIZED_ERROR, "权限校验失败", err))
-			c.Abort()
-			return
-		}
-
-		if !hasPerm {
-			_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "权限不足"))
+		if err := CheckPermission(c, perms...); err != nil {
+			_ = c.Error(err)
 			c.Abort()
 			return
 		}
 
 		c.Next()
 	}
+}
+
+// CheckPermission handler 内调用的权限校验（校验失败返回业务错误，由调用方决定如何响应）。
+// 用于"先参数绑定后权限校验"的路由：FastAPI 先做 body 校验再执行权限装饰器，
+// 非法 body + 无权限的请求在 Python 端返回 A0400；gin 中间件链先于 handler 执行，
+// 若这些路由继续用 Permission 中间件会返回 A0301，与 Python 行为不一致。
+func CheckPermission(c *gin.Context, perms ...string) error {
+	if len(perms) == 0 {
+		return nil
+	}
+
+	// 超级管理员放行（与 Java 后端 SecurityUtils.isRoot() 逻辑一致）
+	if security.IsRoot(c) {
+		return nil
+	}
+
+	// 与 Python 端 403 语义对齐：A0301 访问未授权
+	hasPerm, err := security.HasAnyPermission(c, perms...)
+	if err != nil || !hasPerm {
+		return common.NewBizError(common.ACCESS_UNAUTHORIZED, "访问未授权")
+	}
+	return nil
 }
 
 // PermissionWithWildcard 支持通配符的权限校验中间件

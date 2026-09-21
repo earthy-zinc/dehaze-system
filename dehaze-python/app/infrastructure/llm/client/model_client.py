@@ -11,9 +11,8 @@ from typing import Protocol
 import httpx
 
 from app.infrastructure.llm.common import (
-    LlmStreamChunk,
     PROTOCOL_ANTHROPIC,
-    PROTOCOL_OPENAI_COMPAT,
+    LlmStreamChunk,
 )
 
 
@@ -31,8 +30,10 @@ class ChatModelClient(Protocol):
         tools: list[dict] | None,
         tool_choice: str | None,
         temperature: float = 0.7,
+        user_identity: tuple[str, str] | None = None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """构建协议原生请求并解析 SSE，产出统一 LlmStreamChunk 流"""
+        ...
 
 
 def create_chat_client(protocol_type: str, client: httpx.AsyncClient) -> ChatModelClient:

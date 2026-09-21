@@ -10,7 +10,7 @@ type RatingCreateForm struct {
 }
 
 type FeedbackCreateForm struct {
-	FeedbackType  string   `json:"feedbackType"`
+	FeedbackType  string   `json:"feedbackType" binding:"required,oneof=suggestion bug experience complaint"`
 	Title         string   `json:"title"`
 	Content       string   `json:"content"`
 	Contact       string   `json:"contact"`

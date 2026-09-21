@@ -9,10 +9,9 @@ import pytest
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_balance import SysBalance
-from app.models.entity.sys_balance_log import SysBalanceLog
-from app.service.order.balance_account_service import BalanceAccountService
-from app.repository.balance_log_repository import balance_log_repository
 from app.repository.balance_account_repository import balance_account_repository
+from app.repository.balance_log_repository import balance_log_repository
+from app.service.order.balance_account_service import BalanceAccountService
 
 pytestmark = pytest.mark.requires_db
 
@@ -30,7 +29,9 @@ async def _seed_account(db, user_id: int, *, balance: int = 0, frozen: int = 0, 
 
 
 async def _get_account(db, user_id: int):
-    return await balance_account_repository.get_by_user_id(db, user_id)
+    acct = await balance_account_repository.get_by_user_id(db, user_id)
+    assert acct is not None
+    return acct
 
 
 class TestFreeze:

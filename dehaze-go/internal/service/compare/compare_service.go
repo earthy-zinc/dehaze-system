@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -28,12 +29,9 @@ func NewCompareService(evalRepo evalrepo.IEvalLogRepository, predRepo predrepo.I
 	return &CompareService{evalRepo: evalRepo, predRepo: predRepo, algoRepo: algoRepo}
 }
 
-// CompareReportForm 对比报告生成表单
+// CompareReportForm 对比报告生成表单（格式固定为 HTML，无其他可选项）
 type CompareReportForm struct {
-	LogID          int64  `json:"logId" binding:"required"`
-	Format         string `json:"format" binding:"required"`
-	IncludeMetrics *bool  `json:"includeMetrics"`
-	IncludeFilters *bool  `json:"includeFilters"`
+	LogID int64 `json:"logId" binding:"required"`
 }
 
 // CompareReportResultVO 对比报告结果
@@ -45,6 +43,7 @@ type CompareReportResultVO struct {
 }
 
 // GenerateReport 生成对比报告（异步任务）
+// 归属校验：仅处理记录本人可生成报告，他人记录与不存在记录同口径防枚举
 func (s *CompareService) GenerateReport(ctx context.Context, userID int64, form *CompareReportForm) (*CompareReportResultVO, error) {
 	predLog, err := s.predRepo.FindByID(ctx, form.LogID)
 	if err != nil {
@@ -53,18 +52,15 @@ func (s *CompareService) GenerateReport(ctx context.Context, userID int64, form 
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询处理记录失败", err)
 	}
+	if predLog.CreateBy != userID {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "处理记录不存在")
+	}
 	if predLog.Status != model.LogStatusCompleted {
 		return nil, common.NewBizError(common.BUSINESS_ERROR, "处理任务尚未完成，无法生成报告")
 	}
 
-	includeMetrics := form.IncludeMetrics != nil && *form.IncludeMetrics
-	includeFilters := form.IncludeFilters != nil && *form.IncludeFilters
-
 	params := map[string]any{
-		"logId":          form.LogID,
-		"format":         form.Format,
-		"includeMetrics": includeMetrics,
-		"includeFilters": includeFilters,
+		"logId": form.LogID,
 	}
 	paramsJSON, _ := json.Marshal(params)
 
@@ -76,6 +72,7 @@ func (s *CompareService) GenerateReport(ctx context.Context, userID int64, form 
 		PredMD5:     predLog.OriginMD5,
 		GtMD5:       predLog.PredMD5,
 		Status:      model.LogStatusProcessing,
+		TaskType:    "report",
 	}
 	paramsStr := string(paramsJSON)
 	reportTask.Result = &paramsStr
@@ -124,14 +121,17 @@ func (s *CompareService) generateReportAsync(taskID int64, predLog *model.SysPre
 	logger.Info("对比报告生成完成", zap.Int64("taskID", taskID))
 }
 
-// GetReportTaskStatus 查询报告任务状态
-func (s *CompareService) GetReportTaskStatus(ctx context.Context, taskID int64) (*CompareReportResultVO, error) {
+// GetReportTaskStatus 查询报告任务状态（仅报告归属用户可访问）
+func (s *CompareService) GetReportTaskStatus(ctx context.Context, taskID int64, userID int64) (*CompareReportResultVO, error) {
 	log, err := s.evalRepo.FindByID(ctx, taskID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "报告不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询报告任务失败", err)
+	}
+	if log.CreateBy != userID {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "报告不存在")
 	}
 
 	vo := &CompareReportResultVO{
@@ -149,14 +149,17 @@ func (s *CompareService) GetReportTaskStatus(ctx context.Context, taskID int64) 
 	return vo, nil
 }
 
-// GetReportHTML 获取报告HTML内容（用于下载）
-func (s *CompareService) GetReportHTML(ctx context.Context, taskID int64) (string, error) {
+// GetReportHTML 获取报告HTML内容（用于下载，仅报告归属用户可访问）
+func (s *CompareService) GetReportHTML(ctx context.Context, taskID int64, userID int64) (string, error) {
 	log, err := s.evalRepo.FindByID(ctx, taskID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "报告不存在")
 		}
 		return "", common.WrapBizError(common.DATABASE_ERROR, "查询报告任务失败", err)
+	}
+	if log.CreateBy != userID {
+		return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "报告不存在")
 	}
 
 	if log.Status == model.LogStatusProcessing {
@@ -186,11 +189,12 @@ func (s *CompareService) GetReportHTML(ctx context.Context, taskID int64) (strin
 	return html, nil
 }
 
-// buildReportHTML 生成对比报告HTML
+// buildReportHTML 生成对比报告HTML（动态字段 HTML 转义，防报告页存储型 XSS）
 func buildReportHTML(predLog *model.SysPredLog, algorithmName string) string {
 	now := time.Now().Format("2006-01-02 15:04:05")
-	originURL := predLog.OriginURL
-	resultURL := predLog.PredURL
+	originURL := html.EscapeString(predLog.OriginURL)
+	resultURL := html.EscapeString(predLog.PredURL)
+	algorithmName = html.EscapeString(algorithmName)
 	algoID := predLog.AlgorithmID
 	processTime := predLog.Time
 

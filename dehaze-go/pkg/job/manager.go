@@ -10,8 +10,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/trace"
-	"go.uber.org/zap"
 	xxl "github.com/xxl-job/xxl-job-executor-go"
+	"go.uber.org/zap"
 )
 
 // wrapWithTrace 为后台任务注入 job 级 trace_id，使日志可追踪

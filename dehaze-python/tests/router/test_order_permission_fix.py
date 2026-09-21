@@ -3,9 +3,9 @@ from fastapi import HTTPException
 
 from app.dependencies.auth import UserContext
 from app.models.schema.order import BalanceRefundAuditForm
+from app.router.order import audit_balance_refund, get_order_page, get_order_stats, list_refunds
 
 pytestmark = pytest.mark.api
-from app.router.order import audit_balance_refund, get_order_page, get_order_stats, list_refunds
 
 
 def _user(roles=None, permissions=None):
@@ -26,7 +26,7 @@ def _fake_service(called):
 
 
 @pytest.mark.parametrize(
-    "endpoint,permission,service",
+    ("endpoint", "permission", "service"),
     [
         (get_order_page, "order:list", "order_service.list_paged"),
         (list_refunds, "order:refund:list", "refund_service.list_refunds"),
@@ -68,9 +68,7 @@ async def test_balance_refund_audit_requires_permission():
     user = _user(permissions=[])
 
     with pytest.raises(HTTPException) as ei:
-        await audit_balance_refund(
-            refund_id=1, body=BalanceRefundAuditForm(), user=user, db=None
-        )
+        await audit_balance_refund(refund_id=1, body=BalanceRefundAuditForm(), user=user, db=None)
     assert ei.value.status_code == 403
 
 

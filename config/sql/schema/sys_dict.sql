@@ -17,7 +17,7 @@ CREATE TABLE `sys_dict`
     `status`      tinyint                                                       NULL DEFAULT 1 COMMENT '状态(1:正常;0:禁用)',
     `defaulted`   tinyint                                                       NULL DEFAULT 0 COMMENT '是否默认(1:是;0:否)',
     `remark`      varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT '' COMMENT '备注',
-    `deleted`     tinyint                                                       NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`     bigint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time` datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
@@ -26,7 +26,7 @@ CREATE TABLE `sys_dict`
     -- 唯一约束落在 (type_code, name)：name 为语义键。AI 系统默认配置（ai_guardrail_defaults
     -- 等）多个参数项可同值（如多个开关均为 'true'），(type_code, value) 无法承载，
     -- 故以 name 唯一；常规下拉型字典的 value 唯一性由服务层校验兜底。
-    UNIQUE INDEX `uk_type_name` (`type_code` ASC, `name` ASC) USING BTREE
+    UNIQUE INDEX `uk_type_name` (`type_code` ASC, `name` ASC, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '字典数据表'

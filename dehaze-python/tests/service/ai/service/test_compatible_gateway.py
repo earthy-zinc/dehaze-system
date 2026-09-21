@@ -2,30 +2,46 @@ from types import SimpleNamespace
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.entity.api_key import SysApiKey
+from app.repository.api_key_repository import ApiKeyRepository
 from app.service.ai.service import compatible_api_service as m
 from app.service.ai.service.compatible_governance import GovernanceError
 from tests.stubs.fakes import FakeInternalResponse
 
 
-def _api_key(**kw):
-    defaults = dict(
-        id=1,
-        model_whitelist=None,
-        daily_quota=None,
-        monthly_quota=None,
-        rpm_limit=None,
-    )
+def _api_key(**kw) -> SysApiKey:
+    defaults: dict = {
+        "id": 1,
+        "model_whitelist": None,
+        "daily_quota": None,
+        "monthly_quota": None,
+        "rpm_limit": None,
+    }
     defaults.update(kw)
-    return SimpleNamespace(**defaults)
+    return SysApiKey(**defaults)
+
+
+class _ApiKeyRepo(ApiKeyRepository):
+    """测试替身：仅实现 get_by_id（返回注入的 api_key），其余走真实基类。"""
+
+    def __init__(self, api_key: SysApiKey | None = None) -> None:
+        self._api_key = api_key
+
+    async def get_by_id(self, db, id: int, *, with_deleted: bool = False) -> SysApiKey | None:
+        if self._api_key is not None and self._api_key.id == id:
+            return self._api_key
+        return None
 
 
 def _service(api_key=None):
-    async def _get_by_id(db, key_id):
-        if api_key is not None and api_key.id == key_id:
-            return api_key
-        return None
+    return m.CompatibleApiService(api_key_repository=_ApiKeyRepo(api_key))
 
-    return m.CompatibleApiService(api_key_repository=SimpleNamespace(get_by_id=_get_by_id))
+
+def _body_text(resp) -> str:
+    """JSONResponse.body 运行时恒为 bytes；starlette Response.render 声明为
+    bytes | memoryview，此处收敛为 bytes 再做解码断言。"""
+    assert isinstance(resp.body, bytes)
+    return resp.body.decode()
 
 
 class _User:
@@ -92,7 +108,7 @@ async def test_governance_429_openai_format(monkeypatch):
         handler=_ok_handler,
     )
     assert resp.status_code == 429
-    body = resp.body.decode()
+    body = _body_text(resp)
     assert '"type":"rate_limit_error"' in body
     assert '"message":"超限"' in body
     assert '"code"' in body
@@ -108,11 +124,15 @@ async def test_governance_429_claude_format(monkeypatch):
 
     req = _request(api_key_info={"key_id": 1, "key_prefix": "dhak_ab"})
     resp = await _service(_api_key()).run_compatible_call(
-        req, None, _User(),
-        protocol="claude", endpoint="messages", handler=_ok_handler,
+        req,
+        None,
+        _User(),
+        protocol="claude",
+        endpoint="messages",
+        handler=_ok_handler,
     )
     assert resp.status_code == 429
-    body = resp.body.decode()
+    body = _body_text(resp)
     assert '"type":"error"' in body
     assert '"code"' not in body
     assert '"type":"rate_limit_error"' in body
@@ -136,7 +156,7 @@ async def test_governance_403_permission_error(monkeypatch):
         handler=_ok_handler,
     )
     assert resp.status_code == 403
-    assert '"type":"permission_error"' in resp.body.decode()
+    assert '"type":"permission_error"' in _body_text(resp)
 
 
 async def test_business_quota_insufficient_maps_402_openai(monkeypatch):
@@ -155,7 +175,7 @@ async def test_business_quota_insufficient_maps_402_openai(monkeypatch):
         handler=_handler,
     )
     assert resp.status_code == 402
-    assert '"type":"insufficient_quota"' in resp.body.decode()
+    assert '"type":"insufficient_quota"' in _body_text(resp)
 
 
 async def test_business_quota_insufficient_maps_402_claude(monkeypatch):
@@ -166,11 +186,15 @@ async def test_business_quota_insufficient_maps_402_claude(monkeypatch):
 
     req = _request(api_key_info={"key_id": 1, "key_prefix": "dhak_ab"})
     resp = await _service(_api_key()).run_compatible_call(
-        req, None, _User(),
-        protocol="claude", endpoint="messages", handler=_handler,
+        req,
+        None,
+        _User(),
+        protocol="claude",
+        endpoint="messages",
+        handler=_handler,
     )
     assert resp.status_code == 402
-    assert '"type":"insufficient_quota"' in resp.body.decode()
+    assert '"type":"insufficient_quota"' in _body_text(resp)
 
 
 def test_error_status_code_mapping():
@@ -216,7 +240,7 @@ async def test_success_non_stream_audit_fields(monkeypatch):
     async def _handler(body, audit, api_key):
         internal = FakeInternalResponse(
             'event: content_block.delta\ndata: {"type":"text_delta","text":"你好，世界"}\n\n',
-            'event: message.end\n'
+            "event: message.end\n"
             'data: {"stopReason":"stop","usage":{"inputTokens":10,"outputTokens":5,'
             '"credits":2}}\n\n',
         )
@@ -261,8 +285,12 @@ async def test_session_auth_skips_governance(monkeypatch):
 
     req = _request()
     await _service().run_compatible_call(
-        req, None, _User(),
-        protocol="openai", endpoint="chat/completions", handler=_handler,
+        req,
+        None,
+        _User(),
+        protocol="openai",
+        endpoint="chat/completions",
+        handler=_handler,
     )
     assert _GovStub.calls == []
     assert recorded["key_id"] is None
@@ -271,7 +299,7 @@ async def test_session_auth_skips_governance(monkeypatch):
 async def test_list_models_openai_filters_whitelist(monkeypatch):
     model_a = SimpleNamespace(model_id="gpt-4", create_time=None, provider_id=1)
     model_b = SimpleNamespace(model_id="claude-3", create_time=None, provider_id=2)
-    api_key = SimpleNamespace(id=1, model_whitelist=["gpt-4"])
+    api_key = SysApiKey(id=1, model_whitelist=["gpt-4"])
     called = {}
 
     async def _vip_list(db, redis, user_id):
@@ -288,7 +316,7 @@ async def test_list_models_openai_filters_whitelist(monkeypatch):
 async def test_list_models_openai_no_whitelist_passthrough(monkeypatch):
     model_a = SimpleNamespace(model_id="gpt-4", create_time=None, provider_id=1)
     model_b = SimpleNamespace(model_id="claude-3", create_time=None, provider_id=2)
-    api_key = SimpleNamespace(id=1, model_whitelist=None)
+    api_key = SysApiKey(id=1, model_whitelist=None)
 
     async def _vip_list(db, redis, user_id):
         return [model_a, model_b]
@@ -303,7 +331,7 @@ async def test_list_models_claude_filters_whitelist(monkeypatch):
     model_b = SimpleNamespace(
         model_id="claude-3", create_time=None, provider_id=2, display_name="B"
     )
-    api_key = SimpleNamespace(id=1, model_whitelist=["claude-3"])
+    api_key = SysApiKey(id=1, model_whitelist=["claude-3"])
 
     async def _vip_list(db, redis, user_id):
         return [model_a, model_b]
@@ -361,9 +389,7 @@ async def test_models_endpoint_session_auth_skips_governance(monkeypatch):
         return {"data": []}
 
     req = _request()
-    resp = await _service().run_models_call(
-        req, None, _User(), protocol="openai", handler=_handler
-    )
+    resp = await _service().run_models_call(req, None, _User(), protocol="openai", handler=_handler)
     assert resp.status_code == 200
     assert _GovStub.calls == []
     assert recorded["key_id"] is None

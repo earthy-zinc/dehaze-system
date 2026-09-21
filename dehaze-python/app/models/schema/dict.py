@@ -15,7 +15,7 @@ class DictForm(BaseModel):
     name: str = Field(..., min_length=1, max_length=50, description="字典项名称")
     value: str = Field(..., min_length=1, max_length=50, description="字典项值")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-禁用)")
-    sort: int = Field(default=1, ge=0, description="排序（默认1）")
+    sort: int = Field(default=1, ge=1, description="排序（正整数，默认1）")
     defaulted: int = Field(default=0, ge=0, le=1, description="是否默认(1-是；0-否)")
     remark: str | None = Field(default=None, max_length=255, description="备注")
 
@@ -28,8 +28,8 @@ class DictTypeForm(BaseModel):
     """字典类型表单"""
 
     id: int | None = Field(default=None, description="字典类型ID")
-    name: str = Field(..., min_length=1, max_length=64, description="类型名称")
-    code: str = Field(..., min_length=1, max_length=32, description="类型编码")
+    name: str = Field(..., min_length=1, max_length=50, description="类型名称")
+    code: str = Field(..., min_length=1, max_length=50, description="类型编码")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-禁用)")
     remark: str | None = Field(default=None, max_length=255, description="备注")
 
@@ -58,6 +58,7 @@ class DictTypePageVO(BaseModel):
     code: str = Field(description="类型编码")
     status: int = Field(description="状态(1-正常；0-禁用)")
     remark: str | None = Field(default=None, description="备注")
+    isPreset: bool = Field(description="是否系统预置类型(预置类型不可删除)")
     createTime: str | None = Field(default=None, description="创建时间")
 
 
@@ -69,6 +70,7 @@ class DictTypeFormVO(BaseModel):
     code: str = Field(description="类型编码")
     status: int = Field(description="状态(1-正常；0-禁用)")
     remark: str | None = Field(default=None, description="备注")
+    isPreset: bool = Field(description="是否系统预置类型(预置类型不可删除)")
 
 
 class DictFormVO(BaseModel):

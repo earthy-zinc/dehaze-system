@@ -33,14 +33,10 @@ class KnowledgeBaseClient:
         async with get_db_session() as db:
             try:
                 if user_id is not None:
-                    result = await search_service.search(
-                        db, redis, user_id, query, top_k=top_k
-                    )
+                    result = await search_service.search(db, redis, user_id, query, top_k=top_k)
                 else:
-                    result = await search_service.search_internal(
-                        None, query, {"topK": top_k}
-                    )
-            except Exception as e:  # noqa: BLE001 - 工具层降级空列表，不影响对话主流程
+                    result = await search_service.search_internal(None, query, {"topK": top_k})
+            except Exception as e:
                 logger.warning("知识库检索工具降级返回空结果 query=%s: %s", query, e)
                 return []
             return [
@@ -50,16 +46,24 @@ class KnowledgeBaseClient:
                     "source": r["documentId"],
                     "chunk_id": r["chunkId"],
                     "score": r["score"],
+                    "section_path": r.get("sectionPath"),
                 }
                 for r in (result.get("results") or [])
             ]
 
     def format_results(self, results: list[dict]) -> str:
-        """将检索结果格式化为"标题+摘要+来源引用"列表文本（支持引用溯源）。"""
+        """将检索结果格式化为"标题+摘要+来源引用"列表文本（支持引用溯源）。
+
+        有小节路径的命中以【文档名 > 节路径】锚点开头（父子分块设计 §4.4），
+        无路径（无标题文档）保持原标题格式。
+        """
         lines: list[str] = []
         for i, r in enumerate(results, 1):
+            title = r.get("title", "")
+            section_path = r.get("section_path")
+            heading = f"【{title} > {section_path}】" if section_path else title
             source = r.get("source") or r.get("url") or r.get("doc_id") or f"KB-{i}"
-            lines.append(f"{i}. {r.get('title', '')}\n   {r.get('snippet', '')}\n   来源: {source}")
+            lines.append(f"{i}. {heading}\n   {r.get('snippet', '')}\n   来源: {source}")
         return "\n\n".join(lines)
 
 

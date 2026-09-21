@@ -41,6 +41,9 @@ public class PredLogVO {
     @Schema(description = "失败错误信息")
     private String errorMessage;
 
+    @Schema(description = "推荐来源：推荐记录ID（推荐管理模块）")
+    private Long recommendedBy;
+
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

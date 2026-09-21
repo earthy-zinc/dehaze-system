@@ -11,7 +11,7 @@ class MessageSendRequest(BaseModel):
     recipientIds: list[int] = Field(..., min_length=1, description="接收人ID列表")
     bizModule: str | None = None
     bizId: str | None = None
-    priority: int | None = Field(default=2, ge=1, le=4)
+    priority: int | None = Field(default=None, ge=1, le=4)
     jumpUrl: str | None = None
     variables: dict[str, str] | None = None
     extra: dict[str, Any] | None = None
@@ -20,8 +20,16 @@ class MessageSendRequest(BaseModel):
 class NotificationSettingsForm(BaseModel):
     pushEnabled: bool | None = None
     dndEnabled: bool | None = None
-    dndStart: str | None = None
-    dndEnd: str | None = None
+    dndStart: str | None = Field(
+        default=None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$",
+        description="免打扰开始时间(HH:mm:ss)",
+    )
+    dndEnd: str | None = Field(
+        default=None,
+        pattern=r"^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$",
+        description="免打扰结束时间(HH:mm:ss)",
+    )
     preferences: dict[str, Any] | None = None
 
 

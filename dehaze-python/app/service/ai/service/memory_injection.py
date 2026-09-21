@@ -34,14 +34,13 @@ def _recency_score(last_accessed_at: datetime | None, create_time: datetime | No
     return math.exp(-delta_days / _RECENCY_HALF_LIFE_DAYS)
 
 
-def _memory_importance(m: dict | object) -> float:
+def _memory_importance(m: dict) -> float:
     """取记忆重要性（0-100），映射到 0-1。"""
-    importance = m["importance"] if isinstance(m, dict) else m.importance
-    return max(0.0, min(100.0, float(importance))) / 100.0
+    return max(0.0, min(100.0, float(m["importance"]))) / 100.0
 
 
-def _memory_id(m: dict | object) -> int:
-    return m["id"] if isinstance(m, dict) else m.id
+def _memory_id(m: dict) -> int:
+    return m["id"]
 
 
 def _sort_retrieved(memories: list[dict]) -> list[dict]:
@@ -138,49 +137,49 @@ async def inject_memories(
         - injected_list：注入可见性清单，元素为
           {memory_id, memory_type, content, source}，供推理层落库展示。
     """
-    if not query or len(query) < 2:
-        return None, []
-
+    # 常驻偏好每轮生效（§7.4：与对话语义无关也要注入），不受查询长度限制；
+    # 仅检索注入层对过短查询跳过（1 字符语义检索无意义）
     injected: list[dict] = []
 
     preferences = await ai_memory_repository.list_preferences(db, user_id)
-    for m in preferences:
-        injected.append(
-            {
-                "memory_id": m.id,
-                "memory_type": m.memory_type,
-                "content": m.content,
-                "source": "preference",
-            }
-        )
+    injected.extend(
+        {
+            "memory_id": m.id,
+            "memory_type": m.memory_type,
+            "content": m.content,
+            "source": "preference",
+        }
+        for m in preferences
+    )
 
     # 调用方未传 task_type 时，兜底按最后用户消息关键词匹配用户已有 skill，避免该层永不生效
     effective_task_type = task_type
-    if not effective_task_type:
+    if not effective_task_type and query:
         effective_task_type = _resolve_task_type(
             query, await ai_memory_repository.list_skills(db, user_id)
         )
     if effective_task_type:
         skill_memories = await ai_memory_repository.list_by_skill(db, user_id, effective_task_type)
-        for m in skill_memories:
-            injected.append(
-                {
-                    "memory_id": m.id,
-                    "memory_type": m.memory_type,
-                    "content": m.content,
-                    "source": "skill",
-                }
-            )
+        injected.extend(
+            {
+                "memory_id": m.id,
+                "memory_type": m.memory_type,
+                "content": m.content,
+                "source": "skill",
+            }
+            for m in skill_memories
+        )
 
-    retrieval = await _retrieval_layer(db, user_id, query, limit)
-    for m in retrieval:
-        injected.append(
+    if query and len(query) >= 2:
+        retrieval = await _retrieval_layer(db, user_id, query, limit)
+        injected.extend(
             {
                 "memory_id": _memory_id(m),
                 "memory_type": m["memory_type"],
                 "content": m["content"],
                 "source": "retrieval",
             }
+            for m in retrieval
         )
 
     if not injected:

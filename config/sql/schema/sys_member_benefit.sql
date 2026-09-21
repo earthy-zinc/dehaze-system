@@ -7,7 +7,7 @@
 -- level_code 唯一索引保证每个等级一条配置。
 -- growth_min/growth_max 定义成长值区间，用于自动升降级判断。
 -- 权益项覆盖 8 类任务月度配额（dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）、
--- AI 对话积分配额（日/月）、多模态视觉读取频次、处理优先级、功能解锁开关。
+-- AI 对话积分配额（日/月）、多模态视觉读取频次、同时在线设备数上限、处理优先级、功能解锁开关。
 -- 功能解锁项使用 tinyint(0/1) 而非布尔，与系统其他表风格一致。
 -- 套餐购买时从此表读取等级权益，套餐可自定义覆盖（见 sys_package.benefit_overrides）。
 -- ------------------------------------------------------------
@@ -38,15 +38,16 @@ CREATE TABLE `sys_member_benefit`
     `ai_credits_monthly`     bigint                                                         NOT NULL DEFAULT 0 COMMENT 'AI对话月限额(积分/月，每月1日重置)',
     `vip_gift_credits`       bigint                                                         NOT NULL DEFAULT 0 COMMENT 'VIP按月赠送积分(0表示该等级不赠送)',
     `multimodal_limit`       int                                                            NOT NULL DEFAULT 0 COMMENT '多模态视觉读取日限额(次/天，按用户全局日计数，每日0点重置)',
+    `max_devices`            int                                                            NOT NULL DEFAULT 1 COMMENT '同时在线设备数上限(登录超限踢最早会话)',
     `sort`                   int                                                            NOT NULL DEFAULT 0 COMMENT '排序值',
     `status`                 tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`                tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`                bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`            datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`            datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`              bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`              bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_level_code` (`level_code`) USING BTREE
+    UNIQUE INDEX `uk_level_code` (`level_code`, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '会员等级权益配置表'

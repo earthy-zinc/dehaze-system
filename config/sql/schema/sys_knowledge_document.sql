@@ -28,7 +28,7 @@ CREATE TABLE `sys_knowledge_document`
     `total_tokens`     bigint                                                          NOT NULL DEFAULT 0 COMMENT '编码Token总数(冗余统计)',
     `processing_status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'pending' COMMENT '处理状态(pending:待处理;processing:处理中;completed:已完成;failed:失败)',
     `error`            TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '失败原因(processing_status=failed时填充)',
-    `deleted`          tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`          bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`        bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`        bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`      datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

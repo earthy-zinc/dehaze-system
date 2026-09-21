@@ -1,44 +1,50 @@
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
-
-pytestmark = pytest.mark.requires_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
+from app.infrastructure.sse.sse_emitter_manager import SseEmitterManager
 from app.models.schema.ai_conversation import MessageResume
+from app.repository.ai_conversation_repository import AiConversationRepository
 from app.repository.ai_message_repository import ai_message_repository as ai_msg_repo
-from app.service.ai_conversation_service import AiConversationService
 from app.service.ai import message_streaming
-from app.service.ai_message_service import AiMessageService
 from app.service.ai.builders.context_manager import context_manager
+from app.service.ai.middleware.interrupt_handler import InterruptHandler
+from app.service.ai.service.reasoning_service import ReasoningService
+from app.service.ai_conversation_service import AiConversationService
+from app.service.ai_message_service import AiMessageService
 from tests.stubs.factories import make_conv
 from tests.stubs.mocks import patch_reasoning_boundaries
 
+pytestmark = pytest.mark.requires_db
+
 
 def _msg(id, conv_id, parent, role, **kw):
-    base = dict(
-        id=id,
-        conversation_id=conv_id,
-        parent_message_id=parent,
-        role=role,
-        deleted=0,
-        content="",
-        model="gpt",
-        status=2,
-        task_id=None,
-        error=None,
-        tool_calls=None,
-        tool_call_id=None,
-        metadata_=None,
-        input_tokens=0,
-        output_tokens=0,
-        cached_input_tokens=0,
-        credits=0,
-        edited=0,
-        original_content=None,
-        create_time=None,
-    )
+    base = {
+        "id": id,
+        "conversation_id": conv_id,
+        "parent_message_id": parent,
+        "role": role,
+        "deleted": 0,
+        "content": "",
+        "model": "gpt",
+        "status": 2,
+        "task_id": None,
+        "error": None,
+        "tool_calls": None,
+        "tool_call_id": None,
+        "metadata_": None,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_input_tokens": 0,
+        "credits": 0,
+        "edited": 0,
+        "original_content": None,
+        "create_time": None,
+    }
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -67,9 +73,7 @@ class _MsgRepo:
 
     async def get_children(self, db, cid, pid):
         return [
-            m
-            for m in self.msgs.values()
-            if m.conversation_id == cid and m.parent_message_id == pid
+            m for m in self.msgs.values() if m.conversation_id == cid and m.parent_message_id == pid
         ]
 
     async def soft_delete_by_ids(self, db, ids):
@@ -94,6 +98,50 @@ class _ConvRepo:
     async def update_current_branch(self, db, cid, mid):
         if self._conv is not None:
             self._conv.current_branch_message_id = mid
+
+
+class _ReasoningStub(ReasoningService):
+    """测试替身：仅实现 run（委托注入的协程），其余推理能力不参与本组用例。"""
+
+    def __init__(self, run):
+        self._run = run
+
+    async def run(self, conv_id, user_id, msg_id, model_id, stream_session_id):
+        await self._run(
+            conv_id=conv_id,
+            user_id=user_id,
+            msg_id=msg_id,
+            model_id=model_id,
+            stream_session_id=stream_session_id,
+        )
+        return {}
+
+
+class _EmitterStub(SseEmitterManager):
+    """测试替身：仅实现 stop_stream / acquire_lock 中被注入者，其余推流能力不参与。"""
+
+    def __init__(self, *, stop_stream=None, acquire_lock=None):
+        self._stop_stream = stop_stream
+        self._acquire_lock = acquire_lock
+
+    async def stop_stream(self, stream_session_id):
+        if self._stop_stream is not None:
+            await self._stop_stream(stream_session_id)
+
+    async def acquire_lock(self, conversation_id):
+        if self._acquire_lock is not None:
+            return await self._acquire_lock(conversation_id)
+        return True
+
+
+class _InterruptStub(InterruptHandler):
+    """测试替身：仅实现 get_interrupt，返回注入的中断点（None 表示无中断）。"""
+
+    def __init__(self, result):
+        self._result = result
+
+    async def get_interrupt(self, thread_id):
+        return self._result
 
 
 def _conv_service(**kw):
@@ -121,12 +169,14 @@ class TestRegenerate:
         )
         monkeypatch.setattr(message_streaming, "stream_generator", fake_stream)
 
-        resp = await svc.regenerate_message(
-            SimpleNamespace(commit=AsyncMock()), 2, 1
-        )
-        assert svc.ai_message_repository.created[0].role == "assistant"
-        assert svc.ai_message_repository.created[0].parent_message_id == 1
-        assert svc.ai_message_repository.created[0].id == 3
+        resp = await svc.regenerate_message(AsyncSession(), 2, 1)
+        # 断言面取自注入的 _MsgRepo 替身（svc.ai_message_repository 即该替身，验证装配生效）
+        repo = svc.ai_message_repository
+        assert isinstance(repo, _MsgRepo)
+        created = repo.created
+        assert created[0].role == "assistant"
+        assert created[0].parent_message_id == 1
+        assert created[0].id == 3
         assert conv.current_branch_message_id == 3
         assert resp.media_type == "text/event-stream"
         async for _ in resp.body_iterator:
@@ -139,7 +189,7 @@ class TestRegenerate:
             ai_message_repository=_MsgRepo().put(deleted_asst),
         )
         with pytest.raises(BusinessException):
-            await svc.regenerate_message(object(), 2, 1)
+            await svc.regenerate_message(AsyncSession(), 2, 1)
 
     async def test_shared_reasoning_trigger(self, mock_redis):
         run_calls = {}
@@ -151,13 +201,13 @@ class TestRegenerate:
             pass
 
         svc = AiMessageService(
-            reasoning_service=SimpleNamespace(run=fake_run),
-            sse_emitter_manager=SimpleNamespace(stop_stream=fake_stop),
+            # 测试替身：仅实现被测方法（reasoning_service.run / emitter.stop_stream）
+            reasoning_service=_ReasoningStub(fake_run),
+            sse_emitter_manager=_EmitterStub(stop_stream=fake_stop),
             get_redis_client=lambda: mock_redis,
         )
 
         await svc._run_reasoning(
-            db=SimpleNamespace(commit=AsyncMock()),
             conv_id=10,
             user_id=1,
             model="gpt",
@@ -173,62 +223,128 @@ class TestRegenerate:
 
 
 class TestBranchChain:
-    async def test_no_cross_branch_contamination(self, monkeypatch):
-        msgs = {
-            1: _msg(1, 10, None, "user", content="a"),
-            2: _msg(2, 10, 1, "assistant", content="branchA"),
-            3: _msg(3, 10, 1, "user", content="b"),
-            4: _msg(4, 10, 3, "assistant", content="branchB"),
-        }
+    @staticmethod
+    async def _seed(db, specs):
+        """落库真实会话与消息：specs 为 [(role, parent_index|None, content), ...]"""
+        from app.models.entity.sys_ai_conversation import SysAiConversation
+        from app.models.entity.sys_ai_message import SysAiMessage
 
-        async def get_by_ids(db, ids):
-            return [msgs[i] for i in ids if i in msgs]
+        conv = SysAiConversation(user_id=1, model="gpt", agent_code=None)
+        db.add(conv)
+        await db.flush()
+        msgs = []
+        for role, parent_index, content in specs:
+            msg = SysAiMessage(
+                conversation_id=conv.id,
+                parent_message_id=msgs[parent_index].id if parent_index is not None else None,
+                role=role,
+                content=content,
+                status=2,
+            )
+            db.add(msg)
+            await db.flush()
+            msgs.append(msg)
+        return conv, msgs
 
-        monkeypatch.setattr(ai_msg_repo, "get_by_ids", get_by_ids)
-        chain = await ai_msg_repo.get_chain_by_id(object(), 10, 4)
-        assert [m.id for m in chain] == [1, 3, 4]
+    async def test_no_cross_branch_contamination(self, db):
+        conv, msgs = await self._seed(
+            db,
+            [
+                ("user", None, "a"),
+                ("assistant", 0, "branchA"),
+                ("user", 0, "b"),
+                ("assistant", 2, "branchB"),
+            ],
+        )
+        chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[-1].id)
+        assert [m.content for m in chain] == ["a", "b", "branchB"]
 
-    async def test_ring_protection(self, monkeypatch):
-        m1 = _msg(1, 10, 2, "user", content="x")
-        m2 = _msg(2, 10, 1, "assistant", content="y")
+    async def test_ring_protection(self, db):
+        conv, msgs = await self._seed(db, [("user", None, "x"), ("assistant", None, "y")])
+        msgs[0].parent_message_id = msgs[1].id
+        msgs[1].parent_message_id = msgs[0].id
+        await db.flush()
 
-        async def get_by_ids(db, ids):
-            return [m1] if ids[0] == 1 else [m2]
+        chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[0].id)
+        assert [m.content for m in chain] == ["y", "x"]
 
-        monkeypatch.setattr(ai_msg_repo, "get_by_ids", get_by_ids)
-        chain = await ai_msg_repo.get_chain_by_id(object(), 10, 1)
-        assert [m.id for m in chain] == [2, 1]
-
-    async def test_limit_respected(self, monkeypatch):
-        msgs = {i: _msg(i, 10, i - 1, "user", content=str(i)) for i in range(1, 50)}
-
-        async def get_by_ids(db, ids):
-            return [msgs[i] for i in ids if i in msgs]
-
-        monkeypatch.setattr(ai_msg_repo, "get_by_ids", get_by_ids)
-        chain = await ai_msg_repo.get_chain_by_id(object(), 10, 49, limit=20)
+    async def test_limit_respected(self, db):
+        conv, msgs = await self._seed(
+            db, [("user", i - 1 if i else None, str(i + 1)) for i in range(49)]
+        )
+        chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[-1].id, limit=20)
         assert len(chain) == 20
-        assert chain[0].id == 30 and chain[-1].id == 49
+        assert chain[0].content == "30"
+        assert chain[-1].content == "49"
 
-    async def test_context_load_uses_branch_chain(self, monkeypatch):
-        conv = make_conv(id=10, user_id=1, current_branch_message_id=4)
-        msgs = {
-            1: _msg(1, 10, None, "user", content="a"),
-            2: _msg(2, 10, 1, "assistant", content="branchA"),
-            3: _msg(3, 10, 1, "user", content="b"),
-            4: _msg(4, 10, 3, "assistant", content="branchB"),
-        }
+    async def test_deleted_ancestor_terminates_chain(self, db):
+        conv, msgs = await self._seed(
+            db,
+            [
+                ("user", None, "a"),
+                ("assistant", 0, "b"),
+                ("user", 1, "c"),
+                ("assistant", 2, "d"),
+            ],
+        )
+        await ai_msg_repo.soft_delete_by_ids(db, [msgs[2].id])
 
-        async def get_by_ids(db, ids):
-            return [msgs[i] for i in ids if i in msgs]
+        chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[3].id)
+        assert [m.content for m in chain] == ["d"]
+
+    async def test_empty_and_single_message_chain(self, db):
+        conv, msgs = await self._seed(db, [("user", None, "only")])
+        assert await ai_msg_repo.get_chain_by_id(db, conv.id, None) == []
+        chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[0].id)
+        assert [m.content for m in chain] == ["only"]
+
+    async def test_chain_uses_single_query(self, db):
+        """长链只发一条 SQL：逐条回溯会退化成与链长等量的往返，是推理热路径的 N+1"""
+        from sqlalchemy import event as sa_event
+
+        conv, msgs = await self._seed(
+            db, [("user", i - 1 if i else None, str(i + 1)) for i in range(49)]
+        )
+        statements = []
+
+        def _record(state):
+            statements.append(state.statement)
+
+        sa_event.listen(db.sync_session, "do_orm_execute", _record)
+        try:
+            chain = await ai_msg_repo.get_chain_by_id(db, conv.id, msgs[-1].id, limit=None)
+        finally:
+            sa_event.remove(db.sync_session, "do_orm_execute", _record)
+
+        assert len(chain) == 49
+        assert len(statements) == 1
+
+    async def test_context_load_uses_branch_chain(self, db, monkeypatch):
+        conv, msgs = await self._seed(
+            db,
+            [
+                ("user", None, "a"),
+                ("assistant", 0, "branchA"),
+                ("user", 0, "b"),
+                ("assistant", 2, "branchB"),
+            ],
+        )
+        conv.current_branch_message_id = msgs[-1].id
+        await db.flush()
 
         monkeypatch.setattr(
-            "app.service.ai.builders.context_manager.inject_memories", AsyncMock(return_value=(None, []))
+            "app.service.ai.builders.context_manager.inject_memories",
+            AsyncMock(return_value=(None, [])),
         )
-        monkeypatch.setattr(ai_msg_repo, "get_by_ids", get_by_ids)
-        messages, _system_prompt, _injected = await context_manager.build_context(
-            object(), conv, "gpt"
-        )
+
+        # 模型不在注册表 → 预算走保守兜底窗口（32768），短链不会被裁剪
+        async def get_model(db, model_id):
+            return None
+
+        from app.repository.ai_model_repository import ai_model_repository
+
+        monkeypatch.setattr(ai_model_repository, "get_by_model_id", get_model)
+        messages, _system_prompt, _injected = await context_manager.build_context(db, conv, "gpt")
         assert [{k: v for k, v in m.items() if k != "id"} for m in messages] == [
             {"role": "user", "content": "a"},
             {"role": "user", "content": "b"},
@@ -267,11 +383,12 @@ class TestResumeStop:
         )
 
         form = MessageResume(confirm=True, params={"algorithmId": 7})
-        resp = await svc.resume_message(object(), 5, 1, form)
+        resp = await svc.resume_message(AsyncSession(), 5, 1, form)
         async for _ in resp.body_iterator:
             pass
         assert resp.media_type == "text/event-stream"
-        assert resume_calls and resume_calls[0][0:3] == (10, 1, 5)
+        assert resume_calls
+        assert resume_calls[0][0:3] == (10, 1, 5)
         assert resume_calls[0][3] == {"confirmed": True, "algorithmId": 7}
 
     async def test_resume_no_interrupt(self):
@@ -281,7 +398,7 @@ class TestResumeStop:
             interrupt_handler=SimpleNamespace(get_interrupt=AsyncMock(return_value=None)),
         )
         with pytest.raises(BusinessException):
-            await svc.resume_message(object(), 5, 1, MessageResume(confirm=False))
+            await svc.resume_message(AsyncSession(), 5, 1, MessageResume(confirm=False))
 
     async def test_stop_calls_reasoning_stop(self):
         msg = _msg(5, 10, 3, "assistant", status=1, task_id="s1")
@@ -294,7 +411,7 @@ class TestResumeStop:
             ai_message_repository=_MsgRepo().put(msg),
             reasoning_service=SimpleNamespace(stop=fake_stop),
         )
-        result = await svc.stop_message(object(), 5, 1)
+        result = await svc.stop_message(AsyncSession(), 5, 1)
         assert stop_calls == [(10, 5, "s1")]
         assert result.status == 4
 
@@ -311,7 +428,7 @@ class TestBranches:
             ai_message_repository=_MsgRepo().put(msg).put(children[0]).put(children[1]),
         )
 
-        result = await svc.get_branches(object(), 10, 1, 1)
+        result = await svc.get_branches(AsyncSession(), 10, 1, 1)
         assert [m.id for m in result] == [2, 3]
 
     async def test_get_branches_rejects_cross_conv_message(self):
@@ -321,7 +438,7 @@ class TestBranches:
             ai_message_repository=_MsgRepo().put(msg),
         )
         with pytest.raises(BusinessException):
-            await svc.get_branches(object(), 10, 1, 99)
+            await svc.get_branches(AsyncSession(), 10, 1, 99)
 
     async def test_switch_branch_updates_pointer(self):
         conv = make_conv(
@@ -354,7 +471,7 @@ class TestBranches:
             ai_message_repository=_MsgRepo().put(target),
         )
 
-        result = await svc.switch_branch(object(), 10, 1, 4)
+        result = await svc.switch_branch(AsyncSession(), 10, 1, 4)
         assert conv.current_branch_message_id == 4
         assert result.current_branch_message_id == 4
 
@@ -364,14 +481,14 @@ class TestDeleteMessage:
         msg = _msg(5, 10, 3, "assistant")
         repo = _MsgRepo().put(msg)
         svc = _conv_service(ai_message_repository=repo)
-        await svc.delete_message(object(), 5, 1)
-        assert msg.deleted == 1
+        await svc.delete_message(AsyncSession(), 5, 1)
+        assert msg.deleted != 0
 
     async def test_delete_rejects_user_message(self):
         msg = _msg(5, 10, 3, "user")
         svc = _conv_service(ai_message_repository=_MsgRepo().put(msg))
         with pytest.raises(BusinessException):
-            await svc.delete_message(object(), 5, 1)
+            await svc.delete_message(AsyncSession(), 5, 1)
 
 
 class TestSuspendLock:
@@ -440,16 +557,15 @@ class TestSuspendLock:
             agent_code=None,
         )
         svc = AiMessageService(
-            ai_conversation_repository=_ConvRepo(conv),
-            interrupt_handler=SimpleNamespace(
-                get_interrupt=AsyncMock(return_value={"type": "confirm"})
-            ),
+            # 替身：_ConvRepo 返回 SimpleNamespace 会话（非实体），子类化会触发方法覆写告警
+            ai_conversation_repository=cast(AiConversationRepository, _ConvRepo(conv)),
+            interrupt_handler=_InterruptStub({"type": "confirm"}),
             get_redis_client=lambda: mock_redis,
         )
 
         form = SimpleNamespace(content="hi")
         with pytest.raises(BusinessException) as ei:
-            await svc.send_message(object(), 10, 1, form, "k")
+            await svc.send_message(AsyncSession(), 10, 1, form, "k")
         assert "中断确认" in str(ei.value.message)
 
     async def test_send_allowed_when_no_suspend(self, mock_redis):
@@ -472,15 +588,16 @@ class TestSuspendLock:
             return False
 
         svc = AiMessageService(
-            ai_conversation_repository=_ConvRepo(conv),
-            interrupt_handler=SimpleNamespace(get_interrupt=AsyncMock(return_value=None)),
+            # 替身：_ConvRepo 返回 SimpleNamespace 会话（非实体），子类化会触发方法覆写告警
+            ai_conversation_repository=cast(AiConversationRepository, _ConvRepo(conv)),
+            interrupt_handler=_InterruptStub(None),
             get_redis_client=lambda: mock_redis,
-            sse_emitter_manager=SimpleNamespace(acquire_lock=fake_acquire),
+            sse_emitter_manager=_EmitterStub(acquire_lock=fake_acquire),
         )
 
         form = SimpleNamespace(content="hi")
         with pytest.raises(BusinessException):
-            await svc.send_message(object(), 10, 1, form, "k")
+            await svc.send_message(AsyncSession(), 10, 1, form, "k")
         assert lock_called == [10]
 
     async def test_regenerate_rejected_when_suspended(self):
@@ -495,5 +612,5 @@ class TestSuspendLock:
         )
 
         with pytest.raises(BusinessException) as ei:
-            await svc.regenerate_message(object(), 2, 1)
+            await svc.regenerate_message(AsyncSession(), 2, 1)
         assert "中断确认" in str(ei.value.message)

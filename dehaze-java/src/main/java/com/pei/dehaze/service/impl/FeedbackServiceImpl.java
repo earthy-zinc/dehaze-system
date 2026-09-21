@@ -29,9 +29,9 @@ import com.pei.dehaze.model.vo.FeedbackStatsVO;
 import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.FeedbackService;
+import com.pei.dehaze.service.FileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,9 +75,7 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
     private final SysUserMapper userMapper;
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate stringRedisTemplate;
-
-    @Value("${file.baseUrl:}")
-    private String fileBaseUrl;
+    private final List<FileService> fileServices;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -410,8 +408,13 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
                 closeCount++;
             }
         }
-        stats.setAverageResponseTime(responseCount > 0 ? totalResponseTime / responseCount : 0L);
-        stats.setAverageCloseTime(closeCount > 0 ? totalCloseTime / closeCount : 0L);
+        // 单位统一为小时（保留2位小数），与 Go/Python 对齐
+        stats.setAverageResponseTime(responseCount > 0
+                ? Math.round(totalResponseTime / (double) responseCount / 3_600_000.0 * 100) / 100.0
+                : 0.0);
+        stats.setAverageCloseTime(closeCount > 0
+                ? Math.round(totalCloseTime / (double) closeCount / 3_600_000.0 * 100) / 100.0
+                : 0.0);
 
         stats.setTopKeywords(topKeywords(startTime, endTime, 10));
         return stats;
@@ -532,12 +535,19 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         if (urls.size() > maxCount) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "图片数量不能超过" + maxCount + "张");
         }
+        // 允许前缀 = 各存储后端 baseUrl（带尾 /，对齐 python _get_allowed_image_url_prefixes）
+        List<String> allowedPrefixes = fileServices.stream()
+                .map(FileService::getBaseUrl)
+                .filter(CharSequenceUtil::isNotBlank)
+                .map(base -> CharSequenceUtil.removeSuffix(base.trim(), "/") + "/")
+                .distinct()
+                .toList();
         for (String url : urls) {
             if (CharSequenceUtil.isBlank(url)) {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL不能为空");
             }
-            if (CharSequenceUtil.isNotBlank(fileBaseUrl) && !url.startsWith(fileBaseUrl)) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL必须为MinIO域名");
+            if (allowedPrefixes.stream().noneMatch(url::startsWith)) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "图片URL域名不合法");
             }
             String path = url.split("[?#]")[0].toLowerCase();
             boolean validExt = ALLOWED_IMAGE_EXTENSIONS.stream().anyMatch(path::endsWith);

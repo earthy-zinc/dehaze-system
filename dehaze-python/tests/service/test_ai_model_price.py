@@ -4,8 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-
-pytestmark = pytest.mark.requires_db
+from pydantic import ValidationError
 
 from app.models.schema.ai_model_price import (
     ModelPriceCreateRequest,
@@ -16,6 +15,9 @@ from app.repository.ai_model_price_repository import ai_model_price_repository
 from app.service.ai_model_price_service import AiModelPriceService
 from app.service.billing.rate_provider import RateProvider
 
+pytestmark = pytest.mark.requires_db
+
+
 # 2026-08-17 周一（高峰）、2026-08-22 周六（空闲）
 _PEAK_TIME = datetime(2026, 8, 17, 10, 0, 0)
 _IDLE_TIME = datetime(2026, 8, 22, 10, 0, 0)
@@ -25,7 +27,10 @@ _EFFECTIVE_FROM = datetime(2026, 1, 1)
 
 def _create_request(model_id, details):
     return ModelPriceCreateRequest(
-        model_id=model_id, provider_id=1, effective_from=_EFFECTIVE_FROM, details=details,
+        model_id=model_id,
+        provider_id=1,
+        effective_from=_EFFECTIVE_FROM,
+        details=details,
     )
 
 
@@ -67,14 +72,13 @@ class TestPriceVersioning:
         assert updated.status == 0
 
         await svc.delete_price(db, created.id)
-        # service 测试环境未注册全局软删过滤事件，显式查含软删行校验 deleted=1
-        soft_deleted = await ai_model_price_repository.get_by_id(
-            db, created.id, with_deleted=True
-        )
+        # service 测试环境未注册全局软删过滤事件，显式查含软删行校验 deleted 已标记（写为行 id）
+        soft_deleted = await ai_model_price_repository.get_by_id(db, created.id, with_deleted=True)
         assert soft_deleted is not None
-        assert soft_deleted.deleted == 1
+        assert soft_deleted.deleted != 0
         # 主表软删时档位明细一并软删（list_details 走软删过滤，此处直接查含软删行）
         from sqlalchemy import select
+
         from app.models.entity.sys_ai_model_price import SysAiModelPriceDetail
 
         stmt = (
@@ -83,7 +87,8 @@ class TestPriceVersioning:
             .execution_options(include_deleted=True)
         )
         details = (await db.execute(stmt)).scalars().all()
-        assert details and details[0].deleted == 1
+        assert details
+        assert details[0].deleted != 0
 
     async def test_list_prices_filters_by_model(self, db):
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
@@ -105,12 +110,15 @@ class TestCalculateCredits:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("m", [
-                _detail("input", "2000", min_tokens=0, max_tokens=100),
-                _detail("input", "3000", min_tokens=100),
-                _detail("cached", "500"),
-                _detail("output", "6000"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "2000", min_tokens=0, max_tokens=100),
+                    _detail("input", "3000", min_tokens=100),
+                    _detail("cached", "500"),
+                    _detail("output", "6000"),
+                ],
+            ),
         )
         # input_tokens 含缓存命中部分：未命中 900-100=800；total_input=1000 → 命中第二段 3000
         # credits = 800×3000/1M + 100×500/1M + 500×6000/1M = 2.4+0.05+3 = 5.45 ≈ 5
@@ -122,10 +130,13 @@ class TestCalculateCredits:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("m", [
-                _detail("input", "2000", time_slot="idle"),
-                _detail("input", "4000", time_slot="peak"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "2000", time_slot="idle"),
+                    _detail("input", "4000", time_slot="peak"),
+                ],
+            ),
         )
         idle_result = await svc.calculate(db, "m", 1, _IDLE_TIME, 1000, 0, 0)
         peak_result = await svc.calculate(db, "m", 1, _PEAK_TIME, 1000, 0, 0)
@@ -136,10 +147,13 @@ class TestCalculateCredits:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("m", [
-                _detail("input", "100"),
-                _detail("output", "100"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "100"),
+                    _detail("output", "100"),
+                ],
+            ),
         )
         # credits = 1000×100/1M + 500×100/1M = 0.15 → ROUND_HALF_UP → 0 → 至少 1 积分
         result = await svc.calculate(db, "m", 1, _IDLE_TIME, 1000, 0, 500)
@@ -157,8 +171,8 @@ class TestPriceBoundary:
         assert result["configured"] is True
 
     async def test_unit_price_negative_rejected(self, db):
-        svc = AiModelPriceService(price_repository=ai_model_price_repository)
-        with pytest.raises(Exception):
+        AiModelPriceService(price_repository=ai_model_price_repository)
+        with pytest.raises(ValidationError):
             _create_request("neg-price", [_detail("input", "-1")])
 
     async def test_unit_price_max_value_accepted(self, db):
@@ -182,11 +196,14 @@ class TestExternalPaidModels:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("gpt-4o-mini", [
-                _detail("input", "1000000"),
-                _detail("cached", "500000"),
-                _detail("output", "4000000"),
-            ]),
+            _create_request(
+                "gpt-4o-mini",
+                [
+                    _detail("input", "1000000"),
+                    _detail("cached", "500000"),
+                    _detail("output", "4000000"),
+                ],
+            ),
         )
         # input=1000 含缓存 200：未命中 800×1M/1M + 缓存 200×500k/1M + 输出 300×4M/1M = 2100
         # credits_saved = 200×(1M-500k)/1M = 100
@@ -197,14 +214,17 @@ class TestExternalPaidModels:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("deepseek-v4-flash", [
-                _detail("input", "1000000", time_slot="idle"),
-                _detail("input", "1500000", time_slot="peak"),
-                _detail("cached", "100000", time_slot="idle"),
-                _detail("cached", "100000", time_slot="peak"),
-                _detail("output", "3000000", time_slot="idle"),
-                _detail("output", "3000000", time_slot="peak"),
-            ]),
+            _create_request(
+                "deepseek-v4-flash",
+                [
+                    _detail("input", "1000000", time_slot="idle"),
+                    _detail("input", "1500000", time_slot="peak"),
+                    _detail("cached", "100000", time_slot="idle"),
+                    _detail("cached", "100000", time_slot="peak"),
+                    _detail("output", "3000000", time_slot="idle"),
+                    _detail("output", "3000000", time_slot="peak"),
+                ],
+            ),
         )
         # peak: 1000×1.5M/1M + 500×3M/1M = 3000；idle: 1000×1M/1M + 500×3M/1M = 2500
         peak = await svc.calculate(db, "deepseek-v4-flash", 1, _PEAK_TIME, 1000, 0, 500)
@@ -217,12 +237,15 @@ class TestExternalPaidModels:
         svc = AiModelPriceService(price_repository=ai_model_price_repository)
         await svc.create_price(
             db,
-            _create_request("gpt-4o-mini", [
-                _detail("input", "1000000", time_slot="idle"),
-                _detail("input", "1000000", time_slot="peak"),
-                _detail("output", "4000000", time_slot="idle"),
-                _detail("output", "4000000", time_slot="peak"),
-            ]),
+            _create_request(
+                "gpt-4o-mini",
+                [
+                    _detail("input", "1000000", time_slot="idle"),
+                    _detail("input", "1000000", time_slot="peak"),
+                    _detail("output", "4000000", time_slot="idle"),
+                    _detail("output", "4000000", time_slot="peak"),
+                ],
+            ),
         )
         provider = RateProvider(
             ai_model_price_repository=ai_model_price_repository,

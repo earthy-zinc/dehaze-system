@@ -185,7 +185,7 @@
               <div class="stat-label">平均响应时间</div>
               <div class="stat-value">
                 {{ feedbackStats?.averageResponseTime ?? 0
-                }}<span class="unit">分钟</span>
+                }}<span class="unit">小时</span>
               </div>
             </div>
           </el-card>

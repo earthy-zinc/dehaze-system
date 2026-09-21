@@ -12,7 +12,7 @@ type SysMemberQuota struct {
 	EvaluateQuota int       `gorm:"column:evaluate_quota;type:int;not null;default:0;comment:当月评估配额" json:"evaluateQuota"`
 	EvaluateUsed  int       `gorm:"column:evaluate_used;type:int;not null;default:0;comment:当月已用评估次数" json:"evaluateUsed"`
 	ResetTime     time.Time `gorm:"column:reset_time;type:datetime;not null;comment:配额重置时间" json:"resetTime"`
-	Deleted       int8      `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"-"`
+	Deleted       int64     `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"-"`
 	CreateTime    time.Time `gorm:"column:create_time;type:datetime;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createTime"`
 	UpdateTime    time.Time `gorm:"column:update_time;type:datetime;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`
 	CreateBy      *int64    `gorm:"column:create_by;comment:创建人ID" json:"createBy"`

@@ -19,31 +19,36 @@ import (
 )
 
 const (
-	feedbackDailyLimit       = 5
-	feedbackTitleMinLen      = 5
-	feedbackTitleMaxLen      = 50
-	feedbackContentMinLen    = 10
-	feedbackContentMaxLen    = 1000
-	feedbackMaxImages        = 5
-	topKeywordsLimit         = 10
-	feedbackStatsCacheTTL    = 10 * time.Minute
-	feedbackDailyCounterTTL  = 25 * time.Hour
+	feedbackDailyLimit      = 5
+	feedbackTitleMinLen     = 5
+	feedbackTitleMaxLen     = 50
+	feedbackContentMinLen   = 10
+	feedbackContentMaxLen   = 1000
+	feedbackMaxImages       = 5
+	topKeywordsLimit        = 10
+	feedbackStatsCacheTTL   = 10 * time.Minute
+	feedbackDailyCounterTTL = 25 * time.Hour
 )
 
 const (
-	cacheKeyFeedbackStats         = "feedback:stats"
+	cacheKeyFeedbackStats        = "feedback:stats"
 	cacheKeyFeedbackStatsVersion = "feedback:stats:version"
 )
 
 var feedbackTypes = []string{"suggestion", "bug", "experience", "complaint"}
 var feedbackStatuses = []string{"pending", "processing", "replied", "closed"}
 
+// 合法回复类型（info/resolved/unsupported/dev_transfer），replyType 可选、传值时校验
+var validReplyTypes = map[string]bool{
+	"info": true, "resolved": true, "unsupported": true, "dev_transfer": true,
+}
+
 type FeedbackService struct {
 	db                *gorm.DB
-	feedbackRepo     fbrepo.IFeedbackRepository
+	feedbackRepo      fbrepo.IFeedbackRepository
 	feedbackReplyRepo fbrepo.IFeedbackReplyRepository
-	userRepo         userrepo.IUserRepository
-	cache            types.ICache
+	userRepo          userrepo.IUserRepository
+	cache             types.ICache
 }
 
 func NewFeedbackService(
@@ -279,6 +284,9 @@ func (s *FeedbackService) ReplyFeedback(ctx context.Context, adminID, feedbackID
 	if form.Content == "" {
 		return common.NewBizError(common.PARAM_ERROR, "回复内容不能为空")
 	}
+	if form.ReplyType != "" && !validReplyTypes[form.ReplyType] {
+		return common.NewBizError(common.PARAM_ERROR, "回复类型不合法")
+	}
 	fb, err := s.feedbackRepo.FindByID(ctx, feedbackID)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询反馈失败", err)
@@ -305,9 +313,15 @@ func (s *FeedbackService) ReplyFeedback(ctx context.Context, adminID, feedbackID
 		if err := txReplyRepo.Create(ctx, reply); err != nil {
 			return err
 		}
-		return txFbRepo.Update(ctx, feedbackID, map[string]interface{}{
+		updates := map[string]interface{}{
 			"status": int8(3),
-		})
+		}
+		// 未分配处理人时自动分配给回复的管理员（对齐 Java/Python）
+		if fb.AssigneeID == nil {
+			updates["assignee_id"] = adminID
+			updates["assigned_time"] = time.Now()
+		}
+		return txFbRepo.Update(ctx, feedbackID, updates)
 	}); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "回复反馈失败", err)
 	}

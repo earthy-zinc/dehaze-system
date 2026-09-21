@@ -70,12 +70,8 @@ public class AlgorithmSelectServiceImpl implements AlgorithmSelectService {
             node.setName(alg.getName());
             node.setType(alg.getType());
             List<AlgorithmSelectNodeVO> subNodes = buildTree(alg.getId(), parentToChildrenMap, publishedIds);
-            // 过滤空分类节点：无子节点的分类节点隐藏（分类节点 parentId=0 且有子节点）
-            boolean isCategory = alg.getParentId() != null && alg.getParentId() == 0;
+            // 全量返回：根下无子节点的算法节点同样展示（无分类标识字段，无法区分空分类与根下算法）
             boolean isLeaf = subNodes.isEmpty();
-            if (isCategory && isLeaf) {
-                continue;
-            }
             node.setLeaf(isLeaf);
             if (!isLeaf) {
                 node.setChildren(subNodes);
@@ -172,11 +168,9 @@ public class AlgorithmSelectServiceImpl implements AlgorithmSelectService {
         }
 
         String kw = keyword.trim().toLowerCase();
-        // 拼音首字母
-        String pinyinFirst = PinyinUtil.getFirstLetter(kw, "");
 
         List<SysAlgorithm> matched = published.stream()
-                .filter(a -> matchesKeyword(a, kw, pinyinFirst))
+                .filter(a -> matchesKeyword(a, kw))
                 .toList();
 
         return matched.stream().map(a -> {
@@ -190,41 +184,15 @@ public class AlgorithmSelectServiceImpl implements AlgorithmSelectService {
         }).toList();
     }
 
-    private boolean matchesKeyword(SysAlgorithm a, String kw, String pinyinFirst) {
-        if (StrUtil.isBlank(a.getName())) {
-            return false;
-        }
-        String name = a.getName().toLowerCase();
-        if (name.contains(kw)) {
+    /** 关键词匹配名称/描述/类型（python search_algorithms 口径，无拼音匹配） */
+    private boolean matchesKeyword(SysAlgorithm a, String kw) {
+        if (StrUtil.isNotBlank(a.getName()) && a.getName().toLowerCase().contains(kw)) {
             return true;
         }
-        // 拼音全拼匹配
-        String fullPinyin = PinyinUtil.getPinyin(name, "");
-        if (fullPinyin != null && fullPinyin.contains(kw)) {
+        if (StrUtil.isNotBlank(a.getDescription()) && a.getDescription().toLowerCase().contains(kw)) {
             return true;
         }
-        // 拼音首字母匹配
-        if (StrUtil.isNotBlank(pinyinFirst)) {
-            String nameFirst = PinyinUtil.getFirstLetter(name, "");
-            if (nameFirst != null && nameFirst.contains(pinyinFirst)) {
-                return true;
-            }
-        }
-        // 标签匹配
-        if (StrUtil.isNotBlank(a.getType())) {
-            String type = a.getType().toLowerCase();
-            if (type.contains(kw)) {
-                return true;
-            }
-        }
-        // 描述匹配
-        if (StrUtil.isNotBlank(a.getDescription())) {
-            String desc = a.getDescription().toLowerCase();
-            if (desc.contains(kw)) {
-                return true;
-            }
-        }
-        return false;
+        return StrUtil.isNotBlank(a.getType()) && a.getType().toLowerCase().contains(kw);
     }
 
     @Override
@@ -232,6 +200,10 @@ public class AlgorithmSelectServiceImpl implements AlgorithmSelectService {
         List<Long> algorithmIds = form.getAlgorithmIds();
         if (algorithmIds == null || algorithmIds.size() < 2) {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "对比算法数量需在2-3个之间");
+        }
+        // 对比需指定预测输入（T-AS-05x：imageUrl 与 fileId 至少提供一个）
+        if (form.getFileId() == null && StrUtil.isBlank(form.getImageUrl())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "imageUrl 与 fileId 至少提供一个");
         }
         if (algorithmIds.size() > 3) {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "对比算法数量不能超过3个");
@@ -271,5 +243,86 @@ public class AlgorithmSelectServiceImpl implements AlgorithmSelectService {
         }
 
         return results;
+    }
+
+
+
+    @Override
+    public Map<String, Object> recommend(String keyword, String taskType, Long sampleAlgorithmId, Integer topN) {
+        // 算法推荐匹配（python algorithm_select_service.recommend 同款评分口径）
+        int n = topN != null ? topN : 3;
+        if (n < 1 || n > 10) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "topN 超出 1-10 范围");
+        }
+
+        List<SysAlgorithm> published = sysAlgorithmService.getAllAlgorithms().stream()
+                .filter(a -> AlgorithmStatusEnum.PUBLISHED.getValue().equals(a.getStatus()))
+                .toList();
+        SysAlgorithm sampleAlgo = null;
+        if (sampleAlgorithmId != null) {
+            sampleAlgo = published.stream()
+                    .filter(a -> sampleAlgorithmId.equals(a.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "样例算法不存在或未发布"));
+        }
+
+        // 关键词/样例算法/taskType 均为空时不做全量推荐，直接返回空列表
+        if (StrUtil.isBlank(keyword) && sampleAlgo == null && StrUtil.isBlank(taskType)) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("total", 0);
+            empty.put("items", Collections.emptyList());
+            return empty;
+        }
+
+        record Candidate(int score, SysAlgorithm algo) {}
+        List<Candidate> candidates = new ArrayList<>();
+        String kw = keyword != null ? keyword.trim().toLowerCase() : "";
+        for (SysAlgorithm a : published) {
+            if (sampleAlgo != null && sampleAlgo.getId().equals(a.getId())) {
+                continue;
+            }
+            // taskType 过滤：指定 taskType 时仅保留类型匹配或为空类型的算法
+            if (StrUtil.isNotBlank(taskType) && a.getType() != null && !a.getType().equals(taskType)) {
+                continue;
+            }
+            int score = 0;
+            if (!kw.isEmpty()) {
+                String name = a.getName() != null ? a.getName().toLowerCase() : "";
+                String desc = a.getDescription() != null ? a.getDescription().toLowerCase() : "";
+                String type = a.getType() != null ? a.getType().toLowerCase() : "";
+                if (name.contains(kw)) score += 60;
+                if (desc.contains(kw)) score += 30;
+                if (type.contains(kw)) score += 20;
+            }
+            if (sampleAlgo != null) {
+                if (a.getType() != null && a.getType().equals(sampleAlgo.getType())) score += 40;
+                if (a.getParentId() != null && a.getParentId().equals(sampleAlgo.getParentId())) score += 30;
+            }
+            if (StrUtil.isNotBlank(taskType) && taskType.equals(a.getType())) score += 10;
+            candidates.add(new Candidate(score, a));
+        }
+        candidates.sort((x, y) -> Integer.compare(y.score(), x.score()));
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        int count = 0;
+        for (Candidate c : candidates) {
+            if (count >= n) {
+                break;
+            }
+            if (c.score() <= 0) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("algorithmId", c.algo().getId());
+            item.put("algorithmName", c.algo().getName());
+            item.put("matchScore", c.score());
+            items.add(item);
+            count++;
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", items.size());
+        result.put("items", items);
+        return result;
     }
 }

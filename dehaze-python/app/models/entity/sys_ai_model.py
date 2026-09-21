@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, BigInteger, Integer, Numeric, SmallInteger, String
+from sqlalchemy import JSON, BigInteger, DateTime, Integer, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, SoftDeleteMixin
@@ -20,10 +21,15 @@ class SysAiModel(BaseModel, SoftDeleteMixin):
         String(64), nullable=False, comment="模型标识(如gpt-4o;claude-3-5-sonnet;deepseek-chat)"
     )
     model_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="chat", comment="模型类型(chat:对话;embedding:向量;rerank:重排)"
+        String(16),
+        nullable=False,
+        default="chat",
+        comment="模型类型(chat:对话;embedding:向量;rerank:重排)",
     )
     dimension: Mapped[int | None] = mapped_column(
-        BigInteger, nullable=True, comment="embedding向量维度(model_type=embedding时必填;创建后不可改)"
+        BigInteger,
+        nullable=True,
+        comment="embedding向量维度(model_type=embedding时必填;创建后不可改)",
     )
     display_name: Mapped[str] = mapped_column(String(128), nullable=False, comment="显示名称")
     max_context_tokens: Mapped[int] = mapped_column(
@@ -66,4 +72,16 @@ class SysAiModel(BaseModel, SoftDeleteMixin):
         nullable=False,
         default=0,
         comment="最低可用VIP等级(0:所有用户;1:VIP1及以上;2:VIP2及以上)",
+    )
+    last_test_status: Mapped[int] = mapped_column(
+        SmallInteger,
+        nullable=False,
+        default=0,
+        comment="最近可用性测试状态(0:未测试;1:可用;2:不可用)",
+    )
+    last_test_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, comment="最近可用性测试时间"
+    )
+    last_test_error: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, comment="最近可用性测试错误信息(含HTTP状态与延迟)"
     )

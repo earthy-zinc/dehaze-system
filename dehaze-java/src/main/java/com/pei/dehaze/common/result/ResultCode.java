@@ -48,6 +48,7 @@ public enum ResultCode implements IResultCode {
     DATA_STATE_NOT_ALLOW("A0502", "数据状态不允许"),
     OPERATION_NOT_ALLOW("A0503", "操作不允许"),
     DATA_BIND_EXISTS("A0504", "存在关联数据，无法删除"),
+    ROOT_USER_PROTECTED("A0505", "超级管理员不可删除"),
     // 会员模块业务错误码 A051x
     MEMBER_NOT_FOUND("A0510", "会员不存在"),
     MEMBER_FROZEN("A0511", "会员已冻结"),
@@ -80,6 +81,7 @@ public enum ResultCode implements IResultCode {
     PAYMENT_AMOUNT_MISMATCH("A0538", "支付金额与订单金额不一致"),
     DUPLICATE_ORDER("A0539", "短时间内重复下单"),
     REFUND_ALREADY_EXISTS("A053A", "该订单已存在退款申请"),
+    BALANCE_INSUFFICIENT("A053B", "余额不足"),
     // 反馈评价模块业务错误码 A054x
     RATING_ALREADY_EXISTS("A0540", "该处理记录已评价"),
     RATING_NOT_FOUND("A0541", "评价不存在"),
@@ -100,6 +102,11 @@ public enum ResultCode implements IResultCode {
     TEMPLATE_DISABLED("A0558", "模板已禁用"),
     MESSAGE_ALREADY_READ("A0559", "消息已读"),
 
+    // AI 计费管理模块错误码 A068x
+    AI_REFUND_ALREADY_EXISTS("A0680", "退款申请已存在"),
+    REFUND_AUDIT_FAILED("A0681", "退款审核失败"),
+    QUOTA_INSUFFICIENT("A0682", "配额不足或欠费熔断"),
+
     USER_UPLOAD_FILE_ERROR("A0700", "用户上传文件异常"),
     USER_UPLOAD_FILE_TYPE_NOT_MATCH("A0701", "文件格式不支持"),
     USER_UPLOAD_FILE_SIZE_EXCEEDS("A0702", "文件大小超限"),
@@ -117,6 +124,7 @@ public enum ResultCode implements IResultCode {
     FILE_TOO_LARGE("B0402", "文件大小超过限制"),
     FILE_TYPE_NOT_SUPPORTED("B0403", "不支持的文件类型"),
     FILE_MD5_INVALID("B0404", "MD5 格式无效"),
+    FILE_ACCESS_DENIED("B0407", "无权访问该文件"),
     FILE_STORAGE_ERROR("B0405", "文件存储失败"),
     FILE_CORRUPTED("B0406", "文件已损坏"),
 

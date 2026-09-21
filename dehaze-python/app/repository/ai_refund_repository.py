@@ -36,6 +36,21 @@ class AiRefundRepository(BaseRepository[SysAiRefund]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def has_approved_by_billing_id(
+        self,
+        db: AsyncSession,
+        billing_id: int,
+        exclude_id: int | None = None,
+    ) -> bool:
+        """该计费记录是否已存在审核通过的退款（同一计费记录仅允许一次补偿）"""
+        stmt = select(SysAiRefund.id).where(
+            SysAiRefund.billing_id == billing_id,
+            SysAiRefund.status == 2,  # 已通过
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(SysAiRefund.id != exclude_id)
+        return (await db.execute(stmt.limit(1))).scalar() is not None
+
     async def list_page(
         self,
         db: AsyncSession,
@@ -74,10 +89,7 @@ class AiRefundRepository(BaseRepository[SysAiRefund]):
             .order_by(SysAiRefund.id.asc())
         )
         result = await db.execute(stmt)
-        status_map: dict[int, int] = {}
-        for billing_id, status in result.all():
-            status_map[billing_id] = status
-        return status_map
+        return {row[0]: row[1] for row in result.all()}
 
 
 ai_refund_repository = AiRefundRepository()

@@ -90,7 +90,9 @@ def _ensure_module_supported(module: str, action: str) -> None:
         else import_export_service.get_supported_import_modules()
     )
     if module not in supported:
-        raise BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, f"模块 {module} 不支持{action}")
+        raise BusinessException(
+            ResultCode.MODULE_IMPORT_NOT_SUPPORTED, f"模块 {module} 不支持{action}"
+        )
 
 
 @router.get("/{module}/_export", summary="导出数据（GET，简单查询条件）")

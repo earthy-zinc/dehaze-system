@@ -167,6 +167,15 @@ func autoFillUpdateBy(db *gorm.DB) {
 	// 先检查是否为Map类型（用于Updates(map)方式）
 	destVal := reflect.ValueOf(dest)
 	if destVal.Kind() == reflect.Map {
+		// Map 分支会**无条件**把 update_by 并入 SQL 的 SET 子句（不经字段存在性判断），
+		// 而部分表本就没有 update_by 列（如 sys_ai_agent_version、各日志/关系表），
+		// 注入后会报 Error 1054 Unknown column 'update_by'，把整条更新打挂（表现为 B0001）。
+		// 故此处按 schema 判存在性，与结构体分支的 FieldByName 语义保持一致。
+		if db.Statement.Schema != nil {
+			if _, ok := db.Statement.Schema.FieldsByDBName["update_by"]; !ok {
+				return
+			}
+		}
 		db.Statement.SetColumn("update_by", userID)
 		return
 	}
@@ -201,7 +210,7 @@ func setAuditField(field reflect.Value, userID int64) {
 	switch field.Kind() {
 	case reflect.Int64:
 		field.SetInt(userID)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if field.Type().Elem().Kind() == reflect.Int64 {
 			field.Set(reflect.ValueOf(&userID))
 		}

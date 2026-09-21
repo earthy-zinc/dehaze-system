@@ -39,10 +39,10 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       expect(typeof result.wsUrl).toBe("string");
     });
 
-    test("验证：wsUrl 以 ws:// 或 wss:// 开头", async () => {
+    test("验证：wsUrl 为相对路径（外部 origin 由客户端解析）", async () => {
       // 不同 body（model 不同）规避防重复提交中间件（A0002）
       const result = await VoiceAPI.createStreamAsrSession({ model: "sensevoice" });
-      expect(result.wsUrl).toMatch(/^wss?:\/\//);
+      expect(result.wsUrl).toMatch(/^\/ws\/asr\?sessionId=.+&sid=.+$/);
     });
 
     test("边界：未登录访问应返回 401", async () => {
@@ -324,6 +324,41 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
         } catch {
           /* 清理失败忽略 */
         }
+      }
+    });
+  });
+
+  describe("数据隔离 - ASR 会话与 TTS 音频归属", () => {
+    beforeAll(async () => {
+      // A0002 防重复提交按 URL+5s 窗口（key 不含 body）：与 WS 套件末尾的
+      // stream-session POST 间隔过短，先等窗口过期
+      await new Promise((resolve) => setTimeout(resolve, 5500));
+    });
+
+    test("安全：无法查询他人 ASR 会话的识别结果", async () => {
+      // admin 创建会话，普通用户查询 → 归属校验拒绝（A0301）
+      const session = await VoiceAPI.createStreamAsrSession({ model: "paraformer" });
+      await login(USERS.USER.username);
+      try {
+        await expectBizError(VoiceAPI.getAsrResult(session.sessionId), [
+          "A0301",
+          "A0401",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      } finally {
+        await login(USERS.ADMIN.username);
+      }
+    });
+
+    test("安全：无法下载他人 TTS 缓存音频", async () => {
+      // admin 合成音频，普通用户以同一 cacheKey 下载 → 本用户缓存无此条目（A0401）
+      const tts = await VoiceAPI.tts(createTtsForm({ text: "越权下载防护验证" }));
+      await login(USERS.USER.username);
+      try {
+        await expectBizError(service.get(tts.audioUrl!), ["A0401", "B0001", "ERR_BAD_REQUEST"]);
+      } finally {
+        await login(USERS.ADMIN.username);
       }
     });
   });

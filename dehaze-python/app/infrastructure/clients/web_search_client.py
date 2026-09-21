@@ -55,7 +55,8 @@ class WebSearchClient:
 
     async def search(self, query: str, max_results: int = 8) -> list[dict] | None:
         """执行网络搜索，返回 [{title, url, snippet}] 列表；不可用/超时返回 None。"""
-        if not self.available:
+        base_url = self._base_url
+        if base_url is None:
             logger.info("网络搜索未配置（SEARCH_PROVIDER_URL 为空），不可用")
             return None
         headers = {}
@@ -64,7 +65,7 @@ class WebSearchClient:
         params = {"query": query, "max_results": max_results}
         try:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
-                resp = await client.get(self._base_url, params=params, headers=headers)
+                resp = await client.get(base_url, params=params, headers=headers)
                 resp.raise_for_status()
                 data = resp.json()
         except (TimeoutError, httpx.HTTPError, ValueError) as e:

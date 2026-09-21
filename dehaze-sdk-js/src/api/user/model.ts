@@ -54,13 +54,13 @@ export interface UserPageVO {
    */
   id?: number;
   /**
-   * 会员到期时间
+   * 会员到期时间（yyyy-MM-dd HH:mm:ss，null 表示成长值维持）
    */
-  memberExpireTime?: Date;
+  memberExpireTime?: string | null;
   /**
-   * 会员等级（普通/VIP1/VIP2/SVIP）
+   * 会员等级（level_0~level_3，null 表示无会员记录）
    */
-  memberLevel?: string;
+  memberLevel?: string | null;
   /**
    * 手机号
    */

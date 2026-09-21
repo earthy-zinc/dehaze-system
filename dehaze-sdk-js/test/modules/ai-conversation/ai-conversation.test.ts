@@ -380,22 +380,22 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       testConvId = result.id;
     });
 
-    test("正向测试：查询会话消息列表（分页）", async () => {
-      const result = await AiConversationAPI.getMessages(testConvId, { pageNum: 1, pageSize: 20 });
+    test("正向测试：查询会话消息列表（游标分页）", async () => {
+      const result = await AiConversationAPI.getMessages(testConvId, { limit: 20 });
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
+      expect(typeof result.hasMore).toBe("boolean");
     });
 
     test("验证：空会话消息列表为空", async () => {
-      const result = await AiConversationAPI.getMessages(testConvId, { pageNum: 1, pageSize: 20 });
+      const result = await AiConversationAPI.getMessages(testConvId, { limit: 20 });
       expect(result.list.length).toBe(0);
       expect(result.total).toBe(0);
+      expect(result.hasMore).toBe(false);
     });
 
     test("边界：查询不存在会话的消息应失败", async () => {
-      await expectBizError(AiConversationAPI.getMessages(99999999, { pageNum: 1, pageSize: 20 }), [
-        "A0401",
-      ]);
+      await expectBizError(AiConversationAPI.getMessages(99999999, { limit: 20 }), ["A0401"]);
     });
   });
 
@@ -554,6 +554,15 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       if (result.list.length > 0) {
         result.list.forEach((m) => expect(m.archived).toBe(1));
       }
+    });
+
+    test("负向测试：未归档记忆取消归档 → A0502", async () => {
+      const created = await createTestMemory({ memoryType: "procedural" });
+      await expectBizError(AiConversationAPI.unarchiveMemory(created.id), ["A0502"]);
+    });
+
+    test("负向测试：记忆不存在或非本人 → A0401", async () => {
+      await expectBizError(AiConversationAPI.unarchiveMemory(999999999), ["A0401"]);
     });
   });
 
@@ -737,7 +746,7 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       expect(receivedMessageId).toBeGreaterThan(0);
     }, 65000);
 
-    test("正向测试：onStart 返回 messageId/conversationId/model（无 streamSessionId）[T-CV-022]", async () => {
+    test("正向测试：onStart 返回 messageId/conversationId/model/streamSessionId [T-CV-022]", async () => {
       const conv = await createTestConversation();
 
       let startData: MessageStartEvent | null = null;
@@ -755,8 +764,8 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       expect(startData!.messageId).toBeGreaterThan(0);
       expect(startData!.conversationId).toBe(conv.id);
       expect(startData!.model).toBeTruthy();
-      // streamSessionId 不再由后端返回，为可选字段
-      expect(startData!.streamSessionId).toBeUndefined();
+      // streamSessionId 供断线重连（Last-Event-ID + stream/{id} 端点），必返回
+      expect(startData!.streamSessionId).toBeTruthy();
     }, 65000);
 
     test("正向测试：onEnd 返回 stopReason 和 token 用量 [T-CV-026]", async () => {
@@ -872,7 +881,7 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
   // ===== 流式断线重连 =====
 
   describe("SSE 断线重连 - reconnectStream", () => {
-    // 后端 message.start 不再返回 streamSessionId，只能用过期会话验证：无缓存事件时流直接结束
+    // streamSessionId 已由 message.start 推送；过期会话（缓存事件已过 5 分钟窗口）重连时流直接结束
     test("边界：用过期 streamSessionId 重连，流应结束（onClose 或 onNetworkError）", async () => {
       const conv = await createTestConversation();
       const { closed, networkError } = await collectStream(

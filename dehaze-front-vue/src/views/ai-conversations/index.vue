@@ -3,10 +3,10 @@
 import { onMounted } from "vue";
 import { useChatStore } from "@/store/modules/chat";
 import { useAdminAuditStore } from "@/store/modules/adminAudit";
-import AuditFilterBar from "./components/AuditFilterBar.vue";
-import AnomalySummaryPanel from "./components/AnomalySummaryPanel.vue";
-import ConversationAuditTable from "./components/ConversationAuditTable.vue";
 import ConversationDetailDrawer from "./components/ConversationDetailDrawer.vue";
+import AuditFilterBar from "@/views/ai-observability/components/AuditFilterBar.vue";
+import AnomalySummaryPanel from "@/views/ai-observability/components/AnomalySummaryPanel.vue";
+import ConversationAuditTable from "@/views/ai-observability/components/ConversationAuditTable.vue";
 
 // 命名须与动态路由名（component 路径推导 ai-conversations/index → AiConversations）一致，否则 keep-alive 缓存静默失效
 defineOptions({ name: "AiConversations" });

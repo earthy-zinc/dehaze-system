@@ -37,7 +37,8 @@ func (r *DictTypeRepository) FindByID(ctx context.Context, id int64) (*model.Sys
 func (r *DictTypeRepository) FindByCode(ctx context.Context, code string) (*model.SysDictType, error) {
 	var dictType model.SysDictType
 	err := r.db.WithContext(ctx).
-		Where("code = ?", code).
+		// 仅活跃行参与唯一性（python 全局软删过滤，软删行不占编码）
+		Where("code = ? AND deleted = 0", code).
 		First(&dictType).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
@@ -45,11 +46,12 @@ func (r *DictTypeRepository) FindByCode(ctx context.Context, code string) (*mode
 	return &dictType, err
 }
 
-// ExistsByCode 检查字典类型编码是否存在（查全表含软删行）
+// ExistsByCode 检查字典类型编码是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *DictTypeRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
-	db := r.db.Unscoped().WithContext(ctx).Model(&model.SysDictType{}).
-		Where("code = ?", code)
+	db := r.db.WithContext(ctx).Model(&model.SysDictType{}).
+		// 仅活跃行参与唯一性（python 全局软删过滤，软删行不占编码）
+		Where("code = ? AND deleted = 0", code)
 
 	if len(excludeID) > 0 && excludeID[0] > 0 {
 		db = db.Where("id != ?", excludeID[0])

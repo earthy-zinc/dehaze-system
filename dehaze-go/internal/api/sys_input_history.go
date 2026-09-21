@@ -28,7 +28,10 @@ func (api *SysInputHistoryApi) ListHistory(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	pageNum, pageSize := getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	inputSource := c.Query("inputSource")
 	keyword := c.Query("keywords")
 
@@ -129,11 +132,13 @@ func (api *SysInputHistoryApi) BatchDeleteHistory(c *gin.Context) {
 		return
 	}
 
-	if err := api.service.BatchDelete(ctx, req.IDs, userID); err != nil {
+	// 返回实际删除数量（仅删除当前用户本人记录）
+	count, err := api.service.BatchDelete(ctx, req.IDs, userID)
+	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithData(int64(len(req.IDs)), c)
+	common.OkWithData(count, c)
 }
 
 // ClearHistory 清空历史记录

@@ -94,9 +94,9 @@ func (r *MessageRepository) SearchPage(ctx context.Context, userID int64, q *que
 		pageSize = 20
 	}
 
-	keyword := "%" + q.Keyword + "%"
+	keyword := "%" + EscapeLike(q.Keyword) + "%"
 	db := r.db.WithContext(ctx).Model(&model.SysMessage{}).
-		Where("recipient_id = ? AND deleted = 0 AND (title LIKE ? OR content LIKE ?)", userID, keyword, keyword)
+		Where("recipient_id = ? AND deleted = 0 AND (title LIKE ? ESCAPE '\\\\' OR content LIKE ? ESCAPE '\\\\')", userID, keyword, keyword)
 
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -164,7 +164,7 @@ func (r *MessageRepository) MarkAllRead(ctx context.Context, userID int64, msgTy
 func (r *MessageRepository) SoftDelete(ctx context.Context, ids []int64, userID int64) error {
 	return r.db.WithContext(ctx).Model(&model.SysMessage{}).
 		Where("id IN ? AND recipient_id = ?", ids, userID).
-		Update("deleted", 1).Error
+		Update("deleted", gorm.Expr("id")).Error
 }
 
 func (r *MessageRepository) DeleteExpiredBatch(ctx context.Context, before time.Time, batchSize int) (int64, error) {

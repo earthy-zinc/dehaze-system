@@ -222,11 +222,11 @@
 <script lang="ts" setup>
 import {
   MemberAPI,
-  MemberProfileVO,
   BenefitSummaryVO,
   SignInCalendarVO,
   MemberLevelCode,
 } from "dehaze-sdk-js";
+import { useMemberStoreHook } from "@/store";
 import { Trophy, Star, Calendar, ArrowUp, View } from "@element-plus/icons-vue";
 
 defineOptions({
@@ -235,9 +235,10 @@ defineOptions({
 });
 
 const router = useRouter();
+const memberStore = useMemberStoreHook();
+const profile = computed(() => memberStore.profile);
 
 const loading = ref(false);
-const profile = ref<MemberProfileVO>();
 const summary = ref<BenefitSummaryVO>();
 const calendar = ref<SignInCalendarVO>();
 const calendarDate = ref(new Date());
@@ -315,11 +316,10 @@ function isToday(day: string) {
   return day === todayStr.value;
 }
 
-function loadProfile() {
+function loadData() {
   loading.value = true;
-  Promise.all([MemberAPI.getProfile(), MemberAPI.getBenefitSummary()])
-    .then(([profileData, summaryData]) => {
-      profile.value = profileData;
+  Promise.all([memberStore.refreshProfile(), MemberAPI.getBenefitSummary()])
+    .then(([, summaryData]) => {
       summary.value = summaryData;
     })
     .finally(() => {
@@ -349,7 +349,7 @@ function handleSignIn() {
       ElMessage.success(
         `签到成功！连续签到 ${res.continuousDays} 天，获得 ${bonusGrowth.value} 成长值`
       );
-      loadProfile();
+      memberStore.refreshProfile();
       loadCalendar(
         calendarDate.value.getFullYear(),
         calendarDate.value.getMonth() + 1
@@ -361,19 +361,11 @@ function handleSignIn() {
 }
 
 function handleUpgrade() {
-  ElMessage.info("升级功能即将开放，敬请期待");
+  router.push("/package/shop");
 }
 
-onMounted(() => {
-  loadProfile();
-  loadCalendar(
-    calendarDate.value.getFullYear(),
-    calendarDate.value.getMonth() + 1
-  );
-});
-
 onActivated(() => {
-  loadProfile();
+  loadData();
   loadCalendar(
     calendarDate.value.getFullYear(),
     calendarDate.value.getMonth() + 1

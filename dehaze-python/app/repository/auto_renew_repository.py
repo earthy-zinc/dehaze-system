@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,6 +63,32 @@ class AutoRenewRepository(BaseRepository[SysAutoRenew]):
         )
         row = result.scalar_one_or_none()
         return row.id if row else 0
+
+    async def mark_renewed(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        package_id: int,
+        next_renew_time: datetime | None,
+        order_id: int,
+    ) -> None:
+        """续费订单支付成功后回写配置：下次扣款时间、失败次数归零、记录续费订单。"""
+        stmt = (
+            update(SysAutoRenew)
+            .where(
+                SysAutoRenew.user_id == user_id,
+                SysAutoRenew.package_id == package_id,
+                SysAutoRenew.deleted == 0,
+            )
+            .values(
+                next_renew_time=next_renew_time,
+                fail_count=0,
+                last_renew_order_id=order_id,
+                status=1,
+                close_reason=None,
+            )
+        )
+        await db.execute(stmt)
 
     async def list_due(self, db: AsyncSession) -> list[SysAutoRenew]:
         stmt = select(SysAutoRenew).where(

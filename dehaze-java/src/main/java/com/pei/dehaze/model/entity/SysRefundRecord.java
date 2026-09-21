@@ -29,7 +29,11 @@ public class SysRefundRecord extends BaseEntity {
 
     private String reason;
 
-    private Integer usedQuota;
+    private String reasonType;
+
+    private Integer usedDays;
+
+    private Long usedCredits;
 
     private Integer status;
 
@@ -51,8 +55,8 @@ public class SysRefundRecord extends BaseEntity {
 
     private Integer retryCount;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

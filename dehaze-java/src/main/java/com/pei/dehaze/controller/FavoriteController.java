@@ -30,7 +30,7 @@ public class FavoriteController {
 
     @Operation(summary = "收藏列表分页查询")
     @GetMapping("/page")
-    public PageResult<FavoriteVO> getPage(@ParameterObject FavoritePageQuery query) {
+    public PageResult<FavoriteVO> getPage(@Valid @ParameterObject FavoritePageQuery query) {
         Page<FavoriteVO> page = favoriteService.getPage(query);
         return PageResult.success(page);
     }

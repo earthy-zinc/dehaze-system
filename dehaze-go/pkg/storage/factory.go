@@ -31,7 +31,7 @@ func NewStorage(cfgType string, cfg options.FileStorageConfig) (StorageService, 
 // Registry 存储后端注册表，按 storage 标识取实例
 // 文件管理模块只认 object_name + storage，通过 Registry 选后端，不感知具体实现。
 type Registry struct {
-	instances map[string]StorageService
+	instances   map[string]StorageService
 	defaultType string
 }
 
@@ -39,7 +39,7 @@ type Registry struct {
 // defaultType: 默认存储后端标识（上传时使用，当 sys_file.storage 为空时回退）
 func NewRegistry(cfg options.File) (*Registry, error) {
 	r := &Registry{
-		instances: make(map[string]StorageService),
+		instances:   make(map[string]StorageService),
 		defaultType: cfg.Type,
 	}
 	if cfg.Type == "" {

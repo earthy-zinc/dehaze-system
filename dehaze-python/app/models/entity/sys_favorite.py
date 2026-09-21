@@ -15,7 +15,7 @@ from app.models.base import BaseModel, SoftDeleteMixin
 class SysFavorite(BaseModel, SoftDeleteMixin):
     __tablename__ = "sys_favorite"
     __table_args__ = (
-        Index("uk_user_target", "user_id", "target_type", "target_id", unique=True),
+        Index("uk_user_target", "user_id", "target_type", "target_id", "deleted", unique=True),
         Index("idx_user_type_time", "user_id", "target_type", "create_time"),
         {"comment": "统一收藏表"},
     )

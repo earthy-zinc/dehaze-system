@@ -6,10 +6,13 @@
 """
 
 import io
+import logging
 from dataclasses import dataclass, field
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+
+logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".pptx", ".md", ".txt", ".jpg", ".png"}
 _IMAGE_EXTENSIONS = {".jpg", ".png"}
@@ -187,7 +190,10 @@ def _parse_pdf_hires(doc) -> list[dict]:
         # 表格区域（Markdown 表格文本 + 行列元数据）
         try:
             tables = page.find_tables().tables
-        except Exception:
+        except Exception as exc:
+            # 表格抽取失败（扫描页/版面异常）：不阻断整篇解析，但必须留痕，
+            # 避免"表格静默丢失"导致检索内容残缺而无从定位
+            logger.warning("PDF 表格抽取失败(page=%s): %s", page_no + 1, exc, exc_info=True)
             tables = []
         for table in tables:
             rows = table.extract() or []
@@ -236,7 +242,8 @@ def _parse_docx(data: bytes) -> list[dict]:
     # 按 body 子元素顺序遍历，保证段落与表格的原始阅读顺序
     for child in document.element.body.iterchildren():
         if child.tag == qn("w:p"):
-            text = Paragraph(child, document).text.strip()
+            paragraph = Paragraph(child, document)
+            text = _docx_paragraph_text(paragraph)
             if text:
                 blocks.append({"text": text, "page": 1, "order": order, "type": "text"})
                 order += 1
@@ -256,6 +263,23 @@ def _parse_docx(data: bytes) -> list[dict]:
             )
             order += 1
     return blocks
+
+
+def _docx_paragraph_text(paragraph) -> str:
+    """docx 段落转文本；Heading 样式转 Markdown 标记作分块层结构信号（父子分块设计 §4.2）。
+
+    style 可能为 None（自定义部件/占位样式），防御式跳过样式判断。
+    """
+    text = paragraph.text.strip()
+    if not text:
+        return ""
+    style = getattr(paragraph, "style", None)
+    style_name = getattr(style, "name", None) or ""
+    if style_name.startswith("Heading "):
+        suffix = style_name.removeprefix("Heading ")
+        if suffix.isdigit() and 1 <= int(suffix) <= 9:
+            return f"{'#' * int(suffix)} {text}"
+    return text
 
 
 def _parse_xlsx(data: bytes) -> list[dict]:
@@ -311,6 +335,8 @@ def _parse_xlsx(data: bytes) -> list[dict]:
 def _parse_pptx(data: bytes) -> list[dict]:
     try:
         from pptx import Presentation
+        from pptx.shapes.autoshape import Shape
+        from pptx.shapes.graphfrm import GraphicFrame
     except ImportError as exc:
         raise BusinessException("解析依赖未安装: python-pptx") from exc
 
@@ -320,18 +346,19 @@ def _parse_pptx(data: bytes) -> list[dict]:
     for slide_no, slide in enumerate(prs.slides, start=1):
         texts = []
         for shape in slide.shapes:
-            if shape.has_text_frame:
+            if isinstance(shape, Shape) and shape.has_text_frame:
                 for para in shape.text_frame.paragraphs:
                     text = "".join(run.text for run in para.runs).strip()
                     if text:
                         texts.append(text)
-            if getattr(shape, "has_table", False) and shape.has_table:
+            if isinstance(shape, GraphicFrame) and shape.has_table:
                 rows = [[cell.text.strip() for cell in row.cells] for row in shape.table.rows]
                 md, _, _ = _table_rows_to_markdown(rows)
                 texts.append(md)
         combined = "\n".join(texts)
         if slide.has_notes_slide:
-            notes = slide.notes_slide.notes_text_frame.text.strip()
+            notes_frame = slide.notes_slide.notes_text_frame
+            notes = notes_frame.text.strip() if notes_frame is not None else ""
             if notes:
                 combined = f"{combined}\n[备注] {notes}" if combined else f"[备注] {notes}"
         if combined.strip():

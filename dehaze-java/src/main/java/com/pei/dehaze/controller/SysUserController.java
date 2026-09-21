@@ -1,15 +1,12 @@
 package com.pei.dehaze.controller;
 
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
-import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,7 +37,7 @@ public class SysUserController {
     @Operation(summary = "用户分页列表")
     @GetMapping("/page")
     public PageResult<UserPageVO> listPagedUsers(
-            @ParameterObject UserPageQuery queryParams
+            @Valid @ParameterObject UserPageQuery queryParams
     ) {
         IPage<UserPageVO> result = userService.listPagedUsers(queryParams);
         return PageResult.success(result);
@@ -100,16 +97,12 @@ public class SysUserController {
 
     @Operation(summary = "修改用户状态")
     @PatchMapping(value = "/{userId}/status")
+    @PreAuthorize("@ss.hasPerm('sys:user:status')")
     public Result<Void> updateUserStatus(
             @Parameter(description = "用户ID") @PathVariable Long userId,
             @Parameter(description = "用户状态(1:启用;0:禁用)") @RequestParam Integer status
     ) {
-        Long currentUserId = SecurityUtils.getUserId();
-        boolean result = userService.update(new LambdaUpdateWrapper<SysUser>()
-                .eq(SysUser::getId, userId)
-                .set(SysUser::getStatus, status)
-                .set(SysUser::getUpdateBy, currentUserId)
-        );
+        boolean result = userService.updateUserStatus(userId, status);
         return Result.judge(result);
     }
 }

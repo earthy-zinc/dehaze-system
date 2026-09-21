@@ -2,8 +2,10 @@ package order
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -36,20 +38,20 @@ const (
 )
 
 type OrderService struct {
-	db             *gorm.DB
-	orderRepo      orderrepo.IOrderRepository
-	paymentRepo    orderrepo.IPaymentRecordRepository
-	refundRepo     orderrepo.IRefundRecordRepository
-	autoRenewRepo  orderrepo.IAutoRenewRepository
-	packageRepo    pkgsalerepo.IPackageRepository
-	couponRepo     pkgsalerepo.ICouponRepository
-	userCouponRepo pkgsalerepo.IUserCouponRepository
-	userRepo       userrepo.IUserRepository
-	memberRepo     memberrepo.IMemberRepository
-	benefitRepo    memberrepo.IMemberBenefitRepository
-	paymentSvc     paymentsvc.IPaymentChannelService
-	cache          types.ICache
-	auditLogSvc    *auditlogservice.AuditLogService
+	db                     *gorm.DB
+	orderRepo              orderrepo.IOrderRepository
+	paymentRepo            orderrepo.IPaymentRecordRepository
+	refundRepo             orderrepo.IRefundRecordRepository
+	autoRenewRepo          orderrepo.IAutoRenewRepository
+	packageRepo            pkgsalerepo.IPackageRepository
+	couponRepo             pkgsalerepo.ICouponRepository
+	userCouponRepo         pkgsalerepo.IUserCouponRepository
+	userRepo               userrepo.IUserRepository
+	memberRepo             memberrepo.IMemberRepository
+	benefitRepo            memberrepo.IMemberBenefitRepository
+	paymentSvc             paymentsvc.IPaymentChannelService
+	cache                  types.ICache
+	auditLogSvc            *auditlogservice.AuditLogService
 	memberCacheInvalidator MemberCacheInvalidator
 }
 
@@ -89,7 +91,14 @@ func NewOrderService(
 	}
 }
 
+// validPayMethods 支付方式白名单（python order_service.PAY_METHODS 同口径）
+var validPayMethods = map[string]bool{"wechat": true, "alipay": true, "balance": true, "combined": true}
+
 func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderCreateForm) (*vo.PayResult, error) {
+	if !validPayMethods[form.PayMethod] {
+		return nil, common.NewBizError(common.PARAM_ERROR, "不支持的支付方式")
+	}
+
 	p, err := s.packageRepo.FindByID(ctx, form.PackageID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询套餐失败", err)
@@ -149,17 +158,24 @@ func (s *OrderService) Create(ctx context.Context, userID int64, form *bo.OrderC
 		UserID:         userID,
 		PackageID:      p.ID,
 		PackageName:    p.Name,
-		PackageLevel:   p.LevelCode,
-		PeriodDays:     p.PeriodDays,
+		PackageType:    p.PackageType,
 		OriginalPrice:  p.OriginalPrice,
 		DiscountAmount: discountAmount,
 		CouponID:       userCouponID,
 		CouponAmount:   couponAmount,
 		PayableAmount:  payableAmount,
 		PaidAmount:     0,
+		PayMethod:      &form.PayMethod,
 		Status:         1,
 		ExpireTime:     expireTime,
 		IsAutoRenew:    0,
+	}
+	// 冗余字段按商品类型落库：vip 存等级/周期，credit 存可得积分（python create 同口径）
+	if p.PackageType == "credit" {
+		order.CreditAmount = creditAmountPtr(p.CreditAmount)
+	} else {
+		order.PackageLevel = p.LevelCode.String
+		order.PeriodDays = periodDaysPtr(p.PeriodDays)
 	}
 
 	payMethod := form.PayMethod
@@ -219,23 +235,34 @@ func (s *OrderService) completePaymentInTx(ctx context.Context, tx *gorm.DB, ord
 		return err
 	}
 
-	effectiveTime := now
-	packageExpireTime := now.AddDate(0, 0, order.PeriodDays)
-
-	member, _ := txMemberRepo.FindByUserID(ctx, order.UserID)
-	if member != nil && member.ExpireTime != nil && member.ExpireTime.After(now) {
-		effectiveTime = *member.ExpireTime
-		packageExpireTime = effectiveTime.AddDate(0, 0, order.PeriodDays)
+	// 积分卡支付即完成（status 3）且无履约有效期；会员卡支付后进入已支付(2)
+	status := int8(2)
+	if order.PackageType == "credit" {
+		status = 3
 	}
 
-	if err := txOrderRepo.Update(ctx, order.ID, map[string]interface{}{
-		"status":              2,
-		"paid_amount":         order.PayableAmount,
-		"paid_time":           now,
-		"pay_method":          channel,
-		"effective_time":      effectiveTime,
-		"package_expire_time": packageExpireTime,
-	}); err != nil {
+	updates := map[string]interface{}{
+		"status":      status,
+		"paid_amount": order.PayableAmount,
+		"paid_time":   now,
+		"pay_method":  channel,
+	}
+
+	var packageExpireTime time.Time
+	if order.PackageType != "credit" {
+		effectiveTime := now
+		packageExpireTime = now.AddDate(0, 0, orderPeriodDays(order))
+
+		member, _ := txMemberRepo.FindByUserID(ctx, order.UserID)
+		if member != nil && member.ExpireTime != nil && member.ExpireTime.After(now) {
+			effectiveTime = *member.ExpireTime
+			packageExpireTime = effectiveTime.AddDate(0, 0, orderPeriodDays(order))
+		}
+		updates["effective_time"] = effectiveTime
+		updates["package_expire_time"] = packageExpireTime
+	}
+
+	if err := txOrderRepo.Update(ctx, order.ID, updates); err != nil {
 		return err
 	}
 
@@ -254,50 +281,63 @@ func (s *OrderService) completePaymentInTx(ctx context.Context, tx *gorm.DB, ord
 	}
 
 	pkg, _ := s.packageRepo.FindByID(ctx, order.PackageID)
-	if err := s.updateMemberAfterPaymentInTx(ctx, txMemberRepo, order.UserID, order.PackageLevel, order.PayableAmount, &packageExpireTime, pkg); err != nil {
+	if err := s.updateMemberAfterPaymentInTx(ctx, txMemberRepo, order, order.PayableAmount, &packageExpireTime, pkg); err != nil {
 		return err
 	}
 	s.invalidateMemberCacheAfterPayment(ctx, order.UserID, order.PackageLevel)
 	return nil
 }
 
-func (s *OrderService) updateMemberAfterPaymentInTx(ctx context.Context, txMemberRepo memberrepo.IMemberRepository, userID int64, levelCode string, amount int64, expireTime *time.Time, pkg *model.SysPackage) error {
-	benefit, _ := s.benefitRepo.FindByLevelCode(ctx, levelCode)
-	dehazeQuota := 0
-	evaluateQuota := 0
-	if benefit != nil {
-		dehazeQuota = benefit.MonthlyDehazeQuota
-		evaluateQuota = benefit.MonthlyEvaluateQuota
-	}
-	if pkg != nil && pkg.BenefitOverrides.Valid {
-		var overrides map[string]int
-		if err := json.Unmarshal([]byte(pkg.BenefitOverrides.String), &overrides); err == nil {
-			if v, ok := overrides["monthlyDehazeQuota"]; ok {
-				dehazeQuota = v
-			}
-			if v, ok := overrides["monthlyEvaluateQuota"]; ok {
-				evaluateQuota = v
-			}
-		}
-	}
+// updateMemberAfterPaymentInTx 支付履约（python member_service.on_order_paid 同口径）：
+// 所有商品按实付 1:1 累积成长值与累计消费；会员卡升级/续期/刷新权益，积分卡不动等级权益。
+func (s *OrderService) updateMemberAfterPaymentInTx(ctx context.Context, txMemberRepo memberrepo.IMemberRepository, order *model.SysOrder, amount int64, expireTime *time.Time, pkg *model.SysPackage) error {
+	userID := order.UserID
+	levelCode := order.PackageLevel
 
 	member, _ := txMemberRepo.FindByUserID(ctx, userID)
 	if member == nil {
 		return common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
 	}
 
+	// 成长值累积：实付金额 1:1（1 元 = 100 分 = 100 成长值）
 	updates := map[string]interface{}{
-		"level_code":             levelCode,
-		"level_source":           "package",
-		"total_consumption":      member.TotalConsumption + amount,
-		"expire_time":            *expireTime,
-		"status":                 1,
-		"monthly_dehaze_quota":   dehazeQuota,
-		"monthly_evaluate_quota": evaluateQuota,
+		"growth_value":      member.GrowthValue + amount,
+		"total_consumption": member.TotalConsumption + amount,
 	}
-	if member.BecomeMemberTime == nil {
-		now := time.Now()
-		updates["become_member_time"] = now
+
+	if order.PackageType == "vip" && levelCode != "" {
+		benefit, _ := s.benefitRepo.FindByLevelCode(ctx, levelCode)
+		dehazeQuota := 0
+		evaluateQuota := 0
+		if benefit != nil {
+			dehazeQuota = benefit.MonthlyDehazeQuota
+			evaluateQuota = benefit.MonthlyEvaluateQuota
+		}
+		if pkg != nil && pkg.BenefitOverrides.Valid {
+			var overrides map[string]int
+			if err := json.Unmarshal([]byte(pkg.BenefitOverrides.String), &overrides); err == nil {
+				if v, ok := overrides["monthlyDehazeQuota"]; ok {
+					dehazeQuota = v
+				}
+				if v, ok := overrides["monthlyEvaluateQuota"]; ok {
+					evaluateQuota = v
+				}
+			}
+		}
+
+		// 等级只升不降（需求 §3.1.1 会员卡期间享有较高者）
+		if memberLevelRank(member.LevelCode) > memberLevelRank(levelCode) {
+			levelCode = member.LevelCode
+		}
+		updates["level_code"] = levelCode
+		updates["level_source"] = "purchase"
+		updates["expire_time"] = *expireTime
+		updates["status"] = 1
+		updates["monthly_dehaze_quota"] = dehazeQuota
+		updates["monthly_evaluate_quota"] = evaluateQuota
+		if member.BecomeMemberTime == nil {
+			updates["become_member_time"] = time.Now()
+		}
 	}
 	return txMemberRepo.Update(ctx, userID, updates)
 }
@@ -455,6 +495,9 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 		return nil, common.NewBizError(common.ORDER_NOT_FOUND, "订单不存在")
 	}
 	if o.Status != 1 {
+		if o.Status == 2 {
+			return nil, common.NewBizError(common.ORDER_ALREADY_PAID, "订单已支付")
+		}
 		return nil, common.NewBizError(common.ORDER_STATUS_INVALID, "订单状态不允许此操作")
 	}
 	if time.Now().After(o.ExpireTime) {
@@ -471,6 +514,32 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 	}
 
 	if req.PayMethod == "balance" {
+		// 余额支付：校验并扣减平台余额（乐观锁 CAS），不足拒绝（A053B）
+		accountRepo := orderrepo.NewBalanceAccountRepository(s.db)
+		account, err := accountRepo.GetOrCreate(ctx, o.UserID)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询余额账户失败", err)
+		}
+		if account.Balance < o.PayableAmount {
+			return nil, common.NewBizError(common.BALANCE_INSUFFICIENT, "余额不足")
+		}
+		ok, err := accountRepo.AdjustBalance(ctx, o.UserID, -o.PayableAmount, account.Version)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "扣减余额失败", err)
+		}
+		if !ok {
+			return nil, common.NewBizError(common.BALANCE_INSUFFICIENT, "余额不足")
+		}
+		if err := orderrepo.NewBalanceLogRepository(s.db).Create(ctx, &model.SysBalanceLog{
+			UserID:       o.UserID,
+			ChangeType:   "consume",
+			Amount:       -o.PayableAmount,
+			BalanceAfter: account.Balance - o.PayableAmount,
+			RelatedID:    &o.ID,
+		}); err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "写入余额流水失败", err)
+		}
+
 		err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 			return s.completePaymentInTx(ctx, tx, o, req.PayMethod)
 		})
@@ -488,7 +557,7 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 			PayMethod:   req.PayMethod,
 		})
 		if payErr != nil {
-			return nil, common.WrapBizError(common.OPERATION_FAILED, "调用支付渠道下单失败", payErr)
+			return nil, common.WrapBizError(common.CALL_THIRD_PARTY_SERVICE_ERROR, "调用支付渠道下单失败", payErr)
 		}
 		result.Paid = false
 		result.PayURL = payResult.PayURL
@@ -498,6 +567,43 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 	}
 
 	return result, nil
+}
+
+// calcRefundAmount 按商品类型折算退款金额（python _calc_refund_amount 同口径）。
+// 返回 (refundAmount, usedDays, usedCredits)：merchant 全额退；vip 按天折算；
+// credit 按积分消耗折算（go 侧 AI 积分域未落地，暂按未消耗计，待 billing 域补齐后接入积分余额）。
+func calcRefundAmount(o *model.SysOrder, reasonType string) (int64, *int, *int64) {
+	if reasonType == "merchant" {
+		return o.PaidAmount, nil, nil
+	}
+	paidTime := time.Now()
+	if o.PaidTime != nil {
+		paidTime = *o.PaidTime
+	}
+
+	if o.PackageType == "credit" {
+		usedCredits := int64(0)
+		return o.PaidAmount, nil, &usedCredits
+	}
+
+	// vip 按天折算
+	periodDays := 0
+	if o.PeriodDays != nil {
+		periodDays = *o.PeriodDays
+	}
+	if periodDays <= 0 {
+		return 0, nil, nil
+	}
+	usedDays := int(math.Ceil(time.Since(paidTime).Hours() / 24))
+	if usedDays < 1 {
+		usedDays = 1
+	}
+	remaining := periodDays - usedDays
+	if remaining <= 0 {
+		return 0, &usedDays, nil
+	}
+	refundAmount := o.PaidAmount * int64(remaining) / int64(periodDays)
+	return refundAmount, &usedDays, nil
 }
 
 func (s *OrderService) ApplyRefund(ctx context.Context, userID int64, orderNo string, form *bo.RefundApplyForm) error {
@@ -517,22 +623,30 @@ func (s *OrderService) ApplyRefund(ctx context.Context, userID int64, orderNo st
 
 	existing, _ := s.refundRepo.FindByOrderID(ctx, o.ID)
 	if existing != nil {
-		return common.NewBizError(common.ORDER_STATUS_INVALID, "订单已申请退款")
+		return common.NewBizError(common.REFUND_ALREADY_EXISTS, "该订单已存在退款申请")
 	}
 
-	reason := form.Reason
+	// 契约（后端实现 §2.5）：customReason 非空时以 reasonType + ":" + customReason 拼接写入
+	reason := form.ReasonType
 	if form.CustomReason != "" {
-		reason = form.Reason + ":" + form.CustomReason
+		reason = form.ReasonType + ":" + form.CustomReason
 	}
+
+	refundAmount, usedDays, usedCredits := calcRefundAmount(o, form.ReasonType)
 
 	refundNo := fmt.Sprintf("RF%s%06d", time.Now().Format("20060102150405"), rand.Intn(1000000))
 	refund := &model.SysRefundRecord{
 		RefundNo:     refundNo,
 		OrderID:      o.ID,
 		UserID:       userID,
-		RefundAmount: o.PaidAmount,
+		RefundAmount: refundAmount,
+		ReasonType:   form.ReasonType,
 		Reason:       reason,
+		UsedDays:     usedDays,
+		UsedCredits:  usedCredits,
 		Status:       1,
+		Channel:      o.PayMethod,
+		ApplyTime:    time.Now(),
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -708,28 +822,28 @@ func (s *OrderService) ApproveRefund(ctx context.Context, auditorID, refundID in
 		})
 		if refundErr != nil {
 			logger.Error("调用支付渠道退款失败", zap.String("orderNo", o.OrderNo), zap.Error(refundErr))
-			return common.WrapBizError(common.OPERATION_FAILED, "调用支付渠道退款失败", refundErr)
+			return common.WrapBizError(common.CALL_THIRD_PARTY_SERVICE_ERROR, "调用支付渠道退款失败", refundErr)
 		}
 		if !refundResult.Success {
 			errMsg := refundResult.ErrorMessage
 			if errMsg == "" {
 				errMsg = "渠道退款失败"
 			}
-		_ = s.refundRepo.Update(ctx, refundID, map[string]interface{}{
-			"status":        3,
-			"audit_time":    time.Now(),
-			"auditor_id":    auditorID,
-			"audit_remark":  form.Remark,
-			"error_message": errMsg,
-		})
-		restoreStatus := int8(2)
-		if o.PackageExpireTime != nil && o.PackageExpireTime.After(time.Now()) {
-			restoreStatus = 3
-		}
-		_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
-			"status": restoreStatus,
-		})
-		return common.NewBizError(common.OPERATION_FAILED, errMsg)
+			_ = s.refundRepo.Update(ctx, refundID, map[string]interface{}{
+				"status":        3,
+				"audit_time":    time.Now(),
+				"auditor_id":    auditorID,
+				"audit_remark":  form.Remark,
+				"error_message": errMsg,
+			})
+			restoreStatus := int8(2)
+			if o.PackageExpireTime != nil && o.PackageExpireTime.After(time.Now()) {
+				restoreStatus = 3
+			}
+			_ = s.orderRepo.Update(ctx, o.ID, map[string]interface{}{
+				"status": restoreStatus,
+			})
+			return common.NewBizError(common.CALL_THIRD_PARTY_SERVICE_ERROR, errMsg)
 		}
 	}
 
@@ -990,8 +1104,9 @@ func (s *OrderService) processSingleAutoRenewal(ctx context.Context, ar *model.S
 		UserID:         ar.UserID,
 		PackageID:      p.ID,
 		PackageName:    p.Name,
-		PackageLevel:   p.LevelCode,
-		PeriodDays:     p.PeriodDays,
+		PackageType:    p.PackageType,
+		PackageLevel:   p.LevelCode.String,
+		PeriodDays:     periodDaysPtr(p.PeriodDays),
 		OriginalPrice:  p.OriginalPrice,
 		DiscountAmount: p.SalePrice - payableAmount,
 		PayableAmount:  payableAmount,
@@ -1035,7 +1150,7 @@ func (s *OrderService) processSingleAutoRenewal(ctx context.Context, ar *model.S
 		}
 	}
 
-	nextRenew := now.AddDate(0, 0, p.PeriodDays)
+	nextRenew := now.AddDate(0, 0, int(p.PeriodDays.Int64))
 	return s.autoRenewRepo.Update(ctx, ar.ID, map[string]interface{}{
 		"fail_count":          0,
 		"next_renew_time":     nextRenew,
@@ -1092,12 +1207,12 @@ func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, order
 			txCouponRepo := pkgsalerepo.NewCouponRepository(tx)
 
 			effectiveTime := now
-			packageExpireTime := now.AddDate(0, 0, o.PeriodDays)
+			packageExpireTime := now.AddDate(0, 0, orderPeriodDays(o))
 
 			member, _ := txMemberRepo.FindByUserID(ctx, o.UserID)
 			if member != nil && member.ExpireTime != nil && member.ExpireTime.After(now) {
 				effectiveTime = *member.ExpireTime
-				packageExpireTime = effectiveTime.AddDate(0, 0, o.PeriodDays)
+				packageExpireTime = effectiveTime.AddDate(0, 0, orderPeriodDays(o))
 			}
 
 			if err := txOrderRepo.Update(ctx, o.ID, map[string]interface{}{
@@ -1124,7 +1239,7 @@ func (s *OrderService) HandlePaymentCallback(ctx context.Context, channel, order
 				}
 			}
 			pkg, _ := s.packageRepo.FindByID(ctx, o.PackageID)
-			return s.updateMemberAfterPaymentInTx(ctx, txMemberRepo, o.UserID, o.PackageLevel, amount, &packageExpireTime, pkg)
+			return s.updateMemberAfterPaymentInTx(ctx, txMemberRepo, o, amount, &packageExpireTime, pkg)
 		})
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "支付回调处理失败", err)
@@ -1260,8 +1375,10 @@ func (s *OrderService) toRefundRecordVO(ctx context.Context, r *model.SysRefundR
 		UserID:          r.UserID,
 		Username:        username,
 		RefundAmount:    r.RefundAmount,
+		ReasonType:      r.ReasonType,
 		Reason:          r.Reason,
-		UsedQuota:       r.UsedQuota,
+		UsedDays:        r.UsedDays,
+		UsedCredits:     r.UsedCredits,
 		Status:          orderrepo.RefundStatusToString(r.Status),
 		ChannelRefundNo: r.ChannelRefundNo,
 		ApplyTime:       r.ApplyTime.Format(timeFormat),
@@ -1294,7 +1411,9 @@ func toMyOrderVO(o *model.SysOrder) vo.MyOrderVO {
 		ID:            o.ID,
 		OrderNo:       o.OrderNo,
 		PackageName:   o.PackageName,
+		PackageType:   o.PackageType,
 		PackageLevel:  o.PackageLevel,
+		CreditAmount:  o.CreditAmount,
 		PayableAmount: o.PayableAmount,
 		PaidAmount:    o.PaidAmount,
 		PayMethod:     o.PayMethod,
@@ -1337,3 +1456,36 @@ func calcCouponAmount(c *model.SysCoupon, payableAmount int64) int64 {
 }
 
 var _ IOrderService = (*OrderService)(nil)
+
+// orderPeriodDays 订单有效期天数（积分卡为 NULL 记 0）
+func orderPeriodDays(o *model.SysOrder) int {
+	if o.PeriodDays == nil {
+		return 0
+	}
+	return *o.PeriodDays
+}
+
+func creditAmountPtr(v sql.NullInt64) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	amount := v.Int64
+	return &amount
+}
+
+func periodDaysPtr(v sql.NullInt64) *int {
+	if !v.Valid {
+		return nil
+	}
+	days := int(v.Int64)
+	return &days
+}
+
+// memberLevelRank 等级序（用于会员卡期间只升不降判断）
+func memberLevelRank(levelCode string) int {
+	rank, ok := map[string]int{"level_0": 0, "level_1": 1, "level_2": 2, "level_3": 3}[levelCode]
+	if !ok {
+		return 0
+	}
+	return rank
+}

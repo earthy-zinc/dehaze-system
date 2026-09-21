@@ -25,17 +25,17 @@ class AiModelRepository(BaseRepository[SysAiModel]):
         model_id: str,
         provider_id: int,
     ) -> SysAiModel | None:
-        """按 model_id + provider_id 联合查询（含禁用/已删除，供唯一性校验使用）"""
+        """按 model_id + provider_id 联合查询（活跃行，供唯一性校验与本地模型播种判重）"""
         stmt = select(SysAiModel).where(
             SysAiModel.model_id == model_id,
             SysAiModel.provider_id == provider_id,
         )
-        # 绕过软删过滤查全表，避免软删后同组合查重漏检而依赖 DB 唯一索引报错
-        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_enabled(self, db: AsyncSession, model_type: str | None = None) -> list[SysAiModel]:
+    async def list_enabled(
+        self, db: AsyncSession, model_type: str | None = None
+    ) -> list[SysAiModel]:
         stmt = select(SysAiModel).where(SysAiModel.status == 1)
         if model_type:
             stmt = stmt.where(SysAiModel.model_type == model_type)

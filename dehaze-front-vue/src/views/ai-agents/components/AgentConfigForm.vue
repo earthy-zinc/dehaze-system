@@ -456,7 +456,7 @@ const endpointOptions = ref<EndpointResult[]>([]);
 async function loadOptions() {
   const [models, skills] = await Promise.all([
     AiModelAPI.listEnabledModels("chat"),
-    AiSkillAPI.listSkills({ pageNum: 1, pageSize: 200, status: 1 }),
+    AiSkillAPI.listSkills({ pageNum: 1, pageSize: 100, status: 1 }),
   ]);
   modelOptions.value = models ?? [];
   skillOptions.value = skills.list ?? [];
@@ -464,7 +464,7 @@ async function loadOptions() {
   // 命名空间按启用 Server 逐个拉取后合并去重
   const serversPage = await AiMCPAPI.listServers({
     pageNum: 1,
-    pageSize: 200,
+    pageSize: 100,
     status: 1,
   });
   const namespaceLists = await Promise.all(

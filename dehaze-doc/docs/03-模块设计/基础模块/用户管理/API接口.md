@@ -16,8 +16,9 @@
 | `/api/v1/users/{userId}/form` | GET | 获取用户表单数据 | - | F-UM-003 |
 | `/api/v1/users/{userId}` | PUT | 修改用户 | `sys:user:edit` | F-UM-003 |
 | `/api/v1/users/{ids}` | DELETE | 删除用户（支持批量）；ids 为必填非空路径参数，空列表由 SDK 前置校验拦截（服务端对空路径返回 405） | `sys:user:delete` | F-UM-004 |
-| `/api/v1/users/{userId}/password` | PATCH | 重置用户密码 | `sys:user:password:reset` | F-UM-005 |
-| `/api/v1/users/{userId}/status` | PATCH | 修改用户状态 | `sys:user:status` | F-UM-006 |
+| `/api/v1/users/{userId}/password` | PATCH | 重置用户密码（纯管理员操作，本人也需该权限；个人改密走 `/api/v1/auth/password`）；重置后踢出目标用户全部在线会话 | `sys:user:password:reset` | F-UM-005 |
+| `/api/v1/users/{userId}/status` | PATCH | 修改用户状态；禁用后踢出目标用户全部在线会话 | `sys:user:status` | F-UM-006 |
+| `/api/v1/auth/password` | PATCH | 修改个人密码（登录态即可，需旧密码校验；接口归属认证域，契约在此登记）；成功后踢出本人全部在线会话 | - | F-UM-005 |
 
 ## 3. 权限标识汇总
 
@@ -35,10 +36,12 @@
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
-| `A0111` | 用户名已存在 | 新增/导入时用户名重复 |
+| `A0400` | 请求参数错误 | 表单字段缺失/格式不合法（手机号、邮箱、密码复杂度 8-20 位含字母数字、用户名超长等） |
+| `A0501` | 用户名已存在（数据已存在） | 新增/编辑用户时用户名重复（含大小写变体与软删记录，Java/Go/Python 三端统一）；导入场景不抛该码，按行记录"用户名已存在"冲突明细 |
 | `A0401` | 用户不存在 | 编辑/删除/改密码/改状态不存在的用户（返回 404） |
-| `A0201` | 用户已禁用 | 禁用用户尝试登录 |
+| `A0202` | 用户账户被冻结 | 禁用用户尝试登录 |
+| `A0210` | 旧密码错误 | 个人改密（`/api/v1/auth/password`）旧密码校验失败 |
+| `A0301` | 访问未授权 | 无对应权限标识调用写接口（重置密码端点本人也需 `sys:user:password:reset`） |
 | `A0503` | 用户名不可修改 | 编辑用户时尝试修改 username（只读） |
-| `A0503` | 不可删除自己 | 删除用户时包含当前登录用户 |
-| `A0505` `ROOT_USER_PROTECTED` | 超级管理员不可删除 | 尝试删除超级管理员 |
-| `A0505` `ROOT_USER_PROTECTED` | 超级管理员不可禁用 | 尝试禁用超级管理员 |
+| `A0503` | 不可删除自己 / 不可禁用自己 | 删除用户时包含当前登录用户；禁用当前登录用户 |
+| `A0505` `ROOT_USER_PROTECTED` | 超级管理员不可删除/不可禁用 | 尝试删除或禁用超级管理员 |

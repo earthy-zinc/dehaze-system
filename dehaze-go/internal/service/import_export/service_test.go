@@ -85,10 +85,10 @@ func (h *configurableImportHandler) GetTemplateSampleData() []map[string]interfa
 
 // taskServiceRecorder 包装生成的 MockTaskService，用 Run 回调等价记录原手写 mock 的行为计数，保持既有测试断言语义。
 type taskServiceRecorder struct {
-	mock             *mocks.MockTaskService
-	createCalls      int
-	lastTaskType     string
-	lastParams       interface{}
+	mock              *mocks.MockTaskService
+	createCalls       int
+	lastTaskType      string
+	lastParams        interface{}
 	updateResultCalls int
 	updateStatusCalls int
 	lastStatus        model.TaskStatus
@@ -590,10 +590,10 @@ func TestExecuteAsyncImport_Success(t *testing.T) {
 	csvContent := "\ufeff用户名\nu1\nu2\n"
 	task := &model.SysTask{TaskID: "task-import-001"}
 	params := map[string]interface{}{
-		"module":        "user",
+		"module":         "user",
 		"fileObjectName": "temp/imports/abc.csv",
-		"fileName":      "test.csv",
-		"mode":          "all",
+		"fileName":       "test.csv",
+		"mode":           "all",
 	}
 	svc.storage = &mockStorage{
 		downloadFn: func(ctx context.Context, objectName string) (io.ReadCloser, error) {
@@ -622,10 +622,10 @@ func TestExecuteAsyncImport_WithFailures_GeneratesErrorReport(t *testing.T) {
 
 	task := &model.SysTask{TaskID: "task-import-002"}
 	params := map[string]interface{}{
-		"module":        "user",
+		"module":         "user",
 		"fileObjectName": "temp/imports/abc.csv",
-		"fileName":      "test.csv",
-		"mode":          "partial",
+		"fileName":       "test.csv",
+		"mode":           "partial",
 	}
 	svc.ExecuteAsyncImport(context.Background(), task, params, NoopProgressCallback{})
 	assert.Equal(t, 1, taskSvc.updateResultCalls)
@@ -637,10 +637,10 @@ func TestExecuteAsyncImport_HandlerError_UpdatesFailed(t *testing.T) {
 
 	task := &model.SysTask{TaskID: "task-import-fail"}
 	params := map[string]interface{}{
-		"module":        "unknown",
+		"module":         "unknown",
 		"fileObjectName": "temp/imports/abc.csv",
-		"fileName":      "test.csv",
-		"mode":          "all",
+		"fileName":       "test.csv",
+		"mode":           "all",
 	}
 	svc.ExecuteAsyncImport(context.Background(), task, params, NoopProgressCallback{})
 	assert.Equal(t, 1, taskSvc.updateStatusCalls)

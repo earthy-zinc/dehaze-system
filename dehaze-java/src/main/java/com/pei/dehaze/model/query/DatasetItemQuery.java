@@ -16,6 +16,9 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "数据项查询参数")
 public class DatasetItemQuery extends BasePageQuery {
 
+    /** python dataset_item.py:41 默认 20 */
+    { setPageSize(20); }
+
     @Schema(
             description = "数据集ID，用于筛选指定数据集下的数据项",
             example = "1"

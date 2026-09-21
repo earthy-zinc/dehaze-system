@@ -6,7 +6,7 @@
 
 - **传输协议**：Streamable HTTP（`POST /mcp` 单一端点）
 - **协议规范**：JSON-RPC 2.0 over HTTP（遵循 MCP 2025 规范）
-- **认证**：API Key 通过请求头 `x-dehaze-api-key` 或环境变量传递，透传到后端，后端负责校验
+- **认证**：API Key 通过环境变量配置（不接受请求头覆盖），透传到后端，后端负责校验
 
 ## 2. 元 tool 接口
 
@@ -56,7 +56,7 @@ get_api_v1_prediction_logs: 获取预测日志列表 | 参数: pageNum, pageSize
 | `tool_name` | string | 是 | 工具名（来自 lookup_tool） |
 | `arguments` | string | 否 | JSON 字符串，默认 `{}` |
 
-本地校验：必填参数缺失时返回"缺少必填参数: xxx"。
+本地校验：`arguments` 非法 JSON 或非 JSON 对象时直接拒绝；必填参数缺失时返回"缺少必填参数: xxx"。路径参数值整体 URL 编码后拼入请求路径。
 
 ### 2.4 响应转换
 

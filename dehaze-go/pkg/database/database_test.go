@@ -129,7 +129,7 @@ func TestBuildMySQLDSN(t *testing.T) {
 	}
 
 	dsn := database.BuildMySQLDSN(instance, "utf8mb4", "Local", true)
-	
+
 	assert.Contains(t, dsn, "root:password@tcp(localhost:3306)/test")
 	assert.Contains(t, dsn, "charset=utf8mb4")
 	assert.Contains(t, dsn, "loc=Local")
@@ -148,7 +148,7 @@ func TestBuildPostgresDSN(t *testing.T) {
 	}
 
 	dsn := database.BuildPostgresDSN(instance, "disable")
-	
+
 	assert.Contains(t, dsn, "host=localhost")
 	assert.Contains(t, dsn, "port=5432")
 	assert.Contains(t, dsn, "user=postgres")
@@ -161,13 +161,13 @@ func TestBuildPostgresDSN(t *testing.T) {
 func TestFactoryRegistration(t *testing.T) {
 	// 测试工厂是否正确注册
 	drivers := []string{"mysql", "postgres", "sqlite"}
-	
+
 	for _, driver := range drivers {
 		factory, err := database.GetFactory(driver)
 		assert.NoError(t, err)
 		assert.NotNil(t, factory)
 	}
-	
+
 	// 测试未知驱动
 	_, err := database.GetFactory("unknown")
 	assert.Error(t, err)

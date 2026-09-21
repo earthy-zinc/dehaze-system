@@ -1,5 +1,4 @@
-"""API 密钥数据访问层：查询/写入统一经此，service 不构建 SQL。
-"""
+"""API 密钥数据访问层：查询/写入统一经此，service 不构建 SQL。"""
 
 from datetime import datetime
 

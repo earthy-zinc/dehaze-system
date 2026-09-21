@@ -31,9 +31,9 @@ const (
 type ItemFileService struct {
 	cache types.ICache
 
-	itemFileRepo   filerepo.IItemFileRepository
+	itemFileRepo    filerepo.IItemFileRepository
 	datasetItemRepo datasetrepo.IDatasetItemRepository
-	fileService    *FileService
+	fileService     *FileService
 
 	taskExecutor taskservice.AsyncTaskExecutor
 	taskService  *taskservice.TaskService
@@ -401,7 +401,6 @@ func (itemFileService *ItemFileService) submitThumbnailTask(ctx context.Context,
 	logger.Debug("缩略图任务已提交", zap.Int64("dbTaskID", task.ID), zap.String("taskID", task.TaskID))
 }
 
-
 // deletePhysicalFileAsync 异步删除物理文件及文件记录
 // 使用独立 context 避免请求结束后 ctx 被取消导致删除中断
 func (itemFileService *ItemFileService) deletePhysicalFileAsync(fileID int64, thumbFileID *int64) {
@@ -480,4 +479,3 @@ func BuildImageUrlVO(file *model.SysFile, itemFile *model.SysItemFile, url strin
 	}
 	return result
 }
-

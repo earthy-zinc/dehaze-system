@@ -14,14 +14,15 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
+from app.infrastructure.cache.redis_lock import acquire_lock, release_lock
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_message import SysAiMessage
 from app.models.schema.ai_conversation import (
     AgentThoughtResult,
-    AiLlmCallResult,
     ConversationResult,
+    MessageListResult,
     MessageResult,
     MessageResume,
 )
@@ -30,7 +31,6 @@ from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
 from app.repository.ai_agent_version_repository import ai_agent_version_repository
 from app.repository.ai_conversation_repository import ai_conversation_repository
-from app.repository.ai_llm_call_repository import ai_llm_call_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_trace_repository import ai_trace_repository
 from app.repository.user_repository import user_repository
@@ -47,6 +47,8 @@ logger = logging.getLogger(__name__)
 
 # 置顶会话上限
 PINNED_CONVERSATION_LIMIT = 10
+# 置顶串行化锁 TTL（秒）：仅覆盖"校验上限 + 置顶写入 + 提交"临界区
+_PIN_LOCK_TTL = 10
 # 软删除恢复窗口（天）
 RECYCLE_WINDOW_DAYS = 30
 
@@ -106,9 +108,7 @@ class AiConversationService:
         task: asyncio.Task,
     ):
         try:
-            async for chunk in self.sse_emitter_manager.create_stream(
-                conv_id, stream_session_id
-            ):
+            async for chunk in self.sse_emitter_manager.create_stream(conv_id, stream_session_id):
                 yield chunk
         finally:
             # 客户端断连时也等待后台任务完成，确保 assistant 消息正常落库
@@ -131,9 +131,7 @@ class AiConversationService:
         return code, published.version_no if published else None
 
     async def create_conversation(self, db: AsyncSession, user_id: int, form) -> ConversationResult:
-        agent_code, agent_version = await self._resolve_agent_anchor(
-            db, form.agentCode
-        )
+        agent_code, agent_version = await self._resolve_agent_anchor(db, form.agentCode)
         # 场景提示词：显式传入 systemPrompt 优先；否则按 scene 写默认模板。
         # 场景语义已固化进 prompt 文本，无需给表加 scene 列。
         scene = (form.scene or "general") if form.scene in SCENE_VALUES else "general"
@@ -189,7 +187,7 @@ class AiConversationService:
             conv_ids, total = await search_conversations(
                 user_id, keyword, status=status_filter, page=page, size=size
             )
-            convs = await self.ai_conversation_repository.get_by_ids(db, user_id, conv_ids)
+            convs = await self.ai_conversation_repository.get_by_ids_and_user(db, conv_ids, user_id)
             convs = self._sort_conversations(convs)
             results = [await self._to_result(db, c) for c in convs]
             await self._attach_matched_messages(db, results, keyword)
@@ -197,9 +195,7 @@ class AiConversationService:
         convs, total = await self.ai_conversation_repository.paginate_user_conversations(
             db, user_id, page, size, status=status_filter
         )
-        return PageResult(
-            list=[await self._to_result(db, c) for c in convs], total=total
-        )
+        return PageResult(list=[await self._to_result(db, c) for c in convs], total=total)
 
     def _sort_conversations(self, convs: list[SysAiConversation]) -> list[SysAiConversation]:
         """置顶（pinned_at 倒序）优先，其余按最后消息时间倒序"""
@@ -238,8 +234,8 @@ class AiConversationService:
         anomaly_status = await self.ai_message_repository.list_anomaly_status_by_conversations(
             db, conv_ids
         )
-        quota_conv_ids = (
-            await self.ai_conversation_repository.list_quota_anomaly_conversation_ids(db, conv_ids)
+        quota_conv_ids = await self.ai_conversation_repository.list_quota_anomaly_conversation_ids(
+            db, conv_ids
         )
         risky_tool_conv_ids = await ai_trace_repository.list_risky_tool_conversation_ids(
             db, conv_ids
@@ -268,9 +264,7 @@ class AiConversationService:
         conv_ids = [r.id for r in results if keyword not in (r.title or "")]
         if not conv_ids:
             return
-        matched = await self.ai_message_repository.find_latest_ids_by_keyword(
-            db, conv_ids, keyword
-        )
+        matched = await self.ai_message_repository.find_latest_ids_by_keyword(db, conv_ids, keyword)
         for result in results:
             result.matched_message_id = matched.get(result.id)
 
@@ -296,6 +290,8 @@ class AiConversationService:
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
+        # 置顶前状态须在字段回写前取值：下面 field_map 会先把 conv.pinned 改成目标值
+        was_pinned = conv.pinned == 1
         data = form.model_dump(exclude_unset=True)
         field_map = {
             "title": "title",
@@ -309,19 +305,17 @@ class AiConversationService:
         for camel, snake in field_map.items():
             if camel in data:
                 setattr(conv, snake, data[camel])
-        # 通过 PATCH 置顶：同步维护 pinned_at（置顶写时间，取消置顶清空）
+        # 通过 PATCH 置顶：同步维护 pinned_at（置顶写时间，取消置顶清空）；
+        # 已置顶会话不再刷新 pinned_at，避免无谓改动打乱置顶排序
         if "pinned" in data:
             if data["pinned"]:
-                if conv.pinned != 1:
-                    await self._ensure_pin_limit(db, user_id)
-                conv.pinned_at = datetime.now()
+                if not was_pinned:
+                    conv.pinned_at = await self._pin_with_limit(db, conv_id, user_id)
             else:
                 conv.pinned_at = None
         if "agentCode" in data:
             # 切换 Agent：重新锚定版本（下一条消息生效）
-            agent_code, agent_version = await self._resolve_agent_anchor(
-                db, data.get("agentCode")
-            )
+            agent_code, agent_version = await self._resolve_agent_anchor(db, data.get("agentCode"))
             conv.agent_code = agent_code
             conv.agent_version = agent_version
         if "title" in data:
@@ -339,6 +333,26 @@ class AiConversationService:
         if count >= PINNED_CONVERSATION_LIMIT:
             raise BusinessException(ResultCode.DATA_EXISTS, "置顶会话已达上限")
 
+    async def _pin_with_limit(self, db: AsyncSession, conv_id: int, user_id: int) -> datetime:
+        """置顶会话并占用名额，返回置顶时间。
+
+        why: 上限校验与置顶写入分离（check-then-act）时，并发置顶同一用户的不同会话会
+        双双通过校验导致超限；故在用户级锁内完成校验、写入并提交，后到请求读到的是已
+        生效的置顶数。
+        """
+        lock_key = f"ai:conv:pin:{user_id}"
+        token = await acquire_lock(lock_key, _PIN_LOCK_TTL)
+        if token is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "置顶操作并发冲突，请稍后再试")
+        try:
+            await self._ensure_pin_limit(db, user_id)
+            now = datetime.now()
+            await self.ai_conversation_repository.set_pinned(db, conv_id, 1, now)
+            await db.commit()
+        finally:
+            await release_lock(lock_key, token)
+        return now
+
     async def _auto_generate_title(self, conversation_id: int, first_user_content: str) -> None:
         """异步用 LLM 生成标题，失败降级截取前 20 字"""
         title = ""
@@ -349,12 +363,17 @@ class AiConversationService:
                     return
                 model_id = conv.model or settings.AI_DEFAULT_MODEL
                 prompt = f"请为以下对话生成一个简洁的标题（不超过20字）：{first_user_content}"
-                chunks = []
-                async for chunk in self.llm_client.stream_chat(
-                    db, model_id, [{"role": "user", "content": prompt}], max_tokens=50
-                ):
-                    if chunk.type == "text_delta":
-                        chunks.append(chunk.content)
+                chunks = [
+                    chunk.content
+                    async for chunk in self.llm_client.stream_chat(
+                        db,
+                        model_id,
+                        [{"role": "user", "content": prompt}],
+                        max_tokens=50,
+                        user_id=conv.user_id,
+                    )
+                    if chunk.type == "text_delta"
+                ]
                 title = "".join(chunks).strip()
         except Exception:
             logger.warning("LLM 生成标题失败，降级截取前 20 字", exc_info=True)
@@ -371,7 +390,7 @@ class AiConversationService:
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         await self.ai_conversation_repository.soft_delete_by_ids(db, [conv.id])
-        # 软删同步 ES（deleted=1），全文检索默认过滤已删会话
+        # 软删同步 ES，全文检索默认过滤已删会话
         defer_conversation_sync(db, conv.id)
 
     async def list_messages(
@@ -379,14 +398,16 @@ class AiConversationService:
         db: AsyncSession,
         conv_id: int,
         user_id: int,
-        page: int,
-        size: int,
+        before: int | None,
+        limit: int,
         admin: bool = False,
-    ) -> PageResult[MessageResult]:
-        """会话消息列表（admin=True 为管理端审计视角，路由层已校验 ai:conversation:audit）。
+    ) -> MessageListResult:
+        """会话消息列表（游标分页，admin=True 为管理端审计视角，
+        路由层已校验 ai:conversation:audit）。
 
-        分页取**最新一页**（倒序：pageNum=1 为最近消息，会话超过一页时默认加载最新内容，
-        前端展示时反转回时间正序）；assistant 消息批量附带推理步骤（思考链，position 正序）。
+        按 id 倒序取一页（id 单调自增等价时间倒序）：before 为游标，仅返回 id < before 的
+        消息，缺省取最新一页；hasMore 表示是否还存在更早消息；total 为会话消息总数（展示用）。
+        assistant 消息批量附带推理步骤（思考链，position 正序）。
         """
         if admin:
             conv = await self.ai_conversation_repository.get_by_id(db, conv_id)
@@ -394,20 +415,17 @@ class AiConversationService:
             conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
-        msgs, total = await self.ai_message_repository.list_by_conversation(
-            db, conv_id, page, size, order="desc"
+        msgs, total, has_more = await self.ai_message_repository.list_by_conversation_cursor(
+            db, conv_id, before, limit
         )
         assistant_ids = [m.id for m in msgs if m.role == "assistant"]
         thoughts_map = await ai_agent_thought_repository.list_by_messages(db, assistant_ids)
         results = []
         for m in msgs:
             r = MessageResult.model_validate(m)
-            r.thoughts = [
-                AgentThoughtResult.model_validate(t)
-                for t in thoughts_map.get(m.id, [])
-            ]
+            r.thoughts = [AgentThoughtResult.model_validate(t) for t in thoughts_map.get(m.id, [])]
             results.append(r)
-        return PageResult(list=results, total=total)
+        return MessageListResult(list=results, total=total, hasMore=has_more)
 
     async def get_message(
         self, db: AsyncSession, msg_id: int, user_id: int, admin: bool = False
@@ -424,19 +442,6 @@ class AiConversationService:
         result["thoughts"] = [
             AgentThoughtResult.model_validate(t).model_dump(by_alias=True) for t in thoughts
         ]
-        # 可观测性：附带过程链与 LLM 调用明细（无过程链则为空，列表接口不返回）
-        trace = await ai_trace_repository.get_latest_by_message_id(db, msg_id)
-        if trace:
-            result["traceId"] = trace.trace_id
-            result["contextSnapshot"] = trace.context_snapshot
-            calls = await ai_llm_call_repository.list_by_trace(db, trace.trace_id)
-            result["llmCalls"] = [
-                AiLlmCallResult.model_validate(c).model_dump(by_alias=True) for c in calls
-            ]
-        else:
-            result["traceId"] = None
-            result["contextSnapshot"] = None
-            result["llmCalls"] = []
         return result
 
     async def get_branches(
@@ -474,7 +479,9 @@ class AiConversationService:
         conv.current_branch_message_id = msg_id
         return ConversationResult.model_validate(conv)
 
-    async def regenerate_message(self, db: AsyncSession, msg_id: int, user_id: int) -> StreamingResponse:
+    async def regenerate_message(
+        self, db: AsyncSession, msg_id: int, user_id: int
+    ) -> StreamingResponse:
         """重新生成助手回复：基于原 assistant 的父 user 消息新建兄弟分支并触发推理（SSE 流式）"""
         msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
@@ -485,7 +492,9 @@ class AiConversationService:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该消息已删除，无法重新生成")
         if not msg.parent_message_id:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该消息无父消息，无法重新生成")
-        conv = await self.ai_conversation_repository.get_by_id_and_user(db, msg.conversation_id, user_id)
+        conv = await self.ai_conversation_repository.get_by_id_and_user(
+            db, msg.conversation_id, user_id
+        )
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         if conv.status != 1:
@@ -502,22 +511,27 @@ class AiConversationService:
 
         model = msg.model or conv.model or settings.AI_DEFAULT_MODEL
         stream_session_id = str(uuid4())
-        # 新 assistant 消息：parent 沿用原 assistant 的父 user 消息，与原回复形成兄弟分支
-        new_msg = SysAiMessage(
-            conversation_id=msg.conversation_id,
-            parent_message_id=msg.parent_message_id,
-            role="assistant",
-            content="",
-            model=model,
-            status=1,
-            task_id=stream_session_id,
-        )
-        new_msg = await self.ai_message_repository.create(db, new_msg)
-        await self.ai_conversation_repository.update_last_message(
-            db, msg.conversation_id, new_msg.id, datetime.now()
-        )
-        # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
-        await db.commit()
+        try:
+            # 新 assistant 消息：parent 沿用原 assistant 的父 user 消息，与原回复形成兄弟分支
+            new_msg = SysAiMessage(
+                conversation_id=msg.conversation_id,
+                parent_message_id=msg.parent_message_id,
+                role="assistant",
+                content="",
+                model=model,
+                status=1,
+                task_id=stream_session_id,
+            )
+            new_msg = await self.ai_message_repository.create(db, new_msg)
+            await self.ai_conversation_repository.update_last_message(
+                db, msg.conversation_id, new_msg.id, datetime.now()
+            )
+            # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
+            await db.commit()
+        except Exception:
+            # 锁获流式锁后建消息失败：释放锁，避免会话被 120s 锁 TTL 阻塞
+            await self.sse_emitter_manager.release_lock(msg.conversation_id)
+            raise
 
         # regenerate 为显式操作，无需幂等；复用 send 的 SSE 触发链路（上下文由 reasoning 重建）
         idem_key = f"ai:msg:idempotent:{user_id}:{uuid4()}"
@@ -526,7 +540,6 @@ class AiConversationService:
                 sse_emitter_manager=self.sse_emitter_manager,
                 reasoning_service=self.reasoning_service,
                 get_redis_client=self.get_redis_client,
-                db=db,
                 conv_id=msg.conversation_id,
                 user_id=user_id,
                 model=model,
@@ -544,8 +557,14 @@ class AiConversationService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
         if msg.role != "assistant" or msg.status != 1:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "当前消息不可停止")
-        if msg.task_id:
-            await self.reasoning_service.stop(msg.conversation_id, msg_id, msg.task_id)
+        # 任务标识优先级：async_wait 批量任务 ID（task_id 列）> 消息→流会话反查键
+        # （send 路径 task_id 不存流会话 ID，见 message_streaming 登记键）
+        target_id = msg.task_id
+        if not target_id:
+            redis = await self.get_redis_client()
+            target_id = await redis.get(f"ai:msg:stream:{msg_id}")
+        if target_id:
+            await self.reasoning_service.stop(msg.conversation_id, msg_id, target_id)
         else:
             await self.ai_message_repository.update_status(db, msg_id, 4)
         msg.status = 4
@@ -665,7 +684,9 @@ class AiConversationService:
     ) -> ConversationResult:
         """软删恢复：仅 30 天恢复窗口内可恢复"""
         window_start = datetime.now() - timedelta(days=RECYCLE_WINDOW_DAYS)
-        conv = await self.ai_conversation_repository.get_in_trash(db, conv_id, user_id, window_start)
+        conv = await self.ai_conversation_repository.get_in_trash(
+            db, conv_id, user_id, window_start
+        )
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在或已超出恢复窗口")
         await self.ai_conversation_repository.restore_by_ids(db, [conv.id])
@@ -686,9 +707,7 @@ class AiConversationService:
         convs, total = await self.ai_conversation_repository.paginate_trash(
             db, user_id, page, size, window_start
         )
-        return PageResult(
-            list=[await self._to_result(db, c) for c in convs], total=total
-        )
+        return PageResult(list=[await self._to_result(db, c) for c in convs], total=total)
 
     async def pin_conversation(
         self,
@@ -699,10 +718,12 @@ class AiConversationService:
         """置顶会话（上限校验）"""
         conv = await self._get_owned_active(db, conv_id, user_id)
         if conv.pinned != 1:
-            await self._ensure_pin_limit(db, user_id)
-        await self.ai_conversation_repository.set_pinned(db, conv_id, 1, datetime.now())
-        conv.pinned = 1
-        conv.pinned_at = datetime.now()
+            conv.pinned = 1
+            conv.pinned_at = await self._pin_with_limit(db, conv_id, user_id)
+            # _pin_with_limit 在用户级锁内 commit（并发置顶的上限校验依赖提交后可见），
+            # commit 会 expire 本 session 的全部 ORM 实例；不刷新则序列化时访问 pinned
+            # 触发同步懒加载 → MissingGreenlet（ConversationResult 校验失败 500）
+            await db.refresh(conv)
         return await self._to_result(db, conv)
 
     async def unpin_conversation(

@@ -1,8 +1,13 @@
-from app.service.ai.builders.dehaze_tools_builder import build_business_tools
+from app.service.ai.builders import dehaze_tools_builder as builder
 from tests.stubs.fakes import NullDBSession
 
 
-async def _invoke_batch(image_urls, algorithm_id=1):
+async def _invoke_batch(monkeypatch, image_urls, algorithm_id=1):
+    # 图片归属校验不在本文件覆盖范围内（见 test_tool_security.py）
+    async def _allow(db, user_id, image_url):
+        return None
+
+    monkeypatch.setattr(builder, "validate_owned_image_url", _allow)
     ctx = {
         "conversation_id": 1,
         "message_id": 2,
@@ -18,9 +23,11 @@ async def _invoke_batch(image_urls, algorithm_id=1):
         "task_id": "",
         "task_artifacts": [],
     }
-    tools = build_business_tools(ctx)
+    tools = builder.build_business_tools(ctx)
     batch_tool = next(t for t in tools if t.name == "batch_process")
-    result = await batch_tool.func(image_urls, "去雾", algorithm_id)
+    result = await batch_tool.ainvoke(
+        {"image_urls": image_urls, "query": "去雾", "algorithm_id": algorithm_id}
+    )
     return result, ctx
 
 
@@ -31,7 +38,9 @@ def _patch_async_batch(monkeypatch, task_id="batch:1:2:555", resume_payload=None
         captured["submit_kwargs"] = kwargs
         return task_id
 
-    monkeypatch.setattr("app.service.ai.builders.dehaze_tools_builder.submit_batch_task", _fake_submit)
+    monkeypatch.setattr(
+        "app.service.ai.builders.dehaze_tools_builder.submit_batch_task", _fake_submit
+    )
 
     saved = {}
 
@@ -40,21 +49,21 @@ def _patch_async_batch(monkeypatch, task_id="batch:1:2:555", resume_payload=None
             saved.update({"t": thread_id, "type": itype, "data": data})
 
     monkeypatch.setattr("app.service.ai.builders.dehaze_tools_builder.interrupt_handler", _IH())
-    monkeypatch.setattr("app.service.ai.builders.dehaze_tools_builder.get_db_session", NullDBSession)
+    monkeypatch.setattr(
+        "app.service.ai.builders.dehaze_tools_builder.get_db_session", NullDBSession
+    )
 
     class _Repo:
         async def update_task_id(self, db, mid, tid):
             captured["task_id_written"] = tid
 
-    monkeypatch.setattr(
-        "app.repository.ai_message_repository.ai_message_repository", _Repo()
-    )
+    monkeypatch.setattr("app.repository.ai_message_repository.ai_message_repository", _Repo())
 
     if resume_payload is None:
         resume_payload = {"async_task": {"total": 4, "success": 4, "failed": 0, "results": []}}
     monkeypatch.setattr(
         "app.service.ai.builders.dehaze_tools_builder.interrupt",
-        lambda data: (captured.update({"interrupt_data": data}) or resume_payload),
+        lambda data: captured.update({"interrupt_data": data}) or resume_payload,
     )
     return captured, saved, resume_payload
 
@@ -70,14 +79,14 @@ async def test_small_batch_stays_sync(monkeypatch):
     called = {"submit": False, "interrupt": False}
     monkeypatch.setattr(
         "app.service.ai.builders.dehaze_tools_builder.submit_batch_task",
-        lambda **kwargs: (called.update({"submit": True}) or "batch:1:2:123"),
+        lambda **kwargs: called.update({"submit": True}) or "batch:1:2:123",
     )
     monkeypatch.setattr(
         "app.service.ai.builders.dehaze_tools_builder.interrupt",
-        lambda data: (called.update({"interrupt": True}) or {}),
+        lambda data: called.update({"interrupt": True}) or {},
     )
 
-    result, ctx = await _invoke_batch(["a", "b"])
+    result, ctx = await _invoke_batch(monkeypatch, ["a", "b"])
     assert "2 张" in result
     assert not called["submit"]
     assert not called["interrupt"]
@@ -87,18 +96,18 @@ async def test_small_batch_stays_sync(monkeypatch):
 async def test_large_batch_submits_async_and_interrupts(monkeypatch):
     captured, saved, _resume = _patch_async_batch(monkeypatch)
 
-    result, ctx = await _invoke_batch(["a", "b", "c", "d"])
+    result, ctx = await _invoke_batch(monkeypatch, ["a", "b", "c", "d"])
 
     data = captured["interrupt_data"]
     assert data["type"] == "async_wait"
     assert data["stream_session_id"] == "s1"
-    assert data["data"]["task_id"] == "batch:1:2:555"
-    assert data["data"]["task_type"] == "batch_process"
-    assert data["data"]["image_count"] == 4
-    assert data["data"]["est_duration"]
+    assert data["data"]["taskId"] == "batch:1:2:555"
+    assert data["data"]["taskType"] == "batch_process"
+    assert data["data"]["imageCount"] == 4
+    assert data["data"]["estDuration"]
     assert saved["type"] == "async_wait"
     assert saved["t"] == "1:2"
-    assert saved["data"]["data"]["task_id"] == "batch:1:2:555"
+    assert saved["data"]["data"]["taskId"] == "batch:1:2:555"
     assert captured["submit_kwargs"]["thread_id"] == "1:2"
     assert captured["task_id_written"] == "batch:1:2:555"
     assert "4 张" in result
@@ -107,13 +116,13 @@ async def test_large_batch_submits_async_and_interrupts(monkeypatch):
 
 
 async def test_large_batch_failure_result(monkeypatch):
-    captured, saved, resume = _patch_async_batch(
+    captured, saved, _resume = _patch_async_batch(
         monkeypatch,
         task_id="batch:1:2:666",
         resume_payload={"async_task": {"total": 4, "success": 1, "failed": 3, "results": []}},
     )
 
-    result, ctx = await _invoke_batch(["a", "b", "c", "d"])
+    result, ctx = await _invoke_batch(monkeypatch, ["a", "b", "c", "d"])
     assert ctx["task_status"] == "failed"
     assert ctx["task_id"] == "batch:1:2:666"
     assert "失败 3 张" in result

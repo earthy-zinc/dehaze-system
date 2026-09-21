@@ -164,10 +164,14 @@ class OrderRepository(BaseRepository[SysOrder]):
 
     async def has_paid_order(self, db: AsyncSession, user_id: int) -> bool:
         """用户是否存在已支付订单（status: 2 已支付 / 3 已完成），用于新用户专享可用性判断"""
-        stmt = select(func.count()).select_from(SysOrder).where(
-            SysOrder.user_id == user_id,
-            SysOrder.deleted == 0,
-            SysOrder.status.in_([2, 3]),
+        stmt = (
+            select(func.count())
+            .select_from(SysOrder)
+            .where(
+                SysOrder.user_id == user_id,
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3]),
+            )
         )
         return ((await db.execute(stmt)).scalar() or 0) > 0
 
@@ -271,12 +275,47 @@ class OrderRepository(BaseRepository[SysOrder]):
                 SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
             )
         pay_method_rows = (await db.execute(pay_method_stmt)).all()
-        pay_method_distribution = {pm: c for pm, c in pay_method_rows}
+        pay_method_distribution = {r[0]: r[1] for r in pay_method_rows}
+
+        paid_count_stmt = (
+            select(func.count())
+            .select_from(SysOrder)
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status.in_([2, 3, 6]),
+            )
+        )
+        refunded_count_stmt = (
+            select(func.count())
+            .select_from(SysOrder)
+            .where(
+                SysOrder.deleted == 0,
+                SysOrder.status == 6,
+            )
+        )
+        if start_time:
+            paid_count_stmt = paid_count_stmt.where(
+                SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
+            refunded_count_stmt = refunded_count_stmt.where(
+                SysOrder.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+            )
+        if end_time:
+            paid_count_stmt = paid_count_stmt.where(
+                SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
+            refunded_count_stmt = refunded_count_stmt.where(
+                SysOrder.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+            )
+        paid_order_count = (await db.execute(paid_count_stmt)).scalar() or 0
+        refunded_order_count = (await db.execute(refunded_count_stmt)).scalar() or 0
 
         return {
             "total_orders": total_orders,
             "total_revenue": total_revenue,
             "total_refund": total_refund,
+            "paid_order_count": paid_order_count,
+            "refunded_order_count": refunded_order_count,
             "status_distribution": status_distribution,
             "pay_method_distribution": pay_method_distribution,
         }

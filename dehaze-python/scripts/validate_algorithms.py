@@ -246,7 +246,7 @@ def run_l3(record: AlgorithmRecord) -> tuple[bool, str]:
     ckpt = torch.load(model_path, weights_only=False, map_location="cpu")
     ckpt_state = extract_checkpoint_state(ckpt, model_keys)
     model_keys_norm = {normalize(k) for k in model_keys}
-    ckpt_keys_norm = {normalize(k) for k in ckpt_state.keys()}
+    ckpt_keys_norm = {normalize(k) for k in ckpt_state}
 
     extra = sorted(k for k in ckpt_keys_norm if k not in model_keys_norm)
     missing = sorted(k for k in model_keys_norm if k not in ckpt_keys_norm)

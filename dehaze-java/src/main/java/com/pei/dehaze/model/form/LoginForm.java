@@ -2,6 +2,8 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
@@ -16,7 +18,7 @@ public class LoginForm {
     @Schema(description = "密码", example = "Dehaze2026")
     private String password;
 
-    @NotBlank(message = "验证码Key不能为空")
+    @NotNull(message = "验证码Key不能为空")
     @Schema(description = "验证码Key")
     private String captchaKey;
 
@@ -26,4 +28,8 @@ public class LoginForm {
 
     @Schema(description = "记住我（控制 Session Cookie 的 Max-Age：true=7天，false=会话级）")
     private Boolean rememberMe;
+
+    @Schema(description = "设备类型(用于多端会话区分，默认 web)")
+    @Pattern(regexp = "^(web|android|flutter|miniprogram)$", message = "设备类型不合法")
+    private String deviceType;
 }

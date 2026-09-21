@@ -12,6 +12,7 @@ from sqlalchemy import and_, func, select, update
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_dataset import SysDataset
 from app.models.entity.sys_favorite import SysFavorite
@@ -46,7 +47,11 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         target_type: str,
         target_id: int,
     ) -> int:
-        """upsert 收藏：冲突时复活（重置 deleted=0, is_invalid=0），返回 id"""
+        """upsert 收藏：已存在未删除行时幂等返回原行（重置 is_invalid=0）；返回 id
+
+        uk_user_target 含 deleted 列，软删行不再参与冲突，故"取消后重新收藏"是插入
+        新的未删除行（软删历史行保留），不是复活旧行。
+        """
         stmt = mysql_insert(SysFavorite).values(
             user_id=user_id,
             target_type=target_type,
@@ -90,7 +95,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         target_type: str,
         target_id: int,
     ) -> bool:
-        """校验收藏目标对象是否存在
+        """校验收藏目标对象是否存在（合法类型白名单由 Service 层校验）
 
         algorithm/dataset/result 为已实现类型，必须校验；
         image/preset 为预留类型，跳过校验。
@@ -125,7 +130,6 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         *,
         target_type: str | None = None,
         keywords: str | None = None,
-        sort_by: str | None = None,
         sort_order: str | None = None,
     ) -> tuple[list[dict], int]:
         """收藏列表分页查询
@@ -133,6 +137,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         algorithm 类型 LEFT JOIN sys_algorithm 取 name 作为 targetName。
         dataset 类型 LEFT JOIN sys_dataset 取 name/img 作为 targetName/targetThumbnail。
         其他类型暂不 JOIN，targetName/targetThumbnail 为空。
+        排序仅支持收藏时间（sort_order=asc 正序，其余倒序）。
         """
         stmt = (
             select(
@@ -169,17 +174,14 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         if keywords:
             escaped = escape_like(keywords)
             like_pattern = f"%{escaped}%"
-            stmt = stmt.where(SysAlgorithm.name.like(like_pattern, escape="\\"))
+            stmt = stmt.where(
+                SysAlgorithm.name.like(like_pattern, escape="\\")
+                | SysDataset.name.like(like_pattern, escape="\\")
+            )
 
-        order = sort_by or "create_time"
+        # 仅支持按收藏时间排序（对齐 Java：sortOrder=asc 正序，其余倒序）
+        col = SysFavorite.create_time
         is_desc = sort_order != "asc"
-        if order == "create_time":
-            col = SysFavorite.create_time
-        elif order == "rating":
-            col = SysAlgorithm.type  # 无评分字段，fallback
-            stmt = stmt.where(SysFavorite.target_type == "algorithm")
-        else:
-            col = SysFavorite.create_time
 
         if is_desc:
             stmt = stmt.order_by(col.desc(), SysFavorite.id.desc())
@@ -207,14 +209,18 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         self,
         db: AsyncSession,
         ids: list[int],
-        user_id: int,
+        user_id: int | None = None,
     ) -> int:
-        """按 ID 列表批量软删除（仅限当前用户）"""
+        """按 ID 列表批量软删除（仅限当前用户）
+
+        user_id 与 BaseRepository.soft_delete_by_ids 保持签名兼容：调用方恒显式传入，
+        省略时按 user_id IS NULL 匹配（无行命中）。
+        """
         if not ids:
             return 0
-        from app.models.base import get_audit_update_values
-
-        values = {"deleted": 1}
+        # uk_user_target 含 deleted 列，表设计约定 deleted 写入"删除时的行 id"：
+        # 写常量 1 会让同一 (user, type, target) 第二次取消收藏撞唯一键（1062 → 500）
+        values = {"deleted": SysFavorite.id}
         values.update(get_audit_update_values())
 
         stmt = (
@@ -223,6 +229,28 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
                 SysFavorite.id.in_(ids),
                 SysFavorite.user_id == user_id,
                 SysFavorite.deleted == 0,
+            )
+            .values(**values)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
+
+    async def mark_invalid(
+        self,
+        db: AsyncSession,
+        target_type: str,
+        target_ids: list[int],
+    ) -> int:
+        """按目标类型 + ID 批量标记收藏失效（对象删除时由业务模块调用，对齐 Java markInvalid）"""
+        if not target_ids:
+            return 0
+        values = {"is_invalid": 1}
+        values.update(get_audit_update_values())
+        stmt = (
+            update(SysFavorite)
+            .where(
+                SysFavorite.target_type == target_type,
+                SysFavorite.target_id.in_(target_ids),
             )
             .values(**values)
         )

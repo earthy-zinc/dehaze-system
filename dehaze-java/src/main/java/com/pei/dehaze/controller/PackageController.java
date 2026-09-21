@@ -61,7 +61,7 @@ public class PackageController {
 
     @Operation(summary = "后台：套餐分页列表")
     @GetMapping("/page")
-    public PageResult<PackagePageVO> getPage(@ParameterObject PackagePageQuery query) {
+    public PageResult<PackagePageVO> getPage(@Valid @ParameterObject PackagePageQuery query) {
         Page<PackagePageVO> page = packageService.getPage(query);
         return PageResult.success(page);
     }
@@ -130,7 +130,7 @@ public class PackageController {
 
     @Operation(summary = "后台：优惠券分页列表")
     @GetMapping("/coupons/page")
-    public PageResult<CouponVO> getCouponPage(@ParameterObject CouponPageQuery query) {
+    public PageResult<CouponVO> getCouponPage(@Valid @ParameterObject CouponPageQuery query) {
         Page<CouponVO> page = couponService.getPage(query);
         return PageResult.success(page);
     }

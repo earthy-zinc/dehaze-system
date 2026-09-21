@@ -14,7 +14,8 @@ from app.service.import_export.file_generator import write_csv, write_excel
 from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
 
-_MENU_TYPE_LABELS = {1: "目录", 2: "菜单", 3: "外链", 4: "按钮"}
+# 菜单类型值 → 中文标签（对齐 Java MenuTypeEnum：1-菜单 2-目录 3-外链 4-按钮）
+_MENU_TYPE_LABELS = {1: "菜单", 2: "目录", 3: "外链", 4: "按钮"}
 
 
 class MenuExportHandler(ExportHandler):

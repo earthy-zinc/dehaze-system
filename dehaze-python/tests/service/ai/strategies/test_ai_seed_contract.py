@@ -217,8 +217,7 @@ class TestEvalSeedContract:
 
         assert str(REGRESSION_THRESHOLD_DEFAULT) == self.EVAL_DEFAULTS["regression_threshold"]
         assert (
-            str(CONSISTENCY_THRESHOLD_DEFAULT)
-            == self.EVAL_DEFAULTS["judge_consistency_threshold"]
+            str(CONSISTENCY_THRESHOLD_DEFAULT) == self.EVAL_DEFAULTS["judge_consistency_threshold"]
         )
         assert str(REVIEW_RATIO_DEFAULT) == self.EVAL_DEFAULTS["judge_review_ratio"]
 

@@ -7,6 +7,8 @@ tests.stubs.factories / tests.stubs.mocks。
 
 from types import SimpleNamespace
 
+from app.core.exceptions import public_error
+
 
 class _Savepoint:
     """begin_nested() 的 SAVEPOINT 上下文：退出时计数，异常继续外传由调用方捕获。"""
@@ -36,6 +38,8 @@ class StubAsyncSession:
     def __init__(self):
         self.added = None
         self.entities = []
+        # 与 AsyncSession 对齐：defer_after_commit 在 session.info 上登记提交后回调
+        self.info = {}
         self.flushed = 0
         self.committed = 0
         self.rolled_back = 0
@@ -125,6 +129,7 @@ class RecorderEmitter:
     """SSE 发射器假件：按序捕获 send_event 调用。
 
     events 即断言面：[(event_type, data), ...]，按发送顺序排列。
+    send_error 与真实 SseEmitterManager 同为 error + message.end 两次事件。
     """
 
     def __init__(self):
@@ -132,6 +137,22 @@ class RecorderEmitter:
 
     async def send_event(self, stream_session_id, event_type, data):
         self.events.append((event_type, data))
+
+    async def send_error(self, stream_session_id, error):
+        await self.send_event(stream_session_id, "error", public_error(error))
+        await self.send_event(
+            stream_session_id,
+            "message.end",
+            {
+                "stopReason": "error",
+                "usage": {
+                    "inputTokens": 0,
+                    "outputTokens": 0,
+                    "cachedInputTokens": 0,
+                    "credits": 0,
+                },
+            },
+        )
 
 
 class MinimalExecutorDB:

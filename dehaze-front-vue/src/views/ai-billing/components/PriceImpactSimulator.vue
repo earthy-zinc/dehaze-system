@@ -35,7 +35,7 @@
         <el-button
           type="primary"
           :loading="simulating"
-          :disabled="!modelId"
+          :disabled="!modelId || providerId == null"
           @click="simulate"
         >
           测算影响
@@ -176,7 +176,8 @@ function addRow() {
 async function simulate() {
   const form: ModelCostForm = {
     modelId: modelId.value,
-    providerId: providerId.value,
+    // 按钮已按 providerId 判空禁用，此处按必填契约收窄
+    providerId: providerId.value!,
     details: detailRows.filter((row) => row.unitPrice >= 0),
   };
   simulating.value = true;

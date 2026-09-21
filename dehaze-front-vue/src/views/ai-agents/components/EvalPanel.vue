@@ -20,36 +20,24 @@
       </el-button>
     </div>
 
+    <el-progress
+      v-if="evalRunning"
+      class="mb-3"
+      :percentage="evalProgress"
+      :status="
+        agentStore.evalTask?.status === 'failed' ? 'exception' : undefined
+      "
+    />
+
     <el-alert
       v-if="gateResult"
       class="mb-3"
       :type="gateResult.passed ? 'success' : 'error'"
       :closable="false"
-      :title="
-        gateResult.passed
-          ? `回归评测通过（Run #${gateResult.runId}），可执行发布`
-          : `回归评测未通过（Run #${gateResult.runId}），失败样本 ${gateResult.failedSamples?.length ?? 0} 条，发布被门禁阻断`
-      "
+      :title="gateTitle(gateResult)"
     />
 
-    <el-divider content-position="left">评测集</el-divider>
-    <el-table :data="agentStore.evalDatasets" size="small">
-      <el-table-column label="名称" prop="name" min-width="140" />
-      <el-table-column label="类型" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag :type="datasetTag(row.datasetType).type" size="small">
-            {{ datasetTag(row.datasetType).label }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="描述"
-        prop="description"
-        min-width="200"
-        show-overflow-tooltip
-      />
-      <el-table-column label="创建时间" prop="createTime" width="170" />
-    </el-table>
+    <EvalDatasetPanel :agent-id="props.agentId" />
 
     <el-divider content-position="left">评测执行记录</el-divider>
     <el-table
@@ -94,7 +82,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { EvalRunGateResult } from "dehaze-sdk-js";
 import { useAdminAgentStore } from "@/store/modules/adminAgent";
+import EvalDatasetPanel from "@/views/ai-eval-center/components/EvalDatasetPanel.vue";
+import { RUN_STATUS_META } from "@/views/ai-eval-center/eval-meta";
 
 defineOptions({ name: "EvalPanel" });
 
@@ -104,12 +95,18 @@ const router = useRouter();
 const agentStore = useAdminAgentStore();
 
 const evalRunning = ref(false);
-const gateResult = ref<{
-  runId?: number;
-  passed?: boolean;
-  scoreSummary?: Record<string, unknown> | null;
-  failedSamples?: Array<Record<string, unknown>> | null;
-} | null>(null);
+const evalProgress = computed(() => agentStore.evalProgress);
+const gateResult = ref<EvalRunGateResult | null>(null);
+
+/** 门禁结果文案：退化阻断与样本不足时 failedSamples 为空，需分别提示避免"失败样本 0 条"误导 */
+function gateTitle(result: EvalRunGateResult) {
+  if (result.passed) return `回归评测通过（Run #${result.runId}），可执行发布`;
+  if (result.insufficientEval)
+    return "回归集样本不足，无考题可判，发布被门禁阻断";
+  if (result.degraded)
+    return `回归评测未通过（Run #${result.runId}）：评分较上次完成评测退化超阈值`;
+  return `回归评测未通过（Run #${result.runId}），失败样本 ${result.failedSamples.length} 条，发布被门禁阻断`;
+}
 
 const regressionDatasetIds = computed(
   () =>
@@ -137,37 +134,25 @@ function datasetName(datasetId: number) {
   );
 }
 
-function datasetTag(type: string) {
-  switch (type) {
-    case "dev":
-      return { label: "开发集", type: "primary" as const };
-    case "regression":
-      return { label: "回归集", type: "warning" as const };
-    default:
-      return { label: "保留集", type: "info" as const };
-  }
-}
-
 function runTag(status: number) {
-  if (status === 2) return { label: "通过", type: "success" as const };
-  if (status === 3) return { label: "失败", type: "danger" as const };
-  return { label: "执行中", type: "warning" as const };
+  return RUN_STATUS_META[status] ?? { label: "执行中", type: "warning" };
 }
 
 onMounted(async () => {
   agentStore.evalRunsQuery.pageNum = 1;
-  await Promise.all([
-    agentStore.fetchEvalDatasets(props.agentId),
-    agentStore.fetchEvalRuns(props.agentId),
-  ]);
+  await agentStore.fetchEvalRuns(props.agentId);
 });
 
 async function handleRunEval() {
   evalRunning.value = true;
   try {
     const result = await agentStore.runEval(props.agentId);
-    gateResult.value = result as typeof gateResult.value;
-    if (gateResult.value?.passed) {
+    gateResult.value = result;
+    if (agentStore.evalTask?.status === "failed") {
+      ElMessage.error(agentStore.evalTask.error || "评测执行失败");
+      return;
+    }
+    if (result?.passed) {
       ElMessage.success("回归评测通过");
     } else {
       ElMessage.warning("回归评测未通过，发布将被门禁阻断");

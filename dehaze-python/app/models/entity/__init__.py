@@ -12,7 +12,6 @@ from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.models.entity.sys_ai_agent_eval_dataset import SysAiAgentEvalDataset
 from app.models.entity.sys_ai_agent_eval_run import SysAiAgentEvalRun
 from app.models.entity.sys_ai_agent_eval_sample import SysAiAgentEvalSample
-from app.models.entity.sys_ai_eval_review import SysAiEvalReview
 from app.models.entity.sys_ai_agent_mcp import SysAiAgentMcp
 from app.models.entity.sys_ai_agent_skill import SysAiAgentSkill
 from app.models.entity.sys_ai_agent_subagent import SysAiAgentSubagent
@@ -23,6 +22,8 @@ from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_billing_anomaly import SysAiBillingAnomaly
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_credit_log import SysAiCreditLog
+from app.models.entity.sys_ai_eval_review import SysAiEvalReview
+from app.models.entity.sys_ai_llm_call import SysAiLlmCall
 from app.models.entity.sys_ai_mcp_call import SysAiMcpCall
 from app.models.entity.sys_ai_mcp_namespace import SysAiMcpNamespace
 from app.models.entity.sys_ai_mcp_server import SysAiMcpServer
@@ -39,6 +40,7 @@ from app.models.entity.sys_ai_schedule import SysAiSchedule
 from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
 from app.models.entity.sys_ai_skill import SysAiSkill
 from app.models.entity.sys_ai_skill_file import SysAiSkillFile
+from app.models.entity.sys_ai_trace import SysAiTrace
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_auto_renew import SysAutoRenew
 from app.models.entity.sys_balance import SysBalance
@@ -75,32 +77,37 @@ from app.models.entity.sys_voice_provider_key import SysVoiceProviderKey
 from app.models.entity.sys_wpx_file import SysWpxFile
 
 __all__ = [
-    # 文件相关
-    "SysFile",
-    # 用户相关
-    "SysUser",
-    "SysRole",
-    "SysUserRole",
-    "SysApiKey",
+    # 智能体管理
+    "SysAiAgent",
+    "SysAiAgentEndpoint",
+    "SysAiAgentEvalDataset",
+    "SysAiAgentEvalRun",
+    "SysAiAgentEvalSample",
+    "SysAiAgentMcp",
+    "SysAiAgentSkill",
+    "SysAiAgentSubagent",
+    "SysAiAgentThought",
+    "SysAiAgentVersion",
+    "SysAiArtifact",
+    "SysAiBilling",
+    "SysAiBillingAnomaly",
+    "SysAiConversation",
+    "SysAiCreditLog",
+    "SysAiEvalReview",
+    "SysAiLlmCall",
+    "SysAiMcpCall",
+    "SysAiMcpNamespace",
+    "SysAiMcpServer",
+    "SysAiMcpTool",
+    "SysAiMemory",
+    "SysAiMessage",
+    "SysAiMessageFeedback",
     # AI对话
     "SysAiModel",
     "SysAiModelPrice",
     "SysAiModelPriceDetail",
-    "SysAiConversation",
-    "SysAiMessage",
-    "SysAiBilling",
-    "SysAiBillingAnomaly",
-    "SysAiCreditLog",
-    "SysAiAgentThought",
-    "SysAiArtifact",
-    "SysAiMemory",
-    "SysAiMessageFeedback",
     "SysAiProvider",
     "SysAiProviderKey",
-    "SysAiMcpServer",
-    "SysAiMcpTool",
-    "SysAiMcpNamespace",
-    "SysAiMcpCall",
     "SysAiRefund",
     "SysAiSchedule",
     "SysAiScheduleRun",
@@ -108,68 +115,63 @@ __all__ = [
     "SysAiSkillFile",
     # 可观测性
     "SysAiTrace",
-    "SysAiLlmCall",
-    # 智能体管理
-    "SysAiAgent",
-    "SysAiAgentSkill",
-    "SysAiAgentMcp",
-    "SysAiAgentSubagent",
-    "SysAiAgentVersion",
-    "SysAiAgentEvalDataset",
-    "SysAiAgentEvalSample",
-    "SysAiAgentEvalRun",
-    "SysAiEvalReview",
-    "SysAiAgentEndpoint",
-    # 部门
-    "SysDept",
-    # 菜单
-    "SysMenu",
-    "SysRoleMenu",
-    # 字典
-    "SysDict",
-    "SysDictType",
     # 算法
     "SysAlgorithm",
+    "SysApiKey",
+    "SysAutoRenew",
+    "SysBalance",
+    "SysBalanceLog",
+    "SysBalanceRefund",
+    "SysCoupon",
     # 数据集
     "SysDataset",
     "SysDatasetItem",
-    "SysItemFile",
-    # 日志
-    "SysPredLog",
+    # 部门
+    "SysDept",
+    # 字典
+    "SysDict",
+    "SysDictType",
     "SysEvalLog",
-    # 任务
-    "SysTask",
+    "SysFeedback",
+    "SysFeedbackReply",
+    # 文件相关
+    "SysFile",
+    "SysItemFile",
+    "SysKnowledgeChunkFeedback",
+    # AI知识库
+    "SysKnowledgeTestSet",
     # 会员
     "SysMember",
     "SysMemberBenefit",
     "SysMemberGrowthLog",
     "SysMemberQuota",
     "SysMemberSignIn",
-    # WPX 文件映射
-    "SysWpxFile",
+    # 菜单
+    "SysMenu",
     # 订单管理
     "SysOrder",
-    "SysPaymentRecord",
-    "SysRefundRecord",
-    "SysAutoRenew",
-    "SysBalance",
-    "SysBalanceLog",
-    "SysBalanceRefund",
     # 套餐管理
     "SysPackage",
-    "SysCoupon",
-    "SysUserCoupon",
+    "SysPaymentRecord",
+    # 日志
+    "SysPredLog",
     "SysPromotion",
     "SysPromotionPackage",
     # 反馈评价
     "SysRating",
-    "SysFeedback",
-    "SysFeedbackReply",
-    # AI知识库
-    "SysKnowledgeTestSet",
-    "SysKnowledgeChunkFeedback",
+    "SysRefundRecord",
+    "SysRole",
+    "SysRoleMenu",
+    # 任务
+    "SysTask",
+    # 用户相关
+    "SysUser",
+    "SysUserCoupon",
+    "SysUserRole",
+    "SysVoiceModel",
     # 语音引擎注册表
     "SysVoiceProvider",
     "SysVoiceProviderKey",
-    "SysVoiceModel",
+    # WPX 文件映射
+    "SysWpxFile",
 ]

@@ -347,6 +347,24 @@ describe("反馈评价模块接口测试", () => {
       }
     });
 
+    test("正向测试：按标签筛选", async () => {
+      // 文档 T-FE-051：tags 逐个 LIKE 筛选
+      await login(userAccount);
+      const predLogId = await ensurePredictionLog();
+      const createResult = await FeedbackAPI.createRating(
+        createRatingForm(predLogId, { tags: ["去雾彻底", "细节清晰"] })
+      );
+      createdRatingIds.push(createResult.id);
+
+      await login(USERS.ADMIN.username);
+      const result = await FeedbackAPI.listRatings(
+        createRatingQuery({ tags: ["去雾彻底"], pageNum: 1, pageSize: 100 })
+      );
+      expect(result.list.length).toBeGreaterThan(0);
+      const created = result.list.find((r) => r.id === createResult.id);
+      expect(created).toBeDefined();
+    });
+
     test("正向测试：按有评论筛选", async () => {
       const result = await FeedbackAPI.listRatings(
         createRatingQuery({ hasComment: true, pageNum: 1, pageSize: 10 })
@@ -590,6 +608,22 @@ describe("反馈评价模块接口测试", () => {
       }
       await expectBizError(FeedbackAPI.createFeedback(createFeedbackForm()), ["A0545"]);
     });
+
+    test("对抗性：脏语料反馈创建与详情往返一致", async () => {
+      // 对抗性语料：emoji / 零宽字符 / CRLF / 全半角混杂 / 中英混排
+      await resetFeedbackDailyLimit();
+      const dirtyTitle = "🚀全角ＡＢＣ与半角abc混排\u200b测试";
+      const dirtyContent =
+        "第一行内容\r\n第二行含\t制表符与 emoji 😀\u200b，mixed 全半角ＸＹＺ123；长文本填充以越过最小长度约束。";
+      const form = createFeedbackForm({ title: dirtyTitle, content: dirtyContent });
+      const result = await FeedbackAPI.createFeedback(form);
+      createdFeedbackIds.push(result.id);
+
+      const detail = await FeedbackAPI.getFeedbackDetail(result.id);
+      // 不变量：标题/内容原样存储返回，无静默篡改或字符丢失
+      expect(detail.title).toBe(dirtyTitle);
+      expect(detail.content).toBe(dirtyContent);
+    });
   });
 
   describe("GET /api/v1/feedback/my - 我的反馈列表（user）", () => {
@@ -713,6 +747,12 @@ describe("反馈评价模块接口测试", () => {
 
       const detailAfter = await FeedbackAPI.getFeedbackDetail(testFeedbackId);
       expect(detailAfter.status).toBe("processing");
+      // 用户补充记录 replier_type=1、reply_type=info（与后端实现文档一致）
+      const supplementReply = detailAfter.replies.find(
+        (r) => r.replierType === 1 && r.content === "补充说明重新打开"
+      );
+      expect(supplementReply).toBeDefined();
+      expect(supplementReply?.replyType).toBe("info");
     });
   });
 
@@ -845,6 +885,28 @@ describe("反馈评价模块接口测试", () => {
       expect(detail.status).toBe("replied");
     });
 
+    test("验证：回复时未分配处理人自动分配给管理员", async () => {
+      // 文档 §3.4：未分配时自动分配给回复的管理员并记录分配时间
+      const unassignedId = await createFeedbackAs(userAccount);
+      await login(USERS.ADMIN.username);
+      await FeedbackAPI.replyFeedback(unassignedId, createFeedbackReplyForm());
+
+      const detail = await FeedbackAPI.getFeedbackDetail(unassignedId);
+      expect(detail.assigneeId).toBe(USERS.ADMIN.id);
+      expect(detail.assignedTime).toBeTruthy();
+    });
+
+    test("异常：replyType 非法枚举值应失败", async () => {
+      // 三端统一值域校验：info/resolved/unsupported/dev_transfer，非法值返回 A0400
+      await expectBizError(
+        FeedbackAPI.replyFeedback(testFeedbackId, {
+          content: "回复类型非法测试",
+          replyType: "invalid_type" as any,
+        }),
+        ["A0400"]
+      );
+    });
+
     test("异常：反馈不存在", async () => {
       await expectBizError(FeedbackAPI.replyFeedback(99999999, createFeedbackReplyForm()), [
         "A0543",
@@ -960,6 +1022,11 @@ describe("反馈评价模块接口测试", () => {
           typeof stats.statusDistribution[status as keyof typeof stats.statusDistribution]
         ).toBe("number");
       }
+    });
+
+    test("验证：高频关键词数量不超过10（文档 Top 10 口径）", async () => {
+      const stats = await FeedbackAPI.getFeedbackStats();
+      expect(stats.topKeywords.length).toBeLessThanOrEqual(10);
     });
   });
 });

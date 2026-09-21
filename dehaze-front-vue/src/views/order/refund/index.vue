@@ -26,7 +26,22 @@
             style="width: 140px"
           >
             <el-option
-              v-for="opt in statusOptions"
+              v-for="opt in refundStatusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="原因类型" prop="reasonType">
+          <el-select
+            v-model="queryParams.reasonType"
+            clearable
+            placeholder="全部"
+            style="width: 140px"
+          >
+            <el-option
+              v-for="opt in refundReasonOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -72,9 +87,7 @@
           align="right"
         >
           <template #default="scope"
-            >¥{{
-              (scope.row as RefundRecordVO).refundAmount.toFixed(2)
-            }}</template
+            >¥{{ yuan((scope.row as RefundRecordVO).refundAmount) }}</template
           >
         </el-table-column>
         <el-table-column
@@ -83,12 +96,17 @@
           min-width="160"
           show-overflow-tooltip
         />
-        <el-table-column
-          label="已用配额"
-          prop="usedQuota"
-          width="100"
-          align="center"
-        />
+        <el-table-column label="已用配额" width="120" align="center">
+          <template #default="scope">
+            <span v-if="(scope.row as RefundRecordVO).usedDays != null"
+              >{{ (scope.row as RefundRecordVO).usedDays }} 天</span
+            >
+            <span v-else-if="(scope.row as RefundRecordVO).usedCredits != null"
+              >{{ (scope.row as RefundRecordVO).usedCredits }} 积分</span
+            >
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="110" align="center">
           <template #default="scope">
             <el-tag
@@ -112,7 +130,7 @@
               v-if="(scope.row as RefundRecordVO).status === 'refunding'"
             >
               <el-button
-                v-hasPerm="['order:refund:audit']"
+                v-hasPerm="['order:refund:approve']"
                 link
                 size="small"
                 type="success"
@@ -121,7 +139,7 @@
                 <el-icon><Check /></el-icon>通过
               </el-button>
               <el-button
-                v-hasPerm="['order:refund:audit']"
+                v-hasPerm="['order:refund:approve']"
                 link
                 size="small"
                 type="danger"
@@ -167,7 +185,7 @@
           <span>{{ auditDialog.row?.username }}</span>
         </el-form-item>
         <el-form-item label="退款金额">
-          <span>¥{{ auditDialog.row?.refundAmount.toFixed(2) }}</span>
+          <span>¥{{ yuan(auditDialog.row?.refundAmount) }}</span>
         </el-form-item>
         <el-form-item label="审核结果">
           <el-tag :type="auditDialog.approved ? 'success' : 'danger'">{{
@@ -203,6 +221,8 @@ import {
   RefundStatus,
 } from "dehaze-sdk-js";
 import { Search, Refresh, Check, Close } from "@element-plus/icons-vue";
+import { refundStatusOptions, refundReasonOptions } from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "OrderRefund" });
 
@@ -218,33 +238,17 @@ const queryParams = reactive<RefundQuery>({
   pageSize: 10,
 });
 
-const statusOptions: { label: string; value: RefundStatus }[] = [
-  { label: "退款中", value: "refunding" },
-  { label: "退款成功", value: "refunded" },
-  { label: "退款失败", value: "refund_failed" },
-];
-
-function refundStatusLabel(status: RefundStatus): string {
-  const map: Record<RefundStatus, string> = {
-    refunding: "退款中",
-    refunded: "退款成功",
-    refund_failed: "退款失败",
-  };
-  return map[status] || status;
+/** 后端金额单位为分，前端展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
 }
 
-function refundStatusTagType(
-  status: RefundStatus
-): "success" | "warning" | "info" | "primary" | "danger" {
-  const map: Record<
-    RefundStatus,
-    "success" | "warning" | "info" | "primary" | "danger"
-  > = {
-    refunding: "warning",
-    refunded: "info",
-    refund_failed: "danger",
-  };
-  return map[status];
+function refundStatusLabel(status: RefundStatus): string {
+  return refundStatusOptions.find((o) => o.value === status)?.label ?? status;
+}
+
+function refundStatusTagType(status: RefundStatus): TagType {
+  return refundStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 function handleQuery() {
@@ -272,6 +276,7 @@ function resetQuery() {
   queryParams.orderNo = undefined;
   queryParams.keywords = undefined;
   queryParams.status = undefined;
+  queryParams.reasonType = undefined;
   queryParams.applyTimeStart = undefined;
   queryParams.applyTimeEnd = undefined;
   queryParams.pageNum = 1;

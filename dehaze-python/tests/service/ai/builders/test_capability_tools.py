@@ -1,7 +1,8 @@
+from typing import Any
 from unittest.mock import AsyncMock
 
-from app.service.ai.builders import dehaze_tools_builder as builder
 from app.infrastructure.sandbox.code_sandbox import CodeSandbox
+from app.service.ai.builders import dehaze_tools_builder as builder
 from app.service.ai.builders.knowledge_base_tool import KnowledgeBaseClient
 
 
@@ -159,13 +160,13 @@ async def test_sandbox_timeout_terminates():
     assert "执行超时(1s)已终止" in result["stderr"]
 
 
-async def test_sandbox_blacklist_rejects():
+async def test_sandbox_whitelist_rejects():
     sb = CodeSandbox()
     result = await sb.execute_code("rm -rf /tmp/x", "shell", timeout=10)
     assert result["exitCode"] == 1
     assert "已拒绝执行" in result["stderr"]
-    assert sb.check_blacklist("rm -rf /tmp/x") is not None
-    assert sb.check_blacklist("ls -la") is None
+    assert sb.check_command_policy("rm -rf /tmp/x") is not None
+    assert sb.check_command_policy("ls -la") is None
 
 
 async def test_sandbox_unsupported_language():
@@ -195,7 +196,7 @@ async def test_sandbox_output_truncated():
 
 
 async def test_execute_code_shell_interrupt_confirm(monkeypatch):
-    called = {"interrupt": None, "executed": None}
+    called: dict[str, Any] = {"interrupt": None, "executed": None}
 
     async def _fake_execute(code, language, timeout):
         called["executed"] = (code, language, timeout)
@@ -207,6 +208,7 @@ async def test_execute_code_shell_interrupt_confirm(monkeypatch):
     out = await _get_tool(ctx, "execute_code").ainvoke(
         {"code": "echo hi", "language": "shell", "timeout": 30}
     )
+    assert called["interrupt"] is not None
     assert called["interrupt"]["type"] == "confirm"
     assert called["interrupt"]["data"]["command"] == "echo hi"
     assert called["executed"] == ("echo hi", "shell", 30)

@@ -1,24 +1,33 @@
 package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.constant.SecurityConstants;
+import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
 import com.pei.dehaze.model.form.RegisterForm;
+import com.pei.dehaze.model.query.LoginLogQuery;
+import com.pei.dehaze.model.vo.LoginLogVO;
 import com.pei.dehaze.model.vo.UserInfoVO;
+import com.pei.dehaze.model.vo.UserSessionVO;
 import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.service.AuthService;
 import com.pei.dehaze.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "01.认证中心")
 @RestController
@@ -77,6 +86,33 @@ public class AuthController {
     @GetMapping("/me")
     public Result<UserInfoVO> me() {
         return Result.success(userService.getCurrentUserInfo());
+    }
+
+    @Operation(summary = "登录日志查询（分页，管理员全量/普通用户仅本人）")
+    @GetMapping("/login-logs")
+    public PageResult<LoginLogVO> listLoginLogs(
+            @Valid @ParameterObject LoginLogQuery query
+    ) {
+        return PageResult.success(authService.listLoginLogs(query));
+    }
+
+    @Operation(summary = "在线会话列表（管理员）")
+    @GetMapping("/sessions")
+    @PreAuthorize("@ss.hasPerm('sys:auth:session:list')")
+    public Result<List<UserSessionVO>> listSessions(
+            @Parameter(description = "用户名（精确匹配）") @RequestParam String username
+    ) {
+        return Result.success(authService.listSessions(username));
+    }
+
+    @Operation(summary = "踢出指定在线会话（管理员）")
+    @DeleteMapping("/sessions/{sessionId}")
+    @PreAuthorize("@ss.hasPerm('sys:auth:session:kick')")
+    public Result<Void> kickSession(
+            @Parameter(description = "会话ID") @PathVariable String sessionId
+    ) {
+        authService.kickSession(sessionId);
+        return Result.success();
     }
 
     private void setSessionCookie(HttpServletResponse response, String sessionId, boolean rememberMe) {

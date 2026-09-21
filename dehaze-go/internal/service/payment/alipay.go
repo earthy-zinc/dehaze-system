@@ -101,11 +101,11 @@ func (a *AlipayAdapter) Refund(ctx context.Context, req *RefundRequest) (*Refund
 	}
 	var resp struct {
 		AlipayTradeRefundResponse struct {
-			OutTradeNo  string `json:"out_trade_no"`
-			TradeNo     string `json:"trade_no"`
-			FundChange  string `json:"fund_change"`
-			Code        string `json:"code"`
-			Msg         string `json:"msg"`
+			OutTradeNo string `json:"out_trade_no"`
+			TradeNo    string `json:"trade_no"`
+			FundChange string `json:"fund_change"`
+			Code       string `json:"code"`
+			Msg        string `json:"msg"`
 		} `json:"alipay_trade_refund_response"`
 	}
 	if err := json.Unmarshal(respBody, &resp); err != nil {

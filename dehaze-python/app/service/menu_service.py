@@ -49,6 +49,8 @@ class MenuService:
         self,
         db: AsyncSession,
         keywords: str | None = None,
+        perm: str | None = None,
+        path: str | None = None,
         type: int | None = None,
         visible: int | None = None,
     ) -> list[dict[str, Any]]:
@@ -61,6 +63,8 @@ class MenuService:
         Args:
             db: 数据库会话
             keywords: 搜索关键字（菜单名称）
+            perm: 按权限标识模糊筛选
+            path: 按路由地址模糊筛选
             type: 按菜单类型筛选（T-MM-009）
             visible: 按显示状态筛选（T-MM-010）
 
@@ -68,7 +72,7 @@ class MenuService:
             菜单列表
         """
         menus = await self.menu_repository.get_list(
-            db, keyword=keywords, type=type, visible=visible
+            db, keyword=keywords, perm=perm, path=path, type=type, visible=visible
         )
         if not menus:
             return []
@@ -119,6 +123,7 @@ class MenuService:
                 "redirect": menu.redirect,
                 "alwaysShow": menu.always_show,
                 "keepAlive": menu.keep_alive,
+                "isPreset": menu.is_preset,
                 "createTime": format_time(menu.create_time),
             }
 
@@ -202,6 +207,9 @@ class MenuService:
 
         # saveOrUpdate 语义：ID 存在则查询已有记录，不存在则新建
         menu = None
+        # 旧位置仅“更新”分支读取（新增无旧位置）；提前声明确保跨分支绑定
+        old_parent_id: int | None = None
+        old_tree_path: str | None = None
         if menu_id:
             menu = await self.menu_repository.get_by_id(db, menu_id)
             if menu is None:
@@ -212,6 +220,19 @@ class MenuService:
             menu = SysMenu()
             if menu_id:
                 menu.id = menu_id
+        else:
+            # 预置菜单保护：type 与 perm 分别是路由生成与接口鉴权的锚点，禁止修改
+            if menu.is_preset == 1:
+                new_type = data.get("type", MENU_TYPE_MENU)
+                new_perm = data.get("perm")
+                if new_type != menu.type or (new_perm or None) != (menu.perm or None):
+                    raise BusinessException(
+                        ResultCode.OPERATION_NOT_ALLOW,
+                        "系统预置菜单不可修改类型/权限标识",
+                    )
+            # 记录移动前的旧位置，用于父级变更时级联平移子孙 tree_path
+            old_parent_id = menu.parent_id
+            old_tree_path = menu.tree_path
 
         # 业务校验（T-MM-015~031）
         await self._validate_menu_form(db, data, current_id)
@@ -244,15 +265,18 @@ class MenuService:
 
         if is_new:
             merged = await self.menu_repository.create_menu(db, menu)
-            # 新增菜单默认分配给内置角色（ROOT / ADMIN）
-            from app.repository.role_repository import BUILTIN_ROLE_CODES
-
-            for code in BUILTIN_ROLE_CODES:
-                builtin_role = await self.role_repository.get_by_code(db, code)
-                if builtin_role:
-                    await self.menu_repository.save_role_menu(db, builtin_role.id, merged.id)
+            # 新增菜单默认分配给超级管理员（ROOT）与系统管理员（ADMIN），其他角色需手动分配
+            for role_code in ("ROOT", "ADMIN"):
+                role = await self.role_repository.get_by_code(db, role_code)
+                if role:
+                    await self.menu_repository.save_role_menu(db, role.id, merged.id)
         else:
             merged = await self.menu_repository.update_menu(db, menu)
+            # 上级变更时级联平移子孙 tree_path，保持子路径 = 父路径 + 父ID 前缀不变量
+            if menu.parent_id != old_parent_id:
+                old_prefix = f"{old_tree_path}{menu_id},"
+                new_prefix = f"{menu.tree_path}{menu_id},"
+                await self.menu_repository.update_subtree_tree_path(db, old_prefix, new_prefix)
 
         await self._clear_menu_cache(db, redis)
 
@@ -298,9 +322,7 @@ class MenuService:
                 raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "上级菜单不能是外链类型")
 
             # T-MM-031：循环引用检测（不能将父菜单设置为自己或自己的子菜单）
-            if current_id is not None and await self._is_descendant(
-                db, current_id, parent_id
-            ):
+            if current_id is not None and await self._is_descendant(db, current_id, parent_id):
                 raise BusinessException(
                     ResultCode.OPERATION_NOT_ALLOW, "不能设置自己的子菜单为父菜单"
                 )
@@ -376,8 +398,7 @@ class MenuService:
 
         if parent_menu and parent_menu.tree_path is not None:
             return f"{parent_menu.tree_path}{parent_id},"
-        else:
-            return f",{parent_id},"
+        return f",{parent_id},"
 
     async def list_routes(self, db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
         """
@@ -405,7 +426,8 @@ class MenuService:
         for menu in menus:
             children_map.setdefault(menu.parent_id, []).append(menu)
 
-        routes = self._build_routes(0, children_map)
+        role_codes_map = await self.menu_repository.get_route_role_codes(db)
+        routes = self._build_routes(0, children_map, role_codes_map)
 
         await cache.set_json(ROUTE_CACHE_KEY, routes, CACHE_TTL_HOUR)
 
@@ -415,6 +437,7 @@ class MenuService:
         self,
         parent_id: int,
         children_map: dict[int, list[SysMenu]],
+        role_codes_map: dict[int, set[str]],
     ) -> list[dict[str, Any]]:
         """
         递归构建路由列表（使用预构建的 children_map，O(N)）
@@ -422,15 +445,16 @@ class MenuService:
         Args:
             parent_id: 父级菜单ID
             children_map: 按 parent_id 分组的菜单字典
+            role_codes_map: 菜单ID → 可见角色编码集合
 
         Returns:
             路由列表
         """
         routes = []
         for menu in children_map.get(parent_id, []):
-            route = self._to_route_vo(menu)
+            route = self._to_route_vo(menu, role_codes_map.get(menu.id, set()))
 
-            children = self._build_routes(menu.id, children_map)
+            children = self._build_routes(menu.id, children_map, role_codes_map)
             if children:
                 route["children"] = children
 
@@ -438,12 +462,13 @@ class MenuService:
 
         return routes
 
-    def _to_route_vo(self, menu: SysMenu) -> dict[str, Any]:
+    def _to_route_vo(self, menu: SysMenu, role_codes: set[str]) -> dict[str, Any]:
         """
         将菜单转换为路由对象
 
         Args:
             menu: 菜单对象
+            role_codes: 可见角色编码集合
 
         Returns:
             路由对象
@@ -460,7 +485,12 @@ class MenuService:
             "component": menu.component,
         }
 
-        meta: dict[str, Any] = {"title": menu.name, "icon": menu.icon, "hidden": menu.visible == 0}
+        meta: dict[str, Any] = {
+            "title": menu.name,
+            "icon": menu.icon,
+            "hidden": menu.visible == 0,
+            "roles": sorted(role_codes),
+        }
 
         # 【菜单】是否开启页面缓存
         if menu.type == MENU_TYPE_MENU and menu.keep_alive == 1:
@@ -571,6 +601,7 @@ class MenuService:
             "redirect": menu.redirect,
             "alwaysShow": menu.always_show,
             "keepAlive": menu.keep_alive,
+            "isPreset": menu.is_preset,
         }
 
     async def delete_menu(self, db: AsyncSession, redis: Redis, menu_ids: list[int]) -> None:
@@ -588,14 +619,27 @@ class MenuService:
         if not menu_ids:
             return
 
-        exist_count = await self.menu_repository.count_by_ids(db, menu_ids)
-        if exist_count != len(menu_ids):
+        # 去重（保持顺序），避免重复 ID 导致存在性校验误判
+        menu_ids = list(dict.fromkeys(menu_ids))
+
+        # 仅对未删除 ID 做存在性校验；已逻辑删除的 ID 直接跳过，真正不存在的才报错
+        records = await self.menu_repository.get_by_ids(db, menu_ids, with_deleted=True)
+        record_ids = {r.id for r in records}
+        if set(menu_ids) - record_ids:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
+        live_ids = {r.id for r in records if r.deleted == 0}
+        menu_ids = [menu_id for menu_id in menu_ids if menu_id in live_ids]
+        if not menu_ids:
+            return
 
         # 一次性查询所有待删除菜单ID（传入ID + 子孙），合并去重
         all_menu_ids = await self.menu_repository.get_menu_ids_with_children_batch(db, menu_ids)
         if not all_menu_ids:
             return
+
+        # 预置菜单保护：级联命中范围内存在预置菜单时整批拒绝，不做部分删除
+        if await self.menu_repository.count_presets_by_ids(db, all_menu_ids) > 0:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "系统预置菜单不可删除")
 
         await self.menu_repository.delete_role_menus_by_menu_ids(db, all_menu_ids)
         await self.menu_repository.delete_menus_by_ids(db, all_menu_ids)
@@ -611,7 +655,7 @@ class MenuService:
         # 精确删除所有角色权限缓存（禁止通配符 delete_pattern）
         role_codes = await self.role_repository.get_all_active_codes(db)
         for role_code in role_codes:
-            await redis.delete(f"role:perms:{role_code}")
+            await cache.delete(f"role:perms:{role_code}")
 
 
 async def _load_role_perms(db: AsyncSession, role_code: str) -> list[str]:

@@ -45,8 +45,8 @@ public class SysFeedback extends BaseEntity {
 
     private String closeReason;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

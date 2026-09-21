@@ -2,6 +2,7 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -21,15 +22,16 @@ import com.pei.dehaze.model.vo.DictPageVO;
 import com.pei.dehaze.service.SysDictService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
  * 数据字典项业务实现类。
- * <p>查重逻辑绕过@TableLogic，查全表（含软删行），命中即报"已被历史记录占用"。</p>
+ * <p>查重逻辑仅查活跃行（@TableLogic 自动过滤软删行，唯一键含 deleted，软删行不占键位）。</p>
  *
  * @author earthyzinc
  * @since 2022/10/12
@@ -42,26 +44,33 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
     /**
      * 字典选项 Redis 缓存 key 前缀
      */
-    private static final String DICT_OPTIONS_CACHE_KEY_PREFIX = "dict:options:";
+    private static final String DICT_OPTIONS_CACHE_KEY_PREFIX = "dict:data:";
 
     private final DictConverter dictConverter;
     private final SysDictTypeMapper dictTypeMapper;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 校验同 type_code 下 value 唯一性（含软删行参与查重，命中即报占用）。
+     * 校验同 type_code 下 value 唯一性（仅活跃行；唯一键含 deleted，软删行不占键位）。
      */
     private void validateValueUnique(String typeCode, String value, Long excludeId) {
-        long count = getBaseMapper().countByTypeCodeAndValueAll(typeCode, value);
-        if (count == 0) {
-            return;
-        }
-        if (excludeId != null) {
-            count = getBaseMapper().countByTypeCodeAndValueAllExcluding(typeCode, value, excludeId);
-        }
+        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysDict>()
+                .eq(SysDict::getTypeCode, typeCode)
+                .eq(SysDict::getValue, value)
+                .ne(excludeId != null, SysDict::getId, excludeId));
         if (count > 0) {
             throw new BusinessException(ResultCode.DATA_EXISTS,
-                    "字典类型【" + typeCode + "】下值【" + value + "】已被历史记录占用");
+                    "字典类型【" + typeCode + "】下值【" + value + "】已存在");
+        }
+    }
+
+    private void validateNameUnique(String typeCode, String name, Long excludeId) {
+        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysDict>()
+                .eq(SysDict::getTypeCode, typeCode)
+                .eq(SysDict::getName, name)
+                .ne(excludeId != null, SysDict::getId, excludeId));
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "该类型下字典名称已存在");
         }
     }
 
@@ -147,8 +156,14 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
 
-        // 唯一性检查（含软删行参与查重）
+        // 唯一性检查（活跃行口径，python 全局软删过滤同款）
         validateValueUnique(typeCode, dictForm.getValue(), null);
+        validateNameUnique(typeCode, dictForm.getName(), null);
+
+        // sort 缺省为 1（python DictForm sort default=1）
+        if (dictForm.getSort() == null) {
+            dictForm.setSort(1);
+        }
 
         // 实体对象转换 form->entity
         SysDict entity = dictConverter.form2Entity(dictForm);
@@ -156,7 +171,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         boolean result = this.save(entity);
 
         // 清除缓存
-        redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
+        stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
 
         return result;
     }
@@ -179,8 +194,9 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         // typeCode 只读，保留原记录的 typeCode
         dictForm.setTypeCode(existDict.getTypeCode());
 
-        // 唯一性检查（含软删行参与查重，排除自身）
+        // 唯一性检查（活跃行口径，排除自身）
         validateValueUnique(existDict.getTypeCode(), dictForm.getValue(), id);
+        validateNameUnique(existDict.getTypeCode(), dictForm.getName(), id);
 
         // 实体对象转换 form->entity
         SysDict entity = dictConverter.form2Entity(dictForm);
@@ -188,7 +204,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         boolean result = this.updateById(entity);
 
         // 清除缓存
-        redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + existDict.getTypeCode());
+        stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + existDict.getTypeCode());
 
         return result;
     }
@@ -224,7 +240,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         // 清除缓存
         for (SysDict dict : dicts) {
             if (CharSequenceUtil.isNotBlank(dict.getTypeCode())) {
-                redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + dict.getTypeCode());
+                stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + dict.getTypeCode());
             }
         }
 
@@ -241,12 +257,27 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
     public List<Option<String>> listDictOptions(String typeCode) {
         String cacheKey = DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode;
 
-        // 查缓存
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached instanceof List) {
-            @SuppressWarnings("unchecked")
-            List<Option<String>> cachedOptions = (List<Option<String>>) cached;
-            return cachedOptions;
+        // 查缓存。缓存值为裸 JSON（[{"value":..,"label":..}]），与 python/go 共享缓存格式互认；
+        // 不可用带 Jackson default typing 的 RedisTemplate<String,Object>（其自写自读及跨端读取均会反序列化失败）
+        String cached = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                List<Option<String>> cachedOptions =
+                        (List<Option<String>>) (List<?>) JSONUtil.parseArray(cached).toList(Option.class);
+                return cachedOptions;
+            } catch (Exception e) {
+                log.warn("字典缓存[{}]解析失败，删除后回源: {}", cacheKey, e.getMessage());
+                stringRedisTemplate.delete(cacheKey);
+            }
+        }
+
+        // 禁用类型的下拉选项整体不返回（python T-DM-060/062）
+        SysDictType dictType = dictTypeMapper.selectOne(new LambdaQueryWrapper<SysDictType>()
+                .eq(SysDictType::getCode, typeCode)
+                .select(SysDictType::getStatus));
+        if (dictType == null || dictType.getStatus() == null || dictType.getStatus() != StatusEnum.ENABLE.getValue()) {
+            return Collections.emptyList();
         }
 
         // 查询数据字典项（只返回启用状态，按 sort 和 create_time 排序）
@@ -265,7 +296,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
 
         // 写缓存（非空结果才缓存）
         if (!options.isEmpty()) {
-            redisTemplate.opsForValue().set(cacheKey, options, 1, TimeUnit.HOURS);
+            stringRedisTemplate.opsForValue().set(cacheKey, JSONUtil.toJsonStr(options), 1, TimeUnit.HOURS);
         }
 
         return options;
@@ -286,7 +317,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
                 .in(SysDict::getTypeCode, typeCodes));
         for (String typeCode : typeCodes) {
             if (CharSequenceUtil.isNotBlank(typeCode)) {
-                redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
+                stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
             }
         }
         return result;

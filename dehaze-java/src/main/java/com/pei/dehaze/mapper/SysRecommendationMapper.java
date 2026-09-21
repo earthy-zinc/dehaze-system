@@ -42,15 +42,13 @@ public interface SysRecommendationMapper extends BaseMapper<SysRecommendation> {
     long countAdoptedAlgorithmDistinct(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Select("<script>" +
-            "SELECT DATE(create_time) AS date, " +
-            "CASE WHEN COUNT(*) > 0 THEN CAST(SUM(CASE WHEN feedback = 1 THEN 1 ELSE 0 END) AS DECIMAL(10,4)) / COUNT(*) ELSE 0 END AS adoptionRate " +
-            "FROM sys_recommendation WHERE feedback IN (1, 2) " +
+            "SELECT DATE(create_time) AS date, COUNT(*) AS total FROM sys_recommendation WHERE 1=1 " +
             "<if test='startDate != null'> AND create_time &gt;= #{startDate}</if>" +
             "<if test='endDate != null'> AND create_time &lt;= #{endDate}</if>" +
             " GROUP BY DATE(create_time) ORDER BY date" +
             "</script>")
-    List<Map<String, Object>> selectDailyAdoptionRate(@Param("startDate") LocalDateTime startDate,
-                                                       @Param("endDate") LocalDateTime endDate);
+    List<Map<String, Object>> selectDailyTotal(@Param("startDate") LocalDateTime startDate,
+                                               @Param("endDate") LocalDateTime endDate);
 
     @Select("SELECT COUNT(*) FROM sys_recommendation WHERE feedback IN (1, 2) AND adopted_algorithm_id IS NOT NULL")
     long countAdoptedWithFeedback();

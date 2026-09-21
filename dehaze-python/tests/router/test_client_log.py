@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from app.router import client_log
@@ -22,8 +24,10 @@ class _MockClientLogger:
         self._emit("INFO", message, kwargs.get("extra", {}).get("client_fields", {}))
 
 
-def _entry(**overrides):
-    base = {
+def _entry(**overrides: Any):
+    # 值类型异构（str/int/float/None，见 ClientLogEntry 各字段），
+    # 用 dict[str, Any] 承接后展开，避免把混合值的 dict 收敛成 dict[str, str]
+    base: dict[str, Any] = {
         "level": "ERROR",
         "message": "test message",
         "trace_id": "trace-abc",

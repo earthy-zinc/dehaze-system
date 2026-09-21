@@ -17,7 +17,7 @@ CREATE TABLE `sys_knowledge_test_set`
     `knowledge_base_id`  bigint       NOT NULL COMMENT '知识库ID(关联sys_knowledge_base.id)',
     `question`           varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '测试问题',
     `expected_chunk_ids` json         NOT NULL COMMENT '期望命中分块ID数组(JSON，关联sys_knowledge_chunk.id)',
-    `deleted`            tinyint      NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`            bigint       NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`          bigint       NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`          bigint       NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`        datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

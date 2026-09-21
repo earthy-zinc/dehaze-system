@@ -27,7 +27,7 @@ public class MessageTemplateController {
 
     @Operation(summary = "消息模板分页列表")
     @GetMapping("/page")
-    public PageResult<MessageTemplateVO> getPage(@ParameterObject MessageTemplateQuery query) {
+    public PageResult<MessageTemplateVO> getPage(@Valid @ParameterObject MessageTemplateQuery query) {
         Page<MessageTemplateVO> page = messageTemplateService.getPage(query);
         return PageResult.success(page);
     }

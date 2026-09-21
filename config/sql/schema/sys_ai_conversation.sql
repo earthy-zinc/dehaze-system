@@ -49,7 +49,7 @@ CREATE TABLE `sys_ai_conversation`
     `delete_time`             datetime                                                        NULL DEFAULT NULL COMMENT '软删时间(30天恢复窗口判定，超期由定时任务物理清理)',
     `title_source`            varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL DEFAULT 'auto' COMMENT '标题来源(auto:LLM自动生成;manual:手动修改)',
     `status`                  tinyint                                                         NOT NULL DEFAULT 1 COMMENT '会话状态(1:活跃;2:已归档)',
-    `deleted`                 tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`                 bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`               bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`               bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`             datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

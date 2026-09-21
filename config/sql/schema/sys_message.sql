@@ -28,7 +28,7 @@ CREATE TABLE `sys_message`
     `extra`        json                                                           NULL DEFAULT NULL COMMENT '扩展数据(JSON)',
     `read_status`  tinyint                                                        NOT NULL DEFAULT 0 COMMENT '已读状态(0:未读;1:已读)',
     `read_time`    datetime                                                       NULL DEFAULT NULL COMMENT '已读时间',
-    `deleted`      tinyint                                                        NOT NULL DEFAULT 0 COMMENT '用户删除标识(0:未删除;1:已删除)',
+    `deleted`      bigint                                                         NOT NULL DEFAULT 0 COMMENT '用户删除标识(0:未删除;1:已删除)',
     `expires_at`   datetime                                                       NULL DEFAULT NULL COMMENT '过期时间(到期后系统自动清理)',
     `create_by`    bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID(系统消息为NULL)',
     `update_by`    bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
@@ -37,7 +37,7 @@ CREATE TABLE `sys_message`
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_recipient_read` (`recipient_id`, `read_status`) USING BTREE,
     INDEX `idx_recipient_list` (`recipient_id`, `deleted`, `create_time`) USING BTREE,
-    UNIQUE INDEX `uk_biz_dedup` (`biz_module`, `biz_id`, `recipient_id`) USING BTREE,
+    UNIQUE INDEX `uk_biz_dedup` (`biz_module`, `biz_id`, `recipient_id`, `deleted`) USING BTREE,
     INDEX `idx_expires_at` (`expires_at`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

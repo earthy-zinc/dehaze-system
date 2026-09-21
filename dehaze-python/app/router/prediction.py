@@ -49,7 +49,9 @@ class BatchPredictionRequest(BaseModel):
     """批量预测请求"""
 
     algorithmId: int = Field(description="算法ID")
-    items: list[BatchPredictionItem] = Field(description="批量图片列表，每项含 fileId/imageUrl/params 等")
+    items: list[BatchPredictionItem] = Field(
+        description="批量图片列表，每项含 fileId/imageUrl/params 等"
+    )
     recommendedBy: int | None = Field(default=None, description="推荐来源：推荐记录ID")
 
 
@@ -92,6 +94,8 @@ async def predict(
         raise BusinessException(
             ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl"
         )
+    # fileId 存在时 predict 内部会用库内原始图 URL 覆盖，None 归一为空串（对齐批量预测）
+    image_url = image_url or ""
 
     params = None
     if body.params:
@@ -109,6 +113,7 @@ async def predict(
         user_id=user.id,
         file_id=body.fileId,
         skip_quota_check=user.is_m2m,
+        recommended_by=body.recommendedBy,
     )
 
     return success(
@@ -176,11 +181,13 @@ async def list_prediction_logs(
     algorithmId: int | None = Query(default=None, description="算法ID筛选"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """分页查询预测日志"""
+    """分页查询当前用户的预测日志"""
     logs, total = await prediction_service.list_logs(
         db,
+        user_id=user.id,
         algorithm_id=algorithmId,
         page=pageNum,
         size=pageSize,
@@ -210,6 +217,7 @@ async def get_quota(
 @router.get("/{task_id}", response_model=Result[PredictionResponse], summary="查询预测任务状态")
 async def get_prediction_task(
     task_id: str,
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -225,6 +233,9 @@ async def get_prediction_task(
     except (ValueError, TypeError):
         raise BusinessException(ResultCode.PARAM_ERROR, f"无效的任务ID: {task_id}") from None
     log = await prediction_service.get_log(db, tid)
+    # 归属校验：仅任务本人可查询（含结果图 URL），他人任务与不存在任务同样返回 A0401 防枚举
+    if log.create_by != user.id:
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
 
     resp = PredictionResponse(logId=log.id, status=log.status)
     if log.status == LogStatus.COMPLETED.value:
@@ -269,11 +280,17 @@ async def batch_predict(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """批量提交去雾预测任务，最多20张（VIP差异）"""
+    """批量提交去雾预测任务（上限按会员等级 benefit.batch_limit 动态计算）"""
     results = await prediction_service.batch_predict(
         algorithm_id=body.algorithmId,
         items=body.items,
         user_id=user.id,
         skip_quota_check=user.is_m2m,
+        recommended_by=body.recommendedBy,
     )
-    return success(BatchPredictionResult(total=len(results), results=results))
+    return success(
+        BatchPredictionResult(
+            total=len(results),
+            results=[PredictionResponse.model_validate(r) for r in results],
+        )
+    )

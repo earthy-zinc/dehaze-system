@@ -43,6 +43,7 @@ import com.pei.dehaze.model.vo.PayResult;
 import com.pei.dehaze.model.vo.PaymentRecordVO;
 import com.pei.dehaze.model.vo.RefundRecordVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.BalanceService;
 import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.OrderService;
@@ -85,6 +86,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             "pending", 1, "paid", 2, "completed", 3, "cancelled", 4, "refunding", 5, "refunded", 6);
     private static final Map<Integer, String> REFUND_STATUS_MAP = Map.of(
             1, "refunding", 2, "refunded", 3, "refund_failed");
+    /** 售后原因类型（对齐 python refund_service.VALID_REASON_TYPES） */
+    private static final List<String> VALID_REASON_TYPES = Arrays.asList(
+            "after_sale", "force_majeure", "merchant", "other");
 
     private final SysPackageMapper packageMapper;
     private final SysUserMapper userMapper;
@@ -96,6 +100,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     private final PackageService packageService;
     private final MemberService memberService;
     private final MemberBenefitService memberBenefitService;
+    private final BalanceService balanceService;
     private final RedissonClient redissonClient;
     private final StringRedisTemplate stringRedisTemplate;
     private final List<PaymentChannelService> paymentChannelServices;
@@ -139,7 +144,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             order.setUserId(userId);
             order.setPackageId(pkg.getId());
             order.setPackageName(pkg.getName());
+            order.setPackageType(pkg.getPackageType());
             order.setPackageLevel(pkg.getLevelCode());
+            order.setCreditAmount(pkg.getCreditAmount());
             order.setPeriodDays(pkg.getPeriodDays());
             order.setOriginalPrice(priceResult.getOriginalPrice());
             order.setDiscountAmount(priceResult.getDiscountAmount());
@@ -172,6 +179,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (!order.getUserId().equals(SecurityUtils.getUserId())) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
+        if (!PAY_METHODS.contains(request.getPayMethod())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的支付方式");
+        }
+        if (order.getStatus() == 2 || order.getStatus() == 3) {
+            throw new BusinessException(ResultCode.ORDER_ALREADY_PAID);
+        }
         if (order.getStatus() != 1) {
             throw new BusinessException(ResultCode.ORDER_STATUS_INVALID);
         }
@@ -186,6 +199,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         result.setPayMethod(request.getPayMethod());
 
         if ("balance".equals(request.getPayMethod())) {
+            long payableFen = order.getPayableAmount() != null ? order.getPayableAmount() : 0L;
+            balanceService.payByBalance(order.getUserId(), payableFen, order.getId());
             completePayment(order, request.getPayMethod());
             result.setPaid(true);
         } else {
@@ -276,7 +291,11 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     public Page<MyOrderVO> listMy(MyOrderQuery query) {
-        Long userId = SecurityUtils.getUserId();
+        return listByUserId(SecurityUtils.getUserId(), query);
+    }
+
+    @Override
+    public Page<MyOrderVO> listByUserId(Long userId, MyOrderQuery query) {
         Page<SysOrder> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysOrder> wrapper = new LambdaQueryWrapper<SysOrder>()
                 .eq(SysOrder::getUserId, userId)
@@ -341,6 +360,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         LambdaQueryWrapper<SysOrder> wrapper = new LambdaQueryWrapper<SysOrder>()
                 .eq(CharSequenceUtil.isNotBlank(query.getOrderNo()), SysOrder::getOrderNo, query.getOrderNo())
                 .eq(CharSequenceUtil.isNotBlank(query.getStatus()), SysOrder::getStatus, orderStatusToInt(query.getStatus()))
+                .eq(CharSequenceUtil.isNotBlank(query.getPackageType()), SysOrder::getPackageType, query.getPackageType())
                 .eq(CharSequenceUtil.isNotBlank(query.getPayMethod()), SysOrder::getPayMethod, query.getPayMethod())
                 .ge(query.getAmountMin() != null, SysOrder::getPayableAmount, query.getAmountMin())
                 .le(query.getAmountMax() != null, SysOrder::getPayableAmount, query.getAmountMax())
@@ -446,6 +466,10 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (order.getStatus() != 2 && order.getStatus() != 3) {
             throw new BusinessException(ResultCode.ORDER_STATUS_INVALID);
         }
+        String reasonType = form.getReasonType();
+        if (!VALID_REASON_TYPES.contains(reasonType)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "请选择有效的售后原因类型");
+        }
         SysRefundRecord existingRefund = refundRecordMapper.selectOne(new LambdaQueryWrapper<SysRefundRecord>()
                 .eq(SysRefundRecord::getOrderId, order.getId())
                 .orderByDesc(SysRefundRecord::getId)
@@ -453,17 +477,33 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (existingRefund != null) {
             throw new BusinessException(ResultCode.REFUND_ALREADY_EXISTS);
         }
+        long paidAmount = order.getPaidAmount() != null ? order.getPaidAmount() : 0L;
+        long refundAmount = paidAmount;
+        Integer usedDays = null;
+        if ("vip".equals(order.getPackageType()) && !"merchant".equals(reasonType)) {
+            int periodDays = order.getPeriodDays() != null ? order.getPeriodDays() : 0;
+            if (periodDays <= 0) {
+                refundAmount = 0L;
+            } else {
+                LocalDateTime paidTime = order.getPaidTime() != null ? order.getPaidTime() : order.getCreateTime();
+                long used = Math.max(1, (long) Math.ceil(
+                        java.time.Duration.between(paidTime, LocalDateTime.now()).toSeconds() / 86400.0));
+                long remainingDays = periodDays - used;
+                usedDays = (int) used;
+                refundAmount = remainingDays > 0 ? paidAmount * remainingDays / periodDays : 0L;
+            }
+        }
         SysRefundRecord refund = new SysRefundRecord();
         refund.setRefundNo("RF" + generateOrderNo());
         refund.setOrderId(order.getId());
         refund.setUserId(order.getUserId());
-        refund.setRefundAmount(order.getPaidAmount());
-        String reason = form.getReason();
-        if (CharSequenceUtil.isNotBlank(form.getCustomReason())) {
-            reason = reason + ":" + form.getCustomReason();
-        }
+        refund.setRefundAmount(refundAmount);
+        refund.setUsedDays(usedDays);
+        String reason = CharSequenceUtil.isNotBlank(form.getCustomReason())
+                ? reasonType + ":" + form.getCustomReason()
+                : reasonType;
         refund.setReason(reason);
-        refund.setUsedQuota(0);
+        refund.setReasonType(reasonType);
         refund.setStatus(1);
         refund.setChannel(order.getPayMethod());
         refund.setApplyTime(LocalDateTime.now());
@@ -504,8 +544,11 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             Number refundAmount = (Number) row.get("refund_amount");
             vo.setRefundAmount(refundAmount != null ? refundAmount.longValue() : 0L);
             vo.setReason((String) row.get("reason"));
-            Number usedQuota = (Number) row.get("used_quota");
-            vo.setUsedQuota(usedQuota != null ? usedQuota.intValue() : 0);
+            vo.setReasonType((String) row.get("reason_type"));
+            Number usedDays = (Number) row.get("used_days");
+            vo.setUsedDays(usedDays != null ? usedDays.intValue() : null);
+            Number usedCredits = (Number) row.get("used_credits");
+            vo.setUsedCredits(usedCredits != null ? usedCredits.longValue() : null);
             Number statusVal = (Number) row.get("status");
             vo.setStatus(REFUND_STATUS_MAP.get(statusVal != null ? statusVal.intValue() : 0));
             vo.setChannel((String) row.get("channel"));
@@ -561,11 +604,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         } else {
             refund.setStatus(3);
             refund.setErrorMessage("渠道退款失败，待人工重试");
-            int restoreStatus = 2;
-            if (order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())) {
-                restoreStatus = 3;
-            }
-            order.setStatus(restoreStatus);
+            order.setStatus(resolveRestoreStatus(order));
         }
         refund.setAuditTime(LocalDateTime.now());
         refund.setAuditorId(operatorId);
@@ -595,11 +634,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
         SysOrder order = this.getById(refund.getOrderId());
         if (order != null && order.getStatus() == 5) {
-            int restoreStatus = 2;
-            if (order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())) {
-                restoreStatus = 3;
-            }
-            order.setStatus(restoreStatus);
+            order.setStatus(resolveRestoreStatus(order));
             this.updateById(order);
             invalidateOrderDetailCache(order.getOrderNo());
         }
@@ -841,14 +876,19 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     private void completePayment(SysOrder order, String payMethod) {
         LocalDateTime now = LocalDateTime.now();
-        SysPackage pkg = packageMapper.selectById(order.getPackageId());
-        LocalDateTime expireTime;
-        if (pkg != null) {
-            expireTime = activateMemberByPackage(order.getUserId(), pkg, now);
-        } else {
-            expireTime = now.plusDays(order.getPeriodDays() != null ? order.getPeriodDays() : 30);
+        boolean creditOrder = "credit".equals(order.getPackageType());
+        LocalDateTime expireTime = null;
+        if (!creditOrder) {
+            SysPackage pkg = packageMapper.selectById(order.getPackageId());
+            if (pkg != null) {
+                activateMemberByPackage(order.getUserId(), pkg, now);
+            }
+            int periodDays = order.getPeriodDays() != null ? order.getPeriodDays() : 0;
+            if (periodDays > 0) {
+                expireTime = now.plusDays(periodDays);
+            }
         }
-        order.setStatus(2);
+        order.setStatus(creditOrder ? 3 : 2);
         order.setPaidTime(now);
         order.setEffectiveTime(now);
         order.setPaidAmount(order.getPayableAmount());
@@ -860,7 +900,13 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (order.getCouponId() != null) {
             consumeCoupon(order.getCouponId(), order.getId());
         }
+        memberService.onOrderPaid(order);
         invalidateOrderDetailCache(order.getOrderNo());
+    }
+
+    private int resolveRestoreStatus(SysOrder order) {
+        return order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())
+                ? 2 : 3;
     }
 
     private SysPaymentRecord createPaymentRecord(SysOrder order, String channel, int status) {
@@ -1005,7 +1051,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         vo.setId(order.getId());
         vo.setOrderNo(order.getOrderNo());
         vo.setPackageName(order.getPackageName());
+        vo.setPackageType(order.getPackageType());
         vo.setPackageLevel(order.getPackageLevel());
+        vo.setCreditAmount(order.getCreditAmount());
         vo.setPayableAmount(order.getPayableAmount());
         vo.setPaidAmount(order.getPaidAmount());
         vo.setPayMethod(order.getPayMethod());
@@ -1031,7 +1079,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         vo.setId(order.getId());
         vo.setOrderNo(order.getOrderNo());
         vo.setPackageName(order.getPackageName());
+        vo.setPackageType(order.getPackageType());
         vo.setPackageLevel(order.getPackageLevel());
+        vo.setCreditAmount(order.getCreditAmount());
         vo.setPayableAmount(order.getPayableAmount());
         vo.setPaidAmount(order.getPaidAmount());
         vo.setPayMethod(order.getPayMethod());
@@ -1067,7 +1117,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         vo.setUsername(user != null ? user.getUsername() : null);
         vo.setRefundAmount(refund.getRefundAmount());
         vo.setReason(refund.getReason());
-        vo.setUsedQuota(refund.getUsedQuota());
+        vo.setReasonType(refund.getReasonType());
+        vo.setUsedDays(refund.getUsedDays());
+        vo.setUsedCredits(refund.getUsedCredits());
         vo.setStatus(REFUND_STATUS_MAP.get(refund.getStatus()));
         vo.setChannel(refund.getChannel());
         vo.setChannelRefundNo(refund.getChannelRefundNo());

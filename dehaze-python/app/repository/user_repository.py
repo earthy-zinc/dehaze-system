@@ -54,8 +54,12 @@ class UserRepository(BaseRepository[SysUser]):
         username: str,
     ) -> SysUser | None:
         """根据用户名查询（查全表，含软删行，用于注册/改名查重）"""
-        stmt = select(SysUser).where(
-            SysUser.username == username,
+        stmt = (
+            select(SysUser)
+            .where(
+                SysUser.username == username,
+            )
+            .execution_options(include_deleted=True)
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
@@ -175,6 +179,7 @@ class UserRepository(BaseRepository[SysUser]):
                 SysUser.avatar,
                 SysUser.status,
                 SysUser.email,
+                SysUser.user_type,
                 SysUser.gender,
                 SysUser.create_time,
                 SysDept.name.label("deptName"),
@@ -250,11 +255,14 @@ class UserRepository(BaseRepository[SysUser]):
         db: AsyncSession,
         role_ids: list[int],
     ) -> dict[int, int]:
-        """批量统计多个角色关联的用户数量（避免 N+1）"""
+        """批量统计多个角色关联的活跃用户数量（避免 N+1；排除软删用户，
+        角色删除校验以活跃用户为准）
+        """
         if not role_ids:
             return {}
         stmt = (
             select(SysUserRole.role_id, func.count().label("cnt"))
+            .join(SysUser, (SysUser.id == SysUserRole.user_id) & (SysUser.deleted == 0))
             .where(SysUserRole.role_id.in_(role_ids))
             .group_by(SysUserRole.role_id)
         )
@@ -371,5 +379,6 @@ class UserRepository(BaseRepository[SysUser]):
             await db.flush()
 
         return user
+
 
 user_repository = UserRepository()

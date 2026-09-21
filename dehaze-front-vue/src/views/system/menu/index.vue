@@ -10,6 +10,46 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="权限标识" prop="perm">
+          <el-input
+            v-model="queryParams.perm"
+            clearable
+            placeholder="权限标识"
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="路由地址" prop="path">
+          <el-input
+            v-model="queryParams.path"
+            clearable
+            placeholder="路由地址"
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="菜单类型" prop="type">
+          <el-select
+            v-model="queryParams.type"
+            clearable
+            placeholder="请选择"
+            style="width: 120px"
+          >
+            <el-option :value="1" label="菜单" />
+            <el-option :value="2" label="目录" />
+            <el-option :value="3" label="外链" />
+            <el-option :value="4" label="按钮" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="显示状态" prop="visible">
+          <el-select
+            v-model="queryParams.visible"
+            clearable
+            placeholder="请选择"
+            style="width: 120px"
+          >
+            <el-option :value="1" label="显示" />
+            <el-option :value="0" label="隐藏" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery"
             ><template #icon
@@ -63,14 +103,13 @@
       <el-table
         v-loading="loading"
         :data="menuList"
-        :expand-row-keys="['1']"
+        :expand-row-keys="expandedKeys"
         :tree-props="{
           children: 'children',
           hasChildren: 'hasChildren',
         }"
         highlight-current-row
         row-key="id"
-        @row-click="onRowClick"
         @selection-change="handleSelectionChange"
       >
         <el-table-column align="center" type="selection" width="55" />
@@ -158,6 +197,7 @@
             </el-button>
             <el-button
               v-hasPerm="['sys:menu:delete']"
+              :disabled="scope.row.isPreset === 1"
               link
               size="small"
               type="primary"
@@ -201,7 +241,11 @@
         </el-form-item>
 
         <el-form-item label="菜单类型" prop="type">
-          <el-radio-group v-model="formData.type" @change="onMenuTypeChange">
+          <el-radio-group
+            v-model="formData.type"
+            :disabled="isPresetEdit"
+            @change="onMenuTypeChange"
+          >
             <el-radio label="CATALOG">目录</el-radio>
             <el-radio label="MENU">菜单</el-radio>
             <el-radio label="BUTTON">按钮</el-radio>
@@ -312,7 +356,11 @@
           label="权限标识"
           prop="perm"
         >
-          <el-input v-model="formData.perm" placeholder="sys:user:add" />
+          <el-input
+            v-model="formData.perm"
+            :disabled="isPresetEdit"
+            placeholder="sys:user:add"
+          />
         </el-form-item>
 
         <el-form-item
@@ -365,18 +413,20 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
-import { usePermissionStoreHook } from "@/store/modules/permission";
-import { useUserStore } from "@/store";
+import { reloadDynamicRoutes } from "@/plugins/permission";
 
 const queryFormRef = ref(ElForm);
 const menuFormRef = ref(ElForm);
 
 const loading = ref(false);
 const ids = ref<number[]>([]);
+const expandedKeys = ref<string[]>([]);
 const dialog = reactive({
   title: "",
   visible: false,
 });
+// 编辑预置菜单时禁用类型与权限标识（后端同样拒绝修改，见需求规格 3.4.5）
+const isPresetEdit = ref(false);
 
 const queryParams = reactive<MenuQuery>({});
 const menuList = ref<MenuVO[]>([]);
@@ -392,11 +442,11 @@ const formData = reactive<MenuForm>({
   keepAlive: 0,
 });
 
-const userStore = useUserStore();
-
 const rules = computed(() => {
   const r: Record<string, any> = {
-    parentId: [{ required: true, message: "请选择顶级菜单", trigger: "blur" }],
+    parentId: [
+      { required: true, message: "请选择顶级菜单", trigger: "change" },
+    ],
     name: [
       { required: true, message: "请输入菜单名称", trigger: "blur" },
       { min: 2, max: 64, message: "长度在 2 到 64 个字符", trigger: "blur" },
@@ -431,9 +481,6 @@ const rules = computed(() => {
   return r;
 });
 
-// 选择表格的行菜单ID
-const selectedRowMenuId = ref<number | undefined>();
-
 const menuCacheData = reactive({
   type: "",
   path: "",
@@ -443,13 +490,14 @@ const menuCacheData = reactive({
  * 查询
  */
 function handleQuery() {
-  // 重置父组件
   loading.value = true;
   MenuAPI.getList(queryParams)
     .then((data) => {
       menuList.value = data;
+      // 默认展开第一级菜单
+      expandedKeys.value = (data ?? []).map((item) => String(item.id));
     })
-    .then(() => {
+    .finally(() => {
       loading.value = false;
     });
 }
@@ -460,14 +508,9 @@ function resetQuery() {
   handleQuery();
 }
 
-/**行点击事件 */
-function onRowClick(row: MenuVO) {
-  selectedRowMenuId.value = row.id;
-}
-
 /** 行复选框选中记录选中ID集合 */
-function handleSelectionChange(selection: any) {
-  ids.value = selection.map((item: any) => item.id);
+function handleSelectionChange(selection: MenuVO[]) {
+  ids.value = selection.map((item) => item.id!);
 }
 
 /**
@@ -487,11 +530,13 @@ function openDialog(parentId?: number, menuId?: number) {
         dialog.title = "编辑菜单";
         MenuAPI.getFormData(menuId).then((data) => {
           Object.assign(formData, data);
+          isPresetEdit.value = data.isPreset === 1;
           menuCacheData.type = data.type;
           menuCacheData.path = data.path ?? "";
         });
       } else {
         dialog.title = "新增菜单";
+        isPresetEdit.value = false;
         formData.parentId = parentId;
       }
     });
@@ -515,14 +560,14 @@ function submitForm() {
       if (menuId) {
         MenuAPI.update(menuId, formData).then(() => {
           ElMessage.success("修改成功");
-          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          reloadDynamicRoutes();
           closeDialog();
           handleQuery();
         });
       } else {
         MenuAPI.add(formData).then(() => {
           ElMessage.success("新增成功");
-          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          reloadDynamicRoutes();
           closeDialog();
           handleQuery();
         });
@@ -535,7 +580,7 @@ function submitForm() {
 function handleDelete(row?: MenuVO) {
   if (row) {
     ElMessageBox.confirm(
-      `确认删除菜单「${row.name}」吗？删除后不可恢复。`,
+      `确认删除菜单「${row.name}」吗？其子菜单将一并删除。`,
       "警告",
       {
         confirmButtonText: "确定",
@@ -546,21 +591,25 @@ function handleDelete(row?: MenuVO) {
       .then(() => {
         MenuAPI.deleteByIds(String(row.id)).then(() => {
           ElMessage.success("删除成功");
-          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          reloadDynamicRoutes();
           handleQuery();
         });
       })
       .catch(() => ElMessage.info("已取消删除"));
   } else if (ids.value.length > 0) {
-    ElMessageBox.confirm("确认删除选中的菜单吗？删除后不可恢复。", "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
+    ElMessageBox.confirm(
+      `确认删除选中的 ${ids.value.length} 个菜单吗？相关子菜单将一并删除。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    )
       .then(() => {
         MenuAPI.deleteByIds(ids.value.join(",")).then(() => {
           ElMessage.success("删除成功");
-          usePermissionStoreHook().generateRoutes(userStore.user.roles);
+          reloadDynamicRoutes();
           handleQuery();
         });
       })
@@ -584,12 +633,9 @@ function handleVisibleChange(row: MenuVO, val: string | number | boolean) {
     }
   )
     .then(() => {
-      MenuAPI.update(String(row.id), {
-        ...row,
-        visible: visibleVal,
-      } as MenuForm).then(() => {
+      MenuAPI.updateVisible(row.id!, visibleVal).then(() => {
         ElMessage.success("修改成功");
-        usePermissionStoreHook().generateRoutes(userStore.user.roles);
+        reloadDynamicRoutes();
         handleQuery();
       });
     })
@@ -621,6 +667,7 @@ function resetForm() {
   formData.redirect = undefined;
   formData.alwaysShow = undefined;
   formData.keepAlive = undefined;
+  isPresetEdit.value = false;
 }
 
 onMounted(() => {

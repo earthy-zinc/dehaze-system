@@ -13,10 +13,10 @@ import httpx
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_ai_provider import SysAiProvider
-from app.repository.ai_provider_repository import ai_provider_repository
 from app.infrastructure.llm.common import build_auth_headers
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
+from app.models.entity.sys_ai_provider import SysAiProvider
+from app.repository.ai_provider_repository import ai_provider_repository
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ async def test_connection(
         result["error"] = "连接超时（5s）"
     except httpx.HTTPError as exc:
         result["error"] = f"请求失败: {type(exc).__name__}"
-    except Exception as exc:  # noqa: BLE001 - 连通性测试失败不阻断管理流程
+    except Exception as exc:
         result["error"] = f"连接失败: {exc}"
         logger.warning("供应商连通性测试异常 provider_id=%s: %s", provider_id, exc)
 

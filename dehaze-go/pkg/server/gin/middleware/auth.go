@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/earthyzinc/dehaze-go/pkg/trace"
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -31,6 +31,11 @@ type SessionData struct {
 	DataScope   int8     `json:"dataScope"`
 	Authorities []string `json:"authorities"`
 	Nickname    string   `json:"nickname"`
+	// 会话元数据（F-AM-011 在线会话管理：与 Python 端 session 结构对齐）
+	DeviceType     string `json:"deviceType"`
+	LoginIP        string `json:"loginIp"`
+	LoginTime      string `json:"loginTime"`
+	LastAccessTime string `json:"lastAccessTime"`
 }
 
 // ApiKeyAuthenticator 是 API Key 认证的校验函数签名，由 app 层注入具体实现。
@@ -186,7 +191,7 @@ func getCookieConfig() (secure bool, path string) {
 }
 
 func SetSessionCookie(c *gin.Context, sessionID string, rememberMe bool) {
-	maxAge := -1
+	maxAge := 0 // 会话级 Cookie：不携带 Max-Age 属性（Go 的 -1 会输出 Max-Age=0 删除指令）
 	if rememberMe {
 		maxAge = int(SessionTTL.Seconds())
 	}

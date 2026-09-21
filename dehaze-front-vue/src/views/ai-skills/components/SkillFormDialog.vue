@@ -35,7 +35,6 @@ const emptyForm = (): SkillForm => ({
   description: "",
   scene: "",
   instruction: "",
-  status: 1,
 });
 const form = reactive<SkillForm>(emptyForm());
 
@@ -44,7 +43,9 @@ const rules = {
     { required: true, message: "Skill 名称不能为空", trigger: "blur" },
     { max: 128, message: "名称不超过 128 个字符", trigger: "blur" },
   ],
-  description: [{ max: 500, message: "描述不超过 500 个字符", trigger: "blur" }],
+  description: [
+    { max: 500, message: "描述不超过 500 个字符", trigger: "blur" },
+  ],
   instruction: [
     { required: true, message: "Markdown 指令不能为空", trigger: "blur" },
   ],
@@ -78,7 +79,6 @@ watch(
         description: d.description ?? "",
         scene: d.scene ?? "",
         instruction: d.instruction ?? "",
-        status: d.status,
       });
     }
   }
@@ -111,7 +111,16 @@ async function submitCreate() {
   }
   const saved = await skillStore.uploadSkill(selectedFile.value);
   skillStore.skillForm.visible = false;
-  ElMessage.success("SKILL 已上传并解析入库");
+  const skipped = saved.skippedFiles ?? [];
+  if (skipped.length) {
+    // 部分失败必须可见：哪些文件没入库、为什么（其余文件已正常入库）
+    await ElMessageBox.alert(
+      skipped.map((f) => `${f.path}：${f.reason}`).join("；"),
+      `${skipped.length} 个文件被跳过，未入库`,
+      { confirmButtonText: "知道了" }
+    );
+  }
+  ElMessage.success("已入库，待启用：启用后才可被 Agent 加载使用");
   emit("saved", saved);
 }
 
@@ -184,10 +193,14 @@ function formatSize(bytes?: number) {
         :on-exceed="() => ElMessage.warning('每次仅支持上传一个 zip')"
       >
         <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-        <div class="el-upload__text">拖拽 SKILL 压缩包到此处，或<em>点击选择</em></div>
+        <div class="el-upload__text">
+          拖拽 SKILL 压缩包到此处，或<em>点击选择</em>
+        </div>
         <template #tip>
           <div class="el-upload__tip">
-            仅支持 .zip；上传后自动解析 SKILL.md frontmatter 并校验（name 命名规范、目录名一致、description）
+            仅支持 .zip（≤2MB、解压后 ≤10MB、≤200 个文件、单文件
+            ≤500KB）；上传后自动解析 SKILL.md frontmatter
+            并校验名称/描述，脚本资源按沙箱同源策略扫描（命中即整包拒绝）
           </div>
         </template>
       </el-upload>
@@ -199,18 +212,21 @@ function formatSize(bytes?: number) {
         </span>
       </div>
       <el-form label-width="110px" class="mt-4">
-        <el-form-item label="状态">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
-          <span class="ml-2 text-xs text-gray-400">
-            上传即启用；禁用后 LLM 不再自动选择
-          </span>
-        </el-form-item>
+        <div class="text-xs text-gray-400">
+          上传后为禁用态，需在列表启用后才可被 Agent 加载使用
+        </div>
       </el-form>
     </template>
 
     <!-- ==================== 编辑：文本表单 + 详情 ==================== -->
     <template v-else>
-      <el-descriptions v-if="detail" :column="2" border size="small" class="mb-3">
+      <el-descriptions
+        v-if="detail"
+        :column="2"
+        border
+        size="small"
+        class="mb-3"
+      >
         <el-descriptions-item label="License">
           {{ detail.license ?? "-" }}
         </el-descriptions-item>
@@ -225,8 +241,15 @@ function formatSize(bytes?: number) {
           <ul v-else class="file-list">
             <li v-for="f in detail.files" :key="f.path">
               <span class="file-path">{{ f.path }}</span>
-              <span class="text-xs text-gray-400">{{ formatSize(f.fileSize) }}</span>
-              <el-button link type="primary" size="small" @click="previewFile(f)">
+              <span class="text-xs text-gray-400">{{
+                formatSize(f.fileSize)
+              }}</span>
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="previewFile(f)"
+              >
                 <el-icon class="mr-0.5"><Download /></el-icon>预览
               </el-button>
             </li>
@@ -278,12 +301,6 @@ function formatSize(bytes?: number) {
             title="指令包含危险操作（rm -rf /、curl | bash、mkfs、dd 写设备等）"
           />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
-          <span class="ml-2 text-xs text-gray-400">
-            禁用后 LLM 不再自动选择，进行中的对话不受影响
-          </span>
-        </el-form-item>
       </el-form>
     </template>
 
@@ -307,16 +324,16 @@ function formatSize(bytes?: number) {
 }
 
 .file-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
   max-height: 120px;
+  padding: 0;
+  margin: 0;
   overflow-y: auto;
+  list-style: none;
 
   li {
     display: flex;
-    align-items: center;
     gap: 8px;
+    align-items: center;
 
     .file-path {
       font-family: Menlo, Consolas, monospace;

@@ -31,20 +31,23 @@ func TestMain(m *testing.M) {
 }
 
 type testFixture struct {
-	cache       *mocks.MockICache
-	userService *mocks.MockIUserService
-	authService *AuthService
+	cache         *mocks.MockICache
+	userService   *mocks.MockIUserService
+	memberService *mocks.MockIMemberService
+	authService   *AuthService
 }
 
 func setupTest(t *testing.T) *testFixture {
 	t.Helper()
 	mockCache := mocks.NewMockICache(t)
 	mockUserService := mocks.NewMockIUserService(t)
-	svc := NewAuthService(mockCache, mockUserService, nil, nil).(*AuthService)
+	mockMemberService := mocks.NewMockIMemberService(t)
+	svc := NewAuthService(mockCache, mockUserService, nil, mockMemberService).(*AuthService)
 	return &testFixture{
-		cache:       mockCache,
-		userService: mockUserService,
-		authService: svc,
+		cache:         mockCache,
+		userService:   mockUserService,
+		memberService: mockMemberService,
+		authService:   svc,
 	}
 }
 

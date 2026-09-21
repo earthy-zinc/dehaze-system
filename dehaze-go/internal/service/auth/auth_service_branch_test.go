@@ -95,6 +95,8 @@ func TestLogin_CaseInsensitiveNormalization(t *testing.T) {
 		gotUsername = u.Username
 		return true
 	})).Return(newTestUser(), nil).Once()
+	// 登录成功兜底会员档案（种子账号/后台建用户不走注册）
+	f.memberService.EXPECT().EnsureMemberProfile(ctx, mock.Anything).Return(nil).Once()
 	f.cache.EXPECT().Set(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	f.cache.EXPECT().Delete(mock.Anything, "login:fail:ip:"+clientIP).Return(nil).Once()
 	f.cache.EXPECT().Delete(mock.Anything, "login:fail:zhangsan").Return(nil).Once()

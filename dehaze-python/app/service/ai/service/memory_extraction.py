@@ -120,10 +120,10 @@ def _compute_importance(factors: dict) -> int:
         _IMPORTANCE_WEIGHTS[name] * max(0, min(100, int(factors.get(name, 0) or 0)))
         for name in _IMPORTANCE_WEIGHTS
     )
-    return int(round(score))
+    return round(score)
 
 
-async def _score_importance(db, model_id: str, content: str) -> int:
+async def _score_importance(db, model_id: str, content: str, user_id: int) -> int:
     """独立 LLM prompt 对记忆做五因子评分，返回加权重要性（0-100）。"""
     try:
         raw = await _llm_text(
@@ -132,6 +132,7 @@ async def _score_importance(db, model_id: str, content: str) -> int:
             _IMPORTANCE_PROMPT.format(content=content),
             system_prompt="你是记忆重要性评估助手，按五因子为记忆打分。",
             max_tokens=120,
+            user_id=user_id,
         )
     except Exception as e:
         logger.warning("重要性评分失败: %s", e)
@@ -192,6 +193,7 @@ async def extract_memories(
                     system_prompt="你是记忆提取助手，只提取值得长期记忆的关键信息。",
                     temperature=0,
                     max_tokens=600,
+                    user_id=user_id,
                 ):
                     if chunk.type == "text_delta":
                         content += chunk.content
@@ -220,7 +222,7 @@ async def extract_memories(
         memory_type = item.get("type", "semantic")
         metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else None
         async with get_db_session() as db:
-            importance = await _score_importance(db, model_id, masked)
+            importance = await _score_importance(db, model_id, masked, user_id)
         result.append(
             {
                 "memory_type": memory_type,
@@ -280,7 +282,9 @@ async def save_extracted_memories(user_id: int, memories: list[dict]) -> int:
     return saved
 
 
-async def _llm_text(db, model_id: str, prompt: str, system_prompt: str, max_tokens: int) -> str:
+async def _llm_text(
+    db, model_id: str, prompt: str, system_prompt: str, max_tokens: int, user_id: int
+) -> str:
     """调用 LLM 返回纯文本结果（聚合流式 text_delta）"""
     content = ""
     async for chunk in llm_client.stream_chat(
@@ -290,6 +294,7 @@ async def _llm_text(db, model_id: str, prompt: str, system_prompt: str, max_toke
         system_prompt=system_prompt,
         temperature=0,
         max_tokens=max_tokens,
+        user_id=user_id,
     ):
         if chunk.type == "text_delta":
             content += chunk.content
@@ -316,6 +321,7 @@ async def reflect_and_consolidate(db, user_id: int, model_id: str | None = None)
             _REFLECTION_PROMPT + memory_text,
             system_prompt="你是记忆反思助手，从近期记忆中提炼抽象洞察。",
             max_tokens=500,
+            user_id=user_id,
         )
     except Exception as e:
         logger.warning("Memory reflection failed: %s", e)
@@ -342,7 +348,7 @@ async def reflect_and_consolidate(db, user_id: int, model_id: str | None = None)
             db, user_id, memory_type, item["content"]
         ):
             continue
-        importance = await _score_importance(db, model_id, item["content"])
+        importance = await _score_importance(db, model_id, item["content"], user_id)
         memory = SysAiMemory(
             user_id=user_id,
             memory_type=memory_type,
@@ -351,8 +357,21 @@ async def reflect_and_consolidate(db, user_id: int, model_id: str | None = None)
             importance=importance,
             source="reflection",
         )
-        await ai_memory_repository.create(db, memory)
+        memory = await ai_memory_repository.create(db, memory)
         saved += 1
+        # 与对话提取一致：MySQL 写入后同步 ES 向量索引，否则反思记忆不可被检索注入
+        await sync_memory(
+            {
+                "id": memory.id,
+                "user_id": user_id,
+                "memory_type": memory_type,
+                "content": item["content"],
+                "importance": importance,
+                "status": 1,
+                "archived": 0,
+                "deleted": 0,
+            }
+        )
     return saved
 
 
@@ -394,6 +413,7 @@ async def merge_duplicates(db, user_id: int, model_id: str | None = None) -> int
                         _MERGE_PROMPT.format(content_a=a.content, content_b=b.content),
                         system_prompt="你是记忆合并助手，将重复记忆合并为统一表述。",
                         max_tokens=200,
+                        user_id=user_id,
                     )
                 except Exception as e:
                     logger.warning("Memory merge failed: %s", e)

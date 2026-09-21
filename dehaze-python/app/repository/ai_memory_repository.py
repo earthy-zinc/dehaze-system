@@ -338,7 +338,7 @@ class AiMemoryRepository(BaseRepository[SysAiMemory]):
         stmt = (
             update(SysAiMemory)
             .where(SysAiMemory.id.in_(ids))
-            .values(deleted=1, delete_time=datetime.now())
+            .values(deleted=SysAiMemory.id, delete_time=datetime.now())
         )
         result = await db.execute(stmt)
         return result.rowcount
@@ -365,7 +365,7 @@ class AiMemoryRepository(BaseRepository[SysAiMemory]):
                 SysAiMemory.user_id == user_id,
                 SysAiMemory.deleted == 0,
             )
-            .values(deleted=1, delete_time=datetime.now())
+            .values(deleted=SysAiMemory.id, delete_time=datetime.now())
         )
         if memory_type:
             stmt = stmt.where(SysAiMemory.memory_type == memory_type)
@@ -387,7 +387,7 @@ class AiMemoryRepository(BaseRepository[SysAiMemory]):
         """查询已软删且在恢复窗口内的记忆（用于 30 天内恢复）。"""
         stmt = select(SysAiMemory).where(
             SysAiMemory.user_id == user_id,
-            SysAiMemory.deleted == 1,
+            SysAiMemory.deleted != 0,
             SysAiMemory.delete_time >= datetime.now() - timedelta(days=MEMORY_RECOVERY_WINDOW_DAYS),
         )
         if memory_type:
@@ -422,7 +422,7 @@ class AiMemoryRepository(BaseRepository[SysAiMemory]):
     ) -> list[int]:
         """查询软删超过恢复窗口的记忆 ID（供物理清理定时任务）。"""
         stmt = select(SysAiMemory.id).where(
-            SysAiMemory.deleted == 1,
+            SysAiMemory.deleted != 0,
             SysAiMemory.delete_time < before_date,
         )
         # 物理清理需查已软删记录，用 include_deleted 绕过全局 deleted=0 过滤

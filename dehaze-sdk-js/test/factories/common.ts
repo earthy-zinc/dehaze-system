@@ -1,11 +1,24 @@
 import { faker } from "@faker-js/faker";
-import { nanoid } from "nanoid";
+import { customAlphabet, nanoid } from "nanoid";
 
 let counter = 1;
 const next = () => counter++;
 
+// 仅字母数字的 nanoid 字母表：后端注册用户名等字段有 ^[a-zA-Z0-9_]+$ 类校验，
+// nanoid 默认字母表含 "-"，混入会导致唯一名被 A0400 拒绝
+const alnumNano = customAlphabet("useandom26T198340PX75pxJACKVERYMINDBUSHWOLFGQZbfghjklqvwyzrict");
+
 /** 生成唯一名称 */
-export const uniqueName = (prefix: string) => `${prefix}_${nanoid(6)}_${next()}`;
+export const uniqueName = (prefix: string) => `${prefix}_${alnumNano(6)}_${next()}`;
+
+/**
+ * 生成合法注册用户名（3-32 位，仅字母、数字、下划线，与后端校验一致）。
+ * 前缀过长时截断，保证随机段与计数器完整保留。
+ */
+export const uniqueUsername = (prefix: string) => {
+  const safePrefix = prefix.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20);
+  return `${safePrefix}_${alnumNano(6)}_${next()}`.slice(0, 32);
+};
 
 /** 生成唯一邮箱（使用时间戳确保跨测试运行唯一） */
 export const uniqueEmail = (prefix = "test") => {

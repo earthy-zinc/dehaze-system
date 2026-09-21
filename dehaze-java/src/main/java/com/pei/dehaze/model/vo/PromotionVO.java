@@ -41,4 +41,8 @@ public class PromotionVO {
 
     @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;
+
+    @Schema(description = "创建时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
 }

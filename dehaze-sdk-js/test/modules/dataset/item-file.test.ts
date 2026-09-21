@@ -5,6 +5,7 @@ import {
   createItemFileUpdateForm,
 } from "#/factories/dataset";
 import { uniqueName } from "#/factories/common";
+import { expectBizError } from "#/utils/assertion";
 import * as fs from "fs";
 import * as path from "path";
 import FormData from "form-data";
@@ -188,12 +189,11 @@ describe("图片文件接口测试", () => {
       await expect(ItemFileAPI.upload(formData)).rejects.toThrow();
     });
 
-    test("参数校验：无效的图片类型", async () => {
-      // 后端可能接受（忽略无效类型）或拒绝，两种行为均可接受
-      const result = await ItemFileAPI.upload(uploadForm("test.jpg", "invalid")).catch(() => null);
-      if (result !== null) {
-        expect(result.id).toBeGreaterThan(0);
-      }
+    test("参数校验：无效的图片类型应被拒绝", async () => {
+      // type 与 SDK ItemFileUploadForm 枚举一致（clear/hazy/trans/depth/segment），后端硬校验
+      await expectBizError(ItemFileAPI.upload(uploadForm("41_outdoor_GT.jpg", "invalid")), [
+        "A0400",
+      ]);
     });
   });
 

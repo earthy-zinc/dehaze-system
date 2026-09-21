@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_audit_update_values
 from app.models.entity.sys_menu import SysRoleMenu
-from app.models.entity.sys_user import SysRole
+from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
 from app.repository.base import BaseRepository
 
 # 内置不可删除的角色编码（与 Java/Go 一致）
@@ -28,6 +28,7 @@ class RoleRepository(BaseRepository[SysRole]):
         order_by: str | None = None,
         page: int = 1,
         page_size: int = 10,
+        exclude_codes: set[str] | None = None,
     ) -> tuple[list[SysRole], int]:
         """获取角色分页列表"""
         stmt = select(SysRole)
@@ -37,15 +38,17 @@ class RoleRepository(BaseRepository[SysRole]):
                 if hasattr(SysRole, key):
                     stmt = stmt.where(getattr(SysRole, key) == value)
 
+        if exclude_codes:
+            stmt = stmt.where(SysRole.code.notin_(exclude_codes))
+
         if search_fields:
             from sqlalchemy import or_
 
             conditions = []
             for field, op, val in search_fields:
                 col = getattr(SysRole, field, None)
-                if col is not None:
-                    if op == "like":
-                        conditions.append(col.like(val))
+                if col is not None and op == "like":
+                    conditions.append(col.like(val))
             if conditions:
                 stmt = stmt.where(or_(*conditions))
 
@@ -94,33 +97,58 @@ class RoleRepository(BaseRepository[SysRole]):
     async def delete_by_ids(
         self,
         db: AsyncSession,
-        role_ids: list[int],
+        ids: list[int],
     ) -> int:
         """批量软删除角色（1 条 SQL 替代 N 条，避免 N+1）"""
-        if not role_ids:
+        if not ids:
             return 0
         values = {"deleted": 1}
         values.update(get_audit_update_values())
-        stmt = update(SysRole).where(SysRole.id.in_(role_ids)).values(**values)
+        stmt = update(SysRole).where(SysRole.id.in_(ids)).values(**values)
         result = await db.execute(stmt)
         return result.rowcount
 
-    async def get_role_options(
-        self,
-        db: AsyncSession,
-        *,
-        is_root: bool = False,
-    ) -> list[dict]:
-        """获取角色下拉选项列表（仅启用状态，非 root 用户排除内置角色）"""
+    async def get_role_options(self, db: AsyncSession) -> list[dict]:
+        """获取全部启用角色的下拉选项数据（含编码，可见性过滤由服务层按 is_root 处理）"""
         stmt = (
-            select(SysRole.id, SysRole.name)
+            select(SysRole.id, SysRole.name, SysRole.code)
             .where(SysRole.deleted == 0, SysRole.status == 1)
             .order_by(SysRole.sort)
         )
-        if not is_root:
-            stmt = stmt.where(SysRole.code.notin_(BUILTIN_ROLE_CODES))
         result = await db.execute(stmt)
-        return [{"value": row[0], "label": row[1]} for row in result.fetchall()]
+        return [{"value": row[0], "label": row[1], "code": row[2]} for row in result.fetchall()]
+
+    async def list_user_ids_by_roles(self, db: AsyncSession, role_ids: list[int]) -> list[int]:
+        """反查关联指定角色的活跃用户 ID（软删用户不参与权限传播）"""
+        if not role_ids:
+            return []
+        stmt = (
+            select(SysUser.id)
+            .join(SysUserRole, SysUser.id == SysUserRole.user_id)
+            .where(
+                SysUserRole.role_id.in_(role_ids),
+                SysUser.deleted == 0,
+            )
+            .distinct()
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_role_code_id_map(
+        self,
+        db: AsyncSession,
+        codes: list[str],
+    ) -> dict[str, int]:
+        """批量查询启用角色的 编码→ID 映射（导入按角色编码关联用）"""
+        if not codes:
+            return {}
+        stmt = select(SysRole.code, SysRole.id).where(
+            SysRole.code.in_(codes),
+            SysRole.deleted == 0,
+            SysRole.status == 1,
+        )
+        result = await db.execute(stmt)
+        return {row[0]: row[1] for row in result.fetchall() if row[0]}
 
     async def get_role_menu_ids(
         self,
@@ -185,7 +213,7 @@ class RoleRepository(BaseRepository[SysRole]):
         *,
         exclude_id: int | None = None,
     ) -> bool:
-        """检查角色名称是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
+        """检查角色名称是否已存在（仅活跃行；软删行不再占用唯一键位，删后可重建同名）"""
         stmt = (
             select(func.count())
             .select_from(SysRole)
@@ -195,7 +223,6 @@ class RoleRepository(BaseRepository[SysRole]):
         )
         if exclude_id:
             stmt = stmt.where(SysRole.id != exclude_id)
-        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return (result.scalar() or 0) > 0
 
@@ -206,7 +233,7 @@ class RoleRepository(BaseRepository[SysRole]):
         *,
         exclude_id: int | None = None,
     ) -> bool:
-        """检查角色编码是否已存在（含软删记录，命中→报"已被历史记录占用"）"""
+        """检查角色编码是否已存在（仅活跃行；软删行不再占用唯一键位，删后可重建同码）"""
         stmt = (
             select(func.count())
             .select_from(SysRole)
@@ -216,7 +243,6 @@ class RoleRepository(BaseRepository[SysRole]):
         )
         if exclude_id:
             stmt = stmt.where(SysRole.id != exclude_id)
-        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return (result.scalar() or 0) > 0
 
@@ -244,5 +270,6 @@ class RoleRepository(BaseRepository[SysRole]):
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
 
 role_repository = RoleRepository()

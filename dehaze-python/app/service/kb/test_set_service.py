@@ -54,8 +54,7 @@ class TestSetService:
         )
         return {
             "list": [
-                TestSetVO.model_validate(i).model_dump(mode="json", by_alias=True)
-                for i in items
+                TestSetVO.model_validate(i).model_dump(mode="json", by_alias=True) for i in items
             ],
             "total": total,
         }
@@ -88,8 +87,12 @@ class TestSetService:
             test_set.question,
             knowledge_base_ids=[knowledge_base_id],
             top_k=top_k,
+            bill=False,
         )
-        hit_ids = {r["chunkId"] for r in result.get("results", [])}
+        # 检索结果为节粒度：期望 chunk 属于任一命中节（其内容包含原 chunk 文本）即命中
+        hit_ids: set[int] = set()
+        for r in result.get("results", []):
+            hit_ids.update(r.get("chunkIds") or [r["chunkId"]])
         expected = test_set.expected_chunk_ids or []
         matched = sum(1 for cid in expected if cid in hit_ids)
         total_expected = len(expected)

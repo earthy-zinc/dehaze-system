@@ -111,11 +111,40 @@ func (b *Breaker) afterRequest(err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if err != nil {
+	switch {
+	case IsBusiness(err):
+		// 业务性错误（上游 4xx，如参数/权限拒绝）：上游是**可达且健康**的，
+		// 按成功处理（不累计失败、并清零连续失败），否则业务负例连发会把熔断器打红。
+		// 口径以 python 为准：python 调用侧把 HTTPStatusError 与 (Timeout, TransportError)
+		// 分开处理，4xx 不参与任何熔断/冷却统计。
+		b.onSuccess()
+	case err != nil:
 		b.onFailure()
-	} else {
+	default:
 		b.onSuccess()
 	}
+}
+
+// BusinessError 标记"业务性错误"：错误由上游正常返回（4xx 业务拒绝），不代表上游不可用，
+// 因而不参与熔断失败统计。
+type BusinessError struct{ Err error }
+
+func (e *BusinessError) Error() string { return e.Err.Error() }
+
+func (e *BusinessError) Unwrap() error { return e.Err }
+
+// MarkBusiness 包装业务性错误（nil 原样返回）
+func MarkBusiness(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &BusinessError{Err: err}
+}
+
+// IsBusiness 判断是否为业务性错误
+func IsBusiness(err error) bool {
+	var be *BusinessError
+	return errors.As(err, &be)
 }
 
 func (b *Breaker) onSuccess() {

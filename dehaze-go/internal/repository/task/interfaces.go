@@ -35,6 +35,10 @@ type ITaskRepository interface {
 	// UpdateStatus 更新任务状态
 	UpdateStatus(ctx context.Context, id int64, status int8) error
 
+	// CancelIfActive CAS 取消：仅当任务仍处于 PENDING/PROCESSING 时置为 CANCELLED，
+	// 返回受影响行数（0 表示状态已变更，取消失败），防止与完成回调并发覆盖终态
+	CancelIfActive(ctx context.Context, id int64) (int64, error)
+
 	// Delete 删除任务
 	Delete(ctx context.Context, ids []int64) error
 

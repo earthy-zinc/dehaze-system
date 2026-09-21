@@ -31,12 +31,12 @@ type AnnouncementForm struct {
 
 // MessageTemplateForm 模板编辑表单
 type MessageTemplateForm struct {
-	Name            *string                `json:"name"`
-	TitleTemplate   *string                `json:"titleTemplate"`
-	ContentTemplate *string                `json:"contentTemplate"`
-	Priority        *int                   `json:"priority"`
-	Channels        map[string]bool        `json:"channels"`
-	Status          *int                   `json:"status"`
+	Name            *string         `json:"name"`
+	TitleTemplate   *string         `json:"titleTemplate"`
+	ContentTemplate *string         `json:"contentTemplate"`
+	Priority        *int            `json:"priority"`
+	Channels        map[string]bool `json:"channels"`
+	Status          *int            `json:"status"`
 }
 
 // NotificationSettingForm 通知设置表单

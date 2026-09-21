@@ -38,6 +38,7 @@ async def test_award_process_growth_writes_log(db, mock_redis):
     await prediction_service._award_process_growth(USER_ID, LOG_ID)
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 1
     logs = await _growth_logs(db)
     assert any(
@@ -54,6 +55,7 @@ async def test_award_process_growth_daily_limit(db, mock_redis):
     await prediction_service._award_process_growth(USER_ID, LOG_ID + 100)
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == PROCESS_DAILY_LIMIT
 
 
@@ -73,11 +75,10 @@ async def test_award_evaluate_growth_writes_log(db, mock_redis):
     await evaluation_service._award_evaluate_growth(USER_ID, LOG_ID)
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 1
     logs = await _growth_logs(db)
-    assert any(
-        log.change_type == "evaluate" and log.related_id == str(LOG_ID) for log in logs
-    )
+    assert any(log.change_type == "evaluate" and log.related_id == str(LOG_ID) for log in logs)
 
 
 async def test_award_evaluate_growth_daily_limit(db, mock_redis):
@@ -89,6 +90,7 @@ async def test_award_evaluate_growth_daily_limit(db, mock_redis):
     await prediction_service._award_process_growth(USER_ID, LOG_ID + 200)
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == EVALUATE_DAILY_LIMIT + 1
 
 

@@ -3,7 +3,6 @@
 供登录用户查询自己的兼容端点调用日志，支撑对账与异常排查。
 """
 
-
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.core.result import success
@@ -65,4 +64,3 @@ async def list_calls(
             total=total,
         )
     )
-

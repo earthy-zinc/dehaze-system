@@ -21,6 +21,7 @@
 | `/api/v1/orders/auto-renew/config` | PUT | 开启/关闭自动续费（仅会员卡） | - | F-OM-005 |
 | `/api/v1/orders/auto-renew/config` | GET | 查询自动续费配置 | - | F-OM-005 |
 | `/api/v1/orders/balance` | GET | 查询余额账户（可用/冻结余额） | - | F-OM-015/F-OM-017 |
+| `/api/v1/orders/recharge` | POST | 创建余额充值订单（渠道统一下单，返回支付参数） | - | F-OM-015 |
 | `/api/v1/orders/balance-refund` | POST | 提交余额退款申请（充值余额退回，不触发订单履约回退） | - | F-OM-015 |
 
 ### 2.2 支付回调接口

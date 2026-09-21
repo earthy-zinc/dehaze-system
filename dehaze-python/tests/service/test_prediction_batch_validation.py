@@ -1,11 +1,11 @@
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.schema.prediction import BatchPredictionItem
 from app.service.prediction.prediction_service import prediction_service
+
+pytestmark = pytest.mark.requires_db
 
 
 async def test_batch_predict_empty_items_rejected():
@@ -27,8 +27,12 @@ async def test_batch_predict_exceed_limit_a0500(db):
     member = make_member()
     benefit = make_benefit(batch_limit=5)
 
-    with patch.object(member_repository, "get_by_user_id", AsyncMock(return_value=member)), \
-         patch.object(member_benefit_repository, "get_by_level_code", AsyncMock(return_value=benefit)):
+    with (
+        patch.object(member_repository, "get_by_user_id", AsyncMock(return_value=member)),
+        patch.object(
+            member_benefit_repository, "get_by_level_code", AsyncMock(return_value=benefit)
+        ),
+    ):
         with pytest.raises(BusinessException) as ei:
             await svc.batch_predict(1, items, user_id=1, skip_quota_check=False)
         assert ei.value.code == ResultCode.BUSINESS_ERROR

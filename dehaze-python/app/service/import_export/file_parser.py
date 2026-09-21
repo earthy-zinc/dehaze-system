@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Sequence
 
 from openpyxl import load_workbook
 
@@ -25,6 +26,8 @@ def parse_excel(
             ResultCode.IMPORT_FILE_PARSE_ERROR, f"Excel 解析失败: {e}"
         ) from None
     ws = wb.active
+    if ws is None:
+        raise BusinessException(ResultCode.IMPORT_FILE_PARSE_ERROR, "Excel 解析失败: 无活动工作表")
     rows = list(ws.iter_rows(values_only=True))
     if not rows:
         raise BusinessException(ResultCode.IMPORT_FILE_EMPTY)
@@ -58,7 +61,7 @@ def parse_csv(
 def _map_rows(
     header: list[str],
     fields: list[ImportFieldConfig],
-    rows: list[list],
+    rows: Sequence[Sequence],
     missing_cell,
 ) -> list[dict]:
     label_to_field = {f.label: f for f in fields}

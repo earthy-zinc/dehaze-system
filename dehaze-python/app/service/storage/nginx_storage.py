@@ -68,7 +68,10 @@ class NginxStorageService(StorageService):
         try:
             response = requests.head(url, timeout=10, allow_redirects=True)
             return response.status_code == 200
-        except Exception:
+        except requests.RequestException as exc:
+            # 网络/超时异常与"不存在"语义不同，必须留痕，
+            # 避免把存储后端故障误判为文件缺失
+            logger.warning("nginx 静态资源存在性探测失败: url=%s, error=%s", url, exc)
             return False
 
     def get_size(self, bucket: str, object_name: str) -> int | None:
@@ -77,13 +80,15 @@ class NginxStorageService(StorageService):
             response = requests.head(url, timeout=10, allow_redirects=True)
             content_length = response.headers.get("Content-Length")
             return int(content_length) if content_length else None
-        except Exception:
+        except requests.RequestException as exc:
+            # 网络/超时异常：无法确定大小返回 None，但必须留痕以区分"无 Content-Length"
+            logger.warning("nginx 静态资源大小探测失败: url=%s, error=%s", url, exc)
             return None
 
     def ensure_bucket(self, bucket: str) -> None:
         # nginx-static 后端无 bucket 概念
         pass
 
-    def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
+    def list_objects(self, bucket: str, prefix: str = "") -> list[tuple[str, float]]:
         # nginx-static 后端不支持列目录（nginx autoindex 默认关闭）
         raise NotImplementedError("nginx-static 后端不支持列出对象")

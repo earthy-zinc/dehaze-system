@@ -9,10 +9,23 @@ import io
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import BATCH_SIZE
-from app.repository.role_repository import role_repository
+from app.repository.role_repository import BUILTIN_ROLE_CODES, role_repository
 from app.service.import_export.file_generator import write_csv, write_excel
 from app.service.import_export.models import ExportContext, ExportFieldConfig
 from app.service.import_export.registry import ExportHandler
+
+
+def _build_query_filters(query_params: dict) -> tuple[dict, list | None]:
+    """由查询参数构建角色导出筛选条件（排除内置角色，内置角色不支持导入迁移）"""
+    keywords = query_params.get("keywords")
+    filters: dict = {"deleted": 0}
+    search_fields = None
+    if keywords:
+        search_fields = [
+            ("name", "like", f"%{keywords}%"),
+            ("code", "like", f"%{keywords}%"),
+        ]
+    return filters, search_fields
 
 
 class RoleExportHandler(ExportHandler):
@@ -20,14 +33,7 @@ class RoleExportHandler(ExportHandler):
         return "role"
 
     async def estimate_count(self, db: AsyncSession, query_params: dict) -> int:
-        keywords = query_params.get("keywords")
-        filters = {"deleted": 0}
-        search_fields = None
-        if keywords:
-            search_fields = [
-                ("name", "like", f"%{keywords}%"),
-                ("code", "like", f"%{keywords}%"),
-            ]
+        filters, search_fields = _build_query_filters(query_params)
         _, total = await role_repository.get_list(
             db,
             filters=filters,
@@ -35,6 +41,7 @@ class RoleExportHandler(ExportHandler):
             order_by="sort",
             page=1,
             page_size=1,
+            exclude_codes=BUILTIN_ROLE_CODES,
         )
         return int(total)
 
@@ -47,14 +54,7 @@ class RoleExportHandler(ExportHandler):
         cancel_cb,
     ) -> None:
         params = ctx.query_params
-        keywords = params.get("keywords")
-        filters = {"deleted": 0}
-        search_fields = None
-        if keywords:
-            search_fields = [
-                ("name", "like", f"%{keywords}%"),
-                ("code", "like", f"%{keywords}%"),
-            ]
+        filters, search_fields = _build_query_filters(params)
         total = ctx.total_count or await self.estimate_count(db, params)
 
         page = 1
@@ -68,6 +68,7 @@ class RoleExportHandler(ExportHandler):
                 order_by="sort",
                 page=page,
                 page_size=page_size,
+                exclude_codes=BUILTIN_ROLE_CODES,
             )
             if not roles:
                 break

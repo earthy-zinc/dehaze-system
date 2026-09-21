@@ -89,56 +89,21 @@
       </el-table-column>
     </el-table>
 
-    <!-- 供应商维度：成本-利润统计 -->
+    <!-- 供应商维度：成本分组分解（订单实收无法按供应商归因，不展示收入/毛利） -->
     <el-table
       v-else
       v-loading="billingStore.drilldownLoading"
       :data="billingStore.providerStats"
       size="small"
     >
-      <el-table-column label="统计项" prop="dimension" min-width="120" />
-      <el-table-column label="口径" width="100" align="center">
-        <template #default="{ row }">
-          <el-tag
-            :type="row.metric === 'overall' ? 'primary' : 'info'"
-            size="small"
-          >
-            {{ row.metric === "overall" ? "整体" : "AI参考" }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column
-        label="收入（元）"
-        prop="revenue"
-        sortable
-        width="120"
-        align="center"
-      />
+      <el-table-column label="供应商ID" prop="dimension" min-width="120" />
       <el-table-column
         label="成本（元）"
         prop="cost"
         sortable
-        width="120"
+        width="140"
         align="center"
       />
-      <el-table-column
-        label="毛利（元）"
-        prop="profit"
-        sortable
-        width="120"
-        align="center"
-      >
-        <template #default="{ row }">
-          <span :class="row.profit < 0 ? 'text-red-500' : ''">{{
-            row.profit.toFixed(2)
-          }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="毛利率" width="100" align="center">
-        <template #default="{ row }"
-          >{{ (row.profitRate * 100).toFixed(2) }}%</template
-        >
-      </el-table-column>
     </el-table>
 
     <!-- 时间维度：每日积分消耗趋势 -->

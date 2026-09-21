@@ -19,6 +19,7 @@ CREATE TABLE `sys_pred_log`
     `pred_file_id`   bigint                                                         NULL DEFAULT NULL COMMENT '预测图像文件id',
     `pred_md5`       char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NULL DEFAULT NULL COMMENT '预测图像md5值',
     `pred_url`       TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL DEFAULT NULL COMMENT '预测图像url',
+    `recommended_by` bigint                                                         NULL DEFAULT NULL COMMENT '推荐来源：推荐记录ID（推荐管理模块，用于追踪推荐采纳率）',
     `time`           int                                                            NULL DEFAULT 0 COMMENT '推理时间（秒）',
     `status`         tinyint                                                        NOT NULL DEFAULT 2 COMMENT '任务状态(1:处理中;2:已完成;3:失败;4:已取消)',
     `error_message`  TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL DEFAULT NULL COMMENT '失败错误信息',
@@ -30,7 +31,8 @@ CREATE TABLE `sys_pred_log`
     INDEX `idx_algorithm_id` (`algorithm_id`) USING BTREE,
     INDEX `idx_origin_md5` (`origin_md5`) USING BTREE,
     INDEX `idx_pred_md5` (`pred_md5`) USING BTREE,
-    INDEX `idx_status` (`status`) USING BTREE
+    INDEX `idx_status` (`status`) USING BTREE,
+    INDEX `idx_recommended_by` (`recommended_by`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '模型预测日志表'

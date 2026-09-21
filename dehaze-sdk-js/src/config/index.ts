@@ -6,6 +6,7 @@ export interface InterceptorCallbacks {
 
   onResponse?: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>;
   onResponseError?: (error: AxiosError) => any;
+  onBizError?: (code: string, msg: string) => void;
 }
 
 class ConfigManager {

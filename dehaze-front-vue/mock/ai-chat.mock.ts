@@ -13,7 +13,6 @@ import type {
   AiEvalRunCompareResult,
   AiEvalSampleDiffItem,
   AiEvalTrendItem,
-  AiMessageLlmCall,
   AiMessageThought,
   AiMessageVO,
   AiModelVO,
@@ -365,40 +364,6 @@ const allMessages: ChatMessage[] = [
     toolCalls: [
       { name: "kb_search", arguments: { query: "暗通道 窗口半径", top_k: 5 } },
     ],
-    traceId: "trace-20260827-0001",
-    contextSnapshot: {
-      items: [
-        { type: "system", tokens: 320 },
-        { type: "history", tokens: 640, counts: { user: 1, assistant: 0 } },
-        { type: "retrieval", tokens: 512, count: 3 },
-      ],
-    },
-    llmCalls: [
-      {
-        id: 1,
-        traceId: "trace-20260827-0001",
-        seq: 1,
-        stepPosition: 1,
-        model: DEFAULT_MODEL,
-        status: 1,
-        durationMs: 1820,
-        firstTokenMs: 420,
-        promptTokens: 1472,
-        completionTokens: 320,
-        cachedTokens: 128,
-        toolCall: {
-          has_tool_call: true,
-          tools: [
-            {
-              name: "kb_search",
-              arguments: '{"query":"暗通道 窗口半径","top_k":5}',
-            },
-          ],
-        },
-        outputSnapshot: { text: "窗口半径决定暗通道估计的局部范围..." },
-        createTime: "2026-08-27 09:12:41",
-      },
-    ],
     thoughts: [
       {
         id: 1,
@@ -434,22 +399,6 @@ const allMessages: ChatMessage[] = [
     credits: 5,
     parentMessageId: 1003,
     createTime: "2026-08-28 16:42:18",
-    traceId: "trace-20260828-0002",
-    llmCalls: [
-      {
-        id: 2,
-        traceId: "trace-20260828-0002",
-        seq: 1,
-        model: DEFAULT_MODEL,
-        status: 1,
-        durationMs: 1560,
-        firstTokenMs: 380,
-        promptTokens: 1246,
-        completionTokens: 210,
-        cachedTokens: 256,
-        createTime: "2026-08-28 16:42:18",
-      },
-    ],
   }),
   seedMessage({
     id: 1005,
@@ -471,23 +420,6 @@ const allMessages: ChatMessage[] = [
     credits: 12,
     parentMessageId: 1005,
     createTime: "2026-08-28 11:05:44",
-    traceId: "trace-20260828-0003",
-    llmCalls: [
-      {
-        id: 3,
-        traceId: "trace-20260828-0003",
-        seq: 1,
-        stepPosition: 1,
-        model: DEFAULT_MODEL,
-        status: 1,
-        durationMs: 2140,
-        firstTokenMs: 460,
-        promptTokens: 1440,
-        completionTokens: 486,
-        cachedTokens: 320,
-        createTime: "2026-08-28 11:05:44",
-      },
-    ],
   }),
   seedMessage({
     id: 1007,
@@ -527,22 +459,6 @@ const allMessages: ChatMessage[] = [
     model: DEFAULT_MODEL,
     parentMessageId: 1009,
     createTime: "2026-08-27 20:18:09",
-    traceId: "trace-20260827-0004",
-    llmCalls: [
-      {
-        id: 4,
-        traceId: "trace-20260827-0004",
-        seq: 1,
-        model: DEFAULT_MODEL,
-        status: 2,
-        errorType: "upstream_503",
-        durationMs: 3020,
-        promptTokens: 980,
-        completionTokens: 0,
-        cachedTokens: 0,
-        createTime: "2026-08-27 20:18:09",
-      },
-    ],
   }),
   seedMessage({
     id: 1011,
@@ -1871,7 +1787,6 @@ let skills: SkillRecord[] = [
     scene: "去雾调参",
     instruction:
       "# 去雾调参\n1. 确认图像分辨率与雾浓度\n2. 选取窗口半径\n3. 调整 t0\n4. 评估 PSNR/SSIM",
-    scriptContent: "",
     status: 1,
     agentCount: 2,
     marketShared: 1,
@@ -2315,6 +2230,9 @@ function buildTrace(seed: TraceSeed): TraceRecord {
   );
   return {
     ...seed,
+    conversationTitle: conversations.find(
+      (item) => item.id === seed.conversationId
+    )?.title,
     llmCallCount: llmCalls.length,
     totalTokens: promptTokens + completionTokens,
     promptTokens,
@@ -2445,6 +2363,12 @@ const chatModels: AiModelVO[] = [
     vipLevel: 0,
     speedTier: "fast",
     isFallbackTarget: false,
+    lastTestStatus: 1,
+    lastTestAt: "2026-08-10 09:00:00",
+    lastTestError: null,
+    calls24h: 128,
+    successRate24h: 99.2,
+    lastCallAt: "2026-08-10 09:00:00",
     createTime: "2026-08-01 09:00:00",
   },
   {
@@ -2468,6 +2392,12 @@ const chatModels: AiModelVO[] = [
     vipLevel: 0,
     speedTier: "medium",
     isFallbackTarget: false,
+    lastTestStatus: 1,
+    lastTestAt: "2026-08-10 09:05:00",
+    lastTestError: null,
+    calls24h: 56,
+    successRate24h: 100,
+    lastCallAt: "2026-08-10 09:05:00",
     createTime: "2026-08-02 09:00:00",
   },
   {
@@ -2491,6 +2421,12 @@ const chatModels: AiModelVO[] = [
     vipLevel: 1,
     speedTier: "slow",
     isFallbackTarget: true,
+    lastTestStatus: 2,
+    lastTestAt: "2026-08-10 09:10:00",
+    lastTestError: "上游连接超时（30s）",
+    calls24h: 3,
+    successRate24h: 33.3,
+    lastCallAt: "2026-08-10 08:50:00",
     createTime: "2026-08-03 09:00:00",
   },
   {
@@ -2514,6 +2450,12 @@ const chatModels: AiModelVO[] = [
     vipLevel: 2,
     speedTier: "medium",
     isFallbackTarget: true,
+    lastTestStatus: 0,
+    lastTestAt: null,
+    lastTestError: null,
+    calls24h: null,
+    successRate24h: null,
+    lastCallAt: null,
     createTime: "2026-08-04 09:00:00",
   },
 ];
@@ -3574,7 +3516,7 @@ export default defineMock([
     },
   },
 
-  // 消息详情（含 traceId / contextSnapshot / llmCalls / thoughts）
+  // 消息详情（含 thoughts；过程链审计收敛到可观测性 timeline 接口）
   {
     url: "ai/messages/:id",
     method: ["GET"],
@@ -4712,8 +4654,6 @@ export default defineMock([
         description: body.description,
         scene: body.scene,
         instruction: body.instruction,
-        scriptContent: body.scriptContent,
-        templateId: body.templateId,
         status: body.status ?? 1,
         agentCount: 0,
         marketShared: 0,

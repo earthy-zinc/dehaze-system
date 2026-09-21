@@ -7,7 +7,7 @@
 import logging
 import math
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,11 +41,11 @@ def _gen_refund_no() -> str:
 
 
 def _restore_status_for_order(order) -> int:
-    """退款未成功时订单回退状态：会员卡未到期回已完成(3)，否则回已支付(2)。"""
+    """退款未成功/驳回时订单回退状态：会员卡未到期回已支付(2)；已到期或积分卡回已完成(3)。"""
     now = datetime.now()
     if order.package_expire_time and order.package_expire_time > now:
-        return 3
-    return 2
+        return 2
+    return 3
 
 
 async def _calc_refund_amount(
@@ -136,10 +136,8 @@ class RefundService:
             raise BusinessException(ResultCode.REFUND_ALREADY_EXISTS)
 
         custom_reason = form.get("customReason")
-        if custom_reason:
-            reason = f"{reason_type}:{custom_reason}"
-        else:
-            reason = form.get("reason") or reason_type
+        # 契约（后端实现 §2.5）：customReason 非空时以 reasonType + ":" + customReason 拼接写入
+        reason = f"{reason_type}:{custom_reason}" if custom_reason else reason_type
 
         refund_amount, used_days, used_credits = await _calc_refund_amount(
             db, order, reason_type, self.ai_balance_service
@@ -170,21 +168,24 @@ class RefundService:
             target_id=order_no,
             action="refund_apply",
             module="order",
-            after_value=form if not hasattr(form, "dict") else form,
+            after_value=form,
         )
         return {"refundNo": refund.refund_no, "refundAmount": refund_amount}
 
-    async def apply_balance_refund(
-        self, db: AsyncSession, user_id: int, form: dict
-    ) -> dict:
+    async def apply_balance_refund(self, db: AsyncSession, user_id: int, form: dict) -> dict:
         """用户提交余额退款申请（充值余额退回）。
 
-        仅创建申请记录，余额/冻结校验留待管理员审核环节。
+        申请校验可用余额与待审核申请唯一性，余额/冻结终验留待管理员审核环节。
         """
         balance = await self.balance_account_service.get_balance(db, user_id)
         amount = form.get("amount")
         if amount is None or amount <= 0:
             amount = balance["balance"]
+        if amount > balance["balance"]:
+            raise BusinessException(ResultCode.BALANCE_INSUFFICIENT)
+        pending = await self.balance_refund_repository.get_pending_by_user_id(db, user_id)
+        if pending:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "已存在待审核的余额退款申请")
         record = SysBalanceRefund(
             refund_no=f"BR{datetime.now().strftime('%Y%m%d%H%M%S')}{random.randint(100, 999)}",
             user_id=user_id,
@@ -248,7 +249,7 @@ class RefundService:
             target_id=refund_id,
             action="balance_refund_approve",
             module="order",
-            after_value=form if not hasattr(form, "dict") else form,
+            after_value=form,
         )
 
     async def approve_refund(
@@ -277,9 +278,7 @@ class RefundService:
 
         try:
             if pay_method == "balance":
-                await self.balance_account_service.refund(
-                    db, order.user_id, refund.refund_amount
-                )
+                await self.balance_account_service.refund(db, order.user_id, refund.refund_amount)
             elif pay_method == "combined":
                 balance_amount = order.balance_amount
                 if balance_amount > 0:
@@ -291,13 +290,9 @@ class RefundService:
                             db, order, third_party_refund
                         )
                 else:
-                    channel_refund_no = await self._channel_refund(
-                        db, order, refund.refund_amount
-                    )
+                    channel_refund_no = await self._channel_refund(db, order, refund.refund_amount)
             else:
-                channel_refund_no = await self._channel_refund(
-                    db, order, refund.refund_amount
-                )
+                channel_refund_no = await self._channel_refund(db, order, refund.refund_amount)
         except Exception as e:
             logger.error("退款执行失败 refundId=%s: %s", refund_id, e)
             refund_success = False
@@ -323,7 +318,7 @@ class RefundService:
             target_id=refund_id,
             action="refund_approve",
             module="order",
-            after_value=form if not hasattr(form, "dict") else form,
+            after_value=form,
         )
 
     async def _channel_refund(self, db: AsyncSession, order, refund_amount: int) -> str | None:
@@ -340,7 +335,9 @@ class RefundService:
             order.paid_amount,
         )
         if not result.success:
-            raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, result.error_message or "渠道退款失败")
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR, result.error_message or "渠道退款失败"
+            )
         return result.channel_refund_no
 
     async def _rollback_fulfillment(self, db: AsyncSession, order, refund) -> None:
@@ -381,7 +378,7 @@ class RefundService:
             target_id=refund_id,
             action="refund_reject",
             module="order",
-            after_value=form if not hasattr(form, "dict") else form,
+            after_value=form,
         )
 
     async def list_refunds(self, db: AsyncSession, query: dict) -> dict:
@@ -432,9 +429,7 @@ class RefundService:
                         db, order.user_id, refund.refund_amount
                     )
                 else:
-                    channel_refund_no = await self._channel_refund(
-                        db, order, refund.refund_amount
-                    )
+                    channel_refund_no = await self._channel_refund(db, order, refund.refund_amount)
                     refund.channel_refund_no = channel_refund_no
             except Exception as e:
                 logger.error("退款重试失败 refundId=%s: %s", refund.id, e)

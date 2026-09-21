@@ -5,13 +5,12 @@
 - 仅助手消息可反馈、30 天反馈时效（A0502）
 - 消息不存在（A0401）、撤销反馈不存在（A0543）
 """
+
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 import app.service.ai_feedback_service as feedback_module
 from app.database import get_db
@@ -19,6 +18,8 @@ from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.repository.ai_message_feedback_repository import ai_message_feedback_repository
 from app.repository.ai_message_repository import ai_message_repository
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -95,8 +96,15 @@ class TestSubmit:
             return _message()
 
         async def _fake_upsert(
-            db, message_id, user_id, rating, tags, comment, conversation_id=None,
-            model=None, source=None
+            db,
+            message_id,
+            user_id,
+            rating,
+            tags,
+            comment,
+            conversation_id=None,
+            model=None,
+            source=None,
         ):
             captured.update(
                 message_id=message_id,
@@ -110,9 +118,7 @@ class TestSubmit:
             return _feedback(rating=rating, tags=tags, comment=comment)
 
         monkeypatch.setattr(ai_message_repository, "get_by_id_and_user", _fake_msg)
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "upsert_feedback", _fake_upsert
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "upsert_feedback", _fake_upsert)
         resp = await client.post(
             "/api/v1/ai/messages/55/feedback",
             json={"rating": 1, "tags": ["accurate", "concise"], "comment": "很有帮助"},
@@ -177,16 +183,21 @@ class TestSubmit:
             return _message()
 
         async def _fake_upsert(
-            db, message_id, user_id, rating, tags, comment, conversation_id=None,
-            model=None, source=None
+            db,
+            message_id,
+            user_id,
+            rating,
+            tags,
+            comment,
+            conversation_id=None,
+            model=None,
+            source=None,
         ):
             captured.update(rating=rating, tags=tags)
             return _feedback(rating=rating, tags=tags)
 
         monkeypatch.setattr(ai_message_repository, "get_by_id_and_user", _fake_msg)
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "upsert_feedback", _fake_upsert
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "upsert_feedback", _fake_upsert)
         resp = await client.post(
             "/api/v1/ai/messages/55/feedback",
             json={"rating": -1, "tags": ["incomplete", "too_long"], "comment": "内容不完整"},
@@ -233,6 +244,24 @@ class TestSubmit:
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
 
+    async def test_submit_rating_zero_rejected(self, feedback_client, monkeypatch):
+        """rating=0 无业务语义（仅 1/-1），须拒绝，禁止落库为 rating=0 记录。"""
+        client, _ = feedback_client
+        called = {"upsert": False}
+
+        async def _fake_msg(db, message_id, user_id):
+            return _message()
+
+        async def _fake_upsert(*args, **kwargs):
+            called["upsert"] = True
+
+        monkeypatch.setattr(ai_message_repository, "get_by_id_and_user", _fake_msg)
+        monkeypatch.setattr(ai_message_feedback_repository, "upsert_feedback", _fake_upsert)
+        resp = await client.post("/api/v1/ai/messages/55/feedback", json={"rating": 0})
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0400"
+        assert called["upsert"] is False
+
     async def test_submit_comment_too_long_rejected(self, feedback_client):
         client, _ = feedback_client
         resp = await client.post(
@@ -249,9 +278,7 @@ class TestQueryAndRevoke:
         async def _fake_get(db, message_id, user_id):
             return _feedback()
 
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "get_by_user_and_message", _fake_get
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "get_by_user_and_message", _fake_get)
         resp = await client.get("/api/v1/ai/messages/55/feedback")
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == 30
@@ -263,9 +290,7 @@ class TestQueryAndRevoke:
         async def _fake_get(db, message_id, user_id):
             return None
 
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "get_by_user_and_message", _fake_get
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "get_by_user_and_message", _fake_get)
         resp = await client.get("/api/v1/ai/messages/55/feedback")
         assert resp.status_code == 200
         # 无反馈时 Result 序列化排除 null（exclude_none），data 字段缺省
@@ -281,12 +306,8 @@ class TestQueryAndRevoke:
         async def _fake_soft_delete(db, message_id, user_id):
             captured.update(message_id=message_id, user_id=user_id)
 
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "get_by_user_and_message", _fake_get
-        )
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "soft_delete", _fake_soft_delete
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "get_by_user_and_message", _fake_get)
+        monkeypatch.setattr(ai_message_feedback_repository, "soft_delete", _fake_soft_delete)
         resp = await client.delete("/api/v1/ai/messages/55/feedback")
         assert resp.status_code == 200
         assert captured == {"message_id": 55, "user_id": 8}
@@ -297,9 +318,7 @@ class TestQueryAndRevoke:
         async def _fake_get(db, message_id, user_id):
             return None
 
-        monkeypatch.setattr(
-            ai_message_feedback_repository, "get_by_user_and_message", _fake_get
-        )
+        monkeypatch.setattr(ai_message_feedback_repository, "get_by_user_and_message", _fake_get)
         resp = await client.delete("/api/v1/ai/messages/55/feedback")
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0543"

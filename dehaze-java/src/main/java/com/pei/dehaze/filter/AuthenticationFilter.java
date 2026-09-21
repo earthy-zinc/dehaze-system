@@ -8,6 +8,7 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.ResponseUtils;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.service.ApiKeyService;
+import com.pei.dehaze.service.client.AiProxyRoutes;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -172,6 +173,11 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/doc.html")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/webjars")
-                || path.startsWith("/api/v1/files/download");
+                // OpenAI/Claude 兼容协议与 A2A 端点：认证头形态（x-api-key 等）本过滤器不识别，
+                // 放行后由 python 的 API Key 中间件终审，避免合法第三方凭据被拦成 401
+                || AiProxyRoutes.isAuthExempt(request.getMethod(), AiProxyRoutes.pathOf(request))
+                // 语音流式 ASR WebSocket：会话凭证走 query 的 sid（非浏览器客户端不带 Cookie），
+                // 放行后由 python 校验登录态与 ASR 会话归属
+                || path.equals("/ws/asr");
     }
 }

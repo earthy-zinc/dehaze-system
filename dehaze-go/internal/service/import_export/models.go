@@ -61,13 +61,13 @@ func (o ImportOptions) IsPartialMode() bool {
 }
 
 type ImportError struct {
-	Row     int
-	Field   string
-	Message string
+	Row     int    `json:"row"`
+	Field   string `json:"field,omitempty"`
+	Message string `json:"message"`
 }
 
 type ImportResult struct {
-	TotalRows   int
+	TotalRows    int
 	SuccessCount int
 	FailureCount int
 	SkippedCount int
@@ -113,8 +113,8 @@ func (p ProgressCallbackFunc) IsCancelled() bool {
 }
 
 type TaskRef struct {
-	TaskID  string
-	Status  string
+	TaskID string
+	Status string
 }
 
 type ExportTaskResult struct {
@@ -129,16 +129,16 @@ type ImportTaskResult struct {
 }
 
 type ImportResultVO struct {
-	TotalRows        int           `json:"totalRows"`
-	SuccessCount     int           `json:"successCount"`
-	FailureCount     int           `json:"failureCount"`
-	SkippedCount     int           `json:"skippedCount"`
-	Errors           []ImportError `json:"errors"`
-	ErrorReportUrl   *string       `json:"errorReportUrl"`
+	TotalRows      int           `json:"totalRows"`
+	SuccessCount   int           `json:"successCount"`
+	FailureCount   int           `json:"failureCount"`
+	SkippedCount   int           `json:"skippedCount"`
+	Errors         []ImportError `json:"errors"`
+	ErrorReportUrl *string       `json:"errorReportUrl"`
 }
 
 type TaskUpdateInfo struct {
-	TaskID      string
-	Result      string
-	ExpiresAt   time.Time
+	TaskID    string
+	Result    string
+	ExpiresAt time.Time
 }

@@ -11,16 +11,12 @@ class PackageRepository(BaseRepository[SysPackage]):
     model = SysPackage
 
     async def get_by_name(self, db: AsyncSession, name: str) -> SysPackage | None:
-        """根据名称查询套餐（含软删记录，用于查重）"""
-        stmt = select(SysPackage).where(
-            SysPackage.name == name,
-        )
+        """根据名称查询套餐（活跃行，供查重）"""
+        stmt = select(SysPackage).where(SysPackage.name == name)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_level_code(
-        self, db: AsyncSession, level_code: str
-    ) -> SysPackage | None:
+    async def get_by_level_code(self, db: AsyncSession, level_code: str) -> SysPackage | None:
         """按关联等级查询套餐（取排序最前的一条），用于读取会员卡权益覆盖项"""
         stmt = (
             select(SysPackage)

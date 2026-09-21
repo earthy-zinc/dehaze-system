@@ -18,6 +18,9 @@ public class PackageDetailVO {
     @Schema(description = "套餐名称")
     private String name;
 
+    @Schema(description = "商品类型(vip:会员卡;credit:积分卡)")
+    private String packageType;
+
     @Schema(description = "会员等级编码")
     private String levelCode;
 
@@ -39,11 +42,17 @@ public class PackageDetailVO {
     @Schema(description = "日均价格（分）")
     private Long dailyPrice;
 
+    @Schema(description = "积分卡可得积分")
+    private Long creditAmount;
+
+    @Schema(description = "每积分单价（分）")
+    private Long creditUnitPrice;
+
     @Schema(description = "套餐描述")
     private String description;
 
     @Schema(description = "实际生效权益")
-    private Map<String, Integer> benefits;
+    private Map<String, Long> benefits;
 
     @Schema(description = "进行中的促销活动")
     private List<PromotionVO> activePromotions;

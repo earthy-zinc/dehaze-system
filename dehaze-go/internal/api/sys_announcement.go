@@ -20,21 +20,15 @@ func NewAnnouncementApi(annService msgservice.IAnnouncementService) *Announcemen
 }
 
 func (api *AnnouncementApi) GetPage(c *gin.Context) {
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.AnnouncementQuery{
 		Title:    c.Query("title"),
 		Type:     c.Query("type"),
-		PageNum:  1,
-		PageSize: 10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 	if v := c.Query("status"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {

@@ -1,8 +1,6 @@
 """渠道对账服务测试：金额不符/系统多单/渠道多单三类差异、账单能力未对接跳过、重跑全量重写。"""
 
 from datetime import date, datetime, timedelta
-from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -10,14 +8,25 @@ from app.models.entity.sys_payment_record import SysPaymentRecord
 from app.repository.payment_record_repository import payment_record_repository
 from app.repository.reconciliation_repository import reconciliation_repository
 from app.service.order.reconciliation_service import ReconciliationService
+from app.service.payment_channel_service import PaymentChannelService
 
 pytestmark = pytest.mark.requires_db
 
 RECON_DATE = date(2026, 8, 28)
 
 
-def _channel_service(bill_rows):
-    return SimpleNamespace(download_bill=AsyncMock(return_value=bill_rows))
+class _ChannelStub(PaymentChannelService):
+    """测试替身：仅实现 download_bill（返回预设账单行 / None），其余渠道能力不参与对账。"""
+
+    def __init__(self, bill_rows):
+        self._bill_rows = bill_rows
+
+    async def download_bill(self, *args, **kwargs):
+        return self._bill_rows
+
+
+def _channel_service(bill_rows) -> PaymentChannelService:
+    return _ChannelStub(bill_rows)
 
 
 async def _seed_payment(db, payment_no: str, amount: int, channel: str = "wechat"):
@@ -83,9 +92,7 @@ class TestRunDailyReconciliation:
     async def test_bill_unavailable_skips_channel(self, db):
         # Mock/未启用渠道无账单能力（download_bill 返回 None）→ 跳过，不产生差异
         await _seed_payment(db, "PAY-SKIP", 5000)
-        svc = ReconciliationService(
-            payment_channel_service=SimpleNamespace(download_bill=AsyncMock(return_value=None))
-        )
+        svc = ReconciliationService(payment_channel_service=_ChannelStub(None))
         count = await svc.run_daily_reconciliation(db, RECON_DATE)
         assert count == 0
 

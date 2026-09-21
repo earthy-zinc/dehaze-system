@@ -13,7 +13,6 @@
           v-model="form.userId"
           :min="1"
           controls-position="right"
-          @change="handleUserChange"
         />
       </el-form-item>
       <el-form-item label="调整金额" prop="amount">
@@ -189,6 +188,7 @@
 
 <script lang="ts" setup>
 import { BillingRefundVO } from "dehaze-sdk-js";
+import type { FormInstance } from "element-plus";
 import { useAdminBillingStore } from "@/store/modules/adminBilling";
 import BalanceQuotaCard from "@/components/billing/BalanceQuotaCard.vue";
 import CreditLogTable from "@/components/billing/CreditLogTable.vue";
@@ -197,7 +197,7 @@ defineOptions({ name: "CreditAdjustPanel" });
 
 const billingStore = useAdminBillingStore();
 
-const formRef = ref(ElForm);
+const formRef = ref<FormInstance>();
 const submitting = ref(false);
 
 const form = reactive({
@@ -272,7 +272,7 @@ function handleUserChange() {
 }
 
 async function submit() {
-  await formRef.value.validate();
+  await formRef.value?.validate();
   submitting.value = true;
   try {
     await billingStore.submitCreditAdjust({

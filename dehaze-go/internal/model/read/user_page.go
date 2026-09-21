@@ -12,6 +12,7 @@ type UserPage struct {
 	Avatar      string    `json:"avatar"`
 	Email       string    `json:"email"`
 	Status      int8      `json:"status"`
+	UserType    string    `json:"userType"`
 	DeptName    string    `json:"deptName"`
 	RoleNames   string    `json:"roleNames"`
 	CreateTime  time.Time `json:"createTime"`

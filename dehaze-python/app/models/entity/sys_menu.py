@@ -45,6 +45,12 @@ class SysMenu(BaseModel, SoftDeleteMixin):
     keep_alive: Mapped[int] = mapped_column(
         mysql_types.TINYINT, default=0, comment="【菜单】是否开启页面缓存(1:是 0:否)"
     )
+    is_preset: Mapped[int] = mapped_column(
+        mysql_types.TINYINT,
+        nullable=False,
+        default=0,
+        comment="系统预置标识(1:预置;0:普通)",
+    )
 
 
 class SysRoleMenu(Base):

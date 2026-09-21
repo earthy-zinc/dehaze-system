@@ -184,8 +184,8 @@ func TestWriteEntry_MessageAndErrorStackTruncated(t *testing.T) {
 func TestBuildFields_BlankStringExcluded(t *testing.T) {
 	entry := &dto.ClientLogEntry{
 		App:        "react",
-		URL:        "   ",   // 纯空白：不应进入（与 Java isNotBlank 对齐）
-		UserAgent:  "",      // 空白：不应进入
+		URL:        "   ", // 纯空白：不应进入（与 Java isNotBlank 对齐）
+		UserAgent:  "",    // 空白：不应进入
 		Method:     "POST",
 		Path:       "",      // 空白：不应进入
 		ErrorStack: "stack", // 非空：应进入

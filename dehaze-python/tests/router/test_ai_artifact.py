@@ -2,10 +2,9 @@
 
 覆盖重点：路由注册、查询参数校验（A0400）、归属校验错误码（A0401）、camelCase 序列化。
 """
+
 import pytest
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -15,6 +14,8 @@ from app.main import app as fastapi_app
 from app.models.schema.ai_artifact import ArtifactResult
 from app.models.schema.common import PageResult
 from app.service.ai_artifact_service import ai_artifact_service
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -105,9 +106,7 @@ class TestListByConversation:
 
     async def test_list_invalid_page_size_rejected(self, artifact_client):
         client, _ = artifact_client
-        resp = await client.get(
-            "/api/v1/ai/conversations/3/artifacts", params={"pageSize": 101}
-        )
+        resp = await client.get("/api/v1/ai/conversations/3/artifacts", params={"pageSize": 101})
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
 

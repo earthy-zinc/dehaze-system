@@ -54,8 +54,9 @@ func (r *DictRepository) FindByTypeCode(ctx context.Context, typeCode string) ([
 	var dictList []model.SysDict
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDict{}).
-		Where("type_code = ?", typeCode).
-		Order("sort ASC, create_time DESC").
+		Joins("JOIN sys_dict_type t ON sys_dict.type_code = t.code AND t.status = 1 AND t.deleted = 0").
+		Where("sys_dict.type_code = ? AND sys_dict.status = 1", typeCode).
+		Order("sys_dict.sort ASC, sys_dict.create_time DESC").
 		Find(&dictList).Error
 	return dictList, err
 }
@@ -183,11 +184,11 @@ func (r *DictRepository) CountByTypeCodes(ctx context.Context, typeCodes []strin
 	return count, err
 }
 
-// ExistsByTypeCodeAndValue 检查同一类型下字典值是否存在（查全表含软删行）
+// ExistsByTypeCodeAndValue 检查同一类型下字典值是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *DictRepository) ExistsByTypeCodeAndValue(ctx context.Context, typeCode, value string, excludeID ...int64) (bool, error) {
 	var count int64
-	db := r.db.Unscoped().WithContext(ctx).Model(&model.SysDict{}).
-		Where("type_code = ? AND value = ?", typeCode, value)
+	db := r.db.WithContext(ctx).Model(&model.SysDict{}).
+		Where("type_code = ? AND value = ? AND deleted = 0", typeCode, value)
 
 	if len(excludeID) > 0 && excludeID[0] > 0 {
 		db = db.Where("id != ?", excludeID[0])

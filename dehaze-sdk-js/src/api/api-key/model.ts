@@ -1,6 +1,10 @@
 export interface ApiKeyCreateForm {
   name: string;
   expiresAt?: string;
+  dailyQuota?: number;
+  monthlyQuota?: number;
+  rpmLimit?: number;
+  modelWhitelist?: string[];
 }
 
 export interface ApiKeyVO {
@@ -12,4 +16,8 @@ export interface ApiKeyVO {
   expiresAt?: string;
   lastUsedAt?: string;
   createTime?: string;
+  dailyQuota?: number;
+  monthlyQuota?: number;
+  rpmLimit?: number;
+  modelWhitelist?: string[];
 }

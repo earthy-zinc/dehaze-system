@@ -59,9 +59,30 @@ func NewFavoriteService(
 }
 
 func (s *FavoriteService) Add(ctx context.Context, userID int64, form *bo.FavoriteForm) (int64, error) {
+	// 合法类型校验（非法 targetType 直接拒绝，image/preset 预留类型跳过存在性校验）
+	validType := false
+	for _, t := range validTargetTypes {
+		if form.TargetType == t {
+			validType = true
+			break
+		}
+	}
+	if !validType {
+		return 0, common.NewBizError(common.PARAM_ERROR, "非法的收藏对象类型")
+	}
+
 	// 校验目标对象是否存在
 	if err := s.checkTargetExists(ctx, form.TargetType, form.TargetID); err != nil {
 		return 0, err
+	}
+
+	// 重复收藏幂等：已存在未删除记录直接返回原 id（先于容量校验，保证重复收藏不因容量满而失败）
+	existing, err := s.favRepo.FindByUserAndTarget(ctx, userID, form.TargetType, form.TargetID)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询收藏状态失败", err)
+	}
+	if existing != nil {
+		return existing.ID, nil
 	}
 
 	// 容量校验
@@ -137,14 +158,22 @@ func (s *FavoriteService) GetPage(ctx context.Context, userID int64, q *query.Fa
 		if !row.CreatedAt.IsZero() {
 			createTime = row.CreatedAt.Format(time.DateTime)
 		}
+		// 算法取算法名称，数据集取数据集名称与缩略图（JOIN 条件带 deleted=0，对象删除后名称为空）
+		targetName := row.AlgorithmName
+		targetThumbnail := ""
+		if row.TargetType == targetTypeDataset {
+			targetName = row.DatasetName
+			targetThumbnail = row.DatasetImg
+		}
 		list = append(list, vo.FavoriteVO{
-			ID:         row.ID,
-			UserID:     row.UserID,
-			TargetType: row.TargetType,
-			TargetID:   row.TargetID,
-			TargetName: row.AlgorithmName,
-			IsInvalid:  row.IsInvalid != 0,
-			CreateTime: createTime,
+			ID:              row.ID,
+			UserID:          row.UserID,
+			TargetType:      row.TargetType,
+			TargetID:        row.TargetID,
+			TargetName:      targetName,
+			TargetThumbnail: targetThumbnail,
+			IsInvalid:       row.IsInvalid != 0,
+			CreateTime:      createTime,
 		})
 	}
 
@@ -152,8 +181,6 @@ func (s *FavoriteService) GetPage(ctx context.Context, userID int64, q *query.Fa
 }
 
 func (s *FavoriteService) GetStatus(ctx context.Context, userID int64, targetType string, targetID int64) (*vo.FavoriteStatusVO, error) {
-	count, err := s.favRepo.CountByUserAndType(ctx, userID, targetType)
-	_ = count // count for debugging if needed
 	fav, err := s.favRepo.FindByUserAndTarget(ctx, userID, targetType, targetID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询收藏状态失败", err)

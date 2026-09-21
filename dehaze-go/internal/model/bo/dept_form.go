@@ -10,6 +10,6 @@ type DeptFormBO struct {
 	ParentID *int64 `json:"parentId" binding:"required"`
 	// 状态(1:启用;0:禁用)
 	Status int8 `json:"status" binding:"oneof=0 1"`
-	// 排序(数字越小排名越靠前)
-	Sort int `json:"sort" binding:"min=0"`
+	// 排序(正整数，T-DPT-046；缺省为 1)
+	Sort *int `json:"sort" binding:"omitempty,min=1"`
 }

@@ -7,7 +7,7 @@
 -- Token/时长/字符消耗明细与积分扣减，支撑成本分析与异常审计。
 -- model 记录实际使用的模型（降级场景记录降级模型），actual_model 记录用户原选模型
 -- （NULL 表示未降级），二者对比可统计"用户期望成本 vs 实际成本"。
--- bill_type 区分计费类型：chat(对话回复)/tool_llm(工具推理)/kb_inject(知识库注入)/asr(语音识别)/tts(语音合成)。
+-- bill_type 区分计费类型：chat(对话回复)/chat_subagent(子Agent实报实销,归属主会话消息)/tool_llm(工具推理)/kb_inject(知识库注入)/asr(语音识别)/tts(语音合成)。
 -- credits 按实际模型计费比例换算（input×inputRate + cached×cachedRate + output×outputRate），
 -- credits_saved 为缓存命中节省积分，tool_credits 记录工具调用额外 LLM Token 积分。
 -- quota_consumed 为实际扣减配额，pre_deduct 为预扣减积分，差额用于退补对账。
@@ -28,7 +28,7 @@ CREATE TABLE `sys_ai_billing`
     `actual_model`         varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '用户原选模型标识(NULL表示未降级)',
     `error_code`           varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '调用失败错误码(如429/5xx,成功为NULL)',
     `latency_ms`           int      NULL DEFAULT NULL COMMENT '调用耗时(毫秒)',
-    `bill_type`            varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '计费类型(chat;tool_llm;kb_inject;asr;tts)',
+    `bill_type`            varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '计费类型(chat;chat_subagent;tool_llm;kb_inject;embedding;rerank;asr;tts)',
     `input_tokens`         int      NOT NULL DEFAULT 0 COMMENT '输入Token数(含缓存命中部分)',
     `cached_input_tokens`  int      NOT NULL DEFAULT 0 COMMENT '其中缓存命中的输入Token数',
     `output_tokens`        int      NOT NULL DEFAULT 0 COMMENT '输出Token数',

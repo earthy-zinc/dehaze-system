@@ -40,7 +40,6 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     from app.repository.role_repository import role_repository
     from app.repository.user_repository import user_repository
     from app.service.ai.service.compatible_audit import record_call
-    from app.service.ai.service.conversation_search_service import sync_conversation_to_es
 
     # API Key 认证中间件（先注册使其在 DBSession 之后执行，才能读到 request.state.db）
     app.add_middleware(
@@ -52,10 +51,7 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     )
 
     # 数据库事务中间件（最内层，响应发送前 commit/rollback）
-    app.add_middleware(
-        DBSessionMiddleware,
-        sync_conversation_to_es=sync_conversation_to_es,
-    )
+    app.add_middleware(DBSessionMiddleware)
 
     # 请求级访问日志中间件（须在 TraceMiddleware 之内执行，才能拿到请求上下文）
     from app.middleware.request_log import RequestLogMiddleware

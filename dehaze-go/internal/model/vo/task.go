@@ -8,6 +8,8 @@ type TaskVO struct {
 	TaskID string `json:"taskId"`
 	// 任务类型
 	TaskType string `json:"taskType"`
+	// 任务类别：import/export
+	TaskCategory string `json:"taskCategory"`
 	// 任务状态：1:待处理/2:处理中/3:已完成/4:失败/5:已取消
 	Status int8 `json:"status"`
 	// 进度（0-100）

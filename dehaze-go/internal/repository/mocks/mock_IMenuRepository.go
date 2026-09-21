@@ -88,6 +88,63 @@ func (_c *MockIMenuRepository_CountByIDs_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// CountPresetsByIDs provides a mock function with given fields: ctx, ids
+func (_m *MockIMenuRepository) CountPresetsByIDs(ctx context.Context, ids []int64) (int64, error) {
+	ret := _m.Called(ctx, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountPresetsByIDs")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) (int64, error)); ok {
+		return rf(ctx, ids)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) int64); ok {
+		r0 = rf(ctx, ids)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
+		r1 = rf(ctx, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMenuRepository_CountPresetsByIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountPresetsByIDs'
+type MockIMenuRepository_CountPresetsByIDs_Call struct {
+	*mock.Call
+}
+
+// CountPresetsByIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - ids []int64
+func (_e *MockIMenuRepository_Expecter) CountPresetsByIDs(ctx interface{}, ids interface{}) *MockIMenuRepository_CountPresetsByIDs_Call {
+	return &MockIMenuRepository_CountPresetsByIDs_Call{Call: _e.mock.On("CountPresetsByIDs", ctx, ids)}
+}
+
+func (_c *MockIMenuRepository_CountPresetsByIDs_Call) Run(run func(ctx context.Context, ids []int64)) *MockIMenuRepository_CountPresetsByIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int64))
+	})
+	return _c
+}
+
+func (_c *MockIMenuRepository_CountPresetsByIDs_Call) Return(_a0 int64, _a1 error) *MockIMenuRepository_CountPresetsByIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMenuRepository_CountPresetsByIDs_Call) RunAndReturn(run func(context.Context, []int64) (int64, error)) *MockIMenuRepository_CountPresetsByIDs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, _a1
 func (_m *MockIMenuRepository) Create(ctx context.Context, _a1 *model.SysMenu) error {
 	ret := _m.Called(ctx, _a1)
@@ -635,6 +692,65 @@ func (_c *MockIMenuRepository_FindByParentID_Call) Return(_a0 []model.SysMenu, _
 }
 
 func (_c *MockIMenuRepository_FindByParentID_Call) RunAndReturn(run func(context.Context, int64) ([]model.SysMenu, error)) *MockIMenuRepository_FindByParentID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindPermsByMenuIDs provides a mock function with given fields: ctx, menuIDs
+func (_m *MockIMenuRepository) FindPermsByMenuIDs(ctx context.Context, menuIDs []int64) ([]string, error) {
+	ret := _m.Called(ctx, menuIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindPermsByMenuIDs")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) ([]string, error)); ok {
+		return rf(ctx, menuIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) []string); ok {
+		r0 = rf(ctx, menuIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
+		r1 = rf(ctx, menuIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMenuRepository_FindPermsByMenuIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindPermsByMenuIDs'
+type MockIMenuRepository_FindPermsByMenuIDs_Call struct {
+	*mock.Call
+}
+
+// FindPermsByMenuIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - menuIDs []int64
+func (_e *MockIMenuRepository_Expecter) FindPermsByMenuIDs(ctx interface{}, menuIDs interface{}) *MockIMenuRepository_FindPermsByMenuIDs_Call {
+	return &MockIMenuRepository_FindPermsByMenuIDs_Call{Call: _e.mock.On("FindPermsByMenuIDs", ctx, menuIDs)}
+}
+
+func (_c *MockIMenuRepository_FindPermsByMenuIDs_Call) Run(run func(ctx context.Context, menuIDs []int64)) *MockIMenuRepository_FindPermsByMenuIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int64))
+	})
+	return _c
+}
+
+func (_c *MockIMenuRepository_FindPermsByMenuIDs_Call) Return(_a0 []string, _a1 error) *MockIMenuRepository_FindPermsByMenuIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMenuRepository_FindPermsByMenuIDs_Call) RunAndReturn(run func(context.Context, []int64) ([]string, error)) *MockIMenuRepository_FindPermsByMenuIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }

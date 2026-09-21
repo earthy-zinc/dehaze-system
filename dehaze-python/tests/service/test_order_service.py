@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -10,25 +11,32 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.redis_lock import acquire_lock, release_lock
 from app.models.entity.sys_order import SysOrder
+from app.repository.coupon_repository import CouponRepository, UserCouponRepository
+from app.repository.mongo_audit_log_repository import MongoAuditLogRepository
 from app.repository.order_repository import order_repository
+from app.repository.package_repository import PackageRepository
+from app.repository.payment_record_repository import PaymentRecordRepository
+from app.repository.refund_record_repository import RefundRecordRepository
 from app.service.order.order_service import OrderService
+from app.service.package_service import PackageService
+from app.service.payment_channel_service import PaymentChannelService
 
 pytestmark = pytest.mark.requires_db
 
 
 def _pkg(**overrides):
-    base = dict(
-        id=1,
-        name="黄金月卡",
-        package_type="vip",
-        level_code="level_1",
-        period_days=30,
-        credit_amount=None,
-        status=1,
-        deleted=0,
-        original_price=10000,
-        sale_price=9000,
-    )
+    base = {
+        "id": 1,
+        "name": "黄金月卡",
+        "package_type": "vip",
+        "level_code": "level_1",
+        "period_days": 30,
+        "credit_amount": None,
+        "status": 1,
+        "deleted": 0,
+        "original_price": 10000,
+        "sale_price": 9000,
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 
@@ -42,24 +50,85 @@ def _price(original_price=10000, discount_amount=1000, coupon_amount=0, payable_
     }
 
 
+class _PkgRepoStub(PackageRepository):
+    """测试替身：仅实现 get_by_id（返回注入的套餐对象）。"""
+
+    def __init__(self, pkg):
+        self._pkg = pkg
+
+    async def get_by_id(self, *args, **kwargs):
+        return self._pkg
+
+
+class _PkgServiceStub(PackageService):
+    """测试替身：仅实现 calculate_price（返回注入的试算结果）。"""
+
+    def __init__(self, price):
+        self._price = price
+
+    async def calculate_price(self, *args, **kwargs):
+        return self._price
+
+
+class _CouponRepoStub(CouponRepository):
+    """测试替身：仅实现 increment_used_qty（no-op）。"""
+
+    async def increment_used_qty(self, *args, **kwargs):
+        return None
+
+
+class _AuditRepoStub(MongoAuditLogRepository):
+    """测试替身：仅实现 create_audit_async（no-op）。"""
+
+    def create_audit_async(self, **kwargs):
+        return None
+
+
+class _PaymentRecordRepoStub(PaymentRecordRepository):
+    """测试替身：仅实现 create / list_by_order_id（create 委托注入实现）。"""
+
+    def __init__(self, create):
+        self._create = create
+
+    async def create(self, *args, **kwargs):
+        return await self._create(*args, **kwargs)
+
+    async def list_by_order_id(self, *args, **kwargs):
+        return []
+
+
+class _RefundRecordRepoStub(RefundRecordRepository):
+    """测试替身：本文件未触达其方法，仅占位满足契约。"""
+
+
+class _PaymentChannelStub(PaymentChannelService):
+    """测试替身：仅实现 close_order（no-op）。"""
+
+    def __init__(self):
+        pass
+
+    async def close_order(self, *args, **kwargs):
+        return None
+
+
 def _build_service(*, pkg=None, price=None, lock_coupon=True, user_coupon_repo=None):
     pkg = pkg if pkg is not None else _pkg()
-    pkg_repo = SimpleNamespace(get_by_id=AsyncMock(return_value=pkg))
-    pkg_svc = SimpleNamespace(calculate_price=AsyncMock(return_value=price or _price()))
-    uc_repo = user_coupon_repo or SimpleNamespace(
-        lock_coupon=AsyncMock(return_value=lock_coupon),
-        release_coupon=AsyncMock(return_value=True),
-    )
+    if user_coupon_repo is None:
+        user_coupon_repo = SimpleNamespace(
+            lock_coupon=AsyncMock(return_value=lock_coupon),
+            release_coupon=AsyncMock(return_value=True),
+        )
     return OrderService(
-        coupon_repository=SimpleNamespace(increment_used_qty=AsyncMock()),
-        user_coupon_repository=uc_repo,
-        mongo_audit_log_repository=SimpleNamespace(create_audit_async=lambda *a, **k: None),
+        coupon_repository=_CouponRepoStub(),
+        # 替身：user_coupon_repo 保持 SimpleNamespace，用例对其 release_coupon 做 AsyncMock 断言
+        user_coupon_repository=cast(UserCouponRepository, user_coupon_repo),
+        mongo_audit_log_repository=_AuditRepoStub(),
         order_repository=order_repository,
-        package_repository=pkg_repo,
-        package_service=pkg_svc,
-        payment_record_repository=SimpleNamespace(create=AsyncMock()),
-        refund_record_repository=SimpleNamespace(),
-        payment_channel_service=SimpleNamespace(close_order=AsyncMock()),
+        package_repository=_PkgRepoStub(pkg),
+        package_service=_PkgServiceStub(price or _price()),
+        payment_record_repository=_PaymentRecordRepoStub(AsyncMock()),
+        refund_record_repository=_RefundRecordRepoStub(),
+        payment_channel_service=_PaymentChannelStub(),
         balance_account_service=SimpleNamespace(unfreeze=AsyncMock()),
     )
 
@@ -76,6 +145,7 @@ class TestCreate:
         assert data["orderNo"]
         assert data["paid"] is False
         order = await _get_order_by_no(db, data["orderNo"])
+        assert order is not None
         assert order.package_type == "vip"
         assert order.package_level == "level_1"
         assert order.period_days == 30
@@ -96,6 +166,7 @@ class TestCreate:
         data = await svc.create(db, {"packageId": 1, "payMethod": "balance"}, 100)
 
         order = await _get_order_by_no(db, data["orderNo"])
+        assert order is not None
         assert order.package_type == "credit"
         assert order.package_level is None
         assert order.period_days is None
@@ -105,6 +176,7 @@ class TestCreate:
         svc = _build_service()
         lock_key = "order:lock:100:1"
         token = await acquire_lock(lock_key, 10)
+        assert token is not None
         try:
             with pytest.raises(BusinessException) as excinfo:
                 await svc.create(db, {"packageId": 1, "payMethod": "balance"}, 100)
@@ -115,9 +187,7 @@ class TestCreate:
     async def test_create_coupon_lock_failed_raises_a0525(self, db):
         svc = _build_service(lock_coupon=False)
         with pytest.raises(BusinessException) as excinfo:
-            await svc.create(
-                db, {"packageId": 1, "couponId": 10, "payMethod": "balance"}, 100
-            )
+            await svc.create(db, {"packageId": 1, "couponId": 10, "payMethod": "balance"}, 100)
         assert excinfo.value.code == ResultCode.COUPON_LOCK_FAILED
 
     async def test_create_off_shelf_package_raises_a0521(self, db):
@@ -163,6 +233,7 @@ class TestCancelExpire:
 
         await svc.cancel(db, order.order_no, "测试取消", 100)
         refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed is not None
         assert refreshed.status == 4
         assert refreshed.cancel_reason
         uc_repo.release_coupon.assert_awaited_once_with(db, 9)
@@ -198,6 +269,7 @@ class TestCancelExpire:
         await svc.cancel(db, order.order_no, "测试取消", 100)
         unfreeze.assert_awaited_once_with(db, 100, 3000)
         refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed is not None
         assert refreshed.status == 4
 
     async def test_cancel_without_frozen_balance_skips_unfreeze(self, db):
@@ -231,6 +303,7 @@ class TestCancelExpire:
         await svc.cancel(db, order.order_no, "测试取消", 100)
         unfreeze.assert_not_awaited()
         refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed is not None
         assert refreshed.status == 4
 
     async def test_expire_orders_unfreeze_balance_for_combined(self, db):
@@ -263,5 +336,6 @@ class TestCancelExpire:
         count = await svc.expire_orders(db)
         assert count == 1
         refreshed = await _get_order_by_no(db, order.order_no)
+        assert refreshed is not None
         assert refreshed.status == 4
         unfreeze.assert_awaited_once_with(db, 100, 3000)

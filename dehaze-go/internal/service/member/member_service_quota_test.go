@@ -97,6 +97,10 @@ func newQuotaService(t *testing.T, db *gorm.DB, cache types.ICache) *member.Memb
 		nil, // messageSender
 		lm,
 		nil, // dictSvc
+		nil, // trialDeps（领取试用引导不在本文件覆盖范围）
+		nil, // auditLister（操作日志不在本文件覆盖范围）
+		nil, // aiCredits
+		nil, // cardOverrides
 	)
 }
 
@@ -572,4 +576,38 @@ func TestRefundQuota_Concurrent_AccountingConserved(t *testing.T) {
 	// 初始 used=8，8 次回补各 -1，无下限保护：8 - 8 = 0（恰好不越界）。
 	finalUsed := memberUsed(t, db, userID, member.QuotaTypeDehaze)
 	assert.Equal(t, 0, finalUsed, "8 次并发回补后用量应精确 = 初始8 - 8 = 0，无丢失更新")
+}
+
+// ============ EnsureMemberProfile：登录兜底会员档案（种子账号/后台建用户不走注册） ============
+
+func TestEnsureMemberProfile_CreatesLevel0WhenMissing(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	resetMemberTables(t, db)
+	userID := int64(910101)
+
+	svc := newQuotaService(t, db, nil)
+	require.NoError(t, svc.EnsureMemberProfile(context.Background(), userID))
+
+	m := getMember(t, db, userID)
+	assert.Equal(t, "level_0", m.LevelCode, "无档案时应初始化 level_0")
+	assert.Equal(t, int8(1), m.Status)
+}
+
+func TestEnsureMemberProfile_KeepsExistingActiveProfile(t *testing.T) {
+	db := testutil.NewTestDB(t)
+	resetMemberTables(t, db)
+	userID := int64(910102)
+	mustCreateMember(t, db, &model.SysMember{
+		UserID: userID, LevelCode: "level_2", LevelSource: "growth",
+		GrowthValue: 8000, TotalConsumption: 49900, Status: 1, Deleted: 0,
+		MonthlyDehazeQuota: 500, MonthlyDehazeUsed: 123,
+	})
+
+	svc := newQuotaService(t, db, nil)
+	require.NoError(t, svc.EnsureMemberProfile(context.Background(), userID))
+
+	m := getMember(t, db, userID)
+	assert.Equal(t, "level_2", m.LevelCode, "已有活跃档案不得被降级")
+	assert.Equal(t, int64(49900), m.TotalConsumption, "累计消费不得被清零")
+	assert.Equal(t, 123, m.MonthlyDehazeUsed, "月度用量不得被清零")
 }

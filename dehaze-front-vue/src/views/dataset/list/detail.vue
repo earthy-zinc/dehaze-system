@@ -4,7 +4,7 @@ import Waterfall from "@/components/Waterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 import { IMAGE_TYPE_LABELS, formatHazeLevel } from "@/enums/ImageTypeEnum";
 import {
-  Dataset,
+  DatasetVO,
   DatasetAPI,
   DatasetItemAPI,
   DatasetItemQuery,
@@ -45,7 +45,7 @@ const queryParams = reactive<DatasetItemQuery>({
   datasetId: 0,
 });
 const renderCount = ref<number>(0);
-let datasetInfo = ref<Dataset>({
+let datasetInfo = ref<DatasetVO>({
   id: 0,
   parentId: 0,
   name: "",
@@ -172,7 +172,7 @@ const images = computed<ViewCard[]>(() => {
       return {
         id: item.id,
         src: img.url,
-        originSrc: img.originUrl || img.url,
+        originSrc: img.url,
         alt: img.description || item.name,
         backgroundColor: isSelected ? "#ecf5ff" : "#fff",
       } as ViewCard;
@@ -215,7 +215,7 @@ async function loadMore() {
       totalPages.value = Math.ceil(total.value / (queryParams.pageSize ?? 1));
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 }
 
@@ -256,7 +256,7 @@ const detailImage = computed(() => detailImages.value[detailImageIndex.value]);
 const detailImageUrl = computed(() => {
   const img = detailImage.value;
   if (!img) return "";
-  return img.originUrl || img.url;
+  return img.url;
 });
 
 function handleImageClick(itemId: number) {
@@ -322,9 +322,7 @@ async function downloadDetailImage() {
   if (!item || !img) return;
   try {
     ElMessage.warning("下载功能请使用数据集整体下载（DatasetAPI.download）");
-  } catch (err) {
-    ElMessage.error("创建下载任务失败");
-  }
+  } catch {}
 }
 
 async function deleteDetailItem() {
@@ -351,9 +349,7 @@ async function deleteDetailItem() {
       detailIndex.value = imageData.length - 1;
       detailImageIndex.value = 0;
     }
-  } catch (err) {
-    ElMessage.error("删除失败");
-  }
+  } catch {}
 }
 
 // ==================== 列表/网格辅助 ====================
@@ -397,9 +393,7 @@ async function deleteItem(row: DatasetItemVO) {
     const idx = imageData.findIndex((d) => d.id === row.id);
     if (idx >= 0) imageData.splice(idx, 1);
     selectedIds.value = selectedIds.value.filter((id) => id !== row.id);
-  } catch (err) {
-    ElMessage.error("删除失败");
-  }
+  } catch {}
 }
 
 // ==================== 批量下载/删除 ====================
@@ -441,9 +435,7 @@ async function handleBatchDelete() {
     ElMessage.success(`删除成功 ${res.successCount} 项`);
     selectedIds.value = [];
     handleQuery();
-  } catch (err) {
-    ElMessage.error("批量删除失败");
-  }
+  } catch {}
 }
 
 // ==================== 上传弹窗 ====================
@@ -498,8 +490,7 @@ async function submitPairedUpload() {
     uploadDialogVisible.value = false;
     resetPairedUpload();
     handleQuery();
-  } catch (err) {
-    ElMessage.error("上传失败");
+  } catch {
   } finally {
     uploading.value = false;
   }
@@ -621,8 +612,7 @@ async function submitBatchUpload() {
     batchUploadDialogVisible.value = false;
     resetBatchUpload();
     handleQuery();
-  } catch (err) {
-    ElMessage.error("批量上传失败");
+  } catch {
   } finally {
     batchUploading.value = false;
   }

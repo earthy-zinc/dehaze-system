@@ -24,4 +24,12 @@ public interface SysUserRoleService extends IService<SysUserRole> {
      * @return true：已分配 false：未分配
      */
     boolean hasAssignedUsers(Long roleId);
+
+    /**
+     * 批量查询角色关联的活跃用户名（软删用户不参与权限传播）
+     *
+     * @param roleIds 角色ID集合
+     * @return 用户名列表（去重）
+     */
+    List<String> listUsernamesByRoleIds(List<Long> roleIds);
 }

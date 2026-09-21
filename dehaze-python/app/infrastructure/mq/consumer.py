@@ -46,8 +46,9 @@ class Consumer(BaseRabbitMQClient):
         for queue_name, queue in self._queues.items():
             try:
                 await queue.cancel(queue_name)
-            except Exception:
-                pass
+            except Exception as e:
+                # 单个队列取消失败不能阻断关闭（连接即将释放），但必须可见以定位问题队列
+                logger.warning("取消队列消费失败: queue=%s, %s", queue_name, e, exc_info=True)
         self._queues.clear()
 
     async def register(self, queue_name: str, handler: Handler) -> None:

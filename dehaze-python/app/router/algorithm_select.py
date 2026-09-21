@@ -86,11 +86,12 @@ async def test_algorithm(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """上传自定义图片测试算法效果"""
+    """上传自定义图片测试算法效果（fileId/imageUrl 二选一）"""
     result = await algorithm_select_service.test_algorithm(
         db=db,
         algorithm_id=algorithm_id,
         image_url=body.imageUrl,
+        file_id=body.fileId,
         user_id=user.id,
     )
     return success(result)
@@ -103,12 +104,16 @@ async def test_algorithm(
 )
 async def compare_algorithms(
     body: CompareRequest,
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """算法对比（最多3个算法）"""
+    """算法对比（最多3个算法）：对同一图片逐算法执行预测，返回各算法结果与耗时"""
     result = await algorithm_select_service.compare(
         db=db,
         algorithm_ids=body.algorithmIds,
+        image_url=body.imageUrl,
+        file_id=body.fileId,
+        user_id=user.id,
     )
     return success(result)
 

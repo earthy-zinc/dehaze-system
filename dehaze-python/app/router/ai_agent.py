@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.ai_agent import (
+    AgentConfigDefaults,
     AgentCopyForm,
     AgentCreate,
     AgentDetail,
@@ -24,6 +27,7 @@ from app.models.schema.ai_agent import (
     AgentVersionResult,
 )
 from app.models.schema.common import PageResult
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai_agent_service import agent_service
 from app.service.ai_agent_version_service import agent_version_service
 
@@ -34,6 +38,12 @@ _MANAGE_PERMISSION = "ai:agent:manage"
 
 def _is_manager(user: UserContext) -> bool:
     return user.is_root or _MANAGE_PERMISSION in user.permissions
+
+
+def _ensure_manager(user: UserContext) -> None:
+    """版本管理读接口权限校验：快照含完整提示词/权限/配置，仅管理端可见（A0301）。"""
+    if not _is_manager(user):
+        raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权访问版本管理信息")
 
 
 @router.get("", response_model=Result[PageResult[AgentListItem]], summary="Agent 列表")
@@ -61,6 +71,19 @@ async def list_enabled_agents(
 ):
     result = await agent_service.list_enabled(db, redis)
     return success(result)
+
+
+@router.get(
+    "/config-defaults",
+    response_model=Result[AgentConfigDefaults],
+    summary="推理参数系统默认值",
+)
+async def get_config_defaults(user: UserContext = Depends(get_current_user)):
+    """透出推理参数系统默认值（代码常量），供 Agent 配置表单提示"空值继承的默认值"。
+
+    注册在 /{agent_id} 之前，避免被路径参数路由吞掉。
+    """
+    return success(AgentConfigDefaults(**REASONING_DEFAULTS))
 
 
 @router.post("", response_model=Result[AgentDetail], summary="创建 Agent")
@@ -216,6 +239,7 @@ async def list_versions(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_manager(user)
     result = await agent_version_service.list_versions(
         db, redis, agent_id, query.pageNum, query.pageSize
     )
@@ -231,6 +255,7 @@ async def diff_versions(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_manager(user)
     result = await agent_version_service.diff_versions(db, redis, agent_id, base, target)
     return success(result)
 
@@ -247,6 +272,7 @@ async def get_version_detail(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
+    _ensure_manager(user)
     version, snapshot = await agent_service.get_version_detail(db, redis, agent_id, version_no)
     return success(
         AgentVersionDetail.model_validate(

@@ -424,9 +424,9 @@ func (_c *MockIFileRepository_FindByPath_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// FindPage provides a mock function with given fields: ctx, pageNum, pageSize, keywords
-func (_m *MockIFileRepository) FindPage(ctx context.Context, pageNum int, pageSize int, keywords string) ([]model.SysFile, int64, error) {
-	ret := _m.Called(ctx, pageNum, pageSize, keywords)
+// FindPage provides a mock function with given fields: ctx, pageNum, pageSize, keywords, ownerID
+func (_m *MockIFileRepository) FindPage(ctx context.Context, pageNum int, pageSize int, keywords string, ownerID *int64) ([]model.SysFile, int64, error) {
+	ret := _m.Called(ctx, pageNum, pageSize, keywords, ownerID)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindPage")
@@ -435,25 +435,25 @@ func (_m *MockIFileRepository) FindPage(ctx context.Context, pageNum int, pageSi
 	var r0 []model.SysFile
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int, string) ([]model.SysFile, int64, error)); ok {
-		return rf(ctx, pageNum, pageSize, keywords)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int, string, *int64) ([]model.SysFile, int64, error)); ok {
+		return rf(ctx, pageNum, pageSize, keywords, ownerID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, int, string) []model.SysFile); ok {
-		r0 = rf(ctx, pageNum, pageSize, keywords)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int, string, *int64) []model.SysFile); ok {
+		r0 = rf(ctx, pageNum, pageSize, keywords, ownerID)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.SysFile)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int, int, string) int64); ok {
-		r1 = rf(ctx, pageNum, pageSize, keywords)
+	if rf, ok := ret.Get(1).(func(context.Context, int, int, string, *int64) int64); ok {
+		r1 = rf(ctx, pageNum, pageSize, keywords, ownerID)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, int, int, string) error); ok {
-		r2 = rf(ctx, pageNum, pageSize, keywords)
+	if rf, ok := ret.Get(2).(func(context.Context, int, int, string, *int64) error); ok {
+		r2 = rf(ctx, pageNum, pageSize, keywords, ownerID)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -471,13 +471,14 @@ type MockIFileRepository_FindPage_Call struct {
 //   - pageNum int
 //   - pageSize int
 //   - keywords string
-func (_e *MockIFileRepository_Expecter) FindPage(ctx interface{}, pageNum interface{}, pageSize interface{}, keywords interface{}) *MockIFileRepository_FindPage_Call {
-	return &MockIFileRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, pageNum, pageSize, keywords)}
+//   - ownerID *int64
+func (_e *MockIFileRepository_Expecter) FindPage(ctx interface{}, pageNum interface{}, pageSize interface{}, keywords interface{}, ownerID interface{}) *MockIFileRepository_FindPage_Call {
+	return &MockIFileRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, pageNum, pageSize, keywords, ownerID)}
 }
 
-func (_c *MockIFileRepository_FindPage_Call) Run(run func(ctx context.Context, pageNum int, pageSize int, keywords string)) *MockIFileRepository_FindPage_Call {
+func (_c *MockIFileRepository_FindPage_Call) Run(run func(ctx context.Context, pageNum int, pageSize int, keywords string, ownerID *int64)) *MockIFileRepository_FindPage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int), args[2].(int), args[3].(string))
+		run(args[0].(context.Context), args[1].(int), args[2].(int), args[3].(string), args[4].(*int64))
 	})
 	return _c
 }
@@ -487,7 +488,7 @@ func (_c *MockIFileRepository_FindPage_Call) Return(_a0 []model.SysFile, _a1 int
 	return _c
 }
 
-func (_c *MockIFileRepository_FindPage_Call) RunAndReturn(run func(context.Context, int, int, string) ([]model.SysFile, int64, error)) *MockIFileRepository_FindPage_Call {
+func (_c *MockIFileRepository_FindPage_Call) RunAndReturn(run func(context.Context, int, int, string, *int64) ([]model.SysFile, int64, error)) *MockIFileRepository_FindPage_Call {
 	_c.Call.Return(run)
 	return _c
 }

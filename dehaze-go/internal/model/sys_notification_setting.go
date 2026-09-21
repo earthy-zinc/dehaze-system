@@ -10,7 +10,7 @@ type SysNotificationSetting struct {
 	DndStart    string    `gorm:"column:dnd_start;type:time;default:22:00:00;comment:免打扰开始时间" json:"dndStart"`
 	DndEnd      string    `gorm:"column:dnd_end;type:time;default:08:00:00;comment:免打扰结束时间" json:"dndEnd"`
 	Preferences string    `gorm:"column:preferences;type:json;comment:细粒度偏好JSON" json:"preferences"`
-	Deleted     int8      `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"-"`
+	Deleted     int64     `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"-"`
 	CreateTime  time.Time `gorm:"column:create_time;type:datetime;autoCreateTime;comment:创建时间" json:"createTime"`
 	UpdateTime  time.Time `gorm:"column:update_time;type:datetime;autoUpdateTime;comment:更新时间" json:"updateTime"`
 	CreateBy    *int64    `gorm:"column:create_by;comment:创建人ID" json:"createBy"`

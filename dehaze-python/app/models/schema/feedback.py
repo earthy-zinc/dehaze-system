@@ -34,7 +34,9 @@ class FeedbackSupplementForm(BaseModel):
 
 class FeedbackReplyForm(BaseModel):
     content: str = Field(..., min_length=1, max_length=2000, description="回复内容")
-    replyType: str | None = Field(default=None, description="回复类型")
+    replyType: Literal["info", "resolved", "unsupported", "dev_transfer"] | None = Field(
+        default=None, description="回复类型（可选，传值时校验）"
+    )
     attachments: list[str] | None = Field(default=None, description="附件URL")
 
 

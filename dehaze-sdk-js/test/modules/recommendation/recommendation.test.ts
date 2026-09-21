@@ -1,7 +1,8 @@
-import { RecommendationAPI, FileAPI } from "../../../index";
+import { RecommendationAPI, FileAPI, AlgorithmAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { createAnalyzeRequest, createFeedback, createRule } from "#/factories/recommendation";
+import { uniqueName } from "#/factories/common";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { USERS } from "#/factories/constants";
 import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
@@ -195,6 +196,53 @@ describe("推荐管理接口测试", () => {
         }
       }
     });
+
+    test("不变量：同分推荐按 algorithmId 升序（tie-breaker）", async () => {
+      await login(adminAccount);
+      // 动态取两个已发布算法构造同分场景（开发库算法状态不可预置假设）
+      const options = await AlgorithmAPI.getOption();
+      expect(options.length, "开发库应至少有 2 个已发布算法").toBeGreaterThanOrEqual(2);
+      const algLow = Number(options[0]!.value);
+      const algHigh = Number(options[1]!.value);
+
+      // 单规则多算法即可构造同分（防重语义下同场景同组合禁止建第二条规则）
+      const ruleA = createRule({
+        ruleName: uniqueName("svc同分规则A"),
+        sceneType: "urban",
+        algorithmIds: [algLow, algHigh],
+        weight: 100,
+      });
+      const idA = await RecommendationAPI.updateRule(0, ruleA);
+      cleanup.registerIds(
+        () => [idA],
+        async (id) => {
+          await RecommendationAPI.updateRule(id, { ...ruleA, enabled: false });
+        }
+      );
+
+      await login(userAccount);
+      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+        imageMd5: "svc-tie-break-md5-0001",
+      });
+
+      const minId = Math.min(algLow, algHigh);
+      const maxId = Math.max(algLow, algHigh);
+      const ids = recommendations.map((r) => r.algorithmId);
+      expect(ids).toContain(minId);
+      expect(ids).toContain(maxId);
+
+      const minIdx = ids.indexOf(minId);
+      const maxIdx = ids.indexOf(maxId);
+      expect(minIdx).toBeLessThan(maxIdx);
+
+      const scores = recommendations.map((r) => r.matchScore);
+      for (let i = 1; i < scores.length; i++) {
+        expect(scores[i - 1]!).toBeGreaterThanOrEqual(scores[i]!);
+        if (scores[i - 1] === scores[i]) {
+          expect(recommendations[i - 1]!.algorithmId).toBeLessThan(recommendations[i]!.algorithmId);
+        }
+      }
+    });
   });
 
   // ============ POST /api/v1/recommendations/feedback - 推荐反馈（普通用户） ============
@@ -284,6 +332,26 @@ describe("推荐管理接口测试", () => {
     test("边界测试：不存在的推荐ID应抛出业务错误", async () => {
       const feedback = createFeedback({ recommendationId: 99999999 });
 
+      await expectBizError(RecommendationAPI.submitFeedback(feedback), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("越权测试：不能反馈他人的推荐记录（期望 A0401）", async () => {
+      // 管理员产生一条推荐记录
+      await login(adminAccount);
+      const adminRecs = await RecommendationAPI.getAlgorithmRecommendations({
+        imageMd5: "svc-perm-test-md5-0001",
+      });
+      const adminRecId = adminRecs[0]?.recommendationId;
+      expect(adminRecId, "管理员应产生推荐记录").toBeDefined();
+
+      // 普通用户反馈管理员的记录 → A0401（不泄露存在性）
+      await login(userAccount);
+      const feedback = createFeedback({ recommendationId: adminRecId, useful: true });
       await expectBizError(RecommendationAPI.submitFeedback(feedback), [
         "A0401",
         "A0400",
@@ -403,6 +471,54 @@ describe("推荐管理接口测试", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
+    });
+
+    test("边界测试：非法场景类型应抛出业务错误 A0400", async () => {
+      const rule = createRule({ sceneType: "desert" as any });
+      await expectBizError(RecommendationAPI.updateRule(0, rule), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界测试：空算法列表应抛出业务错误 A0400", async () => {
+      const rule = createRule({ algorithmIds: [] });
+      await expectBizError(RecommendationAPI.updateRule(0, rule), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("对抗语料：规则名称含 emoji/零宽字符/CRLF/全角应原样往返", async () => {
+      // 防重语义：同场景同组合只允许一条——每个对抗变体用不同场景避免互相碰撞
+      const dirtyCases: Array<{ name: string; scene: string }> = [
+        { name: "规则🌫️​零宽", scene: "landscape" }, // emoji + 零宽空格
+        { name: "规则\r\nCRLF测试", scene: "backlight" }, // CRLF
+        { name: "规则ＡＢＣ全角１２３", scene: "indoor" }, // 全角
+        { name: "规".repeat(64), scene: "night" }, // 64 字符长度边界
+      ];
+
+      for (const { name: dirtyName, scene } of dirtyCases) {
+        const rule = createRule({ ruleName: dirtyName, sceneType: scene });
+        const newId = await RecommendationAPI.updateRule(0, rule);
+        expect(newId).toBeGreaterThan(0);
+
+        const rules = await RecommendationAPI.getRules();
+        const found = rules.find((r) => r.id === newId);
+        expect(found, `规则 ${JSON.stringify(dirtyName)} 应创建成功`).toBeDefined();
+        expect(found!.ruleName).toBe(dirtyName);
+
+        // 清理：禁用测试规则
+        cleanup.register(async () => {
+          try {
+            await RecommendationAPI.updateRule(newId, { ...rule, enabled: false });
+          } catch {
+            // 忽略清理失败
+          }
+        });
+      }
     });
 
     test("正向测试：禁用规则后该规则不参与匹配", async () => {
@@ -537,6 +653,19 @@ describe("推荐管理接口测试", () => {
       expect(report.totalRecommendations).toBeGreaterThanOrEqual(0);
     });
 
+    test("边界测试：非法日期格式应抛出业务错误 A0400", async () => {
+      await expectBizError(RecommendationAPI.getReport({ startDate: "2026/09/01" }), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+      await expectBizError(RecommendationAPI.getReport({ endDate: "not-a-date" }), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
     test("权限测试：普通用户无法访问报表（期望 A0301）", async () => {
       await login(userAccount);
       try {
@@ -583,8 +712,8 @@ describe("推荐管理接口测试", () => {
       const rulesBefore = await RecommendationAPI.getRules();
       const countBefore = rulesBefore.length;
 
-      // Step 2: 新增规则
-      const newRule = createRule({ sceneType: "night", weight: 30 });
+      // Step 2: 新增规则（building 场景为本用例独占，防重语义下避开其他用例的默认组合）
+      const newRule = createRule({ sceneType: "building", weight: 30 });
       const newRuleId = await RecommendationAPI.updateRule(0, newRule);
       expect(newRuleId).toBeGreaterThan(0);
 
@@ -595,7 +724,7 @@ describe("推荐管理接口测试", () => {
       const found = rulesAfter.find((r) => r.id === newRuleId);
       expect(found).toBeDefined();
       expect(found!.ruleName).toBe(newRule.ruleName);
-      expect(found!.sceneType).toBe("night");
+      expect(found!.sceneType).toBe("building");
 
       // 清理：禁用新增的规则
       cleanup.register(async () => {

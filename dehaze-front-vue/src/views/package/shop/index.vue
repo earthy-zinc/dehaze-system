@@ -22,12 +22,28 @@
         <p class="header-subtitle">选择适合您的套餐，开启专业去雾体验</p>
       </div>
 
+      <!-- 商品分类 Tab -->
+      <div class="type-tabs">
+        <div
+          :class="['type-tab', { active: activeTab === 'vip' }]"
+          @click="activeTab = 'vip'"
+        >
+          会员卡
+        </div>
+        <div
+          :class="['type-tab', { active: activeTab === 'credit' }]"
+          @click="activeTab = 'credit'"
+        >
+          积分卡
+        </div>
+      </div>
+
       <!-- 套餐卡片列表 -->
       <div v-loading="loading" class="package-cards">
-        <template v-if="packages.length > 0">
+        <template v-if="filteredPackages.length > 0">
           <div class="cards-row">
             <div
-              v-for="pkg in packages"
+              v-for="pkg in filteredPackages"
               :key="pkg.id"
               :class="['package-card', `level-${pkg.levelCode}`]"
             >
@@ -38,7 +54,11 @@
                     <el-icon><Check /></el-icon>
                   </div>
                   <div class="level-info">
-                    <div class="level-name">{{ pkg.levelName }}</div>
+                    <div class="level-name">
+                      {{
+                        pkg.packageType === "credit" ? "积分卡" : pkg.levelName
+                      }}
+                    </div>
                     <div class="package-name">{{ pkg.name }}</div>
                   </div>
                   <div
@@ -49,49 +69,69 @@
                   </div>
                 </div>
 
-                <div class="price-section">
-                  <div class="sale-price">
-                    <span class="currency">¥</span>
-                    <span class="price-num">
-                      {{ pkg.salePrice.toFixed(2) }}
-                    </span>
+                <!-- 积分卡：可得积分 + 单价提示 -->
+                <template v-if="pkg.packageType === 'credit'">
+                  <div class="price-section">
+                    <div class="credit-amount">
+                      {{ pkg.creditAmount ?? 0 }}
+                      <span class="credit-unit">积分</span>
+                    </div>
+                    <div class="credit-unit-price">
+                      ¥{{ yuan(pkg.creditUnitPrice) }}/积分
+                    </div>
+                    <div class="price-row">
+                      <span class="currency">¥</span>
+                      <span class="price-num">{{ yuan(pkg.salePrice) }}</span>
+                      <span class="original-price">
+                        原价 ¥{{ yuan(pkg.originalPrice) }}
+                      </span>
+                    </div>
                   </div>
-                  <div class="original-price">
-                    原价 ¥{{ pkg.originalPrice.toFixed(2) }}
-                  </div>
-                  <div class="daily-price">
-                    ¥{{ pkg.dailyPrice.toFixed(2) }}/天 ·
-                    {{ periodLabel(pkg.period) }}
-                  </div>
-                </div>
+                </template>
 
-                <div class="benefits-list">
-                  <div
-                    v-for="(value, key) in pkg.benefits"
-                    :key="key"
-                    class="benefit-item"
-                  >
-                    <el-icon class="benefit-check"><Check /></el-icon>
-                    <span class="benefit-label">
-                      {{ benefitLabel(String(key)) }}
-                    </span>
-                    <span class="benefit-value">
-                      {{ formatBenefitValue(String(key), Number(value)) }}
-                    </span>
+                <!-- 会员卡：价格 + 日均价 + 权益 -->
+                <template v-else>
+                  <div class="price-section">
+                    <div class="sale-price">
+                      <span class="currency">¥</span>
+                      <span class="price-num">{{ yuan(pkg.salePrice) }}</span>
+                    </div>
+                    <div class="original-price">
+                      原价 ¥{{ yuan(pkg.originalPrice) }}
+                    </div>
+                    <div class="daily-price">
+                      ¥{{ yuan(pkg.dailyPrice) }}/天 ·
+                      {{ periodLabel(pkg.period) }}
+                    </div>
                   </div>
-                </div>
+
+                  <div class="benefits-list">
+                    <div
+                      v-for="(value, key) in pkg.benefits"
+                      :key="key"
+                      class="benefit-item"
+                    >
+                      <el-icon class="benefit-check"><Check /></el-icon>
+                      <span class="benefit-label">
+                        {{ benefitLabel(String(key)) }}
+                      </span>
+                      <span class="benefit-value">
+                        {{ formatBenefitValue(String(key), Number(value)) }}
+                      </span>
+                    </div>
+                  </div>
+                </template>
 
                 <div v-if="pkg.description" class="package-desc">
                   {{ pkg.description }}
                 </div>
 
                 <el-button
-                  :type="buttonType(pkg.levelCode)"
+                  :type="buttonType(pkg)"
                   class="action-btn"
-                  :loading="purchasingId === pkg.id"
                   @click="handlePurchase(pkg)"
                 >
-                  {{ buttonText(pkg.levelCode) }}
+                  {{ buttonText(pkg) }}
                   <el-icon class="btn-icon"><ArrowRight /></el-icon>
                 </el-button>
               </div>
@@ -106,15 +146,10 @@
         />
       </div>
 
-      <!-- 权益对比表 -->
-      <div v-if="packages.length > 0" class="comparison-section">
+      <!-- 权益对比表（会员卡区） -->
+      <div v-if="comparisonPackages.length > 0" class="comparison-section">
         <h3 class="section-title">权益对比</h3>
-        <el-table
-          :data="comparisonRows"
-          border
-          :span-method="spanMethod"
-          class="comparison-table"
-        >
+        <el-table :data="comparisonRows" border class="comparison-table">
           <el-table-column label="权益项" prop="label" min-width="160" fixed />
           <el-table-column
             v-for="pkg in comparisonPackages"
@@ -125,7 +160,10 @@
           >
             <template #default="scope">
               <span
-                :class="['compare-cell', { highlight: scope.row.isHighlight }]"
+                :class="[
+                  'compare-cell',
+                  { highlight: pkg.levelCode === currentLevelCode },
+                ]"
               >
                 {{ scope.row[`pkg_${pkg.id}`] ?? "—" }}
               </span>
@@ -134,18 +172,93 @@
         </el-table>
       </div>
     </div>
+
+    <!-- 购买确认弹窗：价格明细 + 优惠券选择 -->
+    <el-dialog
+      v-model="purchaseDialogVisible"
+      title="购买确认"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <div v-loading="priceLoading" class="purchase-detail">
+        <div class="detail-row">
+          <span class="detail-label">商品</span>
+          <span class="detail-value">{{ currentPackage?.name }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">原价</span>
+          <span class="detail-value"
+            >¥{{ yuan(purchasePrice?.originalPrice) }}</span
+          >
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">促销优惠</span>
+          <span class="detail-value discount">
+            -¥{{ yuan(purchasePrice?.discountAmount) }}
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">优惠券抵扣</span>
+          <span class="detail-value discount">
+            {{
+              purchasePrice?.couponAmount
+                ? `-¥${yuan(purchasePrice.couponAmount)}`
+                : "—"
+            }}
+          </span>
+        </div>
+        <div class="detail-row coupon-select-row">
+          <span class="detail-label">优惠券</span>
+          <el-select
+            v-model="selectedCouponId"
+            class="coupon-select"
+            placeholder="不使用优惠券"
+            clearable
+            :disabled="couponLoading"
+            @change="recalcPrice"
+          >
+            <el-option
+              v-for="coupon in applicableCoupons"
+              :key="coupon.id"
+              :label="couponOptionLabel(coupon)"
+              :value="coupon.id"
+            />
+          </el-select>
+        </div>
+        <div class="detail-row total">
+          <span class="detail-label">应付</span>
+          <span class="detail-value payable"
+            >¥{{ yuan(purchasePrice?.payableAmount) }}</span
+          >
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="purchaseDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="purchasing"
+          :disabled="priceLoading"
+          @click="confirmPurchase"
+        >
+          确认购买
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
 import {
   PackageAPI,
-  MemberAPI,
+  CouponAPI,
   OrderAPI,
   type PackageDetailVO,
-  type MemberProfileVO,
+  type PriceResult,
+  type UserCouponVO,
 } from "dehaze-sdk-js";
+import { useMemberStoreHook } from "@/store";
 import { Ticket, Close, Check, ArrowRight } from "@element-plus/icons-vue";
+import { periodOptions } from "../constants";
 
 defineOptions({
   name: "PackageShop",
@@ -154,13 +267,33 @@ defineOptions({
 
 const router = useRouter();
 const loading = ref(false);
-const purchasingId = ref<number>(0);
 const bannerVisible = ref(true);
+const activeTab = ref<"vip" | "credit">("vip");
+
+/** 购买弹窗状态 */
+const purchaseDialogVisible = ref(false);
+const currentPackage = ref<PackageDetailVO | null>(null);
+const purchasePrice = ref<PriceResult | null>(null);
+const priceLoading = ref(false);
+const couponLoading = ref(false);
+const purchasing = ref(false);
+const myCoupons = ref<UserCouponVO[]>([]);
+const selectedCouponId = ref<number | undefined>(undefined);
 
 const packages = ref<PackageDetailVO[]>([]);
-const profile = ref<MemberProfileVO>();
+const memberStore = useMemberStoreHook();
+const profile = computed(() => memberStore.profile);
 
 const currentLevelCode = computed(() => profile.value?.levelCode ?? "level_0");
+
+/** 后端金额单位为分，前端展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
+}
+
+const filteredPackages = computed(() =>
+  packages.value.filter((pkg) => pkg.packageType === activeTab.value)
+);
 
 const levelOrder: Record<string, number> = {
   level_0: 0,
@@ -193,13 +326,8 @@ const benefitUnits: Record<string, string> = {
   batchDownload: "次",
 };
 
-function periodLabel(period: string) {
-  const map: Record<string, string> = {
-    monthly: "月卡",
-    quarterly: "季卡",
-    yearly: "年卡",
-  };
-  return map[period] ?? period;
+function periodLabel(period?: string) {
+  return (period && periodOptions.find((o) => o.value === period)?.label) || "";
 }
 
 function benefitLabel(key: string) {
@@ -224,9 +352,12 @@ function formatBenefitValue(key: string, value: number) {
   return String(value);
 }
 
-function buttonText(pkgLevel: string) {
+function buttonText(pkg: PackageDetailVO) {
+  if (pkg.packageType === "credit") {
+    return "立即购买";
+  }
   const current = levelOrder[currentLevelCode.value] ?? 0;
-  const target = levelOrder[pkgLevel] ?? 0;
+  const target = levelOrder[pkg.levelCode ?? ""] ?? 0;
   if (currentLevelCode.value === "level_0") {
     return "立即开通";
   }
@@ -239,19 +370,21 @@ function buttonText(pkgLevel: string) {
   return "续费";
 }
 
-function buttonType(pkgLevel: string) {
-  if (pkgLevel === "level_3") return "warning";
-  if (pkgLevel === "level_2") return "primary";
+function buttonType(pkg: PackageDetailVO) {
+  if (pkg.levelCode === "level_3") return "warning";
+  if (pkg.levelCode === "level_2") return "primary";
   return "success";
 }
 
 const comparisonPackages = computed(() => {
   const levelMap = new Map<string, PackageDetailVO>();
-  packages.value.forEach((pkg) => {
-    if (!levelMap.has(pkg.levelCode)) {
-      levelMap.set(pkg.levelCode, pkg);
-    }
-  });
+  packages.value
+    .filter((pkg) => pkg.packageType === "vip")
+    .forEach((pkg) => {
+      if (pkg.levelCode && !levelMap.has(pkg.levelCode)) {
+        levelMap.set(pkg.levelCode, pkg);
+      }
+    });
   const ordered: PackageDetailVO[] = [];
   ["level_1", "level_2", "level_3"].forEach((code) => {
     const pkg = levelMap.get(code);
@@ -269,7 +402,6 @@ const comparisonRows = computed(() => {
     const row: Record<string, any> = {
       label: benefitLabels[key] ?? key,
       benefitKey: key,
-      isHighlight: false,
     };
     comparisonPackages.value.forEach((pkg) => {
       const val = pkg.benefits[key];
@@ -280,37 +412,78 @@ const comparisonRows = computed(() => {
   });
 });
 
-function spanMethod(_params: any) {
-  return {
-    rowspan: 1,
-    colspan: 1,
-  };
+/** 用户未使用优惠券中适用于当前套餐的（applicableScope 为空表示全部适用） */
+const applicableCoupons = computed(() => {
+  const pkg = currentPackage.value;
+  if (!pkg) return [];
+  return myCoupons.value.filter((coupon) => {
+    const scope = coupon.applicableScope;
+    if (!scope || scope.length === 0) return true;
+    return scope.includes(pkg.id) || scope.includes(pkg.packageType);
+  });
+});
+
+function couponOptionLabel(coupon: UserCouponVO) {
+  const threshold =
+    coupon.threshold && coupon.threshold > 0
+      ? `（满¥${yuan(coupon.threshold)}可用）`
+      : "";
+  return `${coupon.couponName}${threshold}`;
+}
+
+function recalcPrice() {
+  const pkg = currentPackage.value;
+  if (!pkg) return Promise.resolve();
+  priceLoading.value = true;
+  return PackageAPI.calculatePrice(pkg.id, selectedCouponId.value)
+    .then((res) => {
+      purchasePrice.value = res;
+    })
+    .catch(() => {
+      purchasePrice.value = null;
+    })
+    .finally(() => {
+      priceLoading.value = false;
+    });
 }
 
 function handlePurchase(pkg: PackageDetailVO) {
-  ElMessageBox.confirm(
-    `确认开通「${pkg.name}」，将使用余额支付 ¥${pkg.salePrice.toFixed(2)}？`,
-    "开通确认",
-    {
-      confirmButtonText: "确认开通",
-      cancelButtonText: "取消",
-      type: "info",
-    }
-  )
-    .then(() => {
-      purchasingId.value = pkg.id;
-      return OrderAPI.create({
-        packageId: pkg.id,
-        payMethod: "balance",
-      });
+  currentPackage.value = pkg;
+  selectedCouponId.value = undefined;
+  purchasePrice.value = null;
+  myCoupons.value = [];
+  purchaseDialogVisible.value = true;
+  couponLoading.value = true;
+  CouponAPI.listMy(1)
+    .then((coupons) => {
+      myCoupons.value = coupons;
     })
+    .catch(() => {
+      myCoupons.value = [];
+    })
+    .finally(() => {
+      couponLoading.value = false;
+    });
+  recalcPrice();
+}
+
+function confirmPurchase() {
+  const pkg = currentPackage.value;
+  if (!pkg || priceLoading.value || purchasing.value) return;
+  purchasing.value = true;
+  OrderAPI.create({
+    packageId: pkg.id,
+    couponId: selectedCouponId.value,
+    payMethod: "balance",
+  })
     .then((res) => {
       ElMessage.success("订单创建成功");
+      purchaseDialogVisible.value = false;
       router.push(`/order/detail?orderNo=${res.orderNo}`);
     })
     .catch(() => {})
     .finally(() => {
-      purchasingId.value = 0;
+      purchasing.value = false;
     });
 }
 
@@ -318,13 +491,10 @@ function loadData() {
   loading.value = true;
   Promise.all([
     PackageAPI.listOnSale(),
-    MemberAPI.getProfile().catch(() => undefined),
+    memberStore.loadProfile().catch(() => undefined),
   ])
-    .then(([list, profileData]) => {
+    .then(([list]) => {
       packages.value = list;
-      if (profileData) {
-        profile.value = profileData;
-      }
     })
     .finally(() => {
       loading.value = false;
@@ -413,6 +583,31 @@ onMounted(() => {
     margin: 0;
     font-size: 14px;
     color: var(--el-text-color-secondary);
+  }
+}
+
+.type-tabs {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 28px;
+
+  .type-tab {
+    padding: 8px 28px;
+    font-size: 15px;
+    color: var(--el-text-color-regular);
+    cursor: pointer;
+    background: #fff;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 20px;
+    transition: all 0.2s;
+
+    &.active {
+      font-weight: 600;
+      color: #fff;
+      background: var(--el-color-primary);
+      border-color: var(--el-color-primary);
+    }
   }
 }
 
@@ -540,6 +735,49 @@ onMounted(() => {
   margin-bottom: 20px;
   border-bottom: 1px dashed var(--el-border-color-lighter);
 
+  .credit-amount {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--el-color-danger);
+
+    .credit-unit {
+      font-size: 16px;
+      font-weight: 500;
+    }
+  }
+
+  .credit-unit-price {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .price-row {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    margin-top: 12px;
+    color: var(--el-color-danger);
+
+    .currency {
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .price-num {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .original-price {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+      text-decoration: line-through;
+    }
+  }
+
   .sale-price {
     display: flex;
     align-items: baseline;
@@ -613,6 +851,7 @@ onMounted(() => {
 .action-btn {
   width: 100%;
   height: 42px;
+  margin-top: auto;
   font-size: 15px;
   font-weight: 600;
 
@@ -640,6 +879,51 @@ onMounted(() => {
     &.highlight {
       font-weight: 600;
       color: var(--el-color-primary);
+    }
+  }
+}
+
+.purchase-detail {
+  min-height: 120px;
+
+  .detail-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+
+    .detail-label {
+      color: var(--el-text-color-secondary);
+    }
+
+    .detail-value.discount {
+      color: var(--el-color-success);
+    }
+
+    &.coupon-select-row {
+      justify-content: flex-start;
+
+      .coupon-select {
+        width: 260px;
+      }
+    }
+
+    &.total {
+      padding-top: 12px;
+      margin-top: 4px;
+      border-top: 1px dashed var(--el-border-color-lighter);
+
+      .detail-label {
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+      }
+
+      .detail-value.payable {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--el-color-danger);
+      }
     }
   }
 }

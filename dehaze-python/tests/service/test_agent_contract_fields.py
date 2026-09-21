@@ -2,13 +2,14 @@
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.models.entity.sys_ai_agent_mcp import SysAiAgentMcp
 from app.models.entity.sys_ai_agent_skill import SysAiAgentSkill
 from app.models.entity.sys_ai_agent_subagent import SysAiAgentSubagent
 from app.models.schema.ai_agent import AgentCreate, AgentUpdate
 from app.service.ai_agent_service import AgentService
+
+pytestmark = pytest.mark.requires_db
+
 
 _MODEL_ID = "qwen3-0.6b"
 

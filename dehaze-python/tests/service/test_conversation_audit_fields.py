@@ -4,8 +4,6 @@ from datetime import datetime
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_billing_anomaly import SysAiBillingAnomaly
@@ -19,6 +17,8 @@ from app.repository.ai_trace_repository import ai_trace_repository
 from app.repository.user_repository import user_repository
 from app.service import ai_conversation_service as m
 from app.service.ai_conversation_service import AiConversationService
+
+pytestmark = pytest.mark.requires_db
 
 
 def _conv(cid, uid, title):
@@ -133,9 +133,7 @@ class TestAdminListAuditFields:
     async def test_admin_list_with_keyword_stays_in_audit_scope(self, db):
         """view=admin 带关键词走 DB 标题 like（不落用户视角 ES 检索），且仍带审计字段"""
         user_a, _ = await _seed_two_conversations(db)
-        result = await _service().list_conversations(
-            db, 0, 1, 10, keyword="雾霾", view="admin"
-        )
+        result = await _service().list_conversations(db, 0, 1, 10, keyword="雾霾", view="admin")
 
         assert [c.id for c in result.list] == [1]
         assert result.list[0].user_id == user_a
@@ -229,9 +227,14 @@ class TestAnomalyLabel:
         )
         await ai_llm_call_repository.insert_idempotent(
             db,
-            {"trace_id": "tr-risky", "seq": 1, "status": 2, "error_type": "TimeoutError",
-             "duration_ms": 5000, "tool_call": {"has_tool_call": True,
-                                                "tools": [{"name": "kb_search"}]}},
+            {
+                "trace_id": "tr-risky",
+                "seq": 1,
+                "status": 2,
+                "error_type": "TimeoutError",
+                "duration_ms": 5000,
+                "tool_call": {"has_tool_call": True, "tools": [{"name": "kb_search"}]},
+            },
         )
 
         result = await _service().list_conversations(db, 0, 1, 10, view="admin")
@@ -250,8 +253,13 @@ class TestAnomalyLabel:
         )
         await ai_llm_call_repository.insert_idempotent(
             db,
-            {"trace_id": "tr-ok", "seq": 1, "status": 1, "duration_ms": 500,
-             "tool_call": {"has_tool_call": True, "tools": [{"name": "kb_search"}]}},
+            {
+                "trace_id": "tr-ok",
+                "seq": 1,
+                "status": 1,
+                "duration_ms": 500,
+                "tool_call": {"has_tool_call": True, "tools": [{"name": "kb_search"}]},
+            },
         )
 
         result = await _service().list_conversations(db, 0, 1, 10, view="admin")
@@ -267,8 +275,14 @@ class TestAnomalyLabel:
         )
         await ai_llm_call_repository.insert_idempotent(
             db,
-            {"trace_id": "tr-risky", "seq": 1, "status": 2, "error_type": "TimeoutError",
-             "duration_ms": 5000, "tool_call": {"has_tool_call": True, "tools": []}},
+            {
+                "trace_id": "tr-risky",
+                "seq": 1,
+                "status": 2,
+                "error_type": "TimeoutError",
+                "duration_ms": 5000,
+                "tool_call": {"has_tool_call": True, "tools": []},
+            },
         )
 
         result = await _service().list_conversations(db, 0, 1, 10, view="admin")

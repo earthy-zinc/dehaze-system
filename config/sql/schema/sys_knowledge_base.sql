@@ -33,7 +33,7 @@ CREATE TABLE `sys_knowledge_base`
     `chunk_count`        int                                                             NOT NULL DEFAULT 0 COMMENT '分块总数(冗余统计)',
     `total_tokens`       bigint                                                          NOT NULL DEFAULT 0 COMMENT '编码Token总数(冗余统计)',
     `status`             tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;2:处理中;0:禁用)',
-    `deleted`            tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`            bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`          bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`          bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`        datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

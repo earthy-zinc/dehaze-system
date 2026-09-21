@@ -42,7 +42,8 @@ class RefundService:
             total=total,
         )
 
-    async def apply_refund(self, 
+    async def apply_refund(
+        self,
         db: AsyncSession,
         user_id: int,
         billing_id: int,
@@ -59,6 +60,8 @@ class RefundService:
         record = await self.ai_billing_repository.get_by_id(db, billing_id)
         if not record or record.user_id != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "计费记录不存在")
+        if amount > (record.credits or 0):
+            raise BusinessException(ResultCode.PARAM_ERROR, "退款积分数超过该笔记录实际消耗")
         existing = await self.ai_refund_repository.get_pending_by_billing_id(db, billing_id)
         if existing:
             raise BusinessException(ResultCode.AI_REFUND_ALREADY_EXISTS)
@@ -73,7 +76,8 @@ class RefundService:
         )
         return RefundResult.model_validate(refund)
 
-    async def audit_refund(self, 
+    async def audit_refund(
+        self,
         db: AsyncSession,
         refund_id: int,
         approved: bool,
@@ -91,6 +95,14 @@ class RefundService:
             raise BusinessException(ResultCode.REFUND_AUDIT_FAILED, "该退款申请已审核")
 
         if approved:
+            # A0681 审核失败校验：原计费记录必须存在，且该记录未补偿过（防重复回补余额）
+            record = await self.ai_billing_repository.get_by_id(db, refund.billing_id)
+            if record is None:
+                raise BusinessException(ResultCode.REFUND_AUDIT_FAILED, "原计费记录不存在")
+            if await self.ai_refund_repository.has_approved_by_billing_id(
+                db, refund.billing_id, exclude_id=refund.id
+            ):
+                raise BusinessException(ResultCode.REFUND_AUDIT_FAILED, "原计费记录已退款")
             # 余额回补（Redis INCR + MySQL CAS + 流水），不调整配额已用计数
             await balance_service.increase(
                 db,

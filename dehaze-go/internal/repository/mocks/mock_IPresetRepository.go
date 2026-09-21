@@ -22,63 +22,6 @@ func (_m *MockIPresetRepository) EXPECT() *MockIPresetRepository_Expecter {
 	return &MockIPresetRepository_Expecter{mock: &_m.Mock}
 }
 
-// CountByUser provides a mock function with given fields: ctx, userID
-func (_m *MockIPresetRepository) CountByUser(ctx context.Context, userID int64) (int64, error) {
-	ret := _m.Called(ctx, userID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CountByUser")
-	}
-
-	var r0 int64
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) (int64, error)); ok {
-		return rf(ctx, userID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) int64); ok {
-		r0 = rf(ctx, userID)
-	} else {
-		r0 = ret.Get(0).(int64)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, userID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIPresetRepository_CountByUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountByUser'
-type MockIPresetRepository_CountByUser_Call struct {
-	*mock.Call
-}
-
-// CountByUser is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userID int64
-func (_e *MockIPresetRepository_Expecter) CountByUser(ctx interface{}, userID interface{}) *MockIPresetRepository_CountByUser_Call {
-	return &MockIPresetRepository_CountByUser_Call{Call: _e.mock.On("CountByUser", ctx, userID)}
-}
-
-func (_c *MockIPresetRepository_CountByUser_Call) Run(run func(ctx context.Context, userID int64)) *MockIPresetRepository_CountByUser_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
-	})
-	return _c
-}
-
-func (_c *MockIPresetRepository_CountByUser_Call) Return(_a0 int64, _a1 error) *MockIPresetRepository_CountByUser_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIPresetRepository_CountByUser_Call) RunAndReturn(run func(context.Context, int64) (int64, error)) *MockIPresetRepository_CountByUser_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Create provides a mock function with given fields: ctx, _a1
 func (_m *MockIPresetRepository) Create(ctx context.Context, _a1 *model.SysPreset) error {
 	ret := _m.Called(ctx, _a1)

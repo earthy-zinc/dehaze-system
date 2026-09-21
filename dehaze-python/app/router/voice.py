@@ -8,7 +8,18 @@
 - /ws/asr（流式 WebSocket 识别，§2.1）
 """
 
-from fastapi import APIRouter, Body, Depends, File, Form, Path, Query, Request, UploadFile, WebSocket
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    Path,
+    Query,
+    Request,
+    UploadFile,
+    WebSocket,
+)
 from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +29,7 @@ from app.core.exceptions import BusinessException
 from app.core.result import success
 from app.database import get_db
 from app.decorators.permission import require_permission
-from app.dependencies.auth import UserContext, get_current_user
+from app.dependencies.auth import SESSION_COOKIE, UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.voice import HotwordForm
 from app.models.schema.voice_asr import StreamAsrSessionForm
@@ -34,11 +45,18 @@ router = APIRouter(tags=["语音交互"])
 # ==================== ASR（F-VS-001 §2.1） ====================
 
 
-def _build_ws_url(request: Request, session_id: str) -> str:
-    """将 HTTP base_url 推导为 WebSocket 地址（http→ws，https→wss）"""
-    scheme = "wss" if request.url.scheme == "https" else "ws"
-    host = request.url.netloc
-    return f"{scheme}://{host}/ws/asr?sessionId={session_id}"
+def _build_ws_path(request: Request, session_id: str) -> str:
+    """构建 WebSocket 相对路径（不含协议与主机名）
+
+    外部可见 origin（协议/域名/端口）只有客户端与最外层代理知道，后端拼绝对地址
+    在反代场景必然出错（vite changeOrigin 改写 Host、nginx SSL 卸载后 scheme 误判为
+    ws 导致 https 页面 mixed content 拦截）。客户端按自身 origin 解析相对路径即可。
+
+    内嵌当前登录会话凭证 sid（浏览器无法在 WS 握手携带自定义 Header，
+    会话凭证经 URL 传递；服务端建连时校验 sid 与 ASR 会话归属一致）。
+    """
+    sid = request.cookies.get(SESSION_COOKIE) or request.headers.get(SESSION_COOKIE)
+    return f"/ws/asr?sessionId={session_id}&sid={sid}"
 
 
 @router.post("/api/v1/voice/asr/stream-session", summary="创建流式 ASR 会话")
@@ -50,7 +68,7 @@ async def create_stream_session(
     user: UserContext = Depends(get_current_user),
 ):
     session_id = await asr_service.create_stream_session(redis, db, user.id, body.model)
-    return success({"sessionId": session_id, "wsUrl": _build_ws_url(request, session_id)})
+    return success({"sessionId": session_id, "wsUrl": _build_ws_path(request, session_id)})
 
 
 @router.get("/api/v1/voice/asr/result/{session_id}", summary="查询流式 ASR 会话最终识别结果")

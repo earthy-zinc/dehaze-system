@@ -32,13 +32,20 @@ func NewSysMenuApi(menuService *menu.MenuService) *SysMenuApi {
 // @Success 200 {object} common.Response{data=[]vo.MenuVO}
 // @Router /api/v1/menus [get]
 func (api *SysMenuApi) ListMenus(c *gin.Context) {
-	// 解析查询参数
+	// 解析查询参数（python list_menus 同口径：keywords/perm/path/type/visible）
 	var queryParams query.MenuQuery
 	queryParams.Keywords = c.Query("keywords")
+	queryParams.Perm = c.Query("perm")
+	queryParams.Path = c.Query("path")
 
-	if statusStr := c.Query("status"); statusStr != "" {
-		if status, err := strconv.Atoi(statusStr); err == nil {
-			queryParams.Status = &status
+	if v := c.Query("type"); v != "" {
+		if t, err := strconv.Atoi(v); err == nil {
+			queryParams.Type = &t
+		}
+	}
+	if v := c.Query("visible"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			queryParams.Visible = &n
 		}
 	}
 
@@ -223,26 +230,28 @@ func (api *SysMenuApi) DeleteMenu(c *gin.Context) {
 // @Tags 菜单接口
 // @Accept application/json
 // @Produce application/json
-// @Param menuId path int true "菜单ID"
-// @Param visible query int true "显示状态(1:显示;0:隐藏)"
+// @Param id path int true "菜单ID"
+// @Param body body object true "{\"visible\": 1} 显示状态(1:显示;0:隐藏)"
 // @Success 200 {object} common.Response
-// @Router /api/v1/menus/{menuId} [patch]
+// @Router /api/v1/menus/{id} [patch]
 func (api *SysMenuApi) UpdateMenuVisible(c *gin.Context) {
 	// 获取路径参数
-	menuIdStr := c.Param("menuId")
+	menuIdStr := c.Param("id")
 	menuId, err := strconv.ParseInt(menuIdStr, 10, 64)
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "菜单ID格式不正确"))
 		return
 	}
 
-	// 获取查询参数
-	visibleStr := c.Query("visible")
-	visible, err := strconv.Atoi(visibleStr)
-	if err != nil {
+	// visible 收 JSON body（python update_menu_visible 同口径，此前误读 query 致恒失败）
+	var body struct {
+		Visible *int `json:"visible" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Visible == nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "显示状态参数格式不正确"))
 		return
 	}
+	visible := *body.Visible
 
 	// 校验visible值范围
 	if visible != 0 && visible != 1 {

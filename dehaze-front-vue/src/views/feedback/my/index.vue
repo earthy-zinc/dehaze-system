@@ -89,7 +89,7 @@
             style="width: 100%"
           >
             <el-option
-              v-for="opt in typeOptions"
+              v-for="opt in feedbackTypeOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -125,7 +125,7 @@
             style="width: 100%"
           >
             <el-option
-              v-for="opt in moduleOptions"
+              v-for="opt in feedbackModuleOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -138,6 +138,10 @@
             v-model="formData.contact"
             placeholder="手机/邮箱（仅管理员可见）"
           />
+        </el-form-item>
+
+        <el-form-item label="截图" prop="images">
+          <multi-upload v-model="formData.images" :limit="5" />
         </el-form-item>
       </el-form>
 
@@ -166,6 +170,12 @@ import {
   FeedbackStatus,
 } from "dehaze-sdk-js";
 import { ArrowRight, Plus } from "@element-plus/icons-vue";
+import MultiUpload from "@/components/Upload/MultiUpload.vue";
+import {
+  feedbackTypeOptions,
+  feedbackStatusOptions,
+  feedbackModuleOptions,
+} from "../constants";
 
 defineOptions({ name: "FeedbackMy" });
 
@@ -178,31 +188,6 @@ const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
 });
-
-const typeOptions: { label: string; value: FeedbackType }[] = [
-  { label: "功能建议", value: "suggestion" },
-  { label: "问题报告", value: "bug" },
-  { label: "体验反馈", value: "experience" },
-  { label: "投诉", value: "complaint" },
-];
-
-const moduleOptions = [
-  { label: "去雾处理", value: "dehaze" },
-  { label: "指标评估", value: "evaluate" },
-  { label: "数据集", value: "dataset" },
-  { label: "会员", value: "member" },
-  { label: "套餐", value: "package" },
-  { label: "订单", value: "order" },
-  { label: "其他", value: "other" },
-];
-
-const MODULE_LABEL_MAP: Record<string, string> = moduleOptions.reduce(
-  (acc, item) => {
-    acc[item.value] = item.label;
-    return acc;
-  },
-  {} as Record<string, string>
-);
 
 const formDialog = reactive<{
   visible: boolean;
@@ -218,6 +203,7 @@ const formData = reactive<FeedbackCreateForm>({
   content: "",
   relatedModule: undefined,
   contact: "",
+  images: [],
 });
 
 const formRules = reactive({
@@ -245,27 +231,15 @@ const formRules = reactive({
 });
 
 function statusLabel(status: FeedbackStatus): string {
-  const map: Record<FeedbackStatus, string> = {
-    pending: "待处理",
-    processing: "处理中",
-    replied: "已回复",
-    closed: "已关闭",
-  };
-  return map[status] || status;
+  return feedbackStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
 function typeLabel(type: FeedbackType): string {
-  const map: Record<FeedbackType, string> = {
-    suggestion: "功能建议",
-    bug: "问题报告",
-    experience: "体验反馈",
-    complaint: "投诉",
-  };
-  return map[type] || type;
+  return feedbackTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
 function moduleLabel(module: string): string {
-  return MODULE_LABEL_MAP[module] || module;
+  return feedbackModuleOptions.find((o) => o.value === module)?.label ?? module;
 }
 
 function handleQuery() {
@@ -295,6 +269,7 @@ function resetForm() {
   formData.content = "";
   formData.relatedModule = undefined;
   formData.contact = "";
+  formData.images = [];
   formRef.value?.resetFields();
 }
 

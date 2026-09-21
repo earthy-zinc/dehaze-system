@@ -26,7 +26,6 @@ router = APIRouter(
 @router.post("/analyze", summary="图像特征分析")
 async def analyze(
     body: AnalyzeForm = Body(...),
-    db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
     data = await recommendation_service.analyze(body.imageId, body.imageUrl)
@@ -50,7 +49,9 @@ async def submit_feedback(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await recommendation_service.submit_feedback(db, body.recommendationId, body.useful)
+    data = await recommendation_service.submit_feedback(
+        db, user.id, body.recommendationId, body.useful
+    )
     return success(data.model_dump())
 
 
@@ -67,12 +68,12 @@ async def get_rules(
 @router.put("/rules", summary="更新/新增推荐规则")
 @require_permission("sys:recommendation:rule:edit")
 async def update_rule(
+    rule_id: int = Query(default=0, alias="id", description="规则ID(0表示新增)"),
     body: RecommendationRuleForm = Body(...),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    rule_id = body.id if body.id else 0
-    data = await recommendation_service.update_rule(db, rule_id, body.model_dump())
+    data = await recommendation_service.update_rule(db, rule_id, body)
     return success(data.id)
 
 

@@ -5,6 +5,7 @@ import {
   type OrderStatus,
   type PayMethod,
   type RefundApplyForm,
+  type RefundReasonType,
 } from "dehaze-sdk-js";
 import {
   Alert,
@@ -51,18 +52,14 @@ const PAY_METHOD_LABEL: Record<PayMethod, string> = {
   combined: "组合支付",
 };
 
-const REFUND_REASON_OPTIONS = [
-  "功能不满足需求",
-  "使用体验不佳",
-  "重复购买",
-  "暂不需要",
-  "其他原因",
+const REFUND_REASON_OPTIONS: { label: string; value: RefundReasonType }[] = [
+  { label: "售后问题", value: "after_sale" },
+  { label: "不可抗原因", value: "force_majeure" },
+  { label: "商家原因", value: "merchant" },
+  { label: "其他原因", value: "other" },
 ];
 
-interface RefundFormValues extends RefundApplyForm {
-  reason: string;
-  customReason?: string;
-}
+type RefundFormValues = RefundApplyForm;
 
 const MyOrders: React.FC = () => {
   const navigate = useNavigate();
@@ -164,9 +161,8 @@ const MyOrders: React.FC = () => {
       const values = await refundForm.validateFields();
       setRefundModal((prev) => ({ ...prev, loading: true }));
       const payload: RefundApplyForm = {
-        reason: values.reason,
-        customReason:
-          values.reason === "其他原因" ? values.customReason : undefined,
+        reasonType: values.reasonType,
+        customReason: values.customReason?.trim() || undefined,
       };
       await OrderAPI.applyRefund(refundModal.row.orderNo, payload);
       message.success("退款申请已提交");
@@ -218,8 +214,6 @@ const MyOrders: React.FC = () => {
     },
     [goDetail, handleCancelClick, openRefundDialog]
   );
-
-  const refundReason = refundForm.getFieldValue("reason");
 
   return (
     <div className="my-order-center">
@@ -388,27 +382,21 @@ const MyOrders: React.FC = () => {
 
             <Form form={refundForm} layout="vertical">
               <Form.Item
-                name="reason"
+                name="reasonType"
                 label="退款原因"
-                rules={[{ required: true, message: "请选择退款原因" }]}
+                rules={[{ required: true, message: "请选择退款原因类型" }]}
               >
                 <Select
-                  placeholder="请选择退款原因"
-                  options={REFUND_REASON_OPTIONS.map((r) => ({
-                    label: r,
-                    value: r,
-                  }))}
+                  placeholder="请选择退款原因类型"
+                  options={REFUND_REASON_OPTIONS}
                 />
               </Form.Item>
-              {refundReason === "其他原因" && (
-                <Form.Item
-                  name="customReason"
-                  label="具体原因"
-                  rules={[{ required: true, message: "请描述具体退款原因" }]}
-                >
-                  <Input.TextArea rows={3} placeholder="请描述具体退款原因" />
-                </Form.Item>
-              )}
+              <Form.Item name="customReason" label="具体原因">
+                <Input.TextArea
+                  rows={3}
+                  placeholder="请描述具体退款原因（选填）"
+                />
+              </Form.Item>
             </Form>
           </>
         )}

@@ -4,20 +4,27 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.form.AutoRenewConfigForm;
+import com.pei.dehaze.model.form.BalanceRefundAuditForm;
+import com.pei.dehaze.model.form.BalanceRefundForm;
 import com.pei.dehaze.model.form.OrderCreateForm;
 import com.pei.dehaze.model.form.PayRequest;
+import com.pei.dehaze.model.form.RechargeCreateForm;
 import com.pei.dehaze.model.form.RefundApplyForm;
 import com.pei.dehaze.model.form.RefundAuditForm;
 import com.pei.dehaze.model.query.MyOrderQuery;
 import com.pei.dehaze.model.query.OrderPageQuery;
 import com.pei.dehaze.model.query.RefundPageQuery;
 import com.pei.dehaze.model.vo.AutoRenewConfigVO;
+import com.pei.dehaze.model.vo.BalanceRefundApplyVO;
+import com.pei.dehaze.model.vo.BalanceVO;
 import com.pei.dehaze.model.vo.MyOrderVO;
 import com.pei.dehaze.model.vo.OrderDetailVO;
 import com.pei.dehaze.model.vo.OrderPageVO;
 import com.pei.dehaze.model.vo.OrderStatsVO;
 import com.pei.dehaze.model.vo.PayResult;
+import com.pei.dehaze.model.vo.RechargeVO;
 import com.pei.dehaze.model.vo.RefundRecordVO;
+import com.pei.dehaze.service.BalanceService;
 import com.pei.dehaze.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,6 +45,34 @@ import java.time.LocalDateTime;
 public class OrderController {
 
     private final OrderService orderService;
+    private final BalanceService balanceService;
+
+    @Operation(summary = "用户端：查询余额账户")
+    @GetMapping("/balance")
+    public Result<BalanceVO> getBalance() {
+        return Result.success(balanceService.getBalance());
+    }
+
+    @Operation(summary = "用户端：创建余额充值订单")
+    @PostMapping("/recharge")
+    public Result<RechargeVO> createRecharge(@Valid @RequestBody RechargeCreateForm form) {
+        return Result.success(balanceService.createRecharge(form));
+    }
+
+    @Operation(summary = "用户端：提交余额退款申请")
+    @PostMapping("/balance-refund")
+    public Result<BalanceRefundApplyVO> applyBalanceRefund(@RequestBody BalanceRefundForm form) {
+        return Result.success(balanceService.applyBalanceRefund(form));
+    }
+
+    @Operation(summary = "后台：余额退款审核")
+    @PutMapping("/balance-refunds/{refundId}/audit")
+    @PreAuthorize("@ss.hasPerm('order:refund:approve')")
+    public Result<Void> approveBalanceRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
+                                             @RequestBody BalanceRefundAuditForm form) {
+        balanceService.approveBalanceRefund(refundId, form);
+        return Result.success();
+    }
 
     @Operation(summary = "用户端：创建订单")
     @PostMapping
@@ -47,7 +82,7 @@ public class OrderController {
 
     @Operation(summary = "用户端：我的订单列表")
     @GetMapping("/my")
-    public PageResult<MyOrderVO> listMy(@ParameterObject MyOrderQuery query) {
+    public PageResult<MyOrderVO> listMy(@Valid @ParameterObject MyOrderQuery query) {
         Page<MyOrderVO> page = orderService.listMy(query);
         return PageResult.success(page);
     }
@@ -98,7 +133,7 @@ public class OrderController {
     @Operation(summary = "后台：订单分页列表")
     @GetMapping("/page")
     @PreAuthorize("@ss.hasPerm('order:list')")
-    public PageResult<OrderPageVO> getPage(@ParameterObject OrderPageQuery query) {
+    public PageResult<OrderPageVO> getPage(@Valid @ParameterObject OrderPageQuery query) {
         Page<OrderPageVO> page = orderService.getPage(query);
         return PageResult.success(page);
     }
@@ -106,7 +141,7 @@ public class OrderController {
     @Operation(summary = "后台：退款审核列表")
     @GetMapping("/refunds/page")
     @PreAuthorize("@ss.hasPerm('order:refund:list')")
-    public PageResult<RefundRecordVO> listRefunds(@ParameterObject RefundPageQuery query) {
+    public PageResult<RefundRecordVO> listRefunds(@Valid @ParameterObject RefundPageQuery query) {
         Page<RefundRecordVO> page = orderService.listRefunds(query);
         return PageResult.success(page);
     }
@@ -131,6 +166,7 @@ public class OrderController {
 
     @Operation(summary = "后台：订单统计")
     @GetMapping("/stats")
+    @PreAuthorize("@ss.hasPerm('order:stats')")
     public Result<OrderStatsVO> getStats(
             @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
             @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {

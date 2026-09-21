@@ -12,6 +12,13 @@
       @update:model-value="handleTabChange"
     >
       <el-tab-pane label="配置" name="config">
+        <el-alert
+          v-if="legacyStdio"
+          class="mb-3"
+          type="warning"
+          :closable="false"
+          title="该 Server 使用已退役的 stdio 协议（无网络端点，工具无法拉取与装载）。已切换为 streamable-http，请填写端点 URL 后保存，或改选 sse。"
+        />
         <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
           <el-form-item label="Server 名称" prop="name">
             <el-input
@@ -40,11 +47,7 @@
           <el-form-item label="端点 URL" prop="endpoint">
             <el-input
               v-model="form.endpoint"
-              :placeholder="
-                form.protocolType === 'stdio'
-                  ? 'stdio 为本地进程，端点可留空'
-                  : '如 https://mcp.example.com/mcp'
-              "
+              placeholder="如 https://mcp.example.com/mcp"
             />
           </el-form-item>
           <el-form-item label="鉴权方式">
@@ -122,6 +125,7 @@ const mcpStore = useAdminMcpStore();
 
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
+const legacyStdio = ref(false);
 
 const server = computed(() => mcpStore.serverForm.server);
 
@@ -145,10 +149,6 @@ const rules: FormRules<McpServerForm> = {
   endpoint: [
     {
       validator: (_rule, value: string, callback) => {
-        if (form.protocolType === "stdio") {
-          callback();
-          return;
-        }
         if (!value) {
           callback(new Error("端点 URL 不能为空"));
           return;
@@ -177,13 +177,19 @@ watch(
     if (!visible) return;
     Object.assign(form, emptyForm());
     if (current) {
+      legacyStdio.value = current.protocolType === "stdio";
       Object.assign(form, {
         name: current.name,
         description: current.description ?? "",
-        protocolType: current.protocolType,
+        // 存量 stdio 不可再提交：落到 streamable-http，由管理员补端点或改选 sse
+        protocolType: legacyStdio.value
+          ? "streamable-http"
+          : current.protocolType,
         endpoint: current.endpoint ?? "",
         authType: current.authType ?? "none",
       });
+    } else {
+      legacyStdio.value = false;
     }
   },
   { immediate: true }

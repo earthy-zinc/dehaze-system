@@ -3,6 +3,8 @@ spring:
     name: dehaze-java
   profiles:
     active: dev
+  # SSE 转发（AI 对话流式输出）每条连接占用一个请求线程，受 Tomcat 线程上限约束。
+  # 高并发部署时可启用虚拟线程（Boot 3.5 + JDK 21+）：spring.threads.virtual.enabled=true
 
 # 读取根目录的 .env
 springdotenv:

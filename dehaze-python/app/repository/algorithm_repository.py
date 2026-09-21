@@ -4,7 +4,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, desc, func, select
+from sqlalchemy import desc, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -22,6 +22,19 @@ class AlgorithmStatus:
     PUBLISHED = 4  # 已发布
     DISABLED = 5  # 已停用
     ARCHIVED = 6  # 已归档
+
+    # 三端统一状态流转白名单（对齐 Java ALLOWED_TRANSITIONS / Go bo.allowedTransitions）
+    ALLOWED_TRANSITIONS: dict[int, set[int]] = {
+        DRAFT: {TESTING},
+        TESTING: {PENDING_AUDIT, DRAFT},
+        PENDING_AUDIT: {PUBLISHED, TESTING},
+        PUBLISHED: {DISABLED, ARCHIVED},
+        DISABLED: {PUBLISHED, ARCHIVED},
+        ARCHIVED: set(),
+    }
+
+    # 可删除的状态（草稿/已停用/已归档），与 Java DELETABLE_STATUSES、Go DeletableStatuses 对齐
+    DELETABLE_STATUSES = {DRAFT, DISABLED, ARCHIVED}
 
 
 class AlgorithmRepository(BaseRepository[SysAlgorithm]):
@@ -54,9 +67,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         )
         if keyword:
             kw = f"%{keyword}%"
-            stmt = stmt.where(
-                SysAlgorithm.name.ilike(kw) | SysAlgorithm.description.ilike(kw)
-            )
+            stmt = stmt.where(SysAlgorithm.name.ilike(kw) | SysAlgorithm.description.ilike(kw))
         if order_by_tree:
             stmt = stmt.order_by(SysAlgorithm.parent_id, SysAlgorithm.id)
         else:
@@ -77,19 +88,6 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_by_ids_include_unpublished(
-        self,
-        db: AsyncSession,
-        algorithm_ids: list[int],
-    ) -> list[SysAlgorithm]:
-        """按 ID 列表查算法（含未发布；算法对比等）"""
-        stmt = select(SysAlgorithm).where(
-            SysAlgorithm.id.in_(algorithm_ids),
-            SysAlgorithm.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
     async def get_with_children_ids(
         self,
         db: AsyncSession,
@@ -106,7 +104,9 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
 
         children_map: dict[int, list[SysAlgorithm]] = defaultdict(list)
         for algo in all_algorithms:
-            children_map[algo.parent_id].append(algo)
+            # parent_id 为 None 的孤立节点不参与父子映射（BFS 仅按整型 id 查子节点）
+            if algo.parent_id is not None:
+                children_map[algo.parent_id].append(algo)
 
         from app.utils.tree import bfs_collect_ids
 
@@ -129,23 +129,12 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         id_to_node = {a.id: a for a in all_algorithms}
 
         while algorithm.parent_id != 0:
-            parent = id_to_node.get(algorithm.parent_id)
+            parent_id = algorithm.parent_id
+            parent = id_to_node.get(parent_id) if parent_id is not None else None
             if parent is None:
                 raise BusinessException("无法获取算法根节点")
             algorithm = parent
         return algorithm
-
-    async def delete_by_ids(
-        self,
-        db: AsyncSession,
-        ids: list[int],
-    ) -> int:
-        """根据 ID 列表批量删除"""
-        if not ids:
-            return 0
-        stmt = delete(SysAlgorithm).where(SysAlgorithm.id.in_(ids))
-        result = await db.execute(stmt)
-        return result.rowcount
 
     async def get_algorithm_options(
         self,
@@ -166,7 +155,8 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             if algorithm.parent_id == 0:
                 root_options.append(algorithm_dict[algorithm.id])
             else:
-                parent = algorithm_dict.get(algorithm.parent_id)
+                parent_id = algorithm.parent_id
+                parent = algorithm_dict.get(parent_id) if parent_id is not None else None
                 if parent:
                     parent["children"].append(algorithm_dict[algorithm.id])
 
@@ -284,33 +274,21 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def rollback_to_version(
+    async def deactivate_active_versions(
         self,
         db: AsyncSession,
         algorithm_id: int,
-        version_id: int,
-    ) -> SysAlgorithm | None:
-        """回滚到指定版本"""
-        version = await self.get_version_by_id(db, version_id)
-        if not version or version.algorithm_id != algorithm_id:
-            return None
-        algorithm = await self.get_by_id(db, algorithm_id)
-        if not algorithm:
-            return None
-        # 将当前版本存入历史表（如果还没存）
-        if not await self.check_version_exists(db, algorithm_id, algorithm.version):
-            await self.create_version(
-                db=db,
-                algorithm_id=algorithm_id,
-                version=algorithm.version,
-                change_log=f"回滚前自动归档: {algorithm.version}",
-                status=algorithm.status,
+    ) -> None:
+        """将指定算法的当前活跃版本置为非活跃（对齐 Java deactivateCurrentActiveVersion）"""
+        stmt = (
+            update(SysAlgorithmVersion)
+            .where(
+                SysAlgorithmVersion.algorithm_id == algorithm_id,
+                SysAlgorithmVersion.is_active == 1,
             )
-        # 应用目标版本
-        algorithm.version = version.version
-        await db.flush()
-        await db.refresh(algorithm)
-        return algorithm
+            .values(is_active=0)
+        )
+        await db.execute(stmt)
 
     # ── 监控数据 ──────────────────────────────────────
 
@@ -386,5 +364,6 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             )
         )
         return (await db.execute(stmt)).scalar() or 0
+
 
 algorithm_repository = AlgorithmRepository()

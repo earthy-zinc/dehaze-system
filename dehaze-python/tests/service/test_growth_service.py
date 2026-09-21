@@ -34,6 +34,7 @@ USER_ID = 1004001
 
 async def _setup_benefit(db, level_code: str = "level_1"):
     benefit = await member_benefit_repository.get_by_level_code(db, level_code)
+    assert benefit is not None
     benefit.growth_min = 1000
     benefit.growth_max = 4999
     for task_type in QUOTA_TASK_TYPES:
@@ -42,8 +43,9 @@ async def _setup_benefit(db, level_code: str = "level_1"):
     return benefit
 
 
-async def _setup_member(db, *, level_code: str = "level_0", growth_value: int = 0,
-                        level_source: str = "growth"):
+async def _setup_member(
+    db, *, level_code: str = "level_0", growth_value: int = 0, level_source: str = "growth"
+):
     member = await member_repository.get_or_init_member(db, USER_ID)
     member.level_code = level_code
     member.level_source = level_source
@@ -54,6 +56,7 @@ async def _setup_member(db, *, level_code: str = "level_0", growth_value: int = 
 
 # ===================== 签到（修复验证） =====================
 
+
 async def test_sign_in_success_no_name_error(db):
     """签到不再因仓储注入不一致而 NameError，且正确累计成长值"""
     await _setup_member(db)
@@ -62,6 +65,7 @@ async def test_sign_in_success_no_name_error(db):
     assert result["bonusGrowth"] == 0
     assert result["continuousDays"] == 1
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 3
 
 
@@ -76,17 +80,21 @@ async def test_sign_in_already_today(db):
 async def test_sign_in_weekly_bonus(db):
     """第 7 天连续签到触发额外成长值奖励"""
     from datetime import timedelta
+
     from app.models.entity.sys_member_sign_in import SysMemberSignIn
+
     await _setup_member(db)
     today = date.today()
     # 构造昨天为止连续 6 天的签到记录，使今天签到为第 7 天
     for i in range(6):
-        db.add(SysMemberSignIn(
-            user_id=USER_ID,
-            sign_date=today - timedelta(days=6 - i),
-            continuous_days=i + 1,
-            growth_value=3,
-        ))
+        db.add(
+            SysMemberSignIn(
+                user_id=USER_ID,
+                sign_date=today - timedelta(days=6 - i),
+                continuous_days=i + 1,
+                growth_value=3,
+            )
+        )
     await db.flush()
     result = await member_growth_service.sign_in(db, USER_ID)
     assert result["continuousDays"] == 7
@@ -99,7 +107,10 @@ async def test_sign_in_values_from_dict(db, mock_redis):
 
     await _setup_member(db)
     # 调整种子值，验证签到读取字典化配置
-    item = await dict_repository.get_by_type_code_and_name(db, "member_growth_rules", "sign_in_value")
+    item = await dict_repository.get_by_type_code_and_name(
+        db, "member_growth_rules", "sign_in_value"
+    )
+    assert item is not None
     item.value = "7"
     await db.flush()
     # 模拟生产：运营更新字典后失效 dict:value 缓存（测试绕过 DictService 直改 DB）
@@ -109,12 +120,14 @@ async def test_sign_in_values_from_dict(db, mock_redis):
     result = await member_growth_service.sign_in(db, USER_ID)
     assert result["growthValue"] == 7
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 7
 
 
 async def test_sign_in_streak_bonus_from_dict(db, mock_redis):
     """连续签到额外奖励取自 sys_dict: member_growth_rules。"""
     from datetime import timedelta
+
     from app.models.entity.sys_member_sign_in import SysMemberSignIn
     from app.repository.dict_repository import dict_repository
 
@@ -122,6 +135,7 @@ async def test_sign_in_streak_bonus_from_dict(db, mock_redis):
     item = await dict_repository.get_by_type_code_and_name(
         db, "member_growth_rules", "sign_in_streak_bonus"
     )
+    assert item is not None
     item.value = "50"
     await db.flush()
     from app.service.dict_service import _invalidate_dict_value_cache
@@ -129,12 +143,14 @@ async def test_sign_in_streak_bonus_from_dict(db, mock_redis):
     await _invalidate_dict_value_cache(mock_redis, "member_growth_rules")
     today = date.today()
     for i in range(6):
-        db.add(SysMemberSignIn(
-            user_id=USER_ID,
-            sign_date=today - timedelta(days=6 - i),
-            continuous_days=i + 1,
-            growth_value=3,
-        ))
+        db.add(
+            SysMemberSignIn(
+                user_id=USER_ID,
+                sign_date=today - timedelta(days=6 - i),
+                continuous_days=i + 1,
+                growth_value=3,
+            )
+        )
     await db.flush()
     result = await member_growth_service.sign_in(db, USER_ID)
     assert result["continuousDays"] == 7
@@ -154,18 +170,25 @@ async def test_sign_in_calendar(db, mock_redis):
 
 # ===================== 成长值流水 =====================
 
+
 async def test_list_growth_logs(db):
     await _setup_member(db)
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     member.growth_value = 100
     await db.flush()
     await member_growth_log_repository.create_log(
-        db, user_id=USER_ID, change_type="admin_adjust",
-        change_value=100, balance=100, reason="测试",
+        db,
+        user_id=USER_ID,
+        change_type="admin_adjust",
+        change_value=100,
+        balance=100,
+        reason="测试",
     )
     result = await member_growth_service.list_growth_logs(
-        db, USER_ID, {"pageNum": 1, "pageSize": 10, "changeType": None,
-                      "startTime": None, "endTime": None}
+        db,
+        USER_ID,
+        {"pageNum": 1, "pageSize": 10, "changeType": None, "startTime": None, "endTime": None},
     )
     assert result["total"] >= 1
     assert result["list"][0]["changeType"] == "admin_adjust"
@@ -173,14 +196,16 @@ async def test_list_growth_logs(db):
 
 # ===================== 使用行为激励（process / evaluate / ai_consume） =====================
 
+
 async def test_add_ai_consume_growth_once(db, mock_redis):
     await _setup_member(db)
     ok = await member_growth_service.add_behavior_growth(db, USER_ID, "ai_consume")
     assert ok is True
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 1
     logs, _ = await member_growth_log_repository.get_page(db, USER_ID, 1, 10)
-    assert any(l.change_type == "ai_consume" and l.change_value == 1 for l in logs)
+    assert any(log.change_type == "ai_consume" and log.change_value == 1 for log in logs)
 
 
 async def test_add_ai_consume_growth_daily_limit(db, mock_redis):
@@ -192,6 +217,7 @@ async def test_add_ai_consume_growth_daily_limit(db, mock_redis):
     blocked = await member_growth_service.add_behavior_growth(db, USER_ID, "ai_consume")
     assert blocked is False
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == AI_CONSUME_DAILY_LIMIT
 
 
@@ -202,6 +228,7 @@ async def test_add_ai_consume_growth_triggers_level_upgrade(db, mock_redis):
     ok = await member_growth_service.add_behavior_growth(db, USER_ID, "ai_consume")
     assert ok is True
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 1000
     assert member.level_code == "level_1"
 
@@ -214,11 +241,12 @@ async def test_add_process_growth_with_related_task(db, mock_redis):
     )
     assert ok is True
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 1
     logs, _ = await member_growth_log_repository.get_page(db, USER_ID, 1, 10)
     assert any(
-        l.change_type == "process" and l.change_value == 1 and l.related_id == "20260101"
-        for l in logs
+        log.change_type == "process" and log.change_value == 1 and log.related_id == "20260101"
+        for log in logs
     )
 
 
@@ -231,6 +259,7 @@ async def test_add_process_growth_daily_limit(db, mock_redis):
     blocked = await member_growth_service.add_behavior_growth(db, USER_ID, "process")
     assert blocked is False
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == PROCESS_DAILY_LIMIT
 
 
@@ -243,6 +272,7 @@ async def test_add_evaluate_growth_daily_limit(db, mock_redis):
     blocked = await member_growth_service.add_behavior_growth(db, USER_ID, "evaluate")
     assert blocked is False
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == EVALUATE_DAILY_LIMIT
 
 
@@ -254,4 +284,5 @@ async def test_behavior_growth_daily_limits_are_independent(db, mock_redis):
     ok = await member_growth_service.add_behavior_growth(db, USER_ID, "evaluate")
     assert ok is True
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == PROCESS_DAILY_LIMIT + 1

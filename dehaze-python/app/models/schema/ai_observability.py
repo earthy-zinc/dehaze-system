@@ -36,6 +36,7 @@ class TracePageQuery(BasePageQuery):
 class TraceItem(OrmResult):
     trace_id: str = Field(description="过程链ID(复用日志链路trace_id)")
     conversation_id: int = Field(description="所属会话ID")
+    conversation_title: str | None = Field(default=None, description="所属会话标题")
     message_id: int | None = Field(default=None, description="关联助手回复消息ID")
     agent_code: str | None = Field(default=None, description="执行智能体编码")
     trace_type: str = Field(
@@ -70,11 +71,29 @@ class LlmCallItem(OrmResult):
     tool_call: Any | None = Field(default=None, description="工具调用信息JSON")
     input_snapshot: Any | None = Field(default=None, description="本次调用输入构成JSON")
     output_snapshot: Any | None = Field(default=None, description="本次调用输出摘要JSON")
+    attempts: Any | None = Field(
+        default=None,
+        description=(
+            "物理调用尝试明细JSON(逐Key/逐路由: "
+            "provider_id/key_id/model/status/error_code/latency_ms)"
+        ),
+    )
+    start_time: datetime | None = Field(
+        default=None, description="调用发起时刻(时间线交织排序锚点)"
+    )
+    raw_request: Any | None = Field(
+        default=None, description="实际发给provider的完整请求体(wire原文,老数据为NULL)"
+    )
+    raw_response: Any | None = Field(
+        default=None, description="流式聚合后的完整响应(等价非流式结构,老数据为NULL)"
+    )
     create_time: datetime | None = Field(default=None, description="记录时间")
 
 
 class TraceBillingItem(OrmResult):
-    bill_type: str | None = Field(default=None, description="计费类型(chat;tool_llm;kb_inject;asr;tts)")
+    bill_type: str | None = Field(
+        default=None, description="计费类型(chat;chat_subagent;tool_llm;kb_inject;asr;tts)"
+    )
     model: str | None = Field(default=None, description="实际使用模型标识")
     actual_model: str | None = Field(default=None, description="用户原选模型标识(NULL表示未降级)")
     provider_id: int | None = Field(default=None, description="实际供应商ID")
@@ -131,6 +150,9 @@ class TraceDetailResult(TraceItem):
     artifacts: list[TraceArtifactItem] = Field(
         default_factory=list, description="关联中间产物(按message_id关联)"
     )
+    error_detail: Any | None = Field(
+        default=None, description="异常详情JSON(消息+堆栈截断,失败/中断时填充)"
+    )
 
 
 class SummaryResult(OrmResult):
@@ -140,15 +162,11 @@ class SummaryResult(OrmResult):
     interrupted_count: int = Field(description="中断数")
     timeout_count: int = Field(description="超时数")
     quota_rejected: int = Field(description="配额拒绝数(按采集链路写入的拒绝类error_type统计)")
-    high_risk_calls: int = Field(
-        description="高风险调用数(推理步数超阈值或存在失败的工具调用)"
-    )
+    high_risk_calls: int = Field(description="高风险调用数(推理步数超阈值或存在失败的工具调用)")
 
 
 class CostsQuery(BasePageQuery):
-    dimension: Literal["model", "agent", "user"] = Field(
-        default="model", description="聚合维度"
-    )
+    dimension: Literal["model", "agent", "user"] = Field(default="model", description="聚合维度")
     startTime: datetime | None = Field(default=None, description="开始时间(含)")
     endTime: datetime | None = Field(default=None, description="结束时间(含)")
 
@@ -196,3 +214,108 @@ class TrendItem(OrmResult):
         default=None, description="平均首Token延迟(毫秒,成功调用口径)"
     )
     avg_duration_ms: float | None = Field(default=None, description="平均总耗时(毫秒)")
+
+
+class TimelineQuery(BaseModel):
+    """会话时间线查询参数：include=raw 含原始报文（默认），其他值省略供轻量预览"""
+
+    include: str | None = Field(
+        default=None, max_length=32, description="包含项(默认含raw原始报文,传非raw值省略)"
+    )
+
+    @property
+    def include_raw(self) -> bool:
+        return self.include is None or "raw" in self.include.split(",")
+
+
+class TimelineConversation(OrmResult):
+    id: int = Field(description="会话ID")
+    title: str = Field(description="会话标题")
+    user_id: int = Field(description="归属用户ID")
+    agent_code: str | None = Field(default=None, description="智能体编码")
+    create_time: datetime | None = Field(default=None, description="创建时间")
+
+
+class TimelineMessage(OrmResult):
+    id: int = Field(description="消息ID")
+    role: str = Field(description="消息角色")
+    content: str | None = Field(default=None, description="消息内容")
+    status: int = Field(description="消息状态(1:流式输出中;2:已完成;3:失败;4:已取消)")
+    model: str | None = Field(default=None, description="本条消息使用的模型标识")
+    input_tokens: int = Field(default=0, description="输入Token数")
+    output_tokens: int = Field(default=0, description="输出Token数")
+    create_time: datetime | None = Field(default=None, description="创建时间")
+
+
+class TimelineEvent(OrmResult):
+    """轮内事件（按 ts 交织排序，kind 区分类型，字段按 kind 取用）"""
+
+    kind: Literal["input", "context", "llm_call", "tool_exec", "system_event", "billing"]
+    ts: datetime | None = Field(
+        default=None, description="事件时刻(llm_call用start_time,其余用create_time)"
+    )
+    # input
+    message: TimelineMessage | None = Field(default=None, description="用户输入消息(kind=input)")
+    # context
+    snapshot: Any | None = Field(default=None, description="上下文构成快照(kind=context)")
+    # llm_call
+    seq: int | None = Field(default=None, description="调用序号(kind=llm_call)")
+    model: str | None = Field(default=None, description="本次调用模型(kind=llm_call)")
+    status: int | None = Field(default=None, description="调用状态(kind=llm_call/tool_exec)")
+    duration_ms: int | None = Field(default=None, description="调用总耗时毫秒(kind=llm_call)")
+    first_token_ms: int | None = Field(default=None, description="首Token延迟毫秒(kind=llm_call)")
+    prompt_tokens: int | None = Field(default=None, description="输入Token(kind=llm_call)")
+    completion_tokens: int | None = Field(default=None, description="输出Token(kind=llm_call)")
+    cached_tokens: int | None = Field(default=None, description="缓存命中Token(kind=llm_call)")
+    tool_call: Any | None = Field(default=None, description="工具调用信息(kind=llm_call)")
+    attempts: Any | None = Field(default=None, description="物理调用尝试明细(kind=llm_call)")
+    raw_request: Any | None = Field(
+        default=None, description="完整请求体wire原文(仅include=raw,老数据为NULL)"
+    )
+    raw_response: Any | None = Field(
+        default=None, description="完整响应wire原文(仅include=raw,老数据为NULL)"
+    )
+    summary: Any | None = Field(
+        default=None, description="调用摘要(inputSnapshot+outputSnapshot,kind=llm_call)"
+    )
+    # tool_exec
+    position: int | None = Field(default=None, description="推理步骤序号(kind=tool_exec)")
+    tool: str | None = Field(default=None, description="工具名称(kind=tool_exec)")
+    thought: str | None = Field(default=None, description="LLM思考内容(kind=tool_exec)")
+    tool_input: Any | None = Field(default=None, description="工具入参(kind=tool_exec)")
+    observation: str | None = Field(default=None, description="工具返回(kind=tool_exec)")
+    latency_ms: int | None = Field(default=None, description="耗时毫秒(kind=tool_exec)")
+    agent_code: str | None = Field(default=None, description="步骤来源Agent编码(kind=tool_exec)")
+    is_subagent: int | None = Field(default=None, description="是否子Agent步骤(kind=tool_exec)")
+    # system_event
+    event: str | None = Field(default=None, description="系统事件名(kind=system_event)")
+    detail: Any | None = Field(default=None, description="系统事件详情(kind=system_event)")
+    # billing
+    bill_type: str | None = Field(default=None, description="计费类型(kind=billing)")
+    credits: int | None = Field(default=None, description="消耗积分(kind=billing)")
+    tokens: Any | None = Field(default=None, description="Token明细(kind=billing)")
+
+
+class TimelineTrace(OrmResult):
+    trace_id: str = Field(description="过程链ID")
+    trace_type: str = Field(description="过程链类型(主对话/旁路)")
+    status: int = Field(description="执行状态(1:成功;2:失败;3:中断;4:超时)")
+    error_type: str | None = Field(default=None, description="失败类型")
+    error_detail: Any | None = Field(default=None, description="异常详情JSON")
+    model: str | None = Field(default=None, description="实际使用模型标识")
+    duration_ms: int = Field(description="总耗时毫秒")
+    create_time: datetime | None = Field(default=None, description="记录时间")
+    events: list[TimelineEvent] = Field(default_factory=list, description="轮内事件(按ts交织排序)")
+
+
+class TimelineRound(OrmResult):
+    user_message: TimelineMessage | None = Field(default=None, description="用户消息")
+    assistant_message: TimelineMessage | None = Field(default=None, description="助手回复消息")
+    traces: list[TimelineTrace] = Field(
+        default_factory=list, description="该轮过程链(主对话+旁路,resume多trace并列)"
+    )
+
+
+class TimelineResult(OrmResult):
+    conversation: TimelineConversation = Field(description="会话元信息")
+    rounds: list[TimelineRound] = Field(description="轮次列表(按消息链时间正序)")

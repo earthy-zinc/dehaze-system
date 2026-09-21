@@ -12,7 +12,7 @@ type SysMessageTemplate struct {
 	Channels        string `gorm:"column:channels;type:json;comment:默认推送渠道JSON" json:"channels"`
 	Variables       string `gorm:"column:variables;type:json;comment:变量定义JSON" json:"variables"`
 	Status          int8   `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:启用;0:禁用)" json:"status"`
-	Deleted         int8   `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted         int64  `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysMessageTemplate) TableName() string {

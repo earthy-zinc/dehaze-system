@@ -64,7 +64,9 @@ class AiAgentRepository(BaseRepository[SysAiAgent]):
         stmt = stmt.order_by(SysAiAgent.sort_order.asc(), SysAiAgent.id.asc())
         return await self.paginate(db, stmt, page, size)
 
-    async def count_skills_by_agent_ids(self, db: AsyncSession, agent_ids: list[int]) -> dict[int, int]:
+    async def count_skills_by_agent_ids(
+        self, db: AsyncSession, agent_ids: list[int]
+    ) -> dict[int, int]:
         """批量统计各 Agent 关联的 Skill 数（列表页聚合，{agent_id: count}）。"""
         if not agent_ids:
             return {}
@@ -74,9 +76,11 @@ class AiAgentRepository(BaseRepository[SysAiAgent]):
             .group_by(SysAiAgentSkill.agent_id)
         )
         rows = (await db.execute(stmt)).all()
-        return {agent_id: count for agent_id, count in rows}
+        return {row[0]: row[1] for row in rows}
 
-    async def count_mcp_by_agent_ids(self, db: AsyncSession, agent_ids: list[int]) -> dict[int, int]:
+    async def count_mcp_by_agent_ids(
+        self, db: AsyncSession, agent_ids: list[int]
+    ) -> dict[int, int]:
         """批量统计各 Agent 关联的 MCP 命名空间数（列表页聚合）。"""
         if not agent_ids:
             return {}
@@ -86,9 +90,11 @@ class AiAgentRepository(BaseRepository[SysAiAgent]):
             .group_by(SysAiAgentMcp.agent_id)
         )
         rows = (await db.execute(stmt)).all()
-        return {agent_id: count for agent_id, count in rows}
+        return {row[0]: row[1] for row in rows}
 
-    async def count_subagents_by_agent_ids(self, db: AsyncSession, agent_ids: list[int]) -> dict[int, int]:
+    async def count_subagents_by_agent_ids(
+        self, db: AsyncSession, agent_ids: list[int]
+    ) -> dict[int, int]:
         """批量统计各 Agent 关联的子 Agent 数（列表页聚合，按 parent_agent_id）。"""
         if not agent_ids:
             return {}
@@ -98,7 +104,7 @@ class AiAgentRepository(BaseRepository[SysAiAgent]):
             .group_by(SysAiAgentSubagent.parent_agent_id)
         )
         rows = (await db.execute(stmt)).all()
-        return {agent_id: count for agent_id, count in rows}
+        return {row[0]: row[1] for row in rows}
 
     async def list_enabled(self, db: AsyncSession) -> list[SysAiAgent]:
         """可选 Agent 列表：启用且非子 Agent（Team 可作会话入口，保留）。"""

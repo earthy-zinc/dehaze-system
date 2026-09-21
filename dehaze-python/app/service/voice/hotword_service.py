@@ -28,8 +28,7 @@ def _sanitize_word(raw: str) -> str:
 def _to_results(items: list[SysVoiceHotword]) -> list[HotwordResult]:
     """实体列表转为热词响应列表"""
     return [
-        HotwordResult(id=item.id, word=item.word, create_time=item.create_time)
-        for item in items
+        HotwordResult(id=item.id, word=item.word, create_time=item.create_time) for item in items
     ]
 
 
@@ -59,8 +58,8 @@ class HotwordService:
         items = await self.voice_hotword_repository.list_by_scope(db, "user", user_id)
         return _to_results(items)
 
-    async def add_user_hotword(self, 
-        db: AsyncSession, user_id: int, form: HotwordForm
+    async def add_user_hotword(
+        self, db: AsyncSession, user_id: int, form: HotwordForm
     ) -> HotwordResult:
         """新增用户热词（含数量上限校验、XSS 转义存储）"""
         count = await self.voice_hotword_repository.count_user_hotwords(db, user_id)
@@ -84,9 +83,7 @@ class HotwordService:
         items = await self.voice_hotword_repository.list_by_scope(db, "global", None)
         return _to_results(items)
 
-    async def add_global_hotword(self, 
-        db: AsyncSession, form: HotwordForm
-    ) -> HotwordResult:
+    async def add_global_hotword(self, db: AsyncSession, form: HotwordForm) -> HotwordResult:
         """新增全局热词（XSS 转义存储）"""
         word = _sanitize_word(form.word)
         entity = SysVoiceHotword(scope="global", word=word)

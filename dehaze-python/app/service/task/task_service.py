@@ -49,7 +49,7 @@ async def create_task(
         raise BusinessException(ResultCode.TASK_TYPE_UNSUPPORTED)
 
     if idempotency_key:
-        existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
+        existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key, user_id)
         if existing_task is not None:
             logger.debug(
                 "幂等键命中，返回已有任务: taskId=%s, idempotencyKey=%s",
@@ -81,10 +81,14 @@ async def create_task(
     except IntegrityError:
         await db.rollback()
         if idempotency_key:
-            existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
+            existing_task = await task_repository.get_by_idempotency_key(
+                db, idempotency_key, user_id
+            )
             if existing_task is not None:
                 logger.debug("并发幂等键命中，返回已有任务: taskId=%s", existing_task.task_id)
                 return task_to_dict(existing_task)
+            # 幂等键被其他用户占用（DB 唯一索引全局唯一）
+            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "Idempotency-Key 已存在") from None
         raise
 
     if idempotency_key:
@@ -191,11 +195,11 @@ async def get_export_object_name(
         logger.warning("任务结果为空: taskId=%s", task_id)
         return None
 
-    if not isinstance(sys_task.result, str):
-        logger.warning("任务结果非对象键: taskId=%s", task_id)
-        return None
+    if isinstance(sys_task.result, str):
+        return sys_task.result
 
-    return sys_task.result
+    # 导入任务 result 为 JSON 对象（导入统计），无下载文件
+    raise BusinessException(ResultCode.TASK_STATUS_INVALID, "任务结果不包含下载文件")
 
 
 async def cancel_task(
@@ -214,11 +218,16 @@ async def cancel_task(
     if sys_task.create_by != user_id:
         raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
-    if sys_task.status in (TaskStatus.COMPLETED.value, TaskStatus.FAILED.value):
+    if sys_task.status == TaskStatus.CANCELLED.value:
+        raise BusinessException(ResultCode.TASK_CANCELLED)
+
+    if sys_task.status not in (TaskStatus.PENDING.value, TaskStatus.PROCESSING.value):
         raise BusinessException(ResultCode.TASK_STATUS_INVALID, "任务已完成或失败，无法取消")
 
-    if sys_task.status == TaskStatus.CANCELLED.value:
-        return
+    # CAS 更新：仅待执行/执行中可取消，避免与完成回调并发时覆盖终态
+    cancelled = await task_repository.cancel_if_active(db, task_id)
+    if not cancelled:
+        raise BusinessException(ResultCode.TASK_STATUS_INVALID, "任务状态已变更，无法取消")
 
     sys_task.status = TaskStatus.CANCELLED.value
     sys_task.completed_at = datetime.now()

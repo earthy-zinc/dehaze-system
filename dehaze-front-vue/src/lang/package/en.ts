@@ -17,7 +17,6 @@ export default {
       },
       password: {
         required: "Please enter Password",
-        min: "The password can not be less than 6 digits",
       },
       captchaCode: {
         required: "Please enter Verify Code",

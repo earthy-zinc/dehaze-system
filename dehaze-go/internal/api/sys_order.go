@@ -47,20 +47,15 @@ func (api *OrderApi) ListMy(c *gin.Context) {
 		return
 	}
 
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
 	q := &query.MyOrderQuery{
 		Status:   c.Query("status"),
-		PageNum:  1,
-		PageSize: 10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 
 	result, err := api.orderService.ListMy(c.Request.Context(), userID, q)
@@ -153,6 +148,89 @@ func (api *OrderApi) ApplyRefund(c *gin.Context) {
 	common.OkWithMessage("申请退款成功", c)
 }
 
+func (api *OrderApi) GetBalance(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.orderService.GetBalance(c.Request.Context(), userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "查询成功", c)
+}
+
+func (api *OrderApi) ApplyBalanceRefund(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var form bo.BalanceRefundForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.orderService.ApplyBalanceRefund(c.Request.Context(), userID, &form)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "提交成功", c)
+}
+
+func (api *OrderApi) AuditBalanceRefund(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	refundID, err := strconv.ParseInt(c.Param("refundId"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "退款记录ID格式不正确"))
+		return
+	}
+
+	var form bo.BalanceRefundAuditForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	if err := api.orderService.AuditBalanceRefund(c.Request.Context(), userID, refundID, &form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithMessage("审核完成", c)
+}
+
+func (api *OrderApi) CreateRecharge(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	var form bo.RechargeCreateForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.orderService.CreateRecharge(c.Request.Context(), userID, &form)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "创建成功", c)
+}
+
 func (api *OrderApi) UpdateAutoRenewConfig(c *gin.Context) {
 	userID, err := security.RequireUserID(c)
 	if err != nil {
@@ -195,25 +273,21 @@ func (api *OrderApi) GetAutoRenewConfig(c *gin.Context) {
 }
 
 func (api *OrderApi) GetPage(c *gin.Context) {
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+
 	q := &query.OrderPageQuery{
 		OrderNo:       c.Query("orderNo"),
 		Keywords:      c.Query("keywords"),
 		Status:        c.Query("status"),
+		PackageType:   c.Query("packageType"),
 		PayMethod:     c.Query("payMethod"),
 		PaidTimeStart: c.Query("paidTimeStart"),
 		PaidTimeEnd:   c.Query("paidTimeEnd"),
-		PageNum:       1,
-		PageSize:      10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:       pageNum,
+		PageSize:      pageSize,
 	}
 	if v := c.Query("amountMin"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
@@ -235,24 +309,18 @@ func (api *OrderApi) GetPage(c *gin.Context) {
 }
 
 func (api *OrderApi) ListRefunds(c *gin.Context) {
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.RefundPageQuery{
 		OrderNo:        c.Query("orderNo"),
 		Keywords:       c.Query("keywords"),
 		Status:         c.Query("status"),
 		ApplyTimeStart: c.Query("applyTimeStart"),
 		ApplyTimeEnd:   c.Query("applyTimeEnd"),
-		PageNum:        1,
-		PageSize:       10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:        pageNum,
+		PageSize:       pageSize,
 	}
 
 	result, err := api.orderService.ListRefunds(c.Request.Context(), q)

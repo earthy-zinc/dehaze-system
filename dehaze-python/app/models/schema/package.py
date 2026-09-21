@@ -4,8 +4,18 @@ from pydantic import BaseModel, Field
 
 
 class BenefitOverrides(BaseModel):
+    # 字段集必须覆盖 package_service.BENEFIT_FIELDS（17 项）：pydantic 默认
+    # extra="ignore"，漏声明的 key 会在 model_dump(exclude_none=True) 落库时被静默抹掉
     monthlyDehazeQuota: int | None = None
+    monthlyDerainQuota: int | None = None
+    monthlyDesnowQuota: int | None = None
+    monthlyLowlightQuota: int | None = None
+    monthlySuperResolutionQuota: int | None = None
+    monthlyDenoiseQuota: int | None = None
+    monthlyInpaintQuota: int | None = None
     monthlyEvaluateQuota: int | None = None
+    aiCreditsDaily: int | None = None
+    aiCreditsMonthly: int | None = None
     historyRetention: int | None = None
     batchLimit: int | None = None
     priority: int | None = None
@@ -22,7 +32,9 @@ class PackageForm(BaseModel):
     creditAmount: int | None = Field(default=None, ge=1, description="可得积分(积分卡必填)")
     levelCode: str | None = None
     period: Literal["monthly", "quarterly", "yearly"] | None = None
-    periodDays: int | None = Field(default=None, ge=1, le=365, description="有效期天数(积分卡为NULL)")
+    periodDays: int | None = Field(
+        default=None, ge=1, le=365, description="有效期天数(积分卡为NULL)"
+    )
     originalPrice: int = Field(..., ge=1, description="原价(分)")
     salePrice: int = Field(..., ge=1, description="促销价(分)")
     description: str | None = Field(default=None, max_length=256, description="套餐描述")

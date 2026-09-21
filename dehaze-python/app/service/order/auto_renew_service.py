@@ -9,7 +9,6 @@
 import logging
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -24,7 +23,6 @@ from app.service.order.order_service import (
     _format_dt,
     _gen_order_no,
 )
-from app.service.order.payment_service import PaymentService
 
 logger = logging.getLogger(__name__)
 
@@ -148,19 +146,18 @@ class AutoRenewService:
                         },
                     )
                 except Exception:
-                    logger.warning(
-                        "发送自动续费失败通知失败 configId=%s", config.id, exc_info=True
-                    )
+                    logger.warning("发送自动续费失败通知失败 configId=%s", config.id, exc_info=True)
                 continue
 
             pkg = await self.package_repository.get_by_id(db, config.package_id)
-            if not pkg or pkg.deleted == 1:
+            if not pkg or pkg.deleted != 0:
                 continue
             if pkg.status != 1:
                 continue
 
             now = datetime.now()
-            payable_amount = int(pkg.sale_price * settings.AUTO_RENEW_DISCOUNT)
+            # 金额单位为分，round 规避浮点乘法截断误差（如 1990*0.95 → 1890）
+            payable_amount = round(pkg.sale_price * settings.AUTO_RENEW_DISCOUNT)
             renew_order = SysOrder(
                 order_no=_gen_order_no(),
                 user_id=config.user_id,
@@ -187,9 +184,7 @@ class AutoRenewService:
             if config.pay_method == "balance":
                 renew_success = False
                 try:
-                    await self.balance_account_service.freeze(
-                        db, config.user_id, payable_amount
-                    )
+                    await self.balance_account_service.freeze(db, config.user_id, payable_amount)
                     await self.payment_service.complete_payment(
                         db,
                         renew_order,
@@ -207,11 +202,8 @@ class AutoRenewService:
                     renew_success = False
 
                 if renew_success:
-                    config.fail_count = 0
-                    config.next_renew_time = renew_order.package_expire_time or (
-                        now + timedelta(days=pkg.period_days or 0)
-                    )
-                    config.last_renew_order_id = renew_order.id
+                    # next_renew_time/fail_count 由 complete_payment 统一回写
+                    # （取会员叠加后的真实到期时间，避免非叠加的订单到期时间导致提前重复续费）
                     success_count += 1
                 else:
                     config.fail_count += 1
@@ -240,14 +232,10 @@ class AutoRenewService:
 
     def _apply_retry_or_close(self, config, now: datetime, settings) -> None:
         if config.fail_count < settings.AUTO_RENEW_RETRY_MAX:
-            config.next_renew_time = now + timedelta(
-                hours=settings.AUTO_RENEW_RETRY_INTERVAL_HOURS
-            )
+            config.next_renew_time = now + timedelta(hours=settings.AUTO_RENEW_RETRY_INTERVAL_HOURS)
         else:
             config.status = 0
-            config.close_reason = (
-                f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
-            )
+            config.close_reason = f"连续扣款失败 {settings.AUTO_RENEW_RETRY_MAX} 次，自动关闭"
 
 
 auto_renew_service = AutoRenewService()

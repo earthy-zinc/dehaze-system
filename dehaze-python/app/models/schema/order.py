@@ -5,21 +5,21 @@ class OrderCreateForm(BaseModel):
     packageId: int = Field(..., description="套餐ID")
     couponId: int | None = Field(default=None, description="用户优惠券实例ID")
     payMethod: str = Field(..., description="支付方式")
-    balanceAmount: int | None = Field(
-        default=None, ge=0, description="组合支付时余额部分金额(分)"
-    )
+    balanceAmount: int | None = Field(default=None, ge=0, description="组合支付时余额部分金额(分)")
 
 
 class PayRequest(BaseModel):
     payMethod: str = Field(..., description="支付方式")
-    balanceAmount: int | None = Field(
-        default=None, ge=0, description="组合支付时余额部分金额(分)"
+    channel: str | None = Field(
+        default=None, description="组合支付时指定的第三方渠道(wechat/alipay，组合支付必填)"
     )
+    balanceAmount: int | None = Field(default=None, ge=0, description="组合支付时余额部分金额(分)")
 
 
 class RefundApplyForm(BaseModel):
-    reasonType: str = Field(..., description="售后原因类型(after_sale/force_majeure/merchant/other)")
-    reason: str | None = Field(default=None, description="退款原因说明")
+    reasonType: str = Field(
+        ..., description="售后原因类型(after_sale/force_majeure/merchant/other)"
+    )
     customReason: str | None = Field(default=None, description="自定义补充说明")
 
 

@@ -2,11 +2,13 @@
 应用生命周期管理
 """
 
+import errno
 import logging
 import os
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
@@ -21,6 +23,9 @@ logger = logging.getLogger(__name__)
 _main_worker_lock_file = None
 
 
+_soft_delete_filter_registered = False
+
+
 def _register_soft_delete_filter() -> None:
     """注册全局逻辑删除过滤器。
 
@@ -28,6 +33,10 @@ def _register_soft_delete_filter() -> None:
     等价于 Java MyBatis-Plus 的全局逻辑删除。
     需要查已删除数据时，使用 execution_options(include_deleted=True) 绕过。
     """
+    global _soft_delete_filter_registered
+    if _soft_delete_filter_registered:
+        return
+
     from sqlalchemy import event
     from sqlalchemy.orm import Session, with_loader_criteria
 
@@ -47,6 +56,7 @@ def _register_soft_delete_filter() -> None:
         )
 
     event.listen(Session, "do_orm_execute", _soft_delete_criteria)
+    _soft_delete_filter_registered = True
 
 
 def _try_become_main_worker() -> bool:
@@ -70,19 +80,28 @@ def _try_become_main_worker() -> bool:
     except ImportError:
         return True
 
-    lock_path = os.path.join(settings.LOG_DIR, "main_worker.lock")
-    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+    lock_path = str(Path(settings.LOG_DIR) / "main_worker.lock")
+    Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
 
+    fd = None
     try:
-        _main_worker_lock_file = open(lock_path, "w")
-        fcntl.flock(_main_worker_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        _main_worker_lock_file.write(str(os.getpid()))
-        _main_worker_lock_file.flush()
+        # 用 os.open 持有文件描述符：flock 需要进程存活期间保持 fd 打开
+        fd = os.open(lock_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o666)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        os.write(fd, str(os.getpid()).encode())
+        _main_worker_lock_file = fd
         return True
-    except OSError:
-        if _main_worker_lock_file:
-            _main_worker_lock_file.close()
-            _main_worker_lock_file = None
+    except OSError as e:
+        if fd is not None:
+            os.close(fd)
+        _main_worker_lock_file = None
+        # flock LOCK_NB 抢锁失败（EACCES/EAGAIN/EWOULDBLOCK）＝"已有主 Worker"，属正常；
+        # 其余 OSError（日志目录不可写/磁盘满等）会让本进程静默降级为非主 Worker，
+        # 导致 XXL-Job/GPU 采集等独占资源无人启动，必须暴露
+        if e.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
+            logger.debug("未获取主 Worker 锁（已有主 Worker 持有）: %s", e)
+        else:
+            logger.error("主 Worker 锁文件操作失败，本进程降级为非主 Worker: %s", e, exc_info=True)
         return False
 
 
@@ -121,6 +140,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     async with get_db_session() as db:
         await skill_manage_service.ensure_builtin_skills(db)
+        # 历史 name-key 资源对象迁到 skill_id-key（幂等，迁移后为空操作）
+        try:
+            await skill_manage_service.migrate_legacy_object_keys(db)
+        except Exception as exc:
+            logger.warning("SKILL 资源对象 key 迁移失败（不影响启动）: %s", exc)
         await skill_manager.refresh_index(db)
 
     # 内置本地模型：幂等播种 local provider/Key/LLM+Embedding 模型（默认模型路由目标）
@@ -135,7 +159,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         async with get_db_session() as db:
             await ensure_local_engines(db)
-    except Exception as exc:  # noqa: BLE001 播种失败仅告警，不影响服务启动
+    except Exception as exc:
         logger.warning("内置本地语音引擎播种失败（不影响启动）: %s", exc)
 
     # 主 Worker 后台预下载模型文件（不阻塞启动；首次对话时 ensure_running 兜底）
@@ -157,10 +181,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 if not is_embedding_downloaded():
                     logger.info("后台预下载内置本地向量模型（Qwen3-Embedding-0.6B，约 610MB）")
                 ensure_embedding_model()
-            except Exception as exc:  # noqa: BLE001 预下载失败不影响启动，首次调用时会重试
+            except Exception as exc:
                 logger.warning("本地模型预下载失败（首次调用时将重试）: %s", exc)
 
-        threading.Thread(target=_prefetch_local_model, name="local-llm-prefetch", daemon=True).start()
+        threading.Thread(
+            target=_prefetch_local_model, name="local-llm-prefetch", daemon=True
+        ).start()
 
     redis = await get_redis_client()
     app.state.redis = redis
@@ -242,6 +268,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("从 Worker 跳过 GPU 指标采集器启动（由主 Worker 负责）")
     app.state.gpu_collector = gpu_collector
 
+    # 启动 MCP Server 健康巡检（仅主 Worker，避免多实例重复探测同一 Server）
+    if is_main_worker:
+        from app.service.ai_mcp.mcp_health_checker import mcp_health_checker
+
+        mcp_health_checker.start()
+        app.state.mcp_health_checker = mcp_health_checker
+
     logger.info("✅ %s v%s 启动成功", settings.APP_NAME, settings.APP_VERSION)
 
     yield
@@ -298,6 +331,15 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     except Exception as e:
         logger.warning("关闭 WebSocket 跨 Worker 通信失败: %s", e)
 
+    # 3.7 等待在途观测埋点落盘（trace/llm_call 后台写库），避免连接池回收后写入报错
+    try:
+        from app.service.ai.service.trace_collector import drain as drain_trace_writes
+
+        await drain_trace_writes()
+        logger.info("观测埋点在途落盘已刷新")
+    except Exception as e:
+        logger.warning("等待观测埋点落盘失败: %s", e)
+
     # 4. 关闭 XXL-Job 执行器（仅在主 Worker 中启动了才需关闭）
     if getattr(app.state, "xxljob_runner", None) is not None:
         from app.infrastructure.job.executor import close_xxljob
@@ -316,6 +358,13 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     if gpu_collector:
         await gpu_collector.stop()
         logger.info("GPU 指标采集器已停止")
+
+    # 6.1 停止 MCP Server 健康巡检
+    from app.service.ai_mcp.mcp_health_checker import mcp_health_checker
+
+    if getattr(app.state, "mcp_health_checker", None) is not None:
+        await mcp_health_checker.stop()
+        logger.info("MCP Server 健康巡检已停止")
 
     # 7. 关闭 Redis 连接
     # 7.1 停止缓存失效广播订阅

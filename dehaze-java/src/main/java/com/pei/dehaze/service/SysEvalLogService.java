@@ -16,7 +16,7 @@ public interface SysEvalLogService extends IService<SysEvalLog> {
     EvaluationResultVO evaluate(EvaluationForm form);
 
     /**
-     * 获取评估日志分页列表
+     * 获取指定用户的评估日志分页列表
      */
-    Page<EvalLogVO> getEvalLogPage(EvalLogQuery query);
+    Page<EvalLogVO> getEvalLogPage(EvalLogQuery query, Long userId);
 }

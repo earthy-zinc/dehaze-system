@@ -17,6 +17,7 @@ type SysMenu struct {
 	Redirect   string    `gorm:"column:redirect;type:varchar(128);comment:跳转路径" json:"redirect"`
 	AlwaysShow int8      `gorm:"column:always_show;type:tinyint;comment:【目录】只有一个子路由是否始终显示(1:是 0:否)" json:"alwaysShow"`
 	KeepAlive  int8      `gorm:"column:keep_alive;type:tinyint;comment:【菜单】是否开启页面缓存(1:是 0:否)" json:"keepAlive"`
-	Deleted    int8      `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	IsPreset   int8      `gorm:"column:is_preset;type:tinyint;not null;default:0;comment:系统预置标识(1:预置;0:普通)" json:"isPreset"`
+	Deleted    int64     `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 	Roles      []SysRole `gorm:"many2many:sys_role_menu;joinForeignKey:menu_id;joinReferences:role_id"`
 }

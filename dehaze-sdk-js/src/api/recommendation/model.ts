@@ -6,19 +6,19 @@
 /** 推荐对象类型 */
 export type RecommendationTargetType = "algorithm" | "preset" | "dataset" | "enhance";
 
-/** 雾霾浓度（30% 权重，影响算法强度选择） */
+/** 雾霾浓度 */
 export type HazeLevel = "light" | "moderate" | "heavy";
 
-/** 场景类型（20% 权重） */
+/** 场景类型（推荐匹配当前仅使用该维度） */
 export type SceneType = "urban" | "landscape" | "building" | "night" | "backlight" | "indoor";
 
-/** 光照条件（15% 权重） */
+/** 光照条件 */
 export type Lighting = "bright" | "normal" | "dark" | "veryDark" | "backlight";
 
-/** 分辨率（5% 权重，影响算法可处理性） */
+/** 分辨率 */
 export type Resolution = "sd" | "hd" | "uhd";
 
-/** 噪声水平（10% 权重，影响预处理需求） */
+/** 噪声水平 */
 export type NoiseLevel = "low" | "medium" | "high";
 
 /** 颜色分布（10% 权重） */
@@ -74,10 +74,10 @@ export interface RecommendedAlgorithm {
   matchScore: number;
   /** 推荐理由（一句话说明为什么推荐） */
   reason: string;
-  /** 算法评分 0-5（当前置 null，待真实数据填充） */
-  rating: number | null;
-  /** 预估处理耗时(ms)（当前置 null，待真实数据填充） */
-  estimatedTime: number | null;
+  /** 算法评分 0-5；未采集时字段缺失（后端 NonNullJSONResponse 递归剔除 null） */
+  rating?: number;
+  /** 预估处理耗时(ms)；未采集时字段缺失（同上） */
+  estimatedTime?: number;
   /** 预期效果描述 */
   effectDescription?: string;
 }

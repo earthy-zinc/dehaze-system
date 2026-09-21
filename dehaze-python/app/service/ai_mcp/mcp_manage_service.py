@@ -57,9 +57,15 @@ class McpManageService:
         server = await self._get_server_or_404(db, server_id)
         try:
             fetched = await self.fetcher.list_tools(server)
-        except Exception as exc:  # noqa: BLE001 拉取失败不阻断管理，落空工具
+        except Exception as exc:
             logger.warning("MCP 工具拉取异常: server_id=%s err=%s", server.id, exc)
             fetched = []
+        return await self._persist_tools(db, server, fetched)
+
+    async def _persist_tools(
+        self, db: AsyncSession, server: SysAiMcpServer, fetched: list[dict[str, Any]]
+    ) -> list[McpToolResult]:
+        """覆盖式落库工具清单：工具随每次拉取重建，不保留历史版本。"""
         await ai_mcp_tool_repository.delete_by_server(db, server.id)
         tools = [
             SysAiMcpTool(
@@ -100,7 +106,7 @@ class McpManageService:
             text = await call_remote_tool(server, tool_name, arguments or {})
             result = "success"
             error = None
-        except Exception as exc:  # noqa: BLE001 试调用失败透出错误，不抛
+        except Exception as exc:
             logger.warning(
                 "MCP 工具试调用失败: server=%s tool=%s err=%s",
                 server.name,
@@ -133,18 +139,21 @@ class McpManageService:
     # ── 市场 ──────────────────────────────────────────────
 
     async def get_market(self, db: AsyncSession) -> list[McpMarketPreset]:
-        """返回市场预设目录，installed 由是否存在同名 Server 推导。"""
+        """返回市场预设目录，installed 由同名未删除 Server 推导（软删行不算已接入）。"""
         items = []
         for preset in _MARKET_PRESETS:
-            server = await ai_mcp_server_repository.get_by_name(
-                db, preset["name"], include_deleted=True
-            )
+            name = str(preset["name"])
+            capability_tags = preset["capability_tags"]
+            # 预设常量标注为 dict[str, object]，形状固定为字符串标签列表；此处显式断言收窄，
+            # 形状写错时立即暴露而非静默兜底
+            assert isinstance(capability_tags, list)
+            server = await ai_mcp_server_repository.get_by_name(db, name)
             items.append(
                 McpMarketPreset(
-                    preset_id=preset["preset_id"],
-                    name=preset["name"],
-                    description=preset["description"],
-                    capability_tags=preset["capability_tags"],
+                    preset_id=str(preset["preset_id"]),
+                    name=name,
+                    description=str(preset["description"]),
+                    capability_tags=capability_tags,
                     installed=server is not None,
                 )
             )
@@ -153,13 +162,19 @@ class McpManageService:
     async def install_preset(
         self, db: AsyncSession, redis: Redis, preset_id: str
     ) -> McpServerResult:
-        """从市场一键接入预设：注册 Server（重名复用）并拉取工具清单。"""
+        """从市场一键接入预设：注册 Server（重名复用）并拉取工具清单。
+
+        同名软删 Server 复活复用（DB 唯一键 name 含软删行，无法新建同名），
+        复活时重置删除标记并置启用。拉取失败（异常/被 SSRF 守卫拦截/空清单）
+        置禁用且 health=offline，并保留原工具快照——不可用 Server 不应以
+        "已启用"姿态出现在 Agent 工具来源中，也不应把已有清单清空。
+        """
         preset = next((p for p in _MARKET_PRESETS if p["preset_id"] == preset_id), None)
         if not preset:
             raise BusinessException(ResultCode.PARAM_ERROR, "未知的市场预设")
 
         server = await ai_mcp_server_repository.get_by_name(
-            db, preset["name"], include_deleted=True
+            db, str(preset["name"]), include_deleted=True
         )
         if server is None:
             server = SysAiMcpServer(
@@ -172,10 +187,22 @@ class McpManageService:
                 tool_count=0,
             )
             await ai_mcp_server_repository.create(db, server)
-        tools = await self.get_tools(db, server.id)
-        server.tool_count = len(tools)
-        await db.flush()
-        return self._to_server(server)
+        elif server.deleted != 0:
+            server.deleted = 0
+            server.status = 1
+            await db.flush()
+        try:
+            fetched = await self.fetcher.list_tools(server)
+        except Exception as exc:
+            logger.warning("市场预设 %s 工具拉取失败: err=%s", preset_id, exc)
+            fetched = []
+        if not fetched:
+            server.status = 0
+            server.health = "offline"
+            await db.flush()
+            return McpServerResult.model_validate(server)
+        await self._persist_tools(db, server, fetched)
+        return McpServerResult.model_validate(server)
 
     # ── 调用审计 ──────────────────────────────────────────
 
@@ -211,7 +238,7 @@ class McpManageService:
                     response=response,
                 ),
             )
-        except Exception as exc:  # noqa: BLE001 审计失败不阻断调用
+        except Exception as exc:
             logger.warning(
                 "MCP 调用审计写入失败: server_id=%s tool=%s err=%s",
                 server_id,
@@ -219,9 +246,7 @@ class McpManageService:
                 exc,
             )
 
-    async def list_calls(
-        self, db: AsyncSession, query: McpCallQuery
-    ) -> PageResult[McpCallResult]:
+    async def list_calls(self, db: AsyncSession, query: McpCallQuery) -> PageResult[McpCallResult]:
         """分页查询外部 MCP 工具调用审计（create_time 倒序）。"""
         rows, total = await ai_mcp_call_repository.paginate_calls(
             db,
@@ -263,19 +288,7 @@ class McpManageService:
 
     @staticmethod
     def _to_server(server: SysAiMcpServer) -> McpServerResult:
-        return McpServerResult(
-            id=server.id,
-            name=server.name,
-            description=server.description,
-            protocol_type=server.protocol_type,
-            endpoint=server.endpoint,
-            auth_type=server.auth_type,
-            status=server.status,
-            health=server.health,
-            tool_count=server.tool_count,
-            create_time=server.create_time,
-            update_time=server.update_time,
-        )
+        return McpServerResult.model_validate(server)
 
 
 mcp_manage_service = McpManageService()

@@ -13,6 +13,8 @@ from app.models.entity.mongo_log import AiApiCallLogDocument
 
 logger = logging.getLogger(__name__)
 
+_BACKGROUND_CALL_LOG_TASKS: set[asyncio.Task] = set()
+
 
 class MongoAiCallLogRepository:
     """AI 兼容 API 调用审计 Repository（MongoDB 实现）"""
@@ -30,6 +32,7 @@ class MongoAiCallLogRepository:
         """异步写入调用审计（不阻塞业务主流程，失败时记录 warn 日志）。
 
         字段缺省值在此补全；user_id/key_id 允许为 None（401 被拒调用无凭证上下文）。
+        任务持有强引用（事件循环对 task 仅弱引用，不持有会被 GC 中途丢弃），完成后移出引用集。
         """
 
         async def _write():
@@ -54,7 +57,7 @@ class MongoAiCallLogRepository:
                     "create_time": datetime.now(UTC),
                 }
                 await self.insert(doc)
-            except Exception as e:  # noqa: BLE001 - 审计失败不影响业务主流程
+            except Exception as e:
                 logger.warning(
                     "调用审计写入失败 endpoint=%s status_code=%s: %s",
                     fields.get("endpoint"),
@@ -62,7 +65,9 @@ class MongoAiCallLogRepository:
                     e,
                 )
 
-        asyncio.create_task(_write())
+        task = asyncio.create_task(_write())
+        _BACKGROUND_CALL_LOG_TASKS.add(task)
+        task.add_done_callback(_BACKGROUND_CALL_LOG_TASKS.discard)
 
     async def query(
         self,
@@ -126,19 +131,17 @@ class MongoAiCallLogRepository:
                 }
             },
         ]
-        result = []
-        async for doc in self._collection.aggregate(pipeline):
-            result.append(
-                {
-                    "key_id": doc["_id"],
-                    "total_calls": doc["total_calls"],
-                    "success_calls": doc["success_calls"],
-                    "failed_calls": doc["failed_calls"],
-                    "total_tokens": doc["total_tokens"],
-                    "total_credits": doc["total_credits"],
-                }
-            )
-        return result
+        return [
+            {
+                "key_id": doc["_id"],
+                "total_calls": doc["total_calls"],
+                "success_calls": doc["success_calls"],
+                "failed_calls": doc["failed_calls"],
+                "total_tokens": doc["total_tokens"],
+                "total_credits": doc["total_credits"],
+            }
+            async for doc in self._collection.aggregate(pipeline)
+        ]
 
 
 mongo_ai_call_log_repository = MongoAiCallLogRepository()

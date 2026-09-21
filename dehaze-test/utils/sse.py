@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -86,11 +87,10 @@ def _handle_event(result: SseStreamResult, event_name: str, data_str: str) -> No
     if event_name == "ping":
         return
     try:
-        payload = json.loads(data_str)
+        parsed = json.loads(data_str)
     except json.JSONDecodeError:
-        payload = {"raw": data_str}
-    if not isinstance(payload, dict):
-        payload = {"data": payload}
+        parsed = {"raw": data_str}
+    payload: dict[str, Any] = parsed if isinstance(parsed, dict) else {"data": parsed}
     result.events.append((event_name, payload))
     if event_name == "content_block.delta":
         delta = payload.get("delta") or {}

@@ -32,6 +32,11 @@ public interface AlgorithmSelectService {
     List<AlgorithmSelectNodeVO> search(String keyword);
 
     /**
+     * 算法推荐匹配（F-M03-007）：基于关键词/任务类型/样例算法返回 Top N 推荐列表
+     */
+    java.util.Map<String, Object> recommend(String keyword, String taskType, Long sampleAlgorithmId, Integer topN);
+
+    /**
      * 算法对比（最多3个）
      */
     List<AlgorithmCompareVO> compare(AlgorithmCompareForm form);

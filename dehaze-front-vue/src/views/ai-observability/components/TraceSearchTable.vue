@@ -73,6 +73,17 @@
       </template>
     </el-table-column>
     <el-table-column label="创建时间" prop="createTime" width="170" />
+    <el-table-column label="操作" width="110" fixed="right" align="center">
+      <template #default="{ row }">
+        <el-button
+          link
+          type="primary"
+          @click.stop="jumpToTimeline(row.conversationId)"
+        >
+          会话时间线
+        </el-button>
+      </template>
+    </el-table-column>
   </el-table>
 
   <pagination
@@ -85,16 +96,23 @@
 </template>
 
 <script lang="ts" setup>
+import { useRouter } from "vue-router";
 import type {
   AiObservabilityStatus,
   AiObservabilityTraceItem,
 } from "dehaze-sdk-js";
-import { TRACE_STATUS_META, fmtDuration, fmtTokens, traceTypeMeta } from "../format";
+import {
+  TRACE_STATUS_META,
+  fmtDuration,
+  fmtTokens,
+  traceTypeMeta,
+} from "../format";
 import { useAdminObservabilityStore } from "@/store/modules/adminObservability";
 
 defineOptions({ name: "TraceSearchTable" });
 
 const store = useAdminObservabilityStore();
+const router = useRouter();
 
 // 表格插槽 row 无类型，经此收敛到状态枚举索引
 function statusMeta(status: number) {
@@ -103,6 +121,14 @@ function statusMeta(status: number) {
 
 function handleRowClick(row: AiObservabilityTraceItem) {
   store.fetchTraceDetail(row.traceId);
+}
+
+/** 跳转可观测中心会话审计 Tab，携 conversationId 定位时间线 */
+function jumpToTimeline(conversationId: number) {
+  router.push({
+    path: "/admin/ai-observability",
+    query: { conversationId: String(conversationId) },
+  });
 }
 </script>
 

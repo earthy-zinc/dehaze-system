@@ -17,5 +17,8 @@ function createOnResponseError() {
 export default function configRequest() {
   configAxios({
     onResponseError: createOnResponseError(),
+    onBizError: (_code, msg) => {
+      ElMessage.error(msg || "系统出错");
+    },
   });
 }

@@ -4,6 +4,7 @@ L1 回填若不继承 L2 剩余 TTL（退化为 L1 默认 TTL），L2 过期后 
 造成"改了数据必须重启后端"类脏读，此处锁定回填语义。
 """
 
+import json
 import time
 
 import pytest
@@ -25,6 +26,7 @@ def _fresh_service(mock_redis) -> CacheService:
 
 
 def _l1_remaining_ttl(svc: CacheService, key: str) -> float:
+    assert svc._l1 is not None
     _, expire_at = svc._l1._cache[key]
     return expire_at - time.monotonic()
 
@@ -73,4 +75,78 @@ async def test_delete_clears_l1_and_l2(mock_redis):
 
     assert await svc.delete("k5") is True
     assert await mock_redis.get("k5") is None
+    assert svc._l1 is not None
     assert svc._l1.get("k5") is None
+
+
+# ── 缓存失效广播：L1 失效 + MCP 变更后的推理图缓存失效 ─────────────────────────
+
+
+async def test_graph_invalidation_message_clears_reasoning_graph_cache(monkeypatch):
+    """java/go 原生改 MCP 后广播：收到即失效本实例图缓存（已构图仍持旧工具集）"""
+    from app.infrastructure.cache import cache as cache_mod
+    from app.service.ai.service import reasoning_service as rs_mod
+
+    service = rs_mod.ReasoningService()
+    service._graphs[(1, 2, "m")] = object()
+    monkeypatch.setattr(rs_mod, "reasoning_service", service)
+
+    await cache_mod._handle_invalidation_message(
+        json.dumps({"type": "ai_graph_invalidate", "senderId": "dehaze-java-abc"})
+    )
+
+    assert service._graphs == {}
+
+
+async def test_graph_invalidation_ignores_own_message(monkeypatch):
+    """忽略自己发送的消息（防自消费）：本实例已在变更处直接失效过"""
+    from app.infrastructure.cache import cache as cache_mod
+    from app.service.ai.service import reasoning_service as rs_mod
+
+    service = rs_mod.ReasoningService()
+    service._graphs[(1, 2, "m")] = object()
+    monkeypatch.setattr(rs_mod, "reasoning_service", service)
+
+    await cache_mod._handle_invalidation_message(
+        json.dumps({"type": "ai_graph_invalidate", "senderId": cache_mod._INSTANCE_ID})
+    )
+
+    assert list(service._graphs) == [(1, 2, "m")]
+
+
+async def test_key_message_still_clears_l1():
+    """图缓存消息分支不得挤掉原有 L1 失效语义"""
+    from app.infrastructure.cache import cache as cache_mod
+
+    l1 = cache_mod._get_shared_l1()
+    assert l1 is not None, "L1 未启用则本用例无意义"
+    l1.set("ai:agent:default", "v")
+
+    await cache_mod._handle_invalidation_message(
+        json.dumps({"type": "key", "key": "ai:agent:default", "senderId": "dehaze-go"})
+    )
+
+    assert l1.get("ai:agent:default") is None
+
+
+async def test_publish_graph_invalidation_payload(mock_redis, monkeypatch):
+    """发布载荷为 {type, senderId}（无 key）：载荷结构即跨端协议，java/go 据此对齐"""
+    from app.infrastructure.cache import cache as cache_mod
+
+    published: list[tuple[str, str]] = []
+
+    async def _spy(channel: str, message: str) -> int:
+        published.append((channel, message))
+        return 1
+
+    monkeypatch.setattr(mock_redis, "publish", _spy)
+
+    await cache_mod.publish_graph_invalidation()
+
+    assert len(published) == 1
+    channel, payload = published[0]
+    assert channel == settings.CACHE_INVALIDATION_CHANNEL
+    msg = json.loads(payload)
+    assert msg["type"] == "ai_graph_invalidate"
+    assert "key" not in msg
+    assert msg["senderId"] == cache_mod._INSTANCE_ID

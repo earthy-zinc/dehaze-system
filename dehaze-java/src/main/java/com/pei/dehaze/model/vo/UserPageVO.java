@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -49,5 +50,18 @@ public class UserPageVO {
     @Schema(description="创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd")
     private Date createTime;
+
+    @Schema(description="用户类型(personal:个人;enterprise:企业)")
+    private String userType;
+
+    @Schema(description="会员等级(level_0~level_3)，无会员记录为null")
+    private String memberLevel;
+
+    @Schema(description="会员套餐到期时间，null表示成长值维持")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime memberExpireTime;
+
+    @Schema(description="本月任务配额用量(used/total)，如\"30/100\"")
+    private String quotaUsage;
 
 }

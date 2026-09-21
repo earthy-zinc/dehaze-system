@@ -17,8 +17,8 @@ func RegisterSysUserRoutes(rg *gin.RouterGroup, sysUserApi *api.SysUserApi) gin.
 		sysUserRouter.POST("", middleware.Permission("sys:user:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysUserApi.SaveUser)
 		sysUserRouter.PUT(":userId", middleware.Permission("sys:user:edit"), sysUserApi.UpdateUser)
 		sysUserRouter.DELETE(":ids", middleware.Permission("sys:user:delete"), sysUserApi.DeleteUsers)
-		sysUserRouter.PATCH(":userId/password", middleware.Permission("sys:user:edit"), sysUserApi.UpdatePassword)
-		sysUserRouter.PATCH(":userId/status", middleware.Permission("sys:user:edit"), sysUserApi.UpdateUserStatus)
+		sysUserRouter.PATCH(":userId/password", middleware.Permission("sys:user:password:reset"), sysUserApi.UpdatePassword)
+		sysUserRouter.PATCH(":userId/status", middleware.Permission("sys:user:status"), sysUserApi.UpdateUserStatus)
 	}
 	return sysUserRouter
 }
@@ -33,10 +33,10 @@ func RegisterSysRoleRoutes(rg *gin.RouterGroup, sysRoleApi *api.SysRoleApi) gin.
 		sysRoleRouter.GET(":roleId/menuIds", sysRoleApi.GetRoleMenuIds)
 
 		// 写操作 - 需要权限校验（POST 新增操作加防重复提交，与 Java @PreventDuplicateSubmit 一致）
-		sysRoleRouter.POST("", middleware.Permission("sys:role:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.AddRole)
+		sysRoleRouter.POST("", middleware.Permission("sys:role:add"), sysRoleApi.AddRole)
 		sysRoleRouter.PUT(":roleId", middleware.Permission("sys:role:edit"), sysRoleApi.UpdateRole)
 		sysRoleRouter.DELETE(":ids", middleware.Permission("sys:role:delete"), sysRoleApi.DeleteRoles)
-		sysRoleRouter.PUT(":roleId/status", middleware.Permission("sys:role:edit"), sysRoleApi.UpdateRoleStatus)
+		sysRoleRouter.PATCH(":roleId/status", middleware.Permission("sys:role:edit"), sysRoleApi.UpdateRoleStatus)
 		sysRoleRouter.PATCH(":roleId/menus", middleware.Permission("sys:role:edit"), sysRoleApi.AssignMenusToRole)
 	}
 	return sysRoleRouter
@@ -52,7 +52,8 @@ func RegisterSysDeptRoutes(rg *gin.RouterGroup, sysDeptApi *api.SysDeptApi) gin.
 
 		// 写操作 - 需要权限校验（POST 新增操作加防重复提交，与 Java @PreventDuplicateSubmit 一致）
 		sysDeptRouter.POST("", middleware.Permission("sys:dept:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysDeptApi.SaveDept)
-		sysDeptRouter.PUT(":deptId", middleware.Permission("sys:dept:edit"), sysDeptApi.UpdateDept)
+		// 修改部门：参数绑定后做权限校验（与 FastAPI body 校验先行顺序对齐，见 middleware.CheckPermission）
+		sysDeptRouter.PUT(":deptId", sysDeptApi.UpdateDept)
 		sysDeptRouter.DELETE(":ids", middleware.Permission("sys:dept:delete"), sysDeptApi.DeleteDepartments)
 	}
 	return sysDeptRouter

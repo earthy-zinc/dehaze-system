@@ -2,6 +2,8 @@ from fastapi import APIRouter, Body, Depends, Path, Query
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
@@ -25,11 +27,15 @@ router = APIRouter(
 @router.get("", response_model=Result[list[MenuVO]], summary="获取菜单列表")
 async def list_menus(
     keywords: str | None = Query(default=None, description="关键词(菜单名称)"),
-    type: int | None = Query(default=None, ge=1, le=4, description="菜单类型(1-菜单；2-目录；3-外链；4-按钮)"),
+    perm: str | None = Query(default=None, description="权限标识(模糊匹配)"),
+    path: str | None = Query(default=None, description="路由地址(模糊匹配)"),
+    type: int | None = Query(
+        default=None, ge=1, le=4, description="菜单类型(1-菜单；2-目录；3-外链；4-按钮)"
+    ),
     visible: int | None = Query(default=None, ge=0, le=1, description="显示状态(1:显示;0:隐藏)"),
     db: AsyncSession = Depends(get_db),
 ):
-    menu_list = await menu_service.list_menus(db, keywords, type, visible)
+    menu_list = await menu_service.list_menus(db, keywords, perm, path, type, visible)
     return success(menu_list)
 
 
@@ -64,7 +70,7 @@ async def get_menu_form(
     return success(menu_form)
 
 
-@router.post("", response_model=Result[dict[str, int]], summary="新增菜单")
+@router.post("", response_model=Result[None], summary="新增菜单")
 @require_permission("sys:menu:add")
 async def add_menu(
     body: MenuForm,
@@ -76,7 +82,7 @@ async def add_menu(
     return success(msg="保存成功")
 
 
-@router.put("/{menu_id}", response_model=Result[dict[str, int]], summary="修改菜单")
+@router.put("/{menu_id}", response_model=Result[None], summary="修改菜单")
 @require_permission("sys:menu:edit")
 async def update_menu(
     menu_id: int = Path(..., description="菜单ID"),
@@ -104,7 +110,10 @@ async def delete_menu(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    menu_ids = [int(i) for i in ids.split(",")]
+    try:
+        menu_ids = [int(i.strip()) for i in ids.split(",")]
+    except ValueError as e:
+        raise BusinessException(ResultCode.PARAM_ERROR, "菜单ID格式错误") from e
     await menu_service.delete_menu(db, redis, menu_ids)
     return success(msg="删除成功")
 

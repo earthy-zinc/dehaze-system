@@ -10,7 +10,7 @@ type SysAlgorithmVersion struct {
 	ConfigJSON  *string `gorm:"column:config_json;type:json;comment:该版本时的配置JSON" json:"configJson"`
 	ModelFileID *int64  `gorm:"column:model_file_id;type:bigint;comment:模型文件ID" json:"modelFileId"`
 	IsActive    *int8   `gorm:"column:is_active;type:tinyint;default:0;comment:是否当前活跃版本" json:"isActive"`
-	Deleted     int8    `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	Deleted     int64   `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 // TableName 指定表名

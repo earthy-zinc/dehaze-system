@@ -12,12 +12,21 @@ export type RefundStatus = "refunding" | "refunded" | "refund_failed";
 /** 商品类型(vip:会员卡;credit:积分卡) */
 export type OrderPackageType = "vip" | "credit";
 
+/** 售后原因类型 */
+export type RefundReasonType = "after_sale" | "force_majeure" | "merchant" | "other";
+
 /** 订单创建表单 */
 export interface OrderCreateForm {
   packageId: number;
   couponId?: number;
   payMethod: PayMethod;
   balanceAmount?: number;
+}
+
+/** 余额账户VO */
+export interface BalanceAccountVO {
+  balance: number;
+  frozenBalance: number;
 }
 
 /** 余额退款表单 */
@@ -58,6 +67,7 @@ export interface OrderQuery extends PageQuery {
   orderNo?: string;
   keywords?: string;
   status?: OrderStatus;
+  packageType?: OrderPackageType;
   payMethod?: PayMethod;
   amountMin?: number;
   amountMax?: number;
@@ -68,6 +78,10 @@ export interface OrderQuery extends PageQuery {
 /** 支付请求 */
 export interface PayRequest {
   payMethod: PayMethod;
+  /** 组合支付时指定的第三方渠道（组合支付必填） */
+  channel?: "wechat" | "alipay";
+  /** 组合支付时余额部分金额(分) */
+  balanceAmount?: number;
 }
 
 /** 支付结果 */
@@ -82,7 +96,7 @@ export interface PayResult {
 /** 退款申请表单 */
 export interface RefundApplyForm {
   /** 售后原因类型：after_sale 售后问题 / force_majeure 不可抗原因 / merchant 商家原因 / other 其他 */
-  reasonType: "after_sale" | "force_majeure" | "merchant" | "other";
+  reasonType: RefundReasonType;
   /** 补充说明，非空时以 reasonType + ":" + customReason 拼接写入 */
   customReason?: string;
 }
@@ -98,6 +112,7 @@ export interface RefundQuery extends PageQuery {
   orderNo?: string;
   keywords?: string;
   status?: RefundStatus;
+  reasonType?: RefundReasonType;
   applyTimeStart?: string;
   applyTimeEnd?: string;
 }
@@ -167,6 +182,7 @@ export interface RefundRecordVO {
   userId: number;
   username: string;
   refundAmount: number;
+  reasonType: RefundReasonType;
   reason: string;
   usedDays?: number;
   usedCredits?: number;
@@ -183,6 +199,7 @@ export interface RefundRecordVO {
 
 /** 订单详情VO */
 export interface OrderDetailVO extends OrderPageVO {
+  balanceAmount?: number;
   expireTime: string;
   effectiveTime?: string;
   cancelReason?: string;
@@ -199,6 +216,12 @@ export interface OrderStatsVO {
   refundRate: number;
   statusDistribution: Record<OrderStatus, number>;
   payMethodDistribution: Record<PayMethod, number>;
+  packageTypeDistribution: Array<{
+    packageType: OrderPackageType;
+    count: number;
+    revenue: number;
+  }>;
+  refundReasonDistribution: Record<RefundReasonType, number>;
   packageDistribution: Array<{
     packageId: number;
     packageName: string;

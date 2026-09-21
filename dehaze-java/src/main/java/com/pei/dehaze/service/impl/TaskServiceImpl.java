@@ -51,6 +51,7 @@ import java.util.stream.Collectors;
 public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> implements TaskService {
 
     private final TaskExecutor taskExecutor;
+    private final com.pei.dehaze.service.strategy.TaskStrategyFactory taskStrategyFactory;
 
     private final StorageServiceFactory storageServiceFactory;
 
@@ -68,10 +69,11 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("用户未登录");
         }
 
-        // 幂等去重：相同 idempotencyKey 直接返回已有任务
+        // 幂等去重：相同 idempotencyKey 直接返回已有任务（幂等键按用户隔离，防止跨用户信息泄露）
         if (StrUtil.isNotBlank(idempotencyKey)) {
             SysTask existingTask = this.getOne(new LambdaQueryWrapper<SysTask>()
-                    .eq(SysTask::getIdempotencyKey, idempotencyKey));
+                    .eq(SysTask::getIdempotencyKey, idempotencyKey)
+                    .eq(SysTask::getCreateBy, currentUserId));
             if (existingTask != null) {
                 log.debug("幂等键命中，返回已有任务: taskId={}, idempotencyKey={}",
                         existingTask.getTaskId(), idempotencyKey);
@@ -79,7 +81,10 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             }
         }
 
-        String taskId = IdUtil.simpleUUID();
+        // 不支持的任务类型直接拒绝（避免创建永远无法执行的任务）
+        taskStrategyFactory.getStrategy(form.getType());
+
+        String taskId = IdUtil.randomUUID();
 
         SysTask sysTask = new SysTask();
         sysTask.setTaskId(taskId);

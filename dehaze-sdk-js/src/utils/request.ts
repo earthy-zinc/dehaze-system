@@ -171,6 +171,7 @@ service.interceptors.response.use(
             // 业务码错误在 fulfilled handler 中 reject，不会触发同一拦截器的 rejected handler，
             // 需在此显式上报，否则 API 失败日志丢失
             reportApiError(error);
+            interceptors.onBizError?.(parsed.code, parsed?.msg ?? "");
             return Promise.reject(error);
           }
           const result =
@@ -195,6 +196,7 @@ service.interceptors.response.use(
       // 业务码错误在 fulfilled handler 中 reject，不会触发同一拦截器的 rejected handler，
       // 需在此显式上报，否则 API 失败日志丢失
       reportApiError(error);
+      interceptors.onBizError?.(code, response.data?.msg ?? "");
       return Promise.reject(error);
     }
     const result = (await interceptors.onResponse?.(response)) || data;

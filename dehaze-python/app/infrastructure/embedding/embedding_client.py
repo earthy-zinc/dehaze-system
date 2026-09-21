@@ -2,7 +2,7 @@
 
 按知识库记录的 embedding_provider / embedding_model 调用 OpenAI 兼容端点向量化
 （模型参数来自知识库记录，而非记忆模块的全局 sys_dict 配置）。
-提供单条与批量向量化（batch_size 分批调用）、常用模型维度映射。
+提供单条与批量向量化（batch_size 分批调用）。
 
 失败语义：向量化失败抛 BusinessException（由上层决定降级/重试），不静默返回空。
 """
@@ -16,24 +16,11 @@ import httpx
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
-from app.repository.ai_provider_repository import ai_provider_repository
 from app.infrastructure.llm.local.local_llm_manager import ensure_running
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
+from app.repository.ai_provider_repository import ai_provider_repository
 
 logger = logging.getLogger(__name__)
-
-# 常用模型 -> 向量维度映射（ES dense_vector dims 联动，未知模型时由供应商配置下发）
-_KNOWN_DIMS = {
-    "text-embedding-3-small": 1536,
-    "text-embedding-3-large": 3072,
-    "bge-m3": 1024,
-    "bge-large-zh": 1024,
-}
-
-
-def get_embedding_dim(provider: str, model: str) -> int:
-    """返回常用 embedding 模型的向量维度（未知模型返回 0，由调用方读取供应商配置 dims）"""
-    return _KNOWN_DIMS.get(model, 0)
 
 
 def _embedding_url(provider_code: str, api_base_url: str) -> str:
@@ -88,8 +75,11 @@ async def _embed_batch(
         await asyncio.to_thread(ensure_running)
     provider, api_key = await _get_embedding_provider_and_key(provider_code)
     url = _embedding_url(provider_code, provider.api_base_url)
+    # local 走子进程 CPU 推理（llama.cpp 逐条串行，512-token 块 ~1.3s/条），
+    # 几十块的文档单批可达 30-60s+，远程供应商的 30s 默认超时对它必然失败
+    timeout = 300 if provider_code == "local" else 30
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 url,
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -102,7 +92,8 @@ async def _embed_batch(
                 return data["embeddings"]
             return [item["embedding"] for item in data["data"]]
     except Exception as e:
-        logger.warning("Embedding 调用失败(provider=%s model=%s): %s", provider_code, model, e)
+        # %r 而非 %s：httpx 超时类异常 str 为空，%s 会打出无信息量的空日志
+        logger.warning("Embedding 调用失败(provider=%s model=%s): %r", provider_code, model, e)
         raise BusinessException(
             ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Embedding 调用失败"
         ) from e

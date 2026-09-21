@@ -1,7 +1,7 @@
 import { describe, test, expect, afterAll } from "vitest";
 import { ApiKeyAPI, service } from "../../../index";
 import type { ApiKeyVO } from "@/api/api-key/model";
-import { createApiKeyForm, createGovernedApiKeyForm } from "#/factories/api-key";
+import { createApiKeyForm } from "#/factories/api-key";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 
 describe("API密钥管理", () => {
@@ -42,12 +42,12 @@ describe("API密钥管理", () => {
     });
 
     test("创建带治理参数(配额)的密钥应返回并透传", async () => {
-      const form = createGovernedApiKeyForm({
+      const form = createApiKeyForm({
         dailyQuota: 1000,
         monthlyQuota: 20000,
         rpmLimit: 60,
-      }) as any;
-      const result: any = await ApiKeyAPI.create(form);
+      });
+      const result = await ApiKeyAPI.create(form);
 
       expect(result.apiKey!.startsWith("dhak_")).toBe(true);
       expect(result.dailyQuota).toBe(1000);

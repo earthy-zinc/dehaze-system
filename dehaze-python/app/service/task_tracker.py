@@ -9,13 +9,15 @@ Redis key 设计：
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
 import time
+from collections.abc import Awaitable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from redis.asyncio import Redis
 
@@ -81,10 +83,8 @@ class TaskTracker:
         """停止 Redis 背景状态同步（在 lifespan 中调用）"""
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._heartbeat_task
-            except asyncio.CancelledError:
-                pass
             self._heartbeat_task = None
 
         # 清理本 Worker 在 Redis 中的任务记录
@@ -268,7 +268,7 @@ class TaskTracker:
         tracked.task.cancel()
         try:
             await asyncio.wait_for(tracked.task, timeout=5.0)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
+        except (TimeoutError, asyncio.CancelledError):
             pass
         except Exception as e:
             logger.warning(f"任务取消后异常: taskId={task_id}, error={e}")
@@ -299,7 +299,9 @@ class TaskTracker:
             async for key in self._redis.scan_iter(match=pattern, count=100):
                 key_str = key if isinstance(key, str) else key.decode("utf-8")
                 task_id = key_str.split(":", 2)[-1]
-                data = await self._redis.hgetall(key_str)
+                # redis-py 同步/异步客户端共用 hgetall 签名（Union[Awaitable[dict], dict]）；
+                # 此处为异步客户端，运行时恒返回协程，await 正确，用 cast 收窄类型
+                data = await cast(Awaitable[dict], self._redis.hgetall(key_str))
 
                 if data:
                     tasks.append(

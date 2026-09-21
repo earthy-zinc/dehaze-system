@@ -172,7 +172,7 @@ func (s *ImportExportService) Import(ctx context.Context, p *ImportParams) (inte
 		p.Mode = "all"
 	}
 
-	rows, err := s.parseRows(p.File, p.FileHeader.Filename, handler.GetDynamicFieldConfigs())
+	rows, err := s.parseRows(p.File, p.FileHeader.Filename, handler.GetFieldConfigs())
 	if err != nil {
 		return nil, err
 	}
@@ -242,11 +242,11 @@ func (s *ImportExportService) createImportTask(ctx context.Context, p *ImportPar
 	}
 
 	taskParams := map[string]interface{}{
-		"module":        p.Module,
+		"module":         p.Module,
 		"fileObjectName": objectName,
-		"fileName":      p.FileHeader.Filename,
-		"mode":          p.Mode,
-		"extraParams":   p.ExtraParams,
+		"fileName":       p.FileHeader.Filename,
+		"mode":           p.Mode,
+		"extraParams":    p.ExtraParams,
 	}
 	taskType := p.Module + "_import"
 	task, err := s.taskSvc.CreateTask(ctx, taskType, taskParams, p.UserID, "")
@@ -384,7 +384,7 @@ func (s *ImportExportService) ExecuteAsyncImport(ctx context.Context, task *mode
 	}
 	defer reader.Close()
 
-	rows, err := s.parseRows(reader, fileName, handler.GetDynamicFieldConfigs())
+	rows, err := s.parseRows(reader, fileName, handler.GetFieldConfigs())
 	if err != nil {
 		s.logger.Error("异步导入解析文件失败", zap.String("taskId", task.TaskID), zap.Error(err))
 		_ = s.taskSvc.UpdateTaskStatus(ctx, task.TaskID, model.TaskStatusFailed, "导入失败: "+err.Error())

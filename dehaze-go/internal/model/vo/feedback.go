@@ -46,11 +46,11 @@ type FeedbackPageVO struct {
 
 type FeedbackDetailVO struct {
 	FeedbackPageVO
-	Contact      string             `json:"contact,omitempty"`
-	Images       []string           `json:"images"`
-	AssignedTime string             `json:"assignedTime,omitempty"`
-	CloseReason  string             `json:"closeReason,omitempty"`
-	Replies      []FeedbackReplyVO  `json:"replies"`
+	Contact      string            `json:"contact,omitempty"`
+	Images       []string          `json:"images"`
+	AssignedTime string            `json:"assignedTime,omitempty"`
+	CloseReason  string            `json:"closeReason,omitempty"`
+	Replies      []FeedbackReplyVO `json:"replies"`
 }
 
 type FeedbackReplyVO struct {
@@ -66,22 +66,22 @@ type FeedbackReplyVO struct {
 }
 
 type RatingStatsVO struct {
-	TotalRatings        int64                  `json:"totalRatings"`
-	AverageRating       float64                `json:"averageRating"`
-	RatingDistribution  map[int]int64          `json:"ratingDistribution"`
-	PositiveTagRanking  []TagCount             `json:"positiveTagRanking"`
-	NegativeTagRanking  []TagCount             `json:"negativeTagRanking"`
-	AlgorithmStats      []AlgorithmRatingStat `json:"algorithmStats"`
+	TotalRatings       int64                 `json:"totalRatings"`
+	AverageRating      float64               `json:"averageRating"`
+	RatingDistribution map[int]int64         `json:"ratingDistribution"`
+	PositiveTagRanking []TagCount            `json:"positiveTagRanking"`
+	NegativeTagRanking []TagCount            `json:"negativeTagRanking"`
+	AlgorithmStats     []AlgorithmRatingStat `json:"algorithmStats"`
 }
 
 type FeedbackStatsVO struct {
-	TotalFeedback      int64                `json:"totalFeedback"`
-	TypeDistribution   map[string]int64     `json:"typeDistribution"`
-	ModuleDistribution []ModuleCount        `json:"moduleDistribution"`
-	StatusDistribution map[string]int64     `json:"statusDistribution"`
-	AverageResponseTime float64             `json:"averageResponseTime"`
-	AverageCloseTime   float64             `json:"averageCloseTime"`
-	TopKeywords        []KeywordCount        `json:"topKeywords"`
+	TotalFeedback       int64            `json:"totalFeedback"`
+	TypeDistribution    map[string]int64 `json:"typeDistribution"`
+	ModuleDistribution  []ModuleCount    `json:"moduleDistribution"`
+	StatusDistribution  map[string]int64 `json:"statusDistribution"`
+	AverageResponseTime float64          `json:"averageResponseTime"`
+	AverageCloseTime    float64          `json:"averageCloseTime"`
+	TopKeywords         []KeywordCount   `json:"topKeywords"`
 }
 
 type TagCount struct {

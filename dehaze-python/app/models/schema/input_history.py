@@ -1,44 +1,48 @@
 """
 图像输入历史记录 Schema
 对齐 dehaze-java HistoryForm/InputHistoryVO 字段命名
+
+字段长度约束与 sys_input_history 表定义一致，超长入库会导致 MySQL 报错。
 """
 
-from pydantic import BaseModel, Field
+import json
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class InputHistoryForm(BaseModel):
     """历史记录创建表单 (对齐 Java HistoryForm 字段)"""
 
-    originalImageUrl: str | None = Field(
-        default=None, alias="originalImageUrl", description="原始图片URL"
-    )
+    originalImageUrl: str | None = Field(default=None, max_length=500, description="原始图片URL")
     originalThumbnailUrl: str | None = Field(
-        default=None, alias="originalThumbnailUrl", description="原始缩略图URL"
+        default=None, max_length=500, description="原始缩略图URL"
     )
-    resultImageUrl: str | None = Field(
-        default=None, alias="resultImageUrl", description="处理结果图片URL"
-    )
+    resultImageUrl: str | None = Field(default=None, max_length=500, description="处理结果图片URL")
     resultThumbnailUrl: str | None = Field(
-        default=None, alias="resultThumbnailUrl", description="结果缩略图URL"
+        default=None, max_length=500, description="结果缩略图URL"
     )
-    algorithmId: int | None = Field(default=None, alias="algorithmId", description="算法ID")
-    algorithmName: str | None = Field(
-        default=None, alias="algorithmName", description="算法名称（冗余）"
-    )
-    algorithmParams: str | None = Field(
-        default=None, alias="algorithmParams", description="算法参数（JSON）"
-    )
-    processingTime: int | None = Field(
-        default=None, alias="processingTime", description="处理耗时（毫秒）"
-    )
+    algorithmId: int | None = Field(default=None, description="算法ID")
+    algorithmName: str | None = Field(default=None, max_length=100, description="算法名称（冗余）")
+    algorithmParams: str | None = Field(default=None, description="算法参数（JSON 字符串）")
+    processingTime: int | None = Field(default=None, ge=0, description="处理耗时（毫秒）")
     status: int | None = Field(
-        default=3, description="处理状态（1=成功，2=失败，3=处理中），创建时确定"
+        default=3, ge=1, le=3, description="处理状态（1=成功，2=失败，3=处理中），创建时确定"
     )
-    inputSource: str | None = Field(
-        default=None, alias="inputSource", description="图片来源（upload/camera/sample）"
+    inputSource: Literal["upload", "camera", "sample"] | None = Field(
+        default=None, description="图片来源"
     )
 
-    model_config = {"populate_by_name": True}
+    @field_validator("algorithmParams")
+    @classmethod
+    def _validate_algorithm_params_json(cls, v: str | None) -> str | None:
+        # algorithm_params 落库到 MySQL JSON 列，非合法 JSON 在 Java 端会直接 SQL 报错，此处前置拦截
+        if v is not None:
+            try:
+                json.loads(v)
+            except json.JSONDecodeError as e:
+                raise ValueError("algorithmParams 必须为合法 JSON 字符串") from e
+        return v
 
 
 class InputHistoryVO(BaseModel):

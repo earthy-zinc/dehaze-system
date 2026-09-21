@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "17.算法选择")
 @RestController
@@ -51,6 +52,17 @@ public class AlgorithmSelectController {
     public Result<List<AlgorithmSelectNodeVO>> search(
             @Parameter(description = "搜索关键词") @RequestParam String keyword) {
         return Result.success(algorithmSelectService.search(keyword));
+    }
+
+    @Operation(summary = "算法推荐匹配", description = "基于关键词/任务类型/样例算法返回 Top N 推荐列表（topN 默认 3，范围 1-10）")
+    @PostMapping("/recommend")
+    public Result<Map<String, Object>> recommend(@RequestBody Map<String, Object> body) {
+        String keyword = body.get("keyword") != null ? String.valueOf(body.get("keyword")) : null;
+        String taskType = body.get("taskType") != null ? String.valueOf(body.get("taskType")) : null;
+        Long sampleAlgorithmId = body.get("sampleAlgorithmId") != null
+                ? Long.valueOf(String.valueOf(body.get("sampleAlgorithmId"))) : null;
+        Integer topN = body.get("topN") != null ? Integer.valueOf(String.valueOf(body.get("topN"))) : null;
+        return Result.success(algorithmSelectService.recommend(keyword, taskType, sampleAlgorithmId, topN));
     }
 
     @Operation(summary = "算法对比（最多3个）")

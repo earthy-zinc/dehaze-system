@@ -13,7 +13,6 @@ type IPresetRepository interface {
 	Create(ctx context.Context, preset *model.SysPreset) error
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
 	Delete(ctx context.Context, id int64) error
-	CountByUser(ctx context.Context, userID int64) (int64, error)
 }
 
 type presetRepository struct {
@@ -75,12 +74,4 @@ func (r *presetRepository) Update(ctx context.Context, id int64, updates map[str
 
 func (r *presetRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Delete(&model.SysPreset{}, id).Error
-}
-
-func (r *presetRepository) CountByUser(ctx context.Context, userID int64) (int64, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysPreset{}).
-		Where("type = ? AND user_id = ?", "custom", userID).
-		Count(&count).Error
-	return count, err
 }

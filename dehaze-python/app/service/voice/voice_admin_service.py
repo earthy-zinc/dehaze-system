@@ -72,13 +72,9 @@ class VoiceAdminService:
         self, db: AsyncSession, form: VoiceProviderCreate
     ) -> VoiceProviderResult:
         existing = await voice_provider_repository.get_by_provider_and_engine(
-            db, form.provider_code, form.engine_type, include_deleted=True
+            db, form.provider_code, form.engine_type
         )
         if existing:
-            if existing.deleted:
-                raise BusinessException(
-                    ResultCode.DATA_EXISTS, "引擎编码已被历史记录占用，不可复用"
-                )
             raise BusinessException(ResultCode.DATA_EXISTS, "引擎编码已存在")
         provider = SysVoiceProvider(
             provider_code=form.provider_code,
@@ -147,9 +143,7 @@ class VoiceAdminService:
 
     # ==================== Key（物理删除，对齐 ai_provider_key） ====================
 
-    async def list_keys(
-        self, db: AsyncSession, provider_id: int
-    ) -> list[VoiceProviderKeyResult]:
+    async def list_keys(self, db: AsyncSession, provider_id: int) -> list[VoiceProviderKeyResult]:
         await self._get_provider_or_raise(db, provider_id)
         stmt = (
             select(SysVoiceProviderKey)
@@ -211,10 +205,6 @@ class VoiceAdminService:
             db, form.model_id, form.provider_id
         )
         if existing:
-            if existing.deleted:
-                raise BusinessException(
-                    ResultCode.DATA_EXISTS, "该引擎+模型组合已被历史记录占用，不可复用"
-                )
             raise BusinessException(ResultCode.DATA_EXISTS, "该引擎+模型组合已存在")
         model = SysVoiceModel(
             provider_id=form.provider_id,

@@ -45,9 +45,14 @@ func (api *SysEvaluationApi) Evaluate(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
-// GetEvaluationLog 查询评估任务状态
+// GetEvaluationLog 查询评估任务状态（仅任务归属用户可访问）
 func (api *SysEvaluationApi) GetEvaluationLog(c *gin.Context) {
 	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -55,7 +60,7 @@ func (api *SysEvaluationApi) GetEvaluationLog(c *gin.Context) {
 		return
 	}
 
-	result, err := api.service.GetTaskStatus(ctx, id)
+	result, err := api.service.GetTaskStatus(ctx, id, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -80,7 +85,10 @@ func (api *SysEvaluationApi) GetMetrics(c *gin.Context) {
 			return
 		}
 	}
-	pageNum, pageSize := getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 
 	result, err := api.service.GetUserMetricsPage(ctx, userID, algorithmID, pageNum, pageSize)
 	if err != nil {
@@ -90,9 +98,14 @@ func (api *SysEvaluationApi) GetMetrics(c *gin.Context) {
 	common.OkWithDetailed(result, "查询成功", c)
 }
 
-// ListEvaluationLogs 评估日志列表
+// ListEvaluationLogs 评估日志列表（当前用户）
 func (api *SysEvaluationApi) ListEvaluationLogs(c *gin.Context) {
 	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	var algorithmID int64
 	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
 		var err error
@@ -102,9 +115,12 @@ func (api *SysEvaluationApi) ListEvaluationLogs(c *gin.Context) {
 			return
 		}
 	}
-	pageNum, pageSize := getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 
-	result, err := api.service.GetLogPage(ctx, algorithmID, pageNum, pageSize)
+	result, err := api.service.GetLogPage(ctx, algorithmID, userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return

@@ -4,7 +4,6 @@
 提供部门 CRUD 功能，支持树形结构
 """
 
-import re
 from typing import Any
 
 from redis.asyncio import Redis
@@ -14,22 +13,16 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService, DeptCacheKeys
 from app.models.entity.sys_dept import SysDept
+from app.models.schema.common import validate_no_xss
 from app.repository.dept_repository import dept_repository
 from app.repository.user_repository import user_repository
 from app.utils.datetime_utils import format_time
 
-# 根部门 ID（系统内置，不可修改/删除）
+# 根部门 ID（系统内置，不可删除/修改上级）
 ROOT_DEPT_ID = 1
 
 # 部门最大层级深度（T-DPT-014/018a：超出 5 级报 A0504"部门层级不能超过5级"）
 MAX_DEPT_LEVEL = 5
-
-# XSS 危险模式：HTML 标签起始、javascript 协议、事件处理器（onXxx=）
-# 匹配 Java XssUtils 的安全防护意图，拦截 XSS 注入
-_XSS_PATTERN = re.compile(
-    r"<\s*/?\s*[a-zA-Z]|javascript:\s*|on\w+\s*=",
-    re.IGNORECASE,
-)
 
 
 class DeptService:
@@ -45,10 +38,8 @@ class DeptService:
                 "id": dept.id,
                 "name": dept.name,
                 "parentId": dept.parent_id,
-                "treePath": dept.tree_path,
                 "sort": dept.sort,
                 "status": dept.status,
-                "deleted": dept.deleted,
                 "createTime": format_time(dept.create_time),
                 "updateTime": format_time(dept.update_time),
                 "children": [],
@@ -58,12 +49,12 @@ class DeptService:
 
         root_depts = []
         for dept in dept_dict.values():
-            if dept["parentId"] == 0:
+            parent = dept_dict.get(dept["parentId"])
+            # 数据权限过滤后父节点不在可见集时，提升为可见子树的根节点
+            if dept["parentId"] == 0 or parent is None:
                 root_depts.append(dept)
             else:
-                parent = dept_dict.get(dept["parentId"])
-                if parent:
-                    parent["children"].append(dept)
+                parent["children"].append(dept)
 
         return root_depts
 
@@ -115,34 +106,18 @@ class DeptService:
         """获取部门表单数据"""
         return await dept_repository.get_dept_form(db, dept_id)
 
-    async def _calculate_depth(self, tree_path: str) -> int:
-        """计算部门层级深度"""
-        if not tree_path or tree_path == "0":
-            return 1
-        # tree_path 格式: "0,1,2,3"
-        return len(tree_path.split(","))
-
-    async def _assert_max_dept_depth(self, tree_path: str) -> None:
+    def _assert_max_dept_depth(self, tree_path: str) -> None:
         """校验部门层级不超过 5 级（T-DPT-014/018a：超出报 A0504"部门层级不能超过5级"）"""
-        depth = await self._calculate_depth(tree_path)
-        if depth > MAX_DEPT_LEVEL:
+        # tree_path 格式: "0" 为第 1 级，"0,1" 为第 2 级
+        if len(tree_path.split(",")) > MAX_DEPT_LEVEL:
             raise BusinessException(ResultCode.DATA_BIND_EXISTS, "部门层级不能超过5级")
 
     def _validate_name_safety(self, name: str) -> None:
-        """
-        校验部门名称安全性，拦截 XSS 攻击
-
-        检测 HTML 标签起始、javascript 协议、事件处理器等危险模式，
-        匹配 Java XssUtils 的安全防护意图。
-
-        Args:
-            name: 部门名称
-
-        Raises:
-            BusinessException: 名称包含 XSS 攻击模式（PARAM_ERROR）
-        """
-        if name and _XSS_PATTERN.search(name):
-            raise BusinessException(ResultCode.PARAM_ERROR, "部门名称包含不安全的字符")
+        """部门名称安全性校验（复用公共 XSS 校验，报 A0400）"""
+        try:
+            validate_no_xss(name)
+        except ValueError as e:
+            raise BusinessException(ResultCode.PARAM_ERROR, str(e)) from e
 
     async def create_dept(
         self,
@@ -151,7 +126,7 @@ class DeptService:
         data: dict[str, Any],
     ) -> int:
         """
-        新增部门（匹配 Java SysDeptServiceImpl.saveDept 逻辑）
+        新增部门
 
         Args:
             db: 异步数据库会话
@@ -168,21 +143,19 @@ class DeptService:
         parent_id = data.get("parentId", 0)
 
         if not name:
-            raise BusinessException("部门名称不能为空")
-
+            raise BusinessException(ResultCode.PARAM_ERROR, "部门名称不能为空")
         self._validate_name_safety(name)
-
-        if await dept_repository.check_name_exists(db, name):
-            raise BusinessException("部门名称已存在")
 
         if parent_id != 0:
             parent_dept = await dept_repository.get_by_id(db, parent_id)
             if not parent_dept:
-                raise BusinessException("父部门不存在")
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "父部门不存在")
+
+        if await dept_repository.check_name_exists(db, name, parent_id=parent_id):
+            raise BusinessException(ResultCode.DATA_EXISTS, "部门名称已存在")
 
         tree_path = await dept_repository.generate_tree_path(db, parent_id)
-
-        await self._assert_max_dept_depth(tree_path)
+        self._assert_max_dept_depth(tree_path)
 
         dept = SysDept(
             name=name,
@@ -208,7 +181,7 @@ class DeptService:
         data: dict[str, Any],
     ) -> int:
         """
-        更新部门（匹配 Java SysDeptServiceImpl.updateDept 逻辑）
+        更新部门
 
         Args:
             db: 异步数据库会话
@@ -224,39 +197,50 @@ class DeptService:
         """
         dept = await dept_repository.get_by_id(db, dept_id)
         if not dept:
-            raise BusinessException("部门不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在")
 
-        # 1. 校验部门名称是否存在（全局，匹配 Java）
-        name = data.get("name")
-        if name:
-            self._validate_name_safety(name)
-            if await dept_repository.check_name_exists(db, name, exclude_id=dept_id):
-                raise BusinessException("部门名称已存在")
-
-        # 2. 循环引用校验：不能将部门移动到自身或其子部门下（匹配 Java）
-        if "parentId" in data:
-            new_parent_id = data["parentId"]
+        # 1. 上级部门校验：根部门保护、自身引用、循环引用（不能移动到自身子树下）
+        new_parent_id = data.get("parentId", dept.parent_id)
+        if new_parent_id != dept.parent_id:
+            if dept_id == ROOT_DEPT_ID:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可修改上级")
             if new_parent_id == dept_id:
-                raise BusinessException("不能将部门设置为自己的上级部门")
-
+                raise BusinessException(
+                    ResultCode.OPERATION_NOT_ALLOW, "不能将部门设置为自己的上级部门"
+                )
             if new_parent_id != 0:
                 new_parent = await dept_repository.get_by_id(db, new_parent_id)
                 if not new_parent:
-                    raise BusinessException("父部门不存在")
+                    raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "父部门不存在")
                 # 父部门的 tree_path 包含当前部门ID → 父部门是当前部门的子部门 → 循环引用
                 if new_parent.tree_path:
                     tree_path_with_commas = f",{new_parent.tree_path},"
                     if f",{dept_id}," in tree_path_with_commas:
-                        raise BusinessException("不能将部门移动到其子部门下，存在循环引用")
+                        raise BusinessException(
+                            ResultCode.OPERATION_NOT_ALLOW,
+                            "不能将部门移动到其子部门下，存在循环引用",
+                        )
 
             new_tree_path = await dept_repository.generate_tree_path(db, new_parent_id)
             # 移动后层级校验（T-DPT-018a：移动至超深层级报 A0504"部门层级不能超过5级"）
-            await self._assert_max_dept_depth(new_tree_path)
+            self._assert_max_dept_depth(new_tree_path)
+            old_tree_path = dept.tree_path
             dept.tree_path = new_tree_path
             dept.parent_id = new_parent_id
+            # 级联平移子树路径，保持不变量：子.tree_path == 父.tree_path + "," + 父.id
+            await dept_repository.update_subtree_tree_path(
+                db, f"{old_tree_path},{dept_id}", f"{new_tree_path},{dept_id}"
+            )
 
-        if "name" in data:
-            dept.name = data["name"]
+        # 2. 名称唯一性：同一上级部门下唯一（含已删除记录，删除后名称不可复用）
+        name = data.get("name")
+        if name:
+            if await dept_repository.check_name_exists(
+                db, name, parent_id=new_parent_id, exclude_id=dept_id
+            ):
+                raise BusinessException(ResultCode.DATA_EXISTS, "部门名称已存在")
+            dept.name = name
+
         if "status" in data:
             dept.status = data["status"]
         if "sort" in data:
@@ -281,43 +265,39 @@ class DeptService:
             dept_ids: 部门ID列表
 
         Raises:
-            BusinessException: 有子部门（A0502）或有关联用户（A0502）时禁止删除
+            BusinessException: 部门不存在（A0401）、根部门（A0503）、
+                有子部门（A0502）或有关联用户（A0502）时禁止删除
         """
         if not dept_ids:
-            raise BusinessException("未指定要删除的部门")
+            raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的部门")
 
-        # 1. 根部门保护
-        if ROOT_DEPT_ID in dept_ids:
-            raise BusinessException("根部门不可删除")
+        # 批量预取并加行锁，防止并发删除与关联校验间的 TOCTOU
+        depts_map = {
+            int(d.id): d for d in await dept_repository.get_by_ids(db, dept_ids, for_update=True)
+        }
+        for dept_id in dept_ids:
+            if dept_id not in depts_map:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在")
+            # 根部门保护
+            if dept_id == ROOT_DEPT_ID:
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可删除")
 
-        # 批量预取部门信息（避免错误路径逐条查询触发 N+1）
-        depts_map = {int(d.id): d for d in await dept_repository.get_by_ids(db, dept_ids)}
-
-        # 2. 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除，A0502）
+        # 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除，A0502）
         child_counts = await dept_repository.count_children_by_parents(db, dept_ids)
-        for dept_id in dept_ids:
-            if child_counts.get(dept_id, 0) > 0:
-                dept = depts_map.get(dept_id)
-                dept_name = dept.name if dept else f"ID={dept_id}"
-                raise BusinessException(
-                    ResultCode.DATA_STATE_NOT_ALLOW, "该部门下存在子部门，请先删除子部门"
-                )
+        if any(child_counts.get(dept_id, 0) > 0 for dept_id in dept_ids):
+            raise BusinessException(
+                ResultCode.DATA_STATE_NOT_ALLOW, "该部门下存在子部门，请先删除子部门"
+            )
 
-        # 3. 关联用户检查：有用户禁止删除（T-DPT-029，A0502）
+        # 关联用户检查：有用户禁止删除（T-DPT-029，A0502）
         user_counts = await user_repository.count_users_by_depts(db, dept_ids)
-        for dept_id in dept_ids:
-            count = user_counts.get(dept_id, 0)
-            if count > 0:
-                dept = depts_map.get(dept_id)
-                dept_name = dept.name if dept else f"ID={dept_id}"
-                raise BusinessException(
-                    ResultCode.DATA_STATE_NOT_ALLOW, f"该部门下存在用户，无法删除"
-                )
+        if any(user_counts.get(dept_id, 0) > 0 for dept_id in dept_ids):
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该部门下存在用户，无法删除")
 
-        # 4. 逻辑删除指定部门（不含子部门，子部门已被前置校验拦截）
+        # 逻辑删除指定部门（不含子部门，子部门已被前置校验拦截）
         deleted_count = await dept_repository.soft_delete_by_ids(db, dept_ids)
         if deleted_count == 0:
-            raise BusinessException("部门删除失败")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在")
 
         await self._clear_cache(redis)
 

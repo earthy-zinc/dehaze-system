@@ -25,6 +25,12 @@ type IOrderService interface {
 	RejectRefund(ctx context.Context, auditorID, refundID int64, form *bo.RefundAuditForm) error
 	GetStats(ctx context.Context, startTime, endTime string) (*vo.OrderStatsVO, error)
 
+	// 余额域（python order.py 同口径）
+	GetBalance(ctx context.Context, userID int64) (*vo.BalanceVO, error)
+	ApplyBalanceRefund(ctx context.Context, userID int64, form *bo.BalanceRefundForm) (*vo.BalanceRefundResult, error)
+	AuditBalanceRefund(ctx context.Context, auditorID, refundID int64, form *bo.BalanceRefundAuditForm) error
+	CreateRecharge(ctx context.Context, userID int64, form *bo.RechargeCreateForm) (*vo.RechargeResult, error)
+
 	HandlePaymentCallback(ctx context.Context, channel, orderNo, channelNo string, amount int64, success bool, rawContent string) error
 }
 

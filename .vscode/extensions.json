@@ -3,6 +3,7 @@
     "aaron-bond.better-comments",
     "antfu.unocss",
     "bierner.markdown-mermaid",
+    "charliermarsh.ruff",
     "chrmarti.regex",
     "dbaeumer.vscode-eslint",
     "eamodio.gitlens",
@@ -24,11 +25,14 @@
     "ms-vscode-remote.vscode-remote-extensionpack",
     "ms-vscode.remote-explorer",
     "ms-vscode.remote-server",
+    "msjsdiag.vscode-react-native",
     "pranaygp.vscode-css-peek",
+    "redhat.vscode-xml",
     "redhat.vscode-yaml",
     "streetsidesoftware.code-spell-checker",
     "stylelint.vscode-stylelint",
     "vitest.explorer",
+    "vmware.vscode-spring-boot",
     "vscjava.vscode-gradle",
     "vscjava.vscode-java-debug",
     "vscjava.vscode-java-pack",
@@ -36,6 +40,11 @@
     "vue.volar",
     "dart-code.dart-code",
     "dart-code.flutter",
-    "ms-playwright.playwright"
+    "ms-playwright.playwright",
+  ],
+  "unwantedRecommendations": [
+    "ms-python.autopep8",
+    "ms-python.isort",
+    "bradlc.vscode-tailwindcss"
   ]
 }

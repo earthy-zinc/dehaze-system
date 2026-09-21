@@ -12,13 +12,34 @@ from unittest.mock import AsyncMock
 import pytest
 from fakeredis import FakeAsyncRedis
 
+from app.infrastructure.voice.provider.registry import VoiceEngineRegistry
 from app.service.voice import voice_service_status as vs_module
 from app.service.voice.voice_service_status import (
-    VoiceServiceStatusService,
     _CIRCUIT_KEY,
     _CONCURRENT_KEY,
+    VoiceServiceStatusService,
     voice_service_status,
 )
+
+
+class _RegistryStub(VoiceEngineRegistry):
+    """测试替身：仅实现 resolve_default_engine，返回注入的默认引擎行（None 表示未配置）。"""
+
+    def __init__(self, row):
+        self._row = row
+
+    async def resolve_default_engine(self, engine_type):
+        return self._row
+
+
+class _ErrorRegistryStub(VoiceEngineRegistry):
+    """测试替身：resolve_default_engine 抛错，模拟注册表解析失败（如 DB 异常）。"""
+
+    def __init__(self):
+        pass
+
+    async def resolve_default_engine(self, engine_type):
+        raise RuntimeError("db down")
 
 
 def _local_row(engine_type: str) -> SimpleNamespace:
@@ -29,18 +50,16 @@ def _local_row(engine_type: str) -> SimpleNamespace:
 
 def _cloud_row(engine_type: str, *, health_check_enabled: int = 1) -> SimpleNamespace:
     return SimpleNamespace(
-        id=9, provider_code="aliyun", engine_type=engine_type,
+        id=9,
+        provider_code="aliyun",
+        engine_type=engine_type,
         health_check_enabled=health_check_enabled,
     )
 
 
 def _make_service(default_row: SimpleNamespace | None) -> VoiceServiceStatusService:
     """注入桩注册表：resolve_default_engine 返回预置默认引擎配置行"""
-    return VoiceServiceStatusService(
-        engine_registry=SimpleNamespace(
-            resolve_default_engine=AsyncMock(return_value=default_row)
-        )
-    )
+    return VoiceServiceStatusService(engine_registry=_RegistryStub(default_row))
 
 
 def _patch_engines(monkeypatch, *, asr_online=True, tts_online=True):
@@ -203,11 +222,7 @@ async def test_unconfigured_default_engine_reports_offline():
 @pytest.mark.asyncio
 async def test_registry_resolution_failure_reports_offline():
     """注册表解析抛错（如 DB 异常）→ 状态聚合不抛异常，按 offline 上报"""
-    service = VoiceServiceStatusService(
-        engine_registry=SimpleNamespace(
-            resolve_default_engine=AsyncMock(side_effect=RuntimeError("db down"))
-        )
-    )
+    service = VoiceServiceStatusService(engine_registry=_ErrorRegistryStub())
     redis = FakeAsyncRedis(decode_responses=True)
 
     status = await service.get_status(redis)

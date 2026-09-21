@@ -55,10 +55,12 @@ func compileDangerousKeywordRegexes() []*regexp.Regexp {
 // 注意：这不是完整的 SQL 注入防护，应该配合参数化查询使用
 //
 // 参数:
-//   input: 需要检查的输入
+//
+//	input: 需要检查的输入
 //
 // 返回:
-//   移除 SQL 注入模式后的字符串
+//
+//	移除 SQL 注入模式后的字符串
 //
 // 安全原理:
 // - 移除常见的 SQL 注入模式
@@ -99,10 +101,12 @@ func (u *SQLInjectionUtil) StripSQLInjectionPatterns(input string) string {
 // DetectSQLInjection 检测输入是否可能包含 SQL 注入
 //
 // 参数:
-//   input: 需要检测的输入
+//
+//	input: 需要检测的输入
 //
 // 返回:
-//   bool: 如果可能包含 SQL 注入返回 true，否则返回 false
+//
+//	bool: 如果可能包含 SQL 注入返回 true，否则返回 false
 //
 // 使用示例:
 //
@@ -159,12 +163,14 @@ func (u *SQLInjectionUtil) DetectSQLInjection(input string) bool {
 // 注意：此函数仅用于白名单验证，不能替代参数化查询
 //
 // 参数:
-//   columnName: 列名
-//   allowedColumns: 允许的列名白名单
+//
+//	columnName: 列名
+//	allowedColumns: 允许的列名白名单
 //
 // 返回:
-//   bool: 列名是否在白名单中
-//   error: 错误信息
+//
+//	bool: 列名是否在白名单中
+//	error: 错误信息
 //
 // 安全原理:
 // - 使用白名单验证列名
@@ -194,10 +200,12 @@ func (u *SQLInjectionUtil) ValidateColumnName(columnName string, allowedColumns 
 // ValidateSortDirection 验证排序方向是否安全
 //
 // 参数:
-//   direction: 排序方向（ASC 或 DESC）
+//
+//	direction: 排序方向（ASC 或 DESC）
 //
 // 返回:
-//   bool: 排序方向是否有效
+//
+//	bool: 排序方向是否有效
 //
 // 使用示例:
 //

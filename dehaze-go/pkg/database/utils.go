@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -75,6 +76,12 @@ func GetGormConfig(config *Config) *gorm.Config {
 
 		// 禁用外键约束（迁移时）
 		DisableForeignKeyConstraintWhenMigrating: true,
+
+		// 时间生成统一截断到秒：本项目所有时间列均为 DATETIME（秒精度），
+		// GORM 默认写入带纳秒的 time.Now()，落库时被 MySQL 进位/截断后即与接口回显的秒级时间不一致，
+		// 客户端拿回显的 createTime 做闭区间回查必然落空（如记忆批量清空/恢复 T-CT-047：
+		// 建成行 create_time='14:22:40.650'，清空区间 [14:22:40, 14:22:40] 命中 0 条）。
+		NowFunc: func() time.Time { return time.Now().Truncate(time.Second) },
 
 		// 预编译语句缓存（提升性能）
 		PrepareStmt: true,

@@ -4,6 +4,7 @@
     <EvalAgentFilter />
     <EvalOverview />
     <EvalRunTable />
+    <EvalDatasetPanel :agent-id="evalStore.evalFilter.agentId ?? null" />
 
     <el-row :gutter="12">
       <el-col :xs="24" :md="14">
@@ -22,6 +23,7 @@
 <script lang="ts" setup>
 import { useAdminEvalStore } from "@/store/modules/adminEval";
 import EvalAgentFilter from "./components/EvalAgentFilter.vue";
+import EvalDatasetPanel from "./components/EvalDatasetPanel.vue";
 import EvalDetailDrawer from "./components/EvalDetailDrawer.vue";
 import EvalOverview from "./components/EvalOverview.vue";
 import EvalRunTable from "./components/EvalRunTable.vue";

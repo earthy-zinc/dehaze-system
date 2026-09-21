@@ -20,6 +20,7 @@ from app.models.schema.ai_model_price import (
     ModelPriceUpdateRequest,
 )
 from app.models.schema.common import PageResult
+from app.service.ai.service.model_test_service import test_model_by_model_id
 from app.service.ai_model_price_service import ai_model_price_service
 from app.service.ai_model_service import ai_model_service
 
@@ -41,7 +42,9 @@ async def list_models(
 
 @router.get("/enabled", response_model=Result[list[AiModelResult]], summary="启用模型列表")
 async def list_enabled_models(
-    model_type: str | None = Query(default=None, alias="modelType", description="模型类型筛选(chat/embedding/rerank)"),
+    model_type: str | None = Query(
+        default=None, alias="modelType", description="模型类型筛选(chat/embedding/rerank)"
+    ),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -87,7 +90,24 @@ async def delete_model(
     return success(msg="一切ok")
 
 
-@router.get("/{model_id}/prices", response_model=Result[PageResult[ModelPriceResult]], summary="模型用户售价版本分页列表")
+@router.post("/{model_id}/test", response_model=Result[dict], summary="模型可用性测试")
+@require_permission("ai:model:manage")
+async def test_model(
+    model_id: str,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
+):
+    """按模型类型发最小真实推理请求验证可用性，结果落库（last_test_*）并返回。"""
+    result = await test_model_by_model_id(db, redis, model_id)
+    return success(result)
+
+
+@router.get(
+    "/{model_id}/prices",
+    response_model=Result[PageResult[ModelPriceResult]],
+    summary="模型用户售价版本分页列表",
+)
 @require_permission("ai:model:manage")
 async def list_model_prices(
     model_id: str,
@@ -100,7 +120,9 @@ async def list_model_prices(
     return success(result)
 
 
-@router.post("/{model_id}/prices", response_model=Result[ModelPriceResult], summary="新增模型用户售价版本")
+@router.post(
+    "/{model_id}/prices", response_model=Result[ModelPriceResult], summary="新增模型用户售价版本"
+)
 @require_permission("ai:model:manage")
 async def create_model_price(
     model_id: str,
@@ -112,7 +134,11 @@ async def create_model_price(
     return success(result)
 
 
-@router.put("/{model_id}/prices/{price_id}", response_model=Result[ModelPriceResult], summary="更新模型用户售价版本")
+@router.put(
+    "/{model_id}/prices/{price_id}",
+    response_model=Result[ModelPriceResult],
+    summary="更新模型用户售价版本",
+)
 @require_permission("ai:model:manage")
 async def update_model_price(
     model_id: str,
@@ -127,7 +153,9 @@ async def update_model_price(
     return success(result)
 
 
-@router.delete("/{model_id}/prices/{price_id}", response_model=Result[None], summary="删除模型用户售价版本")
+@router.delete(
+    "/{model_id}/prices/{price_id}", response_model=Result[None], summary="删除模型用户售价版本"
+)
 @require_permission("ai:model:manage")
 async def delete_model_price(
     model_id: str,

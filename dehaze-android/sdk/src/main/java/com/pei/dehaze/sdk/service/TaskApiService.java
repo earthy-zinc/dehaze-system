@@ -54,8 +54,15 @@ public interface TaskApiService {
 
     /**
      * 取消任务
-     * DELETE /api/v1/tasks/{taskId}
+     * POST /api/v1/tasks/{taskId}/cancel
      */
-    @retrofit2.http.DELETE("/api/v1/tasks/{taskId}")
+    @POST("/api/v1/tasks/{taskId}/cancel")
     Call<Result<Void>> cancelTask(@Path("taskId") String taskId);
+
+    /**
+     * 重试失败的任务
+     * POST /api/v1/tasks/{taskId}/retry
+     */
+    @POST("/api/v1/tasks/{taskId}/retry")
+    Call<Result<TaskVO>> retryTask(@Path("taskId") String taskId);
 }

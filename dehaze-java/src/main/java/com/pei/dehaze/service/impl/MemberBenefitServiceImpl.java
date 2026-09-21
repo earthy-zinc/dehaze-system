@@ -70,6 +70,9 @@ public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper
         if (form.getBatchLimit() != null) {
             benefit.setBatchLimit(form.getBatchLimit());
         }
+        if (form.getMaxDevices() != null) {
+            benefit.setMaxDevices(form.getMaxDevices());
+        }
         if (form.getPriority() != null) {
             benefit.setPriority(form.getPriority());
         }
@@ -110,6 +113,7 @@ public class MemberBenefitServiceImpl extends ServiceImpl<SysMemberBenefitMapper
         vo.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
         vo.setHistoryRetention(benefit.getHistoryRetention());
         vo.setBatchLimit(benefit.getBatchLimit());
+        vo.setMaxDevices(benefit.getMaxDevices());
         vo.setPriority(benefit.getPriority());
         vo.setAdvancedParams(benefit.getAdvancedParams());
         vo.setHdExport(benefit.getHdExport());

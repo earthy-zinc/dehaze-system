@@ -13,12 +13,12 @@ type DatasetFormBO struct {
 	ParentID int64 `json:"parentId"`
 	// 数据集类型
 	Type string `json:"type"`
-	// 数据集名称
-	Name string `json:"name" binding:"required,max=255,no_xss"`
+	// 数据集名称（sys_dataset.name 列宽 varchar(64)，表单上限一致防 DB 层报 500）
+	Name string `json:"name" binding:"required,max=64,no_xss"`
 	// 数据集描述
-	Description string `json:"description" binding:"omitempty,max=255"`
+	Description string `json:"description" binding:"omitempty,max=500"`
 	// 数据集存储路径
-	Path string `json:"path"`
+	Path string `json:"path" binding:"omitempty,max=255"`
 	// 状态(1:正常;0:禁用) - 支持字符串和数字类型
 	Status int8 `json:"status"`
 	// 创建时间

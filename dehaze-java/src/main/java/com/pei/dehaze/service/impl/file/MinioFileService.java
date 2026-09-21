@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileDTO;
@@ -128,8 +129,11 @@ public class MinioFileService implements FileService {
         ensureBucketInitialized();
         String objectName = fileDTO.getObjectName();
         String mimeType = FileUtil.getMimeType(fileDTO.getName());
+        if (StrUtil.isBlank(mimeType)) {
+            // 未知扩展名（如 ini/dat）兜底 octet-stream，python 端同口径
+            mimeType = "application/octet-stream";
+        }
         Assert.notBlank(objectName);
-        Assert.notBlank(mimeType);
 
         File file = fileDTO.getFile();
         try (FileInputStream stream = new FileInputStream(file)){
@@ -137,7 +141,7 @@ public class MinioFileService implements FileService {
                     .bucket(bucketName)
                     .object(objectName)
                     .contentType(mimeType)
-                    .stream(stream, stream.available(), -1)
+                    .stream(stream, (long) stream.available(), -1L)
                     .build();
             minioClient.putObject(putObjectArgs);
             fileDTO.setStorage(getStorageType());
@@ -158,7 +162,7 @@ public class MinioFileService implements FileService {
                     .bucket(bucketName)
                     .object(objectName)
                     .contentType(contentType != null ? contentType : "application/octet-stream")
-                    .stream(inputStream, fileSize, -1)
+                    .stream(inputStream, fileSize, -1L)
                     .build();
             minioClient.putObject(putObjectArgs);
             return objectName;
@@ -183,9 +187,7 @@ public class MinioFileService implements FileService {
                     .build();
             minioClient.removeObject(removeObjectArgs);
             return true;
-        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
-                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
-                 XmlParserException e) {
+        } catch (MinioException e) {
             throw new BusinessException("删除文件失败", e);
         }
     }
@@ -200,9 +202,7 @@ public class MinioFileService implements FileService {
             // 直接返回响应流，避免将整个文件读入内存导致OOM
             // GetObjectResponse 继承自 FilterInputStream，调用方负责关闭返回的 InputStream
             return minioClient.getObject(getObjectArgs);
-        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
-                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
-                 XmlParserException e) {
+        } catch (MinioException e) {
             throw new BusinessException("下载文件失败: " + e.getMessage(), e);
         }
     }
@@ -240,9 +240,7 @@ public class MinioFileService implements FileService {
                         .build();
                 minioClient.setBucketPolicy(setBucketPolicyArgs);
             }
-        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
-                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
-                 XmlParserException e) {
+        } catch (MinioException e) {
             throw new BusinessException("初始化MinIO存储桶失败: " + e.getMessage(), e);
         }
     }

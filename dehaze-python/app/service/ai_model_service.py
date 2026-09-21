@@ -9,12 +9,12 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
+from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.models.entity.sys_ai_model import SysAiModel
 from app.models.schema.ai_conversation import AiModelResult
 from app.models.schema.common import PageResult
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.member_repository import member_repository
-from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.service.message_service import message_service
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ async def _provider_health_snapshot(redis, provider_id: int) -> dict:
     """
     try:
         return await provider_health_service.get_health_snapshot(redis, provider_id)
-    except Exception as exc:  # noqa: BLE001 健康快照读取失败不影响模型列表
+    except Exception as exc:
         logger.warning("读取供应商健康快照失败: provider_id=%s err=%s", provider_id, exc)
         return {}
 
@@ -133,12 +133,11 @@ async def _notify_model_replacement(
                 "bizId": model.model_id,
             },
         )
-    except Exception as exc:  # noqa: BLE001 通知失败不阻断模型下线/禁用
+    except Exception as exc:
         logger.warning("模型下线通知失败: model_id=%s err=%s", model.model_id, exc)
 
 
 class AiModelService:
-    
     def __init__(
         self,
         ai_model_repository=ai_model_repository,
@@ -162,7 +161,20 @@ class AiModelService:
         models, total = await self.ai_model_repository.paginate_models(
             db, page, size, keyword, model_type
         )
-        return PageResult(list=[AiModelResult.model_validate(m) for m in models], total=total)
+        # 近 24h 实调统计（chat 按 llm_call 成功率、embedding/rerank 按计费流水次数）
+        from app.service.ai.service.model_test_service import get_usage_stats_24h
+
+        stats = await get_usage_stats_24h(db, models)
+        items = []
+        for m in models:
+            item = AiModelResult.model_validate(m)
+            stat = stats.get(m.id)
+            if stat:
+                item.calls_24h = stat["calls_24h"]
+                item.success_rate_24h = stat["success_rate_24h"]
+                item.last_call_at = stat["last_call_at"]
+            items.append(item)
+        return PageResult(list=items, total=total)
 
     async def list_enabled_models(
         self,
@@ -225,20 +237,18 @@ class AiModelService:
             raise BusinessException(
                 ResultCode.PARAM_ERROR, "embedding 模型必须填写向量维度 dimension"
             )
+        # dimension 仅对 embedding 有意义，其他类型强制置空，避免残留脏数据
+        dimension = form.dimension if form.model_type == "embedding" else None
         existing = await self.ai_model_repository.get_by_model_and_provider(
             db, form.model_id, form.provider_id
         )
         if existing:
-            if existing.deleted:
-                raise BusinessException(
-                    ResultCode.DATA_EXISTS, "该模型+供应商组合已被历史记录占用，不可复用"
-                )
             raise BusinessException(ResultCode.DATA_EXISTS, "该模型+供应商组合已存在")
         model = SysAiModel(
             provider_id=form.provider_id,
             model_id=form.model_id,
             model_type=form.model_type,
-            dimension=form.dimension,
+            dimension=dimension,
             display_name=form.display_name,
             max_context_tokens=form.max_context_tokens,
             max_output_tokens=form.max_output_tokens,
@@ -257,7 +267,9 @@ class AiModelService:
         await _clear_model_cache(redis)
         return AiModelResult.model_validate(model)
 
-    async def update_model(self, db: AsyncSession, redis: Redis, model_id: str, form) -> AiModelResult:
+    async def update_model(
+        self, db: AsyncSession, redis: Redis, model_id: str, form
+    ) -> AiModelResult:
         model = await self.ai_model_repository.get_by_model_id(db, model_id)
         if not model:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
@@ -294,6 +306,13 @@ class AiModelService:
             raise BusinessException(
                 ResultCode.DATA_BIND_EXISTS,
                 "存在活跃会话正在使用该模型，请先禁用（status=0）",
+            )
+        # 被其他启用模型作为降级目标引用时不可删除，避免其降级链静默断裂
+        fallback_refs = await self.ai_model_repository.count_fallback_targets(db, model.id)
+        if fallback_refs > 0:
+            raise BusinessException(
+                ResultCode.DATA_BIND_EXISTS,
+                "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id",
             )
         await self.ai_model_repository.soft_delete_by_ids(db, [model.id])
         await _clear_model_cache(redis)

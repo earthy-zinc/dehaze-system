@@ -80,7 +80,7 @@ public class FeedbackController {
 
     @Operation(summary = "后台：评价分页列表")
     @GetMapping("/ratings/page")
-    public PageResult<RatingPageVO> listRatings(@ParameterObject RatingPageQuery query) {
+    public PageResult<RatingPageVO> listRatings(@Valid @ParameterObject RatingPageQuery query) {
         Page<RatingPageVO> page = ratingService.listPagedRatings(query);
         return PageResult.success(page);
     }
@@ -145,7 +145,7 @@ public class FeedbackController {
 
     @Operation(summary = "后台：反馈分页列表")
     @GetMapping("/page")
-    public PageResult<FeedbackPageVO> listFeedback(@ParameterObject FeedbackPageQuery query) {
+    public PageResult<FeedbackPageVO> listFeedback(@Valid @ParameterObject FeedbackPageQuery query) {
         Page<FeedbackPageVO> page = feedbackService.listPagedFeedback(query);
         return PageResult.success(page);
     }

@@ -1,4 +1,32 @@
-import type { AiEvalConsistencyState, AiEvalGateStatus } from "dehaze-sdk-js";
+import type {
+  AiEvalConsistencyState,
+  AiEvalGateStatus,
+  EvalDatasetType,
+  EvalRiskLevel,
+} from "dehaze-sdk-js";
+import type { TagType } from "@/enums/TagType";
+
+/** 评测集类型（评测集下拉与表单选项唯一来源） */
+export const DATASET_TYPE_OPTIONS: Array<{
+  label: string;
+  value: EvalDatasetType;
+  tag: TagType;
+}> = [
+  { label: "开发集", value: "dev", tag: "primary" },
+  { label: "回归集", value: "regression", tag: "warning" },
+  { label: "保留集", value: "heldout", tag: "info" },
+];
+
+/** 样本风险等级（表单选项与列表标签唯一来源） */
+export const RISK_LEVEL_OPTIONS: Array<{
+  label: string;
+  value: EvalRiskLevel;
+  tag: TagType;
+}> = [
+  { label: "低", value: "low", tag: "info" },
+  { label: "中", value: "medium", tag: "warning" },
+  { label: "高", value: "high", tag: "danger" },
+];
 
 /** 四维评分指标（键为后端 snake_case 指标名，dimensions/dimensionDiff 原样返回） */
 export const EVAL_DIMENSIONS = [
@@ -11,7 +39,7 @@ export const EVAL_DIMENSIONS = [
 /** 门禁状态：passed 通过 / failed 未通过 / none 未评测 */
 export const GATE_STATUS_META: Record<
   AiEvalGateStatus,
-  { label: string; type: "success" | "danger" | "info" }
+  { label: string; type: TagType }
 > = {
   passed: { label: "通过", type: "success" },
   failed: { label: "未通过", type: "danger" },
@@ -19,14 +47,12 @@ export const GATE_STATUS_META: Record<
 };
 
 /** 评测执行状态：1 执行中 / 2 通过 / 3 失败 */
-export const RUN_STATUS_META: Record<
-  number,
-  { label: string; type: "warning" | "success" | "danger" }
-> = {
-  1: { label: "执行中", type: "warning" },
-  2: { label: "通过", type: "success" },
-  3: { label: "失败", type: "danger" },
-};
+export const RUN_STATUS_META: Record<number, { label: string; type: TagType }> =
+  {
+    1: { label: "执行中", type: "warning" },
+    2: { label: "通过", type: "success" },
+    3: { label: "失败", type: "danger" },
+  };
 
 /** 触发方式 */
 export const TRIGGER_TYPE_META: Record<string, string> = {
@@ -37,7 +63,7 @@ export const TRIGGER_TYPE_META: Record<string, string> = {
 /** 判分一致性状态 */
 export const CONSISTENCY_STATE_META: Record<
   AiEvalConsistencyState,
-  { label: string; type: "success" | "danger" | "info"; desc: string }
+  { label: string; type: TagType; desc: string }
 > = {
   normal: {
     label: "正常",
@@ -56,15 +82,25 @@ export const CONSISTENCY_STATE_META: Record<
   },
 };
 
-/** 样本风险等级 */
-export const RISK_LEVEL_META: Record<
+/** 风险等级展示：由 RISK_LEVEL_OPTIONS 派生，供列表标签使用 */
+export const RISK_LEVEL_META: Record<string, { label: string; type: TagType }> =
+  Object.fromEntries(
+    RISK_LEVEL_OPTIONS.map((option) => [
+      option.value,
+      { label: option.label, type: option.tag },
+    ])
+  );
+
+/** 评测集类型展示：由 DATASET_TYPE_OPTIONS 派生 */
+export const DATASET_TYPE_META: Record<
   string,
-  { label: string; type: "info" | "warning" | "danger" }
-> = {
-  low: { label: "低", type: "info" },
-  medium: { label: "中", type: "warning" },
-  high: { label: "高", type: "danger" },
-};
+  { label: string; type: TagType }
+> = Object.fromEntries(
+  DATASET_TYPE_OPTIONS.map((option) => [
+    option.value,
+    { label: option.label, type: option.tag },
+  ])
+);
 
 /** 评测评分聚合（score_summary 解包结果） */
 export interface EvalScoreSummary {

@@ -45,15 +45,15 @@ export interface BenefitOverrides {
   batchDownload?: number;
 }
 
-/** 套餐表单 */
+/** 套餐表单（vip 卡需 levelCode/period/periodDays；credit 卡需 creditAmount） */
 export interface PackageForm {
   id?: number;
   name: string;
   packageType: PackageType;
   creditAmount?: number;
-  levelCode: PackageLevelCode;
-  period: PackagePeriod;
-  periodDays: number;
+  levelCode?: PackageLevelCode;
+  period?: PackagePeriod;
+  periodDays?: number;
   originalPrice: number;
   salePrice: number;
   description?: string;
@@ -62,16 +62,16 @@ export interface PackageForm {
   status?: PackageStatus;
 }
 
-/** 套餐分页VO */
+/** 套餐分页VO（积分卡的等级/周期/有效期字段为 null） */
 export interface PackagePageVO {
   id: number;
   name: string;
   packageType: PackageType;
   creditAmount?: number;
-  levelCode: PackageLevelCode;
-  levelName: string;
-  period: PackagePeriod;
-  periodDays: number;
+  levelCode?: PackageLevelCode;
+  levelName?: string;
+  period?: PackagePeriod;
+  periodDays?: number;
   originalPrice: number;
   salePrice: number;
   dailyPrice: number;
@@ -81,23 +81,23 @@ export interface PackagePageVO {
   createTime: string;
 }
 
-/** 套餐详情VO（用户端） */
+/** 套餐详情VO（用户端，积分卡的等级/周期/有效期字段为 null） */
 export interface PackageDetailVO {
   id: number;
   name: string;
   packageType: PackageType;
   creditAmount?: number;
   creditUnitPrice?: number;
-  levelCode: PackageLevelCode;
-  levelName: string;
-  period: PackagePeriod;
-  periodDays: number;
+  levelCode?: PackageLevelCode;
+  levelName?: string;
+  period?: PackagePeriod;
+  periodDays?: number;
   originalPrice: number;
   salePrice: number;
   dailyPrice: number;
   description?: string;
   benefits: Record<string, number>;
-  activePromotions: PromotionVO[];
+  activePromotions?: PromotionVO[];
   salesCount: number;
 }
 

@@ -23,7 +23,7 @@ func resetSysTables(t *testing.T, db *gorm.DB) {
 	}
 }
 
-func newUser(username, nickname string, gender, status int8, deptID int64, deleted int8, now time.Time) model.SysUser {
+func newUser(username, nickname string, gender, status int8, deptID int64, deleted int64, now time.Time) model.SysUser {
 	return model.SysUser{
 		BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Username:  username,

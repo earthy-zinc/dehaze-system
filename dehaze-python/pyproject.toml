@@ -174,15 +174,36 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes（未使用导入/变量等）
-    "I",  # isort 导入排序
-    "B",  # bugbear 常见 bug 模式
-    "UP", # pyupgrade 语法现代化
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes（未使用导入/变量等）
+    "I",    # isort 导入排序
+    "B",    # bugbear 常见 bug 模式
+    "UP",   # pyupgrade 语法现代化
+    "RET",  # return 语句卫生（消除多余 else 分支、return 后死代码）
+    "ISC",  # 隐式字符串拼接检测
+    "PT",   # pytest 最佳实践
+    "FLY",  # join/format 旧写法 → f-string
+    "SIM",  # 常见可简化写法
+    "C4",   # comprehensions 推导式现代化
+    "RUF",  # ruff 自有规则（含无效 noqa 校验）
+    "N",    # PEP 8 命名规范
+    "EM",   # 异常消息规范
+    "PERF", # 性能反模式
+    "PTH",  # os.path → pathlib 现代路径写法
 ]
 ignore = [
-    "B008", # FastAPI Depends() 用作默认参数是官方惯用写法
+    "B008",   # FastAPI Depends() 用作默认参数是官方惯用写法
+    "RUF001", # 中文字符串中的全角标点，误报
+    "RUF002", # 中文 docstring 中的全角标点，误报
+    "RUF003", # 中文注释中的全角标点，误报
+    "RUF012", # Pydantic 可变类属性按设计就是字段默认值，不应标 ClassVar
+    "EM101",  # 异常消息内联字面量即可，不必强制模块级常量
+    "EM102",  # 同上，f-string 异常消息可 grep
+    "N803",   # API 契约字段 camelCase（pageNum/dataSetId 等），与 snake_case 规范冲突
+    "N815",   # 同上，Pydantic 响应模型的 camelCase 字段（API 契约，禁止改名）
+    "N818",   # 异常类名沿用跨端统一约定（BusinessException/TaskCancelledException，java/go/SDK 同名）
+    "N999",   # 目录名 dehaze-python 含连字符导致的模块名推断误报
 ]
 
 [tool.ruff.lint.isort]
@@ -194,3 +215,7 @@ known-first-party = ["app", "algorithm"]
 "app/models/schema/task.py" = ["UP006", "UP035"]
 "app/models/schema/dataset.py" = ["UP006", "UP035"]
 "app/models/schema/file.py" = ["UP006", "UP035"]
+# config.py 用全大写 @property 模拟配置常量（DATABASE_URL 等），属命名惯例
+"app/config.py" = ["N802"]
+# 路由中 test_agent 等"测试预览"端点以 test_ 开头，被 PT028 误判为 pytest 测试函数
+"app/router/**" = ["PT028"]

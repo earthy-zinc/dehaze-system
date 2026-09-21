@@ -51,6 +51,8 @@ export interface PredLogVO {
   status?: PredEvalTaskStatus;
   errorMessage?: string;
   time?: number;
+  /** 推荐来源：推荐记录ID（推荐管理模块） */
+  recommendedBy?: number;
   createTime?: string;
 }
 
@@ -201,14 +203,8 @@ export interface PredictionQuotaVO {
 
 /** 对比报告生成请求 */
 export interface CompareReportForm {
-  /** 处理日志ID */
+  /** 处理日志ID（报告格式固定为 HTML，无其他可选项） */
   logId: number;
-  /** 报告格式：pdf 或 image */
-  format: string;
-  /** 是否包含评估指标 */
-  includeMetrics?: boolean;
-  /** 是否包含滤镜参数 */
-  includeFilters?: boolean;
 }
 
 /** 对比报告结果（异步任务） */

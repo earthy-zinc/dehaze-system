@@ -11,7 +11,7 @@ type SysMemberGrowthLog struct {
 	RelatedID   string    `gorm:"column:related_id;type:varchar(64);index:idx_related_id;comment:关联业务ID" json:"relatedId"`
 	Reason      string    `gorm:"column:reason;type:varchar(256);comment:变动原因" json:"reason"`
 	OperatorID  *int64    `gorm:"column:operator_id;type:bigint;comment:操作人ID" json:"operatorId"`
-	Deleted     int8      `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"-"`
+	Deleted     int64     `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"-"`
 	CreateTime  time.Time `gorm:"column:create_time;type:datetime;default:CURRENT_TIMESTAMP;index:idx_user_id_create_time,priority:2;comment:创建时间" json:"createTime"`
 	UpdateTime  time.Time `gorm:"column:update_time;type:datetime;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`
 	CreateBy    *int64    `gorm:"column:create_by;comment:创建人ID" json:"createBy"`

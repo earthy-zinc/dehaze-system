@@ -5,7 +5,8 @@
 - lookup_tool_param_schema: 查看工具完整参数定义
 - execute_tool: 调用工具
 
-MCP 网关地址由配置 MCP_GATEWAY_URL 指定，默认 http://127.0.0.1:8082/mcp
+MCP 网关地址由配置 MCP_GATEWAY_URL 指定，默认 http://127.0.0.1:8082/mcp；
+每个请求经 X-MCP-Key 请求头携带共享密钥 MCP_GATEWAY_KEY（网关侧强校验）
 """
 
 import asyncio
@@ -69,7 +70,7 @@ class McpGatewayClient:
     async def list_tools(self) -> list[dict[str, Any]]:
         """获取网关注册的全部工具摘要（name + description + inputSchema）。
 
-        MCP 网关基于 MCPServer，ClientSession.list_tools 返回其注册的工具列表。
+        MCP 网关基于 MCP Python SDK 的 FastMCP，ClientSession.list_tools 返回其注册的工具列表。
         网关现状仅有 3 个元 tool，无命名空间分组；命名空间摘要由
         McpNamespacePrefilter 按工具名前缀推导。网关不可用时返回空列表。
 
@@ -89,23 +90,24 @@ class McpGatewayClient:
         try:
             async with self._session() as session:
                 result = await session.list_tools()
-                tools = []
-                for t in result.tools or []:
-                    tools.append(
-                        {
-                            "name": t.name,
-                            "description": t.description or "",
-                            "input_schema": dict(t.inputSchema or {}),
-                        }
-                    )
-                return tools
+                return [
+                    {
+                        "name": t.name,
+                        "description": t.description or "",
+                        "input_schema": dict(t.inputSchema or {}),
+                    }
+                    for t in result.tools or []
+                ]
         except BaseException as e:
             logger.warning("MCP list_tools impl failed: %s", e)
             return []
 
     def _session(self):
         """创建 MCP 客户端会话上下文管理器"""
-        return _McpSessionContext(settings.MCP_GATEWAY_URL)
+        if not settings.MCP_GATEWAY_KEY:
+            # 网关持有 M2M 凭证强制鉴权，缺密钥直接失败而非裸连被 401 拒绝，日志更可定位
+            raise RuntimeError("MCP_GATEWAY_KEY 未配置，拒绝连接 MCP 网关")
+        return _McpSessionContext(settings.MCP_GATEWAY_URL, settings.MCP_GATEWAY_KEY)
 
 
 def _extract_text(result) -> str:
@@ -122,30 +124,35 @@ def _extract_text(result) -> str:
 class _McpSessionContext:
     """MCP 会话上下文管理器：封装 streamablehttp + ClientSession 的嵌套上下文"""
 
-    def __init__(self, url: str):
+    def __init__(self, url: str, gateway_key: str):
         self._url = url
+        self._gateway_key = gateway_key
         self._http_ctx = None
         self._session_ctx = None
         self._session = None
 
     async def __aenter__(self) -> ClientSession:
-        self._http_ctx = streamablehttp_client(self._url)
+        self._http_ctx = streamablehttp_client(self._url, headers={"X-MCP-Key": self._gateway_key})
         read, write, _ = await self._http_ctx.__aenter__()
         self._session_ctx = ClientSession(read, write)
         self._session = await self._session_ctx.__aenter__()
+        # MCP 协议要求先 initialize 能力协商，否则 tools/call 被网关 400 拒绝
+        await self._session.initialize()
         return self._session
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # 会话拆除（anyio cancel scope 收尾）失败不能覆盖主流程结果——主流程自己的异常
+        # 已由调用方处理，此处只是清理；但拆除失败必须可见，否则连接泄漏无从排查。
         if self._session_ctx:
             try:
                 await self._session_ctx.__aexit__(exc_type, exc_val, exc_tb)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("关闭 MCP ClientSession 失败: %s", e, exc_info=True)
         if self._http_ctx:
             try:
                 await self._http_ctx.__aexit__(exc_type, exc_val, exc_tb)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("关闭 MCP streamablehttp 传输失败: %s", e, exc_info=True)
 
 
 mcp_gateway_client = McpGatewayClient()

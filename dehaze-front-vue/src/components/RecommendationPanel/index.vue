@@ -89,7 +89,11 @@
             <span class="algo-rank">{{ idx + 1 }}</span>
             <div class="algo-info">
               <div class="algo-name">{{ algo.algorithmName }}</div>
-              <el-rate :model-value="algo.rating" disabled :show-text="false" />
+              <el-rate
+                :model-value="algo.rating ?? undefined"
+                disabled
+                :show-text="false"
+              />
             </div>
             <el-button link type="primary" @click="handleSelect(algo)">
               选择
@@ -153,7 +157,8 @@ import {
   ImageFeatureAnalysis,
   RecommendedAlgorithm,
 } from "dehaze-sdk-js";
-import { CircleCheck, CircleClose } from "@element-plus/icons-vue";
+import { CircleClose } from "@element-plus/icons-vue";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "RecommendationPanel" });
 
@@ -197,7 +202,6 @@ async function doAnalyze() {
     fetchRecommendations(result.imageMd5);
   } catch (err: any) {
     error.value = err?.message || "图像分析失败";
-    ElMessage.error(error.value);
   } finally {
     analyzing.value = false;
   }
@@ -232,7 +236,6 @@ async function handleFeedback(algo: RecommendedAlgorithm, useful: boolean) {
     });
     ElMessage.success(useful ? "反馈已提交（有用）" : "反馈已提交（无用）");
   } catch {
-    ElMessage.error("反馈提交失败");
   } finally {
     feedbackLoading.value = null;
   }
@@ -282,15 +285,13 @@ const noiseLevelLabel = computed(() => {
   return map[analysis.value?.noiseLevel || ""] || "-";
 });
 
-function getHazeLevelType():
-  "primary" | "success" | "warning" | "info" | "danger" {
+function getHazeLevelType(): TagType {
   const h = analysis.value?.hazeLevel;
   if (h === "heavy") return "danger";
   if (h === "moderate") return "warning";
   return "success";
 }
-function getSceneTypeType():
-  "primary" | "success" | "warning" | "info" | "danger" {
+function getSceneTypeType(): TagType {
   return "info";
 }
 function complexityColor(): string {

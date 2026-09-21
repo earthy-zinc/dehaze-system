@@ -8,9 +8,10 @@ import {
   createRefundApplyForm,
   createRefundQuery,
 } from "#/factories/order";
-import { createLevelAdjustForm } from "#/factories/member";
-import { createPackageForm } from "#/factories/package";
-import { TestCleanupRegistry } from "#/utils/cleanup";
+import { createGrowthAdjustForm, createLevelAdjustForm } from "#/factories/member";
+import { createPackageForm, yuan } from "#/factories/package";
+import { TestCleanupRegistry, deletePackageOrOffline } from "#/utils/cleanup";
+import { ensureBalance } from "#/utils/mysql";
 import { USERS } from "#/factories/constants";
 
 describe("订单管理模块接口测试", () => {
@@ -57,6 +58,9 @@ describe("订单管理模块接口测试", () => {
   }
 
   beforeAll(async () => {
+    // 余额支付真实扣减，先自愈 USER/ADMIN 余额（上限远小于天价套餐，不影响 A053B 边界）
+    await ensureBalance(USERS.USER.id, yuan(10000));
+    await ensureBalance(USERS.ADMIN.id, yuan(10000));
     onSalePackageId = await createPackageWithCleanup(1);
   });
 
@@ -74,17 +78,22 @@ describe("订单管理模块接口测试", () => {
         }
       }
     });
-    cleanup.registerIds(
-      () => createdPackageIds,
-      (id) => PackageAPI.deleteByIds(id)
-    );
+    cleanup.registerIds(() => createdPackageIds, deletePackageOrOffline);
     // 切回 admin，避免影响后续测试文件（删除套餐、恢复会员等级都需要 admin 权限）
     await login(USERS.ADMIN.username);
     await cleanup.executeAll();
-    // 余额支付会自动完成订单并触发会员升级，需要恢复 USER 用户等级为 level_0
-    // 避免影响后续 member 测试对 level_0 用户的断言
+    // 余额支付会自动完成订单并触发会员升级与成长值累积，需将 USER 恢复到
+    // 预置状态（level_0 + 成长值 100），避免影响后续测试对普通用户的断言
     try {
       await MemberAPI.adjustLevel(USERS.USER.id, createLevelAdjustForm({ levelCode: "level_0" }));
+      const detail = await MemberAPI.getDetail(USERS.USER.id);
+      const growthDelta = USERS.USER.member!.growthValue - detail.growthValue;
+      if (growthDelta !== 0) {
+        await MemberAPI.adjustGrowth(
+          USERS.USER.id,
+          createGrowthAdjustForm({ changeValue: growthDelta })
+        );
+      }
     } catch (e) {
       console.warn(`清理失败:`, e);
     }
@@ -715,10 +724,17 @@ describe("订单管理模块接口测试", () => {
  * 余额退款/退款原因类型/积分卡字段（订单管理 API接口.md）。
  */
 describe("余额退款与订单字段扩展", () => {
-  test("正向：余额退款 balanceRefund", async () => {
+  test("正向：余额退款 balanceRefund（每人仅一条待审核，重复申请 A0503）", async () => {
     await login(USERS.USER.username);
-    const result = await OrderAPI.balanceRefund({ orderId: 1, amount: 10 });
-    expect(result).toBeDefined();
+    // 防重复检查（每用户仅一条待审核）生效后，历史运行残留或本轮首笔成功
+    // 都会导致再申请被 A0503 拦截：首笔允许成功或 A0503，第二笔必须 A0503。
+    try {
+      const result = await OrderAPI.balanceRefund({ orderId: 1, amount: 10 });
+      expect(result).toBeDefined();
+    } catch (e: any) {
+      expect(e?.response?.data?.code).toBe("A0503");
+    }
+    await expectBizError(OrderAPI.balanceRefund({ orderId: 1, amount: 10 }), "A0503");
   });
 
   test("正向：退款申请含 reasonType（契约）", async () => {

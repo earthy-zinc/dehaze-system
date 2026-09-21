@@ -4,7 +4,6 @@
 - pre_charge    （before_agent 钩子）：欠费熔断 + 预估 + 配额/余额预扣 + 建计费记录
 - check_budget  （before_model 钩子）：滚动预算校验，不足中断
 - settle        （after_agent 钩子）：按实际用量差额退补 + 更新计费记录 + 流水
-- record_tool_llm / record_kb_inject：工具推理与知识库注入的独立计费记录
 """
 
 import asyncio
@@ -43,7 +42,9 @@ def _publish_chat_completed(user_id: int) -> None:
             async with get_db_session() as db:
                 await member_growth_service.add_behavior_growth(db, user_id, "ai_consume")
         except Exception:
-            logger.warning("ai.chat.completed 消费失败（AI 使用激励） user_id=%s", user_id, exc_info=True)
+            logger.warning(
+                "ai.chat.completed 消费失败（AI 使用激励） user_id=%s", user_id, exc_info=True
+            )
 
     task = asyncio.create_task(_run())
     _pending_tasks.add(task)
@@ -63,7 +64,8 @@ class BillingService:
 
     # ── 预校验 + 预扣 ──────────────────────────────
 
-    async def pre_charge(self, 
+    async def pre_charge(
+        self,
         db: AsyncSession,
         user_id: int,
         conversation_id: int,
@@ -88,7 +90,13 @@ class BillingService:
             db, user_id, conversation_id, content, model_id
         )
 
-        # 3. 配额校验（失败计入连续配额不足计数，达阈值告警，见后端实现 §4.7）
+        # 3. 配额校验（fail-closed：权益数据缺失/停用拒绝；失败计入连续配额不足计数，
+        # 见后端实现 §4.7）
+        if await quota_service.get_limits(db, user_id) is None:
+            return {
+                "final_response": "AI 权益未生效，请联系管理员或升级会员",
+                "stop_reason": "quota_exceeded",
+            }
         if not await quota_service.check_quota(db, user_id, estimated):
             await billing_anomaly_service.record_quota_fail(db, user_id)
             return {
@@ -161,7 +169,8 @@ class BillingService:
 
     # ── 实扣结算 ──────────────────────────────────
 
-    async def settle(self, 
+    async def settle(
+        self,
         db: AsyncSession,
         user_id: int,
         conversation_id: int,
@@ -198,9 +207,7 @@ class BillingService:
         credits_saved = calc["credits_saved"]
 
         # 关联预扣的 chat 计费记录（pre_charge 创建）；缺失则新建
-        billing = await self._find_chat_billing(
-            db, user_id, conversation_id, message_id, bill_type
-        )
+        billing = await self._find_chat_billing(db, user_id, conversation_id, message_id, bill_type)
         if billing is None:
             billing = await self.ai_billing_repository.create_billing(
                 db,
@@ -267,8 +274,9 @@ class BillingService:
             )
 
             # 完整异常检测（单次超高/突发峰值/空回复高耗，后端实现 §4.7；
-            # 内部尽力而为，失败不阻断结算主流程）
-            daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
+            # 内部尽力而为，失败不阻断结算主流程）。权益缺失时无限额基准，跳过限额类规则
+            limits = await quota_service.get_limits(db, user_id)
+            daily_limit, monthly_limit = limits or (0, 0)
             await billing_anomaly_service.check(
                 db,
                 user_id,
@@ -296,7 +304,94 @@ class BillingService:
             "actual_model": model_id if actual_model_id else None,
         }
 
-    async def _find_chat_billing(self, 
+    # ── 子 Agent 实报实销 ──────────────────────────
+
+    async def settle_subagent(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        conversation_id: int,
+        message_id: int,
+        model_id: str,
+        actual_model_id: str | None,
+        usage: dict,
+        *,
+        request_id: str | None = None,
+        provider_id: int | None = None,
+        error_code: str | None = None,
+        latency_ms: int | None = None,
+    ) -> dict:
+        """子 Agent 实报实销结算（子图 after_agent 钩子调用）。
+
+        口径（AI对话 后端实现-架构与公共 §子 Agent 计费）：主图持有预扣-结算
+        链路，子 Agent run 不预扣；完成后按实际 token 用量换算积分，直接扣减
+        配额与余额（不足扣至 0 并标记欠费），并创建独立计费记录
+        bill_type=chat_subagent——归属主会话用户/消息，与主 chat 记录经 bill_type
+        区分（不会被 _find_chat_billing 复用，防重复结算）。统计侧与 chat 类
+        记录同口径聚合（CHAT_BILL_TYPES）。
+
+        不发布对话完成事件（激励成长值按主消息一次）、不做异常检测（子图消耗
+        随主消息聚合观测），成本归因字段照常透出。
+        """
+        input_tokens = usage.get("input_tokens") or usage.get("prompt_tokens") or 0
+        output_tokens = usage.get("output_tokens") or usage.get("completion_tokens") or 0
+        cached_tokens = usage.get("cached_input_tokens", 0)
+
+        settle_model = actual_model_id or model_id
+        calc = await rate_provider.calculate(
+            db, settle_model, provider_id, input_tokens, output_tokens, cached_tokens
+        )
+        actual_credits = calc["credits"]
+        credits_saved = calc["credits_saved"]
+
+        if actual_credits > 0:
+            await quota_service.deduct(user_id, actual_credits)
+            await balance_service.deduct(db, user_id, actual_credits)
+
+        billing = await self.ai_billing_repository.create_billing(
+            db,
+            user_id=user_id,
+            conversation_id=conversation_id,
+            message_id=message_id,
+            model=settle_model,
+            actual_model=model_id if actual_model_id else None,
+            bill_type="chat_subagent",
+            input_tokens=input_tokens,
+            cached_input_tokens=cached_tokens,
+            output_tokens=output_tokens,
+            credits=actual_credits,
+            credits_saved=credits_saved,
+            quota_consumed=actual_credits,
+            pre_deduct=0,
+            request_id=request_id,
+            provider_id=provider_id,
+            error_code=error_code,
+            latency_ms=latency_ms,
+        )
+
+        if actual_credits > 0:
+            balance = await balance_service.get_balance(db, user_id)
+            await self.ai_credit_log_repository.create_log(
+                db,
+                user_id=user_id,
+                source="consume",
+                amount=Decimal(-actual_credits),
+                balance_after=balance,
+                related_id=billing.id,
+                reason=f"AI 子 Agent 消耗（{settle_model}）",
+            )
+
+        return {
+            "billing_id": billing.id,
+            "credits": actual_credits,
+            "credits_saved": credits_saved,
+            "quota_consumed": actual_credits,
+            "model": settle_model,
+            "actual_model": model_id if actual_model_id else None,
+        }
+
+    async def _find_chat_billing(
+        self,
         db,
         user_id: int,
         conversation_id: int,
@@ -311,7 +406,6 @@ class BillingService:
             if r.bill_type == bill_type and r.user_id == user_id:
                 return r
         return None
-
 
 
 billing_service = BillingService()

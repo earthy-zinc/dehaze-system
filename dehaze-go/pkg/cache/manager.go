@@ -219,11 +219,26 @@ func (m *CacheManager) initMultiLevelCache() {
 		opts = append(opts, multilevel.WithNullCache(m.nullCache))
 	}
 
+	// 跨实例失效广播：删除时发布消息，其他实例收到后清理各自 L1
+	// （L2 为共享 Redis，由删除方直接清理，无需广播）
+	if m.pubsub != nil {
+		opts = append(opts, multilevel.WithInvalidationPublisher(func(ctx context.Context, key string) {
+			_ = m.pubsub.Publish(ctx, "key", key)
+		}))
+	}
+
 	var err error
 	m.multiLevelCache, err = multilevel.NewMultiLevelCache(opts...)
 	if err != nil {
 		logger.Error("多级缓存初始化失败", zap.Error(err))
 		return
+	}
+
+	// 订阅其他实例的失效消息，清理本实例 L1
+	if m.pubsub != nil && m.localCache != nil {
+		m.pubsub.Subscribe("key", func(msg redis.CacheInvalidationMsg) {
+			_ = m.localCache.Delete(context.Background(), msg.Key)
+		})
 	}
 
 	logger.Info("多级缓存初始化成功")

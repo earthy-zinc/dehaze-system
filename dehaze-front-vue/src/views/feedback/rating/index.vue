@@ -6,7 +6,7 @@
           <el-input
             v-model="queryParams.keywords"
             clearable
-            placeholder="用户名/评价内容"
+            placeholder="用户名/昵称"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -57,6 +57,19 @@
             <el-option :value="true" label="有评论" />
             <el-option :value="false" label="无评论" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="标签" prop="tags">
+          <el-select
+            v-model="queryParams.tags"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            clearable
+            placeholder="输入标签后回车"
+            style="width: 200px"
+          />
         </el-form-item>
 
         <el-form-item label="时间范围">
@@ -169,16 +182,14 @@
               <el-icon><View /></el-icon>详情
             </el-button>
             <el-button
+              v-if="(scope.row as RatingPageVO).isHidden !== 1"
               v-hasPerm="['feedback:rating:edit']"
               link
               size="small"
               type="danger"
               @click="handleHide(scope.row as RatingPageVO)"
             >
-              <el-icon><Hide /></el-icon
-              >{{
-                (scope.row as RatingPageVO).isHidden === 1 ? "显示" : "隐藏"
-              }}
+              <el-icon><Hide /></el-icon>隐藏
             </el-button>
             <el-button
               v-hasPerm="['feedback:rating:reply']"
@@ -381,6 +392,7 @@ function resetQuery() {
   queryParams.ratingMin = undefined;
   queryParams.ratingMax = undefined;
   queryParams.hasComment = undefined;
+  queryParams.tags = undefined;
   queryParams.startTime = undefined;
   queryParams.endTime = undefined;
   queryParams.pageNum = 1;
@@ -400,15 +412,14 @@ function handleDetail(row: RatingPageVO) {
 }
 
 function handleHide(row: RatingPageVO) {
-  const action = row.isHidden === 1 ? "显示" : "隐藏";
-  ElMessageBox.confirm(`确认${action}该条评价吗？`, "提示", {
+  ElMessageBox.confirm("确认隐藏该条评价吗？", "提示", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
   })
     .then(() => FeedbackAPI.hideRating(row.id))
     .then(() => {
-      ElMessage.success(`${action}成功`);
+      ElMessage.success("隐藏成功");
       handleQuery();
     })
     .catch(() => {});

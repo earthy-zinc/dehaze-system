@@ -133,9 +133,7 @@ async function handleSubmit() {
       ElMessage.success("导入完成");
       emit("import-complete");
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || "导入失败");
-  }
+  } catch {}
 }
 
 const canSubmit = computed(() => !!selectedFile.value && !importLoading.value);

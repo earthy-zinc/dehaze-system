@@ -1,9 +1,36 @@
-"""数据集域共享件：logger 与跨类文件 VO 组装 helper"""
+"""数据集域共享件：logger、跨类文件 VO 组装 helper 与图片内容校验"""
 
+import io
 import logging
 from typing import Any
 
+import PIL.Image
+
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
+
 logger = logging.getLogger(__name__)
+
+# 数据项图片仅允许真实位图格式：非图片扩展名（如 html/svg）经文件 URL 以
+# text/html 渲染会形成存储型 XSS，必须在入库前拦截
+IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "bmp", "webp"}
+
+
+def validate_image_content(filename: str, content: bytes) -> None:
+    """校验数据项上传文件为真实图片：扩展名白名单 + PIL 可解析。
+
+    file_service 的魔数校验只覆盖已知图片扩展名，非图片扩展名会直接放行，
+    因此数据项图片上传必须在此再做一道白名单 + 解析校验。
+    """
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if extension not in IMAGE_EXTENSIONS:
+        raise BusinessException(ResultCode.PARAM_ERROR, "仅支持图片格式（jpg/png/gif/bmp/webp）")
+
+    try:
+        with PIL.Image.open(io.BytesIO(content)) as img:
+            img.verify()
+    except Exception:
+        raise BusinessException(ResultCode.PARAM_ERROR, "文件内容不是有效的图片") from None
 
 
 def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
@@ -41,4 +68,3 @@ def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
         "format": file_format,
         "md5": file_obj.md5 if file_obj else None,
     }
-

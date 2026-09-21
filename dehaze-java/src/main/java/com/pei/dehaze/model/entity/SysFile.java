@@ -43,8 +43,8 @@ public class SysFile extends BaseEntity {
 
     private String md5;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     /**
      * 文件访问 URL（运行时动态拼接，不落库）

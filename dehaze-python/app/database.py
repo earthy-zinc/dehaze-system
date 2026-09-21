@@ -85,6 +85,25 @@ class Base(DeclarativeBase):
     pass
 
 
+def defer_after_commit(session: AsyncSession, callback) -> None:
+    """登记事务提交后执行的异步回调；回滚或未提交则自动丢弃。
+
+    供"必须基于已提交数据/提交成功后才生效"的副作用使用（缓存失效、
+    ES 读模型同步、会话踢出等），由事务提交方统一执行。
+    """
+    session.info.setdefault("after_commit_callbacks", []).append(callback)
+
+
+async def run_after_commit_callbacks(session: AsyncSession) -> None:
+    """执行并清空 session 上登记的提交后回调，单个失败不阻塞后续回调。"""
+    callbacks = session.info.pop("after_commit_callbacks", [])
+    for callback in callbacks:
+        try:
+            await callback()
+        except Exception:
+            logger.warning("after_commit 回调执行失败", exc_info=True)
+
+
 async def get_db(request: Request) -> AsyncSession:
     """FastAPI 依赖注入：获取数据库 Session
 
@@ -107,6 +126,7 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
             await session.commit()
+            await run_after_commit_callbacks(session)
         except Exception:
             await session.rollback()
             raise

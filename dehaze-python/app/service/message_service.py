@@ -116,7 +116,7 @@ class MessageService:
         msg_type = data["type"]
         title = data.get("title")
         content = data.get("content")
-        priority = data.get("priority", 2)
+        priority = data.get("priority")
 
         if template_code:
             template = await message_template_repository.get_by_code(db, template_code)
@@ -137,13 +137,16 @@ class MessageService:
 
             title = _render_template(template.title_template, variables)
             content = _render_template(template.content_template, variables)
-            if priority == 2 and template.priority:
+            if priority is None and template.priority:
                 priority = template.priority
         else:
             if not title:
                 raise BusinessException(ResultCode.PARAM_ERROR, "消息标题不能为空")
             if not content:
                 raise BusinessException(ResultCode.PARAM_ERROR, "消息正文不能为空")
+
+        if priority is None:
+            priority = 2
 
         jump_url = data.get("jumpUrl")
         extra = data.get("extra")
@@ -174,7 +177,8 @@ class MessageService:
         message_ids.extend(m.id for m in messages)
         return message_ids
 
-    async def get_page(self, 
+    async def get_page(
+        self,
         db: AsyncSession,
         user_id: int,
         page: int,
@@ -240,15 +244,15 @@ class MessageService:
             "createTime": _format_dt(msg.create_time),
         }
 
-    async def mark_read(self, db: AsyncSession, user_id: int, message_id: int) -> None:
-        msg = await message_repository.get_by_id_and_recipient(db, message_id, user_id)
-        if not msg:
-            raise BusinessException(ResultCode.MESSAGE_NOT_FOUND, "消息不存在")
-        if msg.read_status == 0:
-            await message_repository.mark_read(db, message_id, user_id)
+    async def mark_read(self, db: AsyncSession, user_id: int, message_id: int) -> bool:
+        # 按 recipient_id + 未读条件更新，影响 0 行（已读/非本人消息）幂等静默成功
+        affected = await message_repository.mark_read(db, message_id, user_id)
+        if affected:
             await invalidate_unread_count_cache(user_id)
+        return affected
 
-    async def mark_all_read(self, 
+    async def mark_all_read(
+        self,
         db: AsyncSession,
         user_id: int,
         type: str | None = None,
@@ -261,7 +265,8 @@ class MessageService:
         await message_repository.soft_delete_by_ids_and_recipient(db, ids, user_id)
         await invalidate_unread_count_cache(user_id)
 
-    async def search(self, 
+    async def search(
+        self,
         db: AsyncSession,
         user_id: int,
         keyword: str,

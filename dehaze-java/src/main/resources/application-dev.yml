@@ -87,8 +87,8 @@ spring:
       cache-null-values: true
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 100MB
+      max-request-size: 105MB
 
 mybatis-plus:
   global-config:
@@ -97,8 +97,8 @@ mybatis-plus:
       id-type: auto
       # 逻辑删除字段名称
       logic-delete-field: deleted
-      # 逻辑删除-删除值
-      logic-delete-value: 1
+      # 逻辑删除-删除值（原样拼接进SQL；id=删除时写入行id，保证唯一键含deleted后软删行不占键位）
+      logic-delete-value: id
       # 逻辑删除-未删除值
       logic-not-delete-value: 0
   configuration:
@@ -177,8 +177,8 @@ file:
     bucket-name: ${MINIO_BUCKET}
   # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
   nginx-static:
-    # nginx 对外访问 baseUrl（必须带 scheme + host）
-    baseUrl: http://${NGINX_STATIC_HOST}:8081
+    # nginx 对外访问 baseUrl（必须带 scheme + host，端口对齐 python 的 NGINX_STATIC_PORT）
+    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}
 
 # springdoc配置： https://springdoc.org/properties.html
 springdoc:
@@ -229,6 +229,8 @@ algorithm:
     connect-timeout: 5000
     # 读取超时（毫秒）—— 预测/评估可耗时较长
     read-timeout: 120000
+    # AI 转发（B 类端点）SSE 流空闲超时（毫秒）—— 推理长期无输出时才判定上游卡死
+    ai-proxy-stream-idle-timeout: 300000
     # 最大重试次数
     max-retry: 3
     # 重试初始退避（毫秒），指数增长
@@ -239,8 +241,8 @@ algorithm:
     circuit-breaker-min-calls: 10
     # 熔断后半开等待（毫秒）
     circuit-breaker-half-open-delay: 30000
-    # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致）
-    api-key: dhak_m2m_internal_python_service_key_2024
+    # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致；由根 .env 注入）
+    api-key: ${M2M_API_KEY}
   # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
   model:
     # 算法权重访问 URL = {baseUrl}/{algorithm.path}，如 http://{NGINX_STATIC_HOST}:9000/models/AECR-Net/NH_train.pk

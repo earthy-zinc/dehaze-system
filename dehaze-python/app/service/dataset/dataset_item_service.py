@@ -9,13 +9,14 @@ import PIL.Image
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.base import get_current_user_id
 from app.models.entity.sys_dataset import SysDatasetItem, SysItemFile
 from app.repository.dataset_repository import dataset_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
-from app.service.dataset._shared import _build_file_vo
+from app.service.dataset._shared import _build_file_vo, validate_image_content
 from app.service.dataset.dataset_service import dataset_service
 from app.service.file_service import file_service
 from app.utils.datetime_utils import format_time
@@ -71,27 +72,24 @@ def _extract_haze_level(filename: str) -> str:
     #    统一取最后一个数值作为 beta（无法可靠区分 A 和 idx）
     parts = name.split("_")
     if len(parts) >= 3:
-        try:
-            num_parts = []
-            for p in parts[1:]:  # 跳过第一段（id）
-                try:
-                    num_parts.append(float(p))
-                except ValueError:
-                    continue
-            if num_parts:
-                beta = num_parts[-1]
-                return f"beta={beta}"
-        except (ValueError, IndexError):
-            pass
+        num_parts = []
+        for p in parts[1:]:  # 跳过第一段（id）；非数值段（如 A）跳过
+            try:
+                num_parts.append(float(p))
+            except ValueError:
+                continue
+        if num_parts:
+            beta = num_parts[-1]
+            return f"beta={beta}"
 
     return ""
-
 
 
 class DatasetItemService:
     """数据集项服务（异步版本）"""
 
-    async def create_dataset_item(self, 
+    async def create_dataset_item(
+        self,
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
@@ -132,21 +130,11 @@ class DatasetItemService:
             return {}
 
         files = []
-        image_urls = []
         clear_image = None
         hazy_images = []
         for item_file, file_obj in item_files:
             file_vo = _build_file_vo(item_file, file_obj)
             files.append(file_vo)
-            if file_obj is not None:
-                image_urls.append(
-                    {
-                        "id": file_obj.id,
-                        "type": item_file.type,
-                        "url": file_vo["url"],
-                        "thumbnailUrl": file_vo["url"],
-                    }
-                )
             # 按类型拆分：clearImage / hazyImages（对齐 SDK DatasetItemVO）
             if item_file.type == "clear" and clear_image is None:
                 clear_image = file_vo
@@ -160,12 +148,12 @@ class DatasetItemService:
             "createTime": format_time(item.create_time) if hasattr(item, "create_time") else None,
             "updateTime": format_time(item.update_time) if hasattr(item, "update_time") else None,
             "files": files,
-            "imgUrl": image_urls,
             "clearImage": clear_image,
             "hazyImages": hazy_images,
         }
 
-    async def update_dataset_item(self, 
+    async def update_dataset_item(
+        self,
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -186,7 +174,8 @@ class DatasetItemService:
             "name": item.name,
         }
 
-    async def delete_dataset_item(self, 
+    async def delete_dataset_item(
+        self,
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -200,7 +189,8 @@ class DatasetItemService:
 
         await dataset_service._evict_all_cache(redis)
 
-    async def batch_delete_items(self, 
+    async def batch_delete_items(
+        self,
         db: AsyncSession,
         redis: Redis,
         item_ids: list[int],
@@ -248,7 +238,8 @@ class DatasetItemService:
             "failureDetails": failure_details,
         }
 
-    async def upload_dataset_item_with_images(self, 
+    async def upload_dataset_item_with_images(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -263,25 +254,26 @@ class DatasetItemService:
         if clear_file_content is None and not hazy_files_data:
             raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一张图片（清晰图或有雾图）")
 
+        # 先做逐文件安全校验（大小 + 真实图片），无论是否存在清晰图
+        max_upload_size = settings.MAX_UPLOAD_SIZE
+        max_mb = max_upload_size // 1024 // 1024
+        if clear_file_content is not None:
+            if len(clear_file_content) > max_upload_size:
+                raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
+            validate_image_content(clear_filename, clear_file_content)
+        for hfd in hazy_files_data or []:
+            if len(hfd["content"]) > max_upload_size:
+                raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
+            validate_image_content(hfd.get("filename", ""), hfd["content"])
+
         # 校验配对图片分辨率一致性（清晰图存在时才校验，对齐 Java/Go 实现）
         clear_dims = None
         if clear_file_content is not None:
-            try:
-                with PIL.Image.open(io.BytesIO(clear_file_content)) as img:
-                    clear_dims = img.size
-            except Exception:
-                raise BusinessException(
-                    ResultCode.PARAM_ERROR, "清晰图文件格式错误或无法解析"
-                ) from None
+            with PIL.Image.open(io.BytesIO(clear_file_content)) as img:
+                clear_dims = img.size
             for hfd in hazy_files_data or []:
-                try:
-                    with PIL.Image.open(io.BytesIO(hfd["content"])) as img:
-                        hazy_dims = img.size
-                except Exception:
-                    raise BusinessException(
-                        ResultCode.PARAM_ERROR,
-                        f"有雾图 {hfd.get('filename', '')} 格式错误或无法解析",
-                    ) from None
+                with PIL.Image.open(io.BytesIO(hfd["content"])) as img:
+                    hazy_dims = img.size
                 if hazy_dims[0] != clear_dims[0] or hazy_dims[1] != clear_dims[1]:
                     raise BusinessException(
                         ResultCode.PARAM_ERROR,
@@ -341,7 +333,8 @@ class DatasetItemService:
 
         return await self.get_item_detail(db, item.id)
 
-    async def batch_create_dataset_items_with_images(self, 
+    async def batch_create_dataset_items_with_images(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -443,8 +436,6 @@ class DatasetItemService:
             "successItems": success_items,
             "failedItems": failed_items,
         }
-
-
 
 
 dataset_item_service = DatasetItemService()

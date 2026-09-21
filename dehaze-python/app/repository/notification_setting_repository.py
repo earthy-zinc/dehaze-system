@@ -44,7 +44,9 @@ class NotificationSettingRepository(BaseRepository[SysNotificationSetting]):
                 SysNotificationSetting.deleted == 0,
             )
         )
-        return result.scalar_one_or_none()
+        # upsert 后该 user_id 必存在且 deleted=0，故用 scalar_one（原 scalar_one_or_none
+        # 返回 None 时调用方会 AttributeError，此处改为显式 NoResultFound，语义明确化）
+        return result.scalar_one()
 
 
 notification_setting_repository = NotificationSettingRepository()

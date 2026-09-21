@@ -1,13 +1,13 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.service.ai.service.step_summarizer import _generate_summaries, summarize_steps
+from tests.stubs.fakes import LLMChunk
 
 pytestmark = pytest.mark.requires_db
-from tests.stubs.fakes import LLMChunk
 
 
 def _llm_stream(*chunks):
@@ -41,7 +41,9 @@ async def test_generate_summaries_batch(db, mock_redis):
             {"thought": "先分析", "tool": "image_analysis", "observation": "雾图"},
             {"thought": "再处理", "tool": "dehaze", "observation": "完成"},
         ]
-        summaries = await _generate_summaries(None, "model-x", steps, conversation_id=1, message_id=1)
+        summaries = await _generate_summaries(
+            None, "model-x", steps, conversation_id=1, message_id=1
+        )
     assert summaries == ["步骤1：分析图像", "步骤2：执行去雾"]
 
 
@@ -75,10 +77,15 @@ async def test_summarize_steps_updates_thoughts(db, mock_redis):
     updated = []
 
     with (
-        patch("app.service.ai.service.step_summarizer.ai_agent_thought_repository", _repo(thoughts, updated)),
+        patch(
+            "app.service.ai.service.step_summarizer.ai_agent_thought_repository",
+            _repo(thoughts, updated),
+        ),
         patch(
             "app.service.ai.service.step_summarizer.llm_client.stream_chat",
-            side_effect=_llm_stream(LLMChunk("text_delta", json.dumps(["s1", "s2"])), LLMChunk("done")),
+            side_effect=_llm_stream(
+                LLMChunk("text_delta", json.dumps(["s1", "s2"])), LLMChunk("done")
+            ),
         ),
     ):
         await summarize_steps(1, 1, "model-x")
@@ -90,7 +97,10 @@ async def test_summarize_steps_llm_failure_silent(db, mock_redis):
     updated = []
 
     with (
-        patch("app.service.ai.service.step_summarizer.ai_agent_thought_repository", _repo(thoughts, updated)),
+        patch(
+            "app.service.ai.service.step_summarizer.ai_agent_thought_repository",
+            _repo(thoughts, updated),
+        ),
         patch(
             "app.service.ai.service.step_summarizer.llm_client.stream_chat",
             AsyncMock(side_effect=RuntimeError("llm down")),

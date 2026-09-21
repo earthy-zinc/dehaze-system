@@ -25,14 +25,16 @@ from pathlib import Path
 import pytest
 
 # 确保项目根目录在 Python 路径中
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # 设置测试环境变量（必须在 import app 之前：pydantic-settings 首次 import 时读取并缓存为单例）
 # 注意：不覆盖 MYSQL_PASSWORD——db fixture 需连接真实 MySQL，凭证来自根目录 .env
 os.environ["APP_ENV"] = "testing"
 # TestingSettings 的类默认值会被根目录 .env 覆盖（dotenv 优先级高于类默认值），
 # 此处显式重设以强制测试库名与 Redis 兜底端口（6390 无人监听）
-os.environ["MYSQL_DATABASE"] = "dehaze_test"
+# 并行隔离：设 PYTEST_MYSQL_DATABASE 可用独立库（如 dehaze_test_imageinput）
+# 与其他 squad 的 dehaze_test 运行并行，互不干扰（同实例同凭证）
+os.environ["MYSQL_DATABASE"] = os.environ.get("PYTEST_MYSQL_DATABASE", "dehaze_test")
 os.environ["REDIS_PORT"] = "6390"
 
 import fakeredis
@@ -42,7 +44,12 @@ from sqlalchemy.pool import NullPool
 import app.database as database_module
 import app.dependencies.redis as redis_module
 from app.config import PROJECT_ROOT, settings
+from app.lifecycle import _register_soft_delete_filter
 from app.main import app as fastapi_app
+
+# 测试环境与运行时行为对齐：router 测试经 httpx ASGITransport 不触发 lifespan，
+# 服务层测试也不启动应用，全局逻辑删除过滤器须在此显式注册（幂等）
+_register_soft_delete_filter()
 
 # config/sql 位于仓库根（dehaze-python 的上级目录）
 _SQL_SCHEMA_DIR = PROJECT_ROOT / "config" / "sql" / "schema"
@@ -96,7 +103,7 @@ def _split_statements(content: str) -> list[str]:
 def _exec_sql_file(conn, sql_path: Path) -> None:
     """执行单个 SQL 脚本（跳过 -- 行注释；语句分割见 _split_statements）。"""
     content = sql_path.read_text(encoding="utf-8")
-    lines = [l for l in content.splitlines() if not l.strip().startswith("--")]
+    lines = [line for line in content.splitlines() if not line.strip().startswith("--")]
     statements = _split_statements("\n".join(lines))
     with conn.cursor() as cur:
         for stmt in statements:
@@ -124,19 +131,26 @@ def _mysql_schema() -> None:
         )
     except Exception as e:
         pytest.fail(
-            f"MySQL 不可达（{settings.MYSQL_USERNAME}@{settings.MYSQL_HOST}:{settings.MYSQL_PORT}）：{e}\n"
+            f"MySQL 不可达（{settings.MYSQL_USERNAME}@{settings.MYSQL_HOST}:"
+            f"{settings.MYSQL_PORT}）：{e}\n"
             f"测试需连接真实 MySQL 测试库 `{settings.MYSQL_DATABASE}`（与开发同实例，"
             f"凭证见根目录 .env 的 MYSQL_HOST/MYSQL_PASSWORD）"
         )
 
     try:
-        # 并发保护：多 pytest 进程同时重建 dehaze_test 会 DROP/CREATE/导入竞态
+        # 并发保护：多 pytest 进程同时重建同一测试库会 DROP/CREATE/导入竞态
         # （偶发 Duplicate entry 主键冲突 / 表缺失）。用 MySQL 会话级 GET_LOCK 串行化
-        # 重建（同一连接上获取与释放，autocommit 下锁立即生效、不随 DDL 释放）。
+        # 重建（同一连接上获取与释放，autocommit 下锁立即生效、不随 DDL 释放）；
+        # 锁名按库名区分，独立库（PYTEST_MYSQL_DATABASE）重建互不阻塞。
         with conn.cursor() as cur:
-            cur.execute("SELECT GET_LOCK('dehaze_test_rebuild', 300)")
-            if cur.fetchone()[0] != 1:
-                pytest.fail("获取测试库重建锁超时（其他 pytest 进程正在重建 dehaze_test）")
+            cur.execute("SELECT GET_LOCK(%s, 300)", (f"{settings.MYSQL_DATABASE}_rebuild",))
+            # SELECT GET_LOCK 恒返回单行；显式断言收窄 None，避免对可选行取下标
+            lock_row = cur.fetchone()
+            assert lock_row is not None, "GET_LOCK 未返回结果"
+            if lock_row[0] != 1:
+                pytest.fail(
+                    f"获取测试库重建锁超时（其他 pytest 进程正在重建 {settings.MYSQL_DATABASE}）"
+                )
         try:
             with conn.cursor() as cur:
                 cur.execute(f"DROP DATABASE IF EXISTS `{settings.MYSQL_DATABASE}`")
@@ -150,11 +164,22 @@ def _mysql_schema() -> None:
                     _exec_sql_file(conn, sql_file)
         finally:
             with conn.cursor() as cur:
-                cur.execute("SELECT RELEASE_LOCK('dehaze_test_rebuild')")
+                cur.execute("SELECT RELEASE_LOCK(%s)", (f"{settings.MYSQL_DATABASE}_rebuild",))
     except Exception as e:
         pytest.fail(f"测试库 `{settings.MYSQL_DATABASE}` 重建失败：{e}")
     finally:
         conn.close()
+
+
+async def _drain_background_writes() -> None:
+    """等待后台落盘任务（trace/llm_call 观测埋点）完成，避免其晚于连接回收执行。
+
+    串行等待：多个后台写共享本 fixture 的同一连接，并发 savepoint 会互相破坏。
+    """
+    from app.service.ai.service import trace_collector
+
+    if trace_collector._pending_tasks:
+        await trace_collector.drain()
 
 
 @pytest.fixture
@@ -177,24 +202,47 @@ async def db(_mysql_schema, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(database_module, "async_session_factory", factory)
     async with factory() as session:
         yield session
+        # 用例结束前等待在途后台落盘（观测埋点 create_task 后台写库）：必须在本会话
+        # 关闭前完成，否则任务会拿着已回收的连接执行，报 aiomysql
+        # "readexactly() called while another coroutine is already waiting"
+        await _drain_background_writes()
     await transaction.rollback()
     await connection.close()
     await engine.dispose()
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mongo_db(monkeypatch: pytest.MonkeyPatch):
-    """mongomock-motor 内存 Mongo（motor 异步兼容层）。
+    """mongomock-motor 内存 Mongo（motor 异步兼容层），autouse 全局接管 Mongo。
 
-    patch `app.dependencies.mongo.get_mongo_client` 模块属性，单点覆盖全部
-    使用方（mongo 仓储经模块属性延迟引用；勿 patch `_mongo_client` 私有单例）。
+    patch 方式与 mock_redis 一致：patch 中心入口 `app.dependencies.mongo` 的
+    get_mongo_client，并动态扫描 sys.modules 覆盖 `from app.dependencies.mongo
+    import get_mongo_client` 的直接引用（如 app/router/health.py）。
+
+    必须 autouse：真实 motor 客户端是进程级单例，其 io loop 在**首次使用**时由
+    `asyncio.get_event_loop()` 绑定并永久缓存（motor/core.py get_io_loop）；pytest-asyncio
+    每个用例新建事件循环，任何测试只要真实触达 Mongo 一次，后续用例复用该单例就会
+    拿到已关闭的 loop（RuntimeError: Event loop is closed）。同时避免测试数据写进
+    开发库的 login_log / ai_api_call_log。
     """
     import mongomock_motor
 
     import app.dependencies.mongo as mongo_module
 
     client = mongomock_motor.AsyncMongoMockClient()
-    monkeypatch.setattr(mongo_module, "get_mongo_client", lambda: client)
+    original_client = mongo_module.get_mongo_client
+
+    def _override():
+        return client
+
+    monkeypatch.setattr(mongo_module, "get_mongo_client", _override)
+    # 只扫本仓库模块：全量扫描 sys.modules 会命中带模块级 __getattr__ 的第三方库
+    # （触发真实导入），6443 个模块约 65ms/次，本用例只关心 app./tests. 的直接引用
+    for module in tuple(sys.modules.values()):
+        if not getattr(module, "__name__", "").startswith(("app.", "tests.")):
+            continue
+        if getattr(module, "get_mongo_client", None) is original_client:
+            monkeypatch.setattr(module, "get_mongo_client", _override)
     return client[settings.MONGODB_DATABASE]
 
 
@@ -215,6 +263,15 @@ def mock_redis(monkeypatch: pytest.MonkeyPatch) -> fakeredis.FakeAsyncRedis:
        实测会直接连上真实 Redis。
     """
     redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+
+    # 共享 L1 是进程级单例，跨用例残留会把上一个用例的缓存值泄露给本用例的
+    # 全新 fakeredis（读命中 L1 时不会写 redis，导致按 redis 断言缓存写入的
+    # 用例误判）。每个用例开始前清空 L1，使其与本用例的 redis 状态一致。
+    from app.infrastructure.cache.cache import _get_shared_l1
+
+    shared_l1 = _get_shared_l1()
+    if shared_l1 is not None:
+        shared_l1.clear()
 
     async def _override():
         return redis

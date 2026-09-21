@@ -19,13 +19,13 @@ CREATE TABLE `sys_file`
     `size`        varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '0' COMMENT '文件大小（格式化显示）',
     `size_bytes`  bigint                                                         NULL DEFAULT NULL COMMENT '文件大小（原始字节数）',
     `md5`         char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
-    `deleted`     tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`     bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time` datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`   bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_md5` (`md5` ASC) USING BTREE
+    UNIQUE INDEX `uk_md5` (`md5` ASC, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '文件表'

@@ -31,7 +31,7 @@ type Connection struct {
 // Manager WebSocket 连接管理器
 // 通过 Redis Pub/Sub 实现跨实例消息投递，对齐 Python 端方案。
 type Manager struct {
-	mu       sync.RWMutex
+	mu          sync.RWMutex
 	connections map[int64][]*Connection // 本地连接（一个用户可能有多连接）
 
 	redisClient *redis.Client

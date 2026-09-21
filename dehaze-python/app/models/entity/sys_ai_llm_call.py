@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import BigInteger, Integer, SmallInteger, String
-from sqlalchemy.dialects.mysql import JSON
+from sqlalchemy.dialects.mysql import DATETIME, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import AppendOnlyModel
@@ -30,12 +31,15 @@ class SysAiLlmCall(AppendOnlyModel):
     model: Mapped[str | None] = mapped_column(
         String(64), nullable=True, comment="本次调用模型(多步推理中可能切换模型)"
     )
+    start_time: Mapped[datetime | None] = mapped_column(
+        DATETIME(fsp=3),
+        nullable=True,
+        comment="调用发起时刻(时间线排序锚点)",
+    )
     status: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=1, comment="调用状态(1:成功;2:失败;3:超时)"
     )
-    error_type: Mapped[str | None] = mapped_column(
-        String(32), nullable=True, comment="失败类型"
-    )
+    error_type: Mapped[str | None] = mapped_column(String(32), nullable=True, comment="失败类型")
     duration_ms: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="本次调用总耗时(毫秒)"
     )
@@ -63,5 +67,18 @@ class SysAiLlmCall(AppendOnlyModel):
     attempts: Mapped[Any | None] = mapped_column(
         JSON,
         nullable=True,
-        comment="物理调用尝试明细JSON(逐Key/逐路由: provider_id/key_id/model/status/error_code/latency_ms)",
+        comment=(
+            "物理调用尝试明细JSON(逐Key/逐路由: provider_id/key_id/model/status/"
+            "error_code/latency_ms)"
+        ),
+    )
+    raw_request: Mapped[Any | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="wire级原始请求体JSON(实际发送的完整请求体，不存headers/URL/API Key)",
+    )
+    raw_response: Mapped[Any | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment='wire级原始响应JSON(流式聚合的等价非流式结构；失败存{"error":{...}})',
     )

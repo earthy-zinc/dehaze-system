@@ -4,7 +4,7 @@
 -- ============================================================
 -- 设计思路:
 -- AI 智能体配置表，管理可配置的 Agent（系统提示词、模型、推理范式、参数、权限规则等）。
--- agent_code 为业务引用键（如 default、image-analyst），唯一索引，删除后不可复用（类别②）。
+-- agent_code 为业务引用键（如 default、image-analyst），唯一索引含 deleted，软删后可重建同 code。
 -- 推理引擎基于 deepagents（LangChain 官方 Agent Harness），DeepAgentBuilder 从本表加载配置
 --   并组装 create_deep_agent 入参，返回编译后的 CompiledStateGraph。
 -- system_prompt 存 Agent 的指令（Markdown），为空时由 deepagents 使用内置默认提示。
@@ -19,7 +19,7 @@
 --   的普通 Agent 可暴露，子 Agent 不可独立暴露，见 §5.4）。
 -- permissions(JSON) 存 deepagents FilesystemPermission 权限规则（operations/paths/mode），
 --   控制虚拟文件系统的读写范围；mode 支持 allow/deny/interrupt，interrupt 触发用户确认。
--- 配置类表，使用逻辑删除；agent_code 为业务引用键，删除后不可复用（类别②，查重查全表）。
+-- 配置类表，使用逻辑删除；唯一键含 deleted，软删后可重建同 agent_code。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_ai_agent`;
 CREATE TABLE `sys_ai_agent`
@@ -39,13 +39,13 @@ CREATE TABLE `sys_ai_agent`
     `tags`            json                                                            NULL COMMENT '分类标签(字符串数组,如["客服","去雾"],管理端筛选/展示用)',
     `sort_order`      int                                                             NOT NULL DEFAULT 0 COMMENT '排序序号(数字越小越靠前)',
     `status`          tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`         tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`         bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`       bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`       bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`     datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_agent_code` (`agent_code`) USING BTREE,
+    UNIQUE INDEX `uk_agent_code` (`agent_code`, `deleted`) USING BTREE,
     INDEX `idx_model` (`model_id`) USING BTREE,
     INDEX `idx_status_type` (`status`, `is_subagent`, `is_team`) USING BTREE
 ) ENGINE = InnoDB

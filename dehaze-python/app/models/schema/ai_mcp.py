@@ -6,7 +6,7 @@ McpServerResult 等保持一致；分页查询字段沿用 SDK 分页约定（pa
 """
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
@@ -77,19 +77,25 @@ class McpServerCreate(OrmResult):
 
     name: str = Field(..., min_length=1, max_length=128, description="Server名称(唯一)")
     description: str | None = Field(default=None, max_length=512, description="描述")
-    protocol_type: str = Field(
-        default="streamable-http", max_length=32, description="传输协议(stdio;streamable-http;sse)"
+    protocol_type: Literal["streamable-http", "sse"] = Field(
+        default="streamable-http", description="传输协议(仅支持可探测的 URL 型协议)"
     )
-    endpoint: str | None = Field(default=None, max_length=512, description="端点URL(stdio可为空)")
-    auth_type: str | None = Field(default=None, max_length=32, description="鉴权方式(none;api_key;oauth2等)")
+    endpoint: str | None = Field(default=None, max_length=512, description="端点URL")
+    auth_type: str | None = Field(
+        default=None, max_length=32, description="鉴权方式(none;api_key;oauth2等)"
+    )
 
 
 class McpServerUpdate(OrmResult):
     """更新外部 MCP Server 配置"""
 
-    name: str | None = Field(default=None, min_length=1, max_length=128, description="Server名称(唯一)")
+    name: str | None = Field(
+        default=None, min_length=1, max_length=128, description="Server名称(唯一)"
+    )
     description: str | None = Field(default=None, max_length=512, description="描述")
-    protocol_type: str | None = Field(default=None, max_length=32, description="传输协议")
+    protocol_type: Literal["streamable-http", "sse"] | None = Field(
+        default=None, description="传输协议(仅支持可探测的 URL 型协议)"
+    )
     endpoint: str | None = Field(default=None, max_length=512, description="端点URL")
     auth_type: str | None = Field(default=None, max_length=32, description="鉴权方式")
 
@@ -111,6 +117,7 @@ class McpServerResult(OrmResult):
     auth_type: str | None = Field(default=None, description="鉴权方式")
     status: int = Field(description="状态(1:启用;0:禁用)")
     health: str | None = Field(default=None, description="健康状态(online;offline)")
+    last_check_time: datetime | None = Field(default=None, description="最近一次健康探测时间")
     tool_count: int = Field(default=0, description="工具数量")
     credential_configured: bool = Field(default=False, description="是否已配置凭据")
     create_time: datetime | None = Field(default=None, description="创建时间")
@@ -129,6 +136,7 @@ class McpCredentialForm(OrmResult):
 
     api_key: str | None = Field(default=None, max_length=1024, description="API Key等外部服务凭据")
     extra: dict[str, str] | None = Field(default=None, description="其他凭据字段(服务层加密存储)")
+    clear: bool = Field(default=False, description="清除已配置凭据(凭据轮换/吊销场景)")
 
 
 class McpToolTestForm(OrmResult):

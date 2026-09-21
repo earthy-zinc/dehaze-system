@@ -446,8 +446,9 @@ describe("部门管理接口测试", () => {
       const childDeptId = (await DeptAPI.add(childForm)) as number;
       additionalDeptIds.push(childDeptId);
 
-      // 【保留此测试】持续暴露后端缺少循环依赖校验的问题（后端 bug）
+      // 循环引用检测（A0503 操作不允许）
       await expectBizError(DeptAPI.update(testDeptId, { parentId: childDeptId } as DeptForm), [
+        "A0503",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -487,7 +488,7 @@ describe("部门管理接口测试", () => {
           name: DEPTS.CQUPT.name,
           parentId: DEPTS.SOFTWARE.id,
         } as DeptForm),
-        ["A0234", "A0400", "B0001", "ERR_BAD_REQUEST"]
+        ["A0503", "A0234", "A0400", "B0001", "ERR_BAD_REQUEST"]
       );
     });
   });
@@ -564,6 +565,7 @@ describe("部门管理接口测试", () => {
 
     test("边界：删除根部门应失败（根部门保护）", async () => {
       await expectBizError(DeptAPI.deleteByIds(DEPTS.CQUPT.id.toString()), [
+        "A0503",
         "A0234",
         "A0400",
         "B0001",
@@ -598,6 +600,151 @@ describe("部门管理接口测试", () => {
       } finally {
         await deleteDeptsSafe([childDeptId, parentDeptId]);
       }
+    });
+  });
+
+  describe("对抗性语料与边界强化", () => {
+    const createdDeptIds: number[] = [];
+
+    afterAll(async () => {
+      await deleteDeptsSafe(createdDeptIds);
+    });
+
+    // 脏语料特征保留 + unique 后缀：名称同级唯一含软删行（T-DPT-035b），固定名称跨运行必撞 A0501
+    const dirtyNames: Array<[string, string]> = [
+      ["全半角混合", uniqueName("测试Ｔｅｓｔ１２３部⻔")],
+      ["CRLF 换行", uniqueName("部\r\n门")],
+      ["BOM 前缀", `\uFEFF${uniqueName("部门BOM")}`],
+      ["零宽字符", uniqueName("部\u200B门\u200BZWS")],
+      ["emoji", uniqueName("部😀门🚀emoji")],
+      ["SQL 注入单引号", uniqueName("admin'--部")],
+      ["SQL 注入语句", uniqueName("x'; DROP TABLE sys_dept;--")],
+    ];
+
+    test.each(dirtyNames)("脏语料往返保真：%s", async (_label, name) => {
+      const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name });
+      const deptId = (await DeptAPI.add(form)) as number;
+      expect(deptId).toBeGreaterThan(0);
+      createdDeptIds.push(deptId);
+
+      const formData = await DeptAPI.getFormData(deptId);
+      // 原样存储往返一致，不允许被静默截断、转义或清洗
+      expect(formData.name).toBe(name);
+    });
+
+    test("边界：64 字符名称（上限值）应成功", async () => {
+      // 唯一化尾缀：名称同级含软删唯一，固定 64 字符跨运行必撞 A0501（角色模块同教训）
+      const stamp = Date.now().toString().slice(-8);
+      const name = "边".repeat(64 - stamp.length) + stamp;
+      const deptId = (await DeptAPI.add(
+        createDeptForm({ parentId: DEPTS.CQUPT.id, name })
+      )) as number;
+      expect(deptId).toBeGreaterThan(0);
+      createdDeptIds.push(deptId);
+
+      const formData = await DeptAPI.getFormData(deptId);
+      expect(formData.name).toBe(name);
+    });
+
+    test("边界：65 字符名称应被拒绝（A0400）", async () => {
+      const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: "边".repeat(65) });
+      await expectBizError(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界：sort=0 应被拒绝（实现口径 sort>=1，T-DPT-046 排序须为正整数）", async () => {
+      const form = createDeptForm({ parentId: DEPTS.CQUPT.id, sort: 0 });
+      await expectBizError(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("唯一性口径：不同父部门下同名允许（同级唯一，对齐文档 T-DPT-009 与 Go 实现）", async () => {
+      const sharedName = uniqueName("跨级同名部门");
+      const deptId1 = (await DeptAPI.add(
+        createDeptForm({ parentId: DEPTS.CQUPT.id, name: sharedName })
+      )) as number;
+      createdDeptIds.push(deptId1);
+
+      const deptId2 = (await DeptAPI.add(
+        createDeptForm({ parentId: DEPTS.SOFTWARE.id, name: sharedName })
+      )) as number;
+      expect(deptId2).toBeGreaterThan(0);
+      createdDeptIds.push(deptId2);
+    });
+
+    test("软删语义：同级软删后同名重建被拒（唯一性含已删除记录，T-DPT-035b）", async () => {
+      const name = uniqueName("软删复用部门");
+      const deptId = (await DeptAPI.add(
+        createDeptForm({ parentId: DEPTS.CQUPT.id, name })
+      )) as number;
+      await DeptAPI.deleteByIds(deptId.toString());
+
+      // 换 sort 改变 body：同 body 快速重建会被 A0002 防重复提交拦截，绕不到唯一性校验
+      await expectBizError(
+        DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id, name, sort: 101 })),
+        ["A0501", "A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+
+    test("【暴露缺陷】批量删除混合存在/不存在 ID 应整体拒绝而非部分删除", async () => {
+      // Java 契约：任一 ID 不存在 → A0401 整体失败不误删；
+      // Python 现行为：静默忽略不存在 ID 并删除其余 → 误删风险。
+      // 期望 A0401（对齐 Java），在 Python 修复前此用例失败即为缺陷暴露信号。
+      const deptId = (await DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id }))) as number;
+
+      await expectBizError(DeptAPI.deleteByIds(`${deptId},99999999`), ["A0401"]);
+
+      // 若后端修复为整体失败，部门仍在；清理容错
+      createdDeptIds.push(deptId);
+    });
+
+    test("缓存一致性：新增部门后下拉选项立即包含新部门", async () => {
+      const deptId = (await DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id }))) as number;
+      createdDeptIds.push(deptId);
+
+      const options = await DeptAPI.getOptions();
+      const optionIds: number[] = [];
+      const walk = (nodes: typeof options) => {
+        nodes.forEach((n) => {
+          optionIds.push(n.value);
+          if (n.children?.length) walk(n.children);
+        });
+      };
+      walk(options);
+      expect(optionIds).toContain(deptId);
+    });
+
+    test("树不变量：移动非叶子部门后父子关系保持完整", async () => {
+      const aId = (await DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id }))) as number;
+      const bId = (await DeptAPI.add(createDeptForm({ parentId: aId }))) as number;
+      const pId = (await DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id }))) as number;
+      createdDeptIds.push(pId, bId, aId);
+
+      await DeptAPI.update(aId, {
+        name: (await DeptAPI.getFormData(aId)).name!,
+        parentId: pId,
+      } as DeptForm);
+
+      const tree = await DeptAPI.getList();
+      const movedA = findDeptInTree(tree, aId);
+      const movedB = findDeptInTree(tree, bId);
+      expect(movedA).toBeDefined();
+      expect(movedA!.parentId).toBe(pId);
+      // 子部门 parent_id 链未断裂，仍可从根遍历到
+      expect(movedB).toBeDefined();
+      expect(movedB!.parentId).toBe(aId);
+    });
+
+    test("性能烟测：20 部门同层下列表查询 < 500ms", async () => {
+      const ids: number[] = [];
+      for (let i = 0; i < 20; i++) {
+        ids.push((await DeptAPI.add(createDeptForm({ parentId: DEPTS.CQUPT.id }))) as number);
+      }
+      createdDeptIds.push(...ids);
+
+      const start = Date.now();
+      const tree = await DeptAPI.getList();
+      const elapsed = Date.now() - start;
+      expect(Array.isArray(tree)).toBe(true);
+      expect(elapsed).toBeLessThan(500);
     });
   });
 

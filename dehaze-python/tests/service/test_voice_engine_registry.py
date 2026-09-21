@@ -38,8 +38,11 @@ class _FakeSession:
 
 def _row(provider_id: int, code: str, engine_type: str, *, status: int = 1, is_default: int = 1):
     return SimpleNamespace(
-        id=provider_id, provider_code=code, engine_type=engine_type,
-        status=status, is_default=is_default,
+        id=provider_id,
+        provider_code=code,
+        engine_type=engine_type,
+        status=status,
+        is_default=is_default,
     )
 
 
@@ -111,7 +114,8 @@ async def test_cloud_default_returns_cloud_provider():
 
 @pytest.mark.asyncio
 async def test_resolve_backfills_redis_cache():
-    """未命中缓存查库解析后回填 Redis（voice:engine:{engine_type}，JSON 含 provider_id/provider_code）"""
+    """未命中缓存查库解析后回填 Redis（voice:engine:{engine_type}，
+    JSON 含 provider_id/provider_code）"""
     registry, redis, repo = _make_registry(_row(7, "local", "asr"))
 
     await registry.get_asr_provider()
@@ -124,7 +128,7 @@ async def test_resolve_backfills_redis_cache():
 @pytest.mark.asyncio
 async def test_cache_hit_reuses_provider_without_db():
     """缓存命中且与内存实例一致：不查库直接复用 Provider"""
-    registry, redis, repo = _make_registry(_row(7, "local", "asr"))
+    registry, _redis, repo = _make_registry(_row(7, "local", "asr"))
 
     await registry.get_asr_provider()
     await registry.get_asr_provider()
@@ -139,9 +143,7 @@ async def test_default_switch_takes_effect_immediately():
     """管理端切换默认引擎（改写 Redis 缓存）→ 下次解析即时路由到新引擎，不重启"""
     local_row = _row(1, "local", "asr")
     cloud_row = _row(2, "aliyun", "asr")
-    registry, redis, repo = _make_registry(
-        local_row, by_id={1: local_row, 2: cloud_row}
-    )
+    registry, redis, repo = _make_registry(local_row, by_id={1: local_row, 2: cloud_row})
     assert isinstance(await registry.get_asr_provider(), LocalAsrProvider)
 
     # 模拟管理端切换：失效 + 新默认引擎信息写入缓存（VoiceAdminService 失效后
@@ -200,3 +202,75 @@ async def test_invalidate_swallows_redis_failure():
     )
 
     await registry.invalidate_default_cache("asr")  # 不抛异常即通过
+
+
+# ── LocalTtsProvider 音色注册表注入 ────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_local_tts_synthesize_injects_voice_registry_with_explicit_voice(monkeypatch):
+    """显式传音色时仍须先解析注入音色注册表（回归：跳过解析导致注册表为空、
+    显式音色合成必然失败"不支持的音色（可选: 未配置）"）"""
+    captured: dict = {}
+
+    def fake_configure(configs):
+        captured["configs"] = configs
+
+    async def fake_run(func, *args):
+        captured["engine_args"] = args
+        return b"audio"
+
+    monkeypatch.setattr(
+        "app.repository.voice_model_repository.voice_model_repository.list_enabled",
+        AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    model_id="huayan",
+                    model_type="voice",
+                    params={"onnx": "zh_CN-huayan-medium.onnx"},
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.voice.piper_tts_engine.configure_voices", fake_configure
+    )
+    monkeypatch.setattr("app.infrastructure.voice.piper_tts_engine.run_in_executor", fake_run)
+
+    provider = LocalTtsProvider(SimpleNamespace())
+    await provider.synthesize("你好", "huayan", 1.0, "mp3", 16000)
+
+    assert captured["configs"] == {"huayan": {"onnx": "zh_CN-huayan-medium.onnx"}}
+    assert captured["engine_args"] == ("你好", "huayan", 1.0, "mp3", 16000)
+
+
+@pytest.mark.asyncio
+async def test_local_tts_synthesize_uses_default_voice_when_absent(monkeypatch):
+    """未传音色 → 使用 sys_voice_model 解析出的默认音色"""
+    captured: dict = {}
+
+    async def fake_run(func, *args):
+        captured["engine_args"] = args
+        return b"audio"
+
+    monkeypatch.setattr(
+        "app.repository.voice_model_repository.voice_model_repository.list_enabled",
+        AsyncMock(
+            return_value=[
+                SimpleNamespace(
+                    model_id="huayan",
+                    model_type="voice",
+                    params={"onnx": "zh_CN-huayan-medium.onnx"},
+                )
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.voice.piper_tts_engine.configure_voices", lambda configs: None
+    )
+    monkeypatch.setattr("app.infrastructure.voice.piper_tts_engine.run_in_executor", fake_run)
+
+    provider = LocalTtsProvider(SimpleNamespace())
+    await provider.synthesize("你好", None, 1.0, "wav", 16000)
+
+    assert captured["engine_args"][1] == "huayan"

@@ -1,9 +1,11 @@
-"""输入图片获取：系统存储 SDK 下载 / 本地路径 / HTTP 下载（指数退避重试）。"""
+"""输入图片获取：系统存储 SDK 下载 / HTTP 下载（指数退避重试 + SSRF 防护）。"""
 
 import asyncio
 import io
+import ipaddress
 import logging
-from pathlib import Path
+import socket
+from urllib.parse import urlparse
 
 import httpx
 
@@ -15,8 +17,40 @@ from app.infrastructure.logging import _trace_id_var
 logger = logging.getLogger(__name__)
 
 
+async def _assert_public_host(url: str) -> None:
+    """SSRF 防护：外部图片 URL 禁止指向内网/回环/链路本地/保留地址。
+
+    系统存储的下载在 fetch_image 中经 base_url 前缀分支优先处理，不经过此校验。
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        raise BusinessException(ResultCode.PARAM_ERROR, f"无效的图片URL: {url}")
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    loop = asyncio.get_running_loop()
+    try:
+        infos = await loop.getaddrinfo(hostname, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise BusinessException(
+            ResultCode.RESOURCE_NOT_FOUND, f"图片地址无法解析: {hostname}"
+        ) from e
+
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise BusinessException(ResultCode.PARAM_ERROR, "图片地址不允许访问内网资源")
+
+
 async def fetch_image(url: str) -> io.BytesIO:
-    """从URL或本地路径下载图片
+    """从URL下载图片
 
     HTTP 下载采用指数退避重试（最多 3 次），仅对网络层错误和 5xx 响应重试，
     4xx 客户端错误不重试。
@@ -35,15 +69,12 @@ async def fetch_image(url: str) -> io.BytesIO:
         )
         return io.BytesIO(raw)
 
-    # 处理绝对本地路径（用于离线算法模型本地推理，非生产链路）
+    # 外部 HTTP/HTTPS 下载（带指数退避重试 + 内网地址防护）
     if not url.startswith("http://") and not url.startswith("https://"):
-        local_path = Path(url)
-        if local_path.exists():
-            loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, _read_file_sync, local_path)
-        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"图片文件不存在: {url}")
+        raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的图片地址: {url}")
 
-    # HTTP/HTTPS 下载（带指数退避重试）
+    await _assert_public_host(url)
+
     headers = {}
     trace_id = _trace_id_var.get("")
     if trace_id:
@@ -92,9 +123,3 @@ async def fetch_image(url: str) -> io.BytesIO:
 
     # 全部重试失败
     raise BusinessException(f"图片下载失败（已重试 {max_retry} 次）: {url} - {last_exc}")
-
-
-def _read_file_sync(path: Path) -> io.BytesIO:
-    """同步读取文件内容（供 run_in_executor 调用）"""
-    with open(path, "rb") as f:
-        return io.BytesIO(f.read())

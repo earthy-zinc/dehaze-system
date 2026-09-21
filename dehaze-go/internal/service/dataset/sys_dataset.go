@@ -19,20 +19,20 @@ import (
 )
 
 const (
-	DATASET_STATS_TTL  = 30 * time.Minute
-	DATASET_TREE_TTL   = time.Hour
-	DATASET_ALL_TTL    = time.Hour
+	DATASET_STATS_TTL    = 30 * time.Minute
+	DATASET_TREE_TTL     = time.Hour
+	DATASET_ALL_TTL      = time.Hour
 	DATASET_STATSMAP_TTL = 30 * time.Minute
 )
 
 type DatasetService struct {
-	cache          types.ICache
-	datasetRepo    datasetrepo.IDatasetRepository
+	cache           types.ICache
+	datasetRepo     datasetrepo.IDatasetRepository
 	datasetItemRepo datasetrepo.IDatasetItemRepository
-	statsRepo      datasetrepo.IDatasetStatsRepository
-	itemFileRepo   filerepo.IItemFileRepository
-	fileRepo       filerepo.IFileRepository
-	treeUtils      *utils.TreeDataUtils
+	statsRepo       datasetrepo.IDatasetStatsRepository
+	itemFileRepo    filerepo.IItemFileRepository
+	fileRepo        filerepo.IFileRepository
+	treeUtils       *utils.TreeDataUtils
 }
 
 func NewDatasetService(
@@ -60,13 +60,13 @@ func NewDatasetService(
 	}
 
 	return &DatasetService{
-		cache:          cache,
-		datasetRepo:    datasetRepo,
+		cache:           cache,
+		datasetRepo:     datasetRepo,
 		datasetItemRepo: datasetItemRepo,
-		statsRepo:      statsRepo,
-		itemFileRepo:   itemFileRepo,
-		fileRepo:       fileRepo,
-		treeUtils:      utils.NewTreeDataUtils(),
+		statsRepo:       statsRepo,
+		itemFileRepo:    itemFileRepo,
+		fileRepo:        fileRepo,
+		treeUtils:       utils.NewTreeDataUtils(),
 	}
 }
 
@@ -547,6 +547,20 @@ func (datasetService *DatasetService) GetDatasetOptions(ctx context.Context) (op
 		}
 	}
 
+	return options, nil
+}
+
+// GetEvaluationOptions 测试集选项查询（算法评估接入）：按 taskType 过滤，
+// 仅返回含清晰图 GT（type=clear）且启用的数据集，扁平 label-value 列表（T-DS-046~048）。
+func (datasetService *DatasetService) GetEvaluationOptions(ctx context.Context, taskType string) ([]vo.Option, error) {
+	datasets, err := datasetService.datasetRepo.FindDatasetsWithClearGT(ctx, taskType)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询测试集选项失败", err)
+	}
+	options := make([]vo.Option, 0, len(datasets))
+	for _, ds := range datasets {
+		options = append(options, vo.Option{Value: int(ds.ID), Label: ds.Name})
+	}
 	return options, nil
 }
 

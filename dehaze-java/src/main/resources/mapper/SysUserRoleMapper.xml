@@ -26,4 +26,18 @@
         WHERE
             t1.role_id = #{roleId}
     </select>
+
+    <!-- 批量查询角色关联的活跃用户名（去重，软删用户不参与） -->
+    <select id="listUsernamesByRoleIds" resultType="java.lang.String">
+        SELECT DISTINCT
+            t3.username
+        FROM
+            sys_user_role t1
+            INNER JOIN sys_user t3 ON t1.user_id = t3.id AND t3.deleted = 0
+        WHERE
+            t1.role_id IN
+            <foreach collection="roleIds" item="roleId" open="(" separator="," close=")">
+                #{roleId}
+            </foreach>
+    </select>
 </mapper>

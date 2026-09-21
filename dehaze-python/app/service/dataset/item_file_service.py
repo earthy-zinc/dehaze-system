@@ -5,13 +5,17 @@ from typing import Any
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import SysItemFile
 from app.repository.dataset_repository import dataset_repository
-from app.service.dataset._shared import _build_file_vo
+from app.service.dataset._shared import _build_file_vo, validate_image_content
 from app.service.dataset.dataset_service import dataset_service
 from app.service.file_service import file_service
+
+# 与 SDK ItemFileUploadForm.type 的枚举口径一致
+ITEM_FILE_TYPES = {"clear", "hazy", "trans", "depth", "segment"}
 
 
 class ItemFileService:
@@ -25,7 +29,8 @@ class ItemFileService:
         item_file, file_obj = result
         return _build_file_vo(item_file, file_obj)
 
-    async def upload_item_file(self, 
+    async def upload_item_file(
+        self,
         db: AsyncSession,
         redis: Redis,
         item_id: int,
@@ -40,12 +45,19 @@ class ItemFileService:
         if not item:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
 
-        # type 支持 clear/hazy/trans/depth/segment，不做硬性枚举校验
+        if image_type not in ITEM_FILE_TYPES:
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "图片类型仅支持 clear/hazy/trans/depth/segment"
+            )
         # haze_level 支持多种规范（light/medium/heavy、beta=X、A=X,beta=Y 等），可为空
 
         content = await file.read()
         if not file.filename:
             raise BusinessException(ResultCode.PARAM_ERROR, "文件名不能为空")
+        if len(content) > settings.MAX_UPLOAD_SIZE:
+            max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
+            raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
+        validate_image_content(file.filename, content)
 
         file_info = await file_service.upload_file(
             db=db,
@@ -70,10 +82,17 @@ class ItemFileService:
 
         return _build_file_vo(item_file, file_info)
 
-    async def update_item_file(self, db: AsyncSession, redis: Redis, file_id: int, data: dict[str, Any]):
+    async def update_item_file(
+        self, db: AsyncSession, redis: Redis, file_id: int, data: dict[str, Any]
+    ):
         item_file = await dataset_repository.get_item_file_by_id(db, file_id)
         if not item_file:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
+
+        if "type" in data and data["type"] not in ITEM_FILE_TYPES:
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "图片类型仅支持 clear/hazy/trans/depth/segment"
+            )
 
         if "type" in data:
             item_file.type = data["type"]
@@ -148,7 +167,6 @@ class ItemFileService:
             "successIds": success_ids,
             "failureDetails": failure_details,
         }
-
 
 
 item_file_service = ItemFileService()

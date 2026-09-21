@@ -6,13 +6,12 @@
 - 置顶、回收站恢复、批量操作（含 confirm 透传）
 - 业务错误码透传（A0401/A0502/A0501）
 """
+
 from datetime import datetime
 
 import pytest
 from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -22,6 +21,9 @@ from app.main import app as fastapi_app
 from app.models.schema.ai_conversation import ConversationResult
 from app.models.schema.common import PageResult
 from app.service.ai_conversation_service import ai_conversation_service
+
+pytestmark = pytest.mark.api
+
 
 AUDIT_PERM = "ai:conversation:audit"
 

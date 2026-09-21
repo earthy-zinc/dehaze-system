@@ -3,7 +3,7 @@
 对齐 dehaze-java SysInputHistory 字段
 """
 
-from sqlalchemy import delete, desc, or_, select
+from sqlalchemy import delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_input_history import SysInputHistory
@@ -47,6 +47,29 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         """创建历史记录"""
         history = SysInputHistory(**kwargs)
         return await self.create(db, history)
+
+    async def count_by_user(self, db: AsyncSession, user_id: int) -> int:
+        """统计用户历史记录总数（配额检查用）"""
+        stmt = (
+            select(func.count())
+            .select_from(SysInputHistory)
+            .where(SysInputHistory.user_id == user_id)
+        )
+        result = await db.execute(stmt)
+        return result.scalar_one()
+
+    async def delete_oldest(self, db: AsyncSession, user_id: int) -> None:
+        """删除用户最旧的一条记录（配额已满时自动清理）"""
+        oldest_id_stmt = (
+            select(SysInputHistory.id)
+            .where(SysInputHistory.user_id == user_id)
+            .order_by(SysInputHistory.create_time.asc(), SysInputHistory.id.asc())
+            .limit(1)
+        )
+        result = await db.execute(oldest_id_stmt)
+        oldest_id = result.scalar_one_or_none()
+        if oldest_id is not None:
+            await self.delete_by_user(db, user_id, oldest_id)
 
     async def delete_by_user(self, db: AsyncSession, user_id: int, history_id: int) -> bool:
         """删除单条（仅限本人）"""

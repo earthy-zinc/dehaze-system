@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { AiScheduleAPI } from "../../../index";
+import { AiScheduleAPI, MemberAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { USERS } from "#/factories/constants";
@@ -22,6 +22,23 @@ describe("AI 定时调度 - AiScheduleAPI (T-SC-050~064)", () => {
   const asVip2 = async () => login(USERS.VIP2.username);
 
   beforeAll(async () => {
+    // 环境自愈：历史用例（member/favorite 等）可能将 USER 升级后未还原，
+    // 先校准回 level_0 并清理其遗留测试任务，再验证 VIP2 门槛负向用例
+    await login(USERS.ADMIN.username);
+    const detail = await MemberAPI.getDetail(USERS.USER.id);
+    if (detail.levelCode && detail.levelCode !== "level_0") {
+      await MemberAPI.adjustLevel(USERS.USER.id, {
+        levelCode: "level_0",
+        reason: "测试套件等级自愈",
+      });
+    }
+    await login(USERS.USER.username);
+    const stale = await AiScheduleAPI.list({ pageNum: 1, pageSize: 100 });
+    for (const s of stale.list) {
+      if (s.name.startsWith("test_task_")) {
+        await AiScheduleAPI.delete(s.id).catch(() => {});
+      }
+    }
     await asVip2();
   });
 
@@ -161,6 +178,42 @@ describe("AI 定时调度 - AiScheduleAPI (T-SC-050~064)", () => {
       const result = await AiScheduleAPI.history(scheduleId, { pageNum: 1, pageSize: 20 });
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
+    });
+  });
+
+  describe("越权与幂等不变量", () => {
+    test("T-SC-073 越权：普通用户读/改/删他人任务 → A0401（归属隐藏按不存在处理）", async () => {
+      await login(USERS.USER.username);
+      await expectBizError(AiScheduleAPI.detail(scheduleId), ["A0401"]);
+      await expectBizError(AiScheduleAPI.update(scheduleId, createScheduleUpdateForm()), ["A0401"]);
+      await expectBizError(AiScheduleAPI.delete(scheduleId), ["A0401"]);
+      await asVip2();
+    });
+
+    test("T-SC-062 幂等：同窗口重复触发，执行次数 ≤ 触发次数", async () => {
+      await asVip2();
+      // 连续两次手动触发（后台 fire-and-forget），轮询等待执行历史落库
+      await AiScheduleAPI.run(scheduleId);
+      await AiScheduleAPI.run(scheduleId);
+      let items: { windowStart?: string | null; skipReason?: string | null }[] = [];
+      for (let i = 0; i < 15; i++) {
+        const page = await AiScheduleAPI.history(scheduleId, { pageNum: 1, pageSize: 20 });
+        if (page.total > 0) {
+          items = page.list;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+      expect(items.length).toBeGreaterThan(0);
+      // 不变量：同一触发窗口至多一条实际执行记录，重复触发被 idempotent/overlap 吸收
+      const executedPerWindow = new Map<string, number>();
+      for (const it of items) {
+        if (it.skipReason) continue;
+        const key = it.windowStart ?? "";
+        const count = (executedPerWindow.get(key) ?? 0) + 1;
+        executedPerWindow.set(key, count);
+        expect(count).toBeLessThanOrEqual(1);
+      }
     });
   });
 

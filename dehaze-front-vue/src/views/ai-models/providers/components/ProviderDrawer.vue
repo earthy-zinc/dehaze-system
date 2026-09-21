@@ -173,7 +173,7 @@
         size="small"
         type="primary"
         plain
-        @click="keyDialog.mode = 'create'"
+        @click="openKeyCreate"
       >
         <el-icon><Plus /></el-icon>新增 Key
       </el-button>
@@ -419,12 +419,11 @@ const keyRules = {
   key: [{ required: true, message: "Key 明文不能为空", trigger: "blur" }],
 };
 
-watch(keyDialog, ({ mode }) => {
-  if (mode === "create") {
-    Object.assign(keyForm, emptyKeyForm());
-    keyDialog.visible = true;
-  }
-});
+function openKeyCreate() {
+  keyDialog.mode = "create";
+  Object.assign(keyForm, emptyKeyForm());
+  keyDialog.visible = true;
+}
 
 function openKeyEdit(row: ProviderKeyVO) {
   keyDialog.mode = "edit";

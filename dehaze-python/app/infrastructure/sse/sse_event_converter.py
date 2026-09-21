@@ -27,7 +27,9 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
+from app.service.ai.paradigms import plan_execute
 from app.service.ai.service import trace_collector
+from app.utils.pii import StreamingPiiMasker
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,9 @@ class SseEventConverter:
         # 当前事件来源 Agent 归属（handle 逐事件解析 ns 更新）
         self._agent_code: str | None = None
         self._is_subagent = 0
+        # 流式出口脱敏：PII/凭据逐块外发前脱敏，跨 chunk 的敏感串由 masker 兜住
+        self._text_masker = StreamingPiiMasker()
+        self._thinking_masker = StreamingPiiMasker()
 
     async def _emit(self, event_type: str, data: dict) -> None:
         stream_session_id = self.ctx.get("stream_session_id")
@@ -73,6 +78,13 @@ class SseEventConverter:
         """流结束收尾：关闭打开的思考/文本内容块并落库残余思考（message.end 前）。"""
         if self._thinking_block_open:
             await self._close_thinking_block()
+        pending = self._text_masker.flush()
+        if pending:
+            await self._ensure_text_block_start()
+            await self._emit(
+                "content_block.delta",
+                {"index": 0, "delta": {"type": "text_delta", "text": pending}},
+            )
         if self._text_block_started:
             await self._emit("content_block.stop", {"index": 0})
 
@@ -107,6 +119,9 @@ class SseEventConverter:
 
     async def _flush_thinking(self) -> None:
         """把本轮思考文本落为一条 agent_thought（thought=思考全文, tool=NULL）。"""
+        remaining = self._thinking_masker.flush()
+        if remaining:
+            self._thinking_buffer.append(remaining)
         if not self._thinking_buffer:
             return
         text = "".join(self._thinking_buffer).strip()
@@ -200,25 +215,14 @@ class SseEventConverter:
         )
 
     async def record_plan(self, plan: dict[str, Any], phase: str) -> None:
-        """推送 plan SSE 事件（§2.2 契约：{tasks, status, revisions}）。"""
-        tasks = [
-            {
-                "id": t.get("id"),
-                "description": t.get("description"),
-                "dependsOn": t.get("depends_on") or [],
-                "status": t.get("status", "pending"),
-            }
-            for t in (plan.get("tasks") or [])
-        ]
-        await self._emit(
-            "plan",
-            {
-                "tasks": tasks,
-                "status": plan.get("status", "pending"),
-                "revisions": plan.get("revisions") or [],
-                "phase": phase,
-            },
-        )
+        """推送 plan SSE 事件（§2.2 契约：{tasks, status, revisions, phase}）。
+
+        任务/修订项经 plan_execute.to_wire_plan 归一为对外 camelCase，
+        与 plan_approve 中断共用同一出口，保证两条下发路径形状一致。
+        """
+        payload = plan_execute.to_wire_plan(plan)
+        payload["phase"] = phase
+        await self._emit("plan", payload)
         # 可观测性：计划快照写入过程链上下文事件（旁路：采集失败不影响 SSE 推送）
         collector = trace_collector.current()
         if collector is not None:
@@ -294,25 +298,33 @@ class SseEventConverter:
         thinking = chunk.additional_kwargs.get("thinking")
         if thinking:
             await self._open_thinking_block()
-            self._thinking_buffer.append(thinking)
-            await self._emit(
-                "content_block.delta",
-                {
-                    "index": self._THINKING_INDEX,
-                    "delta": {"type": "thinking_delta", "thinking": thinking},
-                },
-            )
+            masked_thinking = self._thinking_masker.push(thinking)
+            if masked_thinking:
+                self._thinking_buffer.append(masked_thinking)
+                await self._emit(
+                    "content_block.delta",
+                    {
+                        "index": self._THINKING_INDEX,
+                        "delta": {"type": "thinking_delta", "thinking": masked_thinking},
+                    },
+                )
         if chunk.content:
             # 文本段开始时关闭思考块（思考在前、回复在后，按模型真实输出序不强行重排）
             await self._close_thinking_block()
             await self._ensure_text_block_start()
-            await self._emit(
-                "content_block.delta",
-                {
-                    "index": 0,
-                    "delta": {"type": "text_delta", "text": chunk.content},
-                },
+            text = (
+                self._text_masker.push(chunk.content)
+                if isinstance(chunk.content, str)
+                else chunk.content
             )
+            if text:
+                await self._emit(
+                    "content_block.delta",
+                    {
+                        "index": 0,
+                        "delta": {"type": "text_delta", "text": text},
+                    },
+                )
         latest_tc_id = None
         if chunk.tool_call_chunks:
             # 工具调用开始时关闭思考块（思考→行动切换，思考段结束）
@@ -356,13 +368,17 @@ class SseEventConverter:
                 # 字段，提升到事件顶层对齐契约；data 取 value.data 业务载荷。
                 for item in updates or []:
                     value = item.value if isinstance(item.value, dict) else {}
-                    await self._emit(
-                        "interrupt",
-                        {
-                            "type": value.get("type", "confirm"),
-                            "data": value.get("data", value),
-                        },
-                    )
+                    itype = value.get("type", "confirm")
+                    payload = value.get("data", value)
+                    # plan_approve 的 plan 在 Redis 中断点内是内部形状（执行器与
+                    # apply_plan_edit 直接消费），仅在出口归一为 camelCase 下发
+                    if (
+                        itype == "plan_approve"
+                        and isinstance(payload, dict)
+                        and isinstance(payload.get("plan"), dict)
+                    ):
+                        payload = {**payload, "plan": plan_execute.to_wire_plan(payload["plan"])}
+                    await self._emit("interrupt", {"type": itype, "data": payload})
                 continue
             messages = updates.get("messages") if isinstance(updates, dict) else None
             if not messages:

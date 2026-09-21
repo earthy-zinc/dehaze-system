@@ -7,12 +7,14 @@ import viteConfig from "./vite.config";
 
 const pathSrc = path.resolve(__dirname, "src");
 
-// 测试环境跳过 CSS 文件加载，避免 element-plus 等 UI 库的 CSS 导入报错
+// 测试环境跳过 CSS 文件加载，避免 element-plus 等 UI 库的 CSS 导入报错。
+// 仅拦截真实文件路径（无 query）；plugin-vue 抽出的虚拟样式模块（*.vue?vue&type=style&lang.css）
+// 也以 .css 结尾，误拦会使 vite:vue 拿到 \0css-stub: 前缀 id 当文件路径读取而崩溃。
 const cssStubPlugin: Plugin = {
   name: "vitest-css-stub",
   enforce: "pre",
   resolveId(id) {
-    if (id.endsWith(".css")) {
+    if (id.endsWith(".css") && !id.includes("?")) {
       return `\0css-stub:${id}`;
     }
     return null;

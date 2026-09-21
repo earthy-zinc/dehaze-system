@@ -11,6 +11,8 @@ funasr/modelscope 为主依赖（延迟导入控制启动成本），此处延�
 仅作为环境异常的兜底报错，不影响应用其余功能启动。
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import re
@@ -18,9 +20,12 @@ import threading
 import wave
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.config import settings
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +64,9 @@ def resolve_model_id(model: str | None, default_logical: str) -> str:
     """解析逻辑模型名为 funasr 模型 ID（查注入的注册表，未知模型直接报错）"""
     name = model or default_logical
     if name not in _model_ids:
-        raise FunASREngineError(f"不支持的 ASR 模型: {name}（可选: {'/'.join(_model_ids) or '未配置'}）")
+        raise FunASREngineError(
+            f"不支持的 ASR 模型: {name}（可选: {'/'.join(_model_ids) or '未配置'}）"
+        )
     return _model_ids[name]
 
 
@@ -74,7 +81,10 @@ def _device() -> str:
         import torch
 
         return "cuda:0" if torch.cuda.is_available() else "cpu"
-    except Exception:  # noqa: BLE001 检测失败按 CPU 处理
+    except (ImportError, RuntimeError) as e:
+        # torch 缺失或 CUDA 探测失败：回退 CPU 是设计降级（本引擎默认 CPU 推理），
+        # 但必须可见，否则 GPU 环境故障会被静默降级为 CPU 而无人察觉
+        logger.warning("FunASR 设备探测失败，回退 CPU 推理: %s", e, exc_info=True)
         return "cpu"
 
 
@@ -86,9 +96,7 @@ def _load_model(model_id: str) -> Any:
         try:
             from funasr import AutoModel
         except ImportError as e:
-            raise FunASREngineError(
-                "funasr 未安装，语音识别不可用，请执行 uv sync 修复依赖"
-            ) from e
+            raise FunASREngineError("funasr 未安装，语音识别不可用，请执行 uv sync 修复依赖") from e
         device = _device()
         logger.info("加载 FunASR 模型: %s（%s）", model_id, device)
         try:
@@ -98,7 +106,7 @@ def _load_model(model_id: str) -> Any:
         return _models[model_id]
 
 
-def _decode_audio(audio: bytes) -> list[float]:
+def _decode_audio(audio: bytes) -> np.ndarray:
     """音频字节解码为 16kHz 单声道归一化采样序列
 
     WAV（RIFF 头）校验声道/位深/采样率后取帧；裸 PCM 按 16kHz/16bit/mono 解释。

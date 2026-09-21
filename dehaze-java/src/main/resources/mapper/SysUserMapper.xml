@@ -15,6 +15,7 @@
             u.avatar,
             u.email,
             u.STATUS,
+            u.user_type,
             d.NAME AS dept_name,
             GROUP_CONCAT( r.NAME ) AS roleNames,
             u.create_time
@@ -60,6 +61,7 @@
         <result property="email" column="email" jdbcType="VARCHAR"/>
         <result property="status" column="status" jdbcType="BOOLEAN"/>
         <result property="deptId" column="dept_id" jdbcType="BIGINT"/>
+        <result property="userType" column="user_type" jdbcType="VARCHAR"/>
         <collection
                 property="roleIds"
                 column="id"
@@ -79,7 +81,8 @@
             avatar,
             email,
             STATUS,
-            dept_id
+            dept_id,
+            user_type
         FROM
             sys_user
         WHERE

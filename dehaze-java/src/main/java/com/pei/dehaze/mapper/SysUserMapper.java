@@ -47,7 +47,9 @@ public interface SysUserMapper extends BaseMapper<SysUser> {
     UserAuthInfo getUserAuthInfo(String username);
 
     /**
-     * 按用户名在全表范围（含已软删行）查重。
+     * 业务白名单：按用户名在全表范围（含已软删行）查重，已删除用户名永久不可复用。
+     * 用户名承载历史数据归属与审计追溯，删除后复用会造成身份混淆（唯一键治理方案的业务例外，
+     * 其余表的唯一性由含 deleted 列的唯一键保证，判重仅查活跃行）。
      * MyBatis-Plus @TableLogic 会自动追加 deleted=0，此处必须用原生 SQL 绕过。
      *
      * @param username 用户名

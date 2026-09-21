@@ -26,7 +26,7 @@ CREATE TABLE `sys_announcement`
     `send_time`     datetime                                                       NULL DEFAULT NULL COMMENT '发送时间(定时发送时为计划时间)',
     `expire_time`   datetime                                                       NULL DEFAULT NULL COMMENT '过期时间(到期后公告从横幅移除)',
     `sent_count`    int                                                            NULL DEFAULT 0 COMMENT '已发送人数',
-    `deleted`       tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`       bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`     bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`     bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`   datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

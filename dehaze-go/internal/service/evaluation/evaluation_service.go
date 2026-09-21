@@ -34,11 +34,11 @@ func NewEvaluationService(repo evalrepo.IEvalLogRepository, algoRepo algorepo.IA
 
 // EvaluationResult 评估结果 VO
 type EvaluationResult struct {
-	LogID        int64           `json:"logId"`
-	Status       model.LogStatus `json:"status"`
+	LogID        int64              `json:"logId"`
+	Status       model.LogStatus    `json:"status"`
 	Metrics      map[string]float64 `json:"metrics,omitempty"`
-	Time         int             `json:"time"`
-	ErrorMessage string          `json:"errorMessage,omitempty"`
+	Time         int                `json:"time"`
+	ErrorMessage string             `json:"errorMessage,omitempty"`
 }
 
 // Evaluate 提交效果评估任务（异步）
@@ -66,8 +66,10 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 		GtMD5:       utils.MD5Hex(gtURL),
 		GtURL:       gtURL,
 		Status:      model.LogStatusProcessing,
+		TaskType:    "evaluation",
 	}
 	if err := s.repo.Create(ctx, evalLog); err != nil {
+		s.refundQuota(userID)
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建评估日志失败", err)
 	}
 
@@ -184,13 +186,17 @@ func (s *EvaluationService) pollEvalTask(ctx context.Context, pythonLogID int64)
 }
 
 // GetTaskStatus 查询任务状态，根据 status 返回不同字段
-func (s *EvaluationService) GetTaskStatus(ctx context.Context, id int64) (*EvaluationResult, error) {
+// 归属校验：仅任务本人可查询，他人任务与不存在任务同口径防枚举
+func (s *EvaluationService) GetTaskStatus(ctx context.Context, id int64, userID int64) (*EvaluationResult, error) {
 	log, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "评估任务不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估日志失败", err)
+	}
+	if log.CreateBy != userID {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "评估任务不存在")
 	}
 
 	result := &EvaluationResult{
@@ -260,9 +266,9 @@ func (s *EvaluationService) GetUserMetricsPage(ctx context.Context, userID int64
 	return &common.PageResult{List: vos, Total: total, Page: pageNum, PageSize: pageSize}, nil
 }
 
-// GetLogPage 分页查询评估日志
-func (s *EvaluationService) GetLogPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) (*common.PageResult, error) {
-	list, total, err := s.repo.FindPage(ctx, algorithmID, pageNum, pageSize)
+// GetLogPage 分页查询当前用户的评估日志
+func (s *EvaluationService) GetLogPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindLogPageByUser(ctx, userID, algorithmID, pageNum, pageSize)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估日志列表失败", err)
 	}

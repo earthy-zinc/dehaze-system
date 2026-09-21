@@ -45,27 +45,34 @@ func (r *DatasetRepository) FindAllActive(ctx context.Context) ([]model.SysDatas
 	return datasets, err
 }
 
-func (r *DatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQuery) ([]model.SysDataset, int64, error) {
-	pageNum := q.PageNum
-	pageSize := q.PageSize
-	if pageNum <= 0 {
-		pageNum = 1
+// FindDatasetsWithClearGT 查询含清晰图 GT（type=clear）的启用数据集，用于算法评估测试集选项。
+// 数据集自身存在 type=clear 的 item_file 即视为含 GT；taskType 非空时按数据集 type 过滤。
+func (r *DatasetRepository) FindDatasetsWithClearGT(ctx context.Context, taskType string) ([]model.SysDataset, error) {
+	db := r.db.WithContext(ctx).
+		Distinct("sys_dataset.*").
+		Joins("JOIN sys_dataset_item ON sys_dataset_item.dataset_id = sys_dataset.id").
+		Joins("JOIN sys_item_file ON sys_item_file.item_id = sys_dataset_item.id").
+		Where("sys_dataset.deleted = 0 AND sys_dataset.status = 1 AND sys_item_file.type = ?", "clear")
+	if taskType != "" {
+		db = db.Where("sys_dataset.type = ?", taskType)
 	}
-	if pageSize <= 0 {
-		pageSize = 10
-	}
+	var datasets []model.SysDataset
+	err := db.Order("sys_dataset.id ASC").Find(&datasets).Error
+	return datasets, err
+}
 
+func (r *DatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQuery) ([]model.SysDataset, int64, error) {
 	db := r.db.WithContext(ctx).Model(&model.SysDataset{}).
 		Where("parent_id = ?", ROOT_NODE_ID)
 
-	if q != nil && q.Keywords != "" {
+	if q.Keywords != "" {
 		keyword := "%" + q.Keywords + "%"
 		db = db.Where("name LIKE ?", keyword)
 	}
-	if q != nil && q.Type != "" {
+	if q.Type != "" {
 		db = db.Where("type = ?", q.Type)
 	}
-	if q != nil && q.Status != nil {
+	if q.Status != nil {
 		db = db.Where("status = ?", *q.Status)
 	}
 
@@ -75,8 +82,8 @@ func (r *DatasetRepository) FindRootPage(ctx context.Context, q *query.DatasetQu
 	}
 
 	var datasets []model.SysDataset
-	offset := (pageNum - 1) * pageSize
-	err := db.Order("id ASC").Offset(offset).Limit(pageSize).Find(&datasets).Error
+	offset := (q.PageNum - 1) * q.PageSize
+	err := db.Order("id ASC").Offset(offset).Limit(q.PageSize).Find(&datasets).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -155,7 +162,7 @@ func (r *DatasetRepository) SoftDeleteByIDs(ctx context.Context, ids []int64, up
 	return r.db.WithContext(ctx).Model(&model.SysDataset{}).
 		Where("id IN ?", ids).
 		Updates(map[string]interface{}{
-			"deleted":     1,
+			"deleted":     gorm.Expr("id"),
 			"update_time": time.Now(),
 			"update_by":   updateBy,
 		}).Error

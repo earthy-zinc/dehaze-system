@@ -7,16 +7,15 @@ import (
 
 type SysPromotion struct {
 	BaseModel
-	Name            string         `gorm:"column:name;type:varchar(64);not null;comment:活动名称" json:"name"`
-	Type            string         `gorm:"column:type;type:varchar(32);not null;index:idx_type;comment:活动类型" json:"type"`
-	Description     string         `gorm:"column:description;type:varchar(256);comment:活动描述" json:"description"`
-	StartTime       time.Time      `gorm:"column:start_time;type:datetime;not null;index:idx_time_range,priority:1;comment:开始时间" json:"startTime"`
-	EndTime         time.Time      `gorm:"column:end_time;type:datetime;not null;index:idx_time_range,priority:2;comment:结束时间" json:"endTime"`
-	ActivityRules   sql.NullString `gorm:"column:activity_rules;type:json;comment:活动规则" json:"activityRules"`
-	ApplicableScope sql.NullString `gorm:"column:applicable_scope;type:json;comment:适用套餐ID列表" json:"applicableScope"`
-	NewUserOnly     int8           `gorm:"column:new_user_only;type:tinyint;not null;default:0;comment:是否新用户专享" json:"newUserOnly"`
-	Status          int8           `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:状态" json:"status"`
-	Deleted         int8           `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Name          string         `gorm:"column:name;type:varchar(64);not null;comment:活动名称" json:"name"`
+	Type          string         `gorm:"column:type;type:varchar(32);not null;index:idx_type;comment:活动类型" json:"type"`
+	Description   string         `gorm:"column:description;type:varchar(256);comment:活动描述" json:"description"`
+	StartTime     time.Time      `gorm:"column:start_time;type:datetime;not null;index:idx_time_range,priority:1;comment:开始时间" json:"startTime"`
+	EndTime       time.Time      `gorm:"column:end_time;type:datetime;not null;index:idx_time_range,priority:2;comment:结束时间" json:"endTime"`
+	ActivityRules sql.NullString `gorm:"column:activity_rules;type:json;comment:活动规则" json:"activityRules"`
+	NewUserOnly   int8           `gorm:"column:new_user_only;type:tinyint;not null;default:0;comment:是否新用户专享" json:"newUserOnly"`
+	Status        int8           `gorm:"column:status;type:tinyint;not null;index:idx_status;comment:状态" json:"status"`
+	Deleted       int64          `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysPromotion) TableName() string {

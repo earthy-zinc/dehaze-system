@@ -47,9 +47,7 @@ class CloudBase:
             headers[header_name] = key
         return headers
 
-    async def _post_json(
-        self, url: str, payload: dict, *, key: str | None = None
-    ) -> dict:
+    async def _post_json(self, url: str, payload: dict, *, key: str | None = None) -> dict:
         """POST JSON 请求，返回响应 JSON（非 2xx 抛 RuntimeError）"""
         headers = {"Content-Type": "application/json", **self._auth_headers(key)}
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:

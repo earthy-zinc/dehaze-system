@@ -45,7 +45,14 @@
       </el-table-column>
       <el-table-column label="传输协议" width="150">
         <template #default="{ row }">
-          <el-tag size="small">
+          <el-tooltip
+            v-if="row.protocolType === 'stdio'"
+            content="stdio 无网络端点，工具无法拉取与装载；请编辑改用 streamable-http/sse 并补全端点后重新启用"
+            placement="top"
+          >
+            <el-tag type="danger" size="small">stdio（不受支持）</el-tag>
+          </el-tooltip>
+          <el-tag v-else size="small">
             {{ MCP_PROTOCOL_LABELS[row.protocolType] ?? row.protocolType }}
           </el-tag>
         </template>
@@ -84,6 +91,11 @@
           >
             {{ healthTag(row as McpServerVO).label }}
           </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="最近探测" width="160" align="center">
+        <template #default="{ row }">
+          {{ row.lastCheckTime ?? "未探测" }}
         </template>
       </el-table-column>
       <el-table-column

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,27 +13,28 @@ from app.models.enum.task_enum import EXPORT_TASK_TYPES, TaskStatus
 from app.models.schema.task import ExportTaskCreateForm as ExportTaskCreateRequest
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
+from app.service.storage.factory import get_storage_service
 from app.service.task import task_service
-from app.service.file_service import file_service
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["任务管理"])
 
 
 def _dict_to_task_data(task_data: dict, request: Request) -> TaskData:
     """将任务字典转换为 TaskData VO"""
+    task_type = task_data["task_type"]
     download_url = None
     if (
         task_data.get("status") == TaskStatus.COMPLETED.value
-        and task_data.get("task_type") in EXPORT_TASK_TYPES
-        and task_data.get("result")
+        and task_type in EXPORT_TASK_TYPES
+        and isinstance(task_data.get("result"), str)
+        and task_data["result"]
     ):
-        download_url = (
-            f"{str(request.base_url).rstrip('/')}/api/v1/tasks/{task_data['task_id']}/download"
-        )
+        # 与 Java/Go 对齐：downloadUrl 直接指向存储后端 URL（运行时拼接，不落库）
+        download_url = get_storage_service().get_url(task_data["result"])
     return TaskData(
-        id=task_data["id"],
         taskId=task_data["task_id"],
-        taskType=task_data["task_type"],
+        taskType=task_type,
+        taskCategory="import" if task_type.endswith("_import") else "export",
         status=task_data["status"],
         progress=task_data["progress"],
         totalFiles=task_data.get("total_files", 0),
@@ -160,7 +162,7 @@ async def download_export_file(
     user: UserContext = Depends(get_current_user),
 ):
     """
-    下载已完成的导出任务文件（从存储后端流式返回）
+    下载已完成的导出任务文件（302 重定向到存储后端下载地址，对齐 Java/Go）
 
     - **task_id**: 任务ID（UUID格式）
     """
@@ -172,7 +174,7 @@ async def download_export_file(
             detail="任务未完成、已过期或下载链接不存在",
         )
 
-    return file_service.stream_file_response(object_name, storage="minio")
+    return RedirectResponse(url=get_storage_service().get_url(object_name), status_code=302)
 
 
 @router.post(

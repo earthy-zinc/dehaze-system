@@ -71,5 +71,5 @@ class StorageService(ABC):
         """确保存储桶存在（不存在则创建）"""
 
     @abstractmethod
-    def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
-        """列出指定前缀下的所有对象名"""
+    def list_objects(self, bucket: str, prefix: str = "") -> list[tuple[str, float]]:
+        """列出指定前缀下的所有对象，返回 (对象名, 最后修改时间epoch秒) 元组列表"""

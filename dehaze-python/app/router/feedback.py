@@ -73,6 +73,7 @@ async def list_ratings(
     ratingMin: int | None = Query(default=None, ge=1, le=5),
     ratingMax: int | None = Query(default=None, ge=1, le=5),
     hasComment: bool | None = Query(default=None),
+    tags: list[str] | None = Query(default=None),
     startTime: str | None = Query(default=None),
     endTime: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
@@ -88,6 +89,7 @@ async def list_ratings(
             "ratingMin": ratingMin,
             "ratingMax": ratingMax,
             "hasComment": hasComment,
+            "tags": tags,
             "startTime": startTime,
             "endTime": endTime,
         },
@@ -233,10 +235,11 @@ async def supplement_feedback(
     feedback_id: int = Path(...),
     body: FeedbackSupplementForm = Body(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
     await feedback_service.supplement_feedback(
-        db, user.id, feedback_id, body.model_dump(exclude_none=True)
+        db, redis, user.id, feedback_id, body.model_dump(exclude_none=True)
     )
     return success()
 
@@ -247,9 +250,10 @@ async def assign_feedback(
     feedback_id: int = Path(...),
     body: FeedbackAssignForm = Body(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await feedback_service.assign_feedback(db, feedback_id, body.assigneeId, user.id)
+    await feedback_service.assign_feedback(db, redis, feedback_id, body.assigneeId, user.id)
     return success()
 
 
@@ -259,10 +263,11 @@ async def reply_feedback(
     feedback_id: int = Path(...),
     body: FeedbackReplyForm = Body(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
     await feedback_service.reply_feedback(
-        db, feedback_id, body.model_dump(exclude_none=True), user.id
+        db, redis, feedback_id, body.model_dump(exclude_none=True), user.id
     )
     return success()
 
@@ -273,9 +278,10 @@ async def close_feedback(
     feedback_id: int = Path(...),
     body: FeedbackCloseForm = Body(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await feedback_service.close_feedback(db, feedback_id, body.closeReason, user.id)
+    await feedback_service.close_feedback(db, redis, feedback_id, body.closeReason, user.id)
     return success()
 
 

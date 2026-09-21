@@ -17,8 +17,8 @@ import (
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
-	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
+	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -28,17 +28,17 @@ const (
 	memberGrowthRulesDictType = "member_growth_rules"
 
 	ratingTimeLimitDays = 30
-	ratingMaxImages    = 3
+	ratingMaxImages     = 3
 	ratingMaxCommentLen = 500
 	timeFormat          = "2006-01-02 15:04:05"
 
-	ratingStatsCacheTTL     = 10 * time.Minute
-	ratingDailyCounterTTL   = 25 * time.Hour
-	dateFormat              = "2006-01-02"
+	ratingStatsCacheTTL   = 10 * time.Minute
+	ratingDailyCounterTTL = 25 * time.Hour
+	dateFormat            = "2006-01-02"
 )
 
 const (
-	cacheKeyRatingStatsGlobal         = "rating:stats:global"
+	cacheKeyRatingStatsGlobal        = "rating:stats:global"
 	cacheKeyRatingStatsGlobalVersion = "rating:stats:global:version"
 )
 
@@ -51,14 +51,14 @@ var negativeTagSet = map[string]bool{
 }
 
 type RatingService struct {
-	db           *gorm.DB
-	ratingRepo   fbrepo.IRatingRepository
-	predLogRepo  predrepo.IPredLogRepository
-	memberSvc    memberservice.IMemberService
-	cache        types.ICache
-	alertSvc     ILowRatingAlertService
-	logger       *zap.Logger
-	dictSvc      dictservice.IDictService
+	db          *gorm.DB
+	ratingRepo  fbrepo.IRatingRepository
+	predLogRepo predrepo.IPredLogRepository
+	memberSvc   memberservice.IMemberService
+	cache       types.ICache
+	alertSvc    ILowRatingAlertService
+	logger      *zap.Logger
+	dictSvc     dictservice.IDictService
 }
 
 func NewRatingService(
@@ -226,6 +226,10 @@ func (s *RatingService) GetRatingByPrediction(ctx context.Context, userID, predL
 	if rating == nil {
 		return nil, nil
 	}
+	// 用户端查询需过滤已隐藏评价（T-FE-026）
+	if rating.IsHidden == 1 {
+		return nil, nil
+	}
 
 	return s.buildRatingDetailVO(ctx, rating)
 }
@@ -341,7 +345,7 @@ func (s *RatingService) GetRatingStats(ctx context.Context, startTime, endTime s
 
 	result := &vo.RatingStatsVO{
 		TotalRatings:       total,
-		AverageRating:     avgRating,
+		AverageRating:      avgRating,
 		RatingDistribution: distribution,
 		PositiveTagRanking: positiveRanking,
 		NegativeTagRanking: negativeRanking,

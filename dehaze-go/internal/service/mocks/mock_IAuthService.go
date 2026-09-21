@@ -13,6 +13,10 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	query "github.com/earthyzinc/dehaze-go/internal/model/query"
+
+	session "github.com/earthyzinc/dehaze-go/internal/service/session"
+
 	vo "github.com/earthyzinc/dehaze-go/internal/model/vo"
 )
 
@@ -143,6 +147,171 @@ func (_c *MockIAuthService_GetCaptcha_Call) Return(_a0 *dto.CaptchaResult, _a1 e
 }
 
 func (_c *MockIAuthService_GetCaptcha_Call) RunAndReturn(run func(context.Context, string) (*dto.CaptchaResult, error)) *MockIAuthService_GetCaptcha_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// KickSession provides a mock function with given fields: ctx, sessionID
+func (_m *MockIAuthService) KickSession(ctx context.Context, sessionID string) error {
+	ret := _m.Called(ctx, sessionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for KickSession")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, sessionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAuthService_KickSession_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'KickSession'
+type MockIAuthService_KickSession_Call struct {
+	*mock.Call
+}
+
+// KickSession is a helper method to define mock.On call
+//   - ctx context.Context
+//   - sessionID string
+func (_e *MockIAuthService_Expecter) KickSession(ctx interface{}, sessionID interface{}) *MockIAuthService_KickSession_Call {
+	return &MockIAuthService_KickSession_Call{Call: _e.mock.On("KickSession", ctx, sessionID)}
+}
+
+func (_c *MockIAuthService_KickSession_Call) Run(run func(ctx context.Context, sessionID string)) *MockIAuthService_KickSession_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockIAuthService_KickSession_Call) Return(_a0 error) *MockIAuthService_KickSession_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAuthService_KickSession_Call) RunAndReturn(run func(context.Context, string) error) *MockIAuthService_KickSession_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListLoginLogs provides a mock function with given fields: ctx, q
+func (_m *MockIAuthService) ListLoginLogs(ctx context.Context, q *query.LoginLogQuery) (*vo.PageResult[vo.LoginLogVO], error) {
+	ret := _m.Called(ctx, q)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListLoginLogs")
+	}
+
+	var r0 *vo.PageResult[vo.LoginLogVO]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *query.LoginLogQuery) (*vo.PageResult[vo.LoginLogVO], error)); ok {
+		return rf(ctx, q)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *query.LoginLogQuery) *vo.PageResult[vo.LoginLogVO]); ok {
+		r0 = rf(ctx, q)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*vo.PageResult[vo.LoginLogVO])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, *query.LoginLogQuery) error); ok {
+		r1 = rf(ctx, q)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIAuthService_ListLoginLogs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListLoginLogs'
+type MockIAuthService_ListLoginLogs_Call struct {
+	*mock.Call
+}
+
+// ListLoginLogs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - q *query.LoginLogQuery
+func (_e *MockIAuthService_Expecter) ListLoginLogs(ctx interface{}, q interface{}) *MockIAuthService_ListLoginLogs_Call {
+	return &MockIAuthService_ListLoginLogs_Call{Call: _e.mock.On("ListLoginLogs", ctx, q)}
+}
+
+func (_c *MockIAuthService_ListLoginLogs_Call) Run(run func(ctx context.Context, q *query.LoginLogQuery)) *MockIAuthService_ListLoginLogs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*query.LoginLogQuery))
+	})
+	return _c
+}
+
+func (_c *MockIAuthService_ListLoginLogs_Call) Return(_a0 *vo.PageResult[vo.LoginLogVO], _a1 error) *MockIAuthService_ListLoginLogs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIAuthService_ListLoginLogs_Call) RunAndReturn(run func(context.Context, *query.LoginLogQuery) (*vo.PageResult[vo.LoginLogVO], error)) *MockIAuthService_ListLoginLogs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListSessions provides a mock function with given fields: ctx, username
+func (_m *MockIAuthService) ListSessions(ctx context.Context, username string) ([]session.SessionInfo, error) {
+	ret := _m.Called(ctx, username)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListSessions")
+	}
+
+	var r0 []session.SessionInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]session.SessionInfo, error)); ok {
+		return rf(ctx, username)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []session.SessionInfo); ok {
+		r0 = rf(ctx, username)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]session.SessionInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, username)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIAuthService_ListSessions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListSessions'
+type MockIAuthService_ListSessions_Call struct {
+	*mock.Call
+}
+
+// ListSessions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - username string
+func (_e *MockIAuthService_Expecter) ListSessions(ctx interface{}, username interface{}) *MockIAuthService_ListSessions_Call {
+	return &MockIAuthService_ListSessions_Call{Call: _e.mock.On("ListSessions", ctx, username)}
+}
+
+func (_c *MockIAuthService_ListSessions_Call) Run(run func(ctx context.Context, username string)) *MockIAuthService_ListSessions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockIAuthService_ListSessions_Call) Return(_a0 []session.SessionInfo, _a1 error) *MockIAuthService_ListSessions_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIAuthService_ListSessions_Call) RunAndReturn(run func(context.Context, string) ([]session.SessionInfo, error)) *MockIAuthService_ListSessions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -314,50 +483,60 @@ func (_c *MockIAuthService_Register_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
-// VerifyCaptcha provides a mock function with given fields: ctx, captchaKey, captchaCode
-func (_m *MockIAuthService) VerifyCaptcha(ctx context.Context, captchaKey string, captchaCode string) bool {
+// VerifyCaptchaStatus provides a mock function with given fields: ctx, captchaKey, captchaCode
+func (_m *MockIAuthService) VerifyCaptchaStatus(ctx context.Context, captchaKey string, captchaCode string) (bool, bool) {
 	ret := _m.Called(ctx, captchaKey, captchaCode)
 
 	if len(ret) == 0 {
-		panic("no return value specified for VerifyCaptcha")
+		panic("no return value specified for VerifyCaptchaStatus")
 	}
 
 	var r0 bool
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, bool)); ok {
+		return rf(ctx, captchaKey, captchaCode)
+	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
 		r0 = rf(ctx, captchaKey, captchaCode)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) bool); ok {
+		r1 = rf(ctx, captchaKey, captchaCode)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
 }
 
-// MockIAuthService_VerifyCaptcha_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VerifyCaptcha'
-type MockIAuthService_VerifyCaptcha_Call struct {
+// MockIAuthService_VerifyCaptchaStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VerifyCaptchaStatus'
+type MockIAuthService_VerifyCaptchaStatus_Call struct {
 	*mock.Call
 }
 
-// VerifyCaptcha is a helper method to define mock.On call
+// VerifyCaptchaStatus is a helper method to define mock.On call
 //   - ctx context.Context
 //   - captchaKey string
 //   - captchaCode string
-func (_e *MockIAuthService_Expecter) VerifyCaptcha(ctx interface{}, captchaKey interface{}, captchaCode interface{}) *MockIAuthService_VerifyCaptcha_Call {
-	return &MockIAuthService_VerifyCaptcha_Call{Call: _e.mock.On("VerifyCaptcha", ctx, captchaKey, captchaCode)}
+func (_e *MockIAuthService_Expecter) VerifyCaptchaStatus(ctx interface{}, captchaKey interface{}, captchaCode interface{}) *MockIAuthService_VerifyCaptchaStatus_Call {
+	return &MockIAuthService_VerifyCaptchaStatus_Call{Call: _e.mock.On("VerifyCaptchaStatus", ctx, captchaKey, captchaCode)}
 }
 
-func (_c *MockIAuthService_VerifyCaptcha_Call) Run(run func(ctx context.Context, captchaKey string, captchaCode string)) *MockIAuthService_VerifyCaptcha_Call {
+func (_c *MockIAuthService_VerifyCaptchaStatus_Call) Run(run func(ctx context.Context, captchaKey string, captchaCode string)) *MockIAuthService_VerifyCaptchaStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockIAuthService_VerifyCaptcha_Call) Return(_a0 bool) *MockIAuthService_VerifyCaptcha_Call {
-	_c.Call.Return(_a0)
+func (_c *MockIAuthService_VerifyCaptchaStatus_Call) Return(ok bool, expired bool) *MockIAuthService_VerifyCaptchaStatus_Call {
+	_c.Call.Return(ok, expired)
 	return _c
 }
 
-func (_c *MockIAuthService_VerifyCaptcha_Call) RunAndReturn(run func(context.Context, string, string) bool) *MockIAuthService_VerifyCaptcha_Call {
+func (_c *MockIAuthService_VerifyCaptchaStatus_Call) RunAndReturn(run func(context.Context, string, string) (bool, bool)) *MockIAuthService_VerifyCaptchaStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

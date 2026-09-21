@@ -1,3 +1,5 @@
+import { PackageAPI } from "../../index";
+
 /**
  * 测试数据清理注册表
  *
@@ -6,6 +8,19 @@
  * - 清理失败时静默忽略，确保所有注册的清理操作都被尝试执行
  * - 提供便捷的 ID 注册方法，配合各模块 API 批量清理
  */
+
+/**
+ * 套餐清理：优先物理删除；被已支付订单关联的套餐删除被 A0522 拦截，
+ * 降级为下架（status=0），避免测试套餐在开发库持续累积
+ */
+export async function deletePackageOrOffline(id: string): Promise<void> {
+  try {
+    await PackageAPI.deleteByIds(id);
+  } catch {
+    await PackageAPI.updateStatus(Number(id), 0);
+  }
+}
+
 export class TestCleanupRegistry {
   private tasks: Array<() => Promise<void>> = [];
 

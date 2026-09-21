@@ -11,10 +11,10 @@ from app.infrastructure.cache.redis_fallback import redis_operation_with_fallbac
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "check_redis_health",
+    "close_redis",
     "get_redis",
     "get_redis_client",
-    "close_redis",
-    "check_redis_health",
 ]
 
 _redis_pool: ConnectionPool | None = None

@@ -1,16 +1,24 @@
 """AI 可观测性查询路由测试：路径注册 / 权限校验 / 参数校验 / camelCase 序列化 / 导出"""
+
 import pytest
 from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
 
-pytestmark = pytest.mark.api
-
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
-from app.models.schema.ai_observability import CostsResult, SummaryResult, TraceDetailResult
+from app.models.schema.ai_observability import (
+    CostsResult,
+    SummaryResult,
+    TimelineConversation,
+    TimelineResult,
+    TraceDetailResult,
+)
 from app.models.schema.common import PageResult
 from app.service.ai_observability_service import ai_observability_service
+
+pytestmark = pytest.mark.api
+
 
 AUDIT_PERMS = ["ai:conversation:audit"]
 _ADMIN_PATHS = (
@@ -19,7 +27,10 @@ _ADMIN_PATHS = (
     "/api/v1/ai/observability/traces/export",
     "/api/v1/ai/observability/costs",
     "/api/v1/ai/observability/trends",
+    "/api/v1/ai/observability/conversations/1/timeline/export",
 )
+_TIMELINE_PATH = "/api/v1/ai/observability/conversations/1/timeline"
+_TIMELINE_EXPORT_PATH = "/api/v1/ai/observability/conversations/1/timeline/export"
 
 
 class _FakeUser:
@@ -68,8 +79,14 @@ async def obs_client():
 def test_observability_paths_registered(app):
     schema = app.openapi()
     for path in (
-        *_ADMIN_PATHS,
+        "/api/v1/ai/observability/summary",
+        "/api/v1/ai/observability/traces",
+        "/api/v1/ai/observability/traces/export",
+        "/api/v1/ai/observability/costs",
+        "/api/v1/ai/observability/trends",
         "/api/v1/ai/observability/traces/{trace_id}",
+        "/api/v1/ai/observability/conversations/{conversation_id}/timeline",
+        "/api/v1/ai/observability/conversations/{conversation_id}/timeline/export",
     ):
         assert path in schema["paths"], f"缺少路径 {path}"
 
@@ -235,3 +252,84 @@ async def test_trends_query_wire(obs_client, monkeypatch):
     resp = await client.get("/api/v1/ai/observability/trends", params={"dimension": "agent"})
     assert resp.status_code == 200
     assert captured["query"].dimension == "agent"
+
+
+def _fake_timeline() -> TimelineResult:
+    return TimelineResult(
+        conversation=TimelineConversation(id=1, title="审计会话", user_id=7),
+        rounds=[],
+    )
+
+
+async def test_timeline_admin_flag_and_include_raw_wire(obs_client, monkeypatch):
+    client, state = obs_client
+    state["user"] = _FakeUser(id=9, permissions=AUDIT_PERMS)
+    captured = {}
+
+    async def _fake_timeline_fn(db, conversation_id, user_id, *, admin, include_raw):
+        captured.update(
+            conversation_id=conversation_id,
+            user_id=user_id,
+            admin=admin,
+            include_raw=include_raw,
+        )
+        return _fake_timeline()
+
+    monkeypatch.setattr(ai_observability_service, "get_conversation_timeline", _fake_timeline_fn)
+    # 默认含 raw 报文
+    resp = await client.get(_TIMELINE_PATH)
+    assert resp.status_code == 200
+    assert captured == {
+        "conversation_id": 1,
+        "user_id": 9,
+        "admin": True,
+        "include_raw": True,
+    }
+    data = resp.json()["data"]
+    assert data["conversation"]["title"] == "审计会话"
+    assert data["conversation"]["userId"] == 7
+    assert data["rounds"] == []
+
+    # include=raw 显式传入仍含 raw
+    resp = await client.get(_TIMELINE_PATH, params={"include": "raw"})
+    assert captured["include_raw"] is True
+
+    # include 传空省略 raw 供轻量预览
+    resp = await client.get(_TIMELINE_PATH, params={"include": ""})
+    assert captured["include_raw"] is False
+
+
+async def test_timeline_normal_user_allowed_not_admin(obs_client, monkeypatch):
+    client, state = obs_client
+    state["user"] = _FakeUser(id=7, permissions=[])
+
+    async def _fake_timeline_fn(db, conversation_id, user_id, *, admin, include_raw):
+        assert admin is False
+        assert include_raw is True
+        return _fake_timeline()
+
+    monkeypatch.setattr(ai_observability_service, "get_conversation_timeline", _fake_timeline_fn)
+    resp = await client.get(_TIMELINE_PATH)
+    assert resp.status_code == 200
+
+
+async def test_timeline_export_streams_json(obs_client, monkeypatch):
+    client, state = obs_client
+    state["user"] = _FakeUser(id=1, permissions=AUDIT_PERMS)
+    captured = {}
+
+    async def _fake_export(db, conversation_id, user_id):
+        captured.update(conversation_id=conversation_id, user_id=user_id)
+        return StreamingResponse(
+            iter([b'{"conversation": {"id": 1}, "rounds": []}']),
+            media_type="application/json",
+            headers={"Content-Disposition": 'attachment; filename="conversation_1_timeline.json"'},
+        )
+
+    monkeypatch.setattr(ai_observability_service, "export_timeline", _fake_export)
+    resp = await client.get(_TIMELINE_EXPORT_PATH)
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+    assert "conversation_1_timeline.json" in resp.headers["content-disposition"]
+    assert '"rounds"' in resp.text
+    assert captured == {"conversation_id": 1, "user_id": 1}

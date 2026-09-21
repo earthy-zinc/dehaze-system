@@ -62,8 +62,7 @@ export function useImportExport(options: UseImportExportOptions) {
       const filename = buildFileName(`${module}_template`, format);
       downloadBlob(blob, filename);
       ElMessage.success("模板下载成功");
-    } catch (e: any) {
-      ElMessage.error(e.message || "模板下载失败");
+    } catch {
     } finally {
       templateLoading.value = false;
     }

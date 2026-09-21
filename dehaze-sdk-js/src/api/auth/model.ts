@@ -3,17 +3,18 @@ import { PageQuery } from "@/types";
 export interface LoginData {
   username: string;
   password: string;
-  captchaKey?: string;
-  captchaCode?: string;
+  captchaKey: string;
+  captchaCode: string;
   rememberMe?: boolean;
+  deviceType?: string;
 }
 
 export interface RegisterData {
   username: string;
   password: string;
   nickname: string;
-  captchaKey?: string;
-  captchaCode?: string;
+  captchaKey: string;
+  captchaCode: string;
 }
 
 export interface LoginUser {

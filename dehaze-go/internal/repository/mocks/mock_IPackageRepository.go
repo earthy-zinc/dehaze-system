@@ -140,6 +140,63 @@ func (_c *MockIPackageRepository_CountOrdersByStatus_Call) RunAndReturn(run func
 	return _c
 }
 
+// CountPaidOrdersByUser provides a mock function with given fields: ctx, userID
+func (_m *MockIPackageRepository) CountPaidOrdersByUser(ctx context.Context, userID int64) (int64, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountPaidOrdersByUser")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (int64, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) int64); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIPackageRepository_CountPaidOrdersByUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountPaidOrdersByUser'
+type MockIPackageRepository_CountPaidOrdersByUser_Call struct {
+	*mock.Call
+}
+
+// CountPaidOrdersByUser is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIPackageRepository_Expecter) CountPaidOrdersByUser(ctx interface{}, userID interface{}) *MockIPackageRepository_CountPaidOrdersByUser_Call {
+	return &MockIPackageRepository_CountPaidOrdersByUser_Call{Call: _e.mock.On("CountPaidOrdersByUser", ctx, userID)}
+}
+
+func (_c *MockIPackageRepository_CountPaidOrdersByUser_Call) Run(run func(ctx context.Context, userID int64)) *MockIPackageRepository_CountPaidOrdersByUser_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIPackageRepository_CountPaidOrdersByUser_Call) Return(_a0 int64, _a1 error) *MockIPackageRepository_CountPaidOrdersByUser_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIPackageRepository_CountPaidOrdersByUser_Call) RunAndReturn(run func(context.Context, int64) (int64, error)) *MockIPackageRepository_CountPaidOrdersByUser_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, p
 func (_m *MockIPackageRepository) Create(ctx context.Context, p *model.SysPackage) error {
 	ret := _m.Called(ctx, p)
@@ -365,6 +422,65 @@ func (_c *MockIPackageRepository_FindActivePromotionsByPackageID_Call) RunAndRet
 	return _c
 }
 
+// FindActiveVipByLevelCode provides a mock function with given fields: ctx, levelCode
+func (_m *MockIPackageRepository) FindActiveVipByLevelCode(ctx context.Context, levelCode string) (*model.SysPackage, error) {
+	ret := _m.Called(ctx, levelCode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindActiveVipByLevelCode")
+	}
+
+	var r0 *model.SysPackage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.SysPackage, error)); ok {
+		return rf(ctx, levelCode)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.SysPackage); ok {
+		r0 = rf(ctx, levelCode)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SysPackage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, levelCode)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIPackageRepository_FindActiveVipByLevelCode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindActiveVipByLevelCode'
+type MockIPackageRepository_FindActiveVipByLevelCode_Call struct {
+	*mock.Call
+}
+
+// FindActiveVipByLevelCode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - levelCode string
+func (_e *MockIPackageRepository_Expecter) FindActiveVipByLevelCode(ctx interface{}, levelCode interface{}) *MockIPackageRepository_FindActiveVipByLevelCode_Call {
+	return &MockIPackageRepository_FindActiveVipByLevelCode_Call{Call: _e.mock.On("FindActiveVipByLevelCode", ctx, levelCode)}
+}
+
+func (_c *MockIPackageRepository_FindActiveVipByLevelCode_Call) Run(run func(ctx context.Context, levelCode string)) *MockIPackageRepository_FindActiveVipByLevelCode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockIPackageRepository_FindActiveVipByLevelCode_Call) Return(_a0 *model.SysPackage, _a1 error) *MockIPackageRepository_FindActiveVipByLevelCode_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIPackageRepository_FindActiveVipByLevelCode_Call) RunAndReturn(run func(context.Context, string) (*model.SysPackage, error)) *MockIPackageRepository_FindActiveVipByLevelCode_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindAllOnSale provides a mock function with given fields: ctx
 func (_m *MockIPackageRepository) FindAllOnSale(ctx context.Context) ([]model.SysPackage, error) {
 	ret := _m.Called(ctx)
@@ -537,65 +653,6 @@ func (_c *MockIPackageRepository_FindByIDs_Call) Return(_a0 []model.SysPackage, 
 }
 
 func (_c *MockIPackageRepository_FindByIDs_Call) RunAndReturn(run func(context.Context, []int64) ([]model.SysPackage, error)) *MockIPackageRepository_FindByIDs_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// FindByName provides a mock function with given fields: ctx, name
-func (_m *MockIPackageRepository) FindByName(ctx context.Context, name string) (*model.SysPackage, error) {
-	ret := _m.Called(ctx, name)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindByName")
-	}
-
-	var r0 *model.SysPackage
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.SysPackage, error)); ok {
-		return rf(ctx, name)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.SysPackage); ok {
-		r0 = rf(ctx, name)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.SysPackage)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, name)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIPackageRepository_FindByName_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByName'
-type MockIPackageRepository_FindByName_Call struct {
-	*mock.Call
-}
-
-// FindByName is a helper method to define mock.On call
-//   - ctx context.Context
-//   - name string
-func (_e *MockIPackageRepository_Expecter) FindByName(ctx interface{}, name interface{}) *MockIPackageRepository_FindByName_Call {
-	return &MockIPackageRepository_FindByName_Call{Call: _e.mock.On("FindByName", ctx, name)}
-}
-
-func (_c *MockIPackageRepository_FindByName_Call) Run(run func(ctx context.Context, name string)) *MockIPackageRepository_FindByName_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockIPackageRepository_FindByName_Call) Return(_a0 *model.SysPackage, _a1 error) *MockIPackageRepository_FindByName_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIPackageRepository_FindByName_Call) RunAndReturn(run func(context.Context, string) (*model.SysPackage, error)) *MockIPackageRepository_FindByName_Call {
 	_c.Call.Return(run)
 	return _c
 }

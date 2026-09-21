@@ -31,7 +31,7 @@ function formatMonth(date: Date) {
 }
 
 export const useBillingStore = defineStore("billing", () => {
-  const billingDataStore = useBillingDataStore();
+  const billingDataStore = useBillingDataStore("self");
 
   const consumptionSummary = ref<BillingSummaryVO | null>(null);
   const summaryDimension = ref<SummaryDimension>("day");

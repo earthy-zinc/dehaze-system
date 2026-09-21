@@ -108,10 +108,10 @@ const typeIconMap: Record<string, any> = {
 };
 
 const senderTypeLabel = computed(() => {
+  // 与后端 sender_type 字典一致：1=系统、2=管理员
   const map: Record<number, string> = {
-    0: "系统",
-    1: "管理员",
-    2: "用户",
+    1: "系统",
+    2: "管理员",
   };
   return map[message.value?.senderType ?? 0] || "未知";
 });
@@ -147,6 +147,8 @@ function goBack() {
 
 function handleJump() {
   if (!message.value?.jumpUrl) return;
+  // jumpUrl 契约仅允许站内相对路径，防外链/协议注入
+  if (!message.value.jumpUrl.startsWith("/")) return;
   router.push(message.value.jumpUrl);
 }
 

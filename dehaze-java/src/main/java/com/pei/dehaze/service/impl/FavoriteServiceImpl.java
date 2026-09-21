@@ -55,8 +55,21 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
     public Long add(FavoriteForm form) {
         Long userId = SecurityUtils.getUserId();
 
-        // 校验收藏目标对象是否存在（仅校验已实现的类型，image/preset 预留类型跳过）
+        // 合法类型校验（非法 targetType 直接拒绝，image/preset 预留类型跳过存在性校验）
+        if (!VALID_TARGET_TYPES.contains(form.getTargetType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "非法的收藏对象类型");
+        }
         validateTargetExists(form.getTargetType(), form.getTargetId());
+
+        // 重复收藏幂等：已存在未删除记录直接返回原 id（先于容量校验，保证重复收藏不因容量满而失败）
+        SysFavorite existing = this.getOne(new LambdaQueryWrapper<SysFavorite>()
+                .eq(SysFavorite::getUserId, userId)
+                .eq(SysFavorite::getTargetType, form.getTargetType())
+                .eq(SysFavorite::getTargetId, form.getTargetId())
+                .last("LIMIT 1"));
+        if (existing != null) {
+            return existing.getId();
+        }
 
         // 容量校验（MP 自动过滤 deleted=0）
         long currentCount = this.count(new LambdaQueryWrapper<SysFavorite>()
@@ -115,7 +128,8 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
         LambdaUpdateWrapper<SysFavorite> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(SysFavorite::getId, ids)
                 .eq(SysFavorite::getUserId, userId)
-                .set(SysFavorite::getDeleted, 1);
+                // deleted 写行id（非 1），保证唯一键含 deleted 后同键可重建
+                .setSql("deleted = id");
         this.update(wrapper);
     }
 

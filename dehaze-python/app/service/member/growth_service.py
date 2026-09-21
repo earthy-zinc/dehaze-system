@@ -3,6 +3,7 @@
 import logging
 from datetime import date, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -83,7 +84,11 @@ class MemberGrowthService:
             growth_value=total_growth,
         )
         db.add(sign_in_record)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError as e:
+            # 先查后插存在并发窗口，同日重复签到由 uk_user_sign_date 唯一索引兜底
+            raise BusinessException(ResultCode.SIGN_IN_ALREADY) from e
 
         old_growth = member.growth_value
         new_growth = old_growth + total_growth
@@ -123,7 +128,9 @@ class MemberGrowthService:
             "bonusGrowth": bonus_growth,
         }
 
-    async def get_sign_in_calendar(self, db: AsyncSession, user_id: int, year: int, month: int) -> dict:
+    async def get_sign_in_calendar(
+        self, db: AsyncSession, user_id: int, year: int, month: int
+    ) -> dict:
         start_date = date(year, month, 1)
         if month == 12:
             end_date = date(year + 1, 1, 1) - timedelta(days=1)
@@ -174,7 +181,8 @@ class MemberGrowthService:
     async def add_behavior_growth(
         self, db: AsyncSession, user_id: int, change_type: str, related_id: str | None = None
     ) -> bool:
-        """使用行为激励（process / evaluate / ai_consume）：按行为类型累计成长值，每日上限由 Redis 计数控制。
+        """使用行为激励（process / evaluate / ai_consume）：按行为类型累计成长值，
+        每日上限由 Redis 计数控制。
 
         Returns:
             True 表示已累计成长值；False 表示当日已达该行为激励上限
@@ -193,7 +201,8 @@ class MemberGrowthService:
         count = await redis_operation_with_fallback(
             _incr, default=daily_limit, operation_name=f"{change_type}_growth_counter"
         )
-        if count > daily_limit:
+        # 以 default=daily_limit 兜底（Redis 降级时），返回值理论上非空；判空仅为类型收窄
+        if count is not None and count > daily_limit:
             return False
 
         member = await self.member_repository.get_or_init_member(db, user_id)

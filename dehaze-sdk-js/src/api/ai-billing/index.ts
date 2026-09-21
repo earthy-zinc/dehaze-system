@@ -15,6 +15,7 @@ import {
   BillingSummaryVO,
   CostStatQuery,
   CostStatVO,
+  CostGroupVO,
   CreditAdjustForm,
   CreditLogQuery,
   CreditLogVO,
@@ -22,6 +23,7 @@ import {
   BillingRefundQuery,
   ModelCostForm,
   ModelCostQuery,
+  ModelCostUpdateForm,
   ModelCostVO,
 } from "./model";
 
@@ -83,12 +85,11 @@ class AiBillingAPI {
   }
 
   /**
-   * 下载指定月份的月结账单（PDF/Excel）
+   * 下载指定月份的月结账单
    *
-   * 返回 Blob，前端可用 URL.createObjectURL 生成下载链接。
+   * 与账单查询一致返回 {code,msg,data} JSON 信封，data 为账单内容，前端可另存为文件。
    */
   static downloadBill(month: string) {
-    // 后端契约：账单下载返回 {code,msg,data} JSON 信封（data 为账单内容，前端可另存为文件）
     return request<BillVO>({
       url: `/api/v1/ai-billing/bills/${month}/download`,
       method: "get",
@@ -173,8 +174,8 @@ class AiBillingAPI {
     });
   }
 
-  /** 更新模型成本配置 */
-  static updateCost(id: number, data: Partial<ModelCostForm>) {
+  /** 更新模型成本配置（仅版本主表字段） */
+  static updateCost(id: number, data: ModelCostUpdateForm) {
     return request<ModelCostVO>({
       url: `/api/v1/ai-billing/costs/${id}`,
       method: "put",
@@ -190,9 +191,14 @@ class AiBillingAPI {
     });
   }
 
-  /** 成本统计（按成本类型聚合） */
+  /** 成本统计分组分解（仅返回维度值 + 成本） */
+  static getCostStats(
+    query: CostStatQuery & { groupBy: "model" | "provider" }
+  ): Promise<CostGroupVO[]>;
+  /** 成本统计（整体双口径毛利，groupBy 缺省为 overall） */
+  static getCostStats(query?: CostStatQuery): Promise<CostStatVO[]>;
   static getCostStats(query?: CostStatQuery) {
-    return request<CostStatVO[]>({
+    return request({
       url: "/api/v1/ai-billing/cost-stats",
       method: "get",
       params: query,

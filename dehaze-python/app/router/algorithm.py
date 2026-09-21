@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
-from fastapi.responses import Response
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
@@ -121,6 +120,7 @@ async def audit_algorithm(
 
 
 @router.post("/{algorithm_id}/version", response_model=Result[int], summary="新增版本")
+@require_permission("sys:algorithm:version")
 async def create_version(
     algorithm_id: int,
     body: AlgorithmVersionForm,
@@ -132,10 +132,8 @@ async def create_version(
         algorithm_id=algorithm_id,
         version=body.version,
         change_log=body.changeLog,
-        status=body.status,
         config_json=body.configJson,
         model_file_id=body.modelFileId,
-        is_active=body.isActive or 0,
     )
     # 失效预测缓存
     from app.service.prediction.prediction_service import prediction_service
@@ -159,10 +157,12 @@ async def list_versions(
 
 
 @router.post("/{algorithm_id}/rollback", response_model=Result[None], summary="版本回滚")
+@require_permission("sys:algorithm:version")
 async def rollback_version(
     algorithm_id: int,
     versionId: int = Query(..., description="目标版本ID"),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     await algorithm_service.rollback_version(db, algorithm_id, versionId)
     return success(msg="版本回滚成功")
@@ -181,65 +181,6 @@ async def delete_algorithms(
     algorithm_ids = [int(i) for i in ids.split(",")]
     await algorithm_service.delete_algorithms(db, algorithm_ids)
     return success(msg="算法删除成功")
-
-
-@router.delete("/{algorithm_id}", response_model=Result[None], summary="删除单个算法")
-@require_permission("sys:algorithm:delete")
-async def delete_algorithm_single(
-    algorithm_id: int,
-    db: AsyncSession = Depends(get_db),
-    user: UserContext = Depends(get_current_user),
-):
-    """删除单个算法（含子算法）"""
-    await algorithm_service.delete_algorithm_single(db, algorithm_id)
-    return success(msg="算法删除成功")
-
-
-# ── 导入/导出 ──────────────────────────────────────
-
-
-@router.get("/{algorithm_id}/_export", summary="导出单个算法（配置JSON）")
-async def export_algorithm(
-    algorithm_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    """导出单个算法为 JSON 文件（对齐 Java exportAlgorithmJson）"""
-    json_str = await algorithm_service.export_algorithm(db, algorithm_id)
-    filename = f"algorithm_{algorithm_id}.json"
-    return Response(
-        content=json_str.encode("utf-8"),
-        media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
-
-@router.post(
-    "/_import/validate",
-    response_model=Result[str],
-    summary="校验导入包",
-)
-async def validate_import_package(
-    file: UploadFile = File(..., description="算法 JSON 文件"),
-):
-    """校验算法导入包格式，不写入数据库（对齐 Java validateImport）"""
-    file_bytes = await file.read()
-    message = await algorithm_service.validate_import_package(file_bytes, file.filename or "")
-    return success(message)
-
-
-@router.post(
-    "/_import",
-    response_model=Result[None],
-    summary="导入算法",
-)
-async def import_algorithm(
-    file: UploadFile = File(..., description="算法 JSON 文件"),
-    db: AsyncSession = Depends(get_db),
-):
-    """导入算法（对齐 Java importAlgorithm）"""
-    file_bytes = await file.read()
-    await algorithm_service.import_algorithm(db, file_bytes, file.filename or "")
-    return success(msg="算法导入成功")
 
 
 # ── 监控 ──────────────────────────────────────
@@ -265,7 +206,7 @@ async def get_monitor_data(
 )
 async def get_monitor_stats(
     algorithm_id: int,
-    days: int = 7,
+    days: int = Query(default=7, ge=1, description="统计天数（正整数）"),
     db: AsyncSession = Depends(get_db),
 ):
     """获取算法监控统计报表（最近 days 天每天一条，含无数据天）"""

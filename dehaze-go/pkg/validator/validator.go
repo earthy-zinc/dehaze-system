@@ -60,6 +60,31 @@ func Init() {
 		t, _ := ut.T("no_xss", fe.Field())
 		return t
 	})
+
+	// 注册密码复杂度校验器：必须同时包含字母和数字（与 Java/Python 注册密码策略一致，
+	// 长度 8-20 由 binding min/max 完成）
+	_ = v.RegisterValidation("password_complexity", func(fl validator.FieldLevel) bool {
+		s := fl.Field().String()
+		hasLetter, hasDigit := false, false
+		for i := 0; i < len(s); i++ {
+			c := s[i]
+			switch {
+			case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'):
+				hasLetter = true
+			case c >= '0' && c <= '9':
+				hasDigit = true
+			}
+		}
+		return hasLetter && hasDigit
+	})
+
+	// 注册 password_complexity 的中文翻译
+	_ = v.RegisterTranslation("password_complexity", Trans, func(ut ut.Translator) error {
+		return ut.Add("password_complexity", "{0}必须包含字母和数字，8-20位", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("password_complexity", fe.Field())
+		return t
+	})
 }
 
 // TranslateValidationErrors 将 validator.ValidationErrors 翻译为中文消息

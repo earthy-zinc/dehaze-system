@@ -50,5 +50,5 @@ public class UserCouponVO {
     private Long usedOrderId;
 
     @Schema(description = "适用套餐ID列表")
-    private List<Long> applicableScope;
+    private List<Object> applicableScope;
 }

@@ -103,7 +103,7 @@ public class SysTaskController {
         summary = "分页查询任务列表",
         description = "查询当前用户的任务列表，支持按任务类型、类别、状态筛选"
     )
-    public PageResult<TaskVO> listMyTasks(@ParameterObject TaskQuery query) {
+    public PageResult<TaskVO> listMyTasks(@Valid @ParameterObject TaskQuery query) {
         return taskService.listMyTasks(query);
     }
 }

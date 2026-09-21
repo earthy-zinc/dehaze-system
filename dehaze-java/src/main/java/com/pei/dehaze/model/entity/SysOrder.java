@@ -27,7 +27,11 @@ public class SysOrder extends BaseEntity {
 
     private String packageName;
 
+    private String packageType;
+
     private String packageLevel;
+
+    private Long creditAmount;
 
     private Integer periodDays;
 
@@ -59,8 +63,8 @@ public class SysOrder extends BaseEntity {
 
     private Integer isAutoRenew;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

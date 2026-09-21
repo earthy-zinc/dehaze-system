@@ -140,6 +140,7 @@ async function handleFileChange(event: Event) {
 
 <style scoped lang="scss">
 .message-input {
+  flex-shrink: 0;
   padding: 8px 16px 12px;
   background-color: var(--el-bg-color);
   border-top: 1px solid var(--el-border-color-light);

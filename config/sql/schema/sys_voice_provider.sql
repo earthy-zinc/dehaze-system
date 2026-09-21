@@ -6,7 +6,7 @@
 -- 语音引擎（ASR/TTS）供应商配置表，对齐 AI 模型管理的 sys_ai_provider 模式。
 -- 本地（FunASR/Piper）与云端（阿里云/腾讯云/讯飞 ASR、Azure/阿里云 TTS）统一注册，
 -- 应用侧透明，不区分本地/云端，按能力维度（engine_type）选择默认引擎调用。
--- (provider_code, engine_type) 为业务唯一键（同一厂商按能力注册多条，如 local 注册 asr、tts 两条），删除后不可复用（类别②）。
+-- (provider_code, engine_type) 为业务唯一键（同一厂商按能力注册多条，如 local 注册 asr、tts 两条）；唯一键含 deleted，软删后可重建。
 -- engine_type 标识能力类型（asr/tts）；asr/tts 共用此表，不拆表（provider 层属性同构）。
 -- is_default 标识该 engine_type 维度下默认引擎（每能力维度仅一条为 1），默认指向 local；
 --   纯云端部署将 asr/tts 的 is_default 指向云端引擎（local 仍保留可选用）。
@@ -16,7 +16,7 @@
 -- health_check_enabled 为健康检查开关（默认开启），关闭后该引擎不参与熔断判定（健康状态运行时聚合于 Redis，不落库）。
 -- remark 为运维备注（账号归属、合同号、商务信息），不参与逻辑。
 -- 引擎下的 API Key 管理见 sys_voice_provider_key，模型/音色注册见 sys_voice_model。
--- 配置类表，使用逻辑删除；provider_code 为业务引用键，删除后不可复用（类别②）。
+-- 配置类表，使用逻辑删除；唯一键含 deleted，软删后可重建同 (provider_code, engine_type)。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_voice_provider`;
 CREATE TABLE `sys_voice_provider`
@@ -33,13 +33,13 @@ CREATE TABLE `sys_voice_provider`
     `health_check_enabled` tinyint                                                         NOT NULL DEFAULT 1 COMMENT '健康检查开关(1:开启,参与熔断判定;0:关闭)',
     `remark`               varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '运维备注(账号归属/合同号/商务信息)',
     `status`               tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`              tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`              bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`            bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`            bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`          datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`          datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_provider_engine` (`provider_code`, `engine_type`) USING BTREE,
+    UNIQUE INDEX `uk_provider_engine` (`provider_code`, `engine_type`, `deleted`) USING BTREE,
     INDEX `idx_engine_default` (`engine_type`, `is_default`) USING BTREE,
     INDEX `idx_engine_status` (`engine_type`, `status`) USING BTREE
 ) ENGINE = InnoDB

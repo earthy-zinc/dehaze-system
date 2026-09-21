@@ -23,13 +23,13 @@ CREATE TABLE `sys_message_template`
     `channels`         json                                                           NULL DEFAULT NULL COMMENT '默认推送渠道(JSON，如{"inbox":true,"push":true,"email":false})',
     `variables`        json                                                           NULL DEFAULT NULL COMMENT '变量定义(JSON，如[{"name":"levelName","desc":"等级名称"}])',
     `status`           tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`          tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`          bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`        bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`        bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`      datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`      datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_code` (`code` ASC) USING BTREE
+    UNIQUE INDEX `uk_code` (`code` ASC, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '消息模板表'

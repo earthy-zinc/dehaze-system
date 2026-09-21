@@ -10,6 +10,9 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "收藏分页查询参数")
 public class FavoritePageQuery extends BasePageQuery {
 
+    /** python favorite.py:26 默认 20（父类 BasePageQuery 为 10） */
+    { setPageSize(20); }
+
     @Schema(description = "收藏对象类型筛选")
     private String targetType;
 

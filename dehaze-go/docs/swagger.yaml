@@ -1964,7 +1964,7 @@ paths:
       tags:
       - 角色接口
   /api/v1/roles/{roleId}/status:
-    put:
+    patch:
       consumes:
       - application/json
       description: 修改角色状态
@@ -2261,7 +2261,7 @@ paths:
       summary: 修改用户状态
       tags:
       - 用户接口
-  /api/v1/users/me:
+  /api/v1/auth/me:
     get:
       consumes:
       - application/json
@@ -2280,7 +2280,7 @@ paths:
               type: object
       summary: 获取当前登录用户信息
       tags:
-      - 用户接口
+      - 认证接口
   /api/v1/users/page:
     get:
       consumes:

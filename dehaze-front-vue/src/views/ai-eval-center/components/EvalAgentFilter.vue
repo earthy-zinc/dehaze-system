@@ -29,7 +29,7 @@
         <el-option
           v-for="dataset in evalStore.datasets"
           :key="dataset.id"
-          :label="`${dataset.name}（${datasetTypeLabel[dataset.datasetType] ?? dataset.datasetType}）`"
+          :label="`${dataset.name}（${DATASET_TYPE_META[dataset.datasetType]?.label ?? dataset.datasetType}）`"
           :value="dataset.id"
         />
       </el-select>
@@ -57,16 +57,11 @@
 <script lang="ts" setup>
 import { Refresh } from "@element-plus/icons-vue";
 import { useAdminEvalStore } from "@/store/modules/adminEval";
+import { DATASET_TYPE_META } from "../eval-meta";
 
 defineOptions({ name: "EvalAgentFilter" });
 
 const evalStore = useAdminEvalStore();
-
-const datasetTypeLabel: Record<string, string> = {
-  dev: "开发集",
-  regression: "回归集",
-  heldout: "保留集",
-};
 
 const range = ref<[string, string] | null>(null);
 const refreshing = ref(false);

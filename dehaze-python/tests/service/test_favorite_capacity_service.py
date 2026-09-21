@@ -51,6 +51,7 @@ class TestCapacityDictOverrides:
 
         await _setup_member(db, level_code="level_1")
         item = await dict_repository.get_by_type_code_and_name(db, "favorite_capacity", "vip1")
+        assert item is not None
         item.value = "888"
         await db.flush()
         # 模拟生产：运营更新字典后失效 dict:value 缓存（测试绕过 DictService 直改 DB）

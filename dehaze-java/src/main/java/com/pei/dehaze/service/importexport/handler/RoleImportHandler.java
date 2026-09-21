@@ -2,6 +2,7 @@ package com.pei.dehaze.service.importexport.handler;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.service.SysRoleService;
@@ -12,6 +13,7 @@ import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,7 @@ import java.util.Map;
 public class RoleImportHandler implements ImportHandler {
 
     private final SysRoleService roleService;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     public String getModule() {
@@ -77,6 +80,10 @@ public class RoleImportHandler implements ImportHandler {
                 if (CharSequenceUtil.isBlank(code)) {
                     throw new IllegalArgumentException("角色编码为空");
                 }
+                // 内置角色保护优先于编码存在检查（python role_import 口径）
+                if (SystemConstants.BUILTIN_ROLE_CODES.contains(code)) {
+                    throw new IllegalArgumentException("内置角色编码不可导入: " + code);
+                }
 
                 long exists = roleService.count(new LambdaQueryWrapper<SysRole>()
                         .eq(SysRole::getCode, code));
@@ -89,7 +96,7 @@ public class RoleImportHandler implements ImportHandler {
                 entity.setCode(code);
                 entity.setSort(parseInteger(row, "sort", 0));
                 entity.setStatus(parseStatus(row, "statusLabel", StatusEnum.ENABLE.getValue()));
-                entity.setDataScope(5); // 默认全部数据权限
+                entity.setDataScope(2); // 默认本部门数据权限（python role_import 同款合法默认值）
 
                 boolean saved = roleService.save(entity);
                 if (!saved) {
@@ -107,6 +114,11 @@ public class RoleImportHandler implements ImportHandler {
                             + "（全量模式已回滚所有数据）", e);
                 }
             }
+        }
+
+        if (successCount > 0) {
+            // 导入新增角色影响下拉选项，失效 role:options 缓存
+            stringRedisTemplate.delete(SystemConstants.ROLE_OPTIONS_CACHE_KEY);
         }
 
         return ImportResult.builder()

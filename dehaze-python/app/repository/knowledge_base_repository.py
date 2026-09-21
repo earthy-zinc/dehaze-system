@@ -8,9 +8,7 @@ from app.repository.base import BaseRepository, escape_like
 class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
     model = SysKnowledgeBase
 
-    async def get_by_id_include_deleted(
-        self, db: AsyncSession, id: int
-    ) -> SysKnowledgeBase | None:
+    async def get_by_id_include_deleted(self, db: AsyncSession, id: int) -> SysKnowledgeBase | None:
         """按 ID 查询（含软删，用于同名校验绕过软删过滤）"""
         stmt = select(SysKnowledgeBase).where(SysKnowledgeBase.id == id)
         stmt = stmt.execution_options(include_deleted=True)
@@ -34,10 +32,14 @@ class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
 
     async def count_private_by_owner(self, db: AsyncSession, create_by: int) -> int:
         """统计创建者的私有库数量（创建私有库时配额校验用）"""
-        stmt = select(func.count()).select_from(SysKnowledgeBase).where(
-            SysKnowledgeBase.create_by == create_by,
-            SysKnowledgeBase.visibility == "private",
-            SysKnowledgeBase.deleted == 0,
+        stmt = (
+            select(func.count())
+            .select_from(SysKnowledgeBase)
+            .where(
+                SysKnowledgeBase.create_by == create_by,
+                SysKnowledgeBase.visibility == "private",
+                SysKnowledgeBase.deleted == 0,
+            )
         )
         return (await db.execute(stmt)).scalar() or 0
 
@@ -53,15 +55,12 @@ class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
         stmt = select(SysKnowledgeBase).where(
             (SysKnowledgeBase.visibility == "public")
             | (
-                (SysKnowledgeBase.visibility == "private")
-                & (SysKnowledgeBase.create_by == user_id)
+                (SysKnowledgeBase.visibility == "private") & (SysKnowledgeBase.create_by == user_id)
             ),
             SysKnowledgeBase.deleted == 0,
         )
         if keyword:
-            stmt = stmt.where(
-                SysKnowledgeBase.name.like(f"%{escape_like(keyword)}%", escape="\\")
-            )
+            stmt = stmt.where(SysKnowledgeBase.name.like(f"%{escape_like(keyword)}%", escape="\\"))
         stmt = stmt.order_by(SysKnowledgeBase.create_time.desc())
         return await self.paginate(db, stmt, page, size)
 
@@ -75,9 +74,7 @@ class KnowledgeBaseRepository(BaseRepository[SysKnowledgeBase]):
         """分页查询全部知识库（含私有库，管理端 view=admin 只读监控用，不过滤可见性）"""
         stmt = select(SysKnowledgeBase).where(SysKnowledgeBase.deleted == 0)
         if keyword:
-            stmt = stmt.where(
-                SysKnowledgeBase.name.like(f"%{escape_like(keyword)}%", escape="\\")
-            )
+            stmt = stmt.where(SysKnowledgeBase.name.like(f"%{escape_like(keyword)}%", escape="\\"))
         stmt = stmt.order_by(SysKnowledgeBase.create_time.desc())
         return await self.paginate(db, stmt, page, size)
 

@@ -19,10 +19,9 @@ public interface IBaseEnum<T> {
     String getLabel();
 
     /**
-     * 根据值获取枚举
+     * 根据值获取枚举，无匹配（含 value 为 null）时返回 null
      */
     static <E extends Enum<E> & IBaseEnum<?>> E getEnumByValue(Object value, Class<E> clazz) {
-        Objects.requireNonNull(value);
         EnumSet<E> allEnums = EnumSet.allOf(clazz); // 获取类型下的所有枚举
         return allEnums.stream()
                 .filter(e -> ObjectUtil.equal(e.getValue(), value))

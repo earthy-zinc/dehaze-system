@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.mapper.SysRecommendationMapper;
 import com.pei.dehaze.mapper.SysRecommendationRuleMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.entity.SysRecommendation;
 import com.pei.dehaze.model.entity.SysRecommendationRule;
 import com.pei.dehaze.model.form.AnalyzeForm;
@@ -34,8 +36,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -51,6 +55,7 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     private static final int TOP_N = 3;
 
     private final SysRecommendationRuleMapper ruleMapper;
+    private final SysPredLogMapper predLogMapper;
     private final SysAlgorithmService sysAlgorithmService;
     private final PythonAlgorithmClient pythonAlgorithmClient;
 
@@ -136,7 +141,8 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
                                 vo.setEffectDescription("该算法在" + matchedScene + "场景下表现稳定");
                                 return vo;
                             })
-                            .sorted(Comparator.comparingInt(RecommendedAlgorithmVO::getMatchScore).reversed())
+                            .sorted(Comparator.comparingInt(RecommendedAlgorithmVO::getMatchScore).reversed()
+                                    .thenComparing(RecommendedAlgorithmVO::getAlgorithmId))
                             .limit(TOP_N)
                             .toList();
                 }
@@ -173,7 +179,8 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     @Transactional(rollbackFor = Exception.class)
     public IdVO submitFeedback(RecommendationFeedbackForm form) {
         SysRecommendation rec = this.getById(form.getRecommendationId());
-        if (rec == null) {
+        // 仅允许反馈本人产生的推荐记录；他人/不存在记录统一 404，不泄露存在性
+        if (rec == null || !rec.getUserId().equals(currentUserId())) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
         rec.setFeedback(form.getUseful() ? 1 : 2);
@@ -192,9 +199,24 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long updateRule(Long id, RecommendationRuleForm form) {
-        // 权重校验
-        if (form.getWeight() == null || form.getWeight() < 0 || form.getWeight() > 100) {
-            throw new BusinessException(ResultCode.BUSINESS_ERROR, "规则权重必须在0-100之间");
+        validateRuleForm(form);
+
+        if (id != null && id != 0 && ruleMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+
+        List<SysRecommendationRule> existing = ruleMapper.selectList(
+                new LambdaQueryWrapper<SysRecommendationRule>()
+                        .ne(id != null && id != 0, SysRecommendationRule::getId, id));
+        Set<Long> target = new HashSet<>(form.getAlgorithmIds());
+        for (SysRecommendationRule r : existing) {
+            if ((r.getEnabled() == null || r.getEnabled() != 1)
+                    || Objects.equals(r.getSceneType(), form.getSceneType()) == false
+                    || r.getAlgorithmIds() == null
+                    || new HashSet<>(r.getAlgorithmIds()).equals(target) == false) {
+                continue;
+            }
+            throw new BusinessException(ResultCode.DATA_EXISTS);
         }
 
         if (id == null || id == 0) {
@@ -235,6 +257,17 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         long feedbackTotal = this.baseMapper.countFeedbackTotal(start, end);
         long adoptedDistinct = this.baseMapper.countAdoptedAlgorithmDistinct(start, end);
 
+        // 采纳数：带推荐来源（recommended_by）的预测记录数
+        LambdaQueryWrapper<SysPredLog> adoptedWrapper = new LambdaQueryWrapper<SysPredLog>()
+                .isNotNull(SysPredLog::getRecommendedBy);
+        if (start != null) {
+            adoptedWrapper.ge(SysPredLog::getCreateTime, start);
+        }
+        if (end != null) {
+            adoptedWrapper.le(SysPredLog::getCreateTime, end);
+        }
+        long adoptedPredCount = predLogMapper.selectCount(adoptedWrapper);
+
         // 获取已发布算法总数
         List<SysAlgorithm> published = sysAlgorithmService.getAllAlgorithms().stream()
                 .filter(a -> a.getStatus() != null && a.getStatus() == 4)
@@ -243,22 +276,32 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
 
         RecommendationReportVO vo = new RecommendationReportVO();
         vo.setTotalRecommendations(total);
-        vo.setAdoptionRate(feedbackTotal > 0 ? (double) usefulCount / feedbackTotal : 0.0);
-        // 满意度：本阶段简化，有用即满意
+        // 采纳率口径：带推荐来源的预测记录数 / 推荐总数（用户从推荐入口真正发起去雾处理的比例）
+        vo.setAdoptionRate(total > 0 ? (double) adoptedPredCount / total : 0.0);
+        // 满意度：有用反馈占比（有用即满意）
         vo.setSatisfactionRate(feedbackTotal > 0 ? (double) usefulCount / feedbackTotal : 0.0);
         vo.setCoverageRate(publishedCount > 0 ? (double) adoptedDistinct / publishedCount : 0.0);
         // 冷启动成功率：简化计算
         vo.setColdStartSuccessRate(0.0);
 
-        // 趋势按日聚合
-        List<Map<String, Object>> dailyData = this.baseMapper.selectDailyAdoptionRate(start, end);
+        // 趋势按日聚合：当日采纳预测数 / 当日推荐总数
+        Map<String, Long> dailyAdopted = new java.util.HashMap<>();
+        for (Map<String, Object> row : predLogMapper.selectDailyRecommended(start, end)) {
+            Object dateObj = row.get("date");
+            Object cntObj = row.get("cnt");
+            if (dateObj != null && cntObj != null) {
+                dailyAdopted.put(dateObj.toString(), ((Number) cntObj).longValue());
+            }
+        }
+        List<Map<String, Object>> dailyTotals = this.baseMapper.selectDailyTotal(start, end);
         List<RecommendationReportVO.TrendItem> trend = new ArrayList<>();
-        for (Map<String, Object> row : dailyData) {
+        for (Map<String, Object> row : dailyTotals) {
             RecommendationReportVO.TrendItem item = new RecommendationReportVO.TrendItem();
             Object dateObj = row.get("date");
             item.setDate(dateObj != null ? dateObj.toString() : "");
-            Object rateObj = row.get("adoptionRate");
-            item.setAdoptionRate(rateObj != null ? ((Number) rateObj).doubleValue() : 0.0);
+            long dayTotal = row.get("total") != null ? ((Number) row.get("total")).longValue() : 0;
+            long dayAdopted = dailyAdopted.getOrDefault(item.getDate(), 0L);
+            item.setAdoptionRate(dayTotal > 0 ? (double) dayAdopted / dayTotal : 0.0);
             trend.add(item);
         }
         vo.setTrend(trend);
@@ -267,6 +310,19 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     }
 
     // ==================== 内部方法 ====================
+
+    private void validateRuleForm(RecommendationRuleForm form) {
+        if (form.getWeight() == null || form.getWeight() < 0 || form.getWeight() > 100) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "规则权重必须在0-100之间");
+        }
+        if (form.getSceneType() == null || !VALID_SCENE_TYPES.contains(form.getSceneType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR,
+                    "场景类型不合法，仅支持：" + String.join("/", VALID_SCENE_TYPES));
+        }
+        if (form.getAlgorithmIds() == null || form.getAlgorithmIds().isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "候选算法ID列表不能为空");
+        }
+    }
 
     private Long currentUserId() {
         Long userId = SecurityUtils.getUserId();
@@ -379,7 +435,7 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
             LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
             return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59);
         } catch (Exception e) {
-            return null;
+            throw new BusinessException(ResultCode.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd");
         }
     }
 }

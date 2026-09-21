@@ -23,13 +23,13 @@ CREATE TABLE `sys_notification_setting`
     `dnd_start`    time                                                          NULL DEFAULT '22:00:00' COMMENT '免打扰开始时间',
     `dnd_end`      time                                                          NULL DEFAULT '08:00:00' COMMENT '免打扰结束时间',
     `preferences`  json                                                          NULL DEFAULT NULL COMMENT '细粒度偏好(JSON，含按类型/模块的推送开关)',
-    `deleted`      tinyint                                                       NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`      bigint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`  datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`  datetime                                                      NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`    bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`    bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_user_id` (`user_id` ASC) USING BTREE
+    UNIQUE INDEX `uk_user_id` (`user_id` ASC, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = '通知偏好设置表'

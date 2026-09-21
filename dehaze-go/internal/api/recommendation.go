@@ -7,6 +7,7 @@ import (
 	recservice "github.com/earthyzinc/dehaze-go/internal/service/recommendation"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -76,7 +77,7 @@ func (api *RecommendationApi) GetAlgorithmRecommendations(c *gin.Context) {
 
 // SubmitFeedback 推荐反馈
 func (api *RecommendationApi) SubmitFeedback(c *gin.Context) {
-	_, err := security.RequireUserID(c)
+	userID, err := security.RequireUserID(c)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -88,7 +89,7 @@ func (api *RecommendationApi) SubmitFeedback(c *gin.Context) {
 		return
 	}
 
-	id, err := api.service.SubmitFeedback(c.Request.Context(), &form)
+	id, err := api.service.SubmitFeedback(c.Request.Context(), userID, &form)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -108,19 +109,30 @@ func (api *RecommendationApi) GetRules(c *gin.Context) {
 
 // UpdateRule 更新/新增推荐规则（管理员）
 func (api *RecommendationApi) UpdateRule(c *gin.Context) {
-	idStr := c.Query("id")
-	id := int64(0)
-	if idStr != "" {
-		var parseErr error
-		id, parseErr = strconv.ParseInt(idStr, 10, 64)
-		if parseErr != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "id参数格式不正确"))
-			return
-		}
-	}
-
 	var form bo.RuleForm
 	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// 更新/新增共用端点：id 优先取 query（SDK updateRule 以 params 传递），回退 body.id
+	id := form.ID
+	if id == 0 {
+		if idStr := c.Query("id"); idStr != "" {
+			var parseErr error
+			id, parseErr = strconv.ParseInt(idStr, 10, 64)
+			if parseErr != nil {
+				_ = c.Error(common.NewBizError(common.PARAM_ERROR, "id参数格式不正确"))
+				return
+			}
+		}
+	}
+	if id < 0 {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "id参数格式不正确"))
+		return
+	}
+
+	// 参数合法后再做权限校验（与 FastAPI body 校验先行顺序对齐）
+	if err := middleware.CheckPermission(c, "sys:recommendation:rule:edit"); err != nil {
 		_ = c.Error(err)
 		return
 	}

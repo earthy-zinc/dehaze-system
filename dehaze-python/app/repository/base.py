@@ -43,7 +43,9 @@ class BaseRepository(Generic[T]):
     def _get_deleted_column(self) -> ColumnElement[Any] | None:
         """获取逻辑删除列（SoftDeleteMixin 提供），未继承该 Mixin 时返回 None"""
         columns = inspect(self.model).columns
-        return columns["deleted"] if "deleted" in columns else None
+        if "deleted" in columns:
+            return columns["deleted"]
+        return None
 
     async def get_by_id(
         self,
@@ -66,14 +68,17 @@ class BaseRepository(Generic[T]):
         ids: list[int],
         *,
         with_deleted: bool = False,
+        for_update: bool = False,
     ) -> list[T]:
-        """根据 ID 列表批量查询记录"""
+        """根据 ID 列表批量查询记录（for_update 时加悲观行锁，防并发 TOCTOU）"""
         if not ids:
             return []
         id_column = self._get_id_column()
         stmt = select(self.model).where(id_column.in_(ids))
         if with_deleted:
             stmt = stmt.execution_options(include_deleted=True)
+        if for_update:
+            stmt = stmt.with_for_update()
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -211,14 +216,14 @@ class BaseRepository(Generic[T]):
         db: AsyncSession,
         ids: list[int],
     ) -> int:
-        """按 ID 列表批量软删除（将 deleted 置为 1）"""
+        """按 ID 列表批量软删除（deleted 置为行 id，释放业务唯一键位，支持删后重建）"""
         if not ids:
             return 0
         deleted_column = self._get_deleted_column()
         if deleted_column is None:
             raise AttributeError(f"{self.model.__name__} does not have 'deleted' field")
         id_column = self._get_id_column()
-        values: dict[str | ColumnElement[Any], Any] = {deleted_column: 1}
+        values: dict[str | ColumnElement[Any], Any] = {deleted_column: id_column}
         # Core update 绕过 ORM 事件，需手动填充审计字段
         if hasattr(self.model, "update_by"):
             from app.models.base import get_audit_update_values

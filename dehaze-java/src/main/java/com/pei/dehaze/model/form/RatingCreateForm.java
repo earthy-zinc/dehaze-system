@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class RatingCreateForm {
     private Integer rating;
 
     @Schema(description = "评价文字(最多500字符)")
+    @Size(max = 500, message = "评价文字不能超过500字符")
     private String comment;
 
     @Schema(description = "评价标签")

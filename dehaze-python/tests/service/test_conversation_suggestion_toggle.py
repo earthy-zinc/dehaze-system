@@ -2,12 +2,13 @@
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.schema.ai_conversation import ConversationCreate, ConversationUpdate
 from app.service.ai.service.suggestion_service import suggestion_service
 from app.service.ai_conversation_service import AiConversationService
+
+pytestmark = pytest.mark.requires_db
+
 
 _USER_ID = 1
 
@@ -39,9 +40,7 @@ class TestCreateToggle:
 
 class TestUpdateToggle:
     async def test_toggle_off(self, db):
-        created = await _service().create_conversation(
-            db, _USER_ID, ConversationCreate()
-        )
+        created = await _service().create_conversation(db, _USER_ID, ConversationCreate())
         result = await _service().update_conversation(
             db, created.id, _USER_ID, ConversationUpdate(suggestionsEnabled=False)
         )

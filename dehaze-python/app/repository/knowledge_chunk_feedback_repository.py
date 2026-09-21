@@ -73,7 +73,9 @@ class KnowledgeChunkFeedbackRepository(BaseRepository[SysKnowledgeChunkFeedback]
                 SysKnowledgeChunk.knowledge_base_id == knowledge_base_id,
                 SysKnowledgeChunkFeedback.rating == -1,
             )
-            .group_by(SysKnowledgeChunk.id, SysKnowledgeChunk.content, SysKnowledgeChunk.document_id)
+            .group_by(
+                SysKnowledgeChunk.id, SysKnowledgeChunk.content, SysKnowledgeChunk.document_id
+            )
             .order_by(func.count(SysKnowledgeChunkFeedback.id).desc(), SysKnowledgeChunk.id)
             .offset((page - 1) * size)
             .limit(size)

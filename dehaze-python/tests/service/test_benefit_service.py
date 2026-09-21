@@ -36,6 +36,7 @@ async def test_update_benefit_ai_limit_fields_read_write(db):
     await member_benefit_service.update_benefit(db, "level_1", form)
 
     benefit = await member_benefit_repository.get_by_level_code(db, "level_1")
+    assert benefit is not None
     assert benefit.ai_credits_daily == 300
     assert benefit.ai_credits_monthly == 3000
     assert benefit.multimodal_limit == 40

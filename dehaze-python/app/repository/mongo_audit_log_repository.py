@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import settings
-from app.dependencies.mongo import get_mongo_client
+from app.dependencies import mongo
 from app.models.entity.mongo_log import AuditLogDocument
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 class MongoAuditLogRepository:
     """业务操作审计日志 Repository（MongoDB 实现，白名单驱动）"""
+
+    @property
+    def _collection(self):
+        return mongo.get_mongo_client()[settings.MONGODB_DATABASE][AuditLogDocument.COLLECTION]
 
     async def create_audit(
         self,
@@ -37,11 +41,23 @@ class MongoAuditLogRepository:
             "user_agent": user_agent,
             "create_time": datetime.now(UTC),
         }
-        result = await get_mongo_client()[settings.MONGODB_DATABASE][
-            AuditLogDocument.COLLECTION
-        ].insert_one(doc)
+        result = await self._collection.insert_one(doc)
         doc["_id"] = result.inserted_id
         return doc
+
+    async def list_by_target(
+        self, target_type: str, target_id: Any, page: int, page_size: int
+    ) -> tuple[list[dict], int]:
+        """按目标对象分页查询审计日志（create_time 倒序）"""
+        filt = {"target_type": target_type, "target_id": target_id}
+        total = await self._collection.count_documents(filt)
+        cursor = (
+            self._collection.find(filt)
+            .sort("create_time", -1)
+            .skip((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return [doc async for doc in cursor], total
 
     def create_audit_async(self, **kwargs) -> None:
         """异步写入审计日志（不阻塞业务主流程，失败时记录 warn 日志）。

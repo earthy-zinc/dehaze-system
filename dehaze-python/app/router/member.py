@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import success
 from app.database import get_db
 from app.decorators import require_permission
+from app.decorators.permission import check_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.member import (
     BenefitForm,
@@ -14,6 +17,7 @@ from app.models.schema.member import (
 from app.service.member.benefit_service import member_benefit_service
 from app.service.member.growth_service import member_growth_service
 from app.service.member.member_service import member_service
+from app.service.order.order_service import order_service
 
 router = APIRouter(
     prefix="/api/v1/members",
@@ -152,7 +156,75 @@ async def get_member_detail(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
+    # 默认仅本人可见；持 member:list 权限可查任意会员（管理端列表/详情弹窗入口）
+    if user.id != user_id and not check_permission(user, "member:list"):
+        raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权查看他人会员详情")
     data = await member_service.get_member_detail(db, user_id)
+    return success(data)
+
+
+@router.get("/{user_id}/growth-logs", summary="会员成长值流水（管理端）")
+@require_permission("member:list")
+async def get_member_growth_logs(
+    user_id: int = Path(...),
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=10, ge=1, le=100),
+    changeType: str | None = Query(default=None),
+    startTime: str | None = Query(default=None),
+    endTime: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await member_growth_service.list_growth_logs(
+        db,
+        user_id,
+        {
+            "pageNum": pageNum,
+            "pageSize": pageSize,
+            "changeType": changeType,
+            "startTime": startTime,
+            "endTime": endTime,
+        },
+    )
+    return success(data)
+
+
+@router.get("/{user_id}/consumption-records", summary="会员消费记录（管理端）")
+@require_permission("member:list")
+async def get_member_consumption_records(
+    user_id: int = Path(...),
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=10, ge=1, le=100),
+    status: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await order_service.list_my(
+        db, user_id, {"pageNum": pageNum, "pageSize": pageSize, "status": status}
+    )
+    return success(data)
+
+
+@router.get("/{user_id}/benefit-usage", summary="会员权益使用明细（管理端）")
+@require_permission("member:list")
+async def get_member_benefit_usage(
+    user_id: int = Path(...),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await member_service.get_benefit_summary(db, user_id)
+    return success(data)
+
+
+@router.get("/{user_id}/operation-logs", summary="会员操作日志（管理端）")
+@require_permission("member:list")
+async def get_member_operation_logs(
+    user_id: int = Path(...),
+    pageNum: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=10, ge=1, le=100),
+    user: UserContext = Depends(get_current_user),
+):
+    data = await member_service.list_member_audit_logs(user_id, pageNum, pageSize)
     return success(data)
 
 
@@ -188,5 +260,5 @@ async def update_status(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await member_service.update_status(db, user_id, body.model_dump())
+    await member_service.update_status(db, user_id, body.model_dump(), user.id)
     return success()

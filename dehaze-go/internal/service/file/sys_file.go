@@ -1,6 +1,7 @@
 package file
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"mime/multipart"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -16,35 +18,79 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
-	"github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // FileService 文件服务
 type FileService struct {
-	fileRepo       filerepo.IFileRepository
+	fileRepo        filerepo.IFileRepository
 	storageRegistry *storage.Registry
 }
 
 // NewFileService 创建文件服务实例
 func NewFileService(fileRepo filerepo.IFileRepository, storageRegistry *storage.Registry) *FileService {
 	return &FileService{
-		fileRepo:       fileRepo,
+		fileRepo:        fileRepo,
 		storageRegistry: storageRegistry,
 	}
 }
 
+// IsImageExtension 判断扩展名是否为图片类型（仅图片做内容魔数校验）
+func IsImageExtension(ext string) bool {
+	switch ext {
+	case "jpg", "jpeg", "png", "gif", "bmp", "webp":
+		return true
+	}
+	return false
+}
+
+// ValidateImageMagicBytes 图片扩展名需与文件头魔数一致，防止伪装扩展名上传恶意内容
+// head 为文件头前 12 字节（不足 12 字节文件则全部内容）
+func ValidateImageMagicBytes(ext string, head []byte) error {
+	ok := false
+	switch ext {
+	case "jpg", "jpeg":
+		ok = bytes.HasPrefix(head, []byte{0xFF, 0xD8, 0xFF})
+	case "png":
+		ok = bytes.HasPrefix(head, []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'})
+	case "gif":
+		ok = bytes.HasPrefix(head, []byte("GIF87a")) || bytes.HasPrefix(head, []byte("GIF89a"))
+	case "bmp":
+		ok = bytes.HasPrefix(head, []byte("BM"))
+	case "webp":
+		ok = bytes.HasPrefix(head, []byte("RIFF")) && len(head) >= 12 && bytes.Equal(head[8:12], []byte("WEBP"))
+	default:
+		return nil
+	}
+	if !ok {
+		return common.NewBizError(common.FILE_TYPE_NOT_SUPPORTED, "文件内容与图片类型不符")
+	}
+	return nil
+}
+
 // UploadFile 上传文件（计算 MD5 → 去重 → 物理存储 → 写入元数据）
 // reader: 已打开的文件流（由 API 层计算 MD5 后传入，reader 内部已定位到开头）
-func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, reader io.Reader, md5Hash string) (model.SysFile, error) {
+// createBy: 上传者用户 ID（归属校验依据）
+func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, reader io.Reader, md5Hash string, createBy int64) (model.SysFile, error) {
 	// 1. 构建 objectName
 	now := time.Now()
 	extension := filepath.Ext(fileHeader.Filename)
 	uploadPath := fmt.Sprintf("upload/%s", now.Format("20060102"))
 	objectName := fmt.Sprintf("%s/%s%s", uploadPath, md5Hash, extension)
 
-	// 2. MD5 去重判断（仅查未删除记录）
+	// 2. 图片扩展名做文件头魔数校验（防伪装扩展名），校验后把预读字节拼回流
+	ext := strings.ToLower(strings.TrimPrefix(extension, "."))
+	if IsImageExtension(ext) {
+		head := make([]byte, 12)
+		n, _ := io.ReadFull(reader, head)
+		if err := ValidateImageMagicBytes(ext, head[:n]); err != nil {
+			return model.SysFile{}, err
+		}
+		reader = io.MultiReader(bytes.NewReader(head[:n]), reader)
+	}
+
+	// 3. MD5 去重判断（仅查未删除记录）
 	existingFile, err := s.fileRepo.FindByMD5(ctx, md5Hash)
 	if err == nil && existingFile != nil {
 		logger.Debug("文件秒传命中", zap.String("md5", md5Hash), zap.Int64("fileID", existingFile.ID))
@@ -63,15 +109,15 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 		return model.SysFile{}, common.WrapBizError(common.FILE_UPLOAD_FAILED, "文件存储失败", err)
 	}
 
-	// 4. 写入元数据
+	// 4. 写入元数据（create_by 记录上传者，归属校验依据）
 	fileSize := fileHeader.Size
 	sysFile := model.SysFile{
-		BaseModel:  model.BaseModel{CreatedAt: now, UpdatedAt: now},
-		Type:       utils.StringPtr(extension),
+		BaseModel:  model.BaseModel{CreatedAt: now, UpdatedAt: now, CreateBy: createBy, UpdateBy: createBy},
+		Type:       utils.StringPtr(ext),
 		Name:       fileHeader.Filename,
 		ObjectName: objectName,
 		Storage:    storageType,
-		Size:       humanize.Bytes(uint64(fileSize)),
+		Size:       convertSize(fileSize),
 		SizeBytes:  &fileSize,
 		MD5:        md5Hash,
 	}
@@ -83,6 +129,21 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 
 	logger.Debug("文件上传成功", zap.Int64("fileID", sysFile.ID), zap.String("md5", md5Hash))
 	return sysFile, nil
+}
+
+// convertSize 文件尺寸格式化（python utils/file.convert_size 同口径：0 → "0B"，1024 进制保留两位）
+func convertSize(sizeBytes int64) string {
+	if sizeBytes == 0 {
+		return "0B"
+	}
+	units := []string{"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}
+	i := 0
+	val := float64(sizeBytes)
+	for val >= 1024 && i < len(units)-1 {
+		val /= 1024
+		i++
+	}
+	return fmt.Sprintf("%.2g %s", val, units[i])
 }
 
 // CheckFile 校验文件是否存在
@@ -102,7 +163,7 @@ func (s *FileService) DeleteFile(ctx context.Context, fileId int64) (err error) 
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
+			return common.NewBizError(common.FILE_NOT_FOUND, "文件不存在")
 		}
 		return common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
 	}
@@ -154,9 +215,9 @@ func (s *FileService) GetFilesByIdsMap(ctx context.Context, fileIDs []int64) (ma
 	return result, nil
 }
 
-// GetPage 分页查询文件列表
-func (s *FileService) GetPage(ctx context.Context, pageNum, pageSize int, keywords string) (*common.PageResult, error) {
-	files, total, err := s.fileRepo.FindPage(ctx, pageNum, pageSize, keywords)
+// GetPage 分页查询文件列表（ownerID 非 nil 时仅返回该用户上传的文件，管理员传 nil 查全量）
+func (s *FileService) GetPage(ctx context.Context, pageNum, pageSize int, keywords string, ownerID *int64) (*common.PageResult, error) {
+	files, total, err := s.fileRepo.FindPage(ctx, pageNum, pageSize, keywords, ownerID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询文件列表失败", err)
 	}
@@ -178,7 +239,7 @@ func (s *FileService) DownloadFile(ctx context.Context, objectName string) (io.R
 	file, err := s.fileRepo.FindByObjectName(ctx, objectName)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
+			return nil, nil, common.NewBizError(common.FILE_NOT_FOUND, "文件不存在")
 		}
 		return nil, nil, common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
 	}

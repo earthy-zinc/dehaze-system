@@ -6,7 +6,7 @@ resolve_model_id 映射为模型 ID）。延迟导入 funasr_client / funasr_eng
 控制启动成本；engine_status 透传 funasr_engine.engine_status()。
 """
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from app.infrastructure.voice.provider.base import ASRProvider, ASRStreamSession
 
@@ -35,7 +35,8 @@ class LocalAsrProvider(ASRProvider):
         self._models: dict[str, str] | None = None  # {model_type: 逻辑模型名}
 
     async def _resolve_models(self) -> dict[str, str]:
-        """懒加载并缓存本 Provider 启用的 ASR 模型：{stream/offline: 逻辑模型名}，并注入引擎模型注册表"""
+        """懒加载并缓存本 Provider 启用的 ASR 模型：{stream/offline: 逻辑模型名}，
+        并注入引擎模型注册表"""
         if self._models is None:
             from app.database import get_db_session
             from app.infrastructure.voice import funasr_engine
@@ -43,10 +44,17 @@ class LocalAsrProvider(ASRProvider):
 
             async with get_db_session() as db:
                 models = await voice_model_repository.list_enabled(db, "asr")
-            # 注册表化：逻辑模型名 → ModelScope ID 由 sys_voice_model 决定，注入引擎替代硬编码 _MODEL_IDS
-            funasr_engine.configure_models(
-                {m.model_id: (m.params or {}).get("model_id") for m in models}
-            )
+            # 注册表化：逻辑模型名 → ModelScope ID 由 sys_voice_model 决定，
+            # 注入引擎替代硬编码 _MODEL_IDS
+            model_ids: dict[str, str] = {}
+            for m in models:
+                model_id = (m.params or {}).get("model_id")
+                if not isinstance(model_id, str):
+                    raise funasr_engine.FunASREngineError(
+                        f"ASR 模型 {m.model_id} 缺少 model_id 配置"
+                    )
+                model_ids[m.model_id] = model_id
+            funasr_engine.configure_models(model_ids)
             self._models = {m.model_type: m.model_id for m in models}
         return self._models
 

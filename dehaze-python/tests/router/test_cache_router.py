@@ -85,7 +85,7 @@ async def test_clear_all_default_clears_business_caches(cache_client):
     client, svc, redis = cache_client
     await svc.set("menu:routes", "[]", ttl=600)
     await svc.set("role:perms:ADMIN", "[]", ttl=600)
-    await svc.set("dict:options:gender", "[]", ttl=600)
+    await svc.set("dict:data:gender", "[]", ttl=600)
     await svc.set("session:abc", "keep-session", ttl=600)
 
     resp = await client.post("/api/v1/cache/clear", json={})
@@ -93,7 +93,7 @@ async def test_clear_all_default_clears_business_caches(cache_client):
     targets = {item["target"]: item["deleted"] for item in resp.json()["data"]}
     assert targets["menu:routes"] == 1
     assert targets["role:perms:*"] == 1
-    assert targets["dict:options:*"] == 1
+    assert targets["dict:data:*"] == 1
     # session 等基础设施 key 不在业务缓存清单内，不受影响
     assert await redis.get("session:abc") == "keep-session"
     assert svc._l1.get("menu:routes") is None

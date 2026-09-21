@@ -13,7 +13,7 @@ type IPredLogRepository interface {
 	Create(ctx context.Context, log *model.SysPredLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysPredLog, error)
 	FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error)
-	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
+	FindPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
 	GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error)
 	GetDailyStats(ctx context.Context, algorithmID int64, startTime time.Time) ([]DailyStat, error)
 	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error
@@ -24,6 +24,8 @@ type IPredLogRepository interface {
 	CountByAlgorithmID(ctx context.Context, algorithmID int64) (int64, error)
 	// ExistsByID 检查预测记录是否存在
 	ExistsByID(ctx context.Context, id int64) (bool, error)
+	// MarkCancelled 将"处理中"任务置为已取消，返回是否真的流转成功（带 processing 前置，与其它终态写入同口径）
+	MarkCancelled(ctx context.Context, id int64) (bool, error)
 	// FindSampleImagesByAlgorithm 查询算法最近完成的样例效果图
 	FindSampleImagesByAlgorithm(ctx context.Context, algorithmID int64, limit int) ([]model.SysPredLog, error)
 	// GetAlgorithmPredStats 获取算法预测统计（平均耗时、总数、成功数）
@@ -79,12 +81,16 @@ func (r *predLogRepository) FindByAlgorithmAndMD5(ctx context.Context, algorithm
 	return &log, nil
 }
 
-func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error) {
+func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error) {
 	var list []model.SysPredLog
 	var total int64
 	query := r.db.WithContext(ctx).Model(&model.SysPredLog{})
 	if algorithmID > 0 {
 		query = query.Where("algorithm_id = ?", algorithmID)
+	}
+	if userID > 0 {
+		// 归属过滤：仅返回该用户的预测日志
+		query = query.Where("create_by = ?", userID)
 	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -96,9 +102,11 @@ func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, pag
 	return list, total, nil
 }
 
+// UpdateResult 将日志从 processing 流转为 completed 并写入结果。
+// 带 processing 前置条件，终态不可被覆盖（防取消/失败后结果复活）。
 func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error {
 	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
-		Where("id = ?", id).
+		Where("id = ? AND status = ?", id, model.LogStatusProcessing).
 		Updates(map[string]any{
 			"status":   status,
 			"pred_url": predURL,
@@ -107,6 +115,8 @@ func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status m
 		}).Error
 }
 
+// UpdateStatus 将日志从 processing 流转为终态并写入错误信息。
+// 带 processing 前置条件，保证终态写入不被并发覆盖。
 func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error {
 	updates := map[string]any{
 		"status": status,
@@ -116,8 +126,22 @@ func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status m
 		updates["error_message"] = errorMessage
 	}
 	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
-		Where("id = ?", id).
+		Where("id = ? AND status = ?", id, model.LogStatusProcessing).
 		Updates(updates).Error
+}
+
+// MarkCancelled 将"处理中"任务置为已取消（python `cancel_task` 的终态写入）。
+// 带 processing 前置：并发取消只有一个生效，调用方据此决定是否回滚配额，防止双重回滚；
+// 同时该前置保证已被取消的任务不会被后续异步推理结果覆盖（UpdateResult 同样带 processing 前置）。
+func (r *predLogRepository) MarkCancelled(ctx context.Context, id int64) (bool, error) {
+	res := r.db.WithContext(ctx).Model(&model.SysPredLog{}).
+		Where("id = ? AND status = ?", id, model.LogStatusProcessing).
+		Updates(map[string]any{
+			"status":        model.LogStatusCancelled,
+			"error_message": "任务已取消",
+			"time":          0,
+		})
+	return res.RowsAffected > 0, res.Error
 }
 
 func (r *predLogRepository) MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error) {

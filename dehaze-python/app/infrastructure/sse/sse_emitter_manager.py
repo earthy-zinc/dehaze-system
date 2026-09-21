@@ -26,7 +26,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from app.config import settings
-from app.core.code import ResultCode
+from app.core.exceptions import public_error
 from app.dependencies.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -75,8 +75,15 @@ class SseEmitterManager:
         await redis.rpush(key, json.dumps(event, ensure_ascii=False))  # type: ignore
         await redis.expire(key, _STREAM_CACHE_TTL)
 
-    async def _get_cached_events(self, stream_session_id: str, last_event_id: int) -> list[dict]:
-        """从 Redis 读取断点（last_event_id）之后的事件"""
+    async def _get_cached_events(
+        self, stream_session_id: str, last_event_id: int
+    ) -> tuple[list[dict], bool]:
+        """从 Redis 读取断点（last_event_id）之后的事件，并返回缓存是否存在。
+
+        why: 重连需区分"流在跑但暂无新事件"（继续挂队列续流）与"streamSessionId
+        已过期/从未存在"（应立即结束）；仅看"断点后事件数"两者都是空列表，
+        后者会挂队列等到空闲超时，客户端只拿到超时错误。
+        """
         redis = await get_redis_client()
         key = f"{_STREAM_CACHE_PREFIX}{stream_session_id}"
         raw_events = await redis.lrange(key, 0, -1)  # type: ignore
@@ -84,11 +91,19 @@ class SseEmitterManager:
         for raw in raw_events:
             try:
                 event = json.loads(raw)
-            except (TypeError, json.JSONDecodeError):
+            except (TypeError, json.JSONDecodeError) as e:
+                # 单条历史事件损坏不应中断整段重放（契约：跳过），但必须留痕：
+                # 静默跳过后客户端重连将莫名丢事件，且无从排查
+                logger.warning(
+                    "SSE 历史事件解析失败，跳过 [stream_session_id=%s]: %s",
+                    stream_session_id,
+                    e,
+                    exc_info=True,
+                )
                 continue
             if event.get("id", 0) > last_event_id:
                 events.append(event)
-        return events
+        return events, bool(raw_events)
 
     # ── 事件推送 ────────────────────────────────────────
 
@@ -100,6 +115,26 @@ class SseEmitterManager:
         queue = self._queues.get(stream_session_id)
         if queue is not None:
             await queue.put(event)
+
+    async def send_error(self, stream_session_id: str, error: Exception) -> None:
+        """推送 error 事件并补 message.end(error) 收尾（异常→客户端载荷的唯一出口）。
+
+        补 message.end 保证客户端总能走统一的完成处理逻辑，不因缺终结事件而挂起。
+        """
+        await self.send_event(stream_session_id, "error", public_error(error))
+        await self.send_event(
+            stream_session_id,
+            "message.end",
+            {
+                "stopReason": "error",
+                "usage": {
+                    "inputTokens": 0,
+                    "outputTokens": 0,
+                    "cachedInputTokens": 0,
+                    "credits": 0,
+                },
+            },
+        )
 
     async def _cache_terminal(self, stream_session_id: str) -> None:
         """在 Redis 缓存追加标准终结事件 message.end（stopReason=canceled），
@@ -158,7 +193,7 @@ class SseEmitterManager:
     async def _stream_from_queue(
         self, stream_session_id: str, queue: asyncio.Queue
     ) -> AsyncGenerator[str, None]:
-        """从队列读取事件并推送，空闲时发送心跳，超时则推送 error 并结束"""
+        """从队列读取事件并推送，空闲时发送心跳，空闲超时则结束本条连接"""
         heartbeat = settings.AI_MESSAGE_HEARTBEAT_INTERVAL
         timeout = settings.AI_MESSAGE_STREAM_TIMEOUT
         loop = asyncio.get_running_loop()
@@ -168,30 +203,17 @@ class SseEmitterManager:
                 event = await asyncio.wait_for(queue.get(), timeout=heartbeat)
             except TimeoutError:
                 if loop.time() - last_activity >= timeout:
-                    await self.send_event(
-                        stream_session_id,
-                        "error",
-                        {
-                            "code": ResultCode.SYSTEM_EXECUTION_TIMEOUT.code,
-                            "message": ResultCode.SYSTEM_EXECUTION_TIMEOUT.msg,
-                        },
-                    )
-                    # error 后补 message.end 收尾，保证客户端总能走到统一完成处理
-                    await self.send_event(
-                        stream_session_id,
-                        "message.end",
-                        {
-                            "stopReason": "error",
-                            "usage": {
-                                "inputTokens": 0,
-                                "outputTokens": 0,
-                                "cachedInputTokens": 0,
-                                "credits": 0,
-                            },
-                        },
-                    )
+                    # 空闲超时只结束本条连接：执行与连接解耦，后台推理继续跑完并正常
+                    # 落库计费，用户重连（Last-Event-ID 重放）或刷新消息历史即可看到
+                    # 完整回复。不推 error 事件——连接空闲不代表推理失败，推 error 会让
+                    # 客户端把仍在生成的消息误置为失败态。
+                    logger.warning("SSE 流空闲超时，结束连接: stream=%s", stream_session_id)
                     break
-                await self.send_event(stream_session_id, "ping", {})
+                # 心跳直连下发，不走 send_event：否则 ping 会回流进本队列，既被当成
+                # 业务事件重复推送，又不断刷新 last_activity 使空闲超时永不触发。
+                # 心跳无需进缓存（重连重放不要心跳）。
+                event_id = await self._next_event_id(stream_session_id)
+                yield self._format_event({"id": event_id, "event": "ping", "data": {}})
                 continue
             if event is _STREAM_END:
                 break
@@ -229,13 +251,30 @@ class SseEmitterManager:
     async def reconnect(
         self, stream_session_id: str, last_event_id: int
     ) -> AsyncGenerator[str, None]:
-        """断线重连：先重放 Redis 缓存中断点之后的事件，再继续拉取新事件"""
-        for event in await self._get_cached_events(stream_session_id, last_event_id):
-            yield self._format_event(event)
-        queue = self._queues.get(stream_session_id)
-        if queue is not None:
+        """断线重连：先注册队列再重放 Redis 缓存中断点之后的事件，然后续流。
+
+        顺序不可颠倒：重放是多次 await，期间推理可能已推送新事件，队列未建立时
+        这些事件只进缓存而无活跃连接消费，重连会直接结束并漏掉这段事件。
+        """
+        created = stream_session_id not in self._queues
+        await self.register_stream(stream_session_id)
+        queue = self._queues[stream_session_id]
+        try:
+            events, has_cache = await self._get_cached_events(stream_session_id, last_event_id)
+            for event in events:
+                yield self._format_event(event)
+            # 重放内容已含终结事件 → 流已结束（含停止时追加的终结事件），无需再挂队列
+            if any(event.get("event") == "message.end" for event in events):
+                return
+            # 无缓存 + 本次新建队列（无活跃流）→ streamSessionId 已过期或从未存在：
+            # 立即结束连接，否则挂队列空等到空闲超时，客户端只能拿到超时错误
+            if created and not has_cache:
+                return
             async for chunk in self._stream_from_queue(stream_session_id, queue):
                 yield chunk
+        finally:
+            if created:
+                self._queues.pop(stream_session_id, None)
 
 
 sse_emitter_manager = SseEmitterManager()

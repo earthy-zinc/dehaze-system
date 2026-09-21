@@ -33,7 +33,11 @@ export interface DictTypePageVO {
   /**
    * 状态(1:启用;0:禁用)
    */
-  status?: number;
+  status: number;
+  /**
+   * 是否系统预置类型(预置类型不可删除)
+   */
+  isPreset: boolean;
   /**
    * 备注
    */
@@ -73,6 +77,10 @@ export interface DictTypeForm {
    * 备注
    */
   remark?: string;
+  /**
+   * 是否系统预置类型（预置类型不可删除，仅表单查询返回）
+   */
+  isPreset?: boolean;
 }
 
 /**
@@ -100,31 +108,31 @@ export interface DictPageVO {
   /**
    * 字典ID
    */
-  id?: number;
+  id: number;
   /**
    * 字典名称
    */
-  name?: string;
+  name: string;
   /**
    * 字典值
    */
-  value?: string;
+  value: string;
   /**
    * 类型编码
    */
-  typeCode?: string;
+  typeCode: string;
   /**
    * 是否默认(1:是;0:否)
    */
-  defaulted?: number;
+  defaulted: number;
   /**
    * 排序
    */
-  sort?: number;
+  sort: number;
   /**
    * 状态(1:启用;0:禁用)
    */
-  status?: number;
+  status: number;
   /**
    * 备注
    */

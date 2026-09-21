@@ -1,5 +1,4 @@
 from sqlalchemy import BigInteger, Integer
-from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, SoftDeleteMixin
@@ -19,6 +18,4 @@ class SysBalance(BaseModel, SoftDeleteMixin):
     frozen_balance: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment="冻结余额(分)"
     )
-    version: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=0, comment="乐观锁版本号"
-    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, comment="乐观锁版本号")

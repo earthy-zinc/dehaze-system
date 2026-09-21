@@ -33,7 +33,7 @@ CREATE TABLE `sys_ai_memory`
     `source`          varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'conversation' COMMENT '来源(conversation:对话提取;feedback:反馈提取;reflection:反思整合;manual:手动录入)',
     `status`          tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
     `archived`        tinyint                                                        NOT NULL DEFAULT 0 COMMENT '是否被遗忘策略归档(0:未归档;1:已归档,不再注入但保留记录)',
-    `deleted`         tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`         bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `delete_time`     datetime                                                       NULL DEFAULT NULL COMMENT '软删时间(30天恢复窗口判定,超期由定时任务物理清理)',
     `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',

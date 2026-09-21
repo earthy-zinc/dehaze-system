@@ -1,7 +1,7 @@
 <!-- 计费明细表：用户端(scope=self)与管理端(scope=userId)共用 -->
 <script lang="ts" setup>
 import type { BillingRecordVO, BillingType } from "dehaze-sdk-js";
-import { computed, ref, watch } from "vue";
+import { computed, ref, shallowRef, watch } from "vue";
 import BillTypeFilter, { BILL_TYPE_OPTIONS } from "./BillTypeFilter.vue";
 import RecordStatusTags from "./RecordStatusTags.vue";
 import type { BillingDataScope } from "@/store/modules/billingData";
@@ -21,7 +21,7 @@ const emit = defineEmits<{
   (e: "refund", record: BillingRecordVO): void;
 }>();
 
-const store = useBillingDataStore();
+const store = shallowRef(useBillingDataStore(props.scope));
 
 const BILL_TYPE_LABELS = new Map(
   BILL_TYPE_OPTIONS.map((option) => [option.value, option.label])
@@ -30,11 +30,16 @@ const BILL_TYPE_LABELS = new Map(
 const dateRange = ref<[string, string] | null>(null);
 
 const billType = computed<BillingType | "">({
-  get: () => store.recordQuery.billType ?? "",
+  get: () => store.value.recordQuery.billType ?? "",
   set: (value) => {
-    store.recordQuery.billType = value || undefined;
+    store.value.recordQuery.billType = value || undefined;
   },
 });
+
+/** 展示用户所选模型：降级时以 actualModel（用户原选）为主、实际模型附注 */
+function displayModel(record: BillingRecordVO) {
+  return record.actualModel ?? record.model;
+}
 
 /** 实扣相对预估：偏高说明实际消耗超出预估值，偏低为预扣多退少补的正常结果 */
 function deductTag(record: BillingRecordVO) {
@@ -56,33 +61,34 @@ function canRefund(record: BillingRecordVO) {
 }
 
 function handleFilterChange() {
-  store.recordQuery.pageNum = 1;
-  store.fetchRecords();
+  store.value.recordQuery.pageNum = 1;
+  store.value.fetchRecords();
 }
 
 function handleDateRangeChange(value: [string, string] | null) {
-  store.recordQuery.dateStart = value?.[0];
-  store.recordQuery.dateEnd = value?.[1];
+  store.value.recordQuery.dateStart = value?.[0];
+  store.value.recordQuery.dateEnd = value?.[1];
   handleFilterChange();
 }
 
 function handleSizeChange(size: number) {
-  store.recordQuery.pageSize = size;
-  store.recordQuery.pageNum = 1;
-  store.fetchRecords();
+  store.value.recordQuery.pageSize = size;
+  store.value.recordQuery.pageNum = 1;
+  store.value.fetchRecords();
 }
 
 function handlePageChange(page: number) {
-  store.recordQuery.pageNum = page;
-  store.fetchRecords();
+  store.value.recordQuery.pageNum = page;
+  store.value.fetchRecords();
 }
 
 watch(
   () => props.scope,
   (next) => {
-    store.initScope(next);
-    store.recordQuery.pageNum = 1;
-    store.fetchRecords();
+    store.value = useBillingDataStore(next);
+    // 新实例筛选条件为空，本地日期筛选需同步复位
+    dateRange.value = null;
+    store.value.fetchRecords();
   },
   { immediate: true }
 );
@@ -130,12 +136,12 @@ watch(
       </el-table-column>
       <el-table-column label="模型" min-width="160" show-overflow-tooltip>
         <template #default="{ row }">
-          <div>{{ (row as BillingRecordVO).model }}</div>
+          <div>{{ displayModel(row as BillingRecordVO) }}</div>
           <div
             v-if="(row as BillingRecordVO).actualModel"
             class="text-xs text-[#e6a23c]"
           >
-            实际：{{ (row as BillingRecordVO).actualModel }}
+            实际：{{ (row as BillingRecordVO).model }}
           </div>
         </template>
       </el-table-column>

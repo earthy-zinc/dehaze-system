@@ -22,17 +22,28 @@ class SysUser(BaseModel, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     username: Mapped[str | None] = mapped_column(String(64), comment="用户名")
     nickname: Mapped[str | None] = mapped_column(String(64), comment="昵称")
-    gender: Mapped[int | None] = mapped_column(mysql_types.TINYINT, default=1, comment="性别((1:男;2:女;0:未知))")
+    gender: Mapped[int | None] = mapped_column(
+        mysql_types.TINYINT, default=1, comment="性别((1:男;2:女;0:未知))"
+    )
     password: Mapped[str | None] = mapped_column(String(100), comment="密码")
     dept_id: Mapped[int | None] = mapped_column(BigInteger, comment="部门ID")
     avatar: Mapped[str | None] = mapped_column(Text, comment="用户头像")
     mobile: Mapped[str | None] = mapped_column(String(20), comment="联系方式")
     status: Mapped[int | None] = mapped_column(
-        mysql_types.TINYINT, default=1, comment="用户状态((1:正常"
+        mysql_types.TINYINT, default=1, comment="用户状态(1:正常;0:禁用)"
     )
     email: Mapped[str | None] = mapped_column(String(128), comment="用户邮箱")
+    user_type: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="personal",
+        comment="用户类型(personal:个人;enterprise:企业)",
+    )
     credits_balance: Mapped[Decimal] = mapped_column(
-        DECIMAL(12, 2), nullable=False, default=Decimal("0.00"), comment="AI积分余额(充值/赠送增加;扣减减少)"
+        DECIMAL(12, 2),
+        nullable=False,
+        default=Decimal("0.00"),
+        comment="AI积分余额(充值/赠送增加;扣减减少)",
     )
     credits_version: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="AI积分余额乐观锁版本号"

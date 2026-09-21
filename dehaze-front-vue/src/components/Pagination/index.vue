@@ -59,7 +59,7 @@ const currentPage = useVModel(props, "page", emit);
 const pageSize = useVModel(props, "limit", emit);
 
 function handleSizeChange(val: number) {
-  emit("pagination", { page: currentPage, limit: val });
+  emit("pagination", { page: currentPage.value, limit: val });
 }
 
 function handleCurrentChange(val: number) {

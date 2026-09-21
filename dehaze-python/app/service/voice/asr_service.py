@@ -26,6 +26,7 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
+from app.dependencies.auth import SESSION_PREFIX
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.voice.provider.registry import voice_engine_registry
 from app.service.voice.hotword_service import hotword_service
@@ -44,6 +45,21 @@ _BYTES_PER_SECOND = 16000 * 2
 _MAX_BLOCK_BYTES = 10 * 1024 * 1024
 # 计费预校验预估秒数（流式音频时长不可预知，按起步秒预估）
 _ESTIMATE_SECONDS = 10
+
+# 常见非 PCM 二进制格式魔数（伪装扩展名文件拒绝：图片/文档/压缩包/可执行/MP3/OGG/FLAC）
+_BINARY_MAGICS = (
+    b"\x89PNG",
+    b"\xff\xd8\xff",
+    b"GIF8",
+    b"%PDF",
+    b"PK\x03\x04",
+    b"MZ",
+    b"\x1f\x8b",
+    b"\x7fELF",
+    b"ID3",
+    b"OggS",
+    b"fLaC",
+)
 
 
 class AsrService:
@@ -70,8 +86,8 @@ class AsrService:
             return None
         return json.loads(raw)
 
-    async def _save_session(self, 
-        redis: Redis, session_id: str, data: dict[str, Any], *, ttl: int | None = _SESSION_TTL
+    async def _save_session(
+        self, redis: Redis, session_id: str, data: dict[str, Any], *, ttl: int | None = _SESSION_TTL
     ) -> None:
         await redis.set(
             self._session_key(session_id),
@@ -90,8 +106,8 @@ class AsrService:
 
     # ==================== 创建流式会话 ====================
 
-    async def create_stream_session(self, 
-        redis: Redis, db: AsyncSession, user_id: int, model: str | None
+    async def create_stream_session(
+        self, redis: Redis, db: AsyncSession, user_id: int, model: str | None
     ) -> str:
         """创建流式 ASR 会话：并发校验、计费预校验、注册热词，返回 sessionId
 
@@ -154,8 +170,8 @@ class AsrService:
 
     # ==================== 离线 ASR ====================
 
-    async def offline_asr(self, 
-        redis: Redis, db: AsyncSession, user_id: int, audio: bytes, model: str | None
+    async def offline_asr(
+        self, redis: Redis, db: AsyncSession, user_id: int, audio: bytes, model: str | None
     ) -> dict[str, str]:
         """离线识别完整音频（multipart 直传），处理完即弃不落盘，完成时按秒实扣。"""
         self._validate_audio(audio)
@@ -191,13 +207,19 @@ class AsrService:
         return {"sessionId": session_id, "text": text}
 
     def _validate_audio(self, audio: bytes) -> None:
-        """校验离线音频：仅接受 WAV（RIFF 魔数）/PCM；空文件或超限抛参数错误。"""
+        """校验离线音频：仅接受 WAV（RIFF 魔数）/PCM；空文件/超限/伪装文件抛参数错误。"""
         if not audio:
             raise BusinessException(ResultCode.PARAM_ERROR, "音频文件为空")
         if len(audio) > settings.MAX_UPLOAD_SIZE:
             raise BusinessException(ResultCode.PARAM_ERROR, "音频文件大小超限")
-        # WAV 必须以 RIFF 开头；PCM 为纯裸流（无头），通过字节数 >0 兜底
-        if audio[:4] != b"RIFF" and len(audio) < _BYTES_PER_SECOND // 10:
+        if audio[:4] == b"RIFF":
+            return
+        # PCM 为纯裸流（无头），无法校验魔数；但常见二进制格式（伪装扩展名的
+        # 图片/文档/压缩包/其他容器音频）可按魔数直接拒绝，避免垃圾输入占用
+        # 推理线程池并被误扣费。16bit 采样字节数必须为偶数。
+        if any(audio.startswith(magic) for magic in _BINARY_MAGICS) or len(audio) % 2 != 0:
+            raise BusinessException(ResultCode.PARAM_ERROR, "仅支持 WAV/PCM 音频格式")
+        if len(audio) < _BYTES_PER_SECOND // 10:
             raise BusinessException(ResultCode.PARAM_ERROR, "仅支持 WAV/PCM 音频格式")
 
     # ==================== 流式 WebSocket 会话 ====================
@@ -206,19 +228,30 @@ class AsrService:
         """流式 ASR WebSocket 会话编排：鉴权、双向代理、超时/时长控制、计费与状态落库。
 
         协议（前端 ↔ 业务后端）：
+        - 握手：URL 携带 sessionId 与登录会话凭证 sid，建立时校验登录态与
+          会话归属（后端实现 §6.1），失败以 4001 关闭
         - 上行：二进制 PCM（16kHz/16bit/mono）；文本 "EOS" 结束
         - 下行：JSON {"text": 增量, "isFinal": bool}
         """
         try:
             redis = await get_redis_client()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.error("获取 Redis 失败: %s", e)
             await self._reject(websocket, "服务不可用，请稍后重试")
+            return
+
+        # WebSocket 建连鉴权：校验登录态并确认与 ASR 会话归属一致
+        sid_user_id = await self._resolve_sid_user_id(redis, websocket.query_params.get("sid"))
+        if sid_user_id is None:
+            await self._reject(websocket, "登录态无效或已过期，请重新登录后再试")
             return
 
         session = await self._load_session(redis, session_id)
         if not session:
             await self._reject(websocket, "ASR 会话不存在或已过期")
+            return
+        if int(session["user_id"]) != sid_user_id:
+            await self._reject(websocket, "无权访问该 ASR 会话")
             return
 
         user_id = int(session["user_id"])
@@ -240,7 +273,7 @@ class AsrService:
         except asyncio.CancelledError:
             logger.info("流式 ASR 会话被取消 session=%s", session_id)
             raise
-        except Exception as e:  # noqa: BLE001 - 异常需兜底回收资源并标记失败
+        except Exception as e:
             logger.error("流式 ASR 会话异常 session=%s error=%s", session_id, e, exc_info=True)
             await self._fail_session(redis, session_id)
         finally:
@@ -253,10 +286,22 @@ class AsrService:
             await websocket.accept()
             await websocket.send_json({"type": "error", "message": message})
             await websocket.close(code=4001)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("拒绝 WebSocket 连接异常: %s", e)
 
-    async def _run_stream(self, 
+    async def _resolve_sid_user_id(self, redis: Redis, sid: str | None) -> int | None:
+        """由登录会话凭证（sid）解析用户 ID，凭证缺失/会话过期返回 None。"""
+        if not sid:
+            return None
+        raw = await redis.get(SESSION_PREFIX + sid)
+        if not raw:
+            return None
+        login_session = json.loads(raw.decode() if isinstance(raw, bytes) else raw)
+        user_id = login_session.get("userId")
+        return int(user_id) if user_id else None
+
+    async def _run_stream(
+        self,
         websocket: WebSocket,
         redis: Redis,
         session_id: str,
@@ -322,7 +367,7 @@ class AsrService:
                         logger.info("流式 ASR 达最大时长自动结束 session=%s", session_id)
                         await funasr.send_eos()
                         break
-                elif "text" in data and data["text"]:
+                elif data.get("text"):
                     if data["text"].strip() == "EOS":
                         await funasr.send_eos()
                         break
@@ -341,8 +386,8 @@ class AsrService:
         audio_seconds = math.ceil(total_bytes / _BYTES_PER_SECOND)
         await self._complete_session(redis, session_id, user_id, final_text, audio_seconds)
 
-    async def _complete_session(self, 
-        redis: Redis, session_id: str, user_id: int, text: str, audio_seconds: int
+    async def _complete_session(
+        self, redis: Redis, session_id: str, user_id: int, text: str, audio_seconds: int
     ) -> None:
         """会话正常结束：落库状态（completed）+ 按秒实扣。"""
         session = await self._load_session(redis, session_id) or {}
@@ -366,7 +411,7 @@ class AsrService:
                     await self.voice_billing_service.charge_asr(s, user_id, audio_seconds)
             else:
                 await self.voice_billing_service.charge_asr(db, user_id, audio_seconds)
-        except Exception as e:  # noqa: BLE001 - 计费失败不影响识别结果返回
+        except Exception as e:
             logger.error("ASR 计费失败 user_id=%s seconds=%s error=%s", user_id, audio_seconds, e)
 
 

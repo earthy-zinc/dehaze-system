@@ -26,6 +26,8 @@ describe("useUserStore", () => {
       const mockLoginData = {
         username: "admin",
         password: "Dehaze2026",
+        captchaKey: "mock-captcha-key",
+        captchaCode: "1234",
         rememberMe: true,
       };
       const mockResponse = {
@@ -50,6 +52,8 @@ describe("useUserStore", () => {
       const mockLoginData = {
         username: "admin",
         password: "wrong-password",
+        captchaKey: "mock-captcha-key",
+        captchaCode: "1234",
       };
       const mockError = new Error("用户名或密码错误");
 
@@ -99,7 +103,7 @@ describe("useUserStore", () => {
 
       const store = useUserStore();
 
-      await expect(store.getUserInfo()).rejects.toBe(
+      await expect(store.getUserInfo()).rejects.toThrow(
         "getUserInfo: roles must be a non-null array!"
       );
     });
@@ -174,6 +178,8 @@ describe("useUserStore", () => {
       const mockLoginData = {
         username: "admin",
         password: "Dehaze2026",
+        captchaKey: "mock-captcha-key",
+        captchaCode: "1234",
       };
       const mockLoginResponse = {
         sessionId: "mock-session-id",

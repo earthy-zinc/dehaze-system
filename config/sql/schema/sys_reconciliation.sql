@@ -8,7 +8,7 @@
 -- 渠道多单 channel_only / 金额不符 amount_mismatch）落本表，由运营跟进处理。
 -- 同一 (recon_date, flow_no) 唯一；重跑对账时按对账日全量重写。
 -- system_amount/channel_amount 依差异类型可空（单侧缺失时对侧为空）。
--- 标准逻辑删除（类别③，流水追溯型，删除后流水号不可复用）。
+-- 标准逻辑删除；唯一键含 deleted（流水追溯型，流水号系统生成不复用）。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_reconciliation`;
 CREATE TABLE `sys_reconciliation`
@@ -25,13 +25,13 @@ CREATE TABLE `sys_reconciliation`
     `handle_remark`   varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '处理备注',
     `handle_time`     datetime                                                       NULL DEFAULT NULL COMMENT '处理时间',
     `handler_id`      bigint                                                         NULL DEFAULT NULL COMMENT '处理人ID',
-    `deleted`         tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`         bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_recon_date_flow_no` (`recon_date`, `flow_no`) USING BTREE,
+    UNIQUE INDEX `uk_recon_date_flow_no` (`recon_date`, `flow_no`, `deleted`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

@@ -1,12 +1,11 @@
 """
 算法服务
 
-提供算法 CRUD、状态机、审核、版本控制、导入/导出、监控功能
+提供算法 CRUD、状态机、审核、版本控制、监控功能
 """
 
 import asyncio
-import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +18,7 @@ from app.repository.algorithm_repository import (
     AlgorithmStatus,
     algorithm_repository,
 )
+from app.repository.favorite_repository import favorite_repository
 from app.utils.datetime_utils import format_time
 from app.utils.file import convert_size
 
@@ -55,8 +55,7 @@ class AlgorithmService:
     def _build_algorithm_tree(self, algorithms: list[SysAlgorithm]) -> list[dict[str, Any]]:
         """构建算法树形结构"""
         algorithm_dict = {
-            algorithm.id: {**self._to_vo(algorithm), "children": []}
-            for algorithm in algorithms
+            algorithm.id: {**self._to_vo(algorithm), "children": []} for algorithm in algorithms
         }
 
         root_algorithms = []
@@ -95,15 +94,21 @@ class AlgorithmService:
 
     async def create_algorithm(self, db: AsyncSession, data: dict[str, Any]) -> int:
         """新增算法"""
+        name = data.get("name", "")
+        # 名称唯一性（A0501，仅活跃行；软删行不占键位可重建）
+        if name:
+            existing = await self.algorithm_repository.get_list_with_keywords(db, name)
+            if any(algo.name == name for algo in existing):
+                raise BusinessException(ResultCode.DATA_EXISTS, f"算法名称 '{name}' 已存在")
+
         algorithm = SysAlgorithm(
             parent_id=data.get("parentId", 0),
             type=data.get("type", ""),
-            name=data.get("name", ""),
+            name=name,
             path=data.get("path", ""),
             import_path=data.get("importPath", ""),
             description=data.get("description", ""),
             status=data.get("status", AlgorithmStatus.DRAFT),
-            version=data.get("version"),
         )
 
         # path 指向具体文件时，通过 Nginx 静态服务校验可访问性并回填 size
@@ -116,7 +121,9 @@ class AlgorithmService:
         created = await self.algorithm_repository.create(db, algorithm)
         return created.id
 
-    async def update_algorithm(self, db: AsyncSession, algorithm_id: int, data: dict[str, Any]) -> None:
+    async def update_algorithm(
+        self, db: AsyncSession, algorithm_id: int, data: dict[str, Any]
+    ) -> None:
         """修改算法"""
         algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
 
@@ -141,8 +148,6 @@ class AlgorithmService:
             update_data["import_path"] = data["importPath"]
         if "description" in data:
             update_data["description"] = data["description"]
-        if "version" in data:
-            update_data["version"] = data["version"]
         if "status" in data:
             update_data["status"] = data["status"]
 
@@ -153,22 +158,29 @@ class AlgorithmService:
         return await self.delete_algorithms(db, [algorithm_id])
 
     async def delete_algorithms(self, db: AsyncSession, algorithm_ids: list[int]) -> int:
-        """批量删除算法（包含子算法），对齐 Java deleteAlgorithms
+        """批量删除算法（软删，级联子孙算法），对齐 Java deleteAlgorithms
 
         Java/Python/Go: 任一算法不存在时抛 RESOURCE_NOT_FOUND；
-        已发布算法不允许删除（A0502，需先停用再删，级联子算法一并校验）
+        仅草稿/已停用/已归档状态可删除（A0502，级联子算法一并校验）；
+        软删 deleted=行 id（对齐 Java @TableLogic delval=id），释放唯一键位支持删后重建。
         """
         all_algorithms = await self.algorithm_repository.get_list_with_keywords(db)
-        existing_ids = {a.id for a in all_algorithms}
+        id_to_algo = {a.id: a for a in all_algorithms}
         for algorithm_id in algorithm_ids:
-            if algorithm_id not in existing_ids:
+            if algorithm_id not in id_to_algo:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
 
         ids_to_delete = await self.algorithm_repository.get_with_children_ids(db, algorithm_ids)
-        deleting_ids = set(ids_to_delete)
-        if any(a.status == AlgorithmStatus.PUBLISHED and a.id in deleting_ids for a in all_algorithms):
-            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "已发布算法不允许删除，请先停用")
-        count = await self.algorithm_repository.delete_by_ids(db, ids_to_delete)
+        for deleted_id in ids_to_delete:
+            algo = id_to_algo.get(deleted_id)
+            if algo and algo.status not in AlgorithmStatus.DELETABLE_STATUSES:
+                raise BusinessException(
+                    ResultCode.DATA_STATE_NOT_ALLOW,
+                    f"算法[{algo.name}]当前状态不允许删除，请先停用或归档",
+                )
+        count = await self.algorithm_repository.soft_delete_by_ids(db, ids_to_delete)
+        # 失效联动：标记相关收藏为已失效（对齐 Java SysAlgorithmServiceImpl.deleteAlgorithms）
+        await favorite_repository.mark_invalid(db, "algorithm", ids_to_delete)
         return count
 
     # ── 状态机 ──────────────────────────────────────
@@ -179,42 +191,18 @@ class AlgorithmService:
         algorithm_id: int,
         target_status: int,
     ) -> None:
-        """
-        修改算法状态（对齐 Java validateStatusTransition 逻辑）
-
-        - 校验目标状态是合法枚举值 (1-6)
-        - 终态(已发布4/已停用5)不允许变更，已归档(6)除外
-        - 不允许直接跳转到已发布(4)，必须从待审核(3)流转
-        """
+        """修改算法状态（三端统一状态流转白名单，
+        对齐 Java validateStatusTransition / Go CanTransitionTo）"""
         algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
 
-        # 校验目标状态是合法值
-        valid_statuses = {
-            AlgorithmStatus.DRAFT,
-            AlgorithmStatus.TESTING,
-            AlgorithmStatus.PENDING_AUDIT,
-            AlgorithmStatus.PUBLISHED,
-            AlgorithmStatus.DISABLED,
-            AlgorithmStatus.ARCHIVED,
-        }
-        if target_status not in valid_statuses:
-            raise BusinessException(f"无效的状态值: {target_status}")
-
-        current_status = algorithm.status
-
-        # 终态校验：已发布/已停用不允许变更（已归档可重新启用）
-        final_statuses = {AlgorithmStatus.PUBLISHED, AlgorithmStatus.DISABLED}
-        if current_status in final_statuses:
-            raise BusinessException("终态算法不允许修改状态")
-
-        # 不允许直接跳转到已发布
-        if (
-            target_status == AlgorithmStatus.PUBLISHED
-            and current_status != AlgorithmStatus.PENDING_AUDIT
-        ):
-            raise BusinessException("算法必须经过审核才能发布")
+        allowed = AlgorithmStatus.ALLOWED_TRANSITIONS.get(algorithm.status)
+        if allowed is None or target_status not in allowed:
+            raise BusinessException(
+                ResultCode.DATA_STATE_NOT_ALLOW,
+                f"不允许将算法状态从 {algorithm.status} 变更为 {target_status}",
+            )
 
         await self.algorithm_repository.update_status(db, algorithm_id, target_status)
 
@@ -260,49 +248,35 @@ class AlgorithmService:
         algorithm_id: int,
         version: str,
         change_log: str | None = None,
-        status: int | None = None,
         config_json: str | None = None,
         model_file_id: int | None = None,
-        is_active: int = 0,
     ) -> int:
         """
-        新增版本 (对齐 Java SysAlgorithmVersion 字段)
+        新增版本 (对齐 Java SysAlgorithmVersionServiceImpl.addVersion)
 
-        - 校验版本号唯一（版本历史表）
-        - 将当前版本归档到版本历史表
+        - 校验版本号唯一（活跃行；uk_algo_version 含 deleted，软删行不占键位）
+        - is_active 单活跃版本管理：旧活跃版本置非活跃，新版本为活跃
         - 更新算法主表的 version
-
-        注: 预测缓存失效由调用方（router）负责
         """
         algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
 
         if await self.algorithm_repository.check_version_exists(db, algorithm_id, version):
             raise BusinessException(f"版本号 {version} 已存在")
 
-        if not await self.algorithm_repository.check_version_exists(db, algorithm_id, algorithm.version):
-            await self.algorithm_repository.create_version(
-                db=db,
-                algorithm_id=algorithm_id,
-                version=algorithm.version,
-                change_log=f"自动归档: 升级到 {version} 前",
-                status=algorithm.status,
-            )
-
-        await self.algorithm_repository.update(db, algorithm, {"version": version})
-
+        await self.algorithm_repository.deactivate_active_versions(db, algorithm_id)
         await self.algorithm_repository.create_version(
             db=db,
             algorithm_id=algorithm_id,
             version=version,
             change_log=change_log,
-            status=status,
+            status=algorithm.status,
             config_json=config_json,
             model_file_id=model_file_id,
-            is_active=is_active,
+            is_active=1,
         )
-
+        await self.algorithm_repository.update(db, algorithm, {"version": version})
         return algorithm_id
 
     async def list_versions(self, db: AsyncSession, algorithm_id: int) -> list[dict[str, Any]]:
@@ -330,120 +304,22 @@ class AlgorithmService:
         algorithm_id: int,
         version_id: int,
     ) -> None:
-        """回滚到指定版本"""
+        """回滚到指定版本（对齐 Java rollbackToVersion：is_active 切换 + 防重复回滚）"""
         algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
 
-        # 仅已停用/已发布状态可回滚
-        if algorithm.status not in (AlgorithmStatus.DISABLED, AlgorithmStatus.PUBLISHED):
-            raise BusinessException("仅已停用/已发布状态的算法可回滚")
-
-        result = await self.algorithm_repository.rollback_to_version(db, algorithm_id, version_id)
-        if not result:
+        version = await self.algorithm_repository.get_version_by_id(db, version_id)
+        if not version or version.algorithm_id != algorithm_id:
             raise BusinessException("版本不存在或不属于该算法")
 
-    # ── 导入/导出 ──────────────────────────────────────
+        if version.is_active:
+            raise BusinessException("当前已是该版本，无需回滚")
 
-    async def export_algorithm(self, db: AsyncSession, algorithm_id: int) -> str:
-        """
-        导出单个算法为 JSON 字符串（对齐 Java exportAlgorithmJson）
-        """
-        algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
-        if not algorithm:
-            raise BusinessException("算法不存在")
-
-        parent_name = ""
-        if algorithm.parent_id and algorithm.parent_id > 0:
-            parent = await self.algorithm_repository.get_by_id(db, algorithm.parent_id)
-            parent_name = parent.name if parent else ""
-
-        export_data = {
-            "formatVersion": "1.0",
-            "name": algorithm.name,
-            "type": algorithm.type,
-            "parentName": parent_name,
-            "version": algorithm.version,
-            "description": algorithm.description,
-            "importPath": algorithm.import_path,
-            "flops": algorithm.flops,
-            "params": algorithm.params,
-            "status": algorithm.status,
-            "exportTime": datetime.now(UTC).isoformat(),
-        }
-
-        return json.dumps(export_data, ensure_ascii=False, indent=2)
-
-    async def validate_import_package(self, file_bytes: bytes, filename: str = "") -> str:
-        """
-        校验导入包格式（对齐 Java validateImport：解析 JSON，返回校验消息字符串）
-
-        Returns:
-            校验通过的消息字符串
-        Raises:
-            BusinessException: 校验失败
-        """
-        if not file_bytes:
-            raise BusinessException("导入文件不能为空")
-
-        if not filename.lower().endswith(".json"):
-            raise BusinessException("仅支持 .json 格式的算法导出文件")
-
-        try:
-            root = json.loads(file_bytes.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            raise BusinessException(f"导入文件解析失败: {e}") from None
-
-        name = root.get("name")
-        if not name or not str(name).strip():
-            raise BusinessException("导入文件缺少必填字段: name")
-
-        type_ = root.get("type")
-        if not type_ or not str(type_).strip():
-            raise BusinessException("导入文件缺少必填字段: type")
-
-        return f"校验通过: 算法名称={name}, 类型={type_}"
-
-    async def import_algorithm(self, db: AsyncSession, file_bytes: bytes, filename: str = "") -> int:
-        """
-        导入算法包（对齐 Java importAlgorithm：解析 JSON 文件）
-        """
-        if not file_bytes:
-            raise BusinessException("导入文件不能为空")
-
-        if not filename.lower().endswith(".json"):
-            raise BusinessException("仅支持 .json 格式的算法导出文件")
-
-        root = json.loads(file_bytes.decode("utf-8"))
-
-        name = root.get("name")
-        if not name or not str(name).strip():
-            raise BusinessException("导入失败: 缺少算法名称")
-
-        type_ = root.get("type", "")
-        description = root.get("description", "")
-        import_path = root.get("importPath", "")
-        version = root.get("version", "0.0.1")
-
-        # 名称唯一性校验
-        existing = await self.algorithm_repository.get_list_with_keywords(db, name)
-        for algo in existing:
-            if algo.name == name:
-                raise BusinessException(f"算法名称 '{name}' 已存在")
-
-        # 创建算法记录（对齐 Java：parentId=0，status=DRAFT）
-        algorithm = SysAlgorithm(
-            parent_id=0,
-            type=type_,
-            name=name,
-            import_path=import_path,
-            description=description,
-            status=AlgorithmStatus.DRAFT,
-            version=version,
-        )
-
-        created = await self.algorithm_repository.create(db, algorithm)
-        return created.id
+        await self.algorithm_repository.deactivate_active_versions(db, algorithm_id)
+        version.is_active = 1
+        await db.flush()
+        await self.algorithm_repository.update(db, algorithm, {"version": version.version})
 
     # ── 监控 ──────────────────────────────────────
 
@@ -480,8 +356,6 @@ class AlgorithmService:
         algorithm = await self.algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
             raise BusinessException("算法不存在")
-        if days <= 0:
-            days = 7
         by_date = await self.algorithm_repository.get_monitor_stats_by_date(db, algorithm_id, days)
         today = datetime.now().date()
         result: list[dict[str, Any]] = []

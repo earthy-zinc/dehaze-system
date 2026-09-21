@@ -140,6 +140,64 @@ func (_c *MockRecommendationRepository_CountFeedbackTotal_Call) RunAndReturn(run
 	return _c
 }
 
+// CountRecommended provides a mock function with given fields: ctx, startTime, endTime
+func (_m *MockRecommendationRepository) CountRecommended(ctx context.Context, startTime string, endTime string) (int64, error) {
+	ret := _m.Called(ctx, startTime, endTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountRecommended")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (int64, error)); ok {
+		return rf(ctx, startTime, endTime)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) int64); ok {
+		r0 = rf(ctx, startTime, endTime)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, startTime, endTime)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRecommendationRepository_CountRecommended_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountRecommended'
+type MockRecommendationRepository_CountRecommended_Call struct {
+	*mock.Call
+}
+
+// CountRecommended is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime string
+//   - endTime string
+func (_e *MockRecommendationRepository_Expecter) CountRecommended(ctx interface{}, startTime interface{}, endTime interface{}) *MockRecommendationRepository_CountRecommended_Call {
+	return &MockRecommendationRepository_CountRecommended_Call{Call: _e.mock.On("CountRecommended", ctx, startTime, endTime)}
+}
+
+func (_c *MockRecommendationRepository_CountRecommended_Call) Run(run func(ctx context.Context, startTime string, endTime string)) *MockRecommendationRepository_CountRecommended_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockRecommendationRepository_CountRecommended_Call) Return(_a0 int64, _a1 error) *MockRecommendationRepository_CountRecommended_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRecommendationRepository_CountRecommended_Call) RunAndReturn(run func(context.Context, string, string) (int64, error)) *MockRecommendationRepository_CountRecommended_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountTotal provides a mock function with given fields: ctx, startTime, endTime
 func (_m *MockRecommendationRepository) CountTotal(ctx context.Context, startTime string, endTime string) (int64, error) {
 	ret := _m.Called(ctx, startTime, endTime)
@@ -362,24 +420,24 @@ func (_c *MockRecommendationRepository_FindByID_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// FindDailyAdoptionRate provides a mock function with given fields: ctx, startTime, endTime
-func (_m *MockRecommendationRepository) FindDailyAdoptionRate(ctx context.Context, startTime string, endTime string) ([]recommendation.DailyAdoptionRow, error) {
+// FindDailyRecommended provides a mock function with given fields: ctx, startTime, endTime
+func (_m *MockRecommendationRepository) FindDailyRecommended(ctx context.Context, startTime string, endTime string) ([]recommendation.DailyCountRow, error) {
 	ret := _m.Called(ctx, startTime, endTime)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindDailyAdoptionRate")
+		panic("no return value specified for FindDailyRecommended")
 	}
 
-	var r0 []recommendation.DailyAdoptionRow
+	var r0 []recommendation.DailyCountRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]recommendation.DailyAdoptionRow, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]recommendation.DailyCountRow, error)); ok {
 		return rf(ctx, startTime, endTime)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) []recommendation.DailyAdoptionRow); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []recommendation.DailyCountRow); ok {
 		r0 = rf(ctx, startTime, endTime)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]recommendation.DailyAdoptionRow)
+			r0 = ret.Get(0).([]recommendation.DailyCountRow)
 		}
 	}
 
@@ -392,32 +450,92 @@ func (_m *MockRecommendationRepository) FindDailyAdoptionRate(ctx context.Contex
 	return r0, r1
 }
 
-// MockRecommendationRepository_FindDailyAdoptionRate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDailyAdoptionRate'
-type MockRecommendationRepository_FindDailyAdoptionRate_Call struct {
+// MockRecommendationRepository_FindDailyRecommended_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDailyRecommended'
+type MockRecommendationRepository_FindDailyRecommended_Call struct {
 	*mock.Call
 }
 
-// FindDailyAdoptionRate is a helper method to define mock.On call
+// FindDailyRecommended is a helper method to define mock.On call
 //   - ctx context.Context
 //   - startTime string
 //   - endTime string
-func (_e *MockRecommendationRepository_Expecter) FindDailyAdoptionRate(ctx interface{}, startTime interface{}, endTime interface{}) *MockRecommendationRepository_FindDailyAdoptionRate_Call {
-	return &MockRecommendationRepository_FindDailyAdoptionRate_Call{Call: _e.mock.On("FindDailyAdoptionRate", ctx, startTime, endTime)}
+func (_e *MockRecommendationRepository_Expecter) FindDailyRecommended(ctx interface{}, startTime interface{}, endTime interface{}) *MockRecommendationRepository_FindDailyRecommended_Call {
+	return &MockRecommendationRepository_FindDailyRecommended_Call{Call: _e.mock.On("FindDailyRecommended", ctx, startTime, endTime)}
 }
 
-func (_c *MockRecommendationRepository_FindDailyAdoptionRate_Call) Run(run func(ctx context.Context, startTime string, endTime string)) *MockRecommendationRepository_FindDailyAdoptionRate_Call {
+func (_c *MockRecommendationRepository_FindDailyRecommended_Call) Run(run func(ctx context.Context, startTime string, endTime string)) *MockRecommendationRepository_FindDailyRecommended_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
 
-func (_c *MockRecommendationRepository_FindDailyAdoptionRate_Call) Return(_a0 []recommendation.DailyAdoptionRow, _a1 error) *MockRecommendationRepository_FindDailyAdoptionRate_Call {
+func (_c *MockRecommendationRepository_FindDailyRecommended_Call) Return(_a0 []recommendation.DailyCountRow, _a1 error) *MockRecommendationRepository_FindDailyRecommended_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockRecommendationRepository_FindDailyAdoptionRate_Call) RunAndReturn(run func(context.Context, string, string) ([]recommendation.DailyAdoptionRow, error)) *MockRecommendationRepository_FindDailyAdoptionRate_Call {
+func (_c *MockRecommendationRepository_FindDailyRecommended_Call) RunAndReturn(run func(context.Context, string, string) ([]recommendation.DailyCountRow, error)) *MockRecommendationRepository_FindDailyRecommended_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindDailyTotal provides a mock function with given fields: ctx, startTime, endTime
+func (_m *MockRecommendationRepository) FindDailyTotal(ctx context.Context, startTime string, endTime string) ([]recommendation.DailyCountRow, error) {
+	ret := _m.Called(ctx, startTime, endTime)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindDailyTotal")
+	}
+
+	var r0 []recommendation.DailyCountRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) ([]recommendation.DailyCountRow, error)); ok {
+		return rf(ctx, startTime, endTime)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) []recommendation.DailyCountRow); ok {
+		r0 = rf(ctx, startTime, endTime)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]recommendation.DailyCountRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, startTime, endTime)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockRecommendationRepository_FindDailyTotal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindDailyTotal'
+type MockRecommendationRepository_FindDailyTotal_Call struct {
+	*mock.Call
+}
+
+// FindDailyTotal is a helper method to define mock.On call
+//   - ctx context.Context
+//   - startTime string
+//   - endTime string
+func (_e *MockRecommendationRepository_Expecter) FindDailyTotal(ctx interface{}, startTime interface{}, endTime interface{}) *MockRecommendationRepository_FindDailyTotal_Call {
+	return &MockRecommendationRepository_FindDailyTotal_Call{Call: _e.mock.On("FindDailyTotal", ctx, startTime, endTime)}
+}
+
+func (_c *MockRecommendationRepository_FindDailyTotal_Call) Run(run func(ctx context.Context, startTime string, endTime string)) *MockRecommendationRepository_FindDailyTotal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockRecommendationRepository_FindDailyTotal_Call) Return(_a0 []recommendation.DailyCountRow, _a1 error) *MockRecommendationRepository_FindDailyTotal_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockRecommendationRepository_FindDailyTotal_Call) RunAndReturn(run func(context.Context, string, string) ([]recommendation.DailyCountRow, error)) *MockRecommendationRepository_FindDailyTotal_Call {
 	_c.Call.Return(run)
 	return _c
 }

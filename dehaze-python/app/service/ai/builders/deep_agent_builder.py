@@ -17,7 +17,9 @@ create_deep_agent 入参，返回标准 CompiledStateGraph，供 reasoning_servi
 import asyncio
 import logging
 import time
+from collections.abc import Sequence
 from typing import Any
+from weakref import WeakKeyDictionary
 
 from deepagents.graph import create_deep_agent
 from deepagents.middleware.filesystem import FilesystemPermission
@@ -41,6 +43,7 @@ from app.service.ai.middleware.dehaze_hooks_middleware import (
 from app.service.ai.middleware.guardrail_middleware import GuardrailMiddleware
 from app.service.ai.middleware.mcp_namespace_prefilter import McpNamespacePrefilterMiddleware
 from app.service.ai.middleware.paradigm_middleware import ParadigmMiddleware
+from app.service.ai.middleware.run_context import current_run_ctx
 from app.service.ai.middleware.tool_failure_guard import ToolFailureGuardMiddleware
 from app.service.ai.strategies.complexity_evaluator import evaluate_complexity
 from app.service.ai.strategies.prompt_composer import compose_system_prompt
@@ -53,6 +56,23 @@ logger = logging.getLogger(__name__)
 # 幂等注册，仅一次。
 _HARNESS_PROFILE_KEY = "dehazechatmodel"
 _HARNESS_PROFILE_REGISTERED = False
+
+# 图实例 → run ctx 模板登记表：构图时登记，reasoning 层 astream 前据以预置每 run 的
+# 运行时上下文。图按版本缓存复用、模板随图稳定，故以图对象为键；WeakKeyDictionary
+# 在图被回收（缓存淘汰）时自动清理条目，不额外持有强引用。
+# （替代原先把模板经 __setattr__ 挂到图对象上的"影子字段"做法：不显式声明字段、
+# 绕过静态类型检查，属掩盖。）
+_graph_ctx_templates: WeakKeyDictionary[Any, dict] = WeakKeyDictionary()
+
+
+def register_graph_ctx_template(graph: Any, template: dict) -> None:
+    """登记图实例的 run ctx 模板（构图完成时调用）"""
+    _graph_ctx_templates[graph] = template
+
+
+def get_graph_ctx_template(graph: Any) -> dict | None:
+    """取图实例的 run ctx 模板；未登记返回 None"""
+    return _graph_ctx_templates.get(graph)
 
 
 def _ensure_harness_profile() -> None:
@@ -123,12 +143,17 @@ def _make_ctx(snapshot: dict, config: dict) -> dict:
 
 
 def _build_agent_core(
-    snapshot: dict, ctx: dict, extra_tools: list[BaseTool] | None = None
+    snapshot: dict,
+    ctx: dict,
+    extra_tools: Sequence[BaseTool] | None = None,
+    subagent: dict[str, Any] | None = None,
 ) -> dict:
     """构造单个 Agent（主 Agent 或子 Agent）的核心配置。
 
     返回 {model, tools, middleware}，由 create_deep_agent / SubAgent 消费。
     extra_tools 为外部 MCP Server 工具（运行时异步装载，注入主 Agent）。
+    subagent 为本地子 Agent 身份 {name, priority}（写冲突仲裁持有者），
+    主 Agent 不传（默认主 Agent / priority 0，最高）。
     """
     config = snapshot["config"]
     guardrails = config.get("guardrails") or {}
@@ -136,7 +161,7 @@ def _build_agent_core(
     tools: list[BaseTool] = build_business_tools(ctx) + list(extra_tools or [])
     model = DehazeChatModel(model=snapshot.get("model_id", ""))
     middleware = [
-        DehazeHooksMiddleware(ctx),
+        DehazeHooksMiddleware(ctx, subagent),
         GuardrailMiddleware(guardrails, mcp_namespaces),
         # 多步推理范式编排：图恒定装载，仅按运行时 state.reasoning_mode 介入
         ParadigmMiddleware(model, config, ctx),
@@ -168,10 +193,13 @@ def _build_remote_tool(endpoint, shadow_name: str, shadow_desc: str, ctx: dict) 
     工具内部经 A2AClient message/send → tasks/get 轮询获取产物，经 A2ATaskMapper
     反解为文本摘要返回主 Agent 上下文；仅记录调用状态与耗时（§5.4.5）。
     """
+    # 闭包内 ctx 会重新绑定，模板需以独立名字捕获
+    template = ctx
 
     @tool(shadow_name, description=shadow_desc or f"调用远程子 Agent「{shadow_name}」处理任务")
     async def remote_sub_agent_call(task_input: str) -> str:
         """将任务委托给外部 A2A 子 Agent，返回其结果摘要。"""
+        ctx = current_run_ctx(template)
         started = time.monotonic()
         ctx["task_type"] = "a2a"
         ctx["task_status"] = "processing"
@@ -216,9 +244,7 @@ def _build_remote_tool(endpoint, shadow_name: str, shadow_desc: str, ctx: dict) 
     return remote_sub_agent_call
 
 
-async def _build_subagents(
-    db, redis, snapshot: dict, parent_ctx: dict
-) -> tuple[list[SubAgent], list[BaseTool]]:
+async def _build_subagents(db, redis, snapshot: dict) -> tuple[list[SubAgent], list[BaseTool]]:
     """构造子 Agent 能力列表。
 
     返回 (本地 SubAgent spec 列表, 远程 A2A 子 Agent 工具列表)：
@@ -232,17 +258,18 @@ async def _build_subagents(
         if rel.get("endpoint_id"):
             endpoint = await _load_endpoint(db, rel.get("endpoint_id"))
             if not endpoint:
+                # 远程子 Agent endpoint 无效/未启用：与本地子 Agent 同样不得静默跳过，
+                # 否则主 Agent 缺失远程能力仍上线而无人知晓，聚合后报错暴露。
+                failures.append(
+                    f"远程子 Agent {rel.get('agent_id')}: 端点 {rel.get('endpoint_id')} 不可用"
+                )
                 continue
             shadow_name = f"remote_{rel.get('agent_id')}"
-            remote_tools.append(
-                _build_remote_tool(endpoint, shadow_name, endpoint.name, parent_ctx)
-            )
+            remote_tools.append(_build_remote_tool(endpoint, shadow_name, endpoint.name, {}))
             continue
         # 子 Agent 无已发布版本或不存在：配置错误不得静默跳过，否则主 Agent 缺失子
         # 能力仍上线，聚合所有失败子 Agent 一并报错暴露。
-        version = await ai_agent_version_repository.get_published_snapshot(
-            db, rel.get("agent_id")
-        )
+        version = await ai_agent_version_repository.get_published_snapshot(db, rel.get("agent_id"))
         if version is None:
             failures.append(f"子 Agent {rel.get('agent_id')}: 该 Agent 暂无已发布版本")
             continue
@@ -250,12 +277,18 @@ async def _build_subagents(
         if not sub_snapshot:
             failures.append(f"子 Agent {rel.get('agent_id')}: 无已发布版本快照")
             continue
-        sub_ctx = dict(parent_ctx)
-        sub_ctx.update({"_model_id": sub_snapshot.get("model_id", "")})
-        core = _build_agent_core(sub_snapshot, sub_ctx)
+        # 子 Agent 护栏/工具超时等静态配置按自身快照生成（会话标识运行时经
+        # run_context 继承主 run），不复用父 Agent 模板
+        sub_ctx = _make_ctx(sub_snapshot, sub_snapshot["config"])
+        subagent_name = sub_snapshot.get("name", f"agent_{rel.get('agent_id')}")
+        core = _build_agent_core(
+            sub_snapshot,
+            sub_ctx,
+            subagent={"name": subagent_name, "priority": int(rel.get("priority") or 0)},
+        )
         subagents.append(
             {
-                "name": sub_snapshot.get("name", f"agent_{rel.get('agent_id')}"),
+                "name": subagent_name,
                 "description": sub_snapshot.get("description", ""),
                 "system_prompt": compose_system_prompt(sub_snapshot, None),
                 "model": core["model"],
@@ -264,9 +297,7 @@ async def _build_subagents(
             }
         )
     if failures:
-        raise BusinessException(
-            "子 Agent 配置不完整，拒绝构建主 Agent: " + "; ".join(failures)
-        )
+        raise BusinessException("子 Agent 配置不完整，拒绝构建主 Agent: " + "; ".join(failures))
     return subagents, remote_tools
 
 
@@ -279,6 +310,7 @@ class DeepAgentBuilder:
         redis,
         snapshot: dict,
         checkpointer=None,
+        subagent: dict[str, Any] | None = None,
     ) -> CompiledStateGraph:
         """按快照构建单个 deep agent 编译图（含子 Agent）。
 
@@ -287,6 +319,9 @@ class DeepAgentBuilder:
             redis: 异步 Redis 客户端。
             snapshot: Agent 已发布版本快照（契约见 get_published_snapshot）。
             checkpointer: LangGraph Checkpointer（复用 dehaze RedisSaver）。
+            subagent: 本图作为「子智能体」被上层编排时的身份 {name, priority}
+                （如 Team 成员图，经 transfer_to_* 被 supervisor 移交）；主 Agent 传 None。
+                供 DehazeHooksMiddleware 在模型调用期绑定子智能体标识，用量按归属聚合。
 
         Returns:
             编译后的 deep agent 图（CompiledStateGraph）。
@@ -302,8 +337,9 @@ class DeepAgentBuilder:
             extra_tools=await mcp_external_tool_loader.load_tools(
                 db, snapshot.get("mcp_namespaces") or [], ctx
             ),
+            subagent=subagent,
         )
-        subagents, remote_tools = await _build_subagents(db, redis, snapshot, ctx)
+        subagents, remote_tools = await _build_subagents(db, redis, snapshot)
 
         # 图按 Agent 版本缓存复用：system_prompt 仅含"稳定层+Agent 人设"（随快照稳定），
         # 会话场景提示词随会话变化，不得进入图缓存键，由 reasoning 层运行时注入。
@@ -312,7 +348,7 @@ class DeepAgentBuilder:
         # deepagents 据此自动生成 interrupt_on —— mode=interrupt 的写操作触发用户确认
         # （危险操作护栏）
         permissions = _build_filesystem_permissions(snapshot.get("permissions"))
-        return create_deep_agent(
+        graph = create_deep_agent(
             model=core["model"],
             tools=core["tools"] + remote_tools,
             system_prompt=system_prompt,
@@ -323,6 +359,10 @@ class DeepAgentBuilder:
             state_schema=DehazeAgentState,
             name=snapshot.get("name") or None,
         )
+        # 登记 run ctx 模板：reasoning 层 astream 前经 ensure_run_ctx 预置
+        # （图节点是独立 asyncio 任务，before_agent 节点内 set 无法跨节点传播）。
+        register_graph_ctx_template(graph, ctx)
+        return graph
 
     @staticmethod
     async def resolve_reasoning_mode(

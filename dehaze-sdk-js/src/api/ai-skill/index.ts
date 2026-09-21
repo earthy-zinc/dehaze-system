@@ -1,7 +1,14 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 import type { AxiosHeaders } from "axios";
-import type { SkillForm, SkillMarketVO, SkillQuery, SkillTestForm, SkillVO } from "./model";
+import type {
+  SkillForm,
+  SkillMarketVO,
+  SkillQuery,
+  SkillTestForm,
+  SkillTestResult,
+  SkillVO,
+} from "./model";
 
 /**
  * SKILL 管理 API。
@@ -90,9 +97,9 @@ class AiSkillAPI {
     });
   }
 
-  /** 试运行 Skill（测试数据不入库不推送） */
+  /** 试运行 Skill（以指令为系统提示词真实推理一次；独立调试会话，不入库不推送） */
   static testSkill(id: number, data: SkillTestForm) {
-    return request<Record<string, unknown>>({
+    return request<SkillTestResult>({
       url: `/api/v1/ai/skills/${id}/test`,
       method: "post",
       data,

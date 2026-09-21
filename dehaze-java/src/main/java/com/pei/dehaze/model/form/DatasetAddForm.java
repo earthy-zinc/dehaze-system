@@ -32,7 +32,7 @@ public class DatasetAddForm {
             example = "我的测试数据集"
     )
     @NotBlank(message = "数据集名称不能为空")
-    @Size(min = 1, max = 255, message = "数据集名称长度必须在1-255之间")
+    @Size(min = 1, max = 64, message = "数据集名称长度必须在1-64之间")
     @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "数据集名称不能包含特殊字符")
     private String name;
 

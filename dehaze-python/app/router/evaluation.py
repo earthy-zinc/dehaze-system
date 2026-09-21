@@ -7,7 +7,6 @@ GET  /api/v1/evaluation/metrics  → 当前用户评估指标历史
 GET  /api/v1/evaluation/{taskId} → 查询评估任务状态，根据 status 返回不同字段
 """
 
-import json
 import logging
 from datetime import datetime
 
@@ -15,12 +14,14 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.enum.log_status import LogStatus
 from app.models.schema.common import PageResult
-from app.service.evaluation_service import evaluation_service
+from app.service.evaluation_service import evaluation_service, parse_eval_result
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ class EvaluationLogVO(BaseModel):
 
 
 def _to_log_dict(log) -> dict:
-    """将评估日志实体组装为 VO dict（result 兼容 dict/str 两种存储形态）。"""
+    """将评估日志实体组装为 VO dict（result 经归一化，兼容存量 JSON 字符串行）"""
     return {
         "id": log.id,
         "algorithm_id": log.algorithm_id,
@@ -136,9 +137,7 @@ def _to_log_dict(log) -> dict:
         "status": log.status,
         "error_message": log.error_message,
         "time": log.time,
-        "result": log.result
-        if isinstance(log.result, dict)
-        else (json.loads(log.result) if isinstance(log.result, str) and log.result else None),
+        "result": parse_eval_result(log.result),
         "create_time": log.create_time,
     }
 
@@ -149,10 +148,12 @@ async def list_evaluation_logs(
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
-    """分页查询评估日志"""
+    """分页查询当前用户的评估日志"""
     logs, total = await evaluation_service.list_logs(
         db,
+        user_id=user.id,
         algorithm_id=algorithmId,
         page=pageNum,
         size=pageSize,
@@ -183,9 +184,10 @@ async def get_evaluation_metrics(
 async def get_evaluation_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     """
-    查询评估任务状态（通过日志ID查询）
+    查询评估任务状态（通过日志ID查询，仅任务归属用户可访问）
 
     根据 status 返回不同字段：
     - processing: 仅返回 logId + status
@@ -193,16 +195,13 @@ async def get_evaluation_task(
     - failed: 返回 errorMessage + time
     """
     log = await evaluation_service.get_log(db, task_id)
+    if log.create_by != user.id:
+        # 非本人任务按不存在处理，不泄露资源存在性
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在")
 
     resp = EvaluationResponse(logId=log.id, status=log.status)
     if log.status == LogStatus.COMPLETED.value:
-        if isinstance(log.result, str) and log.result:
-            try:
-                resp.metrics = json.loads(log.result)
-            except json.JSONDecodeError:
-                resp.metrics = None
-        elif isinstance(log.result, dict):
-            resp.metrics = log.result
+        resp.metrics = parse_eval_result(log.result)
         resp.time = log.time or 0
     elif log.status == LogStatus.FAILED.value:
         resp.errorMessage = log.error_message

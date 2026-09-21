@@ -15,7 +15,7 @@ type SysAnnouncement struct {
 	SendTime     *time.Time `gorm:"column:send_time;type:datetime;comment:发送时间" json:"sendTime"`
 	ExpireTime   *time.Time `gorm:"column:expire_time;type:datetime;comment:过期时间" json:"expireTime"`
 	SentCount    int        `gorm:"column:sent_count;type:int;default:0;comment:已发送人数" json:"sentCount"`
-	Deleted      int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted      int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysAnnouncement) TableName() string {

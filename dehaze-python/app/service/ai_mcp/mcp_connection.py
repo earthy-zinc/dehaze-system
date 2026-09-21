@@ -8,11 +8,14 @@
 - call_remote_tool：调用外部 Server 的 tools/call（带鉴权头 + 超时），供运行时
   工具执行与管理员试调用复用同一连接路径。
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from typing import Any
+
+from mcp.types import TextContent
 
 from app.infrastructure.crypto.aes_cipher import decrypt
 from app.models.entity.sys_ai_mcp_server import SysAiMcpServer
@@ -28,7 +31,7 @@ def _decrypt_field(value: Any) -> str | None:
         return None
     try:
         return decrypt(value)
-    except Exception:  # noqa: BLE001 密文损坏降级为无鉴权，不抛
+    except Exception:
         logger.warning("MCP 凭据解密失败，降级为无鉴权调用")
         return None
 
@@ -86,11 +89,16 @@ async def call_remote_tool(
     from mcp.client.streamable_http import streamablehttp_client
 
     headers = build_mcp_auth_headers(server)
-    client_fn = (
-        sse_client if server.protocol_type == "sse" else streamablehttp_client
-    )
+    endpoint = server.endpoint
+    if not endpoint:
+        # 端点应经 apply_ssrf_guard 校验后非空；为空属上游配置缺失，显式报错
+        raise ValueError("MCP Server 未配置端点")
+    client_fn = sse_client if server.protocol_type == "sse" else streamablehttp_client
     async with asyncio.timeout(_CALL_TIMEOUT):
-        async with client_fn(server.endpoint, headers=headers) as (read, write, _):
+        async with client_fn(endpoint, headers=headers) as streams:
+            # sse_client 返回 (read, write)；streamablehttp_client 返回
+            # (read, write, get_session_id)，此处统一取前两项
+            read, write = streams[0], streams[1]
             session = ClientSession(read, write)
             async with session:
                 result = await session.call_tool(tool_name, arguments)
@@ -100,11 +108,7 @@ async def call_remote_tool(
 def _extract_tool_text(result: Any) -> str:
     """从 MCP CallToolResult.content 提取文本（首个 text 块拼接）。"""
     content = getattr(result, "content", None) or []
-    texts = [
-        block.text
-        for block in content
-        if getattr(block, "text", None) is not None
-    ]
+    texts = [block.text for block in content if isinstance(block, TextContent)]
     if texts:
         return "\n".join(texts)
     return str(content) if content else "(无返回内容)"
@@ -117,8 +121,6 @@ async def apply_ssrf_guard(server: SysAiMcpServer | None) -> tuple[bool, str]:
     """
     if server is None:
         return False, "MCP Server 不存在"
-    if server.protocol_type == "stdio":
-        return True, ""  # 本地进程，无网络面
     if not server.endpoint:
         return False, "MCP Server 未配置端点"
     if not await check_endpoint_safe(server.endpoint):

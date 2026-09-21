@@ -1,7 +1,6 @@
 import {
   AiKnowledgeBaseAPI,
   IndexStatsVO,
-  KnowledgeBaseUpdateForm,
   KnowledgeBaseVO,
   LowQualityChunkQuery,
   LowQualityChunkVO,
@@ -9,9 +8,8 @@ import {
   TestSetCreateForm,
   TestSetVO,
 } from "dehaze-sdk-js";
-import { useKbDataStore } from "@/store/modules/kbData";
 
-// 管理端知识库 Store：私有库监控、索引状态、embedding 迁移、召回测试、低质量片段
+// 管理端知识库 Store：私有库监控、索引状态、召回测试、低质量片段
 export const useAdminKbStore = defineStore("adminKb", () => {
   const adminTab = ref<"public" | "private">("public");
   const privateKbs = ref<KnowledgeBaseVO[]>([]);
@@ -27,7 +25,6 @@ export const useAdminKbStore = defineStore("adminKb", () => {
     pageNum: 1,
     pageSize: 10,
   });
-  const migrateDialog = reactive({ visible: false });
 
   /** 切换列表区 Tab（公共知识库/私有库监控），私有库按需加载 */
   async function switchAdminTab(tab: "public" | "private") {
@@ -55,32 +52,6 @@ export const useAdminKbStore = defineStore("adminKb", () => {
 
   async function fetchIndexStats(kbId: number) {
     indexStats.value = await AiKnowledgeBaseAPI.getIndexStats(kbId);
-  }
-
-  /**
-   * 提交 embedding 迁移。
-   * 专有迁移接口后端规划中，先以更新知识库配置的方式替换 embedding 模型字段，
-   * 迁移本身需要后台批量重新向量化并重建索引，前端仅提示。
-   */
-  async function submitEmbeddingMigrate(kbId: number, targetModelId: string) {
-    const kbDataStore = useKbDataStore();
-    const kb = kbDataStore.kbDetail;
-    if (!kb) {
-      ElMessage.error("知识库详情未加载，无法提交迁移");
-      return;
-    }
-    const form: KnowledgeBaseUpdateForm & { embeddingModel?: string } = {
-      name: kb.name,
-      description: kb.description,
-      searchStrategy: kb.searchStrategy,
-      hybridWeight: kb.hybridWeight,
-      topK: kb.topK,
-      scoreThreshold: kb.scoreThreshold,
-      enableRerank: kb.enableRerank === 1,
-      rerankModel: kb.rerankModel,
-      embeddingModel: targetModelId,
-    };
-    await AiKnowledgeBaseAPI.update(kbId, form);
   }
 
   async function fetchRecallSets(kbId: number) {
@@ -140,11 +111,9 @@ export const useAdminKbStore = defineStore("adminKb", () => {
     lowQualityChunks,
     lowQualityTotal,
     lowQualityQuery,
-    migrateDialog,
     switchAdminTab,
     fetchPrivateKbs,
     fetchIndexStats,
-    submitEmbeddingMigrate,
     fetchRecallSets,
     createTestSet,
     runRecallSet,

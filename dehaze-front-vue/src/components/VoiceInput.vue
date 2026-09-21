@@ -20,6 +20,16 @@
         @click="handleToggle"
       />
     </el-tooltip>
+
+    <!-- 无 UI 逻辑组件：模板无输出，但必须挂载才能暴露 start/stop/cancel 与事件 -->
+    <VoiceRecorder
+      ref="recorderRef"
+      @chunk="onRecorderChunk"
+      @stopped="onRecorderStopped"
+      @canceled="onRecorderCanceled"
+    />
+    <AsrStreamClient ref="asrRef" @message="onAsrMessage" @error="onAsrError" />
+    <AsrOfflineClient ref="offlineRef" />
   </div>
 </template>
 

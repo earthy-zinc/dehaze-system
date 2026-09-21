@@ -9,6 +9,7 @@ class LoginLogDocument:
         location: str
         browser: str
         os: str
+        device_type: str (web/android/flutter/miniprogram)
         status: int (1:成功;0:失败)
         message: str
         create_time: datetime

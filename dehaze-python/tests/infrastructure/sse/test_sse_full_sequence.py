@@ -80,7 +80,9 @@ class TestFullSequence:
             tool_call_chunks=[{"name": "search", "args": '{"q":', "id": "c1", "index": 0}],
         )
         chunk2 = AIMessageChunk(
-            content="", tool_call_chunks=[{"args": '"雾"}', "id": "c1", "index": 0}]
+            content="",
+            # 续片片段只带增量 args，name 与首片一致地为 None（ToolCallChunk.name 可空）
+            tool_call_chunks=[{"name": None, "args": '"雾"}', "id": "c1", "index": 0}],
         )
         await converter.handle({"type": "messages", "ns": [], "data": [chunk1]})
         await converter.handle({"type": "messages", "ns": [], "data": [chunk2]})
@@ -101,7 +103,7 @@ class TestFullSequence:
         types = [e[0] for e in emitter.events]
         assert "content_block.start" not in types
         assert types.index("thought") < types.index("message.end")
-        delta = [e for e in emitter.events if e[0] == "content_block.delta"][0]
+        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
         assert delta[1]["delta"]["type"] == "input_json_delta"
         assert emitter.events[-1][1]["stopReason"] == "tool_calls"
 
@@ -178,27 +180,17 @@ class TestStreamTimeoutStateMachine:
         monkeypatch.setattr(m, "get_redis_client", _get_redis)
         return manager
 
-    async def test_idle_timeout_pushes_error_then_end(self, monkeypatch, mock_redis):
+    async def test_idle_timeout_ends_stream_without_error(self, monkeypatch, mock_redis):
+        """空闲超时只结束连接：不推 error（推理仍在跑），也不落终结事件。"""
         import json
 
-        from app.core.code import ResultCode
-
-        manager = self._make_manager(monkeypatch, mock_redis, heartbeat=0.01, timeout=0.02)
+        manager = self._make_manager(monkeypatch, mock_redis, heartbeat=0.03, timeout=0.02)
         queue = asyncio.Queue()
-        chunks = [
-            chunk async for chunk in manager._stream_from_queue("s-timeout", queue)
-        ]
+        chunks = [chunk async for chunk in manager._stream_from_queue("s-timeout", queue)]
         assert chunks == []
 
         events = [json.loads(r) for r in await mock_redis.lrange("ai:stream:s-timeout", 0, -1)]
-        types = [ev["event"] for ev in events]
-        assert "error" in types
-        assert types[-1] == "message.end"
-        error = next(ev for ev in events if ev["event"] == "error")
-        assert error["data"]["code"] == ResultCode.SYSTEM_EXECUTION_TIMEOUT.code
-        end = events[-1]["data"]
-        assert end["stopReason"] == "error"
-        assert end["usage"]["credits"] == 0
+        assert [ev["event"] for ev in events] == []
 
     async def test_heartbeat_within_timeout_pushes_ping(self, monkeypatch, mock_redis):
         import json
@@ -207,16 +199,11 @@ class TestStreamTimeoutStateMachine:
 
         manager = self._make_manager(monkeypatch, mock_redis, heartbeat=0.01, timeout=10)
         queue = asyncio.Queue()
-        asyncio.get_running_loop().call_later(
-            0.05, lambda: queue.put_nowait(m._STREAM_END)
-        )
-        chunks = [
-            chunk async for chunk in manager._stream_from_queue("s-ping", queue)
-        ]
-        assert chunks == []
+        asyncio.get_running_loop().call_later(0.015, lambda: queue.put_nowait(m._STREAM_END))
+        chunks = [chunk async for chunk in manager._stream_from_queue("s-ping", queue)]
 
-        events = [json.loads(r) for r in await mock_redis.lrange("ai:stream:s-ping", 0, -1)]
-        types = [ev["event"] for ev in events]
-        assert types.count("ping") >= 1
-        assert "error" not in types
-        assert types[-1] != "message.end"
+        assert [
+            line for chunk in chunks for line in chunk.splitlines() if line.startswith("event: ")
+        ] == ["event: ping"]
+        # 心跳不写缓存：重连重放不需要心跳
+        assert [json.loads(r) for r in await mock_redis.lrange("ai:stream:s-ping", 0, -1)] == []

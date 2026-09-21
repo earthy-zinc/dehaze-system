@@ -53,4 +53,13 @@ type IAlgorithmService interface {
 
 	// GetMonitorStatsReport 获取算法统计报表（按日聚合）
 	GetMonitorStatsReport(ctx context.Context, algorithmID int64, days int) ([]map[string]interface{}, error)
+
+	// Audit 审核算法（通过→已发布；驳回→测试中，且必须填原因）
+	Audit(ctx context.Context, id int64, auditBy int64, form *bo.AlgorithmAuditForm) error
+
+	// CreateVersion 新增版本，返回算法 ID（对齐 python `create_version` 的 `success(algorithm_id)`）
+	CreateVersion(ctx context.Context, id int64, form *bo.AlgorithmVersionForm) (int64, error)
+
+	// RollbackVersion 回滚到指定版本（单活跃版本切换 + 主表版本号同步）
+	RollbackVersion(ctx context.Context, id int64, versionID int64) error
 }

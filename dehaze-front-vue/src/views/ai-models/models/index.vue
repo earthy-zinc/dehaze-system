@@ -224,7 +224,34 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center" fixed="right">
+        <el-table-column label="最近测试" width="100" align="center">
+          <template #default="{ row }">
+            <el-tooltip :disabled="!row.lastTestAt" placement="top">
+              <template #content>
+                <div v-if="row.lastTestError">{{ row.lastTestError }}</div>
+                <div>{{ row.lastTestAt }}</div>
+              </template>
+              <el-tag
+                :type="testStatusInfo(row.lastTestStatus).type"
+                size="small"
+              >
+                {{ testStatusInfo(row.lastTestStatus).label }}
+              </el-tag>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+        <el-table-column label="近24h实调" width="130" align="center">
+          <template #default="{ row }">
+            <span v-if="row.calls24h == null">-</span>
+            <span v-else-if="row.successRate24h == null"
+              >{{ row.calls24h }} 次</span
+            >
+            <span v-else
+              >{{ row.calls24h }} 次 · 成功率 {{ row.successRate24h }}%</span
+            >
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="240" align="center" fixed="right">
           <template #default="{ row }">
             <el-button
               v-hasPerm="['ai:model:manage']"
@@ -243,6 +270,16 @@
               @click="modelStore.openPriceDialog(row as AiModelVO)"
             >
               价格
+            </el-button>
+            <el-button
+              v-hasPerm="['ai:model:manage']"
+              link
+              type="primary"
+              size="small"
+              :loading="testingIds.has(row.modelId)"
+              @click="handleTest(row as AiModelVO)"
+            >
+              测试
             </el-button>
             <el-button
               v-hasPerm="['ai:model:manage']"
@@ -557,6 +594,7 @@ defineOptions({ name: "AiModelsModels" });
 import { Plus, Refresh } from "@element-plus/icons-vue";
 import { useDebounceFn } from "@vueuse/core";
 import {
+  AiModelAPI,
   AiModelForm,
   AiModelType,
   AiModelVO,
@@ -565,6 +603,7 @@ import {
 } from "dehaze-sdk-js";
 import { useAdminModelStore } from "@/store/modules/adminModel";
 import { useAdminProviderStore } from "@/store/modules/adminProvider";
+import type { TagType } from "@/enums/TagType";
 
 const modelStore = useAdminModelStore();
 const providerStore = useAdminProviderStore();
@@ -576,10 +615,7 @@ const formDialog = computed(() => modelStore.formDialog);
 const priceDialog = computed(() => modelStore.priceDialog);
 const operation = computed(() => modelStore.operation);
 
-const typeTag: Record<
-  AiModelType,
-  { label: string; type: "primary" | "success" | "warning" }
-> = {
+const typeTag: Record<AiModelType, { label: string; type: TagType }> = {
   chat: { label: "对话", type: "primary" },
   embedding: { label: "向量", type: "success" },
   rerank: { label: "重排", type: "warning" },
@@ -590,6 +626,15 @@ const speedLabel: Record<string, string> = {
   medium: "中",
   slow: "慢",
 };
+const testStatusTag: Record<number, { label: string; type: TagType }> = {
+  0: { label: "未测试", type: "info" },
+  1: { label: "可用", type: "success" },
+  2: { label: "不可用", type: "danger" },
+};
+
+function testStatusInfo(status: number | null | undefined) {
+  return testStatusTag[status ?? 0];
+}
 
 function providerHealthTag(health: string) {
   return (
@@ -740,6 +785,31 @@ async function handleDelete(row: AiModelVO) {
   );
   await modelStore.deleteModel(row);
   ElMessage.success("已下线");
+}
+
+// ==================== 模型可用性测试 ====================
+
+/** 正在测试的模型标识集合，防重复点击 */
+const testingIds = ref(new Set<string>());
+
+async function handleTest(row: AiModelVO) {
+  testingIds.value.add(row.modelId);
+  try {
+    const result = await AiModelAPI.testModel(row.modelId);
+    if (result.success) {
+      ElMessage.success(`测试通过，延迟 ${result.latencyMs ?? "-"}ms`);
+    } else {
+      // 厂商报错可能多行且很长，取首行截断为摘要
+      const summary =
+        (result.error ?? "未知错误").split("\n")[0]?.slice(0, 100) ??
+        "未知错误";
+      ElMessage.error(`测试失败：${summary}`);
+    }
+    // 结果已落库，刷新列表同步"最近测试"列
+    await modelStore.fetchModels();
+  } finally {
+    testingIds.value.delete(row.modelId);
+  }
 }
 
 // ==================== 价格档位 ====================

@@ -1,15 +1,48 @@
 {
   // ============================================================
-  // Java (Spring Boot / Spring Cloud)
+  // Java (Spring Boot / Android)
+  // java.jdt.ls.java.home 与 java.configuration.runtimes 的 scope 是
+  // machine-overridable，写在工作区设置即可生效，无需放 Remote 级。
+  //   java.jdt.ls.java.home —— 语言服务器自身运行 JDK，要求 >= 21；它同时
+  //     是 Gradle daemon 的默认 JDK，故必须取本仓库最旧的 Gradle 也支持的
+  //     版本（dehaze-android 8.7 / dehaze_flutter 8.12 / dehaze-react-native
+  //     8.14.3）→ 21。java.import.gradle.java.home 因此不必单独配置。
+  //   java.configuration.runtimes —— dehaze-java 字节码目标是 17（pom.xml 的
+  //     maven.compiler.release=17），需注册 JavaSE-17 供其解析 JRE 容器；
+  //     默认运行时取主项目的 17。
   // ============================================================
+  "java.jdt.ls.java.home": "/usr/local/java/jdk21",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "/usr/local/java/jdk17",
+      "default": true
+    },
+    {
+      "name": "JavaSE-21",
+      "path": "/usr/local/java/jdk21"
+    }
+  ],
   "java.compile.nullAnalysis.mode": "automatic",
   "java.autobuild.enabled": false,
   "java.configuration.updateBuildConfiguration": "disabled",
-  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms512m -Xlog:disable",
   "java.errors.incompleteClasspath.severity": "ignore",
   "java.maxConcurrentBuilds": 1,
   "java.import.generatesMetadataFilesAtProjectRoot": false,
   "java.search.scope": "main",
+  "java.server.launchMode": "Standard",
+
+  // Flutter / React Native 的 android/ 是 Kotlin DSL 的 Gradle 工程而非
+  // Java 工程，导入只会失败并产生噪音，这里排除；默认 4 项必须一并带上，
+  // 因为该设置是整体替换默认值而非追加。
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/dehaze_flutter/android/**",
+    "**/dehaze-react-native/android/**"
+  ],
 
   // ============================================================
   // Gradle（排除 node_modules 中的残留 Gradle wrapper）
@@ -115,7 +148,7 @@
   // 语言特定
   // ============================================================
   "[python]": {
-    "editor.defaultFormatter": "ms-python.autopep8",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.tabSize": 4
   },
   "[go]": {
@@ -131,9 +164,12 @@
 
   // ============================================================
   // TypeScript / JavaScript
+  // 旧命名空间 typescript.* / javascript.* 已弃用，TS 扩展 10.0 起统一为
+  // js/ts.*（一个键同时管 JS 与 TS）。
+  // 仓库根目录没有 package.json / node_modules，6 个 Node 子项目各自
+  // 带 typescript 5.9.3，js/ts.tsdk.path 只能存一个值（window 级），
+  // 因此不设；需要锁定版本时改用多根工作区（.code-workspace）。
   // ============================================================
-  "js/ts.tsdk.path": "node_modules/typescript/lib",
-  "js/ts.tsdk.promptToUseWorkspaceVersion": true,
   "js/ts.preferences.importModuleSpecifier": "relative",
 
   // ============================================================
@@ -150,25 +186,27 @@
   "vitest.disableWorkspaceWarning": true,
 
   // ============================================================
-  // Python / Pylance（性能优化）
+  // Python
+  // 项目统一用 Ruff（见 dehaze-python/pyproject.toml 的 [tool.ruff]），
+  // isort 扩展自带语言服务器会与 ruff 的 isort 规则重复报错，故关闭。
+  // 类型检查范围、导入搜索根、以及"按目录区分环境"**单点定义在仓库根 pyrightconfig.json**：
+  // 该文件存在时 pyright 会整体忽略本文件的 python.analysis.*（IDE 与 CLI 同源），
+  // 所以 typeCheckingMode / exclude / extraPaths 不再在此保留副本，改配置请改那个文件。
+  // 其中的 executionEnvironments 只有一条：dehaze-mcp-gateway/tests 需要
+  //   dehaze-python（import app.*）+ dehaze-mcp-gateway（import server，uv 把网关目录装成
+  //   可编辑包）；网关本体与 dehaze-python 的 mcp 已统一到同一条 1.24.x 版本线，
+  //   故不必再为它单独挂一份 venv 搜索根。
+  // 下面两条在 pyrightconfig.json 里没有对应键（属于客户端侧 / Pylance 专有），保持在工作区。
+  // 语言服务器的选择与解释器路径是 window/machine 级，只能配在机器级。
   // ============================================================
-  "python.analysis.exclude": [
-    "**/node_modules",
-    "**/__pycache__",
-    "**/.*",
-    "**/dehaze-algorithm",
-    "**/dehaze-go",
-    "**/dehaze-java",
-    "**/dehaze-java-cloud",
-    "**/dehaze-java-cloud-plus",
-    "**/dehaze-android",
-    "**/dehaze-flutter",
-    "**/dehaze-react-native",
-    "**/dehaze-taro",
-    "**/dehaze-uniapp",
-    "**/scripts",
-    "**/config"
-  ],
+  "isort.serverEnabled": false,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.languageServerMode": "full",
+
+  // 测试发现必须以 dehaze-python 为工作目录：否则 pytest 在仓库根执行，
+  // 会去收集 dehaze-algorithm/notebook/*.py（缺 basicsr/torchsummary 直接报错），
+  // 并执行 dehaze-mcp-gateway/tests/live_test.py（该文件顶层即跑实时用例）。
+  "python.testing.cwd": "${workspaceFolder}/dehaze-python",
 
   // ============================================================
   // 杂项

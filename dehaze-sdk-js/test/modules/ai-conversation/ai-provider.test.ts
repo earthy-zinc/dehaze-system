@@ -197,8 +197,8 @@ async function cleanupProviderKeys(provId: number, name?: string) {
 /**
  * 供应商/Key 新增字段与运营统计（AI模型管理 §2.1/§2.3）。
  *
- * 后端尚未实现 user_identity_forward / rpm_limit / usage-stats：测试先行契约，
- * 接口 404 或字段缺失时正向用例失败暴露，待后端实现后统一验证。
+ * user_identity_forward / rpm_limit 字段已落地存储（运行时透传消费见后端实现.md §2.2），
+ * usage-stats 已实现。本组断言字段持久化与统计结构契约。
  */
 describe("供应商字段扩展与运营统计（rpmLimit/userIdentityForward/usage-stats）", () => {
   test("正向：创建供应商含 userIdentityForward 配置", async () => {
@@ -224,7 +224,7 @@ describe("供应商字段扩展与运营统计（rpmLimit/userIdentityForward/us
 
   test("正向：运营统计 getUsageStats（管理员）", async () => {
     await login(USERS.ADMIN.username);
-    const stats = await AiProviderAPI.getUsageStats({ granularity: "day" });
+    const stats = await AiProviderAPI.getUsageStats({});
     expect(Array.isArray(stats.providerHealth)).toBe(true);
     expect(Array.isArray(stats.modelUsage)).toBe(true);
     expect(Array.isArray(stats.degradeFault.downgradeFrequency)).toBe(true);

@@ -62,7 +62,7 @@ class VoiceBillingService:
             user_id,
             bill_type="asr",
             model="funasr",
-            quantity=int(math.ceil(audio_seconds)),
+            quantity=math.ceil(audio_seconds),
             credits=credits,
             reason="语音识别消耗（FunASR）",
         )
@@ -80,7 +80,8 @@ class VoiceBillingService:
             reason="语音合成消耗（本地 Piper）",
         )
 
-    async def _charge(self, 
+    async def _charge(
+        self,
         db: AsyncSession,
         user_id: int,
         *,
@@ -93,10 +94,10 @@ class VoiceBillingService:
         """实扣配额与余额并记录计费记录与积分流水（quantity 记入 input_tokens 作用量字段）"""
         credits = max(credits, 0)
         if credits > 0:
-            await quota_service.deduct(user_id, credits)
-            await balance_service.deduct(db, user_id, credits)
+            await self.quota_service.deduct(user_id, credits)
+            await self.balance_service.deduct(db, user_id, credits)
 
-        billing = await ai_billing_repository.create_billing(
+        billing = await self.ai_billing_repository.create_billing(
             db,
             user_id=user_id,
             model=model,
@@ -121,7 +122,10 @@ class VoiceBillingService:
 
         logger.info(
             "语音计费完成: user_id=%s bill_type=%s quantity=%s credits=%s",
-            user_id, bill_type, quantity, credits,
+            user_id,
+            bill_type,
+            quantity,
+            credits,
         )
         return credits
 

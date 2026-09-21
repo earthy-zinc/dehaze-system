@@ -2,13 +2,14 @@
 
 import logging
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.core.timezone import is_peak_hour
 from app.models.entity.sys_ai_model_price import SysAiModelPrice
 from app.models.schema.ai_model_price import (
     ModelPriceCreateRequest,
@@ -17,7 +18,6 @@ from app.models.schema.ai_model_price import (
     ModelPriceResult,
 )
 from app.models.schema.common import PageResult
-from app.core.timezone import is_peak_hour
 from app.repository.ai_model_price_repository import ai_model_price_repository
 
 logger = logging.getLogger(__name__)
@@ -31,9 +31,13 @@ class AiModelPriceService:
     def __init__(self, price_repository=ai_model_price_repository):
         self.price_repository = price_repository
 
-    async def create_price(self, db: AsyncSession, request: ModelPriceCreateRequest) -> ModelPriceResult:
+    async def create_price(
+        self, db: AsyncSession, request: ModelPriceCreateRequest
+    ) -> ModelPriceResult:
         """新增用户售价：同模型同供应商生成新价格版本，历史版本保留可追溯"""
-        version = await self.price_repository.next_price_version(db, request.model_id, request.provider_id)
+        version = await self.price_repository.next_price_version(
+            db, request.model_id, request.provider_id
+        )
         price = await self.price_repository.create(
             db,
             SysAiModelPrice(
@@ -69,7 +73,9 @@ class AiModelPriceService:
         await self.price_repository.soft_delete_by_ids(db, [price_id])
         await self.price_repository.soft_delete_details_by_price_id(db, price_id)
 
-    async def list_prices(self, db: AsyncSession, query: ModelPriceQuery) -> PageResult[ModelPriceResult]:
+    async def list_prices(
+        self, db: AsyncSession, query: ModelPriceQuery
+    ) -> PageResult[ModelPriceResult]:
         prices, total = await self.price_repository.list_prices(
             db,
             query.page,
@@ -87,7 +93,7 @@ class AiModelPriceService:
         self,
         db: AsyncSession,
         model_id: str,
-        provider_id: int,
+        provider_id: int | None,
         at_time: datetime,
         input_tokens: int,
         cached_tokens: int,
@@ -97,7 +103,8 @@ class AiModelPriceService:
 
         未配置用户售价返回 {"credits": 0, "credits_saved": 0}（由调用方标记待配置）；
         换算公式见后端实现.md §2.12：
-          credits = (input - cached) × input单价/1M + cached × cached单价/1M + output × output单价/1M
+          credits = (input - cached) × input单价/1M + cached × cached单价/1M
+          + output × output单价/1M
           credits_saved = cached × (input单价 - cached单价) / 1M
         Decimal 精确计算后四舍五入取整，单次至少 1 积分。
         """
@@ -130,9 +137,7 @@ class AiModelPriceService:
             # 全 0 价配置（如内置本地免费模型）明确不扣积分
             return {"credits": 0, "credits_saved": 0, "configured": True}
         credits = (
-            uncached * input_price
-            + cached_tokens * cached_price
-            + output_tokens * output_price
+            uncached * input_price + cached_tokens * cached_price + output_tokens * output_price
         ) / Decimal("1000000")
         credits = credits.to_integral_value(rounding=ROUND_HALF_UP)
         credits_saved = (

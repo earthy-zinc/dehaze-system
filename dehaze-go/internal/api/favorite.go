@@ -27,23 +27,18 @@ func (api *FavoriteApi) GetPage(c *gin.Context) {
 		return
 	}
 
+	// python favorite.py:25-26 是 pageSize 默认 20（非 BasePageQuery 的 10），故用带默认值的变体
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 20)
+	if !ok {
+		return
+	}
 	q := &query.FavoritePageQuery{
 		TargetType: c.Query("targetType"),
 		Keywords:   c.Query("keywords"),
 		SortBy:     c.Query("sortBy"),
 		SortOrder:  c.Query("sortOrder"),
-		PageNum:    1,
-		PageSize:   20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:    pageNum,
+		PageSize:   pageSize,
 	}
 
 	result, err := api.favService.GetPage(c.Request.Context(), userID, q)

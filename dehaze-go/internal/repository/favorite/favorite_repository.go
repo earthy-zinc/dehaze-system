@@ -53,7 +53,7 @@ func (r *FavoriteRepository) Upsert(ctx context.Context, f *model.SysFavorite) e
 	return nil
 }
 
-func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *query.FavoritePageQuery) ([]FavoriteWithAlgorithm, int64, error) {
+func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *query.FavoritePageQuery) ([]FavoriteWithTarget, int64, error) {
 	pageNum := q.PageNum
 	if pageNum <= 0 {
 		pageNum = 1
@@ -63,10 +63,12 @@ func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *quer
 		pageSize = 20
 	}
 
+	// JOIN 条件带 deleted=0，对象被逻辑删除后名称为空（对齐 Java selectFavoritePage）
 	db := r.db.WithContext(ctx).
 		Table("sys_favorite f").
-		Select("f.*, COALESCE(a.name, '') as algorithm_name").
-		Joins("LEFT JOIN sys_algorithm a ON f.target_type = 'algorithm' AND f.target_id = a.id").
+		Select("f.*, COALESCE(a.name, '') as algorithm_name, COALESCE(d.name, '') as dataset_name, COALESCE(d.img, '') as dataset_img").
+		Joins("LEFT JOIN sys_algorithm a ON f.target_type = 'algorithm' AND f.target_id = a.id AND a.deleted = 0").
+		Joins("LEFT JOIN sys_dataset d ON f.target_type = 'dataset' AND f.target_id = d.id AND d.deleted = 0").
 		Where("f.user_id = ? AND f.deleted = 0", userID)
 
 	if q.TargetType != "" {
@@ -74,7 +76,7 @@ func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *quer
 	}
 	if q.Keywords != "" {
 		kw := "%" + q.Keywords + "%"
-		db = db.Where("(f.target_type = 'algorithm' AND a.name LIKE ?) OR (f.target_type != 'algorithm' AND 1=0)", kw)
+		db = db.Where("(f.target_type = 'algorithm' AND a.name LIKE ?) OR (f.target_type = 'dataset' AND d.name LIKE ?)", kw, kw)
 	}
 
 	var total int64
@@ -82,17 +84,14 @@ func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *quer
 		return nil, 0, err
 	}
 
-	sortField := "f.create_time"
+	// 排序仅支持收藏时间（对齐 Java：sortOrder=asc 正序，其余倒序）
 	sortOrder := "DESC"
-	if q.SortBy == "create_time" {
-		sortField = "f.create_time"
-	}
 	if q.SortOrder == "asc" || q.SortOrder == "ASC" {
 		sortOrder = "ASC"
 	}
 
-	var list []FavoriteWithAlgorithm
-	err := db.Order(sortField + " " + sortOrder).
+	var list []FavoriteWithTarget
+	err := db.Order("f.create_time " + sortOrder + ", f.id " + sortOrder).
 		Offset((pageNum - 1) * pageSize).Limit(pageSize).
 		Scan(&list).Error
 	return list, total, err
@@ -103,15 +102,6 @@ func (r *FavoriteRepository) CountByUserID(ctx context.Context, userID int64) (i
 	err := r.db.WithContext(ctx).
 		Model(&model.SysFavorite{}).
 		Where("user_id = ? AND deleted = 0", userID).
-		Count(&count).Error
-	return count, err
-}
-
-func (r *FavoriteRepository) CountByUserAndType(ctx context.Context, userID int64, targetType string) (int64, error) {
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&model.SysFavorite{}).
-		Where("user_id = ? AND target_type = ? AND deleted = 0", userID, targetType).
 		Count(&count).Error
 	return count, err
 }
@@ -138,7 +128,7 @@ func (r *FavoriteRepository) DeleteByIDs(ctx context.Context, userID int64, ids 
 	return r.db.WithContext(ctx).
 		Model(&model.SysFavorite{}).
 		Where("user_id = ? AND id IN ? AND deleted = 0", userID, ids).
-		Update("deleted", 1).Error
+		Update("deleted", gorm.Expr("id")).Error
 }
 
 func (r *FavoriteRepository) UpdateByID(ctx context.Context, id int64, updates map[string]any) error {
@@ -154,7 +144,7 @@ func (r *FavoriteRepository) MarkInvalid(ctx context.Context, targetType string,
 	}
 	return r.db.WithContext(ctx).
 		Model(&model.SysFavorite{}).
-		Where("target_type = ? AND target_id IN ? AND deleted = 0", targetType, targetIDs).
+		Where("target_type = ? AND target_id IN ?", targetType, targetIDs).
 		Update("is_invalid", 1).Error
 }
 

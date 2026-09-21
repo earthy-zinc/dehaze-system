@@ -10,7 +10,7 @@
 -- 与 sys_ai_agent_skill 的关联语义：sys_ai_agent_skill.skill_name 即本表
 --   name 的外键语义（项目惯例不加物理外键）；删除 Skill 前须校验其是否被
 --   Agent 关联，有则拒绝并提示先解绑。
--- name 业务唯一（类别②：绕过软删查全表判重，删除后不可复用）。
+-- name 业务唯一；唯一键含 deleted，软删后可重建同名。
 -- status 标识 Skill 启停（1=启用，0=禁用），禁用后不再进入 SkillManager 索引，
 --   从而不出现在 discover/load 返回中。
 -- source 标记来源（builtin=内置播种，admin=管理员创建）。
@@ -32,13 +32,13 @@ CREATE TABLE `sys_ai_skill`
     `status`      tinyint                                                         NOT NULL DEFAULT 1 COMMENT '启停状态(0:禁用;1:启用)',
     `source`      varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL DEFAULT 'admin' COMMENT '来源(builtin:内置播种;admin:管理员创建)',
     `market_shared` tinyint                                                       NOT NULL DEFAULT 0 COMMENT '是否共享至Skill市场(0:否;1:是)',
-    `deleted`     tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`     bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`   bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time` datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_name` (`name`) USING BTREE,
+    UNIQUE INDEX `uk_name` (`name`, `deleted`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

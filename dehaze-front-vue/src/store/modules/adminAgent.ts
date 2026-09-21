@@ -10,8 +10,15 @@ import {
   EndpointCreateForm,
   EndpointResult,
   EndpointUpdateForm,
+  EvalDatasetCreateForm,
   EvalDatasetResult,
+  EvalDatasetUpdateForm,
+  EvalRunGateResult,
   EvalRunResult,
+  EvalRunTaskResult,
+  EvalSampleCreateForm,
+  EvalSampleResult,
+  EvalSampleUpdateForm,
   EnabledStatus,
   ReasoningMode,
   VersionResult,
@@ -180,9 +187,18 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
     }
   }
 
-  async function publishAgent(agentId: number, changeNote: string) {
+  /**
+   * 发布 Agent。force=true 为判分漂移豁免：门禁因判分模型漂移暂停时，
+   * 管理员确认风险后强制发布，豁免原因随 changeNote 一并记录。
+   */
+  async function publishAgent(
+    agentId: number,
+    changeNote: string,
+    force = false
+  ) {
     const result: VersionResult = await AiAgentAPI.publish(agentId, {
       changeNote,
+      force,
     });
     await fetchVersions(agentId);
     return result;
@@ -194,7 +210,13 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
   }
 
   // ==================== 评测（发布门禁） ====================
+  /** 评测任务轮询间隔与上限（单次回归评测最长约 10 分钟） */
+  const EVAL_TASK_POLL_INTERVAL_MS = 1500;
+  const EVAL_TASK_MAX_POLLS = 400;
+
   const evalDatasets = ref<EvalDatasetResult[]>([]);
+  const evalSamples = ref<EvalSampleResult[]>([]);
+  const evalSamplesLoading = ref(false);
   const evalRuns = ref<EvalRunResult[]>([]);
   const evalRunsTotal = ref(0);
   const evalLoading = ref(false);
@@ -202,6 +224,66 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
 
   async function fetchEvalDatasets(agentId: number) {
     evalDatasets.value = (await AiAgentAPI.listEvalDatasets(agentId)) ?? [];
+  }
+
+  async function createEvalDataset(
+    agentId: number,
+    form: EvalDatasetCreateForm
+  ) {
+    await AiAgentAPI.createEvalDataset(agentId, form);
+    await fetchEvalDatasets(agentId);
+  }
+
+  async function updateEvalDataset(
+    agentId: number,
+    datasetId: number,
+    form: EvalDatasetUpdateForm
+  ) {
+    await AiAgentAPI.updateEvalDataset(agentId, datasetId, form);
+    await fetchEvalDatasets(agentId);
+  }
+
+  async function deleteEvalDataset(agentId: number, datasetId: number) {
+    await AiAgentAPI.deleteEvalDataset(agentId, datasetId);
+    await fetchEvalDatasets(agentId);
+  }
+
+  async function fetchEvalSamples(agentId: number, datasetId: number) {
+    evalSamplesLoading.value = true;
+    try {
+      evalSamples.value =
+        (await AiAgentAPI.listEvalSamples(agentId, datasetId)) ?? [];
+    } finally {
+      evalSamplesLoading.value = false;
+    }
+  }
+
+  async function createEvalSample(
+    agentId: number,
+    datasetId: number,
+    form: EvalSampleCreateForm
+  ) {
+    await AiAgentAPI.createEvalSample(agentId, datasetId, form);
+    await fetchEvalSamples(agentId, datasetId);
+  }
+
+  async function updateEvalSample(
+    agentId: number,
+    datasetId: number,
+    sampleId: number,
+    form: EvalSampleUpdateForm
+  ) {
+    await AiAgentAPI.updateEvalSample(agentId, sampleId, form);
+    await fetchEvalSamples(agentId, datasetId);
+  }
+
+  async function deleteEvalSample(
+    agentId: number,
+    datasetId: number,
+    sampleId: number
+  ) {
+    await AiAgentAPI.deleteEvalSample(agentId, sampleId);
+    await fetchEvalSamples(agentId, datasetId);
   }
 
   async function fetchEvalRuns(agentId: number) {
@@ -217,11 +299,34 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
     }
   }
 
-  /** 手动触发回归评测，返回门禁判定（runId/passed/scoreSummary/failedSamples） */
-  async function runEval(agentId: number) {
-    const result = await AiAgentAPI.runEval(agentId);
-    await fetchEvalRuns(agentId);
-    return result;
+  /** 评测异步任务（进度与结果由 runEval 轮询写入） */
+  const evalTask = ref<EvalRunTaskResult | null>(null);
+  const evalProgress = computed(() => {
+    const progress = evalTask.value?.progress;
+    return progress?.total
+      ? Math.round((progress.done / progress.total) * 100)
+      : 0;
+  });
+
+  /**
+   * 手动触发回归评测：提交后轮询任务进度至 succeeded/failed，返回门禁判定结果
+   *（任务失败时返回 null，失败原因读 evalTask.error）。
+   */
+  async function runEval(agentId: number): Promise<EvalRunGateResult | null> {
+    evalTask.value = null;
+    const { taskId } = await AiAgentAPI.runEvalAsync(agentId);
+    for (let poll = 0; poll < EVAL_TASK_MAX_POLLS; poll++) {
+      const task = await AiAgentAPI.getEvalTask(agentId, taskId);
+      evalTask.value = task;
+      if (task.status === "succeeded" || task.status === "failed") {
+        await fetchEvalRuns(agentId);
+        return task.result ?? null;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, EVAL_TASK_POLL_INTERVAL_MS)
+      );
+    }
+    throw new Error("评测执行超时，请稍后在评测执行记录中查看结果");
   }
 
   // ==================== 测试（即时预览，不入库） ====================
@@ -283,6 +388,10 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
     diffLoading,
     versionDetail,
     evalDatasets,
+    evalSamples,
+    evalSamplesLoading,
+    evalTask,
+    evalProgress,
     evalRuns,
     evalRunsTotal,
     evalLoading,
@@ -304,6 +413,13 @@ export const useAdminAgentStore = defineStore("adminAgent", () => {
     publishAgent,
     rollbackVersion,
     fetchEvalDatasets,
+    createEvalDataset,
+    updateEvalDataset,
+    deleteEvalDataset,
+    fetchEvalSamples,
+    createEvalSample,
+    updateEvalSample,
+    deleteEvalSample,
     fetchEvalRuns,
     runEval,
     testAgent,

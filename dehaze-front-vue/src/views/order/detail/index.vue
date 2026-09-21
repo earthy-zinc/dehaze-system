@@ -37,19 +37,25 @@
             <div class="package-name">
               <el-icon><CreditCard /></el-icon>
               <span>{{ order.packageName }}</span>
-              <el-tag size="small" type="info" effect="plain">{{
-                order.packageLevel
-              }}</el-tag>
+              <el-tag
+                v-if="order.packageLevel"
+                size="small"
+                type="info"
+                effect="plain"
+                >{{ order.packageLevel }}</el-tag
+              >
             </div>
             <div
-              v-if="order.effectiveTime || order.expireTime"
+              v-if="order.effectiveTime || order.packageExpireTime"
               class="validity"
             >
               <el-icon><Clock /></el-icon>
               <span v-if="order.effectiveTime"
                 >生效：{{ order.effectiveTime }}</span
               >
-              <span v-if="order.expireTime">到期：{{ order.expireTime }}</span>
+              <span v-if="order.packageExpireTime"
+                >到期：{{ order.packageExpireTime }}</span
+              >
             </div>
           </div>
         </div>
@@ -59,34 +65,28 @@
           <div class="info-card-body">
             <div class="amount-row">
               <span class="amount-label">订单原价</span>
-              <span class="amount-value"
-                >¥{{ order.originalPrice.toFixed(2) }}</span
-              >
+              <span class="amount-value">¥{{ yuan(order.originalPrice) }}</span>
             </div>
             <div v-if="order.discountAmount > 0" class="amount-row discount">
               <span class="amount-label">折扣优惠</span>
               <span class="amount-value"
-                >-¥{{ order.discountAmount.toFixed(2) }}</span
+                >-¥{{ yuan(order.discountAmount) }}</span
               >
             </div>
             <div v-if="order.couponAmount > 0" class="amount-row discount">
               <span class="amount-label">优惠券抵扣</span>
-              <span class="amount-value"
-                >-¥{{ order.couponAmount.toFixed(2) }}</span
-              >
+              <span class="amount-value">-¥{{ yuan(order.couponAmount) }}</span>
             </div>
             <el-divider />
             <div class="amount-row total">
-              <span class="amount-label">实付金额</span>
+              <span class="amount-label">应付金额</span>
               <span class="amount-value payable"
-                >¥{{ order.payableAmount.toFixed(2) }}</span
+                >¥{{ yuan(order.payableAmount) }}</span
               >
             </div>
             <div v-if="order.paidAmount > 0" class="amount-row">
               <span class="amount-label">已支付金额</span>
-              <span class="amount-value"
-                >¥{{ order.paidAmount.toFixed(2) }}</span
-              >
+              <span class="amount-value">¥{{ yuan(order.paidAmount) }}</span>
             </div>
           </div>
         </div>
@@ -135,7 +135,7 @@
                 >
                   <template #default="scope"
                     >¥{{
-                      (scope.row as PaymentRecordVO).amount.toFixed(2)
+                      yuan((scope.row as PaymentRecordVO).amount)
                     }}</template
                   >
                 </el-table-column>
@@ -167,17 +167,26 @@
             <div class="amount-row">
               <span class="amount-label">退款金额</span>
               <span class="amount-value refund-amount"
-                >¥{{ order.refundRecord.refundAmount.toFixed(2) }}</span
+                >¥{{ yuan(order.refundRecord.refundAmount) }}</span
               >
             </div>
             <div class="amount-row">
               <span class="amount-label">退款原因</span>
               <span class="amount-value">{{ order.refundRecord.reason }}</span>
             </div>
-            <div class="amount-row">
-              <span class="amount-label">已用配额</span>
+            <div v-if="order.refundRecord.usedDays != null" class="amount-row">
+              <span class="amount-label">已使用天数</span>
+              <span class="amount-value"
+                >{{ order.refundRecord.usedDays }} 天</span
+              >
+            </div>
+            <div
+              v-if="order.refundRecord.usedCredits != null"
+              class="amount-row"
+            >
+              <span class="amount-label">已消耗积分</span>
               <span class="amount-value">{{
-                order.refundRecord.usedQuota
+                order.refundRecord.usedCredits
               }}</span>
             </div>
             <div class="amount-row">
@@ -255,7 +264,7 @@
         </div>
         <div class="payment-row">
           <span class="label">应付金额：</span>
-          <span class="pay-amount">¥{{ order.payableAmount.toFixed(2) }}</span>
+          <span class="pay-amount">¥{{ yuan(order.payableAmount) }}</span>
         </div>
       </div>
 
@@ -271,6 +280,18 @@
             <el-radio-button value="balance">
               <el-icon><CreditCard /></el-icon> 余额支付
             </el-radio-button>
+            <el-radio-button value="combined">
+              <el-icon><Coin /></el-icon> 组合支付
+            </el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item
+          v-if="paymentForm.payMethod === 'combined'"
+          label="第三方渠道"
+        >
+          <el-radio-group v-model="paymentForm.channel">
+            <el-radio-button value="wechat">微信支付</el-radio-button>
+            <el-radio-button value="alipay">支付宝</el-radio-button>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -338,11 +359,19 @@ import {
   RefundStatus,
 } from "dehaze-sdk-js";
 import QRCode from "qrcode";
+import { useMemberStoreHook } from "@/store";
+import {
+  orderStatusOptions,
+  payMethodOptions,
+  refundStatusOptions,
+} from "../constants";
+import type { TagType } from "@/enums/TagType";
 import {
   ArrowLeft,
   CreditCard,
   Clock,
   ChatDotRound,
+  Coin,
   Wallet,
   RefreshLeft,
 } from "@element-plus/icons-vue";
@@ -351,69 +380,33 @@ defineOptions({ name: "OrderDetail" });
 
 const route = useRoute();
 const router = useRouter();
+const memberStore = useMemberStoreHook();
 const loading = ref(false);
 const order = ref<OrderDetailVO | null>(null);
 
-function statusLabel(status: OrderStatus): string {
-  const map: Record<OrderStatus, string> = {
-    pending: "待支付",
-    paid: "已支付",
-    completed: "已完成",
-    cancelled: "已取消",
-    refunding: "退款中",
-    refunded: "已退款",
-  };
-  return map[status] || status;
+/** 后端金额单位为分，前端展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
 }
 
-function statusTagType(
-  status: OrderStatus
-): "success" | "warning" | "info" | "primary" | "danger" {
-  const map: Record<
-    OrderStatus,
-    "success" | "warning" | "info" | "primary" | "danger"
-  > = {
-    pending: "warning",
-    paid: "primary",
-    completed: "info",
-    cancelled: "info",
-    refunding: "warning",
-    refunded: "info",
-  };
-  return map[status];
+function statusLabel(status: OrderStatus): string {
+  return orderStatusOptions.find((o) => o.value === status)?.label ?? status;
+}
+
+function statusTagType(status: OrderStatus): TagType {
+  return orderStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 function payMethodLabel(method: PayMethod): string {
-  const map: Record<PayMethod, string> = {
-    wechat: "微信支付",
-    alipay: "支付宝",
-    balance: "余额支付",
-    combined: "组合支付",
-  };
-  return map[method] || method;
+  return payMethodOptions.find((o) => o.value === method)?.label ?? method;
 }
 
 function refundStatusLabel(status: RefundStatus): string {
-  const map: Record<RefundStatus, string> = {
-    refunding: "退款中",
-    refunded: "退款成功",
-    refund_failed: "退款失败",
-  };
-  return map[status] || status;
+  return refundStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
-function refundStatusTagType(
-  status: RefundStatus
-): "success" | "warning" | "info" | "primary" | "danger" {
-  const map: Record<
-    RefundStatus,
-    "success" | "warning" | "info" | "primary" | "danger"
-  > = {
-    refunding: "warning",
-    refunded: "info",
-    refund_failed: "danger",
-  };
-  return map[status];
+function refundStatusTagType(status: RefundStatus): TagType {
+  return refundStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 const showFooterActions = computed(() => {
@@ -483,6 +476,7 @@ const paymentDialog = reactive<{
 
 const paymentForm = reactive<PayRequest>({
   payMethod: "wechat",
+  channel: "wechat",
 });
 
 const qrCodeDataUrl = ref("");
@@ -498,11 +492,48 @@ const payHint = computed(() => {
 
 function openPaymentDialog() {
   paymentDialog.payResult = null;
+  paymentForm.payMethod = "wechat";
+  paymentForm.channel = "wechat";
   qrCodeDataUrl.value = "";
   paymentDialog.visible = true;
 }
 
+const PAY_POLL_INTERVAL_MS = 3000;
+let payPollTimer: number | null = null;
+
+function stopPayPolling() {
+  if (payPollTimer !== null) {
+    window.clearInterval(payPollTimer);
+    payPollTimer = null;
+  }
+}
+
+// 扫码支付由用户在渠道侧完成，轮询订单状态感知支付结果
+function startPayPolling() {
+  stopPayPolling();
+  payPollTimer = window.setInterval(() => {
+    const orderNo = order.value?.orderNo;
+    if (!orderNo || !paymentDialog.visible) {
+      stopPayPolling();
+      return;
+    }
+    OrderAPI.getDetail(orderNo).then((data) => {
+      if (data.status === "pending") return;
+      stopPayPolling();
+      order.value = data;
+      if (data.status === "paid" || data.status === "completed") {
+        if (paymentDialog.payResult) {
+          paymentDialog.payResult.paid = true;
+        }
+        memberStore.invalidate();
+        ElMessage.success("支付成功");
+      }
+    });
+  }, PAY_POLL_INTERVAL_MS);
+}
+
 function closePaymentDialog() {
+  stopPayPolling();
   paymentDialog.visible = false;
   paymentDialog.payResult = null;
   paymentDialog.loading = false;
@@ -513,10 +544,15 @@ function handlePay() {
   if (!order.value) return;
   paymentDialog.loading = true;
   qrCodeDataUrl.value = "";
-  OrderAPI.pay(order.value.orderNo, { payMethod: paymentForm.payMethod })
+  const payPayload: PayRequest =
+    paymentForm.payMethod === "combined"
+      ? { payMethod: "combined", channel: paymentForm.channel }
+      : { payMethod: paymentForm.payMethod };
+  OrderAPI.pay(order.value.orderNo, payPayload)
     .then((data: PayResult) => {
       paymentDialog.payResult = data;
       if (data.paid) {
+        memberStore.invalidate();
         ElMessage.success("支付成功");
       } else {
         const qrContent = data.qrCode || data.payUrl || "";
@@ -529,6 +565,7 @@ function handlePay() {
             qrCodeDataUrl.value = url;
           });
         }
+        startPayPolling();
       }
     })
     .finally(() => {
@@ -537,12 +574,17 @@ function handlePay() {
 }
 
 function handlePaySuccess() {
+  memberStore.invalidate();
   closePaymentDialog();
   loadDetail();
 }
 
 onMounted(() => {
   loadDetail();
+});
+
+onBeforeUnmount(() => {
+  stopPayPolling();
 });
 
 watch(

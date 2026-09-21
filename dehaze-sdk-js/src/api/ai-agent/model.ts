@@ -39,6 +39,28 @@ export interface AgentConfig {
   guardrails?: GuardrailConfig | null;
 }
 
+/** 推理参数系统默认值（代码常量 REASONING_DEFAULTS 的对外契约，字段与后端同名同值，前端不得硬编码） */
+export interface AgentConfigDefaults {
+  /** react 范式最大推理步数默认值 */
+  maxStepsReact: number;
+  /** plan_execute 范式最大推理步数默认值 */
+  maxStepsPlan: number;
+  /** reflexion 范式最大推理步数默认值 */
+  maxStepsReflexion: number;
+  /** reflexion 最大反思迭代次数默认值 */
+  maxIterationsReflexion: number;
+  /** Reflexion 质量达标阈值默认值（0-1） */
+  reflexionThreshold: number;
+  /** 并行子任务最大数默认值 */
+  maxParallel: number;
+  /** 单工具调用超时（秒）默认值 */
+  toolTimeout: number;
+  /** 单会话 Token 预算上限默认值 */
+  tokenBudget: number;
+  /** 工具调用失败最大重试次数默认值 */
+  retryMax: number;
+}
+
 // ==================== Agent 主表 ====================
 
 /** 创建 Agent 表单 */
@@ -211,6 +233,8 @@ export type AgentTestResult = Record<string, unknown>;
 export interface AgentPublishForm {
   /** 变更说明 */
   changeNote?: string;
+  /** 判分漂移豁免（force=true 时漂移门禁放行，change_note 记录豁免标识；不绕过回归门禁结果） */
+  force?: boolean;
 }
 
 /** Agent 版本结果 */
@@ -345,8 +369,59 @@ export interface EvalRunQuery extends PageQuery {
   datasetId?: number;
 }
 
-/** 手动触发评测结果 */
-export type EvalRunResultPayload = Record<string, unknown>;
+/** 评测异步任务状态：pending-排队，running-执行中，succeeded-完成，failed-失败 */
+export type EvalRunTaskStatus = "pending" | "running" | "succeeded" | "failed";
+
+/** 手动触发评测受理结果（评测异步执行，仅返回任务 ID） */
+export interface EvalRunTaskAck {
+  taskId: string;
+}
+
+/** 评测任务执行进度 */
+export interface EvalRunTaskProgress {
+  /** 已执行样本数 */
+  done: number;
+  /** 样本总数 */
+  total: number;
+}
+
+/** 评测失败样本明细（scores/notes 内键为四维指标名，保持 snake_case） */
+export interface EvalFailedSampleItem {
+  sampleId: number;
+  taskGoal: string;
+  riskLevel: string;
+  /** 恒为 false */
+  passed: boolean;
+  error?: string | null;
+  scores: Record<string, number>;
+  notes: Record<string, string>;
+  /** 效率指标：steps/latency_ms/input_tokens/output_tokens */
+  metrics: Record<string, unknown>;
+}
+
+/** 评测门禁判定结果（异步任务 succeeded 时的 result） */
+export interface EvalRunGateResult {
+  /** 未产生评测记录时字段缺失（后端 Result 信封 exclude_none，null 字段不下发） */
+  runId?: number;
+  passed: boolean;
+  /** 相对上次完成评测总分退化超阈值（退化即门禁不通过） */
+  degraded: boolean;
+  /** 回归集样本不足（无考题可判），门禁阻断而非放行 */
+  insufficientEval: boolean;
+  scoreSummary?: Record<string, unknown> | null;
+  failedSamples: EvalFailedSampleItem[];
+}
+
+/** 评测异步任务查询结果 */
+export interface EvalRunTaskResult {
+  taskId: string;
+  status: EvalRunTaskStatus;
+  progress: EvalRunTaskProgress;
+  /** 失败原因（failed 时有值） */
+  error?: string | null;
+  /** 门禁判定结果（succeeded 时有值） */
+  result?: EvalRunGateResult | null;
+}
 
 // ==================== A2A 端点管理 ====================
 

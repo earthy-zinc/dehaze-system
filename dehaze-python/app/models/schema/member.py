@@ -4,12 +4,12 @@ from pydantic import BaseModel, Field
 class MemberLevelAdjustForm(BaseModel):
     levelCode: str = Field(..., min_length=1, description="目标等级")
     expireTime: str | None = None
-    reason: str = Field(default="", description="调整原因")
+    reason: str = Field(default="", max_length=256, description="调整原因")
 
 
 class MemberGrowthAdjustForm(BaseModel):
     changeValue: int = Field(..., description="变动值(正数增加/负数扣减)")
-    reason: str = Field(default="", description="调整原因")
+    reason: str = Field(default="", max_length=256, description="调整原因")
 
 
 class MemberStatusForm(BaseModel):
@@ -22,10 +22,17 @@ class BenefitForm(BaseModel):
     growthMin: int | None = Field(default=None, ge=0)
     growthMax: int | None = Field(default=None, ge=0)
     monthlyDehazeQuota: int | None = Field(default=None, ge=0)
+    monthlyDerainQuota: int | None = Field(default=None, ge=0)
+    monthlyDesnowQuota: int | None = Field(default=None, ge=0)
+    monthlyLowlightQuota: int | None = Field(default=None, ge=0)
+    monthlySuperResolutionQuota: int | None = Field(default=None, ge=0)
+    monthlyDenoiseQuota: int | None = Field(default=None, ge=0)
+    monthlyInpaintQuota: int | None = Field(default=None, ge=0)
     monthlyEvaluateQuota: int | None = Field(default=None, ge=0)
     aiCreditsDaily: int | None = Field(default=None, ge=0)
     aiCreditsMonthly: int | None = Field(default=None, ge=0)
     multimodalLimit: int | None = Field(default=None, ge=0)
+    maxDevices: int | None = Field(default=None, ge=1, description="同时在线设备数上限")
     vipGiftCredits: int | None = Field(default=None, ge=0)
     historyRetention: int | None = Field(default=None, ge=0)
     batchLimit: int | None = Field(default=None, ge=0)

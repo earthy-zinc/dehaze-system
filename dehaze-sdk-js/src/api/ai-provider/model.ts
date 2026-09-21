@@ -89,6 +89,20 @@ export interface ProviderPageQuery extends PageQuery {
   keyword?: string;
 }
 
+/**
+ * 启用供应商视图对象（/providers/enabled 精简视图）。
+ * 不含 apiBaseUrl/defaultHeaders/userIdentityForward/remark 等供应商内部配置。
+ */
+export interface ProviderEnabledVO {
+  id: number;
+  providerCode: string;
+  displayName: string;
+  protocolType: string;
+  /** 健康状态：healthy/suspicious/open */
+  health?: ProviderHealth | null;
+  status: EnabledStatus;
+}
+
 // ==================== API Key 管理 ====================
 
 /** 创建 API Key 表单 */
@@ -158,8 +172,6 @@ export type ConnectionTestResult = Record<string, unknown>;
 export interface UsageStatQuery {
   startTime?: string;
   endTime?: string;
-  /** 聚合粒度：hour-小时 / day-天 */
-  granularity?: "hour" | "day";
 }
 
 /** 供应商健康看板项（成功率/429/P95/熔断） */
@@ -168,10 +180,11 @@ export interface ProviderHealthStatVO {
   providerName: string;
   /** 健康状态：healthy/suspicious/open */
   health: ProviderHealth;
+  /** 近 24h 调用次数 */
   callCount: number;
-  /** 成功率（0-100） */
+  /** 成功率（0-1） */
   successRate: number;
-  /** HTTP 429 次数 */
+  /** 429 限流率（0-1） */
   rate429: number;
   /** 延迟 P95（毫秒） */
   p95LatencyMs?: number;

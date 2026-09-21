@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
-	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	selectservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm_select"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
@@ -50,9 +49,8 @@ func (api *AlgorithmSelectApi) GetDetail(c *gin.Context) {
 // Search 搜索算法（关键词/拼音/标签）
 func (api *AlgorithmSelectApi) Search(c *gin.Context) {
 	keyword := c.Query("keyword")
-	pageNum, pageSize := parsePagination(c)
 
-	result, err := api.service.Search(c.Request.Context(), keyword, pageNum, pageSize)
+	result, err := api.service.Search(c.Request.Context(), keyword)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -109,5 +107,5 @@ func (api *AlgorithmSelectApi) Compare(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithDetailed(vo.PageResult[vo.AlgorithmCompareVO]{List: results, Total: int64(len(results))}, "对比完成", c)
+	common.OkWithData(results, c)
 }

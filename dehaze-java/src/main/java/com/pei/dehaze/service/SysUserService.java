@@ -72,6 +72,15 @@ public interface SysUserService extends IService<SysUser> {
     boolean updatePassword(Long userId, String password);
 
     /**
+     * 修改用户状态（含超级管理员禁用保护与自禁保护）
+     *
+     * @param userId 用户ID
+     * @param status 用户状态(1:启用;0:禁用)
+     * @return
+     */
+    boolean updateUserStatus(Long userId, Integer status);
+
+    /**
      * 根据用户名获取认证信息
      *
      * @param username 用户名

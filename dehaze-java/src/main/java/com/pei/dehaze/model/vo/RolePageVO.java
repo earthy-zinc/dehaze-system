@@ -19,6 +19,12 @@ public class RolePageVO {
     @Schema(description="角色编码")
     private String code;
 
+    @Schema(description="数据权限范围")
+    private Integer dataScope;
+
+    @Schema(description="数据权限范围中文描述")
+    private String dataScopeLabel;
+
     @Schema(description="角色状态")
     private Integer status;
 

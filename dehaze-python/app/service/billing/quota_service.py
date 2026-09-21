@@ -10,7 +10,9 @@ Redis key（见后端实现 §7 缓存策略）：
 db 为事务资源经参数显式传递；redis 经 get_redis_client() 自取。
 """
 
+from collections.abc import Awaitable
 from datetime import datetime, timedelta
+from typing import cast
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -92,7 +94,21 @@ async def _apply_quota(user_id: int, credits: int, script: str) -> None:
     """以 Lua 脚本原子操作日/月配额（INCRBY 或 DECRBY credits）"""
     redis = await get_redis_client()
     daily_key, monthly_key, daily_ttl, monthly_ttl = _quota_keys_and_ttl(user_id)
-    await redis.eval(script, 2, daily_key, monthly_key, daily_ttl, monthly_ttl, credits)
+    # redis-py 同步/异步客户端共用 eval 签名（Union[Awaitable[str], str]）：此处为异步
+    # 客户端，运行时恒返回协程，await 正确，cast 仅收窄类型（非消音）。
+    # Lua 内 tonumber(ARGV[n]) 解析数值；统一以字符串入参（与 redis 编码后的字节一致）。
+    await cast(
+        Awaitable[str],
+        redis.eval(
+            script,
+            2,
+            daily_key,
+            monthly_key,
+            str(daily_ttl),
+            str(monthly_ttl),
+            str(credits),
+        ),
+    )
 
 
 class QuotaService:
@@ -106,20 +122,20 @@ class QuotaService:
         self.member_repository = member_repository
         self.member_benefit_repository = member_benefit_repository
 
-    async def get_limits(self, db: AsyncSession, user_id: int) -> tuple[int, int]:
+    async def get_limits(self, db: AsyncSession, user_id: int) -> tuple[int, int] | None:
         """查询用户日/月限额（从 sys_member_benefit 按 VIP 等级查询）
 
-        仅读取启用（status=1）的权益配置，停用/未配置等级按无限额处理。
+        仅读取启用（status=1）的权益配置；已配置等级的限额 0 表示不限额。
 
         Returns:
-            (日限额, 月限额)，无会员、权益未配置或已停用时返回 (0, 0)
+            (日限额, 月限额)；无会员、权益未配置或已停用时返回 None（fail-closed，配额校验一律拒绝）
         """
         member = await self.member_repository.get_by_user_id(db, user_id)
         if member is None:
-            return 0, 0
+            return None
         benefit = await self.member_benefit_repository.get_by_level_code(db, member.level_code)
         if benefit is None or benefit.status != 1:
-            return 0, 0
+            return None
         return benefit.ai_credits_daily or 0, benefit.ai_credits_monthly or 0
 
     async def get_used(self, user_id: int) -> tuple[int, int]:
@@ -130,49 +146,61 @@ class QuotaService:
         monthly_val = await redis.get(monthly_key)
         return int(daily_val or 0), int(monthly_val or 0)
 
-    async def check_quota(self, 
+    async def check_quota(
+        self,
         db: AsyncSession,
         user_id: int,
         estimated_credits: int,
     ) -> bool:
         """预校验：日已用 + 预估 <= 日限额 且 月已用 + 预估 <= 月限额
 
-        限额为 0 视为无限额（与 get_limits 语义、pre_deduct Lua 对齐）。
+        权益数据缺失/停用（get_limits 返回 None）时 fail-closed 拒绝；
+        已配置等级的限额为 0 视为无限额（与 get_limits 语义、pre_deduct Lua 对齐）。
 
         Returns:
-            True 表示配额充足；False 表示超限
+            True 表示配额充足；False 表示超限或权益不可用
         """
         daily_used, monthly_used = await self.get_used(user_id)
-        daily_limit, monthly_limit = await self.get_limits(db, user_id)
+        limits = await self.get_limits(db, user_id)
+        if limits is None:
+            return False
+        daily_limit, monthly_limit = limits
         daily_ok = daily_limit == 0 or daily_used + estimated_credits <= daily_limit
         monthly_ok = monthly_limit == 0 or monthly_used + estimated_credits <= monthly_limit
         return daily_ok and monthly_ok
 
-    async def pre_deduct(self, 
+    async def pre_deduct(
+        self,
         db: AsyncSession,
         user_id: int,
         credits: int,
     ) -> bool:
         """预扣减：Redis 原子 INCRBY 日/月"已用"，任一超限整体回滚
 
+        权益数据缺失/停用时 fail-closed 拒绝，不产生任何 Redis 副作用。
+
         Returns:
-            True 表示预扣成功；False 表示配额不足（已整体回滚，无副作用）
+            True 表示预扣成功；False 表示配额不足或权益不可用（已整体回滚，无副作用）
         """
+        limits = await self.get_limits(db, user_id)
+        if limits is None:
+            return False
+        daily_limit, monthly_limit = limits
         redis = await get_redis_client()
-        daily_limit, monthly_limit = await self.get_limits(db, user_id)
         daily_key, monthly_key, daily_ttl, monthly_ttl = _quota_keys_and_ttl(user_id)
-        ok = await redis.eval(
+        ok = redis.eval(
             _PRE_DEDUCT_LUA,
             2,
             daily_key,
             monthly_key,
-            daily_ttl,
-            monthly_ttl,
-            credits,
-            daily_limit,
-            monthly_limit,
+            str(daily_ttl),
+            str(monthly_ttl),
+            str(credits),
+            str(daily_limit),
+            str(monthly_limit),
         )
-        return bool(ok)
+        # redis-py 同步/异步共用 eval 签名 → 异步客户端恒返回协程
+        return bool(await cast(Awaitable[str], ok))
 
     async def refund(self, user_id: int, credits: int) -> None:
         """退还配额（预扣与实际差额，多扣场景）"""

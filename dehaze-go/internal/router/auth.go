@@ -30,6 +30,11 @@ func RegisterAuthRoutes(rg *gin.RouterGroup, authApi *api.AuthApi) gin.IRoutes {
 	{
 		authRouter.POST("logout", authApi.Logout)
 		authRouter.GET("me", authApi.GetAuthInfo)
+		authRouter.GET("login-logs", authApi.ListLoginLogs)
+
+		// 会话管理（F-AM-011）：与 Python 端一致，需要独立权限标识
+		authRouter.GET("sessions", middleware.Permission("sys:auth:session:list"), authApi.ListSessions)
+		authRouter.DELETE("sessions/:sessionId", middleware.Permission("sys:auth:session:kick"), authApi.KickSession)
 	}
 	return authRouter
 }

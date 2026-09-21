@@ -23,6 +23,63 @@ func (_m *MockIInputHistoryRepository) EXPECT() *MockIInputHistoryRepository_Exp
 	return &MockIInputHistoryRepository_Expecter{mock: &_m.Mock}
 }
 
+// CountByUserID provides a mock function with given fields: ctx, userID
+func (_m *MockIInputHistoryRepository) CountByUserID(ctx context.Context, userID int64) (int64, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountByUserID")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (int64, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) int64); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIInputHistoryRepository_CountByUserID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountByUserID'
+type MockIInputHistoryRepository_CountByUserID_Call struct {
+	*mock.Call
+}
+
+// CountByUserID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIInputHistoryRepository_Expecter) CountByUserID(ctx interface{}, userID interface{}) *MockIInputHistoryRepository_CountByUserID_Call {
+	return &MockIInputHistoryRepository_CountByUserID_Call{Call: _e.mock.On("CountByUserID", ctx, userID)}
+}
+
+func (_c *MockIInputHistoryRepository_CountByUserID_Call) Run(run func(ctx context.Context, userID int64)) *MockIInputHistoryRepository_CountByUserID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIInputHistoryRepository_CountByUserID_Call) Return(_a0 int64, _a1 error) *MockIInputHistoryRepository_CountByUserID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIInputHistoryRepository_CountByUserID_Call) RunAndReturn(run func(context.Context, int64) (int64, error)) *MockIInputHistoryRepository_CountByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, history
 func (_m *MockIInputHistoryRepository) Create(ctx context.Context, history *model.SysInputHistory) error {
 	ret := _m.Called(ctx, history)
@@ -181,6 +238,53 @@ func (_c *MockIInputHistoryRepository_DeleteByUserID_Call) Return(_a0 int64, _a1
 }
 
 func (_c *MockIInputHistoryRepository_DeleteByUserID_Call) RunAndReturn(run func(context.Context, int64) (int64, error)) *MockIInputHistoryRepository_DeleteByUserID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteOldest provides a mock function with given fields: ctx, userID
+func (_m *MockIInputHistoryRepository) DeleteOldest(ctx context.Context, userID int64) error {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteOldest")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIInputHistoryRepository_DeleteOldest_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteOldest'
+type MockIInputHistoryRepository_DeleteOldest_Call struct {
+	*mock.Call
+}
+
+// DeleteOldest is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIInputHistoryRepository_Expecter) DeleteOldest(ctx interface{}, userID interface{}) *MockIInputHistoryRepository_DeleteOldest_Call {
+	return &MockIInputHistoryRepository_DeleteOldest_Call{Call: _e.mock.On("DeleteOldest", ctx, userID)}
+}
+
+func (_c *MockIInputHistoryRepository_DeleteOldest_Call) Run(run func(ctx context.Context, userID int64)) *MockIInputHistoryRepository_DeleteOldest_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIInputHistoryRepository_DeleteOldest_Call) Return(_a0 error) *MockIInputHistoryRepository_DeleteOldest_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIInputHistoryRepository_DeleteOldest_Call) RunAndReturn(run func(context.Context, int64) error) *MockIInputHistoryRepository_DeleteOldest_Call {
 	_c.Call.Return(run)
 	return _c
 }

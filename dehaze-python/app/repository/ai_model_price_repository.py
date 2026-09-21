@@ -33,13 +33,14 @@ class AiModelPriceRepository(BaseRepository[SysAiModelPrice]):
         current = (await db.execute(stmt)).scalar()
         return (current or 0) + 1
 
-    async def get_with_details(self, db: AsyncSession, price_id: int) -> SysAiModelPrice | None:
-        """查询用户售价价格版本（含档位明细）"""
+    async def get_with_details(
+        self, db: AsyncSession, price_id: int
+    ) -> tuple[SysAiModelPrice, list[SysAiModelPriceDetail]] | None:
+        """查询用户售价价格版本（含档位明细），返回 (版本, 档位明细列表)"""
         price = await self.get_by_id(db, price_id)
         if price is None:
             return None
-        price.details = await self.list_details(db, price.id)
-        return price
+        return price, await self.list_details(db, price.id)
 
     async def list_prices(
         self,
@@ -79,12 +80,11 @@ class AiModelPriceRepository(BaseRepository[SysAiModelPrice]):
         price_id: int,
         details: list[dict],
     ) -> list[SysAiModelPriceDetail]:
-        entities = [
-            SysAiModelPriceDetail(price_id=price_id, **d)
-            for d in details
-        ]
+        entities = [SysAiModelPriceDetail(price_id=price_id, **d) for d in details]
         if entities:
-            await self.create_all(db, entities)
+            # 明细实体非本仓储主模型 T，直接 add_all 批量插入，不走 create_all（其入参限主模型）
+            db.add_all(entities)
+            await db.flush()
         return entities
 
     async def get_effective_version(
@@ -113,7 +113,7 @@ class AiModelPriceRepository(BaseRepository[SysAiModelPrice]):
         stmt = (
             update(SysAiModelPriceDetail)
             .where(SysAiModelPriceDetail.price_id == price_id)
-            .values(deleted=1, **get_audit_update_values())
+            .values(deleted=SysAiModelPriceDetail.id, **get_audit_update_values())
         )
         result = await db.execute(stmt)
         return result.rowcount

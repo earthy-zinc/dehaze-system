@@ -128,7 +128,7 @@ async def collect_client_logs(
         user_id = user.id if user else None
         for entry in body.logs:
             _write_entry(entry, user_id)
-    except Exception:  # noqa: BLE001 - 落盘失败不应影响主流程，仅记录后返回失败
+    except Exception:
         logger.exception("前端日志落盘失败")
         return error("日志写入失败", ResultCode.SYSTEM_EXECUTION_ERROR.code)
     return success()

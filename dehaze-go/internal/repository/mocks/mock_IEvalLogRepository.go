@@ -131,36 +131,36 @@ func (_c *MockIEvalLogRepository_FindByID_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// FindPage provides a mock function with given fields: ctx, algorithmID, pageNum, pageSize
-func (_m *MockIEvalLogRepository) FindPage(ctx context.Context, algorithmID int64, pageNum int, pageSize int) ([]model.SysEvalLog, int64, error) {
-	ret := _m.Called(ctx, algorithmID, pageNum, pageSize)
+// FindLogPageByUser provides a mock function with given fields: ctx, userID, algorithmID, pageNum, pageSize
+func (_m *MockIEvalLogRepository) FindLogPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum int, pageSize int) ([]model.SysEvalLog, int64, error) {
+	ret := _m.Called(ctx, userID, algorithmID, pageNum, pageSize)
 
 	if len(ret) == 0 {
-		panic("no return value specified for FindPage")
+		panic("no return value specified for FindLogPageByUser")
 	}
 
 	var r0 []model.SysEvalLog
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]model.SysEvalLog, int64, error)); ok {
-		return rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int, int) ([]model.SysEvalLog, int64, error)); ok {
+		return rf(ctx, userID, algorithmID, pageNum, pageSize)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []model.SysEvalLog); ok {
-		r0 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int, int) []model.SysEvalLog); ok {
+		r0 = rf(ctx, userID, algorithmID, pageNum, pageSize)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.SysEvalLog)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int64); ok {
-		r1 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64, int, int) int64); ok {
+		r1 = rf(ctx, userID, algorithmID, pageNum, pageSize)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
-		r2 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int64, int, int) error); ok {
+		r2 = rf(ctx, userID, algorithmID, pageNum, pageSize)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -168,33 +168,34 @@ func (_m *MockIEvalLogRepository) FindPage(ctx context.Context, algorithmID int6
 	return r0, r1, r2
 }
 
-// MockIEvalLogRepository_FindPage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindPage'
-type MockIEvalLogRepository_FindPage_Call struct {
+// MockIEvalLogRepository_FindLogPageByUser_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindLogPageByUser'
+type MockIEvalLogRepository_FindLogPageByUser_Call struct {
 	*mock.Call
 }
 
-// FindPage is a helper method to define mock.On call
+// FindLogPageByUser is a helper method to define mock.On call
 //   - ctx context.Context
+//   - userID int64
 //   - algorithmID int64
 //   - pageNum int
 //   - pageSize int
-func (_e *MockIEvalLogRepository_Expecter) FindPage(ctx interface{}, algorithmID interface{}, pageNum interface{}, pageSize interface{}) *MockIEvalLogRepository_FindPage_Call {
-	return &MockIEvalLogRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, algorithmID, pageNum, pageSize)}
+func (_e *MockIEvalLogRepository_Expecter) FindLogPageByUser(ctx interface{}, userID interface{}, algorithmID interface{}, pageNum interface{}, pageSize interface{}) *MockIEvalLogRepository_FindLogPageByUser_Call {
+	return &MockIEvalLogRepository_FindLogPageByUser_Call{Call: _e.mock.On("FindLogPageByUser", ctx, userID, algorithmID, pageNum, pageSize)}
 }
 
-func (_c *MockIEvalLogRepository_FindPage_Call) Run(run func(ctx context.Context, algorithmID int64, pageNum int, pageSize int)) *MockIEvalLogRepository_FindPage_Call {
+func (_c *MockIEvalLogRepository_FindLogPageByUser_Call) Run(run func(ctx context.Context, userID int64, algorithmID int64, pageNum int, pageSize int)) *MockIEvalLogRepository_FindLogPageByUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64), args[3].(int), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *MockIEvalLogRepository_FindPage_Call) Return(_a0 []model.SysEvalLog, _a1 int64, _a2 error) *MockIEvalLogRepository_FindPage_Call {
+func (_c *MockIEvalLogRepository_FindLogPageByUser_Call) Return(_a0 []model.SysEvalLog, _a1 int64, _a2 error) *MockIEvalLogRepository_FindLogPageByUser_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockIEvalLogRepository_FindPage_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]model.SysEvalLog, int64, error)) *MockIEvalLogRepository_FindPage_Call {
+func (_c *MockIEvalLogRepository_FindLogPageByUser_Call) RunAndReturn(run func(context.Context, int64, int64, int, int) ([]model.SysEvalLog, int64, error)) *MockIEvalLogRepository_FindLogPageByUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

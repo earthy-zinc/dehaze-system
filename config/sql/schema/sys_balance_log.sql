@@ -18,7 +18,7 @@ CREATE TABLE `sys_balance_log`
     `amount`        bigint                                                          NOT NULL COMMENT '变动金额（单位：分，正数增加;负数扣减）',
     `balance_after` bigint                                                          NOT NULL COMMENT '变动后可用余额（单位：分）',
     `related_id`    bigint                                                          NULL DEFAULT NULL COMMENT '关联业务记录ID（如订单ID）',
-    `deleted`       tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`       bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`   datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`   datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`     bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',

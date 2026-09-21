@@ -14,6 +14,7 @@ from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from langchain_core.runnables import RunnableConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
@@ -70,9 +71,7 @@ async def a2a_entry(
     return await _handle_a2a_request(request, agent_id, db, redis)
 
 
-async def _handle_a2a_request(
-    request: Request, agent_id: int, db: AsyncSession, redis
-):
+async def _handle_a2a_request(request: Request, agent_id: int, db: AsyncSession, redis):
     """A2A JSON-RPC 请求处理核心（挂载路径与全局入口共用，避免重复逻辑）。"""
     try:
         raw = await request.json()
@@ -110,7 +109,7 @@ async def _handle_a2a_request(
                 id=rpc.id, error=JsonRpcError(code=_ERR_INTERNAL, message=str(e))
             ).model_dump(exclude_none=True),
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error("A2A 请求处理失败: %s", e, exc_info=True)
         return JSONResponse(
             status_code=500,
@@ -152,7 +151,9 @@ async def global_a2a_entry(
     if not isinstance(raw, dict):
         return JSONResponse(
             status_code=400,
-            content=JsonRpcError(code=_ERR_INVALID_REQUEST, message="Invalid JSON-RPC request").model_dump(),
+            content=JsonRpcError(
+                code=_ERR_INVALID_REQUEST, message="Invalid JSON-RPC request"
+            ).model_dump(),
         )
     params = raw.get("params") or {}
     try:
@@ -217,7 +218,7 @@ async def _stream_message(
             "thoughts": [],
             "isolated_token_pool": True,
         }
-        config = {"configurable": {"thread_id": f"a2a:{task_id}"}}
+        config: RunnableConfig = {"configurable": {"thread_id": f"a2a:{task_id}"}}
         result = await graph.ainvoke(initial_state, config=config)
         final_response = result.get("final_response", "")
 
@@ -241,7 +242,7 @@ async def _stream_message(
             )
         await a2a_server._update_task_status(redis, task_id, "completed", artifacts=artifacts)
         yield _sse("status-update", {"id": task_id, "status": "completed"})
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.error("A2A 流式推理失败: %s", e, exc_info=True)
         await a2a_server._update_task_status(redis, task_id, "failed")
         yield _sse("status-update", {"id": task_id, "status": "failed"})

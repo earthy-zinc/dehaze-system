@@ -77,7 +77,12 @@ async def _resolve_user_id(scope: Scope) -> str:
                     if user_id is not None:
                         return f"user:{user_id}"
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    # 会话缓存损坏：降级为按 session 维度限流（仍可防重），但需可见以暴露数据异常
+                    logger.warning(
+                        "防重复提交会话数据解析失败，退化为按 session 限流: session=%s",
+                        session_id,
+                        exc_info=True,
+                    )
         return f"session:{session_id}"
     client = scope.get("client")
     return f"ip:{client[0]}" if client else "ip:unknown"
@@ -139,9 +144,10 @@ class AntiRepeatMiddleware:
                     "data": None,
                 },
             )
-            return
+            return None
 
         await self._pass_through(scope, receive, send, body)
+        return None
 
     async def _pass_through(self, scope: Scope, receive: Receive, send: Send, body: bytes):
         body_sent = False

@@ -22,6 +22,7 @@ from app.models.entity.sys_ai_eval_review import SysAiEvalReview
 from app.repository.ai_agent_eval_repository import (
     ai_agent_eval_review_repository,
     ai_agent_eval_run_repository,
+    ai_agent_eval_sample_repository,
 )
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.service.dict_service import get_dict_int
@@ -64,11 +65,17 @@ class EvalCenterService:
                     "run_id": latest.id if latest else None,
                     "run_time": latest.create_time if latest else None,
                     "trigger_type": latest.trigger_type if latest else None,
-                    "gate_status": "none" if latest is None else ("passed" if latest.status == 2 else "failed"),
+                    "gate_status": "none"
+                    if latest is None
+                    else ("passed" if latest.status == 2 else "failed"),
                     "total_score": total,
-                    "dimensions": (latest.score_summary or {}).get("dimensions") if latest else None,
+                    "dimensions": (latest.score_summary or {}).get("dimensions")
+                    if latest
+                    else None,
                     "degraded": _is_degraded(
-                        total, _total_score(previous.score_summary) if previous else None, regression_threshold
+                        total,
+                        _total_score(previous.score_summary) if previous else None,
+                        regression_threshold,
                     ),
                     "high_risk_failed": _has_high_risk_failed(latest),
                 }
@@ -87,7 +94,8 @@ class EvalCenterService:
             db, agent_id=agent_id, start_time=start_time, end_time=end_time, limit=limit
         )
         agents = {
-            a.id: a for a in await ai_agent_repository.get_by_ids(db, list({r.agent_id for r in runs}))
+            a.id: a
+            for a in await ai_agent_repository.get_by_ids(db, list({r.agent_id for r in runs}))
         }
         return [
             {
@@ -187,6 +195,42 @@ class EvalCenterService:
         }
 
     @staticmethod
+    async def review_detail(db: AsyncSession, run_id: int, sample_id: int) -> dict[str, Any]:
+        """复核详情：样本定义 + 本次实际输出 + 四维得分与说明，人工复核不得盲判。
+
+        输出与得分取自 run.results（执行快照），样本定义取自样本本身；样本随数据集
+        删除被级联清理后定义字段为空，历史评测结果的复核仍可进行。
+        """
+        run = await ai_agent_eval_run_repository.get_by_id(db, run_id)
+        if run is None:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评测记录不存在")
+        result = next((r for r in run.results or [] if r.get("sample_id") == sample_id), None)
+        if result is None:
+            raise BusinessException(
+                ResultCode.RESOURCE_NOT_FOUND, "该评测记录中没有此样本的执行结果"
+            )
+        sample = await ai_agent_eval_sample_repository.get_by_id(db, sample_id)
+        agent = await ai_agent_repository.get_by_id(db, run.agent_id)
+        return {
+            "run_id": run.id,
+            "agent_id": run.agent_id,
+            "agent_name": agent.name if agent else None,
+            "sample_id": sample_id,
+            "task_goal": result.get("task_goal") or (sample.task_goal if sample else ""),
+            "allowed_input": sample.allowed_input if sample else None,
+            "expected_result": sample.expected_result if sample else None,
+            "expected_process": sample.expected_process if sample else None,
+            "forbidden_behavior": sample.forbidden_behavior if sample else None,
+            "tools": sample.tools if sample else None,
+            "risk_level": result.get("risk_level") or (sample.risk_level if sample else "low"),
+            "judge_passed": bool(result.get("passed")),
+            "actual_output": result.get("actual_output"),
+            "error": result.get("error"),
+            "scores": result.get("scores") or {},
+            "notes": result.get("notes") or {},
+        }
+
+    @staticmethod
     async def submit_review(
         db: AsyncSession, review_id: int, agree: bool, remark: str | None, reviewer_id: int
     ) -> dict[str, Any]:
@@ -194,7 +238,9 @@ class EvalCenterService:
         if review is None:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "复核项不存在")
         if review.status == 2:
-            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "该复核项已完成复核，不允许重复回填")
+            raise BusinessException(
+                ResultCode.OPERATION_NOT_ALLOW, "该复核项已完成复核，不允许重复回填"
+            )
 
         review.agree = 1 if agree else 0
         review.status = 2
@@ -219,10 +265,14 @@ class EvalCenterService:
         """按抽样规则为最近评测生成待复核项：(run_id, sample_id) 唯一，幂等。"""
         if not runs:
             return
-        ratio = await get_dict_int(db, DICT_TYPE_AI_EVAL, "judge_review_ratio", REVIEW_RATIO_DEFAULT)
+        ratio = await get_dict_int(
+            db, DICT_TYPE_AI_EVAL, "judge_review_ratio", REVIEW_RATIO_DEFAULT
+        )
         existing = {
             (r.run_id, r.sample_id)
-            for r in await ai_agent_eval_review_repository.list_by_run_ids(db, [run.id for run in runs])
+            for r in await ai_agent_eval_review_repository.list_by_run_ids(
+                db, [run.id for run in runs]
+            )
         }
         for run in runs:
             for result in run.results or []:
@@ -270,9 +320,7 @@ def _is_degraded(current: float | None, previous: float | None, threshold: int) 
 def _has_high_risk_failed(run: SysAiAgentEvalRun | None) -> bool:
     if run is None:
         return False
-    return any(
-        r.get("risk_level") == "high" and not r.get("passed") for r in run.results or []
-    )
+    return any(r.get("risk_level") == "high" and not r.get("passed") for r in run.results or [])
 
 
 def _run_snapshot(run: SysAiAgentEvalRun) -> dict[str, Any]:
@@ -299,20 +347,24 @@ def _dimension_diff(
 
 
 def _sample_diff(current: list[dict], base: list[dict]) -> dict[str, Any]:
-    cur_map = {r.get("sample_id"): r for r in current if r.get("sample_id") is not None}
-    base_map = {r.get("sample_id"): r for r in base if r.get("sample_id") is not None}
+    cur_map: dict[int, dict] = {
+        r["sample_id"]: r for r in current if r.get("sample_id") is not None
+    }
+    base_map: dict[int, dict] = {r["sample_id"]: r for r in base if r.get("sample_id") is not None}
 
     def _item(sample_id: int, result: dict, base_result: dict | None) -> dict[str, Any]:
+        current_score = _sample_total(result)
+        base_score = _sample_total(base_result) if base_result else None
         return {
             "sample_id": sample_id,
             "task_goal": result.get("task_goal", ""),
             "current_passed": result.get("passed"),
             "base_passed": base_result.get("passed") if base_result else None,
-            "current_score": _sample_total(result),
-            "base_score": _sample_total(base_result) if base_result else None,
+            "current_score": current_score,
+            "base_score": base_score,
             "score_delta": (
-                round(_sample_total(result) - _sample_total(base_result), 2)
-                if base_result
+                round(current_score - base_score, 2)
+                if current_score is not None and base_score is not None
                 else None
             ),
         }

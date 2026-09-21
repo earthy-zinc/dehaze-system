@@ -1,11 +1,13 @@
-import { PageResult } from "@/types";
+import { PageQuery, PageResult } from "@/types";
 import request from "@/utils/request";
+import { MyOrderQuery, MyOrderVO } from "@/api/order/model";
 import {
   BenefitForm,
   BenefitSummaryVO,
   BenefitVO,
   GrowthLogQuery,
   GrowthLogVO,
+  MemberAuditLogVO,
   MemberDetailVO,
   MemberGrowthAdjustForm,
   MemberLevelAdjustForm,
@@ -127,6 +129,41 @@ class MemberAPI {
       url: "/api/v1/members/benefits/" + levelCode,
       method: "put",
       data,
+    });
+  }
+
+  /** 后台：会员成长值流水 */
+  static getAdminGrowthLogs(userId: number, queryParams: GrowthLogQuery) {
+    return request<PageResult<GrowthLogVO[]>>({
+      url: "/api/v1/members/" + userId + "/growth-logs",
+      method: "get",
+      params: queryParams,
+    });
+  }
+
+  /** 后台：会员消费记录（订单列表 VO） */
+  static getConsumptionRecords(userId: number, queryParams: MyOrderQuery) {
+    return request<PageResult<MyOrderVO[]>>({
+      url: "/api/v1/members/" + userId + "/consumption-records",
+      method: "get",
+      params: queryParams,
+    });
+  }
+
+  /** 后台：会员本月权益使用明细 */
+  static getBenefitUsage(userId: number) {
+    return request<BenefitSummaryVO>({
+      url: "/api/v1/members/" + userId + "/benefit-usage",
+      method: "get",
+    });
+  }
+
+  /** 后台：会员操作日志（Mongo 审计日志） */
+  static getOperationLogs(userId: number, queryParams: PageQuery) {
+    return request<PageResult<MemberAuditLogVO[]>>({
+      url: "/api/v1/members/" + userId + "/operation-logs",
+      method: "get",
+      params: queryParams,
     });
   }
 }

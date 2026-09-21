@@ -1,7 +1,6 @@
 import request from "@/utils/request";
 import { PageResult } from "@/types";
 import {
-  AuthUserInfo,
   CaptchaResult,
   LoginData,
   LoginLogQuery,
@@ -32,13 +31,6 @@ class AuthAPI {
     return request({
       url: "/api/v1/auth/logout",
       method: "post",
-    });
-  }
-
-  static getCurrentUser() {
-    return request<AuthUserInfo>({
-      url: "/api/v1/auth/me",
-      method: "get",
     });
   }
 

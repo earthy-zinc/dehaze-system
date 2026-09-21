@@ -1,8 +1,11 @@
 package com.pei.dehaze.controller;
 
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.form.MenuForm;
+import com.pei.dehaze.model.form.MenuVisibleBody;
 import com.pei.dehaze.model.query.MenuQuery;
 import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
@@ -15,6 +18,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -30,13 +34,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/menus")
 @RequiredArgsConstructor
+@Validated
 public class SysMenuController {
 
     private final SysMenuService menuService;
 
     @Operation(summary = "菜单列表")
     @GetMapping
-    public Result<List<MenuVO>> listMenus(@ParameterObject MenuQuery queryParams) {
+    public Result<List<MenuVO>> listMenus(@Valid @ParameterObject MenuQuery queryParams) {
         List<MenuVO> menuList = menuService.listMenus(queryParams);
         return Result.success(menuList);
     }
@@ -91,22 +96,27 @@ public class SysMenuController {
     public Result<Void> deleteMenu(
             @Parameter(description ="菜单ID，多个以英文(,)分割") @PathVariable("ids") String ids
     ) {
-        List<Long> idList = Arrays.stream(ids.split(","))
-                .map(String::trim)
-                .map(Long::valueOf)
-                .toList();
+        List<Long> idList;
+        try {
+            idList = Arrays.stream(ids.split(","))
+                    .map(String::trim)
+                    .map(Long::valueOf)
+                    .toList();
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "菜单ID格式错误");
+        }
         menuService.deleteMenu(idList);
         return Result.success();
     }
 
     @Operation(summary = "修改菜单显示状态")
     @PatchMapping("/{menuId}")
+    @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
     public Result<Void> updateMenuVisible(
             @Parameter(description =  "菜单ID") @PathVariable Long menuId,
-            @Parameter(description =  "显示状态(1:显示;0:隐藏)") Integer visible
-
+            @Valid @RequestBody MenuVisibleBody body
     ) {
-        boolean result =menuService.updateMenuVisible(menuId, visible);
+        boolean result = menuService.updateMenuVisible(menuId, body.getVisible());
         return Result.judge(result);
     }
 

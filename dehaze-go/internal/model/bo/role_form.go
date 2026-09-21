@@ -1,5 +1,7 @@
 package bo
 
+import "time"
+
 // RoleFormBO 角色表单对象
 type RoleFormBO struct {
 	// 角色ID
@@ -14,4 +16,10 @@ type RoleFormBO struct {
 	Status int8 `json:"status" binding:"oneof=0 1"`
 	// 数据权限（创建时必填，指针类型以区分"未选择"与合法值 0）
 	DataScope *int8 `json:"dataScope" binding:"omitempty,min=0,max=3"`
+	// 数据权限范围中文描述（表单回显）
+	DataScopeLabel string `json:"dataScopeLabel"`
+	// 创建时间（表单回显）
+	CreateTime *time.Time `json:"createTime"`
+	// 更新时间（表单回显）
+	UpdateTime *time.Time `json:"updateTime"`
 }

@@ -14,8 +14,8 @@ import httpx
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
-from app.repository.ai_provider_repository import ai_provider_repository
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
+from app.repository.ai_provider_repository import ai_provider_repository
 
 logger = logging.getLogger(__name__)
 
@@ -83,22 +83,18 @@ async def rerank(
             resp.raise_for_status()
             data: dict[str, Any] = resp.json()
             results = data.get("results") or []
-            ordered: list[dict[str, Any]] = []
-            for item in sorted(results, key=lambda r: r.get("relevance_score", 0.0), reverse=True):
-                ordered.append(
-                    {
-                        "index": item.get("index"),
-                        "relevance": item.get("relevance_score"),
-                        "document": (
-                            documents[item["index"]]
-                            if 0 <= item["index"] < len(documents)
-                            else None
-                        ),
-                    }
+            return [
+                {
+                    "index": item.get("index"),
+                    "relevance": item.get("relevance_score"),
+                    "document": (
+                        documents[item["index"]] if 0 <= item["index"] < len(documents) else None
+                    ),
+                }
+                for item in sorted(
+                    results, key=lambda r: r.get("relevance_score", 0.0), reverse=True
                 )
-            return ordered
+            ]
     except Exception as e:
         logger.warning("Rerank 调用失败(provider=%s model=%s): %s", provider_code, model, e)
-        raise BusinessException(
-            ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Rerank 调用失败"
-        ) from e
+        raise BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Rerank 调用失败") from e

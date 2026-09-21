@@ -16,7 +16,8 @@
 </template>
 
 <script lang="ts" setup>
-import { DictAPI, OptionType } from "dehaze-sdk-js";
+import { OptionType } from "dehaze-sdk-js";
+import { useDictStoreHook } from "@/store";
 
 const props = defineProps({
   /**
@@ -65,9 +66,11 @@ function handleChange(val?: string | number | undefined) {
 }
 
 onBeforeMount(() => {
-  // 根据字典类型编码(typeCode)获取字典选项
-  DictAPI.getDictOptions(props.typeCode).then((data) => {
-    options.value = data;
-  });
+  // 根据字典类型编码(typeCode)获取字典选项，优先读 dictStore 缓存
+  useDictStoreHook()
+    .getOptions(props.typeCode)
+    .then((data) => {
+      options.value = data;
+    });
 });
 </script>

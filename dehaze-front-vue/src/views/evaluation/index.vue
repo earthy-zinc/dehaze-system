@@ -10,7 +10,46 @@ import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
 interface MetricItem {
   label: string;
   value: number | string;
+  better: "higher" | "lower" | "";
+  description: string;
 }
+
+// 指标元信息：方向/描述/雷达图固定上限（上限值见需求规格 §2.5.3，保证横向可比，禁止动态缩放）
+const METRIC_META: Record<
+  string,
+  { better: "higher" | "lower"; description: string; max: number }
+> = {
+  PSNR: {
+    better: "higher",
+    description: "峰值信噪比，基于 MSE 定义，越高表示质量越好",
+    max: 100,
+  },
+  SSIM: {
+    better: "higher",
+    description: "结构相似性，范围 0-1，越接近 1 越相似",
+    max: 1,
+  },
+  LPIPS: {
+    better: "lower",
+    description: "深度学习感知相似度，值越低表示越相似",
+    max: 1,
+  },
+  NIQE: {
+    better: "lower",
+    description: "无参考图像空间质量评估",
+    max: 10,
+  },
+  NIMA: {
+    better: "higher",
+    description: "无参考图像质量预测",
+    max: 10,
+  },
+  BRISQUE: {
+    better: "lower",
+    description: "无参考图像质量评估（基于统计特征）",
+    max: 100,
+  },
+};
 import { Setting } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 
@@ -166,11 +205,16 @@ async function handleEvaluation() {
       ([label, value]) => ({
         label,
         value,
+        better: METRIC_META[label]?.better ?? "",
+        description: METRIC_META[label]?.description ?? "",
       })
     );
     showResult.value = true;
   } catch (e: any) {
-    ElMessage.error("评估失败：" + (e.message || "未知错误"));
+    // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底本地抛出的评估失败
+    if (!e.isAxiosError) {
+      ElMessage.error("评估失败：" + (e.message || "未知错误"));
+    }
   } finally {
     loading.value = false;
   }
@@ -182,13 +226,16 @@ const barChartRef = ref<HTMLDivElement>();
 let radarChart: echarts.ECharts | null = null;
 let barChart: echarts.ECharts | null = null;
 
-// 雷达图指标配置（每个指标独立的最大值，使各维度可比较）
+// 雷达图指标配置（固定上限见 METRIC_META，未知指标回退为按当前值放大）
 const radarIndicators = computed(() => {
   if (!metrics.value) return [];
   return metrics.value.map((m) => {
+    const fixedMax = METRIC_META[m.label]?.max;
+    if (fixedMax !== undefined) {
+      return { name: m.label, max: fixedMax };
+    }
     const v = Number(m.value);
-    const ref = Math.max(v, 1);
-    return { name: m.label, max: ref * 1.3 };
+    return { name: m.label, max: Math.max(v, 1) * 1.3 };
   });
 });
 
@@ -308,6 +355,49 @@ const paramCompareData = computed(() => [
   },
 ]);
 
+// ============ HTML 对比报告（logId 为去雾处理的预测记录ID，来自 imageShowStore.predLogId） ============
+const reportGenerating = ref(false);
+
+async function handleGenerateReport() {
+  const logId = imageShowStore.predLogId;
+  if (!logId) {
+    ElMessage.warning("当前图片非去雾处理结果，无法生成对比报告");
+    return;
+  }
+  reportGenerating.value = true;
+  try {
+    const res = await ModelAPI.generateReport({ logId });
+    if (!res.taskId) {
+      throw new Error("未返回任务ID");
+    }
+    while (true) {
+      const status = await ModelAPI.getReportStatus(res.taskId);
+      if (status.status === 2) {
+        if (status.downloadUrl) {
+          const link = document.createElement("a");
+          link.href = status.downloadUrl;
+          link.download = "dehaze-report.html";
+          link.click();
+        } else {
+          ElMessage.success("报告生成完成，请前往任务中心下载");
+        }
+        break;
+      }
+      if (status.status === 3) {
+        throw new Error(status.errorMessage || "报告生成失败");
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  } catch (e: any) {
+    // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底轮询中本地抛出的生成失败
+    if (!e.isAxiosError) {
+      ElMessage.error("生成报告失败：" + (e.message || "未知错误"));
+    }
+  } finally {
+    reportGenerating.value = false;
+  }
+}
+
 // ============ 导出报告 ============
 function handleExportReport() {
   if (!metrics.value || metrics.value.length === 0) {
@@ -362,13 +452,18 @@ onUnmounted(() => {
   <div class="app-container">
     <el-card>
       <div class="evaluation-header">
-        <el-button
-          :disabled="!showResult"
-          type="primary"
-          @click="handleExportReport"
-        >
-          导出报告
-        </el-button>
+        <div>
+          <el-button :loading="reportGenerating" @click="handleGenerateReport">
+            生成报告
+          </el-button>
+          <el-button
+            :disabled="!showResult"
+            type="primary"
+            @click="handleExportReport"
+          >
+            导出报告
+          </el-button>
+        </div>
         <div class="title">图像效果评估</div>
         <el-popover :width="400" placement="bottom-start" trigger="click">
           <template #reference>

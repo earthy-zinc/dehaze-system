@@ -116,7 +116,7 @@ graph TB
 ### 后端技术
 
 #### Java后端 (dehaze-java)
-- **核心框架**: Spring Boot 3.3 + JDK 17
+- **核心框架**: Spring Boot 3.5（字节码目标 Java 17，构建/运行工具链 JDK 17~25，Redisson 3.52、Mockito 5.23）
 - **安全框架**: Spring Security 6 + Session（Redis 管理）
 - **ORM框架**: MyBatis-Plus 3.5
 - **数据库**: MySQL 8.0 + MongoDB

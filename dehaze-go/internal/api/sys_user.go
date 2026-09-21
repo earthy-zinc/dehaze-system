@@ -51,7 +51,11 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	}
 	queryParams.StartTime = c.Query("startTime")
 	queryParams.EndTime = c.Query("endTime")
-	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
 
 	// 调用服务获取分页数据
 	result, err := api.userService.GetPage(c.Request.Context(), &queryParams)

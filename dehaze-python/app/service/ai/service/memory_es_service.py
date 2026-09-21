@@ -51,7 +51,7 @@ async def _load_embedding_config() -> dict[str, Any]:
             items = await dict_repository.list_enabled_by_type_code(db, _EMBEDDING_DICT)
             for item in items:
                 config[item.name] = item.value
-    except Exception as e:  # noqa: BLE001 - 读取失败回落种子默认，不影响降级可用
+    except Exception as e:
         logger.warning("读取 embedding 配置失败，使用种子默认: %s", e)
     return config
 
@@ -61,8 +61,13 @@ async def get_embedding(text: str) -> list[float]:
     config = await _load_embedding_config()
     try:
         return await embed_text(config["provider_code"], config["model"], text)
-    except Exception as e:  # noqa: BLE001 - 记忆链路失败静默降级
-        logger.warning("Embedding 调用失败(provider=%s model=%s): %s", config["provider_code"], config["model"], e)
+    except Exception as e:
+        logger.warning(
+            "Embedding 调用失败(provider=%s model=%s): %s",
+            config["provider_code"],
+            config["model"],
+            e,
+        )
         return []
 
 

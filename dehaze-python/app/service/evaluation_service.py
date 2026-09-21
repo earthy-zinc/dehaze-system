@@ -9,6 +9,7 @@ POST 立即返回 logId + status=processing，asyncio.create_task 后台执行
 """
 
 import asyncio
+import json
 import logging
 import time
 
@@ -35,19 +36,36 @@ QUALIFIED_THRESHOLDS = {
 
 
 def _is_qualified(metrics: dict[str, float]) -> bool:
-    """基于阈值判定是否合格"""
+    """基于阈值判定是否合格（metrics 以指标 label 为 key，如 "PSNR"，统一转小写比对）"""
     if not metrics:
         return False
-    psnr = metrics.get("psnr", 0)
-    ssim = metrics.get("ssim", 0)
-    lpips = metrics.get("lpips", 1.0)
-    niqe = metrics.get("niqe", 99.0)
+    normalized = {key.lower(): value for key, value in metrics.items()}
+    psnr = normalized.get("psnr", 0)
+    ssim = normalized.get("ssim", 0)
+    lpips = normalized.get("lpips", 1.0)
+    niqe = normalized.get("niqe", 99.0)
     return (
         psnr >= QUALIFIED_THRESHOLDS["psnr"]
         and ssim >= QUALIFIED_THRESHOLDS["ssim"]
         and lpips <= QUALIFIED_THRESHOLDS["lpips"]
         and niqe <= QUALIFIED_THRESHOLDS["niqe"]
     )
+
+
+def parse_eval_result(value) -> dict | None:
+    """评估结果归一化：result 列为 JSON 类型，正常读取即 dict；
+    存量行（双重编码写入）与 Java 写入路径返回 JSON 字符串，此处统一解析为 dict。
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            logger.warning("评估结果 result 列解析失败（非合法 JSON 字符串），按空处理")
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
 
 
 class EvaluationService:
@@ -75,27 +93,39 @@ class EvaluationService:
         """
         logger.debug("评估请求: algorithmId=%s", algorithm_id)
 
-        from app.database import get_db_session
         from app.service.member.quota_service import member_quota_service
 
-        if user_id is not None and not skip_quota_check:
+        # 扣减/归还主体：有用户且未跳过配额校验时才参与。用收窄后的本地变量承载，
+        # 使判定与使用共用同一条件，避免叠加冗余的 user_id is not None 来消 pyright 告警。
+        quota_user_id = user_id if not skip_quota_check else None
+        if quota_user_id is not None:
             async with get_db_session() as db:
-                await member_quota_service.check_and_deduct_quota(db, user_id, "evaluate")
+                await member_quota_service.check_and_deduct_quota(db, quota_user_id, "evaluate")
 
-        # 1. 校验算法存在
-        await prediction_service.get_algorithm(algorithm_id)
+        # 1-3. 校验算法、下载图片、计算 MD5（此阶段失败日志尚未创建，需归还配额）
+        try:
+            # 1. 校验算法存在
+            await prediction_service.get_algorithm(algorithm_id)
 
-        # 2. 并行下载预测图和参考图
-        pred_bytes, gt_bytes = await asyncio.gather(
-            fetch_image(pred_url),
-            fetch_image(gt_url),
-        )
+            # 2. 并行下载预测图和参考图
+            pred_bytes, gt_bytes = await asyncio.gather(
+                fetch_image(pred_url),
+                fetch_image(gt_url),
+            )
 
-        # 3. 计算图片 MD5（CPU 密集型，移至线程池）
-        pred_md5, gt_md5 = await asyncio.gather(
-            asyncio.to_thread(calculate_bytes_md5, pred_bytes),
-            asyncio.to_thread(calculate_bytes_md5, gt_bytes),
-        )
+            # 3. 计算图片 MD5（CPU 密集型，移至线程池）
+            pred_md5, gt_md5 = await asyncio.gather(
+                asyncio.to_thread(calculate_bytes_md5, pred_bytes),
+                asyncio.to_thread(calculate_bytes_md5, gt_bytes),
+            )
+        except Exception:
+            if quota_user_id is not None:
+                try:
+                    async with get_db_session() as db:
+                        await member_quota_service.restore_quota(db, quota_user_id, "evaluate")
+                except Exception:
+                    logger.warning("评估前置失败归还配额异常: userId=%s", user_id, exc_info=True)
+            raise
 
         # 4. 创建 processing 日志
         from app.models.base import set_current_user_id
@@ -151,13 +181,14 @@ class EvaluationService:
     async def list_logs(
         self,
         db: AsyncSession,
+        user_id: int,
         algorithm_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:
-        """分页查询评估日志（管理视图，全量；用户隔离见 list_completed_metrics）"""
+        """分页查询当前用户的评估日志（按用户隔离）"""
         return await eval_log_repository.get_paginated(
-            db, algorithm_id=algorithm_id, page=page, size=size
+            db, user_id=user_id, algorithm_id=algorithm_id, page=page, size=size
         )
 
     async def get_log(
@@ -182,10 +213,14 @@ class EvaluationService:
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:
-        """分页查询当前用户的已完成评估记录（仅返回 completed，按用户隔离）。"""
+        """分页查询当前用户的已完成评估记录（仅 completed + evaluation 类型，按用户隔离）。
+
+        task_type 过滤排除对比报告任务行（同表存储，result 为 reportHtml 包装对象）。
+        """
         stmt = select(SysEvalLog).where(
             SysEvalLog.create_by == user_id,
             SysEvalLog.status == LogStatus.COMPLETED.value,
+            SysEvalLog.task_type == "evaluation",
         )
         if algorithm_id is not None:
             stmt = stmt.where(SysEvalLog.algorithm_id == algorithm_id)

@@ -46,9 +46,10 @@ class VoiceHotwordRepository(BaseRepository[SysVoiceHotword]):
         stmt = (
             update(SysVoiceHotword)
             .where(SysVoiceHotword.id == hotword_id, SysVoiceHotword.deleted == 0)
-            .values(deleted=1)
+            .values(deleted=SysVoiceHotword.id)
         )
         result = await db.execute(stmt)
         return result.rowcount > 0
+
 
 voice_hotword_repository = VoiceHotwordRepository()

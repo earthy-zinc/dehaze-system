@@ -1,11 +1,19 @@
 <!-- 用户端对话页：左会话侧栏 + 右对话区（头部/配额/消息流/输入区），消息与流式状态全部经公共 chatStore -->
 <script lang="ts" setup>
 import { ElMessage, ElMessageBox } from "element-plus";
-import type { AiMessageVO, FeedbackForm } from "dehaze-sdk-js";
 import { onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { MessageList } from "@/components/ai-chat";
+import type {
+  ChatArtifactVM,
+  ChatContextChipVM,
+  ChatMessageVM,
+  ChatUserMessageVM,
+} from "@/components/ai-chat/types";
+import { useChatVmBinding } from "@/composables/useChatVmBinding";
 import { useChatStore } from "@/store/modules/chat";
 import { useChatUserStore } from "@/store/modules/chatUser";
+import ArtifactDetailDialog from "@/components/ArtifactDetailDialog.vue";
 
 defineOptions({ name: "ChatPage" });
 
@@ -18,11 +26,54 @@ const settingsVisible = ref(false);
 const memoryVisible = ref(false);
 const taskDialogVisible = ref(false);
 
+// 宿主绑定层：store wire → 无状态组件 VM；组件 emit → store 方法（无状态组件层零 store 耦合）
+const binding = useChatVmBinding({
+  scope: "self",
+  messages: () => chatStore.messages,
+});
+const {
+  messages: vmMessages,
+  streamingMessageId: vmStreamingMessageId,
+  interruptedMessageId: vmInterruptedMessageId,
+  interrupts: vmInterrupts,
+  scrollFollowEnabled: vmScrollFollowEnabled,
+  hasMoreHistory: vmHasMoreHistory,
+  loadingMore: vmLoadingMore,
+  branchSwitching: vmBranchSwitching,
+  onScrollFollowToggle,
+  onReachTop,
+  onRegenerate,
+  onRetry,
+  onQuote,
+  onSpeak,
+  onFeedback,
+  onApplySuggestion,
+  onResumeInterrupt,
+  onLoadArtifacts,
+  onSwitchBranch,
+} = binding;
+
+// 产物详情弹窗：由组件内移到页面层（页面/视图层拉取 getArtifactDetail 展示）
+const artifactDialogRef = ref<InstanceType<typeof ArtifactDetailDialog>>();
+
+function handleOpenArtifact(artifact: ChatArtifactVM) {
+  void artifactDialogRef.value?.open(artifact);
+}
+
+// 复制：剪贴板写入与提示由组件内移到页面层
+async function handleCopy(message: ChatMessageVM) {
+  const content = message.role === "assistant" ? message.text : message.content;
+  await navigator.clipboard.writeText(content);
+  ElMessage.success("已复制");
+}
+
 const LAST_CONVERSATION_KEY = "dehaze.chat.lastConversationId";
 
 /** 读取本会话维度（self/admin）上次访问的会话 ID（localStorage 记忆） */
 function readLastConversationId(): number {
-  const raw = localStorage.getItem(`${LAST_CONVERSATION_KEY}.${chatStore.scope}`);
+  const raw = localStorage.getItem(
+    `${LAST_CONVERSATION_KEY}.${chatStore.scope}`
+  );
   const id = Number(raw);
   return Number.isInteger(id) && id > 0 ? id : 0;
 }
@@ -30,14 +81,20 @@ function readLastConversationId(): number {
 /** 记录本会话维度最近访问的会话 ID（退出后再次进入恢复到离开位置） */
 function rememberConversation(id: number) {
   if (!id) return;
-  localStorage.setItem(`${LAST_CONVERSATION_KEY}.${chatStore.scope}`, String(id));
+  localStorage.setItem(
+    `${LAST_CONVERSATION_KEY}.${chatStore.scope}`,
+    String(id)
+  );
 }
 
 /** 从会话列表中取"最近活跃"会话（有最后发言的最新的；置顶的旧会话不作为默认入口） */
 function latestActiveConversation() {
   const withMessage = chatStore.conversations
     .filter((c) => c.lastMessageAt)
-    .sort((a, b) => Date.parse(b.lastMessageAt ?? "") - Date.parse(a.lastMessageAt ?? ""));
+    .sort(
+      (a, b) =>
+        Date.parse(b.lastMessageAt ?? "") - Date.parse(a.lastMessageAt ?? "")
+    );
   return withMessage[0] ?? chatStore.conversations[0];
 }
 
@@ -102,7 +159,7 @@ function handleStop() {
   chatStore.stopStreaming();
 }
 
-function handleEditMessage(message: AiMessageVO) {
+function handleEditMessage(message: ChatUserMessageVM) {
   ElMessageBox.prompt("编辑后将以新分支重新触发回复", "编辑消息", {
     inputValue: message.content ?? "",
     inputType: "textarea",
@@ -113,10 +170,15 @@ function handleEditMessage(message: AiMessageVO) {
     .catch(() => {});
 }
 
-function handleDeleteMessage(message: AiMessageVO) {
+function handleDeleteMessage(message: ChatMessageVM) {
   ElMessageBox.confirm("确认删除该条消息？", "删除确认", { type: "warning" })
     .then(() => chatStore.deleteMessage(message.id))
     .catch(() => {});
+}
+
+/** 上下文构成项详情：用户端无可下钻原始来源（raw 报文仅管理端可见），展示人类可读说明 */
+function handleContextOpen(chip: ChatContextChipVM) {
+  ElMessage.info(chip.detail ?? chip.label);
 }
 </script>
 
@@ -142,23 +204,31 @@ function handleDeleteMessage(message: AiMessageVO) {
       <div class="chat-page__body">
         <MessageList
           v-if="chatStore.messages.length > 0 || chatStore.messagesLoading"
-          :messages="chatStore.messages"
-          :streaming-message-id="chatStore.streamingMessageId"
-          :scroll-follow-enabled="chatStore.scrollFollowEnabled"
-          @scroll-follow-toggle="
-            (enabled: boolean) => (chatStore.scrollFollowEnabled = enabled)
-          "
+          :messages="vmMessages"
+          scope="self"
+          :streaming-message-id="vmStreamingMessageId"
+          :interrupted-message-id="vmInterruptedMessageId"
+          :interrupts="vmInterrupts"
+          :scroll-follow-enabled="vmScrollFollowEnabled"
+          :has-more-history="vmHasMoreHistory"
+          :loading-more="vmLoadingMore"
+          :branch-switching="vmBranchSwitching"
+          @scroll-follow-toggle="onScrollFollowToggle"
+          @reach-top="onReachTop"
           @edit="handleEditMessage"
-          @quote="(message: AiMessageVO) => chatStore.quoteMessage(message)"
-          @regenerate="
-            (message: AiMessageVO) => chatStore.regenerate(message.id)
-          "
-          @feedback="
-            (message: AiMessageVO, data: FeedbackForm | null) =>
-              chatStore.submitFeedback(message.id, data)
-          "
+          @copy="handleCopy"
+          @quote="onQuote"
+          @regenerate="onRegenerate"
+          @feedback="onFeedback"
           @delete="handleDeleteMessage"
-          @speak="(message: AiMessageVO) => chatStore.speakMessage(message)"
+          @speak="onSpeak"
+          @retry="onRetry"
+          @apply-suggestion="onApplySuggestion"
+          @open-artifact="handleOpenArtifact"
+          @load-artifacts="onLoadArtifacts"
+          @resume-interrupt="onResumeInterrupt"
+          @switch-branch="onSwitchBranch"
+          @context-open="handleContextOpen"
         />
         <EmptyState v-else @select="handleSend" />
 
@@ -169,6 +239,8 @@ function handleDeleteMessage(message: AiMessageVO) {
     <ConversationSettings v-model="settingsVisible" />
     <MemoryPanel v-model="memoryVisible" />
     <SaveAsTaskDialog v-model="taskDialogVisible" />
+
+    <ArtifactDetailDialog ref="artifactDialogRef" />
   </div>
 </template>
 

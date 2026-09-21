@@ -5,9 +5,7 @@ config / guardrails 用 Pydantic 模型表达，避免自由 dict 导致的拼�
 """
 
 from datetime import datetime
-from typing import Any
-
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -65,6 +63,24 @@ class AgentConfig(BaseModel):
     )
     temperature: float | None = Field(default=None, description="LLM 温度参数")
     guardrails: GuardrailConfig | None = Field(default=None, description="护栏规则开关与参数")
+
+
+class AgentConfigDefaults(OrmResult):
+    """推理参数系统默认值（代码常量 REASONING_DEFAULTS 的对外契约）。
+
+    Agent 配置表单的"空值继承系统默认"提示依赖本契约；字段与常量同名同值，
+    由测试断言两者一致，前端不得硬编码（漂移）。
+    """
+
+    max_steps_react: int = Field(description="react 范式最大推理步数默认值")
+    max_steps_plan: int = Field(description="plan_execute 范式最大推理步数默认值")
+    max_steps_reflexion: int = Field(description="reflexion 范式最大推理步数默认值")
+    max_iterations_reflexion: int = Field(description="reflexion 最大反思迭代次数默认值")
+    reflexion_threshold: float = Field(description="Reflexion 质量达标阈值默认值")
+    max_parallel: int = Field(description="并行子任务最大数默认值")
+    tool_timeout: int = Field(description="单工具调用超时(秒)默认值")
+    token_budget: int = Field(description="单会话 Token 预算上限默认值")
+    retry_max: int = Field(description="工具调用失败最大重试次数默认值")
 
 
 class AgentCreate(OrmResult):

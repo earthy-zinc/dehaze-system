@@ -11,15 +11,15 @@
 from datetime import datetime
 
 import pytest
+from sqlalchemy import select
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_member import QUOTA_TASK_TYPES, SysMember
+from app.models.entity.sys_member import QUOTA_TASK_TYPES
 from app.models.entity.sys_member_quota import SysMemberQuota
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_repository import member_repository
 from app.service.member.quota_service import member_quota_service
-from sqlalchemy import select
 
 pytestmark = pytest.mark.requires_db
 
@@ -34,8 +34,9 @@ async def _setup_benefit(db, level_code: str = "level_1", quota: int = 50):
     return benefit
 
 
-async def _setup_member(db, user_id: int = USER_ID, *, level_code: str = "level_1",
-                        status: int = 1):
+async def _setup_member(
+    db, user_id: int = USER_ID, *, level_code: str = "level_1", status: int = 1
+):
     member = await member_repository.get_or_init_member(db, user_id)
     member.level_code = level_code
     member.status = status
@@ -45,12 +46,14 @@ async def _setup_member(db, user_id: int = USER_ID, *, level_code: str = "level_
 
 # ===================== 8 类任务扣减 =====================
 
+
 async def test_check_and_deduct_derain_task(db):
     """derain 等非 dehaze 任务正常校验扣减"""
     await _setup_benefit(db, "level_1", quota=50)
     await _setup_member(db, level_code="level_1")
     await member_quota_service.check_and_deduct_quota(db, USER_ID, "derain")
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.monthly_derain_used == 1
 
 
@@ -60,6 +63,7 @@ async def test_check_and_deduct_desnow_and_inpaint(db):
     await member_quota_service.check_and_deduct_quota(db, USER_ID, "desnow")
     await member_quota_service.check_and_deduct_quota(db, USER_ID, "inpaint")
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.monthly_desnow_used == 1
     assert member.monthly_inpaint_used == 1
 
@@ -73,6 +77,7 @@ async def test_check_and_deduct_unsupported_type(db):
 
 # ===================== 冻结会员 =====================
 
+
 async def test_check_and_deduct_frozen_raises(db):
     await _setup_benefit(db, "level_1", quota=50)
     await _setup_member(db, level_code="level_1", status=0)
@@ -82,6 +87,7 @@ async def test_check_and_deduct_frozen_raises(db):
 
 
 # ===================== 配额不足 =====================
+
 
 async def test_check_and_deduct_quota_exceeded(db):
     await _setup_benefit(db, "level_1", quota=2)
@@ -105,22 +111,27 @@ async def test_check_and_deduct_redis_remaining_zero(db, mock_redis):
 
 # ===================== 并发防超扣 =====================
 
+
 async def test_concurrent_deduct_not_over(db):
     """配额仅 1 时，模拟两次扣减（Redis 未命中路径）第二次应失败不超扣"""
     await _setup_benefit(db, "level_1", quota=1)
-    member = await _setup_member(db, level_code="level_1")
+    await _setup_member(db, level_code="level_1")
     # 预置 Redis 无缓存，走落库条件更新路径；第一次成功
     await member_quota_service.check_and_deduct_quota(db, USER_ID, "dehaze")
     updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
     assert updated.monthly_dehaze_used == 1
     # 第二次：条件更新（quota=1 > used=1 为假）失败 → 配额不足
     with pytest.raises(BusinessException) as exc:
         await member_quota_service.check_and_deduct_quota(db, USER_ID, "dehaze")
     assert exc.value.code == ResultCode.QUOTA_EXCEEDED
-    assert (await member_repository.get_by_user_id(db, USER_ID)).monthly_dehaze_used == 1
+    updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
+    assert updated.monthly_dehaze_used == 1
 
 
 # ===================== 归还配额 =====================
+
 
 async def test_restore_quota_derain(db):
     await _setup_benefit(db, "level_1", quota=50)
@@ -128,10 +139,13 @@ async def test_restore_quota_derain(db):
     member.monthly_derain_used = 3
     await db.flush()
     await member_quota_service.restore_quota(db, USER_ID, "derain")
-    assert (await member_repository.get_by_user_id(db, USER_ID)).monthly_derain_used == 2
+    updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
+    assert updated.monthly_derain_used == 2
 
 
 # ===================== 月度配额重置 =====================
+
 
 async def test_reset_monthly_quota_archives_and_resets_8_types(db):
     await _setup_benefit(db, "level_1", quota=80)
@@ -146,11 +160,17 @@ async def test_reset_monthly_quota_archives_and_resets_8_types(db):
 
     assert count >= 1
     # 历史表已归档上月使用情况（8 类）
-    archived = (await db.execute(
-        select(SysMemberQuota).where(
-            SysMemberQuota.user_id == USER_ID, SysMemberQuota.quota_month == 202607
+    archived = (
+        (
+            await db.execute(
+                select(SysMemberQuota).where(
+                    SysMemberQuota.user_id == USER_ID, SysMemberQuota.quota_month == 202607
+                )
+            )
         )
-    )).scalars().all()
+        .scalars()
+        .all()
+    )
     assert len(archived) == 1
     assert archived[0].dehaze_used == 3
     assert archived[0].derain_used == 3
@@ -159,6 +179,7 @@ async def test_reset_monthly_quota_archives_and_resets_8_types(db):
 
     # 本月配额按等级权益刷新、已用清零、quota_reset_month 更新
     updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
     assert updated.quota_reset_month == int(datetime.now().strftime("%Y%m"))
     for task_type in QUOTA_TASK_TYPES:
         assert getattr(updated, f"monthly_{task_type}_quota") == 80
@@ -174,9 +195,11 @@ async def test_reset_monthly_quota_idempotent(db):
     await db.flush()
 
     await member_quota_service.reset_monthly_quota(db)
-    archived = (await db.execute(
-        select(SysMemberQuota).where(SysMemberQuota.user_id == USER_ID)
-    )).scalars().all()
+    archived = (
+        (await db.execute(select(SysMemberQuota).where(SysMemberQuota.user_id == USER_ID)))
+        .scalars()
+        .all()
+    )
     assert len(archived) == 0
 
 
@@ -190,5 +213,28 @@ async def test_reset_monthly_quota_skips_frozen(db):
 
     await member_quota_service.reset_monthly_quota(db)
     updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
     assert updated.quota_reset_month == 202607
     assert updated.monthly_dehaze_used == 5
+
+
+async def test_effective_task_quota_overrides_camelcase(db):
+    """会员卡覆盖项 key 为 camelCase（套餐侧写入/DB/Java 统一口径），合并取较高值生效"""
+
+    from app.service.member.quota_service import _effective_task_quota
+
+    await _setup_benefit(db, "level_1", quota=50)
+    benefit = await member_benefit_repository.get_by_level_code(db, "level_1")
+    assert benefit is not None
+
+    overrides = {
+        "monthlyDehazeQuota": 100,
+        "monthlySuperResolutionQuota": 200,
+        "monthlyDenoiseQuota": 10,
+    }
+    effective = _effective_task_quota(benefit, overrides)
+    assert effective["dehaze"] == 100
+    assert effective["super_resolution"] == 200
+    assert effective["denoise"] == max(benefit.monthly_denoise_quota, 10)
+    for task_type in QUOTA_TASK_TYPES:
+        assert effective[task_type] >= getattr(benefit, f"monthly_{task_type}_quota", 0) or 0

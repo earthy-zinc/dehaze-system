@@ -43,6 +43,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
     private final DeptConverter deptConverter;
     private final SysUserService userService;
+    private final SysDeptMapper deptMapper;
 
     /**
      * 部门最大层级深度（T-DPT-014/018a：超出 5 级报 A0504）
@@ -145,12 +146,12 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      */
     @Override
     public Long saveDept(DeptForm formData) {
-        // 校验部门名称是否存在
+        // 校验部门名称是否已存在（同一上级部门下唯一，含已删除记录：删除后名称不可复用，T-DPT-035b）
         String name = formData.getName();
-        long count = this.count(new LambdaQueryWrapper<SysDept>()
-                .eq(SysDept::getName, name)
-        );
-        Assert.isTrue(count == 0, "部门名称已存在");
+        long count = deptMapper.countByNameIncludingDeleted(name, formData.getParentId(), null);
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "部门名称已存在");
+        }
 
         // 生成部门路径(tree_path)，generateDeptTreePath 会校验父部门是否存在
         Long parentId = formData.getParentId();
@@ -177,16 +178,24 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      */
     @Override
     public Long updateDept(Long deptId, DeptForm formData) {
-        // 校验部门名称是否存在
+        SysDept existingDept = this.getById(deptId);
+        Assert.isTrue(existingDept != null, "部门不存在");
+
+        // 校验部门名称是否已存在（同一上级部门下唯一，含已删除记录，排除自身）
         String name = formData.getName();
-        long count = this.count(new LambdaQueryWrapper<SysDept>()
-                .eq(SysDept::getName, name)
-                .ne(SysDept::getId, deptId)
-        );
-        Assert.isTrue(count == 0, "部门名称已存在");
+        long count = deptMapper.countByNameIncludingDeleted(name, formData.getParentId(), deptId);
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "部门名称已存在");
+        }
+
+        // 根部门保护（对齐 Python/Go：A0503 操作不允许），须先于循环引用检测
+        // （所有子树 tree_path 都含 ",1,"，后检会把移动根部门误判为循环引用）
+        Long parentId = formData.getParentId();
+        if (ROOT_DEPT_ID.equals(deptId) && !parentId.equals(existingDept.getParentId())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可修改上级");
+        }
 
         // 循环引用校验：不能将部门移动到自身或其子部门下
-        Long parentId = formData.getParentId();
         Assert.isTrue(!parentId.equals(deptId), "不能将部门设置为自己的上级部门");
         if (!SystemConstants.ROOT_NODE_ID.equals(parentId)) {
             SysDept parentDept = this.getById(parentId);
@@ -211,6 +220,13 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         // 保存部门并返回部门ID
         boolean result = this.updateById(entity);
         Assert.isTrue(result, "部门更新失败");
+
+        // 移动部门时级联平移子树 tree_path，保持"子.tree_path == 父.tree_path + ',' + 父.id"不变量
+        if (!parentId.equals(existingDept.getParentId())) {
+            String oldPrefix = existingDept.getTreePath() + "," + deptId;
+            String newPrefix = treePath + "," + deptId;
+            baseMapper.updateSubtreeTreePath(oldPrefix, newPrefix, oldPrefix.length());
+        }
 
         return entity.getId();
     }
@@ -274,18 +290,18 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
             if (ROOT_DEPT_ID.equals(id)) {
                 throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可删除");
             }
-            // 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除）
+            // 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除，python A0502 口径）
             long childCount = this.count(new LambdaQueryWrapper<SysDept>()
                     .eq(SysDept::getParentId, id));
             if (childCount > 0) {
-                throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
+                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
                         "该部门下存在子部门，请先删除子部门");
             }
-            // 关联用户检查：有用户禁止删除（T-DPT-029）
+            // 关联用户检查：有用户禁止删除（T-DPT-029，A0502）
             long userCount = userService.count(new LambdaQueryWrapper<SysUser>()
                     .eq(SysUser::getDeptId, id));
             if (userCount > 0) {
-                throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
+                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
                         "该部门下存在用户，无法删除");
             }
         }

@@ -21,20 +21,26 @@ public class PackageForm {
     @Size(min = 2, max = 32, message = "套餐名称长度必须在2-32个字符之间")
     private String name;
 
-    @Schema(description = "会员等级(level_1/level_2/level_3)", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "会员等级不能为空")
+    @Schema(description = "商品类型(vip/credit)", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "商品类型非法")
+    @Pattern(regexp = "vip|credit", message = "商品类型非法")
+    private String packageType;
+
+    @Schema(description = "会员等级(level_1/level_2/level_3，会员卡必填)")
     private String levelCode;
 
-    @Schema(description = "计费周期(monthly/quarterly/yearly)", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "计费周期不能为空")
+    @Schema(description = "计费周期(monthly/quarterly/yearly，会员卡必填)")
     @Pattern(regexp = "monthly|quarterly|yearly", message = "计费周期必须为monthly/quarterly/yearly之一")
     private String period;
 
-    @Schema(description = "有效期天数", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "有效期天数不能为空")
+    @Schema(description = "有效期天数（会员卡必填）")
     @Min(value = 1, message = "有效期天数必须大于0")
     @Max(value = 365, message = "有效期天数不能超过365")
     private Integer periodDays;
+
+    @Schema(description = "可得积分（积分卡必填，>0）")
+    @Min(value = 1, message = "积分卡可得积分必须大于0")
+    private Long creditAmount;
 
     @Schema(description = "原价（分）", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "原价不能为空")

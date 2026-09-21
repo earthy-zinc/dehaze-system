@@ -2,17 +2,20 @@
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.models.entity.sys_ai_agent_skill import SysAiAgentSkill
 from app.models.schema.ai_skill import SkillCreate, SkillUpdate
 from app.service.ai_skill_service import SkillManageService
 
+pytestmark = pytest.mark.requires_db
+
 
 async def _create_skill(db, name, **kw):
-    return await SkillManageService().create_skill(
+    """创建并启用：新建默认禁用（§2.6.11），普通用户可见性断言需启用态。"""
+    created = await SkillManageService().create_skill(
         db, SkillCreate(name=name, description=f"{name}描述", instruction="指令", **kw)
     )
+    assert created.status == 0
+    return await SkillManageService().set_status(db, created.id, enabled=True)
 
 
 class TestSkillScene:

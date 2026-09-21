@@ -17,7 +17,8 @@ class DatasetAddForm(BaseModel):
     """数据集新增表单（对齐 Java DatasetAddForm）"""
 
     parentId: int = Field(default=0, description="父数据集ID")
-    name: str = Field(..., min_length=1, max_length=255, description="数据集名称")
+    # sys_dataset.name 列宽 varchar(64)，表单上限必须一致，超长会在 DB 层报 500
+    name: str = Field(..., min_length=1, max_length=64, description="数据集名称")
     type: str | None = Field(default="", max_length=50, description="数据集类型")
     description: str | None = Field(default="", max_length=500, description="数据集描述")
     path: str | None = Field(default="", max_length=255, description="存储位置")
@@ -30,7 +31,7 @@ class DatasetUpdateForm(BaseModel):
     """数据集更新表单（对齐 Java DatasetUpdateForm）"""
 
     parentId: int | None = Field(default=None, description="父数据集ID")
-    name: str | None = Field(default=None, min_length=1, max_length=255, description="数据集名称")
+    name: str | None = Field(default=None, min_length=1, max_length=64, description="数据集名称")
     type: str | None = Field(default=None, max_length=50, description="数据集类型")
     description: str | None = Field(default=None, max_length=500, description="数据集描述")
     path: str | None = Field(default=None, max_length=255, description="存储位置")
@@ -46,13 +47,14 @@ class DatasetItemCreateForm(BaseModel):
     """创建空数据项表单"""
 
     datasetId: int = Field(..., description="所属数据集ID")
-    name: str | None = Field(default=None, max_length=200, description="数据项名称")
+    # sys_dataset_item.name 列宽 varchar(64)
+    name: str | None = Field(default=None, max_length=64, description="数据项名称")
 
 
 class DatasetItemUpdateForm(BaseModel):
     """数据项更新表单"""
 
-    name: str | None = Field(default=None, min_length=1, max_length=200, description="数据项名称")
+    name: str | None = Field(default=None, min_length=1, max_length=64, description="数据项名称")
     sceneType: str | None = Field(default=None, description="场景类型")
 
 

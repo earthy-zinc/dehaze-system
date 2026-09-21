@@ -36,13 +36,15 @@ async def sync_conversation_to_es(conv_id: int) -> None:
 
 
 def defer_conversation_sync(db: AsyncSession, conv_id: int) -> None:
-    """登记会话 ES 同步，延迟到请求事务提交后由 DBSessionMiddleware 执行。
+    """登记会话 ES 同步，延迟到请求事务提交后执行。
 
     ES 读模型必须基于已提交数据：请求事务内新开 session 读不到未提交的
     标题/状态变更（新建会话整行不可见），内联同步会把旧数据写入 ES，
     导致关键字全文检索失效。
     """
-    db.info.setdefault("es_sync_conv_ids", set()).add(conv_id)
+    from app.database import defer_after_commit
+
+    defer_after_commit(db, lambda: sync_conversation_to_es(conv_id))
 
 
 async def search_conversations(

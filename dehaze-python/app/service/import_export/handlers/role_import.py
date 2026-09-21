@@ -7,7 +7,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_user import SysRole
-from app.repository.role_repository import role_repository
+from app.repository.role_repository import BUILTIN_ROLE_CODES, role_repository
 from app.service.import_export.models import (
     ImportError,
     ImportFieldConfig,
@@ -62,6 +62,8 @@ class RoleImportHandler(ImportHandler):
                 code = _get_str(row, "code")
                 if not code:
                     raise ValueError("角色编码为空")
+                if code in BUILTIN_ROLE_CODES:
+                    raise ValueError(f"内置角色编码不可导入: {code}")
                 if await role_repository.check_code_exists(db, code):
                     raise ValueError(f"角色编码已被历史记录占用: {code}")
 
@@ -69,8 +71,8 @@ class RoleImportHandler(ImportHandler):
                     name=name,
                     code=code,
                     sort=_parse_int(row, "sort", 0),
-                    status=_parse_status(row, "status_label", 1),
-                    data_scope=5,
+                    status=_parse_status(row, "status_label"),
+                    data_scope=2,
                 )
                 await role_repository.create(db, role)
                 success_count += 1
@@ -89,6 +91,19 @@ class RoleImportHandler(ImportHandler):
                 await progress_cb(i + 1, total)
                 if await cancel_cb():
                     break
+
+        if success_count:
+            # 导入新增角色影响下拉选项，提交后失效 role:options 缓存
+            from app.database import defer_after_commit
+            from app.dependencies.redis import get_redis_client
+            from app.infrastructure.cache.cache import CacheService
+            from app.service.role_service import role_service
+
+            async def _invalidate_options():
+                redis = await get_redis_client()
+                await CacheService(redis).delete(role_service.ROLE_OPTIONS_CACHE_KEY)
+
+            defer_after_commit(db, _invalidate_options)
 
         return ImportResult(
             total_rows=total,
@@ -116,12 +131,12 @@ def _parse_int(row: dict, key: str, default: int) -> int:
         return default
 
 
-def _parse_status(row: dict, key: str, default: int) -> int:
+def _parse_status(row: dict, key: str) -> int:
     label = _get_str(row, key)
     if not label:
-        return default
+        return 1
     if label == "启用":
         return 1
     if label == "禁用":
         return 0
-    return default
+    raise ValueError(f"状态值无效，必须为 启用/禁用: {label}")

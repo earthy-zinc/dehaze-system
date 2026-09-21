@@ -75,7 +75,9 @@ def _to_detail_vo(a: SysAnnouncement) -> dict[str, Any]:
 class AnnouncementService:
     async def create(self, db: AsyncSession, data: dict[str, Any], user_id: int) -> int:
         send_time = data.get("sendTime")
-        status = 2 if send_time else 1
+        parsed_send_time = _parse_dt(send_time) if send_time else None
+        if parsed_send_time and parsed_send_time <= datetime.now():
+            raise BusinessException(ResultCode.PARAM_ERROR, "定时发送时间必须为未来时间")
 
         announcement = SysAnnouncement(
             title=data["title"],
@@ -84,8 +86,8 @@ class AnnouncementService:
             importance=data["importance"],
             target_scope=data["targetScope"],
             target_params=data.get("targetParams"),
-            status=status,
-            send_time=_parse_dt(send_time) if send_time else None,
+            status=2 if parsed_send_time else 1,
+            send_time=parsed_send_time,
             expire_time=_parse_dt(data["expireTime"]) if data.get("expireTime") else None,
             sent_count=0,
             deleted=0,
@@ -119,7 +121,7 @@ class AnnouncementService:
         if not announcement:
             raise BusinessException(ResultCode.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
         if announcement.status not in (1, 2):
-            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "公告状态不允许编辑")
+            raise BusinessException(ResultCode.ANNOUNCEMENT_STATUS_INVALID, "公告状态不允许编辑")
 
         if "title" in data:
             announcement.title = data["title"]
@@ -159,18 +161,20 @@ class AnnouncementService:
             raise BusinessException(ResultCode.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空")
 
         priority = 3 if announcement.importance == 2 else 2
-        await message_service.send(
-            db,
-            {
-                "type": "announcement",
-                "title": announcement.title,
-                "content": announcement.content,
-                "recipientIds": target_user_ids,
-                "bizModule": "system",
-                "bizId": str(announcement.id),
-                "priority": priority,
-            },
-        )
+        batch_size = 500
+        for i in range(0, len(target_user_ids), batch_size):
+            await message_service.send(
+                db,
+                {
+                    "type": "announcement",
+                    "title": announcement.title,
+                    "content": announcement.content,
+                    "recipientIds": target_user_ids[i : i + batch_size],
+                    "bizModule": "system",
+                    "bizId": str(announcement.id),
+                    "priority": priority,
+                },
+            )
 
         await announcement_repository.update_status(
             db,

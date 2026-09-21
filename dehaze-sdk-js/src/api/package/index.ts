@@ -10,6 +10,7 @@ import {
   PackageOnSaleVO,
   PackagePageVO,
   PackageQuery,
+  PackageType,
   PriceResult,
   PromotionForm,
   PromotionPackageForm,
@@ -21,11 +22,12 @@ import {
 } from "./model";
 
 class PackageAPI {
-  /** 用户端：在售套餐列表 */
-  static listOnSale() {
+  /** 用户端：在售套餐列表（支持按商品类型过滤，对应商店分类 Tab） */
+  static listOnSale(packageType?: PackageType) {
     return request<PackageOnSaleVO[]>({
       url: "/api/v1/packages",
       method: "get",
+      params: packageType ? { packageType } : undefined,
     });
   }
 
@@ -177,7 +179,7 @@ class CouponAPI {
 }
 
 export default PackageAPI;
-export { CouponAPI, PromotionAPI };
+export { CouponAPI };
 
 class PromotionAPI {
   /** 后台：促销活动分页列表 */
@@ -233,3 +235,5 @@ class PromotionAPI {
     });
   }
 }
+
+export { PromotionAPI };

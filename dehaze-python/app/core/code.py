@@ -154,6 +154,7 @@ class ResultCode(Enum):
     FILE_MD5_INVALID = ("B0404", "MD5格式无效")
     FILE_STORAGE_ERROR = ("B0405", "文件存储失败")
     FILE_CORRUPTED = ("B0406", "文件已损坏")
+    FILE_ACCESS_DENIED = ("B0407", "无权访问该文件")
 
     # AI 对话模块错误码 A06xx
     AI_LLM_CALL_FAILED = ("A0600", "LLM 调用失败")

@@ -99,6 +99,20 @@ public class SecurityUtils {
     }
 
     /**
+     * 获取当前登录人权限标识集合（authorities 中非 ROLE_ 前缀部分）
+     */
+    public static Set<String> getPerms() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && CollUtil.isNotEmpty(authentication.getAuthorities())) {
+            return authentication.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .filter(authority -> !authority.startsWith(SecurityConstants.ROLE_PREFIX))
+                    .collect(Collectors.toSet());
+        }
+        return Collections.emptySet();
+    }
+
+    /**
      * 是否管理员（ROOT 或 ADMIN 角色）
      */
     public static boolean isAdmin() {

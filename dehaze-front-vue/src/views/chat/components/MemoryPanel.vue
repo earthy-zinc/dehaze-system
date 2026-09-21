@@ -1,4 +1,4 @@
-<!-- 长期记忆面板：查看/搜索/手动录入/编辑/删除/导出，清空与恢复必须先二次确认再传 confirm=true -->
+<!-- 长期记忆面板：查看/搜索/手动录入/编辑/删除/导出 + 归档记忆查看与取消归档，清空与恢复必须先二次确认再传 confirm=true -->
 <script lang="ts" setup>
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
@@ -26,12 +26,16 @@ const loading = ref(false);
 const keyword = ref("");
 const memoryType = ref<MemoryType | "">("");
 const pageNum = ref(1);
+/** 归档视图：遗忘策略归档的记忆（archived=1），用户可取消归档恢复注入 */
+const archivedMode = ref(false);
 
 const typeLabel = (type: string) =>
   memoryTypeOptions.find((item) => item.value === type)?.label ?? type;
 
-// 搜索接口命中即整页返回，无分页
-const isSearchMode = computed(() => keyword.value.trim().length > 0);
+// 搜索接口命中即整页返回，无分页；归档视图只做浏览 + 取消归档，不参与关键词搜索
+const isSearchMode = computed(
+  () => !archivedMode.value && keyword.value.trim().length > 0
+);
 
 async function load() {
   loading.value = true;
@@ -44,11 +48,14 @@ async function load() {
       total.value = memories.value.length;
       return;
     }
-    const result = await AiConversationAPI.getMemories({
+    const query = {
       pageNum: pageNum.value,
       pageSize: PAGE_SIZE,
       memoryType: memoryType.value || undefined,
-    });
+    };
+    const result = archivedMode.value
+      ? await AiConversationAPI.getArchivedMemories(query)
+      : await AiConversationAPI.getMemories(query);
     memories.value = result.list ?? [];
     total.value = result.total ?? 0;
   } finally {
@@ -60,7 +67,7 @@ watch(visible, (value) => {
   if (value) load();
 });
 
-watch([memoryType], () => {
+watch([memoryType, archivedMode], () => {
   pageNum.value = 1;
   load();
 });
@@ -117,6 +124,13 @@ function handleEdit(memory: MemoryVO) {
     .catch(() => {});
 }
 
+// 归档是遗忘策略的系统行为（无手动归档入口），用户侧只有取消归档这一个反向操作
+async function handleUnarchive(memory: MemoryVO) {
+  await AiConversationAPI.unarchiveMemory(memory.id);
+  ElMessage.success("已取消归档，该记忆将重新参与对话召回");
+  load();
+}
+
 function handleDelete(memory: MemoryVO) {
   ElMessageBox.confirm(
     "确认删除该条记忆？删除后 30 天内可通过恢复找回",
@@ -171,7 +185,12 @@ async function handleExport(format: "json" | "markdown") {
   <el-drawer v-model="visible" title="长期记忆" size="560px">
     <div class="memory-panel">
       <div class="memory-panel__toolbar">
+        <el-radio-group v-model="archivedMode" size="small">
+          <el-radio-button :value="false">当前记忆</el-radio-button>
+          <el-radio-button :value="true">归档记忆</el-radio-button>
+        </el-radio-group>
         <el-input
+          v-if="!archivedMode"
           v-model="keyword"
           placeholder="搜索记忆内容"
           clearable
@@ -216,6 +235,15 @@ async function handleExport(format: "json" | "markdown") {
             <span>{{ memory.createTime?.slice(0, 10) }}</span>
           </div>
           <div class="memory-item__actions">
+            <el-button
+              v-if="archivedMode"
+              link
+              size="small"
+              type="primary"
+              @click="handleUnarchive(memory)"
+            >
+              取消归档
+            </el-button>
             <el-button link size="small" @click="handleEdit(memory)"
               >编辑</el-button
             >
@@ -231,7 +259,11 @@ async function handleExport(format: "json" | "markdown") {
         </div>
         <el-empty
           v-if="memories.length === 0 && !loading"
-          description="暂无记忆，对话中确认的长期信息会自动沉淀到这里"
+          :description="
+            archivedMode
+              ? '暂无归档记忆'
+              : '暂无记忆，对话中确认的长期信息会自动沉淀到这里'
+          "
         />
       </div>
 
@@ -300,6 +332,7 @@ async function handleExport(format: "json" | "markdown") {
 
   &__toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     margin-bottom: 12px;

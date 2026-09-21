@@ -1,0 +1,38 @@
+# http://editorconfig.org
+# 仓库级统一约定，跨编辑器生效（VS Code 需 editorconfig.editorconfig 扩展）。
+# 注意：dehaze-front-vue / dehaze-taro 目录下另有 root = true 的子配置，
+# 按 EditorConfig 规范，子配置会截断继承，本文件对这两个目录不生效。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Python：ruff 统一 lint + format，行长与 pyproject.toml 的 [tool.ruff] line-length 对齐
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+# Go：gofmt 强制缩进用 tab
+[*.go]
+indent_style = tab
+indent_size = tab
+tab_width = 4
+
+# JVM 系
+[*.{java,kt,kts,gradle}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows 批处理必须是 CRLF，否则 cmd 解析异常
+[*.{bat,cmd}]
+end_of_line = crlf

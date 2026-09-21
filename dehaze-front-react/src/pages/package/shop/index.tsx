@@ -1,9 +1,12 @@
 import {
+  CouponAPI,
   MemberAPI,
   OrderAPI,
   PackageAPI,
   type MemberProfileVO,
   type PackageDetailVO,
+  type PriceResult,
+  type UserCouponVO,
 } from "dehaze-sdk-js";
 import {
   ArrowRightOutlined,
@@ -12,7 +15,16 @@ import {
   GiftOutlined,
   ShoppingCartOutlined,
 } from "@ant-design/icons";
-import { Button, Empty, Modal, Spin, Table, Tag, message } from "antd";
+import {
+  Button,
+  Empty,
+  Modal,
+  Select,
+  Spin,
+  Table,
+  Tag,
+  message,
+} from "antd";
 import type { TableColumnsType } from "antd";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -55,6 +67,9 @@ const BENEFIT_UNITS: Record<string, string> = {
   batchDownload: "次",
 };
 
+/** 后端金额单位为分，前端展示用元 */
+const yuan = (cents?: number): string => ((cents ?? 0) / 100).toFixed(2);
+
 const formatBenefitValue = (key: string, value: number): string => {
   const unit = BENEFIT_UNITS[key];
   if (key === "historyRetention") {
@@ -82,12 +97,25 @@ interface ComparisonRow {
 const PackageShop: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [purchasingId, setPurchasingId] = useState<number>(0);
   const [bannerVisible, setBannerVisible] = useState(true);
   const [packages, setPackages] = useState<PackageDetailVO[]>([]);
   const [profile, setProfile] = useState<MemberProfileVO | undefined>(
     undefined
   );
+
+  /** 购买弹窗状态 */
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [currentPackage, setCurrentPackage] = useState<PackageDetailVO | null>(
+    null
+  );
+  const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const [myCoupons, setMyCoupons] = useState<UserCouponVO[]>([]);
+  const [selectedCouponId, setSelectedCouponId] = useState<
+    number | undefined
+  >(undefined);
 
   const currentLevelCode = profile?.levelCode ?? "level_0";
 
@@ -113,9 +141,12 @@ const PackageShop: React.FC = () => {
   }, [loadData]);
 
   const getButtonText = useCallback(
-    (pkgLevel: string) => {
+    (pkg: PackageDetailVO) => {
+      if (pkg.packageType === "credit") {
+        return "立即购买";
+      }
       const current = LEVEL_ORDER[currentLevelCode] ?? 0;
-      const target = LEVEL_ORDER[pkgLevel] ?? 0;
+      const target = LEVEL_ORDER[pkg.levelCode ?? ""] ?? 0;
       if (currentLevelCode === "level_0") {
         return "立即开通";
       }
@@ -130,49 +161,99 @@ const PackageShop: React.FC = () => {
     [currentLevelCode]
   );
 
-  const getButtonType = useCallback(
-    (pkgLevel: string): "default" | "primary" => {
-      if (pkgLevel === "level_3") return "primary";
-      if (pkgLevel === "level_2") return "primary";
-      return "primary";
-    },
-    []
-  );
+  const recalcPrice = useCallback((pkgId: number, couponId?: number) => {
+    setPriceLoading(true);
+    return PackageAPI.calculatePrice(pkgId, couponId)
+      .then((res) => {
+        setPriceResult(res);
+      })
+      .catch(() => {
+        setPriceResult(null);
+      })
+      .finally(() => {
+        setPriceLoading(false);
+      });
+  }, []);
+
+  /** 用户未使用优惠券中适用于当前套餐的（applicableScope 为空表示全部适用） */
+  const applicableCoupons = useMemo(() => {
+    if (!currentPackage) return [];
+    return myCoupons.filter((coupon) => {
+      const scope = coupon.applicableScope;
+      if (!scope || scope.length === 0) return true;
+      return (
+        scope.includes(currentPackage.id) ||
+        scope.includes(currentPackage.packageType)
+      );
+    });
+  }, [myCoupons, currentPackage]);
+
+  const couponOptionLabel = (coupon: UserCouponVO): string => {
+    const threshold =
+      coupon.threshold && coupon.threshold > 0
+        ? `（满¥${yuan(coupon.threshold)}可用）`
+        : "";
+    return `${coupon.couponName}${threshold}`;
+  };
 
   const handlePurchase = useCallback(
     (pkg: PackageDetailVO) => {
-      Modal.confirm({
-        title: "开通确认",
-        content: `确认开通「${pkg.name}」，将使用余额支付 ¥${pkg.salePrice.toFixed(2)}？`,
-        okText: "确认开通",
-        cancelText: "取消",
-        onOk: () => {
-          setPurchasingId(pkg.id);
-          return OrderAPI.create({
-            packageId: pkg.id,
-            payMethod: "balance",
-          })
-            .then((res) => {
-              message.success("订单创建成功");
-              navigate(`/order/detail?orderNo=${res.orderNo}`);
-            })
-            .catch((error) => {
-              message.error(error?.message || "订单创建失败");
-              return Promise.reject(error);
-            })
-            .finally(() => {
-              setPurchasingId(0);
-            });
-        },
-      });
+      setCurrentPackage(pkg);
+      setSelectedCouponId(undefined);
+      setPriceResult(null);
+      setMyCoupons([]);
+      setPurchaseOpen(true);
+      setCouponLoading(true);
+      CouponAPI.listMy(1)
+        .then((coupons) => {
+          setMyCoupons(coupons || []);
+        })
+        .catch(() => {
+          setMyCoupons([]);
+        })
+        .finally(() => {
+          setCouponLoading(false);
+        });
+      recalcPrice(pkg.id, undefined);
     },
-    [navigate]
+    [recalcPrice]
   );
+
+  const handleCouponChange = useCallback(
+    (value?: number) => {
+      setSelectedCouponId(value);
+      if (currentPackage) {
+        recalcPrice(currentPackage.id, value);
+      }
+    },
+    [currentPackage, recalcPrice]
+  );
+
+  const confirmPurchase = useCallback(() => {
+    if (!currentPackage || priceLoading || purchasing) return;
+    setPurchasing(true);
+    OrderAPI.create({
+      packageId: currentPackage.id,
+      couponId: selectedCouponId,
+      payMethod: "balance",
+    })
+      .then((res) => {
+        message.success("订单创建成功");
+        setPurchaseOpen(false);
+        navigate(`/order/detail?orderNo=${res.orderNo}`);
+      })
+      .catch((error) => {
+        message.error(error?.message || "订单创建失败");
+      })
+      .finally(() => {
+        setPurchasing(false);
+      });
+  }, [currentPackage, priceLoading, purchasing, selectedCouponId, navigate]);
 
   const comparisonPackages = useMemo(() => {
     const levelMap = new Map<string, PackageDetailVO>();
     packages.forEach((pkg) => {
-      if (!levelMap.has(pkg.levelCode)) {
+      if (pkg.packageType === "vip" && pkg.levelCode && !levelMap.has(pkg.levelCode)) {
         levelMap.set(pkg.levelCode, pkg);
       }
     });
@@ -256,18 +337,22 @@ const PackageShop: React.FC = () => {
                 {packages.map((pkg) => (
                   <div
                     key={pkg.id}
-                    className={`package-card level-${pkg.levelCode}`}
+                    className={`package-card level-${pkg.levelCode ?? ""}`}
                   >
                     <div className="card-glow" />
                     <div className="card-inner">
                       <div className="card-header">
                         <div
-                          className={`level-icon level-icon-${pkg.levelCode}`}
+                          className={`level-icon level-icon-${pkg.levelCode ?? ""}`}
                         >
                           <CheckOutlined />
                         </div>
                         <div className="level-info">
-                          <div className="level-name">{pkg.levelName}</div>
+                          <div className="level-name">
+                            {pkg.packageType === "credit"
+                              ? "积分卡"
+                              : pkg.levelName}
+                          </div>
                           <div className="package-name">{pkg.name}</div>
                         </div>
                         {pkg.levelCode === currentLevelCode && (
@@ -277,50 +362,74 @@ const PackageShop: React.FC = () => {
                         )}
                       </div>
 
-                      <div className="price-section">
-                        <div className="sale-price">
-                          <span className="currency">¥</span>
-                          <span className="price-num">
-                            {pkg.salePrice.toFixed(2)}
-                          </span>
+                      {pkg.packageType === "credit" ? (
+                        <div className="price-section">
+                          <div className="credit-amount">
+                            {pkg.creditAmount ?? 0}
+                            <span className="credit-unit">积分</span>
+                          </div>
+                          <div className="credit-unit-price">
+                            ¥{yuan(pkg.creditUnitPrice)}/积分
+                          </div>
+                          <div className="sale-price">
+                            <span className="currency">¥</span>
+                            <span className="price-num">
+                              {yuan(pkg.salePrice)}
+                            </span>
+                            <span className="original-price">
+                              原价 ¥{yuan(pkg.originalPrice)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="original-price">
-                          原价 ¥{pkg.originalPrice.toFixed(2)}
-                        </div>
-                        <div className="daily-price">
-                          ¥{pkg.dailyPrice.toFixed(2)}/天 ·{" "}
-                          {PERIOD_LABEL[pkg.period] ?? pkg.period}
-                        </div>
-                      </div>
-
-                      <div className="benefits-list">
-                        {Object.entries(pkg.benefits || {}).map(
-                          ([key, value]) => (
-                            <div key={key} className="benefit-item">
-                              <CheckOutlined className="benefit-check" />
-                              <span className="benefit-label">
-                                {BENEFIT_LABELS[key] ?? key}
-                              </span>
-                              <span className="benefit-value">
-                                {formatBenefitValue(key, Number(value))}
+                      ) : (
+                        <>
+                          <div className="price-section">
+                            <div className="sale-price">
+                              <span className="currency">¥</span>
+                              <span className="price-num">
+                                {yuan(pkg.salePrice)}
                               </span>
                             </div>
-                          )
-                        )}
-                      </div>
+                            <div className="original-price">
+                              原价 ¥{yuan(pkg.originalPrice)}
+                            </div>
+                            <div className="daily-price">
+                              ¥{yuan(pkg.dailyPrice)}/天
+                              {pkg.period
+                                ? ` · ${PERIOD_LABEL[pkg.period] ?? ""}`
+                                : ""}
+                            </div>
+                          </div>
+
+                          <div className="benefits-list">
+                            {Object.entries(pkg.benefits || {}).map(
+                              ([key, value]) => (
+                                <div key={key} className="benefit-item">
+                                  <CheckOutlined className="benefit-check" />
+                                  <span className="benefit-label">
+                                    {BENEFIT_LABELS[key] ?? key}
+                                  </span>
+                                  <span className="benefit-value">
+                                    {formatBenefitValue(key, Number(value))}
+                                  </span>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       {pkg.description && (
                         <div className="package-desc">{pkg.description}</div>
                       )}
 
                       <Button
-                        type={getButtonType(pkg.levelCode)}
+                        type="primary"
                         className="action-btn"
-                        loading={purchasingId === pkg.id}
                         icon={<ShoppingCartOutlined />}
                         onClick={() => handlePurchase(pkg)}
                       >
-                        {getButtonText(pkg.levelCode)}
+                        {getButtonText(pkg)}
                         <ArrowRightOutlined className="btn-icon" />
                       </Button>
                     </div>
@@ -354,6 +463,77 @@ const PackageShop: React.FC = () => {
           </div>
         )}
       </div>
+
+      <Modal
+        title="购买确认"
+        open={purchaseOpen}
+        width={480}
+        maskClosable={false}
+        onCancel={() => setPurchaseOpen(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setPurchaseOpen(false)}>
+            取消
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            loading={purchasing}
+            disabled={priceLoading}
+            onClick={confirmPurchase}
+          >
+            确认购买
+          </Button>,
+        ]}
+      >
+        <Spin spinning={priceLoading}>
+          <div className="purchase-detail">
+            <div className="detail-row">
+              <span className="detail-label">商品</span>
+              <span className="detail-value">{currentPackage?.name}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">原价</span>
+              <span className="detail-value">¥{yuan(priceResult?.originalPrice)}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">促销优惠</span>
+              <span className="detail-value discount">
+                -¥{yuan(priceResult?.discountAmount)}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">优惠券抵扣</span>
+              <span className="detail-value discount">
+                {priceResult?.couponAmount
+                  ? `-¥${yuan(priceResult.couponAmount)}`
+                  : "—"}
+              </span>
+            </div>
+            <div className="detail-row coupon-select-row">
+              <span className="detail-label">优惠券</span>
+              <Select
+                className="coupon-select"
+                placeholder="不使用优惠券"
+                allowClear
+                value={selectedCouponId}
+                loading={couponLoading}
+                disabled={couponLoading}
+                onChange={handleCouponChange}
+                options={applicableCoupons.map((coupon) => ({
+                  label: couponOptionLabel(coupon),
+                  value: coupon.id,
+                }))}
+              />
+            </div>
+            <div className="detail-row total">
+              <span className="detail-label">应付</span>
+              <span className="detail-value payable">
+                ¥{yuan(priceResult?.payableAmount)}
+              </span>
+            </div>
+          </div>
+        </Spin>
+      </Modal>
     </div>
   );
 };

@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
@@ -13,6 +11,8 @@ from app.repository.knowledge_chunk_feedback_repository import (
     knowledge_chunk_feedback_repository,
 )
 from app.service.kb.low_quality_service import LowQualityService
+
+pytestmark = pytest.mark.requires_db
 
 
 def _make_service():
@@ -100,9 +100,7 @@ class TestLowQualityChunks:
         await _seed_kb_doc_chunk(db, kb_id=2, doc_id=2, chunk_ids=[20])
         for chunk_id, users in ((10, (1, 2)), (11, (3,)), (20, (5,))):
             for u in users:
-                await knowledge_chunk_feedback_repository.upsert_feedback(
-                    db, chunk_id, u, -1, None
-                )
+                await knowledge_chunk_feedback_repository.upsert_feedback(db, chunk_id, u, -1, None)
         svc = _make_service()
         result = await svc.list_low_quality_chunks(db, 1, 1, 10)
         assert result["total"] == 2

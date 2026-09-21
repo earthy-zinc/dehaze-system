@@ -23,17 +23,6 @@ class AiTraceRepository(BaseRepository[SysAiTrace]):
         stmt = mysql_insert(SysAiTrace).values(**values).prefix_with("IGNORE")
         await db.execute(stmt)
 
-    async def get_latest_by_message_id(self, db: AsyncSession, message_id: int) -> SysAiTrace | None:
-        """查询消息最近一条过程链（resume 续流会产生中断+成功两条，详情取最新）"""
-        stmt = (
-            select(SysAiTrace)
-            .where(SysAiTrace.message_id == message_id)
-            .order_by(SysAiTrace.create_time.desc(), SysAiTrace.id.desc())
-            .limit(1)
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def get_latest_by_message_and_status(
         self, db: AsyncSession, message_id: int, status: int
     ) -> SysAiTrace | None:
@@ -78,6 +67,18 @@ class AiTraceRepository(BaseRepository[SysAiTrace]):
             stmt = stmt.where(SysAiTrace.create_time <= end_time)
         stmt = stmt.order_by(SysAiTrace.create_time.desc(), SysAiTrace.id.desc())
         return await self.paginate(db, stmt, page, size)
+
+    async def list_by_conversation(
+        self, db: AsyncSession, conversation_id: int
+    ) -> list[SysAiTrace]:
+        """查询会话全部过程链（含主对话与旁路，按时间正序，会话时间线数据源）"""
+        stmt = (
+            select(SysAiTrace)
+            .where(SysAiTrace.conversation_id == conversation_id)
+            .order_by(SysAiTrace.create_time.asc(), SysAiTrace.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
 
     async def list_abnormal_conversation_ids(
         self, db: AsyncSession, conv_ids: list[int]

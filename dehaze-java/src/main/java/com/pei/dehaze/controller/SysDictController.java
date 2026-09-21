@@ -37,7 +37,7 @@ public class SysDictController {
     @Operation(summary = "字典分页列表")
     @GetMapping("/page")
     public PageResult<DictPageVO> getDictPage(
-            @ParameterObject DictPageQuery queryParams
+            @Valid @ParameterObject DictPageQuery queryParams
     ) {
         Page<DictPageVO> result = dictService.getDictPage(queryParams);
         return PageResult.success(result);
@@ -99,7 +99,7 @@ public class SysDictController {
     @Operation(summary = "字典类型分页列表")
     @GetMapping("/types/page")
     public PageResult<DictTypePageVO> getDictTypePage(
-            @ParameterObject DictTypePageQuery queryParams
+            @Valid @ParameterObject DictTypePageQuery queryParams
     ) {
         Page<DictTypePageVO> result = dictTypeService.getDictTypePage(queryParams);
         return PageResult.success(result);

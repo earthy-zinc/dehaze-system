@@ -8,11 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.database import defer_after_commit
 from app.infrastructure.es.ai_memory_index import delete_memory_doc
+from app.models.base import get_current_user_id
 from app.models.entity.sys_ai_memory import SysAiMemory
 from app.models.schema.ai_memory import MemoryCreate, MemoryResult, MemoryUpdate
 from app.models.schema.common import PageResult
 from app.repository.ai_memory_repository import ai_memory_repository
+from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
+
+
+def _defer_audit(db: AsyncSession, **kwargs) -> None:
+    """登记提交后写审计日志（回滚不留痕）；create_audit_async 为同步方法，需包成协程。"""
+
+    async def _write() -> None:
+        mongo_audit_log_repository.create_audit_async(**kwargs)
+
+    defer_after_commit(db, _write)
 
 
 class AiMemoryService:
@@ -44,7 +56,9 @@ class AiMemoryService:
         )
         return PageResult(list=[MemoryResult.model_validate(m) for m in memories], total=total)
 
-    async def create_memory(self, db: AsyncSession, user_id: int, form: MemoryCreate) -> MemoryResult:
+    async def create_memory(
+        self, db: AsyncSession, user_id: int, form: MemoryCreate
+    ) -> MemoryResult:
         memory = SysAiMemory(
             user_id=user_id,
             memory_type=form.memoryType,
@@ -79,6 +93,27 @@ class AiMemoryService:
         # 同步清除 ES 向量索引，避免残留
         await delete_memory_doc(memory.id)
 
+    async def unarchive_memory(
+        self, db: AsyncSession, memory_id: int, user_id: int
+    ) -> MemoryResult:
+        """取消归档：恢复记忆注入。
+
+        归档是遗忘策略的系统行为，用户侧只提供"取消归档"这一个反向操作（不存在手动归档），
+        故独立于 PUT 更新，避免通用更新接口暴露归档写入口。同时刷新衰减计时器：遗忘曲线按
+        last_accessed_at 计算优先级，不刷新则下次每日归档任务会按旧时点立刻将其再次归档，
+        用户操作形同无效。
+        """
+        memory = await ai_memory_repository.get_by_id_and_user(db, memory_id, user_id)
+        if not memory:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "记忆不存在")
+        if memory.archived != 1:
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该记忆未处于归档状态")
+        memory.archived = 0
+        memory.last_accessed_at = datetime.now()
+        await db.flush()
+        await db.refresh(memory)
+        return MemoryResult.model_validate(memory)
+
     async def search_memories(
         self, db: AsyncSession, user_id: int, keyword: str, limit: int = 5
     ) -> list[MemoryResult]:
@@ -112,7 +147,23 @@ class AiMemoryService:
         """
         if not confirm:
             raise BusinessException(ResultCode.PARAM_ERROR, "批量清空记忆为不可逆操作，需二次确认")
-        return await ai_memory_repository.batch_clear(db, user_id, memory_type, start, end)
+        count = await ai_memory_repository.batch_clear(db, user_id, memory_type, start, end)
+
+        _defer_audit(
+            db,
+            operator_id=get_current_user_id() or user_id,
+            target_type="ai_memory",
+            target_id=user_id,
+            action="clear",
+            module="ai_memory",
+            after_value={
+                "count": count,
+                "memory_type": memory_type,
+                "start": start.isoformat() if start else None,
+                "end": end.isoformat() if end else None,
+            },
+        )
+        return count
 
     async def restore_deleted(
         self,
@@ -145,6 +196,15 @@ class AiMemoryService:
         fmt: json | markdown。返回 (content_type, content)。
         """
         memories = await ai_memory_repository.get_active_by_user(db, user_id, limit=10000)
+        # 记忆属敏感个人数据，批量导出必须留痕（导出为读操作，不挂提交后回调）
+        mongo_audit_log_repository.create_audit_async(
+            operator_id=get_current_user_id() or user_id,
+            target_type="ai_memory",
+            target_id=user_id,
+            action="export",
+            module="ai_memory",
+            after_value={"format": fmt, "count": len(memories)},
+        )
         if fmt == "markdown":
             lines = ["# 长期记忆导出", ""]
             for m in memories:
@@ -159,22 +219,21 @@ class AiMemoryService:
                     ]
                 )
             return "text/markdown; charset=utf-8", "\n".join(lines)
-        records: list[dict[str, Any]] = []
-        for m in memories:
-            records.append(
-                {
-                    "id": m.id,
-                    "memory_type": m.memory_type,
-                    "content": m.content,
-                    "metadata": m.metadata_,
-                    "source": m.source,
-                    "importance": m.importance,
-                    "access_count": m.access_count,
-                    "created_at": m.create_time.strftime("%Y-%m-%d %H:%M:%S")
-                    if m.create_time
-                    else None,
-                }
-            )
+        records: list[dict[str, Any]] = [
+            {
+                "id": m.id,
+                "memory_type": m.memory_type,
+                "content": m.content,
+                "metadata": m.metadata_,
+                "source": m.source,
+                "importance": m.importance,
+                "access_count": m.access_count,
+                "created_at": (
+                    m.create_time.strftime("%Y-%m-%d %H:%M:%S") if m.create_time else None
+                ),
+            }
+            for m in memories
+        ]
         return "application/json; charset=utf-8", json.dumps(
             {"user_id": user_id, "exported_at": datetime.now().isoformat(), "memories": records},
             ensure_ascii=False,

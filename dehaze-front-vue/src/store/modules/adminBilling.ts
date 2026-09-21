@@ -9,9 +9,11 @@ import {
   BillingStatVO,
   CostStatQuery,
   CostStatVO,
+  CostGroupVO,
   CreditAdjustForm,
   ModelCostForm,
   ModelCostQuery,
+  ModelCostUpdateForm,
   ModelCostVO,
 } from "dehaze-sdk-js";
 import { useBillingDataStore } from "@/store/modules/billingData";
@@ -42,10 +44,11 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
     () => overview.value.find((row) => row.metric === "ai") ?? null
   );
 
-  /** 周期口径：月=当月、季=当季、自定义=periodRange，返回 yyyy-MM-dd */
+  /** 周期口径：月=当月、季=当季、自定义=periodRange，返回 yyyy-MM-dd（本地时区，toISOString 会偏移到 UTC 日期不能用） */
   function resolvePeriodRange(): { startTime: string; endTime: string } {
     const now = new Date();
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     if (overviewPeriod.value === "month") {
       const start = new Date(now.getFullYear(), now.getMonth(), 1);
       return { startTime: fmt(start), endTime: fmt(now) };
@@ -71,8 +74,8 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
   // ==================== 消耗与成本下钻 ====================
   const drilldownDimension = ref<DrilldownDimension>("user");
   const drilldownData = ref<BillingStatVO[]>([]);
-  /** 供应商维度成本统计（BillingStatVO 无收入/成本字段，单独承载） */
-  const providerStats = ref<CostStatVO[]>([]);
+  /** 供应商维度成本分组分解（CostGroupVO 仅 dimension+cost，订单实收无法按供应商归因） */
+  const providerStats = ref<CostGroupVO[]>([]);
   const drilldownLoading = ref(false);
   const selectedUserId = ref<number | null>(null);
 
@@ -82,9 +85,12 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
     const { startTime, endTime } = resolvePeriodRange();
     try {
       if (drilldownDimension.value === "provider") {
-        // BillingStatGroupBy 无 provider，供应商维度走成本统计接口
-        const query: CostStatQuery = { startTime, endTime };
-        providerStats.value = await AiBillingAPI.getCostStats(query);
+        // 供应商维度走成本统计分组：订单实收无法按供应商归因，仅返回成本分解
+        providerStats.value = await AiBillingAPI.getCostStats({
+          startTime,
+          endTime,
+          groupBy: "provider",
+        });
         drilldownData.value = [];
         return;
       }
@@ -118,10 +124,16 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
     }
   }
 
-  /** 新增（无 id）或更新（有 id）成本价格版本 */
+  /** 新增（无 id）或更新（有 id）成本价格版本：更新仅提交版本主表字段，档位明细随新增版本生成 */
   async function saveCostVersion(form: ModelCostForm, id?: number) {
     if (id) {
-      await AiBillingAPI.updateCost(id, form);
+      const update: ModelCostUpdateForm = {
+        currency: form.currency,
+        effectiveFrom: form.effectiveFrom,
+        effectiveTo: form.effectiveTo,
+        status: form.status,
+      };
+      await AiBillingAPI.updateCost(id, update);
     } else {
       await AiBillingAPI.createCost(form);
     }
@@ -231,6 +243,8 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
   async function submitCreditAdjust(form: CreditAdjustForm) {
     await AiBillingAPI.adjustCredits(form);
     adjustDialog.visible = false;
+    // 调整面板内嵌的余额卡/流水表共享同一 scope 实例，提交后刷新展示
+    useBillingDataStore(form.userId).fetchBalance();
   }
 
   // ==================== 退款审核 ====================
@@ -267,8 +281,10 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
       auditRemark,
     });
     // 审核结果本地置位刷新目标用户明细行状态，下次拉取以服务端为准
-    const billingDataStore = useBillingDataStore();
-    billingDataStore.refreshRecordStatus(refund.billingId, approved ? 2 : 3);
+    useBillingDataStore(refund.userId).refreshRecordStatus(
+      refund.billingId,
+      approved ? 2 : 3
+    );
     await fetchRefunds();
     return refund;
   }

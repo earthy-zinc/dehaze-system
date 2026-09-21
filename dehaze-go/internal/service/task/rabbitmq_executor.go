@@ -86,5 +86,3 @@ func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage)
 	}
 	return err
 }
-
-

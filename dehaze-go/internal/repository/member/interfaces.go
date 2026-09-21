@@ -10,6 +10,7 @@ import (
 
 type IMemberRepository interface {
 	FindByUserID(ctx context.Context, userID int64) (*model.SysMember, error)
+	FindByUserIDs(ctx context.Context, userIDs []int64) ([]model.SysMember, error)
 	FindWithUserByUserID(ctx context.Context, userID int64) (*MemberWithUser, error)
 	FindPageWithUser(ctx context.Context, q *query.MemberPageQuery) ([]MemberWithUser, int64, error)
 	FindAllActive(ctx context.Context, excludeQuotaResetMonth *int, limit int) ([]model.SysMember, error)

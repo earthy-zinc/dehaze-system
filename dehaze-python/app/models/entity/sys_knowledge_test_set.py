@@ -17,9 +17,7 @@ class SysKnowledgeTestSet(BaseModel, SoftDeleteMixin):
     knowledge_base_id: Mapped[int] = mapped_column(
         BigInteger, index=True, nullable=False, comment="知识库ID(关联sys_knowledge_base.id)"
     )
-    question: Mapped[str] = mapped_column(
-        String(1000), nullable=False, comment="测试问题"
-    )
+    question: Mapped[str] = mapped_column(String(1000), nullable=False, comment="测试问题")
     expected_chunk_ids: Mapped[Any] = mapped_column(
         JSON, nullable=False, comment="期望命中分块ID数组(JSON，关联sys_knowledge_chunk.id)"
     )

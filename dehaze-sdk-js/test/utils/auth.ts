@@ -35,7 +35,10 @@ async function getCaptchaCode(captchaKey: string): Promise<string> {
 function setupAxiosInterceptor() {
   configAxios({
     onRequest: (config: InternalAxiosRequestConfig) => {
-      config.headers["X-Session-Id"] = currentSessionId;
+      // 仅在调用方未显式指定时注入会话头，伪造/过期会话等负向用例需覆盖自定义值
+      if (!config.headers["X-Session-Id"]) {
+        config.headers["X-Session-Id"] = currentSessionId;
+      }
       if (config.data instanceof FormData) {
         delete config.headers["Content-Type"];
         const formHeaders = config.data.getHeaders();
@@ -63,6 +66,19 @@ export async function clearLoginRateLimit(): Promise<void> {
     if (keys.length > 0) {
       await redis.del(keys);
     }
+  }
+}
+
+/**
+ * 清理登录失败锁定计数（IP + 用户名双维度）。
+ * 负向登录/脏语料用例会累积 login:fail:* 计数，达 5 次触发 30 分钟锁定
+ * 连锁拒绝后续登录，因此失败类用例执行前需清零。
+ */
+export async function clearLoginFailCounters(): Promise<void> {
+  const redis = getRedis();
+  const keys = await redis.keys("login:fail:*");
+  if (keys.length > 0) {
+    await redis.del(keys);
   }
 }
 
@@ -113,6 +129,20 @@ export async function login(username: string = "admin"): Promise<string> {
   sessionStore.set(username, result.sessionId);
   applySession(result.sessionId, username);
   return currentSessionId;
+}
+
+/**
+ * 强制重新登录（忽略会话缓存）。
+ * 并发登录/注销类用例可能在服务端踢掉缓存会话（单点互踢），
+ * 后续用例复用失效会话会得到 401，需用此函数刷新缓存。
+ */
+export async function forceLogin(username: string = "admin"): Promise<string> {
+  sessionStore.delete(username);
+  if (activeUser === username) {
+    currentSessionId = "";
+    activeUser = "";
+  }
+  return await login(username);
 }
 
 export async function logout(username?: string): Promise<void> {

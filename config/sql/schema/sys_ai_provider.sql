@@ -4,7 +4,7 @@
 -- ============================================================
 -- 设计思路:
 -- 模型供应商配置表，管理平台接入的 LLM 供应商（OpenAI/Anthropic/DeepSeek 等）。
--- provider_code 为业务唯一键（如 openai/anthropic/deepseek），删除后不可复用（类别②）。
+-- provider_code 为业务唯一键（如 openai/anthropic/deepseek），白名单语义：软删后不可复用（应用层查全表判重）。
 -- api_base_url 为供应商 API 端点，支持代理地址（如自建 OpenAI 代理）。
 -- protocol_type 决定请求/响应协议：openai_compat（OpenAI 兼容）或 anthropic（Claude 原生）。
 -- auth_type 决定 HTTP 认证头格式：bearer（Authorization: Bearer）、x-api-key 或 custom（自定义请求头，头名在 default_headers 中配置）。
@@ -13,7 +13,7 @@
 -- health_check_enabled 为健康检查开关（默认开启），关闭后该供应商不参与熔断判定（健康状态运行时聚合于 Redis，不落库）。
 -- remark 为运维备注（账号归属、合同号、商务信息），不参与逻辑。
 -- 供应商下的 API Key 管理见 sys_ai_provider_key 表。
--- 配置类表，使用逻辑删除；provider_code 为业务引用键，删除后不可复用（类别②）。
+-- 配置类表，使用逻辑删除；provider_code 白名单不可复用（应用层查重含软删行）。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_ai_provider`;
 CREATE TABLE `sys_ai_provider`
@@ -30,13 +30,13 @@ CREATE TABLE `sys_ai_provider`
     `user_identity_forward`   json                                                      NULL DEFAULT NULL COMMENT '用户身份透传配置(JSON,按供应商能力配置,如DeepSeek/OpenAI/Anthropic;NULL=不启用):{"enabled":true,"field":"user_id","prefix":"u_","max_len":512} - enabled:是否向供应商请求透传平台用户标识; field:注入字段名或嵌套路径(OpenAI兼容:user|user_id;Anthropic:metadata.user_id); prefix:透传值脱敏前缀(值=prefix+sha256(userId)截断,满足供应商字符限制); max_len:透传值最大长度(如DeepSeek 512)',
     `remark`          varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NULL DEFAULT NULL COMMENT '运维备注(账号归属/合同号/商务信息)',
     `status`          tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`         tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`         bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`       bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`       bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`     datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_provider_code` (`provider_code`) USING BTREE
+    UNIQUE INDEX `uk_provider_code` (`provider_code`, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI模型供应商配置表'

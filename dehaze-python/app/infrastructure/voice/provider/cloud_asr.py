@@ -5,8 +5,6 @@
 API 规格，在此以清晰方法边界保留扩展点：拿到厂商 API 规格后逐厂商实现。
 """
 
-from typing import AsyncIterator
-
 from app.infrastructure.voice.provider.base import ASRProvider, ASRStreamSession
 from app.infrastructure.voice.provider.cloud_base import CloudBase
 
@@ -21,7 +19,9 @@ class CloudAsrProvider(ASRProvider, CloudBase):
         raise NotImplementedError("云端 ASR 流式识别：需厂商 API 规格（WebSocket 流式协议）适配")
 
     async def recognize_offline(self, audio_bytes: bytes) -> str:
-        raise NotImplementedError("云端 ASR 离线识别：需厂商 API 规格（离线端点/请求体/响应解析）适配")
+        raise NotImplementedError(
+            "云端 ASR 离线识别：需厂商 API 规格（离线端点/请求体/响应解析）适配"
+        )
 
     async def register_hotwords(self, words: list[str]) -> None:
         raise NotImplementedError("云端 ASR 热词注册：需厂商 API 规格适配")

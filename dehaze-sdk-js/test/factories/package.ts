@@ -1,8 +1,16 @@
-import { CouponForm, PackageForm, PackageQuery, CouponQuery } from "@/api/package/model";
+import {
+  CouponForm,
+  PackageForm,
+  PackageQuery,
+  CouponQuery,
+  PromotionQuery,
+} from "@/api/package/model";
 import { pageQuery, uniqueName } from "./common";
 
+export { uniqueName };
+
 /** 分转换为元 */
-const yuan = (v: number) => Math.round(v * 100);
+export const yuan = (v: number) => Math.round(v * 100);
 
 export function createPackageForm(overrides: Partial<PackageForm> = {}): PackageForm {
   return {
@@ -41,4 +49,8 @@ export function createCouponForm(overrides: Partial<CouponForm> = {}): CouponFor
 
 export function createCouponQuery(overrides: Partial<CouponQuery> = {}): CouponQuery {
   return pageQuery<CouponQuery>({ ...overrides });
+}
+
+export function createPromotionQuery(overrides: Partial<PromotionQuery> = {}): PromotionQuery {
+  return pageQuery<PromotionQuery>({ ...overrides });
 }

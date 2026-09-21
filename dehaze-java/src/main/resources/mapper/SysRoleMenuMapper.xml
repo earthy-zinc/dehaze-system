@@ -33,6 +33,9 @@
                 INNER JOIN sys_menu t3 ON t1.menu_id = t3.id
         WHERE
         t3.type = '${@com.pei.dehaze.common.enums.MenuTypeEnum@BUTTON.getValue()}'
+          AND t3.deleted = 0
+          AND t3.perm IS NOT NULL
+          AND t3.perm != ''
             <if test="roleCode!=null and roleCode.trim() neq ''">
                 AND t2.`code` = #{roleCode}
             </if>

@@ -2,6 +2,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -11,36 +12,36 @@ from tests.stubs.fakes import FakeInternalResponse, MinimalExecutorDB
 
 
 def _schedule(**overrides):
-    base = dict(
-        id=1,
-        user_id=7,
-        name="每日去雾",
-        cron="0 9 * * *",
-        timezone="Asia/Shanghai",
-        input={"type": "fixed", "content": "处理这批图片"},
-        output={"type": "message"},
-        enabled=1,
-        status=1,
-        circuit_streak=0,
-        next_trigger_time=None,
-    )
+    base = {
+        "id": 1,
+        "user_id": 7,
+        "name": "每日去雾",
+        "cron": "0 9 * * *",
+        "timezone": "Asia/Shanghai",
+        "input": {"type": "fixed", "content": "处理这批图片"},
+        "output": {"type": "message"},
+        "enabled": 1,
+        "status": 1,
+        "circuit_streak": 0,
+        "next_trigger_time": None,
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 
 
 def _run(**overrides):
-    base = dict(
-        id=100,
-        schedule_id=1,
-        user_id=7,
-        status=1,
-        skip_reason=None,
-        credits=None,
-        duration_ms=None,
-        error_msg=None,
-        conversation_id=None,
-        request_id=None,
-    )
+    base = {
+        "id": 100,
+        "schedule_id": 1,
+        "user_id": 7,
+        "status": 1,
+        "skip_reason": None,
+        "credits": None,
+        "duration_ms": None,
+        "error_msg": None,
+        "conversation_id": None,
+        "request_id": None,
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 
@@ -74,9 +75,11 @@ class _ScheduleRepo:
         return self.sched
 
     async def mark_circuit(self, db, schedule_id):
+        assert self.sched is not None
         self.sched.status = 2
 
     async def update_next_trigger(self, db, schedule_id, nxt):
+        assert self.sched is not None
         self.sched.next_trigger_time = nxt
 
 
@@ -120,7 +123,7 @@ def _patch_quota(monkeypatch, used=(0, 0)):
     monkeypatch.setattr(ex.quota_service, "get_used", _get_used)
 
 
-def _patch_inference_success(monkeypatch, credits=3, conv_id=10):
+def _patch_inference_success(monkeypatch, credits: float = 3, conv_id=10):
     _patch_create_conv(monkeypatch, conv_id)
 
     async def _send(db, conv_id, user_id, form, idem):
@@ -160,6 +163,21 @@ async def test_overlap_running_mark_skipped(monkeypatch, mock_redis, mock_db, ex
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["skipped"] is True
     assert result["skip_reason"] == "overlap"
+
+
+async def test_overlap_does_not_release_foreign_running_mark(
+    monkeypatch, mock_redis, mock_db, executor
+):
+    """overlap 跳过路径不得删除在途执行的运行标记，否则第三个触发会并发进入执行。"""
+    schedule = _schedule()
+    _patch_repos(monkeypatch, schedule)
+    _patch_notify(monkeypatch)
+
+    await mock_redis.set("ai:schedule:1:running", "1")
+
+    await executor.trigger_once(mock_db, mock_redis, 1, 7)
+
+    assert await mock_redis.exists("ai:schedule:1:running")
 
 
 async def test_execute_success_clears_running_mark(monkeypatch, mock_redis, mock_db, executor):
@@ -250,6 +268,49 @@ async def test_retryable_temporary_error_retries_then_success(
     assert attempts["n"] == 4
 
 
+async def test_retry_uses_fresh_conversation_per_attempt(
+    monkeypatch, mock_redis, mock_db, executor
+):
+    """重试不变量：每次尝试独立会话，临时失败重试不向上个会话重复注入 user 消息。"""
+    monkeypatch.setattr(ex, "RETRY_MAX", 2)
+    monkeypatch.setattr(ex, "RETRY_BACKOFF", (0, 0))
+    schedule = _schedule()
+    _patch_repos(monkeypatch, schedule)
+    _patch_notify(monkeypatch)
+    _patch_quota(monkeypatch)
+
+    convs: list = []
+
+    async def _create(db, user_id, form):
+        convs.append(SimpleNamespace(id=100 + len(convs)))
+        return convs[-1]
+
+    monkeypatch.setattr(ex.ai_conversation_service, "create_conversation", _create)
+
+    attempts = {"n": 0}
+
+    async def _send(db, conv_id, user_id, form, idem):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise ex._RetryableError("网络超时")
+        return FakeInternalResponse(b"")
+
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _send)
+
+    async def _list(db, conv_id, page, size):
+        return ([SimpleNamespace(role="assistant", status=2, credits=1, error=None)], 1)
+
+    monkeypatch.setattr(ex.ai_message_repository, "list_by_conversation", _list)
+
+    result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
+
+    assert result["ok"] is True
+    assert attempts["n"] == 2
+    assert len(convs) == 2
+    assert {c.id for c in convs} == {100, 101}
+    assert result["conversation_id"] == convs[-1].id
+
+
 async def test_non_retryable_business_error_fails_immediately(
     monkeypatch, mock_redis, mock_db, executor
 ):
@@ -289,6 +350,34 @@ async def test_quota_insufficient_skipped_and_notified(monkeypatch, mock_redis, 
     result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
     assert result["skipped"] is True
     assert result["skip_reason"] == "quota"
+
+
+async def test_quota_missing_benefit_fail_closed(monkeypatch, mock_redis, mock_db, executor):
+    """fail-closed：权益数据缺失/停用时定时推理跳过执行"""
+    schedule = _schedule()
+    _patch_repos(monkeypatch, schedule)
+    _patch_notify(monkeypatch)
+
+    async def _get_limits(db, user_id):
+        return None
+
+    async def _get_used(user_id):
+        return (0, 0)
+
+    monkeypatch.setattr(ex.quota_service, "get_limits", _get_limits)
+    monkeypatch.setattr(ex.quota_service, "get_used", _get_used)
+
+    called = {"send": False}
+
+    async def _fail(**kw):
+        called["send"] = True
+
+    monkeypatch.setattr(ex.ai_message_service, "send_message", _fail)
+
+    result = await executor.trigger_once(mock_db, mock_redis, 1, 7)
+    assert result["skipped"] is True
+    assert result["skip_reason"] == "quota"
+    assert called["send"] is False
     assert called["send"] is False
 
 
@@ -333,7 +422,7 @@ async def test_global_concurrency_capped_by_semaphore(monkeypatch, mock_redis):
 
     monkeypatch.setattr(ex.ai_schedule_repository, "get_by_id", _get_by_id)
 
-    db = MinimalExecutorDB()
+    db = AsyncSession()
     results = await asyncio.gather(
         *[executor.trigger_once(db, mock_redis, sid, 7) for sid in range(1, total + 1)]
     )
@@ -368,7 +457,7 @@ async def test_global_concurrency_lower_than_limit_allows_parallel(monkeypatch, 
     monkeypatch.setattr(ex.ai_schedule_repository, "get_by_id", _get_by_id)
 
     results = await asyncio.gather(
-        *[executor.trigger_once(MinimalExecutorDB(), mock_redis, sid, 7) for sid in (1, 2, 3)]
+        *[executor.trigger_once(AsyncSession(), mock_redis, sid, 7) for sid in (1, 2, 3)]
     )
     assert entered["n"] == 3
     assert all(r["ok"] for r in results)
@@ -414,5 +503,6 @@ async def test_disabled_task_skipped_with_reason(monkeypatch, mock_redis, mock_d
     assert result["skipped"] is True
     assert result["skip_reason"] == "disabled"
     assert called["send"] is False
+    assert run_repo.run is not None
     assert run_repo.run.status == 3
     assert run_repo.run.skip_reason == "disabled"

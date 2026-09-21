@@ -1,24 +1,29 @@
 """billing_anomaly_service 单元测试：异常落库、清单分页、趋势聚合、Redis 降级"""
 
 from datetime import datetime, timedelta
-from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
 
-pytestmark = pytest.mark.requires_db
-
+from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_billing_anomaly import SysAiBillingAnomaly
 from app.models.schema.ai_billing import AnomalyRecordQuery
-from app.repository.ai_billing_anomaly_repository import ai_billing_anomaly_repository
+from app.repository.ai_billing_anomaly_repository import (
+    AiBillingAnomalyRepository,
+    ai_billing_anomaly_repository,
+)
 from app.service.billing import billing_anomaly_service as am
 
+pytestmark = pytest.mark.requires_db
 
-def _record(credits=0, input_tokens=0, output_tokens=0, billing_id=1):
-    return SimpleNamespace(
-        id=billing_id, credits=credits,
-        input_tokens=input_tokens, output_tokens=output_tokens,
+
+def _record(credits=0, input_tokens=0, output_tokens=0, billing_id=1) -> SysAiBilling:
+    # 用真实计费实体满足 check 的 billing_record 契约（SqlAlchemy 模型可脱离 session 实例化）
+    return SysAiBilling(
+        id=billing_id,
+        credits=credits,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
 
 
@@ -36,9 +41,7 @@ class TestAnomalyPersistence:
         await anomaly_service.check(
             db, 1, _record(credits=15000, billing_id=1), monthly_limit=100000
         )
-        await anomaly_service.check(
-            db, 1, _record(credits=6000, billing_id=2), daily_limit=10000
-        )
+        await anomaly_service.check(db, 1, _record(credits=6000, billing_id=2), daily_limit=10000)
         await anomaly_service.check(
             db, 1, _record(input_tokens=15000, output_tokens=0, billing_id=3)
         )
@@ -47,7 +50,10 @@ class TestAnomalyPersistence:
 
         rows = await _all_anomalies(db)
         assert sorted(r.anomaly_type for r in rows) == [
-            "burst", "consecutive_quota_fail", "empty_high_output", "single_high",
+            "burst",
+            "consecutive_quota_fail",
+            "empty_high_output",
+            "single_high",
         ]
         by_type = {r.anomaly_type: r for r in rows}
         assert by_type["single_high"].billing_id == 1
@@ -58,7 +64,7 @@ class TestAnomalyPersistence:
         assert all(r.trigger_at is not None for r in rows)
 
     async def test_alert_failure_does_not_block_redis_count(self, db, mock_redis):
-        class _BrokenRepo:
+        class _BrokenRepo(AiBillingAnomalyRepository):
             async def create_anomaly(self, *args, **kwargs):
                 raise RuntimeError("db down")
 
@@ -72,9 +78,7 @@ class TestAnomalyPersistence:
             raise ConnectionError("redis down")
 
         monkeypatch.setattr(am, "get_redis_client", _broken)
-        await anomaly_service.check(
-            db, 1, _record(credits=999999, billing_id=9), monthly_limit=1
-        )
+        await anomaly_service.check(db, 1, _record(credits=999999, billing_id=9), monthly_limit=1)
         await anomaly_service.record_quota_fail(db, 1)
 
         rows = await _all_anomalies(db)
@@ -93,10 +97,15 @@ class TestAnomalyQuery:
             (2, "empty_high_output", now - timedelta(days=2)),
         ]
         for i, (uid, typ, trigger_at) in enumerate(seeds):
-            db.add(SysAiBillingAnomaly(
-                user_id=uid, billing_id=i + 1, anomaly_type=typ,
-                detail="测试记录", trigger_at=trigger_at,
-            ))
+            db.add(
+                SysAiBillingAnomaly(
+                    user_id=uid,
+                    billing_id=i + 1,
+                    anomaly_type=typ,
+                    detail="测试记录",
+                    trigger_at=trigger_at,
+                )
+            )
         await db.flush()
 
     async def test_list_anomalies_filters_and_pages(self, db, anomaly_service):

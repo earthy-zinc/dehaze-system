@@ -34,7 +34,7 @@ from app.core.result import _get_trace_id
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.crypto.aes_cipher import decrypt
 from app.infrastructure.llm.client.model_client import create_chat_client
-from app.infrastructure.llm.common import LlmStreamChunk, _map_httpx_error
+from app.infrastructure.llm.common import LlmStreamChunk, _map_httpx_error, build_user_identity
 from app.infrastructure.llm.local.local_llm_manager import ensure_running
 from app.infrastructure.provider.model_registry import model_registry
 from app.infrastructure.provider.provider_health_service import provider_health_service
@@ -42,7 +42,7 @@ from app.infrastructure.provider.provider_key_selector import provider_key_selec
 from app.models.base import get_current_user_id
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.ai_provider_repository import ai_provider_repository
-from app.service.ai.service.trace_collector import begin_llm_call, error_type_of
+from app.service.ai.service.trace_collector import begin_llm_call, error_type_of, wire_record
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +79,9 @@ class LlmClient:
     ) -> None:
         """调用成功：Key 成功标记（含日计数/last_used）+ 供应商健康指标 + 归因透出"""
         redis = await self._get_redis()
-        # 无请求上下文（评测/A2A 临时会话等）时 contextvar 未设值，容忍为 None
-        try:
-            user_id = get_current_user_id()
-        except LookupError:
-            user_id = None
+        # 无请求上下文（评测/A2A 临时会话等）时 _current_user_id 未设值，
+        # get_current_user_id 自带 default=None 直接返回 None（不会抛 LookupError）
+        user_id = get_current_user_id()
         await provider_key_selector.mark_call_success(redis, key_id, user_id)
         await provider_health_service.record_call(redis, provider_id, True, None, latency_ms)
         if on_route_result is not None:
@@ -111,6 +109,7 @@ class LlmClient:
         tools: list[dict] | None,
         tool_choice: str | None,
         on_route_result: Callable[[dict], None] | None,
+        user_id: int | None,
         call=None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """在一个候选路由内按 Key 优先级组逐 Key 尝试；全部 Key 失败抛 _RouteFailed。
@@ -124,17 +123,29 @@ class LlmClient:
         if not keys:
             if call:
                 call.observe_attempt(
-                    provider_id=provider.id, key_id=None, model=model.model_id,
-                    status=2, error_code="no_key", latency_ms=None,
+                    provider_id=provider.id,
+                    key_id=None,
+                    model=model.model_id,
+                    status=2,
+                    error_code="no_key",
+                    latency_ms=None,
                 )
             raise _RouteFailed("no_key", "该供应商无可用 API Key")
 
         last_error: tuple[str, str] = ("no_key", "该供应商无可用 API Key")
         chat_client = create_chat_client(provider.protocol_type, self._client)
+        # 用户身份透传（供应商维度配置，同路由内各 Key 共用）：零新增查询，
+        # 直接读路由循环取出的 provider 实体字段
+        user_identity = build_user_identity(provider, user_id)
         for key in keys:
+            # 原子预留日/分钟额度：并发下同一 Key 的额度只能被抢占一次
+            if not await provider_key_selector.reserve_key(redis, key):
+                continue
             key_id = key.id
             api_key = decrypt(key.key_cipher)
             first_chunk = True
+            # 协议客户端 wire 采集上报通道：仅本次物理尝试消费期间挂载
+            wire_token = wire_record.set(call)
             try:
                 stream = chat_client.stream_chat(
                     provider,
@@ -146,6 +157,7 @@ class LlmClient:
                     tools,
                     tool_choice,
                     temperature,
+                    user_identity,
                 )
                 async for chunk in stream:
                     first_chunk = False
@@ -154,8 +166,12 @@ class LlmClient:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 if call:
                     call.observe_attempt(
-                        provider_id=provider.id, key_id=key_id, model=model.model_id,
-                        status=1, error_code=None, latency_ms=latency_ms,
+                        provider_id=provider.id,
+                        key_id=key_id,
+                        model=model.model_id,
+                        status=1,
+                        error_code=None,
+                        latency_ms=latency_ms,
                     )
                 await self._record_success(provider.id, key_id, latency_ms, on_route_result, model)
                 return
@@ -164,9 +180,14 @@ class LlmClient:
                 latency_ms = int((time.perf_counter() - started) * 1000)
                 if call:
                     call.observe_attempt(
-                        provider_id=provider.id, key_id=key_id, model=model.model_id,
-                        status=2, error_code=error_code, latency_ms=latency_ms,
+                        provider_id=provider.id,
+                        key_id=key_id,
+                        model=model.model_id,
+                        status=2,
+                        error_code=error_code,
+                        latency_ms=latency_ms,
                     )
+                    call.observe_wire_error(error_code, detail)
                 is_local = provider.provider_code == "local"
                 if not is_local:
                     await provider_key_selector.mark_call_failed(redis, key_id, error_code)
@@ -195,6 +216,8 @@ class LlmClient:
                 )
                 last_error = (error_code, detail)
                 continue
+            finally:
+                wire_record.reset(wire_token)
 
         code, detail = last_error
         raise _RouteFailed(code, f"供应商 {provider.id} 全部 Key 不可用: {detail}")
@@ -210,6 +233,7 @@ class LlmClient:
         tools: list[dict] | None = None,
         tool_choice: str | None = None,
         on_route_result: Callable[[dict], None] | None = None,
+        user_id: int | None = None,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """调用 LLM 并返回统一的流式响应。
 
@@ -217,6 +241,11 @@ class LlmClient:
         降级链各级；候选路由内按 Key 优先级组逐 Key 重试。全部候选失败抛业务异常。
 
         tools/tool_choice 非 None 时启用 function calling；不传则与普通对话等价。
+
+        user_id 为发起调用的用户：供应商启用用户身份透传（sys_ai_provider.
+        user_identity_forward）时，按配置将 prefix + sha256(user_id) 注入请求体
+        （openai_compat 顶层字段 / anthropic 嵌套路径，见 AI模型管理 §2.7.8）。
+        无用户上下文的后台调用传 None（默认），不注入。
 
         on_route_result 可选：每次调用成功后回调一次，携带实际使用的
         model_id/provider_id/key_id/latency_ms/error_code/request_id（计费归因透出）。
@@ -241,10 +270,10 @@ class LlmClient:
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
 
         call = begin_llm_call(model_id, messages, system_prompt, tools)
+        # 流是否正常结束：正常结束时 else 记录成功、finally 不再标记 aborted
+        done = False
         try:
             last_error: _RouteFailed | None = None
-            # 流是否正常结束：正常结束时 else 记录成功、finally 不再标记 aborted
-            done = False
             for route in routes:
                 provider_id = route["provider_id"]
                 if await provider_health_service.get_status(redis, provider_id) == "open":
@@ -270,6 +299,7 @@ class LlmClient:
                         tools,
                         tool_choice,
                         on_route_result,
+                        user_id,
                         call,
                     ):
                         if call:
@@ -290,7 +320,7 @@ class LlmClient:
                     continue
 
             if not done:
-                code, detail = (
+                _code, detail = (
                     (last_error.error_code, last_error.detail)
                     if last_error
                     else ("no_route", "无可用候选路由")

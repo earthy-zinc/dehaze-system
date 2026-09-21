@@ -34,8 +34,57 @@ def mask_pii(text: str) -> str:
     masked = _PHONE_RE.sub("***", masked)
     masked = _BANK_CARD_RE.sub("***", masked)
     masked = _PASSWORD_RE.sub("密码：***", masked)
-    masked = _SECRET_RE.sub("***", masked)
-    return masked
+    return _SECRET_RE.sub("***", masked)
+
+
+# 尾部可能被 chunk 边界切断的敏感串：纯数字串（手机/银行卡/身份证）或密钥前缀串
+_CANDIDATE_TAIL_RE = re.compile(r"[0-9A-Za-z_\-]+$")
+_SECRET_PREFIX_RE = re.compile(r"(?:sk|pk|ak)-", re.IGNORECASE)
+# 尾部是密码类关键词（值尚未到达，整段都不能外发）
+_PASSWORD_PREFIX_RE = re.compile(r"(?:密码|口令|password)\s*[:：=]?\s*$", re.IGNORECASE)
+
+
+class StreamingPiiMasker:
+    """流式文本的 PII 脱敏。
+
+    敏感串可能被 chunk 边界切断（手机号分两次到达），逐块独立脱敏会漏判。故尾部
+    保留"可能是敏感串前缀"的一段不外发，待后续 chunk 补全后再判定；流结束时
+    flush 输出残余。
+    """
+
+    def __init__(self) -> None:
+        self._pending = ""
+
+    def push(self, text: str) -> str:
+        """追加增量文本，返回可安全外发的脱敏文本（可能为 ""）。"""
+        self._pending += text
+        masked = mask_pii(self._pending)
+        hold = self._hold_len(masked)
+        if not hold:
+            self._pending = ""
+            return masked
+        if len(masked) <= hold:
+            return ""
+        emit, self._pending = masked[:-hold], masked[-hold:]
+        return emit
+
+    def flush(self) -> str:
+        """流结束：输出残余文本。"""
+        text, self._pending = mask_pii(self._pending), ""
+        return text
+
+    @staticmethod
+    def _hold_len(masked: str) -> int:
+        if _PASSWORD_PREFIX_RE.search(masked):
+            return len(masked)
+        tail = _CANDIDATE_TAIL_RE.search(masked)
+        if not tail:
+            return 0
+        run = tail.group()
+        # 普通文本（含字母数字混排的单词）不暂存，否则正常输出会被逐词压住
+        if run.isdigit() or _SECRET_PREFIX_RE.match(run):
+            return len(run)
+        return 0
 
 
 def contains_pii(text: str) -> bool:

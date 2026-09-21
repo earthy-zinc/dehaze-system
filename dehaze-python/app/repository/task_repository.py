@@ -32,11 +32,37 @@ class TaskRepository(BaseRepository[SysTask]):
         self,
         db: AsyncSession,
         idempotency_key: str,
+        user_id: int,
     ) -> SysTask | None:
-        """根据客户端幂等键查询任务（用于幂等去重）"""
-        stmt = select(SysTask).where(SysTask.idempotency_key == idempotency_key)
+        """根据客户端幂等键查询当前用户的任务（幂等键按用户隔离，防止跨用户信息泄露）"""
+        stmt = select(SysTask).where(
+            SysTask.idempotency_key == idempotency_key,
+            SysTask.create_by == user_id,
+        )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def cancel_if_active(self, db: AsyncSession, task_id: str) -> int:
+        """CAS 取消：仅当任务仍处于待执行/执行中时置为已取消，返回受影响行数
+
+        防止取消请求与任务完成回调并发时，CANCELLED 覆盖 COMPLETED 终态。
+        """
+        values = {
+            "status": TaskStatus.CANCELLED.value,
+            "completed_at": datetime.now(),
+        }
+        values.update(get_audit_update_values())
+        stmt = (
+            update(SysTask)
+            .where(
+                SysTask.task_id == task_id,
+                SysTask.status.in_([TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]),
+            )
+            .values(**values)
+        )
+        result = await db.execute(stmt)
+        await db.flush()
+        return result.rowcount
 
     async def update_retry_count(
         self,
@@ -129,9 +155,7 @@ class TaskRepository(BaseRepository[SysTask]):
         """删除指定时间前已完成/已取消的任务，返回删除行数（过期任务清理用）"""
         stmt = delete(SysTask).where(
             and_(
-                SysTask.status.in_(
-                    [TaskStatus.COMPLETED.value, TaskStatus.CANCELLED.value]
-                ),
+                SysTask.status.in_([TaskStatus.COMPLETED.value, TaskStatus.CANCELLED.value]),
                 SysTask.create_time < before,
             )
         )
@@ -146,9 +170,7 @@ class TaskRepository(BaseRepository[SysTask]):
         """删除指定时间前已终止的任务（排除 pending/processing，防止误删执行中任务）"""
         stmt = delete(SysTask).where(
             and_(
-                SysTask.status.not_in(
-                    [TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]
-                ),
+                SysTask.status.not_in([TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]),
                 SysTask.create_time < before,
             )
         )
@@ -206,5 +228,6 @@ class TaskRepository(BaseRepository[SysTask]):
         )
         result = await db.execute(stmt)
         return result.rowcount
+
 
 task_repository = TaskRepository()

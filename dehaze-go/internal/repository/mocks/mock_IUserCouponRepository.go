@@ -280,6 +280,65 @@ func (_c *MockIUserCouponRepository_DeleteByCouponIDs_Call) RunAndReturn(run fun
 	return _c
 }
 
+// FindActiveTrialCouponExpireTime provides a mock function with given fields: ctx, userID
+func (_m *MockIUserCouponRepository) FindActiveTrialCouponExpireTime(ctx context.Context, userID int64) (*time.Time, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindActiveTrialCouponExpireTime")
+	}
+
+	var r0 *time.Time
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*time.Time, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *time.Time); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*time.Time)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindActiveTrialCouponExpireTime'
+type MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call struct {
+	*mock.Call
+}
+
+// FindActiveTrialCouponExpireTime is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIUserCouponRepository_Expecter) FindActiveTrialCouponExpireTime(ctx interface{}, userID interface{}) *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call {
+	return &MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call{Call: _e.mock.On("FindActiveTrialCouponExpireTime", ctx, userID)}
+}
+
+func (_c *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call) Run(run func(ctx context.Context, userID int64)) *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call) Return(_a0 *time.Time, _a1 error) *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call) RunAndReturn(run func(context.Context, int64) (*time.Time, error)) *MockIUserCouponRepository_FindActiveTrialCouponExpireTime_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindByID provides a mock function with given fields: ctx, id
 func (_m *MockIUserCouponRepository) FindByID(ctx context.Context, id int64) (*model.SysUserCoupon, error) {
 	ret := _m.Called(ctx, id)

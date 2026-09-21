@@ -225,11 +225,14 @@ const PackageManagement: React.FC = () => {
         key: "levelCode",
         width: 110,
         align: "center",
-        render: (levelCode: string, record) => (
-          <Tag color={LEVEL_TAG_COLOR[levelCode] || "default"}>
-            {record.levelName}
-          </Tag>
-        ),
+        render: (levelCode: string, record) =>
+          levelCode ? (
+            <Tag color={LEVEL_TAG_COLOR[levelCode] || "default"}>
+              {record.levelName}
+            </Tag>
+          ) : (
+            "—"
+          ),
       },
       {
         title: "计费周期",
@@ -237,7 +240,7 @@ const PackageManagement: React.FC = () => {
         key: "period",
         width: 100,
         align: "center",
-        render: (period: string) => PERIOD_LABEL[period] || period,
+        render: (period: string) => (period ? PERIOD_LABEL[period] || period : "—"),
       },
       {
         title: "原价",
@@ -245,7 +248,8 @@ const PackageManagement: React.FC = () => {
         key: "originalPrice",
         width: 100,
         align: "right",
-        render: (v: number) => `¥${(v ?? 0).toFixed(2)}`,
+        // 接口金额单位为分，展示用元
+        render: (v: number) => `¥${((v ?? 0) / 100).toFixed(2)}`,
       },
       {
         title: "售价",
@@ -254,7 +258,7 @@ const PackageManagement: React.FC = () => {
         width: 100,
         align: "right",
         render: (v: number) => (
-          <span className="sale-price">¥{(v ?? 0).toFixed(2)}</span>
+          <span className="sale-price">¥{((v ?? 0) / 100).toFixed(2)}</span>
         ),
       },
       {
@@ -263,7 +267,7 @@ const PackageManagement: React.FC = () => {
         key: "dailyPrice",
         width: 110,
         align: "right",
-        render: (v: number) => `¥${(v ?? 0).toFixed(2)}/天`,
+        render: (v: number) => `¥${((v ?? 0) / 100).toFixed(2)}/天`,
       },
       {
         title: "销量",

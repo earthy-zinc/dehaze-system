@@ -1,19 +1,24 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.service.ai.builders.context_manager import ContextManager
+from app.service.ai.service.reasoning_service import reasoning_service
+from app.service.ai.service.summary_service import _PRIOR_SUMMARY_MAX_LEN, summary_service
 from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.strategies.prompt_composer import STABLE_SYSTEM_PROMPT, compose_system_prompt
 from app.service.ai.strategies.scene_templates import SCENE_VALUES, get_scene_prompt
-from app.service.ai.service.reasoning_service import reasoning_service
-from app.service.ai.service.summary_service import summary_service, _PRIOR_SUMMARY_MAX_LEN
-from tests.stubs.fakes import NullDBSession
 from tests.stubs.factories import make_conv, repo_returns
+from tests.stubs.fakes import NullDBSession
 
 
-class _AgentSnapshot:
+class _AgentSnapshot(dict):
+    """Agent 快照替身：真实契约为 dict（get_published_snapshot 返回 dict），
+    以 system_prompt 键承载人设提示词。"""
+
     def __init__(self, system_prompt: str):
-        self.system_prompt = system_prompt
+        super().__init__(system_prompt=system_prompt)
 
 
 class _Conv:
@@ -26,6 +31,10 @@ class _Msg:
         self.id = mid
         self.role = role
         self.content = content
+
+
+class _FakeGraph:
+    """create_deep_agent 的替身：真实产物 CompiledStateGraph 可被弱引用，故用可弱引用对象。"""
 
 
 def _finalize_msg(**overrides):
@@ -62,9 +71,6 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
     async def _build_context(self, db, conv, model_id):
         return [{"role": "user", "content": "x" * 100}], "system", []
 
-    async def _estimate(messages, system_prompt):
-        return 9_000
-
     async def _gen_summary(db, model_id, msgs):
         return "新摘要"
 
@@ -72,7 +78,6 @@ def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress
         "app.service.ai.service.summary_service.ai_model_repository.get_by_model_id", _get_model
     )
     monkeypatch.setattr(ContextManager, "build_context", _build_context)
-    monkeypatch.setattr("app.service.ai.service.summary_service.estimate_context_tokens", _estimate)
     monkeypatch.setattr(summary_service, "_load_messages_to_summarize", staticmethod(load_messages))
     monkeypatch.setattr(summary_service, "_generate_summary", staticmethod(_gen_summary))
     monkeypatch.setattr(summary_service, "_extract_episodic_memory", AsyncMock(return_value=None))
@@ -88,10 +93,16 @@ def _install_build_context_mocks(monkeypatch, chain_msgs, memory, artifact_refs=
     async def _no_snapshot(db, conv):
         return None
 
+    async def _no_model(db, model_id):
+        return None  # 无模型记录 → 无 token 预算，窗口不裁剪
+
     monkeypatch.setattr(ContextManager, "_load_agent_snapshot", staticmethod(_no_snapshot))
     monkeypatch.setattr(
         "app.service.ai.builders.context_manager.ai_message_repository.get_chain_by_id",
         _get_chain_by_id,
+    )
+    monkeypatch.setattr(
+        "app.service.ai.builders.context_manager.ai_model_repository.get_by_model_id", _no_model
     )
     monkeypatch.setattr("app.service.ai.builders.context_manager.inject_memories", memory)
     if artifact_refs is not None:
@@ -143,7 +154,9 @@ def test_get_scene_prompt_known_scenes():
     }
     for scene in SCENE_VALUES:
         prompt = get_scene_prompt(scene)
-        assert "【角色】" in prompt and "【任务】" in prompt and "【格式】" in prompt
+        assert "【角色】" in prompt
+        assert "【任务】" in prompt
+        assert "【格式】" in prompt
 
 
 def test_get_scene_prompt_fallback_to_general():
@@ -159,7 +172,7 @@ async def test_builder_system_prompt_excludes_conversation(monkeypatch):
 
     def _fake_create_deep_agent(**kwargs):
         captured["system_prompt"] = kwargs["system_prompt"]
-        return object()
+        return _FakeGraph()
 
     monkeypatch.setattr(builder_mod, "create_deep_agent", _fake_create_deep_agent)
 
@@ -189,9 +202,7 @@ async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
         SimpleNamespace(id=i, role="user" if i % 2 else "assistant", content=f"c{i}")
         for i in range(1, 41)
     ]
-    conv = SimpleNamespace(
-        id=1, summary_upto_message_id=10, current_branch_message_id=40
-    )
+    conv = SimpleNamespace(id=1, summary_upto_message_id=10, current_branch_message_id=40)
 
     async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
         return all_rows
@@ -200,26 +211,31 @@ async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
         "app.service.ai.service.summary_service.ai_message_repository.get_chain_by_id",
         _get_chain,
     )
-    selected = await summary_service._load_messages_to_summarize(None, conv)
+    # 窗口起点 21（1..20 已被 token 预算裁剪出窗口）：水位 10 之后、窗口之前 → 11..20
+    selected = await summary_service._load_messages_to_summarize(
+        AsyncSession(), conv, window_start_id=21
+    )
     assert selected
     assert selected[0]["id"] == 11
     assert selected[-1]["id"] == 20
-    assert all(10 < m["id"] <= 20 for m in selected)
+    assert all(10 < m["id"] < 21 for m in selected)
 
 
 # 挂 db fixture：bypass_span 结算落库经同源事务回滚，避免向测试库提交旁路 trace 污染统计
 async def test_maybe_compress_appends_summary_and_advances_watermark(db, monkeypatch):
-    async def _load_messages(db, conv):
+    async def _load_messages(db, conv, window_start_id):
         return [{"id": 15, "role": "user", "content": "待压缩的近期消息"}]
 
     conv = _install_summary_mocks(monkeypatch, "旧摘要", _load_messages)
-    await summary_service.maybe_compress(NullDBSession(), conv, "gpt")
+    await summary_service.maybe_compress(
+        AsyncSession(), conv, "gpt", [{"id": 16, "role": "user", "content": "x" * 100}]
+    )
     assert conv.summary == "前序摘要：旧摘要\n近期摘要：新摘要"
     assert conv.summary_upto_message_id == 15
 
 
 async def test_maybe_compress_recompresses_oversized_prior_summary(db, monkeypatch):
-    async def _load_messages(db, conv):
+    async def _load_messages(db, conv, window_start_id):
         return [{"id": 3, "role": "user", "content": "待压缩"}]
 
     async def _recompress(db, model_id, old_summary):
@@ -228,7 +244,9 @@ async def test_maybe_compress_recompresses_oversized_prior_summary(db, monkeypat
     conv = _install_summary_mocks(
         monkeypatch, "旧" * (_PRIOR_SUMMARY_MAX_LEN + 1), _load_messages, _recompress
     )
-    await summary_service.maybe_compress(NullDBSession(), conv, "gpt")
+    await summary_service.maybe_compress(
+        AsyncSession(), conv, "gpt", [{"id": 4, "role": "user", "content": "x" * 100}]
+    )
     assert conv.summary == "前序摘要：再压缩后的前序摘要\n近期摘要：新摘要"
 
 
@@ -246,15 +264,22 @@ async def test_recent_messages_folds_tool_result_into_assistant(monkeypatch):
         _Msg(3, "tool", "工具结果：成功返回数据"),
         _Msg(4, "assistant", "工具执行完成"),
     ]
+
     async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
         return chain
+
+    async def _no_model(db, model_id):
+        return None
 
     monkeypatch.setattr(
         "app.service.ai.builders.context_manager.ai_message_repository.get_chain_by_id",
         _get_chain,
     )
-    conv = SimpleNamespace(id=1, current_branch_message_id=4)
-    msgs = await ContextManager._load_recent_messages(None, conv)
+    monkeypatch.setattr(
+        "app.service.ai.builders.context_manager.ai_model_repository.get_by_model_id", _no_model
+    )
+    conv = SimpleNamespace(id=1, current_branch_message_id=4, summary=None)
+    msgs = await ContextManager._load_candidate_messages(AsyncSession(), conv)
     assert msgs[0] == {"id": 1, "role": "user", "content": "你好"}
     assert msgs[1] == {
         "id": 2,
@@ -294,10 +319,11 @@ async def test_build_context_attaches_artifact_refs(monkeypatch):
     _install_build_context_mocks(monkeypatch, [msgs[1], msgs[2]], _no_memories, _artifact_refs)
 
     messages, system_prompt, _injected = await ContextManager().build_context(
-        object(), make_conv(current_branch_message_id=2, system_prompt="会话提示"), "gpt"
+        AsyncSession(), make_conv(current_branch_message_id=2, system_prompt="会话提示"), "gpt"
     )
     assert messages[1]["role"] == "assistant"
     assert "[[产物 #7] image_result：{'algorithm': 'RIDCP'}]" in messages[1]["content"]
+    assert system_prompt is not None
     assert system_prompt.startswith(STABLE_SYSTEM_PROMPT)
     assert "会话提示" in system_prompt
 
@@ -305,19 +331,116 @@ async def test_build_context_attaches_artifact_refs(monkeypatch):
 async def test_build_context_injects_memory_system_block(monkeypatch):
     async def _with_memory(*a, **k):
         return "【用户画像】用户偏好 RIDCP", [
-            {"memory_id": 1, "memory_type": "semantic", "content": "偏好 RIDCP", "source": "preference"}
+            {
+                "memory_id": 1,
+                "memory_type": "semantic",
+                "content": "偏好 RIDCP",
+                "source": "preference",
+            }
         ]
 
     _install_build_context_mocks(monkeypatch, [_Msg(1, "user", "处理雾图")], _with_memory)
 
     messages, _system_prompt, injected = await ContextManager().build_context(
-        object(), make_conv(current_branch_message_id=1, system_prompt="会话提示"), "gpt"
+        AsyncSession(), make_conv(current_branch_message_id=1, system_prompt="会话提示"), "gpt"
     )
     assert messages[0] == {"role": "system", "content": "【用户画像】用户偏好 RIDCP"}
     assert messages[1]["role"] == "user"
     assert injected == [
         {"memory_id": 1, "memory_type": "semantic", "content": "偏好 RIDCP", "source": "preference"}
     ]
+
+
+class TestWindowBudgetReservation:
+    """窗口预算必须覆盖最终送入模型的全部内容：未注册模型兜底、记忆块、产物引用行。"""
+
+    @staticmethod
+    def _install(monkeypatch, chain, model, memory=(None, []), artifacts=None):
+        async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
+            return chain
+
+        async def _no_snapshot(db, conv):
+            return None
+
+        async def _get_model(db, model_id):
+            return model
+
+        async def _memories(*a, **k):
+            return memory
+
+        async def _artifact_refs(db, ids):
+            return artifacts or {}
+
+        monkeypatch.setattr(ContextManager, "_load_agent_snapshot", staticmethod(_no_snapshot))
+        monkeypatch.setattr(
+            "app.service.ai.builders.context_manager.ai_message_repository.get_chain_by_id",
+            _get_chain,
+        )
+        monkeypatch.setattr(
+            "app.service.ai.builders.context_manager.ai_model_repository.get_by_model_id",
+            _get_model,
+        )
+        monkeypatch.setattr("app.service.ai.builders.context_manager.inject_memories", _memories)
+        monkeypatch.setattr(
+            "app.service.ai.builders.context_manager.ai_artifact_service.get_message_artifact_refs",
+            _artifact_refs,
+        )
+
+    @staticmethod
+    def _chain(count: int) -> list:
+        return [_Msg(i, "user" if i % 2 else "assistant", "x" * 4000) for i in range(1, count + 1)]
+
+    async def test_unregistered_model_trims_with_fallback_budget(self, monkeypatch, caplog):
+        """模型未注册时按保守窗口兜底裁剪，不得整链原文送入（必然超窗）。"""
+        caplog.set_level("WARNING")
+        self._install(monkeypatch, self._chain(60), None)
+        conv = make_conv(current_branch_message_id=60)
+        messages, _, _ = await ContextManager().build_context(AsyncSession(), conv, "未注册模型")
+        assert len(messages) < 60
+        assert messages[-1]["id"] == 60
+        assert "未在模型注册表登记" in caplog.text
+
+    async def test_memory_block_is_reserved_from_budget(self, monkeypatch):
+        """记忆块不参与裁剪，须先从窗口预算扣除，否则最终上下文必然超窗。"""
+        model = SimpleNamespace(max_context_tokens=20_000, max_output_tokens=500)
+
+        self._install(monkeypatch, self._chain(30), model)
+        without_memory, _, _ = await ContextManager().build_context(
+            AsyncSession(), make_conv(current_branch_message_id=30), "m1"
+        )
+
+        memory_block = "记" * 6000  # 1500 token
+        self._install(
+            monkeypatch,
+            self._chain(30),
+            model,
+            memory=(memory_block, [{"memory_id": 1}]),
+        )
+        with_memory, _, _ = await ContextManager().build_context(
+            AsyncSession(), make_conv(current_branch_message_id=30), "m1"
+        )
+        assert with_memory[0] == {"role": "system", "content": memory_block}
+        assert len(with_memory) - 1 < len(without_memory)
+
+    async def test_artifact_ref_lines_are_counted_in_budget(self, monkeypatch):
+        """产物引用行在裁剪前追加并计入预算，裁剪后追加会让引用行超窗。"""
+        model = SimpleNamespace(max_context_tokens=20_000, max_output_tokens=500)
+
+        self._install(monkeypatch, self._chain(30), model)
+        without_refs, _, _ = await ContextManager().build_context(
+            AsyncSession(), make_conv(current_branch_message_id=30), "m1"
+        )
+
+        refs = {
+            i: [{"id": i, "type": "image_result", "summary": {"detail": "d" * 400}}]
+            for i in range(1, 31)
+        }
+        self._install(monkeypatch, self._chain(30), model, artifacts=refs)
+        with_refs, _, _ = await ContextManager().build_context(
+            AsyncSession(), make_conv(current_branch_message_id=30), "m1"
+        )
+        assert "[[产物 #" in with_refs[-1]["content"]
+        assert len(with_refs) < len(without_refs)
 
 
 async def test_finalize_message_writes_used_memory_ids(monkeypatch):

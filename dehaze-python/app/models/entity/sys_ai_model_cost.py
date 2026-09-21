@@ -26,7 +26,9 @@ class SysAiModelCost(BaseModel, SoftDeleteMixin):
     currency: Mapped[str] = mapped_column(
         String(8), nullable=False, default="CNY", comment="计费币种(CNY/USD)"
     )
-    effective_from: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="价格版本生效时间")
+    effective_from: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, comment="价格版本生效时间"
+    )
     effective_to: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, comment="价格版本失效时间(NULL表示当前版本)"
     )

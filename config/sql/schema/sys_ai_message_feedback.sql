@@ -10,7 +10,7 @@
 -- conversation_id/model/source 冗余存储，支撑按会话/模型/来源维度统计与归因，避免多表 JOIN。
 -- processed/process_time 支撑反馈驱动闭环：点踩反馈由 XXL-Job 定时任务扫描 processed=0 的记录批量处理
 --   （记忆提取/提示词优化/工具策略调整），处理成功置 1，失败下次扫描自动重试。
--- 反馈支持逻辑删除（用户撤销反馈），但撤销后再次反馈走 upsert 复活原行（类别①）。
+-- 反馈支持逻辑删除（用户撤销反馈），再次反馈复活原行（deleted 置 0）。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_ai_message_feedback`;
 CREATE TABLE `sys_ai_message_feedback`
@@ -26,13 +26,13 @@ CREATE TABLE `sys_ai_message_feedback`
     `comment`         TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci        NULL COMMENT '反馈内容(可选)',
     `processed`       tinyint                                                        NOT NULL DEFAULT 0 COMMENT '闭环处理状态(0:待处理;1:已处理,由XXL-Job定时扫描)',
     `process_time`    datetime                                                       NULL DEFAULT NULL COMMENT '闭环处理完成时间(支撑闭环时效统计)',
-    `deleted`         tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`         bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`       bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`       bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`     datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`     datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_message_user` (`message_id`, `user_id`) USING BTREE,
+    UNIQUE INDEX `uk_message_user` (`message_id`, `user_id`, `deleted`) USING BTREE,
     INDEX `idx_processed` (`processed`) USING BTREE,
     INDEX `idx_model` (`model`) USING BTREE
 ) ENGINE = InnoDB

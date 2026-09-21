@@ -75,6 +75,12 @@ mongo:
   uri: "mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze_test?authSource=admin"
   database: "dehaze_test"
 
+# Elasticsearch（记忆向量文档清理，与 python/java 共用根 .env 的 ES_* 变量）
+es:
+  url: "${ES_URL}"
+  username: "${ES_USERNAME}"
+  password: "${ES_PASSWORD}"
+
 cache:
   # 缓存类型：redis/local/multi
   type: redis

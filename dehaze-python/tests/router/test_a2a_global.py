@@ -40,12 +40,14 @@ async def a2a_client():
 async def test_global_a2a_paths_registered(app):
     schema = app.openapi()
     paths = schema["paths"]
-    assert "/a2a" in paths and "post" in paths["/a2a"]
-    assert "/.well-known/agent.json" in paths and "get" in paths["/.well-known/agent.json"]
+    assert "/a2a" in paths
+    assert "post" in paths["/a2a"]
+    assert "/.well-known/agent.json" in paths
+    assert "get" in paths["/.well-known/agent.json"]
 
 
 async def test_global_a2a_resolves_agent_and_forwards(a2a_client, monkeypatch):
-    client, state = a2a_client
+    client, _state = a2a_client
     captured = {}
 
     async def fake_resolve(db, agent_id, agent_code):

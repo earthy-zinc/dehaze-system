@@ -1,16 +1,15 @@
 from fastapi import APIRouter, Depends, Query
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.code import ResultCode
-from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
+from app.dependencies.redis import get_redis
 from app.models.schema.common import PageResult
 from app.models.schema.user import (
     PasswordForm,
-    UserCreateVO,
     UserDeleteVO,
     UserForm,
     UserFormVO,
@@ -77,6 +76,10 @@ async def get_user_page(
                 "email": u.get("email"),
                 "deptName": u.get("deptName"),
                 "roleNames": u.get("roleNames"),
+                "userType": u.get("user_type"),
+                "memberLevel": u.get("memberLevel"),
+                "memberExpireTime": u.get("memberExpireTime"),
+                "quotaUsage": u.get("quotaUsage"),
                 "createTime": create_time_str,
             }
         )
@@ -89,7 +92,7 @@ async def get_user_page(
     )
 
 
-@router.post("", summary="新增用户", response_model=Result[UserCreateVO])
+@router.post("", summary="新增用户", response_model=Result[None])
 @require_permission("sys:user:add")
 async def create_user(
     body: UserForm,
@@ -131,33 +134,33 @@ async def update_user(
 
 
 @router.patch("/{user_id}/status", summary="更新用户状态", response_model=Result[None])
+@require_permission("sys:user:status")
 async def update_user_status(
     user_id: int,
     status: int = Query(..., ge=0, le=1, description="状态(1-启用；0-停用)"),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await user_service.update_user_status(db, user_id, status)
+    await user_service.update_user_status(db, redis, user_id, status, current_user=user)
 
     return success(msg="一切ok")
 
 
-@router.patch("/{user_id}/password", summary="修改用户密码", response_model=Result[None])
+@router.patch("/{user_id}/password", summary="重置用户密码", response_model=Result[None])
+@require_permission("sys:user:password:reset")
 async def update_password(
     user_id: int,
     body: PasswordForm,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    # 只能修改自己的密码，或者有重置密码权限才能修改他人密码
-    if user_id != user.id and not (
-        user.is_root or "sys:user:password:reset" in user.permissions or "*" in user.permissions
-    ):
-        raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权修改其他用户的密码")
+    """纯管理员重置：强制 sys:user:password:reset 权限（本人改密走
+    PATCH /api/v1/auth/password），重置后踢出目标用户全部在线会话。"""
+    await user_service.update_password(db, redis, user_id, body.password)
 
-    await user_service.update_password(db, user_id, body.password)
-
-    return success(msg="修改成功")
+    return success(msg="重置成功")
 
 
 @router.delete("/{ids}", summary="删除用户", response_model=Result[UserDeleteVO])
@@ -165,8 +168,9 @@ async def update_password(
 async def delete_users(
     ids: str,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await user_service.delete_users(db, ids, current_user=user)
+    result = await user_service.delete_users(db, redis, ids, current_user=user)
 
     return success(result, msg=f"成功删除 {result['deleted_count']} 个用户")

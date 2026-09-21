@@ -1,20 +1,26 @@
 from datetime import datetime
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
 from app.models.schema.ai_schedule import ScheduleCreate, SchedulePageQuery, ScheduleUpdate
+from app.repository.ai_schedule_repository import AiScheduleRepository
+from app.repository.ai_schedule_run_repository import AiScheduleRunRepository
+from app.repository.member_repository import MemberRepository
 from app.service.ai.service import ai_schedule_service as m
 from app.service.ai.service.ai_schedule_service import (
     DEFAULT_TIMEZONE,
     MAX_SCHEDULES_PER_USER,
     scheduled_task_service,
 )
-from tests.stubs.fakes import StubAsyncSession
 from tests.stubs.factories import make_member
+from tests.stubs.fakes import StubAsyncSession
 
 
 def _task(
@@ -44,10 +50,10 @@ def _task(
     )
 
 
-class _ScheduleRepo:
+class _ScheduleRepo(AiScheduleRepository):
     def __init__(self, task=None):
         self.task = task
-        self.count = 0
+        self.count_value = 0  # 命名避开基类 count() 方法
         self.items = []
         self.total = 0
         self.calls = {
@@ -58,11 +64,11 @@ class _ScheduleRepo:
             "create": [],
         }
 
-    async def get_by_id(self, db, schedule_id, **kw):
+    async def get_by_id(self, *args, **kwargs):
         return self.task
 
     async def count_by_user(self, db, user_id):
-        return self.count
+        return self.count_value
 
     async def create(self, db, entity):
         entity.id = 1
@@ -77,6 +83,7 @@ class _ScheduleRepo:
 
     async def soft_delete(self, db, schedule_id):
         self.calls["soft_delete"].append(schedule_id)
+        return 0
 
     async def reset_circuit(self, db, schedule_id):
         self.calls["reset_circuit"].append(schedule_id)
@@ -85,7 +92,7 @@ class _ScheduleRepo:
         self.calls["update_next_trigger"].append((schedule_id, next_trigger_time))
 
 
-class _RunRepo:
+class _RunRepo(AiScheduleRunRepository):
     def __init__(self):
         self.latest = {}
         self.history = []
@@ -99,7 +106,7 @@ class _RunRepo:
 
 
 def _member_repo(members):
-    class _MemberRepo:
+    class _MemberRepo(MemberRepository):
         async def get_by_user_id(self, db, user_id):
             return members.get(user_id)
 
@@ -143,7 +150,7 @@ class TestCreate:
 
     async def test_reject_over_limit(self, env):
         env.members[1] = make_member("level_2")
-        env.sched.count = MAX_SCHEDULES_PER_USER
+        env.sched.count_value = MAX_SCHEDULES_PER_USER
         with pytest.raises(BusinessException) as exc:
             await env.svc.create(env.db, 1, _form())
         assert "上限" in str(exc.value)
@@ -289,9 +296,12 @@ class TestIdempotentInsert:
     async def test_insert_success(self):
         from app.repository.ai_schedule_run_repository import ai_schedule_run_repository
 
-        entity = SimpleNamespace(schedule_id=1, window_start=datetime.now())
+        entity = SysAiScheduleRun(schedule_id=1, window_start=datetime.now())
         db = StubAsyncSession()
-        result = await ai_schedule_run_repository.create_with_window(db, entity)
+        result = await ai_schedule_run_repository.create_with_window(
+            cast(AsyncSession, db),  # 替身：tests/stubs 的 StubAsyncSession（需保留 flushed 属性）
+            entity,
+        )
         assert result is entity
         assert db.flushed == 1
 
@@ -300,8 +310,8 @@ class TestIdempotentInsert:
             ai_schedule_run_repository as run_repo,
         )
 
-        existing = SimpleNamespace(schedule_id=1, window_start=datetime.now())
-        entity = SimpleNamespace(schedule_id=1, window_start=existing.window_start)
+        existing = SysAiScheduleRun(schedule_id=1, window_start=datetime.now())
+        entity = SysAiScheduleRun(schedule_id=1, window_start=existing.window_start)
         db = StubAsyncSession()
 
         async def flush():
@@ -313,7 +323,10 @@ class TestIdempotentInsert:
 
         db.flush = flush
         monkeypatch.setattr(run_repo, "get_by_window", get_by_window)
-        result = await run_repo.create_with_window(db, entity)
+        result = await run_repo.create_with_window(
+            cast(AsyncSession, db),  # 替身：StubAsyncSession（需保留 savepoint_released 属性）
+            entity,
+        )
         assert result is existing
         assert db.savepoint_released == 1
 
@@ -386,21 +399,27 @@ async def test_preview_frequency_identifier_usable():
     assert "每天 09点00分" in result.description
     assert len(result.nextTimes) == 5
     for t in result.nextTimes:
-        assert t.hour == 9 and t.minute == 0
+        assert t.hour == 9
+        assert t.minute == 0
 
 
 def test_next_times_computed_in_task_timezone():
     tz = "America/New_York"
     times = scheduled_task_service._compute_next_times("0 9 * * *", tz, 3)
     assert all(t.hour == 9 and t.minute == 0 for t in times)
-    utcoffset_hours = {t.utcoffset().total_seconds() / 3600 for t in times}
+    utcoffset_hours = set()
+    for t in times:
+        offset = t.utcoffset()
+        assert offset is not None
+        utcoffset_hours.add(offset.total_seconds() / 3600)
     assert utcoffset_hours.issubset({-4.0, -5.0})
 
 
 def test_next_trigger_computed_in_task_timezone():
     tz = "America/New_York"
     nxt = scheduled_task_service._compute_next_trigger("30 9 * * *", tz)
-    assert nxt.hour == 9 and nxt.minute == 30
+    assert nxt.hour == 9
+    assert nxt.minute == 30
 
 
 def test_next_times_rejects_invalid_timezone():

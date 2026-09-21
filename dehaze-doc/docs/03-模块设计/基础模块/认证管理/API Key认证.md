@@ -42,14 +42,14 @@ API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**�
 |------|------|------|------|
 | name | String | 是 | API Key 名称，用于标识用途 |
 | expiresAt | String | 否 | 过期时间；不传则默认永不过期 |
-| dailyQuota | Long | 否 | Key 级日调用配额；不传或 0 表示不限制 |
-| monthlyQuota | Long | 否 | Key 级月调用配额；不传或 0 表示不限制 |
-| rpmLimit | Integer | 否 | 每分钟调用频率上限；不传或 0 表示不限制 |
-| modelWhitelist | Array&lt;String&gt; | 否 | 模型白名单（启用模型 ID 列表）；不传表示继承用户可见模型 |
+| dailyQuota | Long | 否 | Key 级日调用配额，取值 `≥1`；**不传**表示不限制（显式传 0 会被参数校验拒绝，三端一致） |
+| monthlyQuota | Long | 否 | Key 级月调用配额，取值 `≥1`；不传表示不限制 |
+| rpmLimit | Integer | 否 | 每分钟调用频率上限（RPM），取值 `≥1`；不传表示不限制 |
+| modelWhitelist | Array&lt;String&gt; | 否 | 模型白名单；**不传或传空数组都表示继承用户可见模型**；元素须为**存在且已启用**的模型标识（否则 A0400，三端一致） |
 
-**响应要点**：创建成功后返回 Key 明文（`apiKey`，前缀 `dhak_`）、ID、名称与过期时间。
+**响应要点**：创建成功后返回 Key 明文（`apiKey`，前缀 `dhak_`）、ID、名称、过期时间，以及四个治理字段原样回显（`dailyQuota`/`monthlyQuota`/`rpmLimit`/`modelWhitelist`）；列表接口同样回显治理字段。`modelWhitelist` 为空时响应整键省略（不落 JSON 空数组）。
 
-> **治理说明**：`dailyQuota`/`monthlyQuota`/`rpmLimit`/`modelWhitelist` 为 F-M08-010 第三方兼容接入治理扩展字段，仅影响兼容 API（`/api/v1/chat/completions`、`/api/v1/messages`、`/api/v1/models`）调用：配额计数走 Redis 固定窗口、超限返回官方语义 429、白名单外模型返回 403；计数与用户积分配额双轨独立。治理规则详见 [第三方兼容 §2.3](../../核心模块/AI对话/定时与兼容/后端实现-第三方兼容.md)。
+> **治理说明**：`dailyQuota`/`monthlyQuota`/`rpmLimit`/`modelWhitelist` 为 F-M08-010 第三方兼容接入治理扩展字段，仅影响兼容 API（`/api/v1/chat/completions`、`/api/v1/messages`、`/api/v1/models`）调用：配额计数走 Redis 固定窗口、超限返回官方语义 429、白名单外模型返回 403；计数与用户积分配额双轨独立。**Key 级配额/RPM/白名单的执行点只在 python 兼容层**（`app/service/ai/service/compatible_governance.py`），java/go 仅承载 `sys_api_key` 治理字段的 CRUD 读写、经本端转发即受治，**不建本地执行点**（会双重计数）。治理规则与 live 验证证据详见 [第三方兼容 §2.3](../../核心模块/AI对话/定时与兼容/后端实现-第三方兼容.md)。
 
 > **重要**：`apiKey` 明文仅在创建成功时返回**一次**，服务端只存储其哈希值，无法再次查询。请务必妥善保存，丢失后只能删除并重新创建。
 
@@ -57,9 +57,13 @@ API Key 是面向**机器对机器（M2M）调用**与**第三方系统集成**�
 
 `GET /api/v1/auth/api-keys`（需登录态），返回当前用户的 Key 列表，仅包含 Key 前缀（`keyPrefix`，如 `dhak_a1b2`）用于辨识，**不返回明文 Key**。
 
+列表每项同时回显四个治理字段（`dailyQuota`/`monthlyQuota`/`rpmLimit`/`modelWhitelist`），与创建响应同形态；三端（Java/Go/Python）均只承载治理字段的 CRUD 读写，执行点统一在 python 兼容层（见 §3.2 治理说明）。
+
 ### 3.4 删除/吊销 API Key
 
-`DELETE /api/v1/auth/api-keys/{id}`（需登录态），删除后该 Key 立即失效，使用该 Key 的后续请求将被拒绝。删除操作不可恢复。
+`DELETE /api/v1/auth/api-keys/{id}`（需登录态），吊销后该 Key 立即失效，使用该 Key 的后续请求将被拒绝。吊销操作不可恢复。
+
+> **吊销语义**：三端均为**软吊销**——置 `revoked_at` 时间戳，不物理删除记录；`key_hash` 永久保留，以便继续识别并拒绝已泄露的旧密钥。认证侧直查数据库（无 Redis 缓存），因此吊销不存在延迟窗口。
 
 ## 4. 使用 API Key 进行认证
 

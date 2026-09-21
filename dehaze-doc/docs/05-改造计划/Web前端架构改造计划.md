@@ -113,6 +113,8 @@ store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真�
 
 **改造方向**：组件 catch 块不再调用 `message.error`，仅处理业务逻辑（如重置 loading 状态）。全局拦截器负责统一错误提示。
 
+> 2026-09-09：Vue 端已完成本项收敛——SDK 新增 `onBizError` 业务错误钩子（HTTP 200 + 业务码错误 reject 前触发），front-vue 注册后统一 `ElMessage.error(msg)`；页面 catch 中的重复错误 toast 已全部删除（含本地 throw 的混合场景以 `isAxiosError` 守卫区分），详见 `04-项目实现/前端/08-SDK架构文档.md` §4.2。React 端待按同样方式接入 `onBizError`。
+
 ### 3.5 React 缺失 i18n
 
 **现状**：Vue 端有完整 i18n（`lang/package/en.ts`、`zh-cn.ts`、`plugins/i18n.ts`），React 端完全没有。Settings 面板有语言切换选项但仅切换 antd 的 locale，应用文本全部硬编码中文。

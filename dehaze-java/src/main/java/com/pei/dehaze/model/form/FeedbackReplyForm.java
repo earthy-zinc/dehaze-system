@@ -2,6 +2,7 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.util.List;
@@ -15,6 +16,7 @@ public class FeedbackReplyForm {
     private String content;
 
     @Schema(description = "回复类型(info/resolved/unsupported/dev_transfer)")
+    @Pattern(regexp = "info|resolved|unsupported|dev_transfer", message = "回复类型不合法")
     private String replyType;
 
     @Schema(description = "附件URL")

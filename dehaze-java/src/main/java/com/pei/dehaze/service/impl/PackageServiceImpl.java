@@ -73,7 +73,8 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
                 .eq(SysPackage::getStatus, 1)
                 .orderByAsc(SysPackage::getSort)
                 .orderByAsc(SysPackage::getId));
-        return packages.stream().map(this::toDetailVO).toList();
+        // 在售列表不返回进行中促销（python 契约：仅详情返回 activePromotions）
+        return packages.stream().map(pkg -> toDetailVO(pkg, false)).toList();
     }
 
     @Override
@@ -86,7 +87,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (pkg.getStatus() == null || pkg.getStatus() != 1) {
             throw new BusinessException(ResultCode.PACKAGE_OFF_SHELF);
         }
-        return toDetailVO(pkg);
+        return toDetailVO(pkg, true);
     }
 
     @Override
@@ -95,6 +96,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         Page<SysPackage> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysPackage> wrapper = new LambdaQueryWrapper<SysPackage>()
                 .like(CharSequenceUtil.isNotBlank(query.getName()), SysPackage::getName, query.getName())
+                .eq(CharSequenceUtil.isNotBlank(query.getPackageType()), SysPackage::getPackageType, query.getPackageType())
                 .eq(CharSequenceUtil.isNotBlank(query.getLevelCode()), SysPackage::getLevelCode, query.getLevelCode())
                 .eq(CharSequenceUtil.isNotBlank(query.getPeriod()), SysPackage::getPeriod, query.getPeriod())
                 .eq(query.getStatus() != null, SysPackage::getStatus, query.getStatus())
@@ -119,9 +121,11 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         PackageForm form = new PackageForm();
         form.setId(pkg.getId());
         form.setName(pkg.getName());
+        form.setPackageType(pkg.getPackageType());
         form.setLevelCode(pkg.getLevelCode());
         form.setPeriod(pkg.getPeriod());
         form.setPeriodDays(pkg.getPeriodDays());
+        form.setCreditAmount(pkg.getCreditAmount());
         form.setOriginalPrice(pkg.getOriginalPrice());
         form.setSalePrice(pkg.getSalePrice());
         form.setDescription(pkg.getDescription());
@@ -132,32 +136,26 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     }
 
     /**
-     * 校验安装包名称唯一性（含软删行参与查重，命中即报占用）。
+     * 校验安装包名称唯一性（仅活跃行；唯一键含 deleted，软删行不占键位）。
      */
     private void validateNameUnique(String name, Long excludeId) {
-        long count = getBaseMapper().countByNameAll(name);
-        if (count == 0) {
-            return;
-        }
-        if (excludeId != null) {
-            count = getBaseMapper().countByNameAllExcluding(name, excludeId);
-        }
+        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysPackage>()
+                .eq(SysPackage::getName, name)
+                .ne(excludeId != null, SysPackage::getId, excludeId));
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS,
-                    "套餐名称已被历史记录占用，无法重复创建");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在");
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void save(PackageForm form) {
-        validatePackageForm(form);
+        validatePackageForm(form, form.getPackageType());
         validateNameUnique(form.getName(), null);
         SysPackage pkg = new SysPackage();
         pkg.setName(form.getName());
-        pkg.setLevelCode(form.getLevelCode());
-        pkg.setPeriod(form.getPeriod());
-        pkg.setPeriodDays(form.getPeriodDays());
+        pkg.setPackageType(form.getPackageType());
+        applyTypedFields(pkg, form.getPackageType(), form);
         pkg.setOriginalPrice(form.getOriginalPrice());
         pkg.setSalePrice(form.getSalePrice());
         pkg.setDescription(form.getDescription());
@@ -175,14 +173,13 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (pkg == null) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
         }
-        validatePackageForm(form);
+        // 商品类型创建后锁定，以库中值为准，请求携带的 packageType 被忽略
+        validatePackageForm(form, pkg.getPackageType());
         if (!pkg.getName().equals(form.getName())) {
             validateNameUnique(form.getName(), id);
         }
         pkg.setName(form.getName());
-        pkg.setLevelCode(form.getLevelCode());
-        pkg.setPeriod(form.getPeriod());
-        pkg.setPeriodDays(form.getPeriodDays());
+        applyTypedFields(pkg, pkg.getPackageType(), form);
         pkg.setOriginalPrice(form.getOriginalPrice());
         pkg.setSalePrice(form.getSalePrice());
         pkg.setDescription(form.getDescription());
@@ -191,6 +188,21 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             pkg.setSort(form.getSort());
         }
         this.updateById(pkg);
+    }
+
+    /** 按商品类型差异化写入：会员卡等级/周期/有效期，积分卡可得积分，另一类字段置空 */
+    private void applyTypedFields(SysPackage pkg, String packageType, PackageForm form) {
+        if ("credit".equals(packageType)) {
+            pkg.setCreditAmount(form.getCreditAmount());
+            pkg.setLevelCode(null);
+            pkg.setPeriod(null);
+            pkg.setPeriodDays(null);
+        } else {
+            pkg.setCreditAmount(null);
+            pkg.setLevelCode(form.getLevelCode());
+            pkg.setPeriod(form.getPeriod());
+            pkg.setPeriodDays(form.getPeriodDays());
+        }
     }
 
     @Override
@@ -236,6 +248,17 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         SysPackage pkg = this.getById(packageId);
         if (pkg == null) {
             throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
+        }
+        // 新用户专享校验：关联 new_user 活动时，有历史付费订单的用户不可购买
+        boolean newUserOnly = getActivePromotions(packageId).stream()
+                .anyMatch(p -> p.getNewUserOnly() != null && p.getNewUserOnly() == 1);
+        if (newUserOnly) {
+            Long paidCount = orderMapper.selectCount(new LambdaQueryWrapper<SysOrder>()
+                    .eq(SysOrder::getUserId, SecurityUtils.getUserId())
+                    .in(SysOrder::getStatus, 2, 3));
+            if (paidCount > 0) {
+                throw new BusinessException(ResultCode.BUSINESS_ERROR, "该套餐仅限新用户购买");
+            }
         }
         PriceResult result = new PriceResult();
         result.setOriginalPrice(pkg.getOriginalPrice());
@@ -362,6 +385,20 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
                 discount = pkg.getSalePrice() * pp.getDiscountValue() / 100;
             } else if ("fixed".equals(pp.getDiscountType())) {
                 discount = pp.getDiscountValue();
+            } else if ("full_reduction".equals(pp.getDiscountType())) {
+                // 满减按活动规则 tiers 阶梯匹配：取满足门槛档位中的最大面值
+                Map<String, Object> rules = parseRulesToMap(promotion.getActivityRules());
+                if (rules != null && rules.get("tiers") instanceof List<?> tiers) {
+                    for (Object t : tiers) {
+                        if (t instanceof Map<?, ?> tier) {
+                            long threshold = tier.get("threshold") instanceof Number tn ? tn.longValue() : 0;
+                            long faceValue = tier.get("faceValue") instanceof Number fn ? fn.longValue() : 0;
+                            if (pkg.getSalePrice() >= threshold && faceValue > discount) {
+                                discount = faceValue;
+                            }
+                        }
+                    }
+                }
             }
             if (discount > maxDiscount) {
                 maxDiscount = discount;
@@ -389,9 +426,26 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (coupon.getStatus() != 1) {
             throw new BusinessException(ResultCode.COUPON_NOT_FOUND);
         }
-        List<Long> scope = parseJsonToList(coupon.getApplicableScope());
-        if (scope != null && !scope.isEmpty() && !scope.contains(pkg.getId())) {
-            throw new BusinessException(ResultCode.COUPON_NOT_APPLICABLE);
+        List<Object> scope = parseJsonToList(coupon.getApplicableScope());
+        if (scope != null && !scope.isEmpty()) {
+            boolean applicable = false;
+            for (Object s : scope) {
+                if (s instanceof Number n && n.longValue() == pkg.getId()) {
+                    applicable = true;
+                    break;
+                }
+                if (s instanceof String str && str.equals(pkg.getPackageType())) {
+                    applicable = true;
+                    break;
+                }
+            }
+            if (!applicable) {
+                throw new BusinessException(ResultCode.COUPON_NOT_APPLICABLE);
+            }
+        }
+        // 体验券直接激活会员卡权益、不产生订单，不参与下单价格计算
+        if ("trial".equals(coupon.getType())) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "体验券不参与价格计算，请通过激活流程使用");
         }
         if (userCoupon.getExpireTime() != null && userCoupon.getExpireTime().isBefore(LocalDateTime.now())) {
             throw new BusinessException(ResultCode.COUPON_EXPIRED);
@@ -404,7 +458,7 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
                 }
             }
             case "discount" -> couponAmount = afterDiscountPrice * (100 - coupon.getFaceValue()) / 100;
-            case "no_threshold", "trial" -> couponAmount = coupon.getFaceValue();
+            case "no_threshold" -> couponAmount = coupon.getFaceValue();
         }
         if (couponAmount > afterDiscountPrice) {
             couponAmount = afterDiscountPrice;
@@ -412,12 +466,23 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         return couponAmount;
     }
 
-    private void validatePackageForm(PackageForm form) {
+    private void validatePackageForm(PackageForm form, String packageType) {
         if (form.getSalePrice() > form.getOriginalPrice()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "促销价不能高于原价");
         }
-        if (!PERIOD_NAMES.contains(form.getPeriod())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "计费周期非法");
+        if ("credit".equals(packageType)) {
+            if (form.getCreditAmount() == null || form.getCreditAmount() <= 0) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "积分卡可得积分必须大于0");
+            }
+        } else {
+            if (CharSequenceUtil.isBlank(form.getLevelCode())
+                    || CharSequenceUtil.isBlank(form.getPeriod())
+                    || form.getPeriodDays() == null) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "会员卡必须设置等级/周期/有效期");
+            }
+            if (!PERIOD_NAMES.contains(form.getPeriod())) {
+                throw new BusinessException(ResultCode.PARAM_ERROR, "计费周期非法");
+            }
         }
     }
 
@@ -425,24 +490,28 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         PackagePageVO vo = new PackagePageVO();
         vo.setId(pkg.getId());
         vo.setName(pkg.getName());
+        vo.setPackageType(pkg.getPackageType());
         vo.setLevelCode(pkg.getLevelCode());
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(pkg.getLevelCode());
         vo.setLevelName(benefit != null ? benefit.getLevelName() : pkg.getLevelCode());
         vo.setPeriod(pkg.getPeriod());
         vo.setPeriodDays(pkg.getPeriodDays());
+        vo.setCreditAmount(pkg.getCreditAmount());
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
         vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
+        vo.setCreditUnitPrice(pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0 ? pkg.getSalePrice() / pkg.getCreditAmount() : 0);
         vo.setSalesCount(pkg.getSalesCount());
         vo.setStatus(pkg.getStatus());
         vo.setCreateTime(pkg.getCreateTime());
         return vo;
     }
 
-    private PackageDetailVO toDetailVO(SysPackage pkg) {
+    private PackageDetailVO toDetailVO(SysPackage pkg, boolean withPromotions) {
         PackageDetailVO vo = new PackageDetailVO();
         vo.setId(pkg.getId());
         vo.setName(pkg.getName());
+        vo.setPackageType(pkg.getPackageType());
         vo.setLevelCode(pkg.getLevelCode());
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(pkg.getLevelCode());
         vo.setLevelName(benefit != null ? benefit.getLevelName() : pkg.getLevelCode());
@@ -451,30 +520,54 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
         vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
+        vo.setCreditAmount(pkg.getCreditAmount());
+        vo.setCreditUnitPrice(pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0 ? pkg.getSalePrice() / pkg.getCreditAmount() : 0);
         vo.setDescription(pkg.getDescription());
         vo.setSalesCount(pkg.getSalesCount());
         vo.setBenefits(buildBenefits(benefit, parseBenefitOverrides(pkg.getBenefitOverrides())));
-        vo.setActivePromotions(getActivePromotions(pkg.getId()));
+        if (withPromotions) {
+            vo.setActivePromotions(getActivePromotions(pkg.getId()));
+        }
         return vo;
     }
 
-    private Map<String, Integer> buildBenefits(SysMemberBenefit benefit, BenefitOverrides overrides) {
-        Map<String, Integer> benefits = new LinkedHashMap<>();
+    /** 配额类权益覆盖取 max(等级权益, 覆盖值)，与履约侧口径一致 */
+    private static final Set<String> BENEFIT_QUOTA_FIELDS = Set.of(
+            "monthlyDehazeQuota", "monthlyDerainQuota", "monthlyDesnowQuota", "monthlyLowlightQuota",
+            "monthlySuperResolutionQuota", "monthlyDenoiseQuota", "monthlyInpaintQuota", "monthlyEvaluateQuota",
+            "aiCreditsDaily", "aiCreditsMonthly");
+
+    private Map<String, Long> buildBenefits(SysMemberBenefit benefit, BenefitOverrides overrides) {
+        Map<String, Long> benefits = new LinkedHashMap<>();
         if (benefit != null) {
-            benefits.put("monthlyDehazeQuota", benefit.getMonthlyDehazeQuota());
-            benefits.put("monthlyEvaluateQuota", benefit.getMonthlyEvaluateQuota());
-            benefits.put("historyRetention", benefit.getHistoryRetention());
-            benefits.put("batchLimit", benefit.getBatchLimit());
-            benefits.put("priority", benefit.getPriority());
-            benefits.put("advancedParams", benefit.getAdvancedParams());
-            benefits.put("hdExport", benefit.getHdExport());
-            benefits.put("reportExport", benefit.getReportExport());
-            benefits.put("batchDownload", benefit.getBatchDownload());
+            benefits.put("monthlyDehazeQuota", benefit.getMonthlyDehazeQuota().longValue());
+            benefits.put("monthlyDerainQuota", benefit.getMonthlyDerainQuota().longValue());
+            benefits.put("monthlyDesnowQuota", benefit.getMonthlyDesnowQuota().longValue());
+            benefits.put("monthlyLowlightQuota", benefit.getMonthlyLowlightQuota().longValue());
+            benefits.put("monthlySuperResolutionQuota", benefit.getMonthlySuperResolutionQuota().longValue());
+            benefits.put("monthlyDenoiseQuota", benefit.getMonthlyDenoiseQuota().longValue());
+            benefits.put("monthlyInpaintQuota", benefit.getMonthlyInpaintQuota().longValue());
+            benefits.put("monthlyEvaluateQuota", benefit.getMonthlyEvaluateQuota().longValue());
+            benefits.put("aiCreditsDaily", benefit.getAiCreditsDaily());
+            benefits.put("aiCreditsMonthly", benefit.getAiCreditsMonthly());
+            benefits.put("historyRetention", benefit.getHistoryRetention().longValue());
+            benefits.put("batchLimit", benefit.getBatchLimit().longValue());
+            benefits.put("priority", benefit.getPriority().longValue());
+            benefits.put("advancedParams", benefit.getAdvancedParams().longValue());
+            benefits.put("hdExport", benefit.getHdExport().longValue());
+            benefits.put("reportExport", benefit.getReportExport().longValue());
+            benefits.put("batchDownload", benefit.getBatchDownload().longValue());
         }
         if (overrides != null) {
-            Map<String, Integer> overridesMap = objectMapper.convertValue(overrides,
-                    new TypeReference<Map<String, Integer>>() {});
-            benefits.putAll(overridesMap);
+            Map<String, Long> overridesMap = objectMapper.convertValue(overrides,
+                    new TypeReference<Map<String, Long>>() {});
+            overridesMap.forEach((key, value) -> {
+                if (value == null) {
+                    return;
+                }
+                Long base = benefits.get(key);
+                benefits.put(key, base != null && BENEFIT_QUOTA_FIELDS.contains(key) ? Math.max(base, value) : value);
+            });
         }
         return benefits;
     }
@@ -540,14 +633,26 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         }
     }
 
-    private List<Long> parseJsonToList(String json) {
+    private List<Object> parseJsonToList(String json) {
         if (CharSequenceUtil.isBlank(json)) {
             return null;
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
+            return objectMapper.readValue(json, new TypeReference<List<Object>>() {});
         } catch (JsonProcessingException e) {
             log.warn("解析JSON List失败: {}", json, e);
+            return null;
+        }
+    }
+
+    private Map<String, Object> parseRulesToMap(String json) {
+        if (CharSequenceUtil.isBlank(json)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (JsonProcessingException e) {
+            log.warn("解析JSON对象失败: {}", json, e);
             return null;
         }
     }

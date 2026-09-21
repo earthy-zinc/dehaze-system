@@ -3,7 +3,7 @@ from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
 
 
 def _snapshot(mode, **config):
-    base = {
+    return {
         "model_id": "gpt-4o-mini",
         "reasoning_mode": mode,
         "config": {
@@ -17,7 +17,6 @@ def _snapshot(mode, **config):
             **config,
         },
     }
-    return base
 
 
 def _mock_eval(monkeypatch, mode):
@@ -92,6 +91,8 @@ async def test_direct_skips_graph_build(monkeypatch):
     from app.service.ai.service import reasoning_service
 
     class _Conv:
+        agent_code = None
+        summary = None
         system_prompt = None
 
     @asynccontextmanager
@@ -101,7 +102,7 @@ async def test_direct_skips_graph_build(monkeypatch):
     async def _get_conv(db, cid, uid):
         return _Conv()
 
-    async def _compress(db, conv, model):
+    async def _compress(db, conv, model, messages):
         return None
 
     async def _build_ctx(db, conv, model):
@@ -129,7 +130,9 @@ async def test_direct_skips_graph_build(monkeypatch):
         raise AssertionError("direct 路径不应构建图")
 
     monkeypatch.setattr(reasoning_service, "get_db_session", _fake_session)
-    monkeypatch.setattr(reasoning_service.ai_conversation_repository, "get_by_id_and_user", _get_conv)
+    monkeypatch.setattr(
+        reasoning_service.ai_conversation_repository, "get_by_id_and_user", _get_conv
+    )
     monkeypatch.setattr(reasoning_service.summary_service, "maybe_compress", _compress)
     monkeypatch.setattr(reasoning_service.context_manager, "build_context", _build_ctx)
     monkeypatch.setattr(reasoning_service.reasoning_service, "_load_agent_anchor", _load_anchor)

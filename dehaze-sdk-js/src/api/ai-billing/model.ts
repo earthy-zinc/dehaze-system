@@ -55,9 +55,9 @@ export interface BillingRecordVO {
   userId: number;
   conversationId?: number;
   messageId?: number;
-  /** 用户选择的模型 */
+  /** 实际使用的模型（降级场景为降级模型） */
   model: string;
-  /** 实际使用的模型（降级后可能不同） */
+  /** 用户原选模型（降级时记录原模型，未降级为空） */
   actualModel?: string;
   billType: BillingType;
   inputTokens: number;
@@ -247,8 +247,15 @@ export interface BillingSummaryVO {
 
 /** 异常计费记录查询参数（需 ai:billing:stat） */
 export interface AnomalyRecordQuery extends PageQuery {
-  /** 异常类型：anomalous-异常计费 / manual-人工调整 / auto_compensated-自动补偿 */
+  /**
+   * 异常规则类型：single_high-单次超高 / burst-突发峰值 /
+   * consecutive_quota_fail-连续配额不足 / empty_high_output-空回复高耗
+   */
   anomalyType?: string;
+  /** 处理状态：0-待处理，1-已处理，2-已忽略 */
+  status?: 0 | 1 | 2;
+  /** 指定用户筛选（对齐后端实际行为：app/router/ai_billing.py list_anomalies 支持 userId 查询参数） */
+  userId?: number;
   dateStart?: string;
   dateEnd?: string;
 }
@@ -257,16 +264,17 @@ export interface AnomalyRecordQuery extends PageQuery {
 export interface AnomalyRecordVO {
   id: number;
   userId: number;
-  username?: string;
+  /** 关联计费记录 ID（配额不足类异常无关联记录） */
   billingId?: number;
+  /** 异常规则类型，取值同 AnomalyRecordQuery.anomalyType */
   anomalyType: string;
-  /** 双口径：理论成本与实收积分 */
-  costCredits?: number;
-  credits?: number;
-  reason?: string;
-  /** 处理状态：pending/compensated/ignored */
-  status?: string;
-  createTime: string;
+  /** 异常详情描述 */
+  detail: string;
+  /** 处理状态：0-待处理，1-已处理，2-已忽略 */
+  status: 0 | 1 | 2;
+  /** 触发时间 */
+  triggerAt: string;
+  createTime?: string;
 }
 
 // ==================== 成本管理（管理端） ====================
@@ -292,11 +300,11 @@ export interface ModelCostDetailForm {
   unitPrice: number;
 }
 
-/** 模型成本配置表单（价格版本主表 + 档位明细，与用户售价表结构对称） */
+/** 模型成本配置新增表单（价格版本主表 + 档位明细，与用户售价表结构对称） */
 export interface ModelCostForm {
   modelId: string;
-  /** 供应商 ID */
-  providerId?: number;
+  /** 供应商 ID（对齐后端实际行为：app/models/schema/ai_billing_cost.py ModelCostCreateRequest.provider_id 为必填） */
+  providerId: number;
   /** 币种（默认 CNY） */
   currency?: string;
   /** 生效时间 */
@@ -309,6 +317,18 @@ export interface ModelCostForm {
   details?: ModelCostDetailForm[];
 }
 
+/** 模型成本配置更新表单（仅版本主表字段，档位明细随新增版本生成，不可单独更新） */
+export interface ModelCostUpdateForm {
+  /** 币种 */
+  currency?: string;
+  /** 生效时间 */
+  effectiveFrom?: string;
+  /** 失效时间 */
+  effectiveTo?: string;
+  /** 状态：1-启用，0-停用 */
+  status?: 0 | 1;
+}
+
 /** 模型成本配置（价格版本） */
 export interface ModelCostVO extends ModelCostForm {
   id: number;
@@ -318,10 +338,12 @@ export interface ModelCostVO extends ModelCostForm {
   updateTime?: string;
 }
 
-/** 成本统计查询参数 */
+/** 成本统计查询参数（groupBy=overall 时为整体双口径毛利；model/provider 为成本分组分解） */
 export interface CostStatQuery {
   startTime?: string;
   endTime?: string;
+  /** 分组维度：overall-整体双口径（默认）/ model-按模型 / provider-按供应商 */
+  groupBy?: "overall" | "model" | "provider";
   modelId?: string;
   providerId?: number;
 }
@@ -331,7 +353,7 @@ export interface CostStatQuery {
  * 整体毛利为官方口径；AI 参考毛利为辅助口径。
  */
 export interface CostStatVO {
-  /** 统计维度值（model/provider/时间） */
+  /** 统计维度值 */
   dimension?: string;
   /** 收入（订单实收） */
   revenue: number;
@@ -345,14 +367,25 @@ export interface CostStatVO {
   metric: "overall" | "ai";
 }
 
+/**
+ * 成本分组统计项（groupBy=model/provider）：订单实收无法按模型/供应商归因，
+ * 仅返回维度值与成本分解，不携带收入/毛利/口径。
+ */
+export interface CostGroupVO {
+  /** 维度值：模型标识 / 供应商 ID */
+  dimension: string;
+  /** 成本（Σ sys_ai_billing.cost） */
+  cost: number;
+}
+
 // ==================== 对账 ====================
 
 /** 对账数据导入表单 */
 export interface ImportReconcileForm {
   /** 对账数据内容 */
   content: string;
-  /** 对账周期起 */
-  startTime: string;
-  /** 对账周期止 */
-  endTime: string;
+  /** 对账周期起（对齐后端实际行为：app/models/schema/ai_billing_cost.py ReconcileImportRequest.start_time 可空） */
+  startTime?: string;
+  /** 对账周期止（同上，可空） */
+  endTime?: string;
 }

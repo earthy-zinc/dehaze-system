@@ -2,6 +2,7 @@
 AI 对话模块 Schema 模型
 """
 
+import builtins
 from datetime import datetime
 from typing import Any, Literal
 
@@ -15,7 +16,9 @@ AiModelType = Literal["chat", "embedding", "rerank"]
 class AiModelCreate(OrmResult):
     provider_id: int = Field(..., description="关联供应商ID")
     model_id: str = Field(..., min_length=1, max_length=64, description="模型标识")
-    model_type: AiModelType = Field(default="chat", description="模型类型(chat:对话;embedding:向量;rerank:重排)")
+    model_type: AiModelType = Field(
+        default="chat", description="模型类型(chat:对话;embedding:向量;rerank:重排)"
+    )
     dimension: int | None = Field(
         default=None, gt=0, description="embedding向量维度(model_type=embedding时必填)"
     )
@@ -94,6 +97,19 @@ class AiModelResult(OrmResult):
     prompt_cache_prefix_len: int = Field(description="Prompt缓存稳定前缀长度")
     status: int = Field(description="状态(1:启用;0:禁用)")
     vip_level: int = Field(description="最低可用VIP等级(0:所有用户;1:VIP1及以上;2:VIP2及以上)")
+    last_test_status: int = Field(
+        default=0, description="最近可用性测试状态(0:未测试;1:可用;2:不可用)"
+    )
+    last_test_at: datetime | None = Field(default=None, description="最近可用性测试时间")
+    last_test_error: str | None = Field(default=None, description="最近可用性测试错误信息")
+    calls_24h: int | None = Field(
+        default=None, description="近24h真实调用次数(chat按llm_call;embedding/rerank按计费流水)"
+    )
+    success_rate_24h: int | None = Field(
+        default=None,
+        description="近24h调用成功率(百分比;embedding/rerank成功才落账恒为100;无调用为null)",
+    )
+    last_call_at: datetime | None = Field(default=None, description="最近一次真实调用时间")
     speed_tier: str | None = Field(
         default=None, description="速度档位(fast:快;medium:中;slow:慢;unknown:未知)"
     )
@@ -106,7 +122,9 @@ class AiModelResult(OrmResult):
 class AiModelPageQuery(BasePageQuery):
     keyword: str | None = Field(default=None, description="关键字(按显示名称/模型标识模糊搜索)")
     model_type: AiModelType | None = Field(
-        default=None, validation_alias="modelType", description="按模型类型筛选(chat/embedding/rerank)"
+        default=None,
+        validation_alias="modelType",
+        description="按模型类型筛选(chat/embedding/rerank)",
     )
 
 
@@ -149,15 +167,19 @@ class ConversationResult(OrmResult):
     user_id: int = Field(description="用户ID(管理端审计视角返回，与用户视角同源)")
     user_name: str | None = Field(default=None, description="会话所属用户名(管理端审计视角返回)")
     token_consumed: int | None = Field(
-        default=None, description="会话累计消耗Token数(input+output之和,管理端审计视角返回,无计费记录为0)"
+        default=None,
+        description="会话累计消耗Token数(input+output之和,管理端审计视角返回,无计费记录为0)",
     )
     credits_consumed: int | None = Field(
         default=None, description="会话累计消耗积分数(管理端审计视角返回,无计费记录为0)"
     )
     anomaly_type: str | None = Field(
-        default=None, description="会话异常类型(failed:存在失败消息;quota:配额不足中断;risky_tool:存在高风险工具调用;canceled:存在已取消消息)"
+        default=None,
+        description="会话异常类型(failed:存在失败消息;quota:配额不足中断;risky_tool:存在高风险工具调用;canceled:存在已取消消息)",
     )
-    anomaly_label: str | None = Field(default=None, description="会话异常展示标签(中文,配合anomaly_type展示)")
+    anomaly_label: str | None = Field(
+        default=None, description="会话异常展示标签(中文,配合anomaly_type展示)"
+    )
     title: str = Field(description="会话标题")
     model: str | None = Field(default=None, description="会话使用的模型标识")
     agent_code: str | None = Field(default=None, description="会话使用的Agent编码")
@@ -170,9 +192,7 @@ class ConversationResult(OrmResult):
         serialization_alias="modelConfig",
         description="模型参数配置",
     )
-    suggestions_enabled: int = Field(
-        default=1, description="类似问题推荐开关(0:关;1:开)"
-    )
+    suggestions_enabled: int = Field(default=1, description="类似问题推荐开关(0:关;1:开)")
     api_key_id: int | None = Field(default=None, description="绑定的API Key ID")
     message_count: int = Field(description="消息数")
     last_message_at: datetime | None = Field(default=None, description="最后消息时间")
@@ -233,27 +253,8 @@ class MessageResume(BaseModel):
     plan_edit: dict[str, Any] | None = Field(
         default=None,
         description="Plan-and-Execute 计划干预（仅计划待执行时允许）：{remove: [taskId], "
-        "reorder: [taskId...], add: {description, depends_on}}",
+        "reorder: [taskId...], add: {description, dependsOn, toolHint?, paradigm?}}",
     )
-
-
-class AiLlmCallResult(OrmResult):
-    id: int = Field(description="主键")
-    trace_id: str = Field(description="关联过程链ID")
-    seq: int = Field(description="调用序号(1起递增)")
-    step_position: int | None = Field(default=None, description="关联推理步骤序号")
-    model: str | None = Field(default=None, description="本次调用模型")
-    status: int = Field(description="调用状态(1:成功;2:失败;3:超时)")
-    error_type: str | None = Field(default=None, description="失败类型")
-    duration_ms: int = Field(description="本次调用总耗时(毫秒)")
-    first_token_ms: int | None = Field(default=None, description="首Token延迟(毫秒)")
-    prompt_tokens: int = Field(description="输入Token消耗")
-    completion_tokens: int = Field(description="输出Token消耗")
-    cached_tokens: int = Field(description="缓存命中Token数")
-    tool_call: Any | None = Field(default=None, description="工具调用信息")
-    input_snapshot: Any | None = Field(default=None, description="输入构成快照")
-    output_snapshot: Any | None = Field(default=None, description="输出摘要")
-    create_time: datetime | None = Field(default=None, description="创建时间")
 
 
 class MessageResult(OrmResult):
@@ -279,21 +280,34 @@ class MessageResult(OrmResult):
     task_id: str | None = Field(default=None, description="关联异步任务ID")
     edited: int = Field(description="是否已编辑")
     original_content: str | None = Field(default=None, description="编辑前原文")
+    used_memory_ids: list[int] | None = Field(
+        default=None, description="本次回复注入的长期记忆ID清单（注入可见性）"
+    )
     create_time: datetime | None = Field(default=None, description="创建时间")
-    trace_id: str | None = Field(default=None, description="过程链ID(消息详情附带,可观测性)")
-    context_snapshot: Any | None = Field(
-        default=None, description="上下文构成快照(消息详情附带,可观测性)"
-    )
-    llm_calls: list["AiLlmCallResult"] | None = Field(
-        default=None, description="LLM调用明细(消息详情附带,按seq正序)"
-    )
     thoughts: list["AgentThoughtResult"] | None = Field(
         default=None, description="推理步骤(消息列表附带,按position正序)"
     )
 
 
-class MessagePageQuery(BasePageQuery):
-    pass
+class MessageListQuery(BaseModel):
+    """消息列表游标查询参数。
+
+    会话消息按 id 倒序取一页（id 单调自增等价时间倒序）：before 为游标
+    （仅返回 id < before，缺省取最新一页）；limit 越界由校验异常统一返回 400 + A0400。
+    """
+
+    before: int | None = Field(
+        default=None, ge=1, description="游标：仅返回 id < before 的消息；缺省取最新一页"
+    )
+    limit: int = Field(default=50, ge=1, le=100, description="每页条数(1..100，默认50)")
+
+
+class MessageListResult(BaseModel):
+    """消息列表游标分页结果"""
+
+    list: builtins.list[MessageResult] = Field(description="消息列表(id 倒序)")
+    total: int = Field(description="会话消息总数(展示用)")
+    hasMore: bool = Field(description="是否还存在比本页最后一条更早的消息")
 
 
 class AgentThoughtResult(OrmResult):

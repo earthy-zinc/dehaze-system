@@ -38,13 +38,13 @@ export interface RolePageVO {
    */
   status?: number;
   /**
-   * 创建时间
+   * 创建时间(yyyy-MM-dd HH:mm:ss)
    */
-  createTime?: Date;
+  createTime?: string;
   /**
-   * 修改时间
+   * 修改时间(yyyy-MM-dd HH:mm:ss)
    */
-  updateTime?: Date;
+  updateTime?: string;
 }
 
 /**

@@ -20,7 +20,8 @@ class ModelPriceCreateRequest(OrmResult):
     model_id: str = Field(..., min_length=1, max_length=64, description="模型标识")
     provider_id: int = Field(..., description="供应商ID")
     unit: str = Field(
-        default="credits_per_million", max_length=24,
+        default="credits_per_million",
+        max_length=24,
         description="单价单位(credits_per_million:积分/百万token)",
     )
     effective_from: datetime | None = Field(default=None, description="价格版本生效时间")

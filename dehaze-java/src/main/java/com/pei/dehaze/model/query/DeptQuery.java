@@ -1,5 +1,7 @@
 package com.pei.dehaze.model.query;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -17,6 +19,8 @@ public class DeptQuery {
     private String keywords;
 
     @Schema(description="状态(1->正常；0->禁用)")
+    @Min(value = 0, message = "状态不能小于0")
+    @Max(value = 1, message = "状态不能大于1")
     private Integer status;
 
 }

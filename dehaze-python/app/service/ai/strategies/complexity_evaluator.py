@@ -4,9 +4,13 @@
 评估结果决定推理范式：L0→direct、L1→react、L2→plan_execute、L3→reflexion。
 """
 
+import logging
+
 from app.database import get_db_session
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.service.ai.service.agent_state import AgentState
+
+logger = logging.getLogger(__name__)
 
 # 动作关键词 → L1（ReAct）
 _ACTION_KEYWORDS = ("去雾", "处理", "评估", "分析")
@@ -46,16 +50,17 @@ async def _llm_eval(state: AgentState) -> tuple[str, dict]:
     """LLM 兜底评估复杂度，失败时保守返回 L0。返回 (等级, usage)"""
     usage: dict = {}
     try:
-        last_content = _get_last_content(state["messages"])
+        last_content = _get_last_content(state.get("messages") or [])
         async with get_db_session() as db:
             content = ""
             async for chunk in llm_client.stream_chat(
                 db,
-                state["model_id"],
+                state.get("model_id") or "",
                 [{"role": "user", "content": last_content}],
                 system_prompt=_EVAL_PROMPT,
                 temperature=0,
                 max_tokens=10,
+                user_id=state.get("user_id"),
             ):
                 if chunk.type == "text_delta":
                     content += chunk.content
@@ -64,14 +69,16 @@ async def _llm_eval(state: AgentState) -> tuple[str, dict]:
         for level in ("L0", "L1", "L2", "L3"):
             if level in content.upper():
                 return level, usage
+        logger.warning("LLM 复杂度评估返回无法识别的等级: %r", content)
     except Exception:
-        pass
+        # 降级为 L0（直连范式），但必须留下可排查的日志
+        logger.warning("LLM 复杂度评估失败，降级为 L0", exc_info=True)
     return "L0", usage
 
 
 async def evaluate_complexity(state: AgentState) -> dict:
     """评估复杂度，返回 {complexity, reasoning_mode, usage}"""
-    complexity = _rule_based_eval(_get_last_content(state["messages"]))
+    complexity = _rule_based_eval(_get_last_content(state.get("messages") or []))
     usage: dict = {}
     if complexity is None:
         complexity, usage = await _llm_eval(state)

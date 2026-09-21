@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.form.EvaluationForm;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Tag(name = "11.效果评估接口")
@@ -49,8 +51,9 @@ public class EvaluationController {
     public Result<EvaluationResultVO> getTaskStatus(
             @Parameter(description = "评估任务ID") @PathVariable Long taskId) {
         var evalLog = evalLogService.getById(taskId);
-        if (evalLog == null) {
-            return Result.failed("评估任务不存在");
+        // 非本人任务按不存在处理，不泄露资源存在性
+        if (evalLog == null || !Objects.equals(evalLog.getCreateBy(), SecurityUtils.getUserId())) {
+            return Result.failed(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在");
         }
         EvaluationResultVO result = new EvaluationResultVO();
         result.setLogId(evalLog.getId());
@@ -67,13 +70,15 @@ public class EvaluationController {
 
     @Operation(summary = "获取评估指标历史（当前用户）")
     @GetMapping("/metrics")
-    public PageResult<EvalMetricsVO> getMetrics(@ParameterObject EvalLogQuery query) {
+    public PageResult<EvalMetricsVO> getMetrics(@Valid @ParameterObject EvalLogQuery query) {
         Long userId = SecurityUtils.getUserId();
         Page<SysEvalLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysEvalLog> wrapper = new LambdaQueryWrapper<SysEvalLog>()
                 .eq(SysEvalLog::getCreateBy, userId)
                 .eq(query.getAlgorithmId() != null, SysEvalLog::getAlgorithmId, query.getAlgorithmId())
                 .eq(SysEvalLog::getStatus, LogStatusEnum.COMPLETED)
+                // 排除对比报告任务行（同表存储），指标历史仅含效果评估任务
+                .eq(SysEvalLog::getTaskType, "evaluation")
                 .orderByDesc(SysEvalLog::getCreateTime);
         Page<SysEvalLog> result = evalLogMapper.selectPage(page, wrapper);
         Page<EvalMetricsVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
@@ -93,10 +98,10 @@ public class EvaluationController {
         return PageResult.success(voPage);
     }
 
-    @Operation(summary = "获取评估日志列表")
+    @Operation(summary = "获取评估日志列表（当前用户）")
     @GetMapping("/logs")
-    public PageResult<EvalLogVO> getEvalLogs(@ParameterObject EvalLogQuery query) {
-        Page<EvalLogVO> page = evalLogService.getEvalLogPage(query);
+    public PageResult<EvalLogVO> getEvalLogs(@Valid @ParameterObject EvalLogQuery query) {
+        Page<EvalLogVO> page = evalLogService.getEvalLogPage(query, SecurityUtils.getUserId());
         return PageResult.success(page);
     }
 

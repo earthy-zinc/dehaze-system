@@ -24,10 +24,14 @@ class SysAiModelPrice(BaseModel, SoftDeleteMixin):
         Integer, nullable=False, default=1, comment="价格版本号(同模型同供应商内递增)"
     )
     unit: Mapped[str] = mapped_column(
-        String(24), nullable=False, default="credits_per_million",
+        String(24),
+        nullable=False,
+        default="credits_per_million",
         comment="单价单位(credits_per_million:积分/百万token)",
     )
-    effective_from: Mapped[datetime] = mapped_column(DateTime, nullable=False, comment="价格版本生效时间")
+    effective_from: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, comment="价格版本生效时间"
+    )
     effective_to: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True, comment="价格版本失效时间(NULL表示当前版本)"
     )

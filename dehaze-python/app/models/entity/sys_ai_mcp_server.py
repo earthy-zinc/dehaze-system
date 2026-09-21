@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Integer, SmallInteger, String
+from sqlalchemy import BigInteger, DateTime, Integer, SmallInteger, String
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -17,18 +18,14 @@ class SysAiMcpServer(BaseModel, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(
         String(128), unique=True, nullable=False, comment="Server名称(唯一)"
     )
-    description: Mapped[str | None] = mapped_column(
-        String(512), nullable=True, comment="描述"
-    )
+    description: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="描述")
     protocol_type: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
         default="streamable-http",
-        comment="传输协议(stdio;streamable-http;sse)",
+        comment="传输协议(streamable-http;sse)",
     )
-    endpoint: Mapped[str | None] = mapped_column(
-        String(512), nullable=True, comment="端点URL(stdio可为空)"
-    )
+    endpoint: Mapped[str | None] = mapped_column(String(512), nullable=True, comment="端点URL")
     auth_type: Mapped[str | None] = mapped_column(
         String(32), nullable=True, comment="鉴权方式(none;api_key;oauth2等)"
     )
@@ -39,6 +36,9 @@ class SysAiMcpServer(BaseModel, SoftDeleteMixin):
     )
     health: Mapped[str | None] = mapped_column(
         String(16), nullable=True, comment="健康状态(online;offline)"
+    )
+    last_check_time: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, comment="最近一次健康探测时间"
     )
     status: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=1, comment="状态(1:启用;0:禁用)"

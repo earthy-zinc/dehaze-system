@@ -99,6 +99,34 @@ func (s *CouponService) ListMy(ctx context.Context, userID int64, status *int) (
 	return vos, nil
 }
 
+// validateCouponForm 与 python coupon_service._validate_coupon_form 对齐（跨字段规则，字段级约束在 binding 层）
+func validateCouponForm(form *bo.CouponForm) error {
+	if form.Type == "full_reduction" && form.Threshold == nil {
+		return common.NewBizError(common.PARAM_ERROR, "满减券必须设置使用门槛")
+	}
+	if form.Type == "discount" && form.FaceValue > 100 {
+		return common.NewBizError(common.PARAM_ERROR, "折扣券面值不能超过100")
+	}
+	if form.ValidType == "fixed" && ((form.ValidStart == nil || *form.ValidStart == "") || (form.ValidEnd == nil || *form.ValidEnd == "")) {
+		return common.NewBizError(common.PARAM_ERROR, "固定有效期必须设置起止时间")
+	}
+	if form.ValidType == "relative" && form.ValidDays == nil {
+		return common.NewBizError(common.PARAM_ERROR, "相对有效期必须设置有效天数")
+	}
+	for _, scope := range form.ApplicableScope {
+		switch v := scope.(type) {
+		case float64:
+		case string:
+			if v != "vip" && v != "credit" {
+				return common.NewBizError(common.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）")
+			}
+		default:
+			return common.NewBizError(common.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）")
+		}
+	}
+	return nil
+}
+
 func (s *CouponService) Receive(ctx context.Context, userID, couponID int64) (*vo.CouponReceiveResult, error) {
 	c, err := s.couponRepo.FindByID(ctx, couponID)
 	if err != nil {
@@ -109,19 +137,29 @@ func (s *CouponService) Receive(ctx context.Context, userID, couponID int64) (*v
 	}
 
 	if c.Status != 1 {
-		return nil, common.NewBizError(common.COUPON_STOCK_EMPTY, "优惠券已停用")
-	}
-
-	if c.TotalQty > 0 && c.IssuedQty >= c.TotalQty {
-		return nil, common.NewBizError(common.COUPON_STOCK_EMPTY, "优惠券已领完")
+		return nil, common.NewBizError(common.BUSINESS_ERROR, "优惠券已禁用")
 	}
 
 	count, err := s.userCouponRepo.CountByUserIDAndCouponID(ctx, userID, couponID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询领取记录失败", err)
 	}
+
+	// 体验券直接激活权益、不产生订单，每人限领 1 次（T-PM-057）
+	if c.Type == "trial" && count > 0 {
+		return nil, common.NewBizError(common.BUSINESS_ERROR, "体验券每人限领 1 次")
+	}
+
+	if c.ValidType == "fixed" && c.ValidEnd != nil && c.ValidEnd.Before(time.Now()) {
+		return nil, common.NewBizError(common.COUPON_EXPIRED, "优惠券已过期")
+	}
+
+	if c.TotalQty > 0 && c.IssuedQty >= c.TotalQty {
+		return nil, common.NewBizError(common.COUPON_STOCK_EMPTY, "优惠券已领完")
+	}
+
 	if count >= int64(c.PerUserLimit) {
-		return nil, common.NewBizError(common.BUSINESS_ERROR, "已超过每人限领数量")
+		return nil, common.NewBizError(common.COUPON_LIMIT_EXCEEDED, "超过每人限领数量")
 	}
 
 	if s.cache != nil {
@@ -165,15 +203,20 @@ func (s *CouponService) Receive(ctx context.Context, userID, couponID int64) (*v
 		txUserCouponRepo := pkgsalerepo.NewUserCouponRepository(tx)
 		txCouponRepo := pkgsalerepo.NewCouponRepository(tx)
 
-		if err := txUserCouponRepo.Create(ctx, uc); err != nil {
+		// 条件原子扣减库存，并发下仅当仍有余量时成功（T-PM §5.2 缩比场景）
+		ok, err := txCouponRepo.IncrementIssuedQtyWithLimit(ctx, couponID, 1)
+		if err != nil {
 			return err
 		}
-		if err := txCouponRepo.IncrementIssuedQty(ctx, couponID); err != nil {
-			return err
+		if !ok {
+			return common.NewBizError(common.COUPON_STOCK_EMPTY, "优惠券已领完")
 		}
-		return nil
+		return txUserCouponRepo.Create(ctx, uc)
 	})
 	if err != nil {
+		if biz, ok := err.(*common.BizError); ok {
+			return nil, biz
+		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "领取优惠券失败", err)
 	}
 
@@ -188,20 +231,20 @@ func (s *CouponService) GetPage(ctx context.Context, q *query.CouponPageQuery) (
 	vos := make([]vo.CouponVO, 0, len(list))
 	for _, c := range list {
 		v := vo.CouponVO{
-			ID:           c.ID,
-			Name:         c.Name,
-			Type:         c.Type,
-			FaceValue:    c.FaceValue,
-			Threshold:    c.Threshold,
-			ValidType:    c.ValidType,
-			ValidDays:    c.ValidDays,
-			TotalQty:     c.TotalQty,
-			IssuedQty:    c.IssuedQty,
-			UsedQty:      c.UsedQty,
-			PerUserLimit: c.PerUserLimit,
+			ID:              c.ID,
+			Name:            c.Name,
+			Type:            c.Type,
+			FaceValue:       c.FaceValue,
+			Threshold:       c.Threshold,
+			ValidType:       c.ValidType,
+			ValidDays:       c.ValidDays,
+			TotalQty:        c.TotalQty,
+			IssuedQty:       c.IssuedQty,
+			UsedQty:         c.UsedQty,
+			PerUserLimit:    c.PerUserLimit,
 			ApplicableScope: parseScope(c.ApplicableScope.String),
-			Status:       int(c.Status),
-			CreateTime:   c.CreatedAt.Format(timeFormat),
+			Status:          int(c.Status),
+			CreateTime:      c.CreatedAt.Format(timeFormat),
 		}
 		if c.ValidStart != nil {
 			t := c.ValidStart.Format(timeFormat)
@@ -217,11 +260,8 @@ func (s *CouponService) GetPage(ctx context.Context, q *query.CouponPageQuery) (
 }
 
 func (s *CouponService) Create(ctx context.Context, form *bo.CouponForm) (*vo.CouponCreateResult, error) {
-	if form.Name == "" {
-		return nil, common.NewBizError(common.PARAM_ERROR, "优惠券名称不能为空")
-	}
-	if form.TotalQty < -1 {
-		return nil, common.NewBizError(common.PARAM_ERROR, "库存不能为负数")
+	if err := validateCouponForm(form); err != nil {
+		return nil, err
 	}
 
 	c := &model.SysCoupon{
@@ -273,6 +313,9 @@ func (s *CouponService) Update(ctx context.Context, id int64, form *bo.CouponFor
 	}
 	if c == nil {
 		return common.NewBizError(common.COUPON_NOT_FOUND, "优惠券不存在")
+	}
+	if err := validateCouponForm(form); err != nil {
+		return err
 	}
 
 	updates := map[string]interface{}{
@@ -373,6 +416,9 @@ func (s *CouponService) BatchDistribute(ctx context.Context, form *bo.CouponBatc
 	if c == nil {
 		return nil, common.NewBizError(common.COUPON_NOT_FOUND, "优惠券不存在")
 	}
+	if c.Status != 1 {
+		return nil, common.NewBizError(common.BUSINESS_ERROR, "优惠券已禁用")
+	}
 
 	var userIDs []int64
 	switch form.TargetScope {
@@ -394,6 +440,17 @@ func (s *CouponService) BatchDistribute(ctx context.Context, form *bo.CouponBatc
 
 	result := &vo.CouponBatchDistributeResult{}
 	for _, uid := range userIDs {
+		// 与 python batch_distribute 一致：逐人校验限领与余量，最后统一按成功数扣减库存
+		existing, err := s.userCouponRepo.CountByUserIDAndCouponID(ctx, uid, form.CouponID)
+		if err != nil || existing >= int64(c.PerUserLimit) {
+			result.FailCount++
+			continue
+		}
+		if c.TotalQty > 0 && int64(c.IssuedQty+result.SuccessCount) >= int64(c.TotalQty) {
+			result.FailCount++
+			continue
+		}
+
 		uc := &model.SysUserCoupon{
 			UserID:      uid,
 			CouponID:    form.CouponID,
@@ -411,11 +468,13 @@ func (s *CouponService) BatchDistribute(ctx context.Context, form *bo.CouponBatc
 			result.FailCount++
 			continue
 		}
-		if err := s.couponRepo.IncrementIssuedQty(ctx, form.CouponID); err != nil {
-			result.FailCount++
-			continue
-		}
 		result.SuccessCount++
+	}
+
+	if result.SuccessCount > 0 {
+		if _, err := s.couponRepo.IncrementIssuedQtyWithLimit(ctx, form.CouponID, int64(result.SuccessCount)); err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "扣减优惠券库存失败", err)
+		}
 	}
 
 	return result, nil
@@ -429,15 +488,15 @@ func (s *CouponService) findAllUserIDs(ctx context.Context) ([]int64, error) {
 	return s.userRepo.FindAllActiveUserIDs(ctx)
 }
 
-func parseScope(scope string) []int64 {
+func parseScope(scope string) []interface{} {
 	if scope == "" {
 		return nil
 	}
-	var ids []int64
-	if err := json.Unmarshal([]byte(scope), &ids); err != nil {
+	var scopes []interface{}
+	if err := json.Unmarshal([]byte(scope), &scopes); err != nil {
 		return nil
 	}
-	return ids
+	return scopes
 }
 
 var _ ICouponService = (*CouponService)(nil)

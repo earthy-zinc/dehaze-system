@@ -10,9 +10,7 @@ from app.repository.base import BaseRepository
 class AiMcpToolRepository(BaseRepository[SysAiMcpTool]):
     model = SysAiMcpTool
 
-    async def list_by_server(
-        self, db: AsyncSession, server_id: int
-    ) -> list[SysAiMcpTool]:
+    async def list_by_server(self, db: AsyncSession, server_id: int) -> list[SysAiMcpTool]:
         """查询某 Server 下全部工具，按 id 正序"""
         stmt = (
             select(SysAiMcpTool)

@@ -59,7 +59,7 @@ def _spawn_feedback_memory_extraction(
                     archived=0,
                 )
                 await ai_memory_repository.create(db, memory)
-        except Exception:  # noqa: BLE001 - 反馈记忆沉淀失败不影响主流程
+        except Exception:
             logger.warning("反馈记忆沉淀失败 user_id=%s", user_id, exc_info=True)
 
     task = asyncio.create_task(_run())

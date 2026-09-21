@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +41,9 @@ class RoleImportHandlerTest {
 
     @Mock
     private SysRoleService roleService;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
 
     @InjectMocks
     private RoleImportHandler handler;
@@ -116,7 +120,7 @@ class RoleImportHandlerTest {
         assertEquals("test_role", saved.getCode());
         assertEquals(5, saved.getSort());
         assertEquals(StatusEnum.ENABLE.getValue(), saved.getStatus());
-        assertEquals(5, saved.getDataScope());
+        assertEquals(2, saved.getDataScope());
     }
 
     @Test

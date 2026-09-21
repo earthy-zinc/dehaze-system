@@ -39,11 +39,16 @@ XXL-Job 定时任务 Handler
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
 
 from pyxxl import JobHandler
 
+from app.config import settings
 from app.core.constants import (
     SYSTEM_USER_ID,
     TASK_CACHE_PREFIX,
@@ -82,16 +87,15 @@ async def cleanup_expired_tasks() -> str:
             terminated_task_ids = await task_repository.get_terminated_task_ids(db, seven_days_ago)
 
             # 删除 7 天前已完成/已取消的任务
-            deleted_completed = await task_repository.delete_finished_before(
-                db, seven_days_ago
-            )
+            deleted_completed = await task_repository.delete_finished_before(db, seven_days_ago)
 
             # 删除 30 天前已终止的任务（排除 pending/processing，防止误删正在执行的任务）
-            deleted_old = await task_repository.delete_terminated_before(
-                db, thirty_days_ago
-            )
+            deleted_old = await task_repository.delete_terminated_before(db, thirty_days_ago)
 
         total = deleted_completed + deleted_old
+
+        # 删除任务产物文件（exports/{task_id}/ 前缀），失败不阻塞后续清理
+        storage_deleted = await _delete_task_export_objects(terminated_task_ids)
 
         # 精准清理 Redis 缓存（仅删除已在 DB 中被删除的任务 Key）
         redis_deleted = await _cleanup_task_redis_keys(terminated_task_ids)
@@ -101,12 +105,45 @@ async def cleanup_expired_tasks() -> str:
             f"7天前已完成/取消={deleted_completed}, "
             f"30天前已终止={deleted_old}, "
             f"总计删除={total}, "
+            f"存储文件清理={storage_deleted}, "
             f"Redis缓存清理={redis_deleted}"
         )
         logger.debug(msg)
         return msg
     finally:
         set_current_user_id(None)
+
+
+async def _delete_task_export_objects(task_ids: list[str]) -> int:
+    """删除已清理任务在存储后端中的产物文件（exports/{task_id}/ 前缀，best-effort）"""
+    if not task_ids:
+        return 0
+
+    from app.service.storage.executor import storage_executor
+    from app.service.storage.factory import get_storage_service
+
+    storage = get_storage_service()
+    bucket = settings.MINIO_BUCKET
+
+    def _sync() -> int:
+        deleted = 0
+        for task_id in task_ids:
+            prefix = f"exports/{task_id}/"
+            try:
+                objects = storage.list_objects(bucket, prefix)
+            except Exception as e:
+                logger.warning("列举任务产物失败 [%s]: %s", prefix, e)
+                continue
+            for object_name, _mtime in objects:
+                try:
+                    storage.delete(bucket, object_name)
+                    deleted += 1
+                except Exception as e:
+                    logger.warning("任务产物删除失败 [%s]: %s", object_name, e)
+        return deleted
+
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(storage_executor, _sync)
 
 
 @xxl_handler.register(name="cleanupStuckTasks")
@@ -297,8 +334,15 @@ async def cleanup_orphan_files() -> str:
             logger.error(msg)
             return msg
 
-        # 找出孤儿文件（存储中有但 DB 没有的）
-        orphan_objects = [obj for obj in storage_objects if obj not in db_object_names]
+        # 找出孤儿文件（存储中有但 DB 没有的），且超过保留阈值才清理，
+        # 避免误删"物理存储成功但元数据尚未写入"窗口期内的文件
+        threshold_seconds = settings.ORPHAN_FILE_RETENTION_HOURS * 3600
+        now = time.time()
+        orphan_objects = [
+            (obj_name, mtime)
+            for obj_name, mtime in storage_objects
+            if obj_name not in db_object_names and mtime > 0 and now - mtime > threshold_seconds
+        ]
 
         if not orphan_objects:
             msg = "孤儿文件清理完成: 未发现孤儿文件"
@@ -308,7 +352,7 @@ async def cleanup_orphan_files() -> str:
         # 删除孤儿文件
         deleted = 0
         failed = 0
-        for obj_name in orphan_objects:
+        for obj_name, _mtime in orphan_objects:
 
             def _delete(name=obj_name):
                 try:
@@ -359,7 +403,7 @@ async def cleanup_temp_files() -> str:
         threshold_seconds = threshold_hours * 3600
         now = time.time()
 
-        if not os.path.exists(temp_dir):
+        if not Path(temp_dir).exists():
             msg = f"临时文件清理: 目录不存在 {temp_dir}"
             logger.debug(msg)
             return msg
@@ -369,11 +413,11 @@ async def cleanup_temp_files() -> str:
 
         for root, _dirs, files in os.walk(temp_dir, topdown=False):
             for f in files:
-                filepath = os.path.join(root, f)
+                filepath = Path(root) / f
                 try:
-                    mtime = os.path.getmtime(filepath)
+                    mtime = filepath.stat().st_mtime
                     if now - mtime > threshold_seconds:
-                        os.unlink(filepath)
+                        filepath.unlink()
                         deleted += 1
                 except Exception as e:
                     logger.warning(f"临时文件删除失败 [{filepath}]: {e}")
@@ -382,8 +426,8 @@ async def cleanup_temp_files() -> str:
             # 尝试删除空目录（不删除 temp_dir 本身）
             if root != temp_dir:
                 try:
-                    if not os.listdir(root):
-                        os.rmdir(root)
+                    if not list(Path(root).iterdir()):
+                        Path(root).rmdir()
                 except OSError as e:
                     logger.warning(f"删除空目录失败 [{root}]: {e}")
 
@@ -973,7 +1017,7 @@ async def purge_deleted_conversations() -> str:
     """
     AI 会话物理清理（软删超过 30 天）
 
-    清理 deleted=1 且 delete_time < NOW() - 30 天的会话（物理 DELETE），
+    清理 deleted != 0 且 delete_time < NOW() - 30 天的会话（物理 DELETE），
     级联物理删除其消息记录（sys_ai_message）。与软删恢复窗口（30 天）对齐。
 
     CRON 建议: 0 30 1 * * ? （每天凌晨 1:30）
@@ -1023,9 +1067,7 @@ async def flush_provider_key_last_used() -> str:
         if redis is None:
             return "供应商Key最近使用刷库: Redis 不可用"
 
-        keys = []
-        async for key in redis.scan_iter(match="ai:provider_key:*:last_used"):
-            keys.append(key)
+        keys = [key async for key in redis.scan_iter(match="ai:provider_key:*:last_used")]
 
         updates: list[tuple[int, datetime, int]] = []
         for key in keys:
@@ -1222,8 +1264,8 @@ async def clear_vip_gift_expire() -> str:
                         db,
                         user_id=user_id,
                         source="vip_gift_expire",
-                        amount=-expire_amount,
-                        balance_after=balance_after,
+                        amount=Decimal(-expire_amount),
+                        balance_after=Decimal(balance_after),
                         reason="VIP 赠送积分月末清零",
                     )
                     cleared += 1
@@ -1258,9 +1300,7 @@ async def grant_vip_monthly_gift() -> str:
             benefits = await member_benefit_repository.list_all(db)
 
         # 待发放等级：启用且配置了赠送额度
-        gift_levels = [
-            b for b in benefits if b.status == 1 and (b.vip_gift_credits or 0) > 0
-        ]
+        gift_levels = [b for b in benefits if b.status == 1 and (b.vip_gift_credits or 0) > 0]
         granted = 0
         for benefit in gift_levels:
             amount = int(benefit.vip_gift_credits)

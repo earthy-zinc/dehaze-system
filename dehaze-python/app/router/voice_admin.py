@@ -32,7 +32,9 @@ class ProviderPageQuery(BasePageQuery):
 # ==================== Provider ====================
 
 
-@router.get("/providers", response_model=Result[PageResult[VoiceProviderResult]], summary="引擎分页列表")
+@router.get(
+    "/providers", response_model=Result[PageResult[VoiceProviderResult]], summary="引擎分页列表"
+)
 @require_permission("voice:engine:manage")
 async def list_providers(
     query: ProviderPageQuery = Depends(),
@@ -45,7 +47,9 @@ async def list_providers(
     return success(result)
 
 
-@router.get("/providers/enabled", response_model=Result[list[VoiceProviderResult]], summary="启用引擎列表")
+@router.get(
+    "/providers/enabled", response_model=Result[list[VoiceProviderResult]], summary="启用引擎列表"
+)
 @require_permission("voice:engine:manage")
 async def list_enabled_providers(
     engine_type: str = Query(..., description="能力类型(asr/tts)"),
@@ -65,7 +69,9 @@ async def create_provider(
     return success(await voice_admin_service.create_provider(db, form))
 
 
-@router.put("/providers/{provider_id}", response_model=Result[VoiceProviderResult], summary="更新引擎")
+@router.put(
+    "/providers/{provider_id}", response_model=Result[VoiceProviderResult], summary="更新引擎"
+)
 @require_permission("voice:engine:manage")
 async def update_provider(
     provider_id: int,
@@ -87,7 +93,9 @@ async def delete_provider(
     return success(msg="一切ok")
 
 
-@router.post("/providers/{provider_id}/test-connection", response_model=Result[dict], summary="连通性测试")
+@router.post(
+    "/providers/{provider_id}/test-connection", response_model=Result[dict], summary="连通性测试"
+)
 @require_permission("voice:engine:manage")
 async def test_provider_connection(
     provider_id: int,
@@ -100,7 +108,11 @@ async def test_provider_connection(
 # ==================== Key ====================
 
 
-@router.get("/providers/{provider_id}/keys", response_model=Result[list[VoiceProviderKeyResult]], summary="引擎API Key列表")
+@router.get(
+    "/providers/{provider_id}/keys",
+    response_model=Result[list[VoiceProviderKeyResult]],
+    summary="引擎API Key列表",
+)
 @require_permission("voice:engine:manage")
 async def list_keys(
     provider_id: int,
@@ -110,7 +122,11 @@ async def list_keys(
     return success(await voice_admin_service.list_keys(db, provider_id))
 
 
-@router.post("/providers/{provider_id}/keys", response_model=Result[VoiceProviderKeyResult], summary="新增API Key")
+@router.post(
+    "/providers/{provider_id}/keys",
+    response_model=Result[VoiceProviderKeyResult],
+    summary="新增API Key",
+)
 @require_permission("voice:engine:manage")
 async def create_key(
     provider_id: int,
@@ -121,7 +137,11 @@ async def create_key(
     return success(await voice_admin_service.create_key(db, provider_id, form))
 
 
-@router.put("/providers/{provider_id}/keys/{key_id}", response_model=Result[VoiceProviderKeyResult], summary="更新API Key")
+@router.put(
+    "/providers/{provider_id}/keys/{key_id}",
+    response_model=Result[VoiceProviderKeyResult],
+    summary="更新API Key",
+)
 @require_permission("voice:engine:manage")
 async def update_key(
     provider_id: int,
@@ -133,7 +153,9 @@ async def update_key(
     return success(await voice_admin_service.update_key(db, provider_id, key_id, form))
 
 
-@router.delete("/providers/{provider_id}/keys/{key_id}", response_model=Result[None], summary="删除API Key")
+@router.delete(
+    "/providers/{provider_id}/keys/{key_id}", response_model=Result[None], summary="删除API Key"
+)
 @require_permission("voice:engine:manage")
 async def delete_key(
     provider_id: int,

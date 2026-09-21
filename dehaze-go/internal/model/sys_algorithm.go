@@ -20,5 +20,5 @@ type SysAlgorithm struct {
 	AuditBy     *int64     `gorm:"column:audit_by;type:bigint;comment:审核人ID" json:"auditBy"`
 	AuditTime   *time.Time `gorm:"column:audit_time;type:datetime;comment:审核时间" json:"auditTime"`
 	AuditRemark *string    `gorm:"column:audit_remark;type:varchar(500);comment:审核备注" json:"auditRemark"`
-	Deleted     int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	Deleted     int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }

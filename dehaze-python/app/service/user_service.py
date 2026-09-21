@@ -5,10 +5,9 @@
 """
 
 import re
-import secrets
-import string
 from typing import Any
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -16,8 +15,10 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import UserContext
 from app.models.base import get_current_user_id
+from app.models.entity.sys_member import QUOTA_TASK_TYPES
 from app.models.entity.sys_user import SysUser
 from app.repository.dept_repository import DeptRepository, dept_repository
+from app.repository.member_repository import member_repository
 from app.repository.mongo_audit_log_repository import (
     MongoAuditLogRepository,
     mongo_audit_log_repository,
@@ -28,9 +29,7 @@ from app.utils.password import hash_password_async
 
 def validate_password_complexity(password: str) -> tuple[bool, str]:
     """
-    验证密码复杂度
-
-    设计文档要求：最小长度 8 位，复杂度为中（至少包含字母和数字）
+    验证密码复杂度（8-20 位，至少包含字母和数字）
 
     Args:
         password: 待验证的密码
@@ -41,6 +40,9 @@ def validate_password_complexity(password: str) -> tuple[bool, str]:
     if len(password) < settings.PASSWORD_MIN_LENGTH:
         return False, f"密码长度不能少于 {settings.PASSWORD_MIN_LENGTH} 位"
 
+    if len(password) > settings.PASSWORD_MAX_LENGTH:
+        return False, f"密码长度不能超过 {settings.PASSWORD_MAX_LENGTH} 位"
+
     if settings.PASSWORD_REQUIRE_COMPLEXITY:
         has_letter = bool(re.search(r"[a-zA-Z]", password))
         has_digit = bool(re.search(r"\d", password))
@@ -49,30 +51,6 @@ def validate_password_complexity(password: str) -> tuple[bool, str]:
             return False, "密码必须包含字母和数字"
 
     return True, ""
-
-
-def generate_random_password(length: int = 12) -> str:
-    """生成随机密码，确保包含字母和数字"""
-    if length < 4:
-        length = 4
-
-    # 确保至少包含一个字母和一个数字
-    password_chars = [
-        secrets.choice(string.ascii_lowercase),
-        secrets.choice(string.ascii_uppercase),
-        secrets.choice(string.digits),
-        secrets.choice("!@#$%^&*"),
-    ]
-
-    # 剩余字符从完整字符集中随机选择
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    remaining_length = length - len(password_chars)
-    password_chars.extend(secrets.choice(alphabet) for _ in range(remaining_length))
-
-    # 打乱字符顺序（使用密码学安全的 SystemRandom）
-    secrets.SystemRandom().shuffle(password_chars)
-
-    return "".join(password_chars)
 
 
 class UserService:
@@ -99,7 +77,7 @@ class UserService:
         create_time_start: str | None = None,
         create_time_end: str | None = None,
         current_user: UserContext | None = None,
-    ) -> tuple[list[SysUser], int]:
+    ) -> tuple[list[dict], int]:
         """
         获取用户列表（分页）
 
@@ -121,7 +99,7 @@ class UserService:
         if dept_id:
             dept_ids = await self.dept_repo.get_children_ids(db, dept_id)
 
-        return await self.repo.get_user_list(
+        users, total = await self.repo.get_user_list(
             db,
             page=page,
             page_size=page_size,
@@ -132,6 +110,25 @@ class UserService:
             create_time_end=create_time_end,
             current_user=current_user,
         )
+
+        # 会员字段批量聚合（in user_ids 单次查询，禁止 N+1）
+        member_map = await member_repository.get_by_user_ids(db, [u["id"] for u in users])
+        for u in users:
+            member = member_map.get(u["id"])
+            u["memberLevel"] = member.level_code if member else None
+            u["memberExpireTime"] = (
+                member.expire_time.strftime("%Y-%m-%d %H:%M:%S")
+                if member and member.expire_time
+                else None
+            )
+            if member:
+                used = sum(getattr(member, f"monthly_{t}_used") for t in QUOTA_TASK_TYPES)
+                quota = sum(getattr(member, f"monthly_{t}_quota") for t in QUOTA_TASK_TYPES)
+                u["quotaUsage"] = f"{used}/{quota}"
+            else:
+                u["quotaUsage"] = "0/0"
+
+        return users, total
 
     async def get_user_form_data(self, db: AsyncSession, user_id: int) -> dict[str, Any] | None:
         """
@@ -160,6 +157,7 @@ class UserService:
             "email": user.email,
             "status": user.status,
             "avatar": user.avatar,
+            "userType": user.user_type,
             "roleIds": role_ids,
         }
 
@@ -188,6 +186,7 @@ class UserService:
         mobile = data.get("mobile")
         email = data.get("email")
         status = data.get("status", 1)
+        user_type = data.get("userType") or "personal"
         role_ids = data.get("roleIds", [])
 
         if not username:
@@ -195,7 +194,7 @@ class UserService:
 
         existing_user = await self.repo.get_by_username_include_deleted(db, username)
         if existing_user:
-            raise BusinessException("该用户名不可用")
+            raise BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用")
 
         plain_password = settings.DEFAULT_PASSWORD
         hashed_password = await hash_password_async(plain_password)
@@ -209,10 +208,10 @@ class UserService:
             email=email,
             password=hashed_password,
             status=status,
+            user_type=user_type,
         )
 
-        user = await self.repo.create_user(db, user, role_ids)
-        return user
+        return await self.repo.create_user(db, user, role_ids)
 
     async def update_user_with_roles(
         self,
@@ -241,6 +240,7 @@ class UserService:
         dept_id = data.get("deptId")
         mobile = data.get("mobile")
         email = data.get("email")
+        user_type = data.get("userType")
         role_ids = data.get("roleIds", [])
         status = data.get("status")
 
@@ -258,49 +258,76 @@ class UserService:
             user.mobile = mobile
         if email is not None:
             user.email = email
+        if user_type is not None:
+            user.user_type = user_type
         if status is not None:
             user.status = status
 
         await db.flush()
         await self.repo.replace_user_roles(db, user_id, role_ids)
 
+    async def _kick_user_sessions(self, db: AsyncSession, redis: Redis, user_id: int) -> None:
+        """踢出目标用户全部在线会话并清理其角色权限缓存（禁用/删除/重置密码联动）。
+
+        局部导入避免与 auth_service 的模块级循环依赖。
+        """
+        from app.service.auth_service import auth_service
+
+        role_codes = await self.repo.get_user_role_codes(db, user_id)
+        await auth_service.kick_user_sessions(redis, user_id, role_codes)
+
     async def update_user_status(
         self,
         db: AsyncSession,
+        redis: Redis,
         user_id: int,
         status: int,
+        current_user: UserContext | None = None,
     ) -> None:
         """
         更新用户状态
 
         Args:
             db: 异步数据库会话
+            redis: Redis 客户端（禁用时踢出目标用户在线会话）
             user_id: 用户ID
             status: 状态（1-正常，0-禁用）
+            current_user: 当前登录用户（用于自禁保护校验）
 
         Raises:
-            BusinessException: 用户不存在或为超级管理员
+            BusinessException: 用户不存在、禁用超级管理员或禁用自己
         """
         user = await self.repo.get_by_id(db, user_id)
         if not user:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
 
-        if user.username == "root":
+        # 超级管理员不可禁用（防自锁），启用不受限
+        if user.username == "root" and status == 0:
             raise BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可禁用")
 
+        # 任何用户不可禁用自己（文档 T-UM-042）
+        if current_user is not None and current_user.id == user_id:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "不可禁用自己")
+
         user.status = status
+
+        # 禁用后实时踢出该用户全部在线会话（文档 §3.6.3）
+        if status == 0:
+            await self._kick_user_sessions(db, redis, user_id)
 
     async def update_password(
         self,
         db: AsyncSession,
+        redis: Redis,
         user_id: int,
         new_password: str,
     ) -> None:
         """
-        更新用户密码
+        重置用户密码（管理员操作）
 
         Args:
             db: 异步数据库会话
+            redis: Redis 客户端（重置后踢出目标用户在线会话）
             user_id: 用户ID
             new_password: 新密码
 
@@ -309,7 +336,7 @@ class UserService:
         """
         is_valid, error_msg = validate_password_complexity(new_password)
         if not is_valid:
-            raise BusinessException(error_msg)
+            raise BusinessException(ResultCode.PARAM_ERROR, error_msg)
 
         user = await self.repo.get_by_id(db, user_id)
         if not user:
@@ -326,9 +353,13 @@ class UserService:
             module="user",
         )
 
+        # 重置后踢出该用户全部在线会话，强制重新登录（文档 §3.5.3）
+        await self._kick_user_sessions(db, redis, user_id)
+
     async def delete_users(
         self,
         db: AsyncSession,
+        redis: Redis,
         ids: str,
         current_user: UserContext | None = None,
     ) -> dict[str, int]:
@@ -337,11 +368,12 @@ class UserService:
 
         Args:
             db: 异步数据库会话
+            redis: Redis 客户端（删除后踢出目标用户在线会话）
             ids: 用户ID，多个以英文逗号分隔
             current_user: 当前登录用户（用于自删保护校验）
 
         Returns:
-            删除统计 {"deleted_count": int, "protected_count": int}
+            删除统计 {"deleted_count": int}
 
         Raises:
             BusinessException: 未指定要删除的用户、不可删除自己或超级管理员不可删除
@@ -360,10 +392,7 @@ class UserService:
         if protected_ids:
             raise BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可删除")
 
-        ids_to_delete = [uid for uid in user_ids if uid not in protected_ids]
-
-        if ids_to_delete:
-            await self.repo.soft_delete_by_ids(db, ids_to_delete)
+        await self.repo.soft_delete_by_ids(db, user_ids)
 
         self.audit_repo.create_audit_async(
             operator_id=get_current_user_id(),
@@ -373,7 +402,11 @@ class UserService:
             module="user",
         )
 
-        return {"deleted_count": len(ids_to_delete), "protected_count": len(protected_ids)}
+        # 删除后踢出目标用户全部在线会话（文档 §3.4.3）
+        for user_id in user_ids:
+            await self._kick_user_sessions(db, redis, user_id)
+
+        return {"deleted_count": len(user_ids)}
 
 
 user_service = UserService()

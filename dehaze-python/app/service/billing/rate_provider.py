@@ -85,7 +85,8 @@ class RateProvider:
         return rates
 
     async def _base_unit_prices(self, db, model_id: str, provider_id: int) -> dict:
-        """取生效价格版本中 min_tokens 最小的 input/output/cached 档位单价（当前时段，积分/百万token）"""
+        """取生效价格版本中 min_tokens 最小的 input/output/cached 档位单价
+        （当前时段，积分/百万token）"""
         version = await self.ai_model_price_repository.get_effective_version(
             db, model_id, provider_id, datetime.now()
         )

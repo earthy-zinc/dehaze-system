@@ -57,7 +57,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 fileDTO.getName(),
                 fileDTO.getObjectName(),
                 fileDTO.getStorage(),
-                FileUtil.readableFileSize(fileDTO.getSize()),
+                convertSize(fileDTO.getSize()),
                 fileDTO.getSize(),
                 userId
         );
@@ -76,13 +76,24 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 fileDTO.getName(),
                 fileDTO.getObjectName(),
                 fileDTO.getStorage(),
-                FileUtil.readableFileSize(fileDTO.getSize()),
+                convertSize(fileDTO.getSize()),
                 fileDTO.getSize(),
                 userId
         );
         return this.getOne(new LambdaQueryWrapper<SysFile>()
                 .eq(SysFile::getMd5, fileDTO.getMd5())
                 .last("LIMIT 1"));
+    }
+
+    /**
+     * 文件大小人可读格式化（python convert_size 同款口径：0 → "0B"）。
+     * hutool readableFileSize 对 0 返回 "0"，三端共享 sys_file.size 列需口径一致。
+     */
+    private String convertSize(long size) {
+        if (size == 0) {
+            return "0B";
+        }
+        return FileUtil.readableFileSize(size);
     }
 
     @Override

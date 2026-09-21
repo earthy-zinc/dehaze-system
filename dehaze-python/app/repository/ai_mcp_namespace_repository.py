@@ -4,15 +4,27 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_mcp_namespace import SysAiMcpNamespace
+from app.models.entity.sys_ai_mcp_server import SysAiMcpServer
 from app.repository.base import BaseRepository
 
 
 class AiMcpNamespaceRepository(BaseRepository[SysAiMcpNamespace]):
     model = SysAiMcpNamespace
 
-    async def list_by_server(
-        self, db: AsyncSession, server_id: int
-    ) -> list[SysAiMcpNamespace]:
+    async def list_registered_names(self, db: AsyncSession, namespaces: list[str]) -> list[str]:
+        """过滤出已注册（挂在未软删 Server 下）的命名空间名。"""
+        stmt = (
+            select(SysAiMcpNamespace.namespace)
+            .join(SysAiMcpServer, SysAiMcpServer.id == SysAiMcpNamespace.server_id)
+            .where(
+                SysAiMcpNamespace.namespace.in_(namespaces),
+                SysAiMcpServer.deleted == 0,
+            )
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_by_server(self, db: AsyncSession, server_id: int) -> list[SysAiMcpNamespace]:
         """查询某 Server 下全部命名空间，按 id 正序"""
         stmt = (
             select(SysAiMcpNamespace)

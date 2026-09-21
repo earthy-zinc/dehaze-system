@@ -1,6 +1,6 @@
 # Java 后端 (dehaze-java)
 
-基于 JDK 17、Spring Boot 3.3、Spring Security 6、Redis、MyBatis-Plus 构建的前后端分离图像去雾系统后端，涵盖用户管理、角色管理、菜单管理、部门管理、字典管理等功能模块。
+基于 Spring Boot 3.5、Spring Security 6、Redis、MyBatis-Plus 构建的前后端分离图像去雾系统后端，涵盖用户管理、角色管理、菜单管理、部门管理、字典管理等功能模块。字节码目标为 Java 17（`maven.compiler.release=17`），构建/运行工具链在 JDK 17~25 均验证通过（依赖版本：Lombok 1.18.48、MapStruct 1.6.3、Mockito 5.23.0 + ByteBuddy 1.18.14、Redisson 3.52.0）。
 
 > 构建/运行/测试说明见项目根目录的 `README.md`。
 
@@ -287,6 +287,75 @@ VIP 配额校验在预测请求入口执行：处理前预校验、成功后实�
 
 `RecommendationService` 编排推荐流程：图像特征提取 → 规则匹配 → 排序 → 结果构建。当前采用规则匹配引擎（可解释性强、管理员可配置场景→算法映射），冷启动策略为新算法赋予默认评分并随机曝光。组件实现详见 [推荐管理/后端实现.md](../../03-模块设计/基础模块/推荐管理/后端实现.md)。
 
+### 3.10 AI 能力转发（B 类端点）
+
+AI 域接口按依赖性质分层：配置与 CRUD 类（A 类）由 java 原生实现，强依赖 deepagents / LLM / 向量检索的运行时端点（B 类）由 `AiProxyController` 转发至 dehaze-python(8991) 执行，**python 是唯一行为事实源**，java 不重实现推理链路。
+
+| 关注点 | 实现 |
+|--------|------|
+| 转发入口 | `AiProxyController` 以 `/api/v1/**`、`/a2a`、`/.well-known/agent.json` 通配注册；A 类端点由各业务 Controller 以精确路径承接（精确映射优先于通配） |
+| 白名单 | `AiProxyRoutes` 集中登记「方法 + 路径模板 + 端点性质」，未登记路径一律 404，禁止按客户端路径盲转发（SSRF 防线） |
+| 身份透传 | 透传 `Authorization` / `Cookie` / `X-Session-Id` / `x-api-key`，python 凭共享 Redis session 或 API Key 鉴权并做权限终审，转发层不重复鉴权 |
+| 凭据形态豁免 | 第三方协议端点（`POST /api/v1/chat/completions`、`POST /api/v1/messages`、`GET /api/v1/models`、`POST /a2a`、`GET /.well-known/agent.json`）的凭据形态（OpenAI Bearer / Claude x-api-key）java 过滤器不识别，须同时豁免 `AuthenticationFilter` 与 Security 授权规则，清单与白名单同源（`AiProxyRoutes.authExemptRoutes()`），否则合法第三方 Key 会被拦成 401 |
+| 响应透传 | 状态码与 Content-Type 原样回传，信封 `{code,msg,data}` 不解包重包 |
+| multipart | `AiProxyMultipartResolver` 使白名单内 multipart 请求绕过 Spring 解析，文件以原始字节流（含 boundary）转发、不落盘（大小上限由 python 侧校验） |
+| SSE 管道 | `AiForwardClient` 基于 JDK HttpClient + Flow.Publisher 逐块 flush 转发 `text/event-stream`，心跳注释行原样透传；客户端断连即取消上游订阅，停止 python 侧推理 |
+| 超时 | 响应头等待用 `algorithm.python.read-timeout`；流空闲超时用 `ai-proxy-stream-idle-timeout`（默认 300s），防转发线程被卡死 |
+| 降级 | python 不可达且响应未提交时返回 `C0001` 信封 + 503（非裸 500）；SSE 已输出首块则断流，由前端按 `Last-Event-ID` 重连兜底 |
+| 重试 | 不重试——SSE 与推理类 POST 非幂等，重试会导致重复推理与重复计费 |
+
+B 类端点分组：AI 对话 SSE（发送/重连/重新生成/续流/编辑/停止）、Agent·Skill·模型·供应商试运行、MCP Server 健康与工具探测、智能体评测触发与任务查询、Agent 发布门禁（发布前需真实执行回归评测，判分依赖 LLM）、定时任务手动触发、知识库库级索引生命周期（创建/删除/索引状态）、知识库文档处理与向量检索、A2A 协议、OpenAI/Claude 兼容协议。端点清单与 python 侧路由见 [AI对话/API接口.md](../../03-模块设计/核心模块/AI对话/API接口.md)。
+
+> 归属边界：知识库**库级创建/删除/索引统计必须转发 python**（`POST /api/v1/kb`、`DELETE /api/v1/kb/{id}`、`GET /api/v1/kb/{id}/index-stats`）——三者都依赖 ES 索引生命周期（python `ensure_kb_index` / `delete_kb_index` / `_stats`），java 原生实现会出现「库建了但 ES 索引不存在」的缺口；**文档版本更新与删除（`PUT|DELETE /api/v1/kb/documents/{id}`）同样必须转发 python**——须驱动 python 的文档处理流水线（`_process_document_guarded`）重建分块与索引，java 原生实现只改状态、无法驱动异步重解析，会使 `processingStatus` 永久停留 `pending`。挂载路径 Agent Card（`/api/v1/ai/agents/{id}/a2a/.well-known/agent.json`）由 java 原生实现（`AiA2aController`）；库列表/详情/编辑与文档读、测试集、低质分块等纯元数据端点仍为 java 原生（A 类）。文档处理管线、向量检索、A2A JSON-RPC 入口、全局 Agent Card 同样转发 python。两边不得重复注册同一「方法+路径」：启动级歧义由 `ControllerMappingUniquenessTest` 兜底，路径归属由 `AiProxyMappingTest` 双向锁定（原生侧不得声明该映射 + 通配须命中 `AiProxyController`）。
+
+### 3.11 AI 域 A 类端点与跨端缓存互认
+
+A 类端点由 java 原生实现并复用与 python 同一份表结构（软删 `deleted=id` + `delete_time`、错误码 A0400/A0401/A0500~A0504 三级分类一致）：
+
+| 域 | Controller | 覆盖范围 |
+|----|-----------|---------|
+| 会话与消息 | `AiConversationController` | 会话 CRUD / 回收站（30 天窗口）/ 批量操作（删除需二次确认）/ 置顶（上限 + 用户级锁）/ 已读 / 导出 / 消息列表与详情 / 分支查询与切换 / 助手消息软删 |
+| 消息反馈 | `AiMessageFeedbackController` | 点赞点踩（标签白名单 + 30 天时效）、查询、撤销（软删原行，再次反馈复活） |
+| 产物 | `AiArtifactController` | 按会话/消息/引用定位与详情（归属经所属会话反查） |
+| 长期记忆 | `AiMemoryController` | 分页/归档视图/检索重激活/清空与恢复（均需二次确认）/ 取消归档 / 导出（JSON·Markdown） |
+| Agent | `AiAgentController` | CRUD / 启停 / 复制 / Skills·MCP 命名空间·子 Agent 覆盖式绑定（存在性 + 自引用 + DFS 环检测）/ 版本历史·差异·快照查询 / 回滚 / 推理参数默认值只读契约（**发布走转发域**） |
+| A2A 端点注册 | `AiAgentEndpointController` | 外部 A2A 端点注册、更新、删除、分页 |
+| 评测 | `AiAgentEvalController` / `AiEvalCenterController` | 评测集/样本 CRUD、执行记录列表、中心总览·趋势·对比·判分状态·复核队列与复核详情 |
+| 定时任务 | `AiScheduleController` | CRUD / 启停 / 最近触发时间预览 / 执行历史 |
+| 用量统计 | `AiUsageStatsController` | 会话·Token·积分维度统计与供应商健康快照 |
+| AI 计费 | `AiBillingController` | 用户端余额/消耗汇总/计费明细/余额流水/月结账单（含下载）/退款申请；管理端退款审核与列表、多维度统计、手动调整积分、异常计费清单、成本单价 CRUD、成本-利润双口径统计、供应商对账导入 |
+| AI 可观测性 | `AiObservabilityController` | 异常总览、过程链检索/详情/导出（CSV）、会话审计时间线（含 JSON 全量导出）、资源消耗聚合、性能趋势；除过程链详情与会话时间线（登录用户可查，普通用户仅自己会话）外均需 `ai:conversation:audit` |
+| 兼容调用审计 | `AiCompatCallController` | 当前用户兼容端点调用日志分页（MongoDB `ai_api_call_log`，keyId/模型/时间筛选，时间格式非法按无过滤），分页参数为 `page/size` |
+
+**分页参数校验**：AI 域分页端点一律以 `BasePageQuery` 派生 DTO 承载分页（无过滤条件的端点复用 `PageParamQuery`，带业务筛选的用各自 Query 类），Controller 参数上加 `@Valid` 触发校验：`pageNum ≥ 1`、`pageSize ≤ 100`，越界返回 400 + `A0400` —— 与 dehaze-python `BasePageQuery`（`ge=1` / `le=100`）同口径。仅声明 DTO 而漏 `@Valid` 会让约束退化成纯文档注解（超限请求会被静默放行），`AiPaginationValidationTest` 逐端点守卫边界与放行值。
+
+> 跨端验收口径：两端均为 **HTTP 400 + `code=A0400`**（python 由 `RequestValidationError` 处理器返回，java 由 `GlobalExceptionHandler` 的 `BindException`/`MethodArgumentNotValidException` 分支返回）。`msg` 文案各自本地化（python 为英文校验描述、java 取注解 message 中文），**SDK 与跨端用例只断言 code 与状态码，不得断言 msg**。
+
+**跨端缓存互认**：Agent 写操作按 python 键规范失效 Redis（`ai:agent:{agentCode}`、`ai:agent:{id}:skills|mcp|subagents|published`、`ai:agent:list:enabled`），并向 `cache:invalidation` 频道发布 `{type:"key",key,senderId}` 广播，由接收端清各自进程内 L1（java 域内自建 `AiCacheInvalidator`，与 python 键规范逐字对齐）；会话置顶用用户级锁 `ai:conv:pin:{userId}`（TTL 10s，Lua 校验 token 后释放），锁内完成名额校验与写入。
+
+MongoDB 侧同理：`login_log`、`audit_log`、`ai_api_call_log` 三个集合由 java 与 python 共写共读，python 一律按 **snake_case** 写键，故 java 实体必须用 `@Field("user_id")` 一类显式映射、`Criteria`/`Sort` 一律用 snake_case（含 `MongoConfig` 的索引键），否则同集合内两端数据互不可见且不报错。三个实体（`LoginLog`/`AuditLog`/`AiApiCallLog`）已按此对齐，并由 `MongoLogKeyMappingTest` 守卫。
+
+计费域同理直连同一批键（与 python 运行面共用，java 不新造键名）：`ai:balance:{userId}`（整数积分语义，TTL 1h，非整数历史坏值删除回源整数化回填）、`ai:arrears:{userId}`（欠费标记，人工调整后清除）、`ai:quota:daily|monthly:{userId}:{yyyy-MM-dd|yyyy-MM}`（日/月已用配额，限额取 `sys_member_benefit` 启用权益）、`ai:bill:{userId}:{yyyy-MM}`（月结账单缓存，TTL 90 天，**snake_case JSON**，沿用 `AiJsonUtils` 与 python 互认；非当前月的空账期不写缓存且查询返回 A0401）。
+
+> 已知能力差异（诚实标注）：
+> 1. **会话检索**：java 侧关键词搜索以 DB LIKE（标题 + 消息正文命中定位）替代 python 的 ES 全文检索，且不写会话 ES 索引，检索能力弱于 python；跨端不共享会话搜索语义，以各端自洽为准。
+> 2. **发布 Agent 归转发域**：发布需真实执行回归评测并调用判分模型（LLM 能力），java 端无法产出评分——曾以"含考题即报 A0502"显式失败兜底，会让配了回归集的 Agent 在 java 环境完全无法发布。现已按"强依赖 LLM 的能力归 B 类"原则调整为：`POST /api/v1/ai/agents/{agentId}/publish` 登记入 `AiProxyRoutes` 白名单转发 python（`eval_service.run_regression(trigger_type="publish")` 真实评测后才发布），java 侧移除 `AiAgentVersionService.publish` 与 `AiEvalService.runPublishGate`；版本**查询与回滚**仍为 java 原生（回滚不评测）。该「方法+路径」只允许单边注册，由 `ControllerMappingUniquenessTest` 与 `AiAgentControllerPermissionTest#publishEndpointNotDeclaredLocally` 双重守卫。
+
+### 3.12 查询参数校验口径（分页与标量）
+
+- **分页参数**：`BasePageQuery` 派生 DTO + 参数级 `@Valid`（`pageNum ≥ 1`、`pageSize ∈ [1,100]`），越界 400 + A0400。校验载体必须是 DTO——裸 `@RequestParam` 无 `@Max` 时任意 `pageSize` 直达分页查询。
+- **标量参数**（非分页的裸 `@RequestParam`）：类级 `@Validated` + 参数注解（方法级校验，生产环境由 Boot `ValidationAutoConfiguration` 注册 `MethodValidationPostProcessor` 生效），与 python `Query(ge=, le=)` 逐一对齐：评测中心 `limit ∈ [1,500]`、复核状态 `status ∈ [1,2]`、Cron 预览 `count ∈ [1,20]`；越界与类型错误统一 400 + A0400（经 `GlobalExceptionHandler` 的 `ConstraintViolationException` / `MethodArgumentTypeMismatchException` 处理器）。
+- **时间参数**：`@DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")` + `LocalDateTime`。格式非法 → 400 + A0400；**空串视为未传（宽松口径）**，此点与 go 一致、与 python（空串 → A0400）不同，属已知跨端口径差异。
+
+### 3.13 字段约束对齐与"触发条件"口径（2026-09-18）
+
+- **数值范围（P0）**：AI 域 Form/Query 的 `status`/`enabled`/`sortOrder` 按 python 事实源补 `@Min/@Max`。**严格按 python 声明的边界加**：python 无上界的（`AgentCreate/AgentUpdate.sort_order` 仅 `ge=0`）**不得擅自加 `@Max`**；python 为 `None` 语义的（`EndpointUpdate.status`、`ScheduleUpdate.enabled`、`MemoryUpdate.status`、`AgentUpdate.sortOrder`）**只加范围、不加 `@NotNull`**，缺省必须放行。
+- **字符串长度（P1）**：按 python `max_length` 补 `@Size`——会话 title 255 / model 64 / agentCode 64 / scene 32；Agent/Endpoint 的 `modelId` 64。
+- **枚举白名单（P2）**：候选值集**不连续**的（`rating ∈ {1,-1}`，0 是洞）**不用区间注解**（区间必然放行洞中值），按既有裁决放 **service 层白名单**；值集**连续**的（`{0,1}`）`@Min/@Max` 即等价白名单。判据：`equals(1)` 二分 + 其余值静默归入另一分支是高复发脏数据模式（`AiFeedbackService`、`AiScheduleService`），凡见此写法须反查 python 是否 `Literal`/白名单。
+- **触发条件（本次最易漏的一环）**：字段注解必须配合使用处 `@Valid` 才生效。本次同时补齐 **7 处** `@RequestBody` 端点的 `@Valid`（Agent/Endpoint/Schedule/Memory/Conversation 的 update + `AiAgentEvalController` 两处）。**核缺口必须核四层：注解 + 触发条件 + service 兜底 + 必填性**。
+- **负值参数**：记忆检索 `limit < 1` 原拼出 `LIMIT -1` 触发 MySQL 语法错（500），现按 python `Query(ge=1)` 在**参数层**拒绝（类级 `@Validated` + `@Min(1)`，方法级校验）；三端统一 400 + A0400。
+- **测试约定**：方法级校验（`@Validated` + 参数注解）在 standalone MockMvc 下**不生效**（controller 未经代理），须显式 `MethodValidationPostProcessor.postProcessAfterInitialization` 包装模拟 Boot 的 `ValidationAutoConfiguration`；字段级 `@Valid` 配 `LocalValidatorFactoryBean` 即可，**两档测法不可互抄**。越界断言统一配 `verifyNoInteractions(service)`（证拦截发生在进入方法前）；"补触发条件"须用**摘除反证**自证（移除 `@Valid` 后对应用例必须失败，再补回转绿）。
+
 ## 四、缓存体系
 
 ```mermaid
@@ -533,6 +602,8 @@ sequenceDiagram
 | 收藏统一抽象 | `sys_favorite` 表 + `target_type` 区分 | 新模块接入收藏只需声明 targetType，无需重复开发表/接口/组件 |
 | 推荐引擎选型 | 规则匹配引擎 | 规则可解释性强、可快速上线、管理员可视化配置场景→算法映射 |
 | VIP 配额校验 | 拦截器模式 + Redis 原子扣减 | 处理前预校验、处理成功后实扣减、失败不扣减，保证配额与处理结果一致性；Redis 原子操作（DECR + 阈值判断）防止并发超扣 |
+| AI 运行时端点 | controller 层转发 dehaze-python | B 类端点强依赖 deepagents/LLM/向量检索，java 重实现会形成第二套行为口径；python 为唯一事实源 |
+| 转发 HTTP 客户端 | JDK HttpClient（非 RestTemplate） | 需逐块读取响应体并支持取消上游订阅，RestTemplate 无法流式；固定 HTTP/1.1 以匹配 uvicorn |
 
 ## 十四、可观测性
 

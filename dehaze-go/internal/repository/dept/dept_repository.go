@@ -92,7 +92,7 @@ func (r *DeptRepository) Delete(ctx context.Context, ids []int64) error {
 	}
 	return r.db.WithContext(ctx).Model(&model.SysDept{}).
 		Where("id IN ?", ids).
-		Updates(map[string]interface{}{"deleted": 1}).Error
+		Updates(map[string]interface{}{"deleted": gorm.Expr("id")}).Error
 }
 
 // HasChildren 检查部门是否有子部门
@@ -116,6 +116,19 @@ func (r *DeptRepository) HasUsers(ctx context.Context, deptID int64) (bool, erro
 }
 
 // HasUsersInBatch 批量检查部门是否关联用户（避免 N+1 查询）
+// ExistsByNameIncludeDeleted 同级名称唯一性检查（含已删除记录，删除后名称不可复用 T-DPT-035b）
+func (r *DeptRepository) ExistsByNameIncludeDeleted(ctx context.Context, name string, parentID int64, excludeID int64) (bool, error) {
+	db := r.db.WithContext(ctx).Unscoped().
+		Model(&model.SysDept{}).
+		Where("name = ? AND parent_id = ?", name, parentID)
+	if excludeID > 0 {
+		db = db.Where("id != ?", excludeID)
+	}
+	var count int64
+	err := db.Count(&count).Error
+	return count > 0, err
+}
+
 func (r *DeptRepository) HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error) {
 	result := make(map[int64]bool, len(deptIDs))
 	if len(deptIDs) == 0 {

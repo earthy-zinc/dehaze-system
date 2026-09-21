@@ -84,15 +84,15 @@ func (s *MessageService) Send(ctx context.Context, form *bo.MessageSendForm) (*v
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询消息模板失败", err)
 		}
 		if tpl == nil {
-			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "消息模板不存在")
+			return nil, common.NewBizError(common.MESSAGE_TEMPLATE_NOT_FOUND, "消息模板不存在")
 		}
 		if tpl.Status == 0 {
-			return nil, common.NewBizError(common.BUSINESS_ERROR, "消息模板已禁用")
+			return nil, common.NewBizError(common.TEMPLATE_DISABLED, "消息模板已禁用")
 		}
 
 		missing := checkTemplateVars(tpl.TitleTemplate+" "+tpl.ContentTemplate, form.Variables)
 		if len(missing) > 0 {
-			return nil, common.NewBizError(common.PARAM_ERROR, "模板变量缺失: "+missing[0])
+			return nil, common.NewBizError(common.TEMPLATE_VAR_MISSING, "模板变量缺失: "+missing[0])
 		}
 
 		title = renderTemplate(tpl.TitleTemplate, form.Variables)
@@ -195,7 +195,7 @@ func (s *MessageService) GetDetail(ctx context.Context, id, userID int64) (*vo.M
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询消息失败", err)
 	}
-	if msg == nil || msg.Deleted == 1 || msg.RecipientID != userID {
+	if msg == nil || msg.Deleted != 0 || msg.RecipientID != userID {
 		return nil, common.NewBizError(common.MESSAGE_NOT_FOUND, "消息不存在")
 	}
 

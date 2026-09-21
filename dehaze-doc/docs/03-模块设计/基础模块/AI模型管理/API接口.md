@@ -39,6 +39,9 @@
 | `/api/v1/ai/models` | POST | 新增模型配置 | `ai:model:manage` | F-M08-007 |
 | `/api/v1/ai/models/{model_id}` | PUT | 更新模型配置（`model_type` / `dimension` 创建后不可修改） | `ai:model:manage` | F-M08-007 |
 | `/api/v1/ai/models/{model_id}` | DELETE | 删除模型配置（逻辑删除，`model_id` 不可复用） | `ai:model:manage` | F-M08-007 |
+| `/api/v1/ai/models/{model_id}/test` | POST | 模型可用性测试（发最小真实推理请求并落库结果） | `ai:model:manage` | F-M08-007 |
+
+> 模型分页列表（GET `/api/v1/ai/models`）每项附带运行时状态字段：`lastTestStatus`（0-未测试/1-可用/2-不可用）、`lastTestAt`、`lastTestError`（最近可用性测试结果），以及近 24h 真实调用统计 `calls24h`（null=未调用）、`successRate24h`（成功率百分比）、`lastCallAt`。可用性测试响应 `data` 为 `{success, latencyMs, error}`。
 
 ### 2.3 模型用户售价接口（AiModelAPI）
 
@@ -57,7 +60,7 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/ai/usage/stats` | GET | 用量与成本统计（供应商健康看板、模型用量分布、降级与故障统计），支持时间范围（start/end）与粒度（day/hour）聚合 | `ai:model:manage` | F-M08-007 |
+| `/api/v1/ai/usage/stats` | GET | 用量与成本统计（供应商健康看板、模型用量分布、降级与故障统计），支持时间范围（start/end）过滤 | `ai:model:manage` | F-M08-007 |
 
 ## 3. 权限标识汇总
 
@@ -74,4 +77,4 @@
 | `A0301` | 访问未授权 | 无 `ai:model:manage` 权限调用管理端接口 |
 | `A0401` | 请求资源不存在 | 模型/供应商/API Key 不存在 |
 | `A0501` | 数据已存在 | `model_id` / `provider_code` / API Key 明文查重命中（含逻辑删除历史，不可复用） |
-| `A0504` | 存在关联数据，无法删除 | 删除被活跃会话引用、被知识库引用或被关联模型引用的模型/供应商 |
+| `A0504` | 存在关联数据，无法删除 | 删除被活跃会话引用的模型、被启用模型降级链（`fallback_model_id`）引用的模型、存在启用模型引用的供应商 |

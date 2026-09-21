@@ -25,7 +25,11 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/members/page` | GET | 会员分页列表 | member:list | F-MM-006 |
-| `/api/v1/members/{userId}` | GET | 会员详情 | - | F-MM-007 |
+| `/api/v1/members/{userId}` | GET | 会员详情（默认仅本人可见；持 member:list 可查任意会员） | 本人或 member:list | F-MM-007 |
+| `/api/v1/members/{userId}/growth-logs` | GET | 目标会员成长值流水（管理端详情页签） | member:list | F-MM-007 |
+| `/api/v1/members/{userId}/consumption-records` | GET | 目标会员消费记录（管理端详情页签，返回订单列表 VO） | member:list | F-MM-007 |
+| `/api/v1/members/{userId}/benefit-usage` | GET | 目标会员权益使用明细（管理端详情页签，与用户端权益概览同构） | member:list | F-MM-007 |
+| `/api/v1/members/{userId}/operation-logs` | GET | 目标会员操作日志（管理端详情页签，Mongo 审计日志） | member:list | F-MM-007 |
 | `/api/v1/members/{userId}/level` | PUT | 等级调整 | member:level:edit | F-MM-008 |
 | `/api/v1/members/{userId}/growth` | PUT | 成长值调整 | member:growth:edit | F-MM-009 |
 | `/api/v1/members/{userId}/status` | PUT | 冻结/解冻 | member:status:edit | F-MM-010 |
@@ -42,7 +46,7 @@
 | member:status:edit | 冻结/解冻 |
 | member:benefit:edit | 权益配置 |
 
-> 权益配置接口返回全部限额字段，含 `ai_credits_daily`（AI 日限额）、`ai_credits_monthly`（AI 月限额）、`multimodal_limit`（多模态视觉读取日限额）、`vip_gift_credits`（VIP 按月赠送积分）。
+> 权益配置接口返回全部限额字段，含 `ai_credits_daily`（AI 日限额）、`ai_credits_monthly`（AI 月限额）、`multimodal_limit`（多模态视觉读取日限额）、`max_devices`（同时在线设备数上限，认证模块登录时读取，管理员固定 10 台不受此配置约束）、`vip_gift_credits`（VIP 按月赠送积分）。
 
 > 未标注权限标识的接口为登录态访问。
 

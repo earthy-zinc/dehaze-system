@@ -5,13 +5,14 @@ import pytest
 
 from app.core.exceptions import BusinessException
 from app.infrastructure.llm.call import llm_client as llm_client_mod
-from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.builders.deep_agent_builder import (
     DeepAgentBuilder,
     _build_agent_core,
     _build_subagents,
     _make_ctx,
 )
+from app.service.ai.middleware.dehaze_hooks_middleware import DehazeHooksMiddleware
+from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 
 
 def _minimal_snapshot():
@@ -78,14 +79,77 @@ class TestBuildSubagents:
 
         monkeypatch.setattr(
             "app.service.ai.builders.deep_agent_builder.ai_agent_version_repository",
-            SimpleNamespace(get_published_snapshot=_no_snapshot, resolve_snapshot=lambda s: dict(s)),
+            SimpleNamespace(
+                get_published_snapshot=_no_snapshot, resolve_snapshot=lambda s: dict(s)
+            ),
         )
 
         with pytest.raises(BusinessException) as ei:
-            await _build_subagents(object(), object(), snapshot, {})
+            await _build_subagents(object(), object(), snapshot)
 
         assert "子 Agent 1001" in ei.value.message
         assert "子 Agent 1002" in ei.value.message
+
+
+def _sub_snapshot(name: str = "子去雾助手") -> dict:
+    return {**_minimal_snapshot(), "name": name, "is_subagent": 1}
+
+
+class TestLocalSubagentPath:
+    """本地子 Agent（endpoint_id 为假）路径回归：曾因 _build_agent_core 缺 subagent
+    形参而在 _build_subagents 抛 TypeError，且即便透传形参也须真正到达中间件 holder。"""
+
+    def _patch_repo(self, monkeypatch, sub_snapshot: dict):
+        async def _published(db, agent_id, version_no=None):
+            return SimpleNamespace(snapshot=sub_snapshot)
+
+        monkeypatch.setattr(
+            "app.service.ai.builders.deep_agent_builder.ai_agent_version_repository",
+            SimpleNamespace(
+                get_published_snapshot=_published,
+                resolve_snapshot=lambda s: dict(s),
+            ),
+        )
+
+    async def test_local_subagent_core_built_without_typeerror(self, monkeypatch):
+        """endpoint_id 为假 + 有效已发布快照 ⇒ 不再抛 TypeError 且构建出子 Agent core。"""
+        self._patch_repo(monkeypatch, _sub_snapshot())
+        snapshot = {"subagents": [{"agent_id": 2001, "priority": 0}]}
+
+        subagents, remote_tools = await _build_subagents(object(), object(), snapshot)
+
+        assert remote_tools == []
+        assert len(subagents) == 1
+        sub = subagents[0]
+        assert sub["name"] == "子去雾助手"
+        # SubAgent 的 model 为 NotRequired 键，先收窄再取值
+        assert "model" in sub
+        assert sub["model"] is not None
+
+    async def test_subagent_identity_reaches_middleware_holder(self, monkeypatch):
+        """子 Agent 名字/优先级须真正到达中间件 holder（写冲突仲裁的身份来源）。"""
+        self._patch_repo(monkeypatch, _sub_snapshot("仲裁子Agent"))
+        snapshot = {"subagents": [{"agent_id": 2002, "priority": 7}]}
+
+        subagents, _ = await _build_subagents(object(), object(), snapshot)
+
+        sub = subagents[0]
+        # SubAgent 的 middleware 为 NotRequired 键，先收窄再遍历
+        assert "middleware" in sub
+        hooks_mw = next(mw for mw in sub["middleware"] if isinstance(mw, DehazeHooksMiddleware))
+        assert hooks_mw._holder["name"] == "仲裁子Agent"
+        assert hooks_mw._holder["priority"] == 7
+
+    async def test_build_from_snapshot_with_local_subagent(self, monkeypatch):
+        """端到端：带本地子 Agent 的快照可正常构图（不再因 TypeError 崩）。"""
+        self._patch_repo(monkeypatch, _sub_snapshot())
+        snapshot = {**_minimal_snapshot(), "subagents": [{"agent_id": 2003, "priority": 2}]}
+
+        graph = await DeepAgentBuilder.build_from_snapshot(
+            object(), object(), snapshot, checkpointer=None
+        )
+
+        assert graph is not None
 
 
 class TestBuildAgentCore:
@@ -104,7 +168,9 @@ class TestBuildAgentCore:
             "_model_id": "test-model",
         }
         core = _build_agent_core(_minimal_snapshot(), ctx)
-        assert "model" in core and "tools" in core and "middleware" in core
+        assert "model" in core
+        assert "tools" in core
+        assert "middleware" in core
         assert isinstance(core["tools"], list)
 
 
@@ -149,8 +215,6 @@ class TestE2E:
         }
         assert _extract_tool_sequence(with_tools) == ["recommend_algorithm", "process_batch"]
 
-        msg = SimpleNamespace(
-            tool_calls=[{"name": "lookup_tool", "args": {}, "id": "c1"}]
-        )
+        msg = SimpleNamespace(tool_calls=[{"name": "lookup_tool", "args": {}, "id": "c1"}])
         without_thoughts = {"messages": [msg], "thoughts": []}
         assert _extract_tool_sequence(without_thoughts) == ["lookup_tool"]

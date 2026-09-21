@@ -68,7 +68,7 @@ class MenuAPI {
    * @param id
    * @param data
    */
-  static update(id: string, data: MenuForm) {
+  static update(id: number, data: MenuForm) {
     return request({
       url: "/api/v1/menus/" + id,
       method: "put",

@@ -3,21 +3,23 @@
 覆盖重点：路由注册、ai:agent:manage 权限拦截（A0301）、参数校验（A0400）、
 评测集/样本 CRUD、手动触发评测（trigger_type=manual）、执行记录分页与 camelCase 序列化。
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-pytestmark = pytest.mark.api
-
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db
 from app.dependencies.auth import get_current_user
-from app.dependencies.redis import get_redis_client as _ORIGINAL_GET_REDIS_CLIENT
+from app.dependencies.redis import get_redis_client as _original_get_redis_client
 from app.main import app as fastapi_app
 from app.service.ai_eval_service import eval_service
+
+pytestmark = pytest.mark.api
+
 
 MANAGE_PERM = "ai:agent:manage"
 
@@ -90,7 +92,7 @@ async def eval_client():
 
     fastapi_app.dependency_overrides[get_db] = _override_db
     fastapi_app.dependency_overrides[get_current_user] = _override_user
-    fastapi_app.dependency_overrides[_ORIGINAL_GET_REDIS_CLIENT] = _override_redis
+    fastapi_app.dependency_overrides[_original_get_redis_client] = _override_redis
     async with AsyncClient(
         transport=ASGITransport(app=fastapi_app),
         base_url="http://test",
@@ -98,7 +100,7 @@ async def eval_client():
         yield client, current_user
     fastapi_app.dependency_overrides.pop(get_db, None)
     fastapi_app.dependency_overrides.pop(get_current_user, None)
-    fastapi_app.dependency_overrides.pop(_ORIGINAL_GET_REDIS_CLIENT, None)
+    fastapi_app.dependency_overrides.pop(_original_get_redis_client, None)
 
 
 _REDIS_STUB = object()
@@ -115,6 +117,7 @@ def test_eval_paths_registered(app):
         f"{_EVAL_TPL}/datasets/{{dataset_id}}/samples",
         f"{_EVAL_TPL}/samples/{{sample_id}}",
         f"{_EVAL_TPL}/runs",
+        f"{_EVAL_TPL}/tasks/{{task_id}}",
     ):
         assert path in schema["paths"], f"缺少路径 {path}"
 
@@ -130,6 +133,7 @@ _PERMISSION_CASES = [
     ("delete", f"{_EVAL}/samples/11", None),
     ("post", f"{_EVAL}/runs", None),
     ("get", f"{_EVAL}/runs", None),
+    ("get", f"{_EVAL}/tasks/t1", None),
 ]
 
 
@@ -209,32 +213,32 @@ class TestDatasets:
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_update(db, dataset_id, form):
-            captured.update(dataset_id=dataset_id, name=form.name)
+        async def _fake_update(db, agent_id, dataset_id, form):
+            captured.update(agent_id=agent_id, dataset_id=dataset_id, name=form.name)
             return _dataset(name=form.name)
 
         monkeypatch.setattr(eval_service, "update_dataset", _fake_update)
         resp = await client.patch(f"{_EVAL}/datasets/5", json={"name": "改后名称"})
         assert resp.status_code == 200
-        assert captured == {"dataset_id": 5, "name": "改后名称"}
+        assert captured == {"agent_id": 2, "dataset_id": 5, "name": "改后名称"}
         assert resp.json()["data"]["name"] == "改后名称"
 
     async def test_delete_dataset(self, eval_client, monkeypatch):
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_delete(db, dataset_id):
-            captured["dataset_id"] = dataset_id
+        async def _fake_delete(db, agent_id, dataset_id, operator_id):
+            captured.update(agent_id=agent_id, dataset_id=dataset_id, operator_id=operator_id)
 
         monkeypatch.setattr(eval_service, "delete_dataset", _fake_delete)
         resp = await client.delete(f"{_EVAL}/datasets/5")
         assert resp.status_code == 200
-        assert captured == {"dataset_id": 5}
+        assert captured == {"agent_id": 2, "dataset_id": 5, "operator_id": 8}
 
     async def test_delete_dataset_missing_maps_a0401(self, eval_client, monkeypatch):
         client, _ = eval_client
 
-        async def _fake_delete(db, dataset_id):
+        async def _fake_delete(db, agent_id, dataset_id, operator_id):
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评测集不存在")
 
         monkeypatch.setattr(eval_service, "delete_dataset", _fake_delete)
@@ -248,8 +252,8 @@ class TestSamples:
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_create(db, dataset_id, form):
-            captured.update(dataset_id=dataset_id, task_goal=form.task_goal)
+        async def _fake_create(db, agent_id, dataset_id, form):
+            captured.update(agent_id=agent_id, dataset_id=dataset_id, task_goal=form.task_goal)
             return _sample()
 
         monkeypatch.setattr(eval_service, "create_sample", _fake_create)
@@ -263,7 +267,7 @@ class TestSamples:
             },
         )
         assert resp.status_code == 200
-        assert captured == {"dataset_id": 5, "task_goal": "为用户推荐去雾算法"}
+        assert captured == {"agent_id": 2, "dataset_id": 5, "task_goal": "为用户推荐去雾算法"}
         data = resp.json()["data"]
         assert data["datasetId"] == 5
         assert data["taskGoal"] == "为用户推荐去雾算法"
@@ -287,59 +291,129 @@ class TestSamples:
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_list(db, dataset_id):
-            captured["dataset_id"] = dataset_id
+        async def _fake_list(db, agent_id, dataset_id):
+            captured.update(agent_id=agent_id, dataset_id=dataset_id)
             return [_sample()]
 
         monkeypatch.setattr(eval_service, "list_samples", _fake_list)
         resp = await client.get(f"{_EVAL}/datasets/5/samples")
         assert resp.status_code == 200
-        assert captured == {"dataset_id": 5}
+        assert captured == {"agent_id": 2, "dataset_id": 5}
         assert resp.json()["data"][0]["riskLevel"] == "low"
 
     async def test_update_sample(self, eval_client, monkeypatch):
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_update(db, sample_id, form):
-            captured.update(sample_id=sample_id, risk_level=form.risk_level)
+        async def _fake_update(db, agent_id, sample_id, form):
+            captured.update(agent_id=agent_id, sample_id=sample_id, risk_level=form.risk_level)
             return _sample(risk_level=form.risk_level)
 
         monkeypatch.setattr(eval_service, "update_sample", _fake_update)
         resp = await client.patch(f"{_EVAL}/samples/11", json={"risk_level": "medium"})
         assert resp.status_code == 200
-        assert captured == {"sample_id": 11, "risk_level": "medium"}
+        assert captured == {"agent_id": 2, "sample_id": 11, "risk_level": "medium"}
         assert resp.json()["data"]["riskLevel"] == "medium"
 
     async def test_delete_sample(self, eval_client, monkeypatch):
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_delete(db, sample_id):
-            captured["sample_id"] = sample_id
+        async def _fake_delete(db, agent_id, sample_id, operator_id):
+            captured.update(agent_id=agent_id, sample_id=sample_id, operator_id=operator_id)
 
         monkeypatch.setattr(eval_service, "delete_sample", _fake_delete)
         resp = await client.delete(f"{_EVAL}/samples/11")
         assert resp.status_code == 200
-        assert captured == {"sample_id": 11}
+        assert captured == {"agent_id": 2, "sample_id": 11, "operator_id": 8}
 
 
 class TestRuns:
-    async def test_manual_trigger_forwards_manual_and_redis(self, eval_client, monkeypatch):
+    async def test_manual_trigger_returns_task_id(self, eval_client, monkeypatch):
         client, _ = eval_client
         captured: dict = {}
 
-        async def _fake_run(db, redis, agent_id, trigger_type="publish"):
+        async def _fake_start(db, redis, agent_id, operator_id=None, trigger_type="manual"):
             captured.update(
-                agent_id=agent_id, trigger_type=trigger_type, redis_is_stub=redis is _REDIS_STUB
+                agent_id=agent_id,
+                operator_id=operator_id,
+                trigger_type=trigger_type,
+                redis_is_stub=redis is _REDIS_STUB,
             )
-            return {"run_id": 30, "passed": True, "score_summary": None, "failed_samples": []}
+            return "task-abc"
 
-        monkeypatch.setattr(eval_service, "run_regression", _fake_run)
+        monkeypatch.setattr(eval_service, "start_eval_task", _fake_start)
         resp = await client.post(f"{_EVAL}/runs")
         assert resp.status_code == 200
-        assert captured == {"agent_id": 2, "trigger_type": "manual", "redis_is_stub": True}
-        assert resp.json()["data"] == {"runId": 30, "passed": True, "failedSamples": []}
+        assert captured == {
+            "agent_id": 2,
+            "operator_id": 8,
+            "trigger_type": "manual",
+            "redis_is_stub": True,
+        }
+        assert resp.json()["data"] == {"taskId": "task-abc"}
+
+    async def test_task_status_wire(self, eval_client, monkeypatch):
+        client, _ = eval_client
+        captured: dict = {}
+
+        async def _fake_get_task(redis, task_id):
+            captured.update(task_id=task_id, redis_is_stub=redis is _REDIS_STUB)
+            return {
+                "task_id": task_id,
+                "status": "running",
+                "progress": {"done": 1, "total": 3},
+                "error": None,
+                "result": None,
+            }
+
+        monkeypatch.setattr(eval_service, "get_eval_task", _fake_get_task)
+        resp = await client.get(f"{_EVAL}/tasks/task-abc")
+        assert resp.status_code == 200
+        assert captured == {"task_id": "task-abc", "redis_is_stub": True}
+        # 未完成的任务无 error/result（响应体省略 null 字段）
+        assert resp.json()["data"] == {
+            "taskId": "task-abc",
+            "status": "running",
+            "progress": {"done": 1, "total": 3},
+        }
+
+    async def test_task_status_succeeded_carries_gate_result(self, eval_client, monkeypatch):
+        client, _ = eval_client
+
+        async def _fake_get_task(redis, task_id):
+            return {
+                "task_id": task_id,
+                "status": "succeeded",
+                "progress": {"done": 2, "total": 2},
+                "error": None,
+                "result": {
+                    "run_id": 30,
+                    "passed": False,
+                    "degraded": False,
+                    "insufficient_eval": True,
+                    "score_summary": {},
+                    "failed_samples": [],
+                },
+            }
+
+        monkeypatch.setattr(eval_service, "get_eval_task", _fake_get_task)
+        resp = await client.get(f"{_EVAL}/tasks/task-abc")
+        assert resp.status_code == 200
+        result = resp.json()["data"]["result"]
+        assert result["insufficientEval"] is True
+        assert result["runId"] == 30
+
+    async def test_task_status_expired_maps_a0401(self, eval_client, monkeypatch):
+        client, _ = eval_client
+
+        async def _fake_get_task(redis, task_id):
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评测任务不存在或已过期")
+
+        monkeypatch.setattr(eval_service, "get_eval_task", _fake_get_task)
+        resp = await client.get(f"{_EVAL}/tasks/gone")
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0401"
 
     async def test_list_runs_forwards_dataset_filter(self, eval_client, monkeypatch):
         client, _ = eval_client

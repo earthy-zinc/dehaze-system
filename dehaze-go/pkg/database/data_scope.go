@@ -181,7 +181,7 @@ func (p *DataScopePlugin) buildDataScopeCondition(dataScope int8, deptID, userID
 					treeField, treeField, treeField))
 			args = append(args,
 				deptID,
-				fmt.Sprintf("%%,%d", deptID),   // 末尾：如 "0,1"
+				fmt.Sprintf("%%,%d", deptID),    // 末尾：如 "0,1"
 				fmt.Sprintf("%%,%d,%%", deptID), // 中间：如 "0,1,2"
 				fmt.Sprintf("%d,%%", deptID),    // 开头：如 "1,2"
 			)

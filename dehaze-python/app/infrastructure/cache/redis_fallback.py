@@ -111,9 +111,10 @@ class RedisCircuitBreaker:
         async with self._lock:
             self._failure_count += 1
             self._last_failure_time = time.monotonic()
-            if self._state == CircuitState.HALF_OPEN:
-                self._transition_to(CircuitState.OPEN)
-            elif self._failure_count >= self._failure_threshold:
+            if (
+                self._state == CircuitState.HALF_OPEN
+                or self._failure_count >= self._failure_threshold
+            ):
                 self._transition_to(CircuitState.OPEN)
 
     def _transition_to(self, new_state: CircuitState) -> None:

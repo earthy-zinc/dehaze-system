@@ -8,6 +8,8 @@
 """
 from __future__ import annotations
 
+from typing import cast
+
 import pymysql
 
 from . import config
@@ -46,7 +48,9 @@ def query(sql: str, params: tuple | list | None = None, database: str | None = N
     conn = get_conn(database)
     with conn.cursor() as cur:
         cur.execute(sql, params or ())
-        return list(cur.fetchall())
+        # 连接用 DictCursor，运行期每行是 dict；pymysql 源码无类型标注且 DictCursor
+        # 未覆写 fetchall，静态只能推成 tuple 行，故在此显式收窄。
+        return cast(list[dict], list(cur.fetchall()))
 
 
 def query_one(sql: str, params: tuple | list | None = None, database: str | None = None) -> dict | None:

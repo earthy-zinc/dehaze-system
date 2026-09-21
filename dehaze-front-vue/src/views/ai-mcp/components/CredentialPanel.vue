@@ -5,7 +5,7 @@
       class="mb-3"
       type="info"
       :closable="false"
-      title="凭据加密存储，保存后不可回显、不可查看明文，仅可重新录入覆盖。"
+      title="凭据加密存储，保存后不可回显、不可查看明文，仅可重新录入覆盖或整体清除。"
     />
     <div class="mb-3">
       <span class="text-sm">当前状态：</span>
@@ -57,7 +57,17 @@
       </el-form-item>
     </el-form>
 
-    <div class="flex justify-end">
+    <div class="flex justify-end gap-2">
+      <el-button
+        v-if="configured"
+        v-hasPerm="['ai:mcp:manage']"
+        type="danger"
+        plain
+        :loading="clearing"
+        @click="handleClear"
+      >
+        清除凭据
+      </el-button>
       <el-button
         v-hasPerm="['ai:mcp:manage']"
         type="primary"
@@ -84,6 +94,7 @@ const mcpStore = useAdminMcpStore();
 const form = reactive<McpCredentialForm>({ apiKey: "" });
 const extraRows = ref<{ key: string; value: string }[]>([]);
 const submitting = ref(false);
+const clearing = ref(false);
 
 watch(
   () => props.serverId,
@@ -120,6 +131,26 @@ async function handleSubmit() {
     extraRows.value = [];
   } finally {
     submitting.value = false;
+  }
+}
+
+async function handleClear() {
+  try {
+    await ElMessageBox.confirm(
+      "确认清除已配置凭据？清除后该 Server 将以无鉴权方式调用，直至重新录入。",
+      "清除凭据",
+      { type: "warning" }
+    );
+  } catch {
+    return;
+  }
+  clearing.value = true;
+  try {
+    await mcpStore.configureCredentials(props.serverId, { clear: true });
+    form.apiKey = "";
+    extraRows.value = [];
+  } finally {
+    clearing.value = false;
   }
 }
 </script>

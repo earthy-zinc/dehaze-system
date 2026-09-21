@@ -43,7 +43,7 @@
             <svg-icon class="mx-2" icon-class="lock" />
             <el-input
               v-model="registerData.password"
-              placeholder="密码（6-20位，含字母和数字）"
+              placeholder="密码（8-20位，含字母和数字）"
               class="h-[48px] pr-2"
               name="password"
               show-password
@@ -119,14 +119,48 @@ const registerData = ref<RegisterData & { confirmPassword: string }>({
   password: "",
   nickname: "",
   confirmPassword: "",
+  captchaKey: "",
   captchaCode: "",
 });
 
 const registerRules = {
-  username: [{ required: true, trigger: "blur", message: "请输入用户名" }],
-  nickname: [{ required: true, trigger: "blur", message: "请输入昵称" }],
-  password: [{ required: true, trigger: "blur", message: "请输入密码" }],
-  confirmPassword: [{ required: true, trigger: "blur", message: "请确认密码" }],
+  username: [
+    { required: true, trigger: "blur", message: "请输入用户名" },
+    {
+      pattern: /^[A-Za-z0-9_]{3,32}$/,
+      trigger: "blur",
+      message: "用户名只能包含字母、数字、下划线，3-32位",
+    },
+  ],
+  nickname: [
+    { required: true, trigger: "blur", message: "请输入昵称" },
+    { max: 64, trigger: "blur", message: "昵称不能超过64位" },
+  ],
+  password: [
+    { required: true, trigger: "blur", message: "请输入密码" },
+    {
+      pattern: /^(?=.*[A-Za-z])(?=.*\d)\S{8,20}$/,
+      trigger: "blur",
+      message: "密码必须包含字母和数字，8-20位",
+    },
+  ],
+  confirmPassword: [
+    { required: true, trigger: "blur", message: "请确认密码" },
+    {
+      validator: (
+        _rule: unknown,
+        value: string,
+        callback: (error?: Error) => void
+      ) => {
+        if (value !== registerData.value.password) {
+          callback(new Error("两次密码输入不一致"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur",
+    },
+  ],
   captchaCode: [{ required: true, trigger: "blur", message: "请输入验证码" }],
 };
 
@@ -140,10 +174,6 @@ function getCaptcha() {
 function handleRegister() {
   registerFormRef.value.validate((valid: boolean) => {
     if (!valid) return;
-    if (registerData.value.password !== registerData.value.confirmPassword) {
-      ElMessage.error("两次密码输入不一致");
-      return;
-    }
     loading.value = true;
     AuthAPI.register({
       username: registerData.value.username,
@@ -153,8 +183,11 @@ function handleRegister() {
       captchaCode: registerData.value.captchaCode,
     })
       .then(() => {
-        ElMessage.success("注册成功，请登录");
-        router.push("/login");
+        // 注册即自动登录：后端已写入会话 Cookie，路由守卫加载权限后进入首页（用户注册设计.md §5.1）
+        ElMessage.success("注册成功");
+        setTimeout(() => {
+          router.push("/");
+        }, 1000);
       })
       .catch(() => {
         registerData.value.captchaCode = "";

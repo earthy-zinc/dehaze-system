@@ -47,6 +47,8 @@ class SkillManager:
         self._loaded_skills: dict[str, str] = {}  # name -> SKILL.md instruction
         # 文件清单缓存：name -> {path: {"size": int, "type": str}}（内容不入内存，按需读对象存储）
         self._skill_files: dict[str, dict[str, dict]] = {}
+        # name -> skill_id：资源对象 key 按 skill_id 定位（改名不脱钩）
+        self._skill_ids: dict[str, int] = {}
 
     async def refresh_index(self, db: AsyncSession) -> None:
         """从 DB 刷新内存索引与指令缓存（仅启用项）。
@@ -58,6 +60,7 @@ class SkillManager:
         skills = await ai_skill_repository.list_all(db, status=_STATUS_ENABLED)
         self._skills_index = [{"name": s.name, "description": s.description} for s in skills]
         self._loaded_skills = {s.name: s.instruction or "" for s in skills}
+        self._skill_ids = {s.name: s.id for s in skills}
         # 资源文件清单索引（渐进披露第三级）；加载失败降级为空，不影响元数据/指令加载
         try:
             if skills:
@@ -72,13 +75,11 @@ class SkillManager:
                     }
                 id_to_name = {s.id: s.name for s in skills}
                 self._skill_files = {
-                    id_to_name[sid]: files
-                    for sid, files in by_skill.items()
-                    if sid in id_to_name
+                    id_to_name[sid]: files for sid, files in by_skill.items() if sid in id_to_name
                 }
             else:
                 self._skill_files = {}
-        except Exception:  # noqa: BLE001 - 文件索引降级，不影响核心 Skill 加载
+        except Exception:
             logger.warning("Skill 资源文件索引刷新失败", exc_info=True)
             self._skill_files = {}
 
@@ -108,7 +109,7 @@ class SkillManager:
     async def load_skill_file(self, name: str, path: str) -> str | None:
         """按需加载 SKILL 资源文件（reference/script/assets，渐进披露第三级）。
 
-        内容存对象存储（MinIO，key=skills/{name}/{path}），按需下载返回文本。
+        内容存对象存储（MinIO，key=skills/{skill_id}/{path}），按需下载返回文本。
 
         Args:
             name: Skill 名称
@@ -117,17 +118,16 @@ class SkillManager:
         Returns:
             文件文本内容，或 None 如果不存在/读取失败
         """
-        if path not in (self._skill_files.get(name) or {}):
+        skill_id = self._skill_ids.get(name)
+        if skill_id is None or path not in (self._skill_files.get(name) or {}):
             return None
         from app.service.storage.factory import get_storage_service
 
         storage = get_storage_service()
-        object_name = f"{_SKILL_OBJECT_PREFIX}/{name}/{path}"
+        object_name = f"{_SKILL_OBJECT_PREFIX}/{skill_id}/{path}"
         try:
-            data = await asyncio.to_thread(
-                storage.download, settings.MINIO_BUCKET, object_name
-            )
-        except Exception:  # noqa: BLE001 - 资源读取失败返回 None，不阻断推理
+            data = await asyncio.to_thread(storage.download, settings.MINIO_BUCKET, object_name)
+        except Exception:
             logger.warning("SKILL 资源读取失败 object=%s", object_name, exc_info=True)
             return None
         return data.decode("utf-8", errors="replace")

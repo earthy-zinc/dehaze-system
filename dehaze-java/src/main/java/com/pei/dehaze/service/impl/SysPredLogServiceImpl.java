@@ -99,6 +99,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
             predLog.setOriginMd5(originFile.getMd5());
         }
         predLog.setOriginUrl(imageUrl);
+        predLog.setRecommendedBy(form.getRecommendedBy());
         predLog.setStatus(LogStatusEnum.PROCESSING);
         this.save(predLog);
 
@@ -106,7 +107,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
 
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());
-        vo.setStatus(LogStatusEnum.PROCESSING);
+        vo.setStatus(LogStatusEnum.PROCESSING.getValue());
         return vo;
     }
 
@@ -123,6 +124,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
             predLog.setOriginMd5(originFile.getMd5());
         }
         predLog.setOriginUrl(imageUrl);
+        predLog.setRecommendedBy(form.getRecommendedBy());
         predLog.setPredFileId(result.getResultFileId());
         predLog.setPredMd5(result.getResultMd5());
         predLog.setPredUrl(result.getResultUrl());
@@ -134,7 +136,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
 
         PredictionResultVO vo = new PredictionResultVO();
         vo.setLogId(predLog.getId());
-        vo.setStatus(LogStatusEnum.COMPLETED);
+        vo.setStatus(LogStatusEnum.COMPLETED.getValue());
         vo.setResultUrl(result.getResultUrl());
         vo.setTime(elapsed);
         return vo;
@@ -145,6 +147,8 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         Page<SysPredLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysPredLog> wrapper = new LambdaQueryWrapper<SysPredLog>()
                 .eq(query.getAlgorithmId() != null, SysPredLog::getAlgorithmId, query.getAlgorithmId())
+                // 归属过滤：仅返回当前用户的预测日志
+                .eq(SysPredLog::getCreateBy, SecurityUtils.getUserId())
                 .orderByDesc(SysPredLog::getCreateTime);
 
         Page<SysPredLog> result = this.page(page, wrapper);
@@ -186,6 +190,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
             single.setFileId(item.getFileId());
             single.setImageUrl(item.getImageUrl());
             single.setParams(item.getParams());
+            single.setRecommendedBy(form.getRecommendedBy());
             results.add(this.predict(single));
         }
 

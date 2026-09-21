@@ -11,6 +11,7 @@ import {
   Delete,
 } from "@element-plus/icons-vue";
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
+import { algorithmStatusMap } from "../constants";
 
 defineOptions({
   name: "AlgorithmList",
@@ -70,9 +71,7 @@ function handleQuery() {
       allAlgorithms.value = data;
       applyTypeFilter();
     })
-    .catch((e) => {
-      ElMessage.error("查询失败：" + e.message);
-    })
+    .catch(() => {})
     .finally(() => {
       loading.value = false;
     });
@@ -129,11 +128,7 @@ function handleDelete(row?: Algorithm) {
         ElMessage.success("删除成功");
         handleQuery();
       })
-      .catch((err) => {
-        if (err !== "cancel" && err !== "close") {
-          ElMessage.error("删除失败：" + (err.message || "未知错误"));
-        }
-      });
+      .catch(() => {});
   } else if (ids.value.length > 0) {
     ElMessageBox.confirm(
       `确认删除选中的 ${ids.value.length} 个算法吗？删除后不可恢复。`,
@@ -149,11 +144,7 @@ function handleDelete(row?: Algorithm) {
         ElMessage.success("删除成功");
         handleQuery();
       })
-      .catch((err) => {
-        if (err !== "cancel" && err !== "close") {
-          ElMessage.error("删除失败：" + (err.message || "未知错误"));
-        }
-      });
+      .catch(() => {});
   } else {
     ElMessage.warning("请勾选删除项");
   }
@@ -163,18 +154,6 @@ function handleDelete(row?: Algorithm) {
 function handleSelectionChange(selection: any) {
   ids.value = selection.map((item: any) => item.id);
 }
-
-const statusMap: Record<
-  number,
-  { label: string; type: "primary" | "success" | "warning" | "info" | "danger" }
-> = {
-  1: { label: "草稿", type: "info" },
-  2: { label: "测试中", type: "warning" },
-  3: { label: "待审核", type: "warning" },
-  4: { label: "已发布", type: "success" },
-  5: { label: "已停用", type: "danger" },
-  6: { label: "已归档", type: "info" },
-};
 
 // 算法详情弹窗
 const detailVisible = ref(false);
@@ -356,11 +335,13 @@ onMounted(() => {
         >
           <template #default="scope">
             <el-tag
-              v-if="scope.row.status != null && statusMap[scope.row.status]"
-              :type="statusMap[scope.row.status].type"
+              v-if="
+                scope.row.status != null && algorithmStatusMap[scope.row.status]
+              "
+              :type="algorithmStatusMap[scope.row.status].tag"
               size="small"
             >
-              {{ statusMap[scope.row.status].label }}
+              {{ algorithmStatusMap[scope.row.status].label }}
             </el-tag>
             <span v-else class="text-muted">-</span>
           </template>
@@ -434,11 +415,13 @@ onMounted(() => {
         </el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag
-            v-if="detailData.status != null && statusMap[detailData.status]"
-            :type="statusMap[detailData.status].type"
+            v-if="
+              detailData.status != null && algorithmStatusMap[detailData.status]
+            "
+            :type="algorithmStatusMap[detailData.status].tag"
             size="small"
           >
-            {{ statusMap[detailData.status].label }}
+            {{ algorithmStatusMap[detailData.status].label }}
           </el-tag>
           <span v-else class="text-muted">-</span>
         </el-descriptions-item>

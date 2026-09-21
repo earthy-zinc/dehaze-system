@@ -28,11 +28,25 @@ public class SysMemberBenefit extends BaseEntity {
 
     private Integer monthlyDehazeQuota;
 
+    private Integer monthlyDerainQuota;
+
+    private Integer monthlyDesnowQuota;
+
+    private Integer monthlyLowlightQuota;
+
+    private Integer monthlySuperResolutionQuota;
+
+    private Integer monthlyDenoiseQuota;
+
+    private Integer monthlyInpaintQuota;
+
     private Integer monthlyEvaluateQuota;
 
     private Integer historyRetention;
 
     private Integer batchLimit;
+
+    private Integer maxDevices;
 
     private Integer priority;
 
@@ -44,12 +58,16 @@ public class SysMemberBenefit extends BaseEntity {
 
     private Integer batchDownload;
 
+    private Long aiCreditsDaily;
+
+    private Long aiCreditsMonthly;
+
     private Integer sort;
 
     private Integer status;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

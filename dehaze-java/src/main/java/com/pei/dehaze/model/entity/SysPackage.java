@@ -20,11 +20,15 @@ public class SysPackage extends BaseEntity {
 
     private String name;
 
+    private String packageType;
+
     private String levelCode;
 
     private String period;
 
     private Integer periodDays;
+
+    private Long creditAmount;
 
     private Long originalPrice;
 
@@ -40,8 +44,8 @@ public class SysPackage extends BaseEntity {
 
     private Integer status;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

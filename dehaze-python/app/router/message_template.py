@@ -43,7 +43,7 @@ async def get_template_detail(
 @require_permission("notify:template:edit")
 async def update_template(
     template_id: int = Path(...),
-    body: MessageTemplateForm = None,
+    body: MessageTemplateForm | None = None,
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):

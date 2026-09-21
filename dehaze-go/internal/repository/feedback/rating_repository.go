@@ -162,6 +162,12 @@ func (r *RatingRepository) GetStats(ctx context.Context, startTime, endTime stri
 		sum += int64(r.Rating) * r.Count
 		distribution[r.Rating] = r.Count
 	}
+	// 补齐 1-5 全档位（无评价的星级计 0，python 同口径）
+	for star := 1; star <= 5; star++ {
+		if _, ok := distribution[star]; !ok {
+			distribution[star] = 0
+		}
+	}
 
 	avg := float64(0)
 	if total > 0 {

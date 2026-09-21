@@ -4,7 +4,11 @@
 工具拉取通过构造注入 mock fetcher 规避真实联网（不触达远端 MCP Server）。
 """
 
+from typing import Any
+from unittest.mock import AsyncMock
+
 import pytest
+from redis.asyncio import Redis
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -13,16 +17,24 @@ from app.models.schema.ai_mcp import McpCallQuery
 from app.repository.ai_mcp_server_repository import ai_mcp_server_repository
 from app.repository.ai_mcp_tool_repository import ai_mcp_tool_repository
 from app.service.ai_mcp.mcp_manage_service import McpManageService
+from app.service.ai_mcp.mcp_tool_fetcher import McpToolFetcher
+
+# 测试替身：install_preset 路径不触碰 redis，仅传参占位
+_REDIS: Redis = AsyncMock(spec=Redis)
 
 
-class _FakeFetcher:
+class _FakeFetcher(McpToolFetcher):
     """mock 工具拉取器：按需返回工具列表或抛错，验证服务层落库逻辑。"""
 
-    def __init__(self, tools=None, error=None):
+    def __init__(
+        self,
+        tools: list[dict[str, Any]] | None = None,
+        error: Exception | None = None,
+    ) -> None:
         self.tools = tools or []
         self.error = error
 
-    async def list_tools(self, server):
+    async def list_tools(self, server) -> list[dict[str, Any]]:
         if self.error:
             raise self.error
         return self.tools
@@ -70,7 +82,9 @@ class TestGetTools:
         assert tools[0].input_schema == {"type": "object"}
         persisted = await ai_mcp_tool_repository.list_by_server(db, server.id)
         assert len(persisted) == 2
-        assert (await ai_mcp_server_repository.get_by_id(db, server.id)).tool_count == 2
+        reloaded = await ai_mcp_server_repository.get_by_id(db, server.id)
+        assert reloaded is not None
+        assert reloaded.tool_count == 2
 
     async def test_replaces_previous_tools(self, db, fetcher):
         server = await _create_server(db)
@@ -92,7 +106,9 @@ class TestGetTools:
         tools = await McpManageService(fetcher=fetcher).get_tools(db, server.id)
 
         assert tools == []
-        assert (await ai_mcp_server_repository.get_by_id(db, server.id)).tool_count == 0
+        reloaded = await ai_mcp_server_repository.get_by_id(db, server.id)
+        assert reloaded is not None
+        assert reloaded.tool_count == 0
 
     async def test_server_not_found_raises(self, db, fetcher):
         with pytest.raises(BusinessException) as exc:
@@ -110,9 +126,7 @@ class TestToolCall:
         async def _allow(_server):
             return True, ""
 
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _allow
-        )
+        monkeypatch.setattr("app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _allow)
 
     async def test_success_returns_result_and_records_audit(self, db, monkeypatch):
         server = await _create_server(db)
@@ -120,9 +134,7 @@ class TestToolCall:
         async def _fake_call(server, tool_name, arguments):
             return "rows: 42"
 
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
-        )
+        monkeypatch.setattr("app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call)
         svc = McpManageService(fetcher=_FakeFetcher())
 
         result = await svc.test_tool(db, server.id, "query", {"sql": "select 1"})
@@ -141,9 +153,7 @@ class TestToolCall:
         async def _fake_call(server, tool_name, arguments):
             raise ConnectionError("downstream down")
 
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
-        )
+        monkeypatch.setattr("app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call)
         svc = McpManageService(fetcher=_FakeFetcher())
 
         result = await svc.test_tool(db, server.id, "query", {})
@@ -163,12 +173,8 @@ class TestToolCall:
         async def _fake_call(server, tool_name, arguments):
             raise AssertionError("不应发起连接")
 
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _deny
-        )
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call
-        )
+        monkeypatch.setattr("app.service.ai_mcp.mcp_manage_service.apply_ssrf_guard", _deny)
+        monkeypatch.setattr("app.service.ai_mcp.mcp_manage_service.call_remote_tool", _fake_call)
         svc = McpManageService(fetcher=_FakeFetcher())
 
         with pytest.raises(BusinessException) as exc:
@@ -190,7 +196,7 @@ class TestMarket:
 
     async def test_install_creates_server_and_fetches_tools(self, db, fetcher):
         fetcher.tools = [{"name": "repo_list", "description": "仓库列表", "input_schema": {}}]
-        server = await McpManageService(fetcher=fetcher).install_preset(db, object(), "github")
+        server = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
 
         assert server.name == "GitHub"
         assert server.tool_count == 1
@@ -199,12 +205,56 @@ class TestMarket:
 
     async def test_install_reuses_existing_server(self, db, fetcher):
         existing = await _create_server(db, name="GitHub")
-        server = await McpManageService(fetcher=fetcher).install_preset(db, object(), "github")
+        server = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
         assert server.id == existing.id
+
+    async def test_market_installed_excludes_soft_deleted(self, db, fetcher):
+        server = await _create_server(db, name="GitHub")
+        await ai_mcp_server_repository.soft_delete_by_ids(db, [server.id])
+        market = await McpManageService(fetcher=fetcher).get_market(db)
+        github = next(p for p in market if p.preset_id == "github")
+        assert github.installed is False
+
+    async def test_install_resurrects_soft_deleted_server(self, db, fetcher):
+        """软删 Server 复活接入：DB 唯一键 name 含软删行，一键接入须复用并复活。"""
+        fetcher.tools = [{"name": "repo_list", "description": "仓库列表", "input_schema": {}}]
+        server = await _create_server(db, name="GitHub")
+        await ai_mcp_server_repository.soft_delete_by_ids(db, [server.id])
+
+        result = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
+
+        assert result.id == server.id
+        row = await ai_mcp_server_repository.get_by_id(db, server.id)
+        assert row is not None
+        assert row.deleted == 0
+        assert row.status == 1
+
+    async def test_install_fetch_failure_disables_server(self, db, fetcher):
+        """拉取失败（抛错或空清单）不得以"已启用"姿态出现：置禁用 + offline。"""
+        fetcher.error = RuntimeError("远端不可达")
+        failed = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
+        assert failed.status == 0
+        assert failed.health == "offline"
+
+        fetcher = _FakeFetcher(tools=[])
+        empty = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "mysql")
+        assert empty.status == 0
+        assert empty.health == "offline"
+
+    async def test_install_failure_keeps_existing_tool_snapshot(self, db, fetcher):
+        """复装已有 Server 拉取失败时保留上次成功清单，不清空（清空会连带废掉命名空间）。"""
+        fetcher.tools = [{"name": "repo_list", "description": "仓库列表", "input_schema": {}}]
+        original = await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
+        fetcher.error = RuntimeError("远端不可达")
+
+        await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "github")
+
+        persisted = await ai_mcp_tool_repository.list_by_server(db, original.id)
+        assert [t.name for t in persisted] == ["repo_list"]
 
     async def test_install_unknown_preset_raises(self, db, fetcher):
         with pytest.raises(BusinessException) as exc:
-            await McpManageService(fetcher=fetcher).install_preset(db, object(), "unknown")
+            await McpManageService(fetcher=fetcher).install_preset(db, _REDIS, "unknown")
         assert exc.value.code == ResultCode.PARAM_ERROR
 
 
@@ -250,7 +300,7 @@ class TestCallAudit:
         )
         await db.flush()
 
-        calls = await svc.list_calls(db, McpCallQuery(serverId=server.id))
+        calls = await svc.list_calls(db, McpCallQuery(server_id=server.id))
         assert len(calls.list) == 1
         assert calls.list[0].result == "failure"
 

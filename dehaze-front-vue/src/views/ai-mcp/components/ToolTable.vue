@@ -17,7 +17,7 @@
           link
           type="primary"
           size="small"
-          @click="openTest(row)"
+          @click="openTest(row as McpToolVO)"
         >
           试运行
         </el-button>
@@ -31,7 +31,12 @@
     </template>
   </el-table>
 
-  <el-dialog v-model="testVisible" title="试运行 MCP 工具" width="640px" append-to-body>
+  <el-dialog
+    v-model="testVisible"
+    title="试运行 MCP 工具"
+    width="640px"
+    append-to-body
+  >
     <el-form label-width="80px">
       <el-form-item label="工具名">
         <el-input v-model="form.toolName" readonly />
@@ -57,7 +62,9 @@
           : '调用失败'
       "
     >
-      <pre class="result-pre">{{ result.success ? result.result : result.error }}</pre>
+      <pre class="result-pre">{{
+        result.success ? result.result : result.error
+      }}</pre>
     </el-alert>
     <template #footer>
       <el-button @click="testVisible = false">关闭</el-button>
@@ -72,7 +79,11 @@ defineOptions({ name: "ToolTable" });
 import { McpToolTestResult, McpToolVO } from "dehaze-sdk-js";
 import { useAdminMcpStore } from "@/store/modules/adminMcp";
 
-const props = defineProps<{ tools: McpToolVO[]; loading?: boolean; serverId: number }>();
+const props = defineProps<{
+  tools: McpToolVO[];
+  loading?: boolean;
+  serverId: number;
+}>();
 
 const mcpStore = useAdminMcpStore();
 
@@ -130,11 +141,11 @@ function schemaSummary(schema?: Record<string, unknown>) {
 }
 
 .result-pre {
-  margin: 0;
   max-height: 200px;
+  margin: 0;
   overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
   font-size: 12px;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 </style>

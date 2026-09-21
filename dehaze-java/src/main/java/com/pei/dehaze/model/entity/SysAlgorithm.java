@@ -61,10 +61,10 @@ public class SysAlgorithm extends BaseEntity {
     private String auditRemark;
 
     /**
-     * 逻辑删除标识(0:未删除;1:已删除)
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
      */
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     /**
      * 是否为终态（已发布/已停用/已归档）

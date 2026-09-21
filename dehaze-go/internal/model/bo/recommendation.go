@@ -14,9 +14,11 @@ type FeedbackForm struct {
 
 // RuleForm 推荐规则表单
 type RuleForm struct {
-	RuleName     string  `json:"ruleName"`
-	SceneType    string  `json:"sceneType"`
-	AlgorithmIds []int64 `json:"algorithmIds"`
-	Weight       *int    `json:"weight"`
+	ID int64 `json:"id"`
+	// 更新与新增共用：body 携带 id 即为更新（python PUT /recommendations/rules 同口径）
+	RuleName     string  `json:"ruleName" binding:"required"`
+	SceneType    string  `json:"sceneType" binding:"required"`
+	AlgorithmIds []int64 `json:"algorithmIds" binding:"required,min=1"`
+	Weight       *int    `json:"weight" binding:"required,min=0,max=100"`
 	Enabled      *bool   `json:"enabled"`
 }

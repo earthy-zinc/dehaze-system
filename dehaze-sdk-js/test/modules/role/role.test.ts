@@ -1,8 +1,11 @@
-import { RoleAPI, RoleForm, RoleQuery } from "../../../index";
+import { ImportExportAPI, MenuAPI, RoleAPI, RoleForm, RoleQuery, UserAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createRoleForm, createRoleQuery } from "#/factories/role";
-import { uniqueCode } from "#/factories/common";
+import { uniqueCode, uniqueName } from "#/factories/common";
 import { ROLES } from "#/factories/constants";
+import { createUserForm } from "#/factories/user";
+import { ADMIN_PASSWORD } from "#/config/constant";
+import { login, forceLogin } from "#/utils/auth";
 
 describe("角色管理接口测试", () => {
   // 统一管理创建的角色ID，用于清理
@@ -580,6 +583,326 @@ describe("角色管理接口测试", () => {
       // ROLES.USER (id=5) 关联了多个预置用户（user、vip1、vip2、svip）
       // 后端返回 A0500 BUSINESS_ERROR
       await expectBizError(RoleAPI.deleteByIds(ROLES.USER.id.toString()), "A0500", "用户关联");
+    });
+  });
+
+  // ===== 测试强化补充：对抗性语料 / 参数边界 / 软删唯一性 / 全量替换语义 =====
+
+  describe("对抗性输入与参数边界", () => {
+    test("边界：角色名称超过 64 字符应拒绝", async () => {
+      const form = createRoleForm({ name: "超".repeat(65) });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("边界：角色编码超过 32 字符应拒绝", async () => {
+      const form = createRoleForm({ code: "C".repeat(33) });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("安全：名称含 XSS 脚本标签应拒绝", async () => {
+      const form = createRoleForm({ name: "<script>alert(1)</script>" });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("安全：编码含 javascript: 协议应拒绝", async () => {
+      const form = createRoleForm({ code: "javascript:alert(1)" });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("边界：sort 为负数应拒绝", async () => {
+      const form = createRoleForm({ sort: -1 });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("边界：status=2 非法状态值应拒绝", async () => {
+      const form = createRoleForm({ status: 2 });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("边界：dataScope=99 非法数据权限应拒绝 [T-RM-044]", async () => {
+      const form = createRoleForm({ dataScope: 99 });
+      await expectBizError(RoleAPI.add(form), "A0400");
+    });
+
+    test("脏语料持久化不变量：全半角/emoji/零宽/BOM/引号名称端到端保真", async () => {
+      // 合法脏语料（不含 HTML 标签）：固定脏字符核心 + 唯一后缀（sys_role.name 唯一索引
+      // 含软删历史行，固定名称二次运行会命中 A0501），断言后端不静默改写、往返完全一致
+      const dirtyName = `角色ＡＢＣ🎉\u200b零宽\uFEFF'\";--${uniqueCode("脏")}`;
+      const form = createRoleForm({ name: dirtyName });
+      await RoleAPI.add(form);
+      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
+      const created = pageResult.list.find((r) => r.code === form.code);
+      expect(created).toBeDefined();
+      createdRoleIds.push(created!.id!);
+
+      const formData = await RoleAPI.getFormData(created!.id!);
+      expect(formData.name).toBe(dirtyName);
+    });
+
+    test("脏语料查询：keywords 含 CRLF/引号/百分号/超长串应正常返回不报错", async () => {
+      for (const keywords of ["%'\");--", "\r\n<script>", "x".repeat(300)]) {
+        const result = await RoleAPI.getPage(createRoleQuery({ keywords }));
+        expect(Array.isArray(result.list)).toBe(true);
+      }
+    });
+
+    test("性能烟测：分页查询 3 次均在 500ms 内", async () => {
+      for (let i = 0; i < 3; i++) {
+        const start = Date.now();
+        await RoleAPI.getPage(createRoleQuery({ pageNum: 1, pageSize: 10 }));
+        expect(Date.now() - start).toBeLessThan(500);
+      }
+    });
+  });
+
+  describe("角色编码唯一性（uk 含软删行治理后语义）", () => {
+    test("软删除后同编码角色可重建（deleted 参与唯一键，软删行不占活跃键位）", async () => {
+      const form = createRoleForm();
+      await RoleAPI.add(form);
+      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: form.code }));
+      const created = pageResult.list.find((r) => r.code === form.code);
+      expect(created).toBeDefined();
+
+      await RoleAPI.deleteByIds(created!.id!.toString());
+
+      // 软删后同编码重建成功（uk 含 deleted，历史软删行不再占用键位）
+      await RoleAPI.add({ ...form, name: uniqueName("重建角色") });
+
+      // 活跃行唯一性仍受保护：同编码再建被拒（A0501）
+      await expectBizError(
+        RoleAPI.add({ ...form, name: uniqueName("活跃重复") }),
+        "A0501",
+        "已存在"
+      );
+    });
+  });
+
+  describe("菜单权限分配 - 全量替换与半选一致性", () => {
+    test("回显与请求集合精确一致（全量替换/半选/清空）", async () => {
+      const roleId = await createRoleAndGetId();
+
+      // 全选父子节点
+      await RoleAPI.updateRoleMenus(roleId, [1, 2, 3]);
+      expect((await RoleAPI.getRoleMenuIds(roleId)).slice().sort()).toEqual([1, 2, 3]);
+
+      // 半选：仅保留子集，回显精确等于请求集合（不得残留旧节点）
+      await RoleAPI.updateRoleMenus(roleId, [2]);
+      expect(await RoleAPI.getRoleMenuIds(roleId)).toEqual([2]);
+
+      // 清空
+      await RoleAPI.updateRoleMenus(roleId, []);
+      expect(await RoleAPI.getRoleMenuIds(roleId)).toEqual([]);
+    });
+  });
+
+  // ===== 越权访问控制：无 sys:role:* 权限用户调用写端点 =====
+
+  describe("越权访问控制", () => {
+    test("普通用户新增角色应 403 [T-RM-014]", async () => {
+      await login("user");
+      await expectBizError(RoleAPI.add(createRoleForm()), "A0301");
+    });
+
+    test("普通用户修改角色状态应 403 [T-RM-020 变体]", async () => {
+      await login("user");
+      await expectBizError(RoleAPI.updateStatus(ROLES.ROOT.id, 0), "A0301");
+    });
+
+    test("普通用户删除角色应 403 [T-RM-027]", async () => {
+      await login("user");
+      await expectBizError(RoleAPI.deleteByIds(ROLES.ROOT.id.toString()), "A0301");
+    });
+
+    afterAll(async () => {
+      // 恢复 admin 会话供后续用例使用
+      await login("admin");
+    });
+  });
+
+  // ===== 权限缓存与登录快照生效链路：角色授权变更 → 重新登录 → 权限即时生效 =====
+
+  describe("授权变更后权限快照生效链路", () => {
+    let testRoleId: number;
+    let testUserId: number;
+    let testUsername: string;
+    let permMenuId: number;
+    const permProofRoleCodes: string[] = [];
+
+    beforeAll(async () => {
+      // 从菜单注册表定位 sys:role:add 按钮节点（type=button 携带 perm；列表为树形需递归查找）
+      const menus = await MenuAPI.getList({ perm: "sys:role:add" });
+      const findMenu = (
+        list: Array<{ id?: number; perm?: string; children?: unknown[] }>
+      ): { id?: number } | undefined => {
+        for (const m of list) {
+          if (m.perm === "sys:role:add") return m;
+          if (m.children?.length) {
+            const found = findMenu(
+              m.children as Array<{ id?: number; perm?: string; children?: unknown[] }>
+            );
+            if (found) return found;
+          }
+        }
+        return undefined;
+      };
+      const permMenu = findMenu(menus);
+      expect(permMenu).toBeDefined();
+      permMenuId = permMenu!.id!;
+
+      // 创建测试角色并授予该接口权限
+      testRoleId = await createRoleAndGetId();
+      await RoleAPI.updateRoleMenus(testRoleId, [permMenuId]);
+
+      // 创建挂载该角色的用户，重置密码为登录凭证
+      testUsername = uniqueName("perm_user");
+      const form = createUserForm({ username: testUsername, deptId: 1, roleIds: [testRoleId] });
+      await UserAPI.add(form);
+      const pageResult = await UserAPI.getPage({
+        pageNum: 1,
+        pageSize: 100,
+        keywords: testUsername,
+      });
+      const createdUser = pageResult.list.find((u) => u.username === testUsername);
+      expect(createdUser).toBeDefined();
+      testUserId = createdUser!.id!;
+      await UserAPI.updatePassword(testUserId, ADMIN_PASSWORD);
+    });
+
+    test("授权后新登录用户拥有角色接口权限（可新增角色）", async () => {
+      await login(testUsername);
+      const form = createRoleForm({ code: uniqueCode("PERM_PROOF") });
+      await RoleAPI.add(form); // 不抛错即拥有 sys:role:add
+      permProofRoleCodes.push(form.code);
+    });
+
+    test("清空角色菜单并重新登录后权限即时回收（role:perms 缓存失效 + 快照刷新）", async () => {
+      await login("admin");
+      await RoleAPI.updateRoleMenus(testRoleId, []);
+
+      await forceLogin(testUsername); // 强制走服务端新登录，快照基于最新角色菜单
+      const form = createRoleForm({ code: uniqueCode("PERM_REVOKED") });
+      permProofRoleCodes.push(form.code); // 后端缺陷可能使创建意外成功，登记以便清理
+      await expectBizError(RoleAPI.add(form), "A0301");
+    });
+
+    afterAll(async () => {
+      await login("admin");
+      // 清理权限验证期间创建的角色
+      for (const code of permProofRoleCodes) {
+        try {
+          const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: code }));
+          const found = pageResult.list.find((r) => r.code === code);
+          if (found?.id) {
+            await RoleAPI.deleteByIds(found.id.toString());
+          }
+        } catch (e) {
+          console.warn("清理权限验证角色失败:", e);
+        }
+      }
+      try {
+        await UserAPI.deleteByIds(testUserId.toString());
+      } catch (e) {
+        console.warn("清理测试用户失败:", e);
+      }
+    });
+  });
+
+  // ===== 角色导入（F-RM-008） =====
+
+  describe("POST /api/v1/role/_import - 角色模块导入", () => {
+    const importedCodes: string[] = [];
+
+    function buildRoleCsv(rows: string[]): File {
+      const header = "角色名称,角色编码,排序,状态(启用/禁用)";
+      return new File([`${header}\n${rows.join("\n")}\n`], "role_import.csv", {
+        type: "text/csv",
+      });
+    }
+
+    const isImportResult = (
+      v: unknown
+    ): v is {
+      totalRows: number;
+      successCount: number;
+      failureCount: number;
+      errors: Array<{ row: number; message: string }>;
+    } =>
+      !!v &&
+      typeof v === "object" &&
+      "totalRows" in (v as object) &&
+      "successCount" in (v as object);
+
+    afterAll(async () => {
+      await login("admin");
+      for (const code of importedCodes) {
+        try {
+          const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: code }));
+          const found = pageResult.list.find((r) => r.code === code);
+          if (found?.id) {
+            await RoleAPI.deleteByIds(found.id.toString());
+          }
+        } catch (e) {
+          console.warn("清理导入角色失败:", e);
+        }
+      }
+    });
+
+    test("同步导入合法角色 CSV 返回 ImportResult [T-RM-049]", async () => {
+      const code1 = uniqueCode("IMP_ROLE");
+      const code2 = uniqueCode("IMP_ROLE");
+      importedCodes.push(code1, code2);
+
+      // 名称需唯一（sys_role.name 唯一索引含软删历史行，固定名称二次运行必撞）
+      const file = buildRoleCsv([
+        `${uniqueName("导入角色")},${code1},10,启用`,
+        `${uniqueName("导入角色")},${code2},20,禁用`,
+      ]);
+      const result = await ImportExportAPI.import("role", { mode: "all" }, file);
+
+      expect(isImportResult(result)).toBe(true);
+      if (isImportResult(result)) {
+        expect(result.totalRows).toBe(2);
+        expect(result.successCount).toBe(2);
+        expect(result.failureCount).toBe(0);
+      }
+
+      // 验证真实持久化
+      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: code1 }));
+      const imported = pageResult.list.find((r) => r.code === code1);
+      expect(imported).toBeDefined();
+    });
+
+    test("导入的角色数据权限必须落在 0-3 合法域内", async () => {
+      const code = uniqueCode("IMP_SCOPE");
+      importedCodes.push(code);
+
+      const file = buildRoleCsv([`${uniqueName("导入数据权限角色")},${code},10,启用`]);
+      await ImportExportAPI.import("role", { mode: "all" }, file);
+
+      const pageResult = await RoleAPI.getPage(createRoleQuery({ keywords: code }));
+      const imported = pageResult.list.find((r) => r.code === code);
+      expect(imported).toBeDefined();
+      const formData = await RoleAPI.getFormData(imported!.id!);
+      // 数据权限合法域为 0-3（全部/部门及子部门/本部门/本人）；越域值说明导入处理器写入了非法默认值
+      expect([0, 1, 2, 3]).toContain(formData.dataScope);
+    });
+
+    test("partial 模式导入含内置角色编码的行失败且其余行成功 [T-RM-050/051]", async () => {
+      const okCode = uniqueCode("IMP_PARTIAL");
+      importedCodes.push(okCode);
+
+      const file = buildRoleCsv([
+        `${uniqueName("部分导入成功行")},${okCode},10,启用`,
+        `冒充内置角色,${ROLES.ROOT.code},30,启用`,
+      ]);
+      const result = await ImportExportAPI.import("role", { mode: "partial" }, file);
+
+      expect(isImportResult(result)).toBe(true);
+      if (isImportResult(result)) {
+        expect(result.successCount).toBe(1);
+        expect(result.failureCount).toBe(1);
+        expect(result.errors.some((e) => e.message.includes("内置角色编码不可导入"))).toBe(true);
+      }
     });
   });
 });

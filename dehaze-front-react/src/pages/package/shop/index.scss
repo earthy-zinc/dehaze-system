@@ -186,8 +186,27 @@
     margin-bottom: 20px;
     border-bottom: 1px dashed var(--ant-color-border, #f0f0f0);
 
+    .credit-amount {
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--ant-color-error, #ff4d4f);
+
+      .credit-unit {
+        font-size: 16px;
+        font-weight: 500;
+      }
+    }
+
+    .credit-unit-price {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--ant-color-text-secondary, #999);
+    }
+
     .sale-price {
       display: flex;
+      gap: 10px;
       align-items: baseline;
       color: var(--ant-color-error, #ff4d4f);
 
@@ -197,10 +216,20 @@
       }
 
       .price-num {
-        margin-left: 2px;
         font-size: 36px;
         font-weight: 700;
         line-height: 1;
+
+        &:not(:first-child) {
+          margin-left: 2px;
+        }
+      }
+
+      .original-price {
+        margin-top: 0;
+        font-size: 13px;
+        color: var(--ant-color-text-secondary, #999);
+        text-decoration: line-through;
       }
     }
 
@@ -286,6 +315,51 @@
       &.highlight {
         font-weight: 600;
         color: var(--ant-color-primary, #1677ff);
+      }
+    }
+  }
+
+  .purchase-detail {
+    min-height: 120px;
+
+    .detail-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+
+      .detail-label {
+        color: var(--ant-color-text-secondary, #999);
+      }
+
+      .detail-value.discount {
+        color: var(--ant-color-success, #52c41a);
+      }
+
+      &.coupon-select-row {
+        justify-content: flex-start;
+
+        .coupon-select {
+          width: 260px;
+        }
+      }
+
+      &.total {
+        padding-top: 12px;
+        margin-top: 4px;
+        border-top: 1px dashed var(--ant-color-border, #f0f0f0);
+
+        .detail-label {
+          font-weight: 600;
+          color: var(--ant-color-text, #1f1f1f);
+        }
+
+        .detail-value.payable {
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--ant-color-error, #ff4d4f);
+        }
       }
     }
   }

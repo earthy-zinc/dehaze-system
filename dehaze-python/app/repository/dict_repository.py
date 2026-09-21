@@ -6,9 +6,10 @@
 
 from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
 
@@ -25,6 +26,7 @@ class DictRepository(BaseRepository[SysDict]):
         page_size: int,
         keywords: str | None = None,
         type_code: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysDict], int]:
         """获取字典分页列表"""
         stmt = select(SysDict)
@@ -34,6 +36,9 @@ class DictRepository(BaseRepository[SysDict]):
 
         if type_code:
             stmt = stmt.where(SysDict.type_code == type_code)
+
+        if status is not None:
+            stmt = stmt.where(SysDict.status == status)
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total_result = await db.execute(count_stmt)
@@ -84,7 +89,7 @@ class DictRepository(BaseRepository[SysDict]):
     async def get_by_type_code_and_name(
         self, db: AsyncSession, type_code: str, name: str
     ) -> SysDict | None:
-        """根据类型编码和名称查询字典项（幂等种子按 name 判重用）"""
+        """根据类型编码和名称查询字典项（种子判重/唯一性校验用，活跃行口径）"""
         stmt = select(SysDict).where(
             and_(
                 SysDict.type_code == type_code,
@@ -120,11 +125,15 @@ class DictRepository(BaseRepository[SysDict]):
         result = await db.execute(stmt)
         return result.scalar() or 0
 
-    async def delete_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> int:
-        """根据类型编码列表批量删除字典数据"""
+    async def soft_delete_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> int:
+        """根据类型编码列表批量逻辑删除字典数据（Core update 绕过 ORM 事件，需手动填充审计字段）"""
         if not type_codes:
             return 0
-        stmt = delete(SysDict).where(SysDict.type_code.in_(type_codes))
+        stmt = (
+            update(SysDict)
+            .where(SysDict.type_code.in_(type_codes))
+            .values({"deleted": 1, **get_audit_update_values()})
+        )
         result = await db.execute(stmt)
         return result.rowcount
 
@@ -160,8 +169,7 @@ class DictRepository(BaseRepository[SysDict]):
         if not dict_item:
             return False
 
-        if "typeCode" in data:
-            dict_item.type_code = data["typeCode"]
+        # typeCode 创建后不可修改（业务层已剥离），不提供更新通道
         if "name" in data:
             dict_item.name = data["name"]
         if "value" in data:
@@ -217,6 +225,7 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         page: int,
         page_size: int,
         keywords: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysDictType], int]:
         """获取字典类型分页列表"""
         stmt = select(SysDictType)
@@ -228,6 +237,9 @@ class DictTypeRepository(BaseRepository[SysDictType]):
                     SysDictType.code.like(f"%{escape_like(keywords)}%", escape="\\"),
                 )
             )
+
+        if status is not None:
+            stmt = stmt.where(SysDictType.status == status)
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
         total_result = await db.execute(count_stmt)
@@ -260,7 +272,7 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         }
 
     async def get_by_code(self, db: AsyncSession, code: str) -> SysDictType | None:
-        """根据编码查询字典类型"""
+        """根据编码查询字典类型（活跃行口径）"""
         stmt = select(SysDictType).where(SysDictType.code == code)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
@@ -288,10 +300,9 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         if not dict_type:
             return False
 
+        # code 创建后不可修改（业务层已剥离），不提供更新通道
         if "name" in data:
             dict_type.name = data["name"]
-        if "code" in data:
-            dict_type.code = data["code"]
         if "status" in data:
             dict_type.status = data["status"]
         if "remark" in data:
@@ -307,6 +318,7 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         stmt = select(func.count()).where(SysDictType.id.in_(type_ids))
         result = await db.execute(stmt)
         return result.scalar() or 0
+
 
 dict_repository = DictRepository()
 dict_type_repository = DictTypeRepository()

@@ -6,8 +6,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entity.sys_menu import SysMenu
-from app.repository.menu_repository import menu_repository
+from app.dependencies.redis import get_redis_client
 from app.service.import_export.models import (
     ImportError,
     ImportFieldConfig,
@@ -15,8 +14,10 @@ from app.service.import_export.models import (
     ImportResult,
 )
 from app.service.import_export.registry import ImportHandler
+from app.service.menu_service import menu_service
 
-_MENU_TYPE_VALUES = {"目录": 1, "菜单": 2, "外链": 3, "按钮": 4}
+# 菜单类型中文标签 → 值（对齐 Java MenuTypeEnum：1-菜单 2-目录 3-外链 4-按钮）
+_MENU_TYPE_VALUES = {"菜单": 1, "目录": 2, "外链": 3, "按钮": 4}
 
 
 class MenuImportHandler(ImportHandler):
@@ -27,7 +28,7 @@ class MenuImportHandler(ImportHandler):
         return [
             ImportFieldConfig(field="name", label="菜单名称", required=True, max_length=64),
             ImportFieldConfig(field="parent_id", label="父菜单ID(0为顶级)"),
-            ImportFieldConfig(field="type_label", label="类型(目录/菜单/外链/按钮)", required=True),
+            ImportFieldConfig(field="type_label", label="类型(菜单/目录/外链/按钮)", required=True),
             ImportFieldConfig(field="path", label="路由路径"),
             ImportFieldConfig(field="component", label="组件路径"),
             ImportFieldConfig(field="perm", label="权限标识"),
@@ -67,6 +68,7 @@ class MenuImportHandler(ImportHandler):
         failure_count = 0
         total = len(rows)
 
+        redis = await get_redis_client()
         for i, row in enumerate(rows):
             row_num = i + 2
             try:
@@ -78,21 +80,26 @@ class MenuImportHandler(ImportHandler):
                     raise ValueError("菜单类型为空")
                 type_value = _MENU_TYPE_VALUES.get(type_label)
                 if type_value is None:
-                    raise ValueError(f"菜单类型无效(应为 目录/菜单/外链/按钮): {type_label}")
+                    raise ValueError(f"菜单类型无效(应为 菜单/目录/外链/按钮): {type_label}")
 
-                menu = SysMenu(
-                    name=name,
-                    parent_id=_parse_int(row, "parent_id", 0) or 0,
-                    type=type_value,
-                    path=_get_str(row, "path") or "",
-                    component=_get_str(row, "component"),
-                    perm=_get_str(row, "perm"),
-                    visible=_parse_visible(row, "visible_label", 1),
-                    sort=_parse_int(row, "sort", 0),
-                    icon=_get_str(row, "icon") or "",
-                    redirect=_get_str(row, "redirect"),
+                # 委托 save_menu：复用业务校验（重名/权限唯一/父级类型/层级/循环引用）、
+                # tree_path 生成与新增默认授权，避免旁路写入破坏树不变量
+                await menu_service.save_menu(
+                    db,
+                    redis,
+                    {
+                        "parentId": _parse_int(row, "parent_id", 0) or 0,
+                        "name": name,
+                        "type": type_value,
+                        "path": _get_str(row, "path"),
+                        "component": _get_str(row, "component"),
+                        "perm": _get_str(row, "perm"),
+                        "visible": _parse_visible(row, "visible_label", 1),
+                        "sort": _parse_int(row, "sort", 0),
+                        "icon": _get_str(row, "icon") or "",
+                        "redirect": _get_str(row, "redirect"),
+                    },
                 )
-                await menu_repository.create_menu(db, menu)
                 success_count += 1
             except Exception as e:
                 failure_count += 1

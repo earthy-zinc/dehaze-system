@@ -16,6 +16,8 @@ type UserFormBO struct {
 	Avatar string `json:"avatar" binding:"omitempty,max=255"`
 	// 用户邮箱
 	Email string `json:"email" binding:"omitempty,email,max=128"`
+	// 用户类型(personal:个人;enterprise:企业)，可选指定，缺省 personal
+	UserType string `json:"userType" binding:"omitempty,oneof=personal enterprise"`
 	// 状态(1:启用;0:禁用)
 	Status int8 `json:"status" binding:"oneof=0 1"`
 	// 部门ID

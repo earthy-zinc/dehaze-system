@@ -26,6 +26,7 @@ public class DatasetItemCreateForm {
             description = "数据项名称，用于标识该数据项（如：scene_001）",
             example = "城市街道_001"
     )
+    @jakarta.validation.constraints.Size(max = 64, message = "数据项名称长度不能超过64")
     private String name;
 
     @Schema(

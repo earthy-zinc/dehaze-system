@@ -24,9 +24,22 @@ logger = logging.getLogger(__name__)
 PACKAGE_ONSALE_CACHE_TTL = 300
 PACKAGE_DETAIL_CACHE_TTL = 600
 
+# 配额类字段覆盖时取 max(等级权益, 覆盖值)，与履约侧（会员管理）口径一致
+BENEFIT_QUOTA_FIELDS = {
+    "monthlyDehazeQuota": "monthly_dehaze_quota",
+    "monthlyDerainQuota": "monthly_derain_quota",
+    "monthlyDesnowQuota": "monthly_desnow_quota",
+    "monthlyLowlightQuota": "monthly_lowlight_quota",
+    "monthlySuperResolutionQuota": "monthly_super_resolution_quota",
+    "monthlyDenoiseQuota": "monthly_denoise_quota",
+    "monthlyInpaintQuota": "monthly_inpaint_quota",
+    "monthlyEvaluateQuota": "monthly_evaluate_quota",
+    "aiCreditsDaily": "ai_credits_daily",
+    "aiCreditsMonthly": "ai_credits_monthly",
+}
+
 BENEFIT_FIELDS = [
-    "monthlyDehazeQuota",
-    "monthlyEvaluateQuota",
+    *BENEFIT_QUOTA_FIELDS,
     "historyRetention",
     "batchLimit",
     "priority",
@@ -81,21 +94,24 @@ def _format_dt(dt: datetime | None) -> str | None:
 def _get_effective_benefits(benefit: SysMemberBenefit | None, overrides: dict | None) -> dict:
     if not benefit:
         return {}
-    base = {
-        "monthlyDehazeQuota": benefit.monthly_dehaze_quota,
-        "monthlyEvaluateQuota": benefit.monthly_evaluate_quota,
-        "historyRetention": benefit.history_retention,
-        "batchLimit": benefit.batch_limit,
-        "priority": benefit.priority,
-        "advancedParams": benefit.advanced_params,
-        "hdExport": benefit.hd_export,
-        "reportExport": benefit.report_export,
-        "batchDownload": benefit.batch_download,
-    }
+    base = {camel: getattr(benefit, attr) for camel, attr in BENEFIT_QUOTA_FIELDS.items()}
+    base.update(
+        {
+            "historyRetention": benefit.history_retention,
+            "batchLimit": benefit.batch_limit,
+            "priority": benefit.priority,
+            "advancedParams": benefit.advanced_params,
+            "hdExport": benefit.hd_export,
+            "reportExport": benefit.report_export,
+            "batchDownload": benefit.batch_download,
+        }
+    )
     if overrides:
         for key in BENEFIT_FIELDS:
-            if key in overrides and overrides[key] is not None:
-                base[key] = overrides[key]
+            if overrides.get(key) is None:
+                continue
+            value = int(overrides[key])
+            base[key] = max(base[key], value) if key in BENEFIT_QUOTA_FIELDS else value
     return base
 
 
@@ -194,7 +210,8 @@ class PackageService:
             try:
                 return json.loads(cached_raw)
             except (json.JSONDecodeError, TypeError):
-                pass
+                # 缓存体损坏：忽略缓存回源 DB 重建（降级），但需可见以暴露缓存被写坏
+                logger.warning("在售套餐缓存损坏，回退查库重建: key=%s", cache_key, exc_info=True)
 
         packages = await package_repository.list_on_sale(db, package_type)
         if not packages:
@@ -203,7 +220,8 @@ class PackageService:
         benefit_map = {b.level_code: b for b in benefits}
         result = []
         for pkg in packages:
-            benefit = benefit_map.get(pkg.level_code)
+            # level_code 可空；无等级编码时无对应权益
+            benefit = benefit_map.get(pkg.level_code) if pkg.level_code is not None else None
             result.append(_build_package_detail(pkg, benefit))
 
         async def _set_cache():
@@ -234,7 +252,8 @@ class PackageService:
             try:
                 return json.loads(cached_raw)
             except (json.JSONDecodeError, TypeError):
-                pass
+                # 缓存体损坏：忽略缓存回源 DB 重建（降级），但需可见以暴露缓存被写坏
+                logger.warning("套餐详情缓存损坏，回退查库重建: key=%s", cache_key, exc_info=True)
 
         pkg = await package_repository.get_by_id(db, package_id)
         if not pkg:
@@ -243,7 +262,12 @@ class PackageService:
         # 缓存路径无此问题：上下架/修改/删除均会失效 package:detail 缓存。
         if pkg.status == 0:
             raise BusinessException(ResultCode.PACKAGE_OFF_SHELF)
-        benefit = await member_benefit_repository.get_by_level_code(db, pkg.level_code)
+        # level_code 可空；无等级编码时无对应权益
+        benefit = (
+            await member_benefit_repository.get_by_level_code(db, pkg.level_code)
+            if pkg.level_code is not None
+            else None
+        )
         detail = _build_package_detail(pkg, benefit)
 
         active_promos = await promotion_repository.list_active_by_package_id(db, package_id)
@@ -281,10 +305,14 @@ class PackageService:
         if not items:
             return {"list": [], "total": total}
         benefits = await member_benefit_repository.list_all(db)
-        benefit_map = {b.level_code: b for b in benefits}
+        level_names = {b.level_code: b.level_name for b in benefits}
         list_data = [
             {
-                **_build_package_list_vo(pkg),
+                **_build_package_list_vo(
+                    # level_code 可空；键归一为空串，缺省回退原值（或空串）
+                    pkg,
+                    level_names.get(pkg.level_code or "", pkg.level_code or ""),
+                ),
                 "status": pkg.status,
                 "createTime": _format_dt(pkg.create_time),
             }
@@ -313,11 +341,12 @@ class PackageService:
         }
 
     async def create(self, db: AsyncSession, form: dict) -> None:
-        existing = await package_repository.get_by_name(db, form["name"])
-        if existing:
-            raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
+        # 先做类型/参数校验（文档 §5.1 顺序），非法类型不应误报名称占用
         package_type = form.get("packageType", "vip")
         _validate_package_form(form, package_type)
+        existing = await package_repository.get_by_name(db, form["name"])
+        if existing:
+            raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
 
         if package_type == "credit":
             credit_amount = form.get("creditAmount")
@@ -358,7 +387,7 @@ class PackageService:
         if pkg.name != form["name"]:
             dup = await package_repository.get_by_name(db, form["name"])
             if dup and dup.id != package_id:
-                raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已被历史记录占用")
+                raise BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在")
         pkg.name = form["name"]
         if package_type == "credit":
             pkg.credit_amount = form.get("creditAmount")
@@ -441,14 +470,16 @@ class PackageService:
                             max(int(t.get("faceValue", 0)) for t in matched),
                         )
 
-        promo_new_user_only = any(
-            item["promotion"].new_user_only == 1 for item in active_promos
-        )
+        promo_new_user_only = any(item["promotion"].new_user_only == 1 for item in active_promos)
         if promo_new_user_only and user_id is not None:
-            paid_stmt = select(func.count()).select_from(SysOrder).where(
-                SysOrder.user_id == user_id,
-                SysOrder.status.in_([2, 3]),
-                SysOrder.deleted == 0,
+            paid_stmt = (
+                select(func.count())
+                .select_from(SysOrder)
+                .where(
+                    SysOrder.user_id == user_id,
+                    SysOrder.status.in_([2, 3]),
+                    SysOrder.deleted == 0,
+                )
             )
             has_paid = int((await db.execute(paid_stmt)).scalar() or 0) > 0
             if has_paid:
@@ -484,7 +515,9 @@ class PackageService:
 
             # 体验券直接激活会员卡权益、不产生订单，不参与下单价格计算
             if coupon.type == "trial":
-                raise BusinessException(ResultCode.BUSINESS_ERROR, "体验券不参与价格计算，请通过激活流程使用")
+                raise BusinessException(
+                    ResultCode.BUSINESS_ERROR, "体验券不参与价格计算，请通过激活流程使用"
+                )
 
             base_price = sale_price - discount_amount
             if coupon.type == "full_reduction":
@@ -584,7 +617,8 @@ class PackageService:
             {
                 "packageType": row.package_type,
                 "packageTypeName": PACKAGE_TYPE_NAMES.get(row.package_type, row.package_type),
-                "salesCount": int(row.count),
+                # "count" 与 Row 的 Sequence.count 同名，属性访问类型不明确，改用键访问
+                "salesCount": int(row._mapping["count"]),
                 "revenue": int(row.revenue),
             }
             for row in type_rows
@@ -611,7 +645,8 @@ class PackageService:
             {
                 "period": row.period,
                 "periodName": PERIOD_NAMES.get(row.period, row.period),
-                "salesCount": int(row.count),
+                # 同上：避免与 Row 的 Sequence.count 同名歧义
+                "salesCount": int(row._mapping["count"]),
                 "revenue": int(row.revenue),
             }
             for row in period_rows

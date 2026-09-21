@@ -10,6 +10,17 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
+        <el-form-item label="商品类型" prop="packageType">
+          <el-select
+            v-model="queryParams.packageType"
+            clearable
+            placeholder="全部"
+            style="width: 140px"
+          >
+            <el-option label="会员卡" value="vip" />
+            <el-option label="积分卡" value="credit" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="等级" prop="levelCode">
           <el-select
             v-model="queryParams.levelCode"
@@ -29,9 +40,12 @@
             placeholder="全部"
             style="width: 140px"
           >
-            <el-option label="月卡" value="monthly" />
-            <el-option label="季卡" value="quarterly" />
-            <el-option label="年卡" value="yearly" />
+            <el-option
+              v-for="opt in periodOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -108,37 +122,68 @@
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column label="套餐名" prop="name" min-width="140" />
-        <el-table-column label="等级" align="center" width="110">
+        <el-table-column label="商品类型" align="center" width="90">
           <template #default="scope">
             <el-tag
+              :type="
+                (scope.row as PackagePageVO).packageType === 'vip'
+                  ? 'primary'
+                  : 'success'
+              "
+              effect="plain"
+            >
+              {{
+                (scope.row as PackagePageVO).packageType === "vip"
+                  ? "会员卡"
+                  : "积分卡"
+              }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="等级/可得积分" align="center" width="120">
+          <template #default="scope">
+            <el-tag
+              v-if="(scope.row as PackagePageVO).packageType === 'vip'"
               :color="levelTagColor((scope.row as PackagePageVO).levelCode)"
               effect="dark"
               style="border: none"
             >
               {{ (scope.row as PackagePageVO).levelName }}
             </el-tag>
+            <span v-else>
+              {{ (scope.row as PackagePageVO).creditAmount ?? 0 }} 积分
+            </span>
           </template>
         </el-table-column>
         <el-table-column label="计费周期" align="center" width="100">
           <template #default="scope">
-            {{ periodLabel((scope.row as PackagePageVO).period) }}
+            {{
+              (scope.row as PackagePageVO).packageType === "vip"
+                ? periodLabel((scope.row as PackagePageVO).period)
+                : "—"
+            }}
           </template>
         </el-table-column>
         <el-table-column label="原价" align="right" width="100">
           <template #default="scope">
-            ¥{{ (scope.row as PackagePageVO).originalPrice.toFixed(2) }}
+            ¥{{ yuan((scope.row as PackagePageVO).originalPrice) }}
           </template>
         </el-table-column>
         <el-table-column label="售价" align="right" width="100">
           <template #default="scope">
             <span class="sale-price">
-              ¥{{ (scope.row as PackagePageVO).salePrice.toFixed(2) }}
+              ¥{{ yuan((scope.row as PackagePageVO).salePrice) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="日均" align="right" width="110">
+        <el-table-column label="日均价/积分单价" align="right" width="140">
           <template #default="scope">
-            ¥{{ (scope.row as PackagePageVO).dailyPrice.toFixed(2) }}/天
+            <template v-if="(scope.row as PackagePageVO).packageType === 'vip'">
+              ¥{{ yuan((scope.row as PackagePageVO).dailyPrice) }}/天
+            </template>
+            <template v-else>
+              ¥{{ yuan((scope.row as PackagePageVO).creditUnitPrice) }}/积分
+            </template>
           </template>
         </el-table-column>
         <el-table-column
@@ -227,35 +272,67 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="套餐名" prop="name">
-              <el-input v-model="formData.name" placeholder="请输入套餐名" />
+              <el-input
+                v-model="formData.name"
+                maxlength="32"
+                show-word-limit
+                placeholder="请输入套餐名"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="等级" prop="levelCode">
-              <el-select v-model="formData.levelCode" style="width: 100%">
-                <el-option label="基础版" value="level_1" />
-                <el-option label="专业版" value="level_2" />
-                <el-option label="旗舰版" value="level_3" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="计费周期" prop="period">
-              <el-select
-                v-model="formData.period"
-                style="width: 100%"
-                @change="handlePeriodChange"
+            <el-form-item label="商品类型" prop="packageType">
+              <el-radio-group
+                v-model="formData.packageType"
+                :disabled="formData.id !== undefined"
               >
-                <el-option label="月卡" value="monthly" />
-                <el-option label="季卡" value="quarterly" />
-                <el-option label="年卡" value="yearly" />
-              </el-select>
+                <el-radio value="vip">会员卡</el-radio>
+                <el-radio value="credit">积分卡</el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="周期天数" prop="periodDays">
+          <template v-if="formData.packageType === 'vip'">
+            <el-col :span="12">
+              <el-form-item label="等级" prop="levelCode">
+                <el-select v-model="formData.levelCode" style="width: 100%">
+                  <el-option label="基础版" value="level_1" />
+                  <el-option label="专业版" value="level_2" />
+                  <el-option label="旗舰版" value="level_3" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="计费周期" prop="period">
+                <el-select
+                  v-model="formData.period"
+                  style="width: 100%"
+                  @change="handlePeriodChange"
+                >
+                  <el-option
+                    v-for="opt in periodOptions"
+                    :key="opt.value"
+                    :label="opt.label"
+                    :value="opt.value"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="周期天数" prop="periodDays">
+                <el-input-number
+                  v-model="formData.periodDays"
+                  :min="1"
+                  :max="365"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </template>
+          <el-col v-else :span="12">
+            <el-form-item label="可得积分" prop="creditAmount">
               <el-input-number
-                v-model="formData.periodDays"
+                v-model="formData.creditAmount"
                 :min="1"
                 controls-position="right"
                 style="width: 100%"
@@ -289,20 +366,9 @@
               <el-input-number
                 v-model="formData.sort"
                 :min="0"
+                :max="999"
                 controls-position="right"
                 style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态" prop="status">
-              <el-switch
-                v-model="formData.status"
-                :active-value="1"
-                :inactive-value="0"
-                active-text="在售"
-                inactive-text="下架"
-                inline-prompt
               />
             </el-form-item>
           </el-col>
@@ -312,105 +378,109 @@
                 v-model="formData.description"
                 type="textarea"
                 :rows="2"
+                maxlength="256"
+                show-word-limit
                 placeholder="套餐描述"
               />
             </el-form-item>
           </el-col>
         </el-row>
 
-        <el-divider content-position="left">权益覆盖配置</el-divider>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="去雾配额">
-              <el-input-number
-                v-model="benefitForm.monthlyDehazeQuota"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="评估配额">
-              <el-input-number
-                v-model="benefitForm.monthlyEvaluateQuota"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="历史保留(天)">
-              <el-input-number
-                v-model="benefitForm.historyRetention"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="批量上限">
-              <el-input-number
-                v-model="benefitForm.batchLimit"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="优先级">
-              <el-input-number
-                v-model="benefitForm.priority"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="高级参数">
-              <el-input-number
-                v-model="benefitForm.advancedParams"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="高清导出">
-              <el-input-number
-                v-model="benefitForm.hdExport"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="报告导出">
-              <el-input-number
-                v-model="benefitForm.reportExport"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="批量下载">
-              <el-input-number
-                v-model="benefitForm.batchDownload"
-                :min="0"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <template v-if="formData.packageType === 'vip'">
+          <el-divider content-position="left">权益覆盖配置</el-divider>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="去雾配额">
+                <el-input-number
+                  v-model="benefitForm.monthlyDehazeQuota"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="评估配额">
+                <el-input-number
+                  v-model="benefitForm.monthlyEvaluateQuota"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="历史保留(天)">
+                <el-input-number
+                  v-model="benefitForm.historyRetention"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="批量上限">
+                <el-input-number
+                  v-model="benefitForm.batchLimit"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="优先级">
+                <el-input-number
+                  v-model="benefitForm.priority"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="高级参数">
+                <el-input-number
+                  v-model="benefitForm.advancedParams"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="高清导出">
+                <el-input-number
+                  v-model="benefitForm.hdExport"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="报告导出">
+                <el-input-number
+                  v-model="benefitForm.reportExport"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="批量下载">
+                <el-input-number
+                  v-model="benefitForm.batchDownload"
+                  :min="0"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </template>
       </el-form>
 
       <template #footer>
@@ -435,7 +505,7 @@
             <el-card shadow="hover" class="stats-card">
               <div class="stats-label">总销售额</div>
               <div class="stats-value">
-                ¥{{ (statsData?.totalRevenue ?? 0).toFixed(2) }}
+                ¥{{ ((statsData?.totalRevenue ?? 0) / 100).toFixed(2) }}
               </div>
             </el-card>
           </el-col>
@@ -501,6 +571,7 @@ import {
   TrendCharts,
 } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
+import { periodOptions } from "../constants";
 
 defineOptions({
   name: "PackageList",
@@ -529,6 +600,7 @@ const dialog = reactive({
 
 const defaultFormData: PackageForm = {
   name: "",
+  packageType: "vip",
   levelCode: "level_1",
   period: "monthly",
   periodDays: 30,
@@ -536,7 +608,6 @@ const defaultFormData: PackageForm = {
   salePrice: 0,
   description: "",
   sort: 1,
-  status: 1,
 };
 
 const formData = reactive<PackageForm>({ ...defaultFormData });
@@ -568,11 +639,53 @@ const periodStatsChart = ref<any>(null);
 const couponUsageChart = ref<any>(null);
 
 const rules = reactive({
-  name: [{ required: true, message: "请输入套餐名", trigger: "blur" }],
+  name: [
+    { required: true, message: "请输入套餐名", trigger: "blur" },
+    { min: 2, max: 32, message: "套餐名长度为 2-32 个字符", trigger: "blur" },
+  ],
+  packageType: [
+    { required: true, message: "请选择商品类型", trigger: "change" },
+  ],
   levelCode: [{ required: true, message: "请选择等级", trigger: "change" }],
   period: [{ required: true, message: "请选择计费周期", trigger: "change" }],
-  originalPrice: [{ required: true, message: "请输入原价", trigger: "blur" }],
-  salePrice: [{ required: true, message: "请输入售价", trigger: "blur" }],
+  creditAmount: [
+    {
+      validator: (_rule: any, value: number, callback: any) => {
+        if (formData.packageType === "credit" && (!value || value <= 0)) {
+          callback(new Error("积分卡可得积分必须大于0"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur",
+    },
+  ],
+  originalPrice: [
+    {
+      validator: (_rule: any, value: number, callback: any) => {
+        if (!value || value <= 0) {
+          callback(new Error("原价必须大于0"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur",
+    },
+  ],
+  salePrice: [
+    {
+      validator: (_rule: any, value: number, callback: any) => {
+        if (!value || value <= 0) {
+          callback(new Error("售价必须大于0"));
+        } else if (value > formData.originalPrice) {
+          callback(new Error("售价不能高于原价"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur",
+    },
+  ],
 });
 
 const periodDaysMap: Record<string, number> = {
@@ -587,17 +700,19 @@ const levelTagColorMap: Record<string, string> = {
   level_3: "#fa8c16",
 };
 
-function levelTagColor(levelCode: string) {
-  return levelTagColorMap[levelCode] ?? "#409eff";
+function levelTagColor(levelCode?: string) {
+  return (levelCode && levelTagColorMap[levelCode]) ?? "#409eff";
 }
 
-function periodLabel(period: string) {
-  const map: Record<string, string> = {
-    monthly: "月卡",
-    quarterly: "季卡",
-    yearly: "年卡",
-  };
-  return map[period] ?? period;
+function periodLabel(period?: string) {
+  return (
+    (period && periodOptions.find((o) => o.value === period)?.label) || "—"
+  );
+}
+
+/** 后端金额单位为分，前端输入展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
 }
 
 function handleDateChange(value: [string, string] | null) {
@@ -648,6 +763,12 @@ function openDialog(id?: number) {
     PackageAPI.getForm(id)
       .then((data) => {
         Object.assign(formData, data);
+        // 表单金额以元为单位展示，接口返回分
+        formData.originalPrice = (data.originalPrice ?? 0) / 100;
+        formData.salePrice = (data.salePrice ?? 0) / 100;
+        formData.packageType = data.packageType ?? "vip";
+        formData.creditAmount = data.creditAmount ?? undefined;
+        formData.status = undefined;
         if (data.benefitOverrides) {
           Object.assign(benefitForm, data.benefitOverrides);
         }
@@ -674,10 +795,25 @@ function handleSubmit() {
   packageFormRef.value.validate((valid: boolean) => {
     if (!valid) return;
     loading.value = true;
+    const isCredit = formData.packageType === "credit";
+    // 接口金额单位为分，表单以元为单位输入
     const submitData: PackageForm = {
-      ...formData,
-      benefitOverrides: { ...benefitForm },
+      id: formData.id,
+      name: formData.name,
+      packageType: formData.packageType,
+      originalPrice: Math.round(formData.originalPrice * 100),
+      salePrice: Math.round(formData.salePrice * 100),
+      description: formData.description,
+      sort: formData.sort,
+      benefitOverrides: isCredit ? undefined : { ...benefitForm },
     };
+    if (isCredit) {
+      submitData.creditAmount = formData.creditAmount;
+    } else {
+      submitData.levelCode = formData.levelCode;
+      submitData.period = formData.period;
+      submitData.periodDays = formData.periodDays;
+    }
     const id = formData.id;
     const action = id
       ? PackageAPI.update(id, submitData)
@@ -798,7 +934,7 @@ function initCharts(data: SalesStatsVO) {
         {
           name: "销售额",
           type: "bar",
-          data: data.packageStats.map((p) => p.revenue),
+          data: data.packageStats.map((p) => p.revenue / 100),
           barWidth: 20,
           itemStyle: {
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -839,7 +975,7 @@ function initCharts(data: SalesStatsVO) {
           radius: "50%",
           data: data.levelStats.map((l) => ({
             name: l.levelName,
-            value: l.revenue,
+            value: l.revenue / 100,
             itemStyle: { color: levelColorMap[l.levelCode] },
           })),
           emphasis: {

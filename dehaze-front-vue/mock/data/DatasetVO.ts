@@ -1,4 +1,4 @@
-import { Dataset } from "dehaze-sdk-js";
+import { DatasetVO } from "dehaze-sdk-js";
 
 export default [
   {
@@ -156,4 +156,4 @@ export default [
     updateTime: new Date(),
     status: 1,
   },
-] as Dataset[];
+] as DatasetVO[];

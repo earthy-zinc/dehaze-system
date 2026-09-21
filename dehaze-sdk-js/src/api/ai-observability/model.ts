@@ -24,6 +24,12 @@ export interface AiObservabilityTraceQuery extends PageQuery {
   status?: AiObservabilityStatus;
   agentCode?: string;
   model?: string;
+  /** 失败类型精确筛选 */
+  errorType?: string;
+  /** 关键词筛选（匹配 trace_id 或会话标题模糊） */
+  keyword?: string;
+  /** 能力维度筛选（上下文构成含 memory/kb/tools 构成项） */
+  capability?: "memory" | "kb" | "tools";
   startTime?: string;
   endTime?: string;
 }
@@ -32,6 +38,8 @@ export interface AiObservabilityTraceQuery extends PageQuery {
 export interface AiObservabilityTraceItem {
   traceId: string;
   conversationId: number;
+  /** 所属会话标题；无标题时字段缺失（后端 NonNullJSONResponse 递归剔除 null） */
+  conversationTitle?: string;
   messageId?: number;
   agentCode?: string;
   model?: string;
@@ -144,9 +152,15 @@ export interface AiObservabilityLlmCall {
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number;
+  /** 调用发起时刻（时间线交织排序锚点） */
+  startTime?: string;
   toolCall?: AiObservabilityToolCall | null;
   inputSnapshot?: AiObservabilityInputSnapshot | null;
   outputSnapshot?: AiObservabilityOutputSnapshot | null;
+  /** wire 原始请求体（审计原文；未采集为 null） */
+  rawRequest?: Record<string, unknown> | null;
+  /** wire 原始响应（流式聚合为等价非流式结构；未采集为 null） */
+  rawResponse?: Record<string, unknown> | null;
   /** 物理调用尝试明细（逐 Key/逐路由，快照 JSON 原样透传，键保持 snake_case） */
   attempts?: Array<{
     provider_id?: number;
@@ -213,8 +227,6 @@ export interface AiObservabilityTraceDetail extends AiObservabilityTraceItem {
   billing?: AiObservabilityTraceBilling[];
   /** 中间产物 */
   artifacts?: AiObservabilityTraceArtifact[];
-  /** 父过程链 ID（子 Agent 关联主链时填充） */
-  parentTraceId?: string;
 }
 
 /** 过程链计费明细 */
@@ -225,9 +237,12 @@ export interface AiObservabilityTraceBilling {
   /** 实际路由模型（与请求模型不一致时填充） */
   actualModel?: string;
   providerId?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  cachedInputTokens?: number;
+  /** 输入 Token 数（含缓存命中；对齐后端实际行为：TraceBillingItem.input_tokens 默认 0，恒有值） */
+  inputTokens: number;
+  /** 输出 Token 数（同上，恒有值） */
+  outputTokens: number;
+  /** 其中缓存命中的输入 Token 数（同上，恒有值） */
+  cachedInputTokens: number;
   credits?: number;
   creditsSaved?: number;
   errorCode?: string;
@@ -244,6 +259,130 @@ export interface AiObservabilityTraceArtifact {
   refType?: string;
   refId?: number;
   createTime?: string;
+}
+
+// ==================== 会话审计时间线 ====================
+
+/** 时间线查询参数（对齐后端实际行为：app/models/schema/ai_observability.py TimelineQuery 仅 include） */
+export interface AiObservabilityTimelineQuery {
+  /** 传 raw 返回 wire 原始报文；缺省仅返回摘要 */
+  include?: "raw";
+}
+
+/** 时间线会话概要 */
+export interface AiObservabilityTimelineConversation {
+  id: number;
+  title?: string;
+  userId?: number;
+  agentCode?: string;
+  createTime?: string;
+}
+
+/** 时间线轮次边界消息（用户输入/助手输出） */
+export interface AiObservabilityTimelineMessage {
+  id: number;
+  /** 消息角色（对齐后端实际行为：TimelineMessage.role 为必填 str） */
+  role: string;
+  content?: string;
+  status?: number;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  createTime?: string;
+}
+
+/** 时间线事件类型：用户输入/上下文组装/LLM 调用/工具执行/系统事件/计费 */
+export type AiObservabilityEventKind =
+  "input" | "context" | "llm_call" | "tool_exec" | "system_event" | "billing";
+
+/** 时间线事件（轮内按 ts 交织排序；各 kind 携带各自载荷，键与后端 JSON 输出一致） */
+export interface AiObservabilityTimelineEvent {
+  kind: AiObservabilityEventKind;
+  /** 事件时刻（llm_call 为 start_time 毫秒精度 ISO）；null 表示无原始时序，前端在轮内沉底展示 */
+  ts?: string | null;
+  /** input：用户消息全文 */
+  message?: AiObservabilityTimelineMessage;
+  /** context：上下文构成快照（构成项 + 压缩/护栏/计划/中断事件） */
+  snapshot?: AiObservabilityContextSnapshot | null;
+  /** llm_call：调用序号 */
+  seq?: number;
+  model?: string;
+  status?: AiObservabilityCallStatus;
+  errorType?: string;
+  durationMs?: number;
+  firstTokenMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  cachedTokens?: number;
+  toolCall?: AiObservabilityToolCall | null;
+  /** llm_call：wire 原始报文（仅 include=raw 且采集存在时非空，否则 null，前端空态"无原始报文记录"） */
+  rawRequest?: Record<string, unknown> | null;
+  rawResponse?: Record<string, unknown> | null;
+  /** llm_call：恒为纯计数摘要（单形状）。inputSnapshot 仅含 messages.counts/tokens 与可选 system_tokens/tool_count/user_id；outputSnapshot 含 text/tool_calls */
+  summary?: {
+    inputSnapshot?: {
+      messages: {
+        counts: { user?: number; assistant?: number; tool?: number; system?: number };
+        tokens: number;
+      };
+      system_tokens?: number;
+      tool_count?: number;
+      user_id?: number;
+    } | null;
+    outputSnapshot?: AiObservabilityOutputSnapshot | null;
+  } | null;
+  attempts?: AiObservabilityLlmCall["attempts"];
+  /** tool_exec：步骤序号 */
+  position?: number;
+  tool?: string;
+  thought?: string;
+  toolInput?: unknown;
+  observation?: string;
+  latencyMs?: number;
+  /** 工具归属：子 Agent 编码（空=主 Agent） */
+  agentCode?: string;
+  /** 工具归属：0-主 Agent，1-子 Agent（对齐后端实际行为：app/models/schema/ai_observability.py TimelineEvent.is_subagent 为 int） */
+  isSubagent?: number;
+  /** system_event：护栏(guardrail)/计划(plan)/中断恢复(resume)等 */
+  event?: string;
+  detail?: unknown;
+  /** billing：计费类型与用量（tokens 为短名 input/output/cached，见 service/ai_observability_service.py 事件组装） */
+  billType?: string;
+  credits?: number;
+  tokens?: {
+    input: number;
+    output: number;
+    cached: number;
+  };
+}
+
+/** 一轮交互的旁路/主过程链（旁路 trace 挂触发轮次尾部） */
+export interface AiObservabilityTimelineTrace {
+  traceId: string;
+  /** conversation 主对话 / summary 摘要压缩 / memory_extraction 记忆提取 / suggestion 建议推荐 / step_summary 步骤摘要 */
+  traceType?: string;
+  status: AiObservabilityStatus;
+  /** 失败类型（对齐后端实际行为：TimelineTrace.error_type 可为 null） */
+  errorType?: string | null;
+  errorDetail?: { message?: string; stack?: string } | null;
+  model?: string | null;
+  /** 总耗时毫秒（后端 TimelineTrace.duration_ms 必填） */
+  durationMs: number;
+  createTime?: string | null;
+  events: AiObservabilityTimelineEvent[];
+}
+
+/** 时间线轮次：一次用户输入 → 推理 → 助手回复（trace 详情合成的单轮可能缺边界消息） */
+export interface AiObservabilityTimelineRound {
+  userMessage?: AiObservabilityTimelineMessage | null;
+  assistantMessage?: AiObservabilityTimelineMessage | null;
+  traces: AiObservabilityTimelineTrace[];
+}
+
+/** 会话审计时间线：会话概要 + 按轮次组织的事件流 */
+export interface AiObservabilityTimeline {
+  conversation: AiObservabilityTimelineConversation;
+  rounds: AiObservabilityTimelineRound[];
 }
 
 // ==================== 异常总览 ====================

@@ -27,6 +27,7 @@
 | `/api/v1/kb/{id}/documents/text` | POST | 自定义文本创建文档 | `kb:document:manage` | F-KB-002 |
 | `/api/v1/kb/{id}/documents` | GET | 知识库文档列表（含处理状态） | - | F-KB-002 |
 | `/api/v1/kb/documents/{id}` | GET | 文档详情（含解析后内容） | - | F-KB-002 |
+| `/api/v1/kb/documents/{id}` | PUT | 文档版本更新（重新关联 `file_id` 或更新文本，`version`+1 后重建分块索引；关联文件时校验文件归属与格式白名单） | `kb:document:manage` | F-KB-002 |
 | `/api/v1/kb/documents/{id}` | DELETE | 删除文档及关联分块 | `kb:document:manage` | F-KB-002 |
 | `/api/v1/kb/documents/{id}/reprocess` | POST | 重新处理文档 | `kb:document:manage` | F-KB-002 |
 

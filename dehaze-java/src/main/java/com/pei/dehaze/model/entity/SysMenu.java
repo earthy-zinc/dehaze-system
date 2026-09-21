@@ -91,9 +91,14 @@ public class SysMenu extends BaseEntity {
     private Integer alwaysShow;
 
     /**
-     * 逻辑删除标识(0:未删除;1:已删除)
+     * 系统预置标识(1:预置;0:普通)，预置菜单不可删除且不可修改 type/perm
      */
-    @TableLogic
-    private Integer deleted;
+    private Integer isPreset;
+
+    /**
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
+     */
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
 }

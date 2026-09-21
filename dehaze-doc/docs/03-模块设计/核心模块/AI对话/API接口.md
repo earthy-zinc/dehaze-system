@@ -31,7 +31,7 @@ AI 对话 API 采用**双轨并行**设计：
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/ai/conversations` | POST | 创建对话会话（`suggestionsEnabled` 类似问题推荐开关，默认开启） | - | F-M08-001 |
-| `/api/v1/ai/conversations` | GET | 会话列表（分页，支持搜索/置顶/归档范围筛选；`status` 参数：`0`=全部、`1`=活跃(默认)、`2`=已归档；返回 `unread_count`；搜索命中消息内容时返回 `matched_message_id` 支持消息级定位；`view=admin` 返回全量用户会话并带审计字段） | - | F-M08-001 |
+| `/api/v1/ai/conversations` | GET | 会话列表（分页 `pageNum`/`pageSize`，默认 `1`/`10`、`pageSize≤100`；支持搜索/置顶/归档范围筛选；`status` 参数：`0`=全部、`1`=活跃(默认)、`2`=已归档；返回 `unread_count`；搜索命中消息内容时返回 `matched_message_id` 支持消息级定位；`view=admin` 返回全量用户会话并带审计字段） | - | F-M08-001 |
 | `/api/v1/ai/conversations/{id}` | GET | 会话详情（含模型配置、消息数等；`view=admin` 读取任意用户会话并带审计字段） | - | F-M08-001 |
 | `/api/v1/ai/conversations/{id}` | PATCH | 部分更新会话（标题/置顶/归档/模型配置/`suggestionsEnabled` 类似问题推荐开关） | - | F-M08-001 |
 | `/api/v1/ai/conversations/{id}` | DELETE | 删除会话（软删除，写 delete_time，30天可恢复） | - | F-M08-001 |
@@ -64,42 +64,82 @@ AI 对话 API 采用**双轨并行**设计：
 > **流式模式**：POST 发送消息立即返回 SSE 流，逐 token 推送回复内容、推理步骤、工具调用事件。非流式模式返回完整响应。
 >
 > **发送表单**：`POST /conversations/{id}/messages` 请求体 `MessageSend` 仅含 `{content, model}` 两个字段。
+>
+> **消息分页**：消息列表采用**游标分页**（`before` + `limit`），非会话列表所用的全系统 `pageNum`/`pageSize` 标准。`before?: int`（`>=1`）为游标，仅返回 `id < before` 的消息，缺省取最新一页；`limit?: int` 默认 `50`、范围 `1..100`，越界（含 `before<1`、非数字）返回 `A0400`。按 `id DESC` 排序（`id` 单调自增等价时间倒序），前端展示时反转回时间正序。响应为 `{ list, total, hasMore }`：`total` 为该会话消息总数（**不受 `before` 影响**），`hasMore` 表示是否还存在比本页最后一条更早的消息（服务端以取 `limit+1` 条探测）。原 `pageNum`/`pageSize` 已**移除，无兼容分支**；「聊天历史游标分页（`before` + `limit`）」此前登记的**跨端架构改进提案现已落地**（三端后端 + SDK 均实现）。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/ai/conversations/{id}/messages` | POST | 发送消息（SSE 流式输出），请求头携带 `Idempotency-Key` 防重复发送 | - | F-M08-001 |
-| `/api/v1/ai/conversations/{id}/messages` | GET | 会话消息列表（分页：`before` 游标 + `limit`，按时间倒序增量加载；长会话向上滚动分页） | - | F-M08-001 |
+| `/api/v1/ai/conversations/{id}/messages` | GET | 会话消息列表（**游标分页** `before`/`limit`：`before>=1` 仅返回 `id < before` 的消息、缺省取最新一页；`limit` 默认 `50`、范围 `1..100`、越界返回 `A0400`；`id DESC` 排序，前端展示反转回时间正序；响应 `{list, total, hasMore}`，`total` 为会话消息总数、`hasMore` 表示是否还有更早消息；`view=admin` 读任意用户会话消息，需 `ai:conversation:audit`） | - | F-M08-001 |
 | `/api/v1/ai/conversations/{id}/messages/stream/{streamSessionId}` | GET | SSE 断线重连（携带 `Last-Event-ID` 请求头从断点恢复） | - | F-M08-001 |
-| `/api/v1/ai/conversations/{id}/messages/{msgId}/branches` | GET | 查询某消息的所有子消息（分支列表，按时间倒序） | - | F-M08-001 |
-| `/api/v1/ai/conversations/{id}/branches/{msgId}` | PUT | 切换当前激活分支（更新 current_branch_message_id，后续上下文沿新分支构建） | - | F-M08-001 |
+| `/api/v1/ai/conversations/{id}/messages/{msgId}/branches` | GET | 查询某消息的所有子消息（分支列表，按时间倒序；响应 `MessageResult[]`，与消息对象同形，供 `BranchSwitcher` 展示） | - | F-M08-001 |
+| `/api/v1/ai/conversations/{id}/branches/{msgId}` | PUT | 切换当前激活分支（无请求体；更新会话 `currentBranchMessageId`，后续上下文沿新分支构建；响应更新后的会话 `ConversationResult`） | - | F-M08-001 |
 | `/api/v1/ai/messages/{id}` | GET | 消息详情（含推理步骤、工具调用） | - | F-M08-002 |
 | `/api/v1/ai/messages/{id}` | DELETE | 删除助手回复消息（软删除，30 天可恢复；仅助手消息可删除，用户消息通过编辑重发调整；删除后不参与上下文且该消息重新生成入口失效） | - | F-M08-001 |
 | `/api/v1/ai/messages/{id}/regenerate` | POST | 重新生成回复（基于原助手消息的父 user 消息新建兄弟分支并触发推理，SSE 流式输出） | - | F-M08-001 |
 | `/api/v1/ai/messages/{id}` | PUT | 编辑用户消息并重新触发回复（创建分支消息，**SSE 流式响应**） | - | F-M08-001 |
-| `/api/v1/ai/messages/{id}/resume` | POST | 恢复中断的推理（算法推荐确认/拒绝 / Plan-and-Execute 计划确认/干预），SSE 续流；请求体 `{confirm?: bool, params?: {algorithmId?: int}, plan_edit?: {remove: [taskId], reorder: [taskId...], add: {description, depends_on}}}`。plan_approve 中断时透传 `plan_edit` 做计划干预（仅计划待执行时允许） | - | F-M08-002 |
+| `/api/v1/ai/messages/{id}/resume` | POST | 恢复中断的推理（算法推荐确认/拒绝、工具权限授权、危险操作确认 / Plan-and-Execute 计划确认/干预），SSE 续流；请求体 `{confirm?: bool, params?: {algorithmId?: int}, plan_edit?: {remove: [taskId], reorder: [taskId...], add: {description, dependsOn?, toolHint?, paradigm?}}}`。confirm 中断按 `interrupt.data.confirmKind` 路由恢复动作；plan_approve 中断时透传 `plan_edit` 做计划干预（仅计划待执行时允许）。中断点仅在恢复成功后清理，恢复失败可再次调用本端点重试 | - | F-M08-002 |
 | `/api/v1/ai/messages/{id}/stop` | POST | 停止流式输出 / 取消当前推理（同时清理中断点） | - | F-M08-001 |
 
 > **消息引用**：引用操作由前端本地完成（将消息内容填充至输入区），不产生新的接口请求，不建立消息间引用关系；引用后发送即新消息。
 >
 > **朗读消息**：助手回复朗读依赖语音交互模块（TTS），AI 对话侧无独立接口，前端在回复完成后调用语音模块播报。
 
-> **幂等冲突**：发送消息携带 `Idempotency-Key`，同 key 处理中再次提交为**409 冲突语义**，以业务码 `A0002`（REPEAT_SUBMIT_ERROR）表达，HTTP 载体为项目统一的 400；缺失 `Idempotency-Key` 请求头返回 422。
+> **幂等冲突**：发送消息携带 `Idempotency-Key`，同 key 处理中再次提交为**409 冲突语义**，以业务码 `A0002`（REPEAT_SUBMIT_ERROR）表达，HTTP 载体为项目统一的 400；缺失 `Idempotency-Key` 请求头同样经校验层拒绝，**HTTP 400 + 业务码 `A0400`**（不用 FastAPI 默认 422，判定以业务码为准）。
 
 **SSE 事件类型**（POST 发送消息的流式响应）：
 
 | 事件 | 说明 | data 结构 |
 |------|------|----------|
-| `message.start` | 消息开始（仅含 messageId/conversationId/model，**不含 streamSessionId**） | `{messageId, conversationId, model}` |
+| `message.start` | 消息开始 | `{messageId, conversationId, model, streamSessionId}` — `streamSessionId` 供断线重连（携带 `Last-Event-ID` 调用 `GET /conversations/{id}/messages/stream/{streamSessionId}`） |
 | `content_block.start` | 内容块开始 | `{index, type}` — type: `text`/`thinking`/`tool_use` |
 | `content_block.delta` | 内容块增量 | `{index, delta}` — delta.type: `text_delta`/`thinking_delta`/`input_json_delta`（工具参数流式增量） |
 | `content_block.stop` | 内容块结束 | `{index}` — 标记该内容块完整，可解析完整工具参数 |
 | `thought` | 推理步骤完成 | `{position, thought, tool, toolInput, observation, status, error, latencyMs}` — 完整推理步骤记录；`status`：`1`成功/`2`失败/`3`跳过（**数值型**），`error` 为失败原因（status=2 时透出，错误透明告知） |
-| `plan` | 任务计划 | `{tasks: [{id, description, dependsOn, status}], status, revisions[], phase}` — Plan-and-Execute 计划生成/更新/重规划时推送；计划修订携带变更说明 |
-| `interrupt` | 推理中断 | `{type, data}` — type: `confirm`/`quota`/`async_wait`/`plan_approve`（新增计划确认中断） |
+| `plan` | 任务计划 | `{tasks: [PlanTask], status?, revisions: [PlanRevision], phase}`（即 `Plan`） — Plan-and-Execute 计划生成/更新/重规划时推送；`phase` 标识本轮计划阶段，取值 `plan`（新建计划）/ `approved`（用户确认后）/ `done`（执行完成）/ `revised`（重规划后）。计划形状与 `plan_approve` 中断载荷**同形**（两条下发路径共用 `plan_execute.to_wire_plan` 单一出口归一），见下方「计划统一形状」 |
+| `interrupt` | 推理中断 | `{type, data}` — type: `confirm`/`quota`/`async_wait`/`plan_approve`；`data` 为中断载荷，**全 camelCase**（各类型键名见下方「中断载荷键名清单」）；`type=confirm` 时按 `data.confirmKind` 路由子类型：`algorithm_recommend`（算法推荐）/ `tool_permission`（工具权限授权）/ `dangerous_op`（Shell 或高风险代码执行，含并行子 Agent 写冲突），前端按子类型渲染对应确认卡片 |
 | `suggestions` | 类似问题推荐 | `{questions: [{question}]}` — 回复完成后推送 2-3 条推荐问题，供前端展示"相关问题"引导追问；随该条回复计费，会话设置关闭该能力后不推送 |
 | `ping` | 心跳保活 | `{}` — 每 15 秒推送，防止代理超时断连 |
 | `error` | 错误事件 | `{code, message}` |
-| `message.end` | 消息结束 | `{stopReason, usage}` — stopReason: `stop`/`tool_calls`/`length`/`content_filter`/`canceled`/`error`；usage: `{inputTokens, outputTokens, cachedInputTokens, credits}` |
+| `message.end` | 消息结束 | `{stopReason, usage}` — stopReason: `stop`/`tool_calls`/`length`/`content_filter`/`canceled`/`error`；usage: `{inputTokens, outputTokens, cachedInputTokens, credits, subAgents?}`（`subAgents` 为**可选**子智能体粒度用量数组，见下方说明） |
+
+> **`usage.subAgents`（子智能体粒度用量）**：数组元素 `{agentCode, inputTokens, outputTokens, cachedInputTokens, credits}`。**仅当本轮存在子智能体 LLM 调用时下发**，否则整键省略（**不下发空数组 / `None`**）；主用量四字段口径不变。
+> - `agentCode` 取值为**子 Agent 的名称**：版本快照无独立 code 字段，故复用 `name`（如需稳定 code，须 `schema` 加列，属独立立项）。
+> - 归属口径为**运行期 ContextVar**（子 Agent 自身 `DehazeHooksMiddleware.awrap_model_call` 期间绑定），**非** DB join 事后推断；`credits` 复用既有计价路径（`credits_service.calculate_credits`），与主用量**同价口径、不平摊**。
+> - 覆盖范围：本地 deepagents 子 Agent（`task` 工具派发）+ Team 本地成员（`transfer_to_*`）；**远程 A2A 成员为外部账单，不计入平台 token，故不出现在 `subAgents` 中**。
+
+**中断载荷键名清单**（`interrupt.data.*`，**全 camelCase**）：
+
+| 中断类型 | 载荷键 | 说明 |
+|---------|-------|------|
+| `confirm`（`confirmKind=algorithm_recommend`） | `confirmKind` / `artifactId` / `recommendation` / `alternatives` / `imageFeatures` | `recommendation`：`{recommendationId, algorithmId, algorithmName, reason, effectDescription?}`；`alternatives`：`[{algorithmId, algorithmName, matchScore, reason}]`；`imageFeatures`：`{hazeLevel?, sceneType?, lighting?}` |
+| `confirm`（`confirmKind=tool_permission`） | `confirmKind` / `tool` / `reason` / `detail` | 工具权限授权确认 |
+| `confirm`（`confirmKind=dangerous_op`） | `confirmKind` / `action` / `command` / `impact` | Shell/高风险代码执行；`action=write_conflict` 为并行子 Agent 写冲突，此时载荷为 `confirmKind` / `action` / `tool` / `resource` / `previousWriter` / `impact` / `reason`（确认后覆盖写入、拒绝则放弃本次写入） |
+| `quota` | `upgradeTip` / `usedDaily` / `dailyLimit` / `usedMonthly` / `monthlyLimit` / `quotaDataError` | 配额不足升级引导；`quotaDataError=true` 表示用量组装失败，勿伪造达标展示 |
+| `async_wait` | `taskId` / `taskType` / `estDuration` / `imageCount` | 异步任务挂起 |
+| `plan_approve` | `plan` | 待确认的计划，形状同下方「计划统一形状」（不含 `phase`） |
+
+**计划统一形状**（`plan` SSE 事件与 `plan_approve` 中断 `data.plan` **同形**，本表为唯一定义）：
+
+| 结构 | 字段 | 说明 |
+|------|------|------|
+| `PlanTask` | `id?` / `description?` / `dependsOn?: string[]` / `status?` / `paradigm?` / `toolHint?` / `result?` | 子任务（唯一任务类型）；可选字段缺失即不下发 |
+| `PlanRevision` | `revisionNo: number` / `reason: string` / `changedTaskIds: string[]` | 修订记录（重规划或用户干预产生），三项恒有 |
+| `Plan` | `tasks: PlanTask[]` / `status?` / `revisions: PlanRevision[]` / `phase?` | SSE `plan` 事件载荷的 `plan`，`phase` 仅此路径携带 |
+| `PlanPayload` | ＝ `Omit<Plan, "phase">` | `plan_approve` 中断 `data.plan` 的形状（无 `phase`） |
+
+值域：`plan.status` ∈ `pending` / `executing` / `revised` / `done`；`task.status` ∈ `pending` / `done` / `failed`。
+
+> 类型命名与 `dehaze-sdk-js` 的 `PlanTask` / `PlanRevision` / `Plan` / `PlanPayload` 一致，SDK 类型为本节字段清单的机器可读形式，不另设第二处口径。
+
+> **命名层级（勿混用）**：
+> - **任务项**：内部 snake（`depends_on`/`tool_hint`）→ SSE 出口由 `to_wire_plan` 归一为 camel（`dependsOn`/`toolHint`）；resume 入口由 `apply_plan_edit` 读 camel（`plan_edit.add` 的 `dependsOn`/`toolHint`/`paradigm`）后写回内部 snake。
+> - **修订项**：内部与对外**同名同形**，恒为 `{revisionNo, reason, changedTaskIds}`（`changedTaskIds` 为任务 id 数组，非 JSON 字符串），无 camel/snake 转换。
+> - **`status` 值域**：两层一致 —— plan ∈ `pending`/`executing`/`revised`/`done`，task ∈ `pending`/`done`/`failed`。
+>
+> python 内部 plan 结构（Redis 中断点 `ai:interrupt:{thread_id}` 存储、Planner/Replanner 提示词产出）仅任务项为 snake_case（任务项 `depends_on`/`tool_hint`；修订项与 `status` 两层同名，无需转换），属内部实现、非对外契约。
+
+> **confirm 恢复路由**：`POST /messages/{id}/resume` 按 `interrupt.data.confirmKind` 路由恢复动作（未知/缺失子类型前后端均显式报错，不静默兜底）；`plan_approve` 中断时透传 `plan_edit` 做计划干预（仅计划待执行时允许）。SSE 报文为扁平 `interrupt.data.*`；Redis 中断点落库结构（`ai:interrupt:{conversation_id}:{message_id}` 的 `{type, data: {data: {...}}}`）为内部存储，非报文层级。
 
 **事件流程示例**：
 
@@ -116,7 +156,7 @@ sequenceDiagram
 > **恢复中断的推理**：中断（如算法推荐确认）后，通过 `POST /api/v1/ai/messages/{id}/resume` 恢复推理并 SSE 续流（读取消息关联的中断点 `ai:interrupt:{conversation_id}:{message_id}`）。`/resume` 端点是唯一恢复入口。
 
 **async_wait 异步任务前端接入契约**：收到 `interrupt(type=async_wait)` 后，本轮 SSE 流随随后的 `message.end` 结束（`stopReason` 为该中断语义标识），但消息**尚未完成**——`message.end` 仅表示本轮流式通道关闭，不代表回复终态。前端应：
-1. 记录 `interrupt.data.task_id`；
+1. 记录 `interrupt.data.taskId`；
 2. 轮询消息接口 `GET /api/v1/ai/conversations/{id}/messages`（或消息详情），消息 `status` 在 `async_wait` 挂起期间保持创建时的**生成中**状态（不置 2、无最终 `content`）；
 3. 后台任务完成后后端自动恢复推理并 SSE 续流推送最终内容；当消息 `status` 变为 `2`（已完成）后，拉取最终 `content` 渲染。
 > 注意：`confirm`/`quota` 挂起行为与此不同（保留挂起时的部分回复并依赖 `/resume` 续流），前端契约以各自 `interrupt.data` 为准。
@@ -125,7 +165,7 @@ sequenceDiagram
 
 > **中间产物（Artifacts）**：产物列表采用分页结构（`PageResult`）；产物详情走独立路径 `/artifacts/{id}/detail`（含运行时拼接的图片 URL 等元数据）；支持按消息关联反查（`/messages/{id}/artifacts`）与按业务引用反查（`/artifacts/by-ref`）。
 >
-> **长期记忆（Memories）**：统一路径前缀 `/api/v1/ai/memories`，列表为分页结构。包含 7 个端点：分页列表（GET）、创建（POST）、更新（PUT `/memories/{id}`）、删除（DELETE `/memories/{id}`，软删除）、关键词搜索（GET `/memories/search`）、批量清空（POST `/memories/clear`，需 `confirm` 二次确认，30 天内可恢复）、恢复软删（POST `/memories/restore`）、导出（GET `/memories/export?fmt=json|markdown`，返回文件流）。归档记忆列表走 GET `/memories/archived`。
+> **长期记忆（Memories）**：统一路径前缀 `/api/v1/ai/memories`，列表为分页结构。共 10 个端点：分页列表（GET）、创建（POST）、更新（PUT `/memories/{id}`，**不接收 `archived`**）、删除（DELETE `/memories/{id}`，软删除）、关键词搜索（GET `/memories/search`）、批量清空（POST `/memories/clear`，需 `confirm` 二次确认，30 天内可恢复）、恢复软删（POST `/memories/restore`）、导出（GET `/memories/export?fmt=json|markdown`，返回文件流）。归档相关两个：归档列表 GET `/memories/archived`、取消归档 POST `/memories/{id}/unarchive`。
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
@@ -136,8 +176,9 @@ sequenceDiagram
 | `/api/v1/ai/memories` | GET | 当前用户长期记忆分页列表（`memoryType`/`source` 筛选） | - | F-M08-003 |
 | `/api/v1/ai/memories/archived` | GET | 归档记忆分页列表 | - | F-M08-003 |
 | `/api/v1/ai/memories` | POST | 创建记忆（`memoryType`/`content`/`importance`/`source`） | - | F-M08-003 |
-| `/api/v1/ai/memories/{id}` | PUT | 更新记忆（`content`/`importance`/`status`） | - | F-M08-003 |
+| `/api/v1/ai/memories/{id}` | PUT | 更新记忆（`content`/`importance`/`status`；归档状态不在此接口改写） | - | F-M08-003 |
 | `/api/v1/ai/memories/{id}` | DELETE | 删除单条记忆（软删除，不再注入对话） | - | F-M08-003 |
+| `/api/v1/ai/memories/{id}/unarchive` | POST | 取消归档（`archived` 置 0 并重置衰减计时器，返回更新后的记忆；未归档返回 A0502） | - | F-M08-003 |
 | `/api/v1/ai/memories/search` | GET | 关键词搜索记忆（`keyword`/`limit`） | - | F-M08-003 |
 | `/api/v1/ai/memories/clear` | POST | 批量清空记忆（`memoryType`/`start`/`end` 过滤 + `confirm` 二次确认；30 天内可恢复） | - | F-M08-003 |
 | `/api/v1/ai/memories/restore` | POST | 恢复软删记忆（参数同 clear） | - | F-M08-003 |
@@ -180,13 +221,14 @@ sequenceDiagram
 |------|------|---------|---------|-----------|
 | `/api/v1/ai/agents` | GET | Agent 列表（管理员查全部，支持 `keyword`/`status`/`type`（`agent`普通Agent/`subagent`子Agent/`team`Team团队）筛选；列表项含 `tags` 分类标签与 `skillCount`/`mcpCount`/`subAgentCount` 关联计数；普通用户只返回启用且非子Agent的可选项） | - | F-M08-011 |
 | `/api/v1/ai/agents/enabled` | GET | 可选 Agent 列表（会话创建时使用，仅返回启用且非子Agent类型） | - | F-M08-011 |
+| `/api/v1/ai/agents/config-defaults` | GET | 推理参数系统默认值（代码常量 `REASONING_DEFAULTS` 只读透出，字段为 camelCase，取值见 [智能体管理/后端实现.md §10.2](智能体管理/后端实现.md)；供 Agent 配置表单提示"空值继承的系统默认"，前端不得硬编码） | - | F-M08-011 |
 | `/api/v1/ai/agents` | POST | 创建 Agent（`tags` 分类标签可选，JSON 字符串数组） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/agents/{id}` | GET | Agent 详情（含配置、关联的Skills/MCP/子Agent） | - | F-M08-011 |
 | `/api/v1/ai/agents/{id}` | PUT | 更新 Agent（基本信息/系统提示词/模型/推理参数/权限/分类标签） | `ai:agent:manage` | F-M08-011 |
-| `/api/v1/ai/agents/{id}` | DELETE | 删除 Agent（软删除，校验引用关系） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/agents/{id}` | DELETE | 删除 Agent（软删除，校验引用关系；级联清理评测集/样本/评测执行记录并写审计） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/agents/{id}/skills` | PUT | 设置 Agent 关联的 Skills（覆盖式更新） | `ai:agent:manage` | F-M08-011 |
-| `/api/v1/ai/agents/{id}/mcps` | PUT | 设置 Agent 关联的 MCP 命名空间（覆盖式更新） | `ai:agent:manage` | F-M08-011 |
-| `/api/v1/ai/agents/{id}/subagents` | PUT | 设置 Agent 的子 Agent 关联（覆盖式更新，含优先级） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/agents/{id}/mcps` | PUT | 设置 Agent 关联的 MCP 命名空间（覆盖式更新；命名空间须已注册在未软删的 MCP Server 下，否则 A0401） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/agents/{id}/subagents` | PUT | 设置 Agent 的子 Agent 关联（覆盖式更新，含优先级；子 Agent 须存在 A0401，禁自引用/禁环 A0400） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/agents/{id}/test` | POST | 测试 Agent（输入测试消息，预览响应，不入库不推送） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/agents/{id}/copy` | POST | 复制 Agent（复制基本信息和配置，不复制关联关系） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/agents/{id}/status` | PATCH | 启停 Agent（`{status: 0\|1}`；禁用后不可被会话选择，进行中会话不受影响） | `ai:agent:manage` | F-M08-011 |
@@ -200,8 +242,10 @@ sequenceDiagram
 | `/api/v1/ai/agents/{id}/versions` | GET | 版本历史列表（含草稿与已发布，分页） | - | F-M08-011 |
 | `/api/v1/ai/agents/{id}/versions/{versionNo}` | GET | 版本快照详情（含完整配置快照） | - | F-M08-011 |
 | `/api/v1/ai/agents/{id}/versions/diff` | GET | 版本差异对比（`base`/`target` 查询参数指定两个版本号） | - | F-M08-011 |
-| `/api/v1/ai/agents/{id}/publish` | POST | 发布 Agent（草稿通过回归集门禁后发布为正式版本；判分模型漂移时门禁暂停阻断，`force=true` 为管理员豁免并记录于版本 `change_note`） | `ai:agent:manage` | F-M08-011 |
-| `/api/v1/ai/agents/{id}/versions/{versionNo}/rollback` | POST | 回滚到历史发布版本（生成新版本号，完整历史保留） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/agents/{id}/publish` | POST | 发布 Agent（草稿通过回归集门禁后发布为正式版本；判分模型漂移时门禁暂停阻断，`force=true` 为管理员豁免并记录于版本 `change_note`，同时写审计） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/agents/{id}/versions/{versionNo}/rollback` | POST | 回滚到历史**已发布**版本（草稿版本不可作为回滚目标，A0502；生成新版本号，完整历史保留，写审计） | `ai:agent:manage` | F-M08-011 |
+
+> **危险操作审计**：删除 Agent、版本回滚、`force=true` 发布、删除 A2A 端点写入平台统一审计日志（MongoDB `audit_log`），含操作人、目标对象与关键参数。审计登记在事务提交后回调，事务回滚不留痕。实现细节见 [智能体管理/后端实现.md](智能体管理/后端实现.md) §4.5。
 
 **会话级 Agent 选择**：
 
@@ -221,22 +265,23 @@ sequenceDiagram
 | `/api/v1/ai/agents/{id}/eval/datasets` | GET | 评测集列表（管理端） | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/agents/{id}/eval/datasets` | POST | 创建评测集（`name`/`dataset_type`） | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}` | PATCH | 更新评测集 | `ai:agent:manage` | F-M08-014 |
-| `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}` | DELETE | 删除评测集（软删除） | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}` | DELETE | 删除评测集（软删除，样本级联清理；写审计日志 `ai_eval_dataset/delete`） | `ai:agent:manage` | F-M08-014 |
 
 **评测样本**（`/api/v1/ai/agents/{agent_id}/eval`）：
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}/samples` | GET | 评测样本列表 | `ai:agent:manage` | F-M08-014 |
-| `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}/samples` | POST | 创建评测样本（含 `risk_level`；Bad Case 脱敏回流复用此接口写入回归集） | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/agents/{id}/eval/datasets/{datasetId}/samples` | POST | 创建评测样本（含 `risk_level`；请求体 `dataset_id` 须与路径一致，不一致 A0400；Bad Case 脱敏回流复用此接口写入回归集） | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/agents/{id}/eval/samples/{sampleId}` | PATCH | 更新评测样本 | `ai:agent:manage` | F-M08-014 |
-| `/api/v1/ai/agents/{id}/eval/samples/{sampleId}` | DELETE | 删除评测样本 | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/agents/{id}/eval/samples/{sampleId}` | DELETE | 删除评测样本（写审计日志 `ai_eval_sample/delete`） | `ai:agent:manage` | F-M08-014 |
 
-**评测执行**（`/api/v1/ai/agents/{agent_id}/eval/runs`）：
+**评测执行**（`/api/v1/ai/agents/{agent_id}/eval`）：
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/ai/agents/{id}/eval/runs` | POST | 手动触发评测（回归集，`trigger_type=manual`；发布门禁由发布接口内部触发）；返回门禁判定（camelCase）：`runId`/`passed`/`scoreSummary`（四维评分聚合，dimensions 内键为四维指标名）/`failedSamples`（失败样本明细） | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/agents/{id}/eval/runs` | POST | 手动触发评测（回归集，`trigger_type=manual`；发布门禁由发布接口内部触发）：登记异步任务后立即返回 `{taskId}`，评测在后台执行（分钟级长跑不占用请求连接），并写审计日志 `ai_eval_run/start` | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/agents/{id}/eval/tasks/{taskId}` | GET | 评测任务状态：`status`（`pending`/`running`/`succeeded`/`failed`）+ `progress.done`/`progress.total` + `error`（失败原因）+ `result`（成功时的门禁判定：`runId`/`passed`/`degraded`/`insufficientEval`/`scoreSummary`/`failedSamples`）；状态保留 24h，过期 A0401 | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/agents/{id}/eval/runs` | GET | 评测执行记录列表（分页，含发布审计轨迹，可按 `datasetId` 过滤） | `ai:agent:manage` | F-M08-014 |
 
 **评测中心**（`/api/v1/ai/eval-center`，跨 Agent 聚合，供评测中心页消费）：
@@ -248,6 +293,7 @@ sequenceDiagram
 | `/api/v1/ai/eval-center/runs/{runId}/compare` | GET | 两次 run 得分对比（`baseRunId` 必填查询参数，两次 run 须属同一 Agent）：四维得分差 + 样本级差异（新增/移除/变化/未变计数，按 `sample_id` 匹配） | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/eval-center/judge-status` | GET | 判分模型状态（轻量聚合）：人工复核一致率对比 `ai_eval.judge_consistency_threshold` 推导 `consistency_state`（`normal`/`drifted`/`insufficient_data`）与漂移门禁暂停提示，附复核统计 | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/eval-center/reviews` | GET | 人工复核队列：失败样本全量 + 通过样本按 `ai_eval.judge_review_ratio` 确定性抽样，`(runId, sampleId)` 幂等生成；`status` 过滤（1 待复核/2 已复核），返回队列与统计 | `ai:agent:manage` | F-M08-014 |
+| `/api/v1/ai/eval-center/runs/{runId}/samples/{sampleId}` | GET | 复核详情：样本定义（`taskGoal`/`allowedInput`/`expectedResult`/`expectedProcess`/`forbiddenBehavior`/`tools`）+ 本次执行结果（`actualOutput`/`error`/`riskLevel`/`judgePassed`/`scores` 四维得分/`notes` 判分说明）+ `agentId`/`agentName`，供人工复核判定（不盲判）；样本随数据集删除被清理后定义字段为 null，执行结果仍可复核；该 run 无此样本结果时 A0401 | `ai:agent:manage` | F-M08-014 |
 | `/api/v1/ai/eval-center/reviews/{reviewId}` | POST | 复核结果回填：请求体 `{agree: boolean, remark?: string(≤500)}`；判定一致/不一致 + 备注；已复核项不允许重复回填（A0503） | `ai:agent:manage` | F-M08-014 |
 
 > 人工复核判定存 `sys_ai_eval_review` 表（见数据库设计 §4.7）；复核一致率直接反映到判分状态/漂移检测。
@@ -263,7 +309,7 @@ sequenceDiagram
 | `/api/v1/ai/a2a/endpoints` | GET | 外部 A2A 端点分页列表（`keyword`/`status` 筛选） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/a2a/endpoints` | POST | 注册外部 A2A 端点（拉取并缓存 Agent Card，凭证 AES 加密存储） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/a2a/endpoints/{id}` | PATCH | 更新端点 | `ai:agent:manage` | F-M08-011 |
-| `/api/v1/ai/a2a/endpoints/{id}` | DELETE | 删除端点（软删除） | `ai:agent:manage` | F-M08-011 |
+| `/api/v1/ai/a2a/endpoints/{id}` | DELETE | 删除端点（软删除，写审计） | `ai:agent:manage` | F-M08-011 |
 | `/api/v1/ai/a2a/endpoints/{id}/refresh-card` | POST | 刷新端点 Agent Card（返回刷新后的 Card） | `ai:agent:manage` | F-M08-011 |
 
 **A2A 标准协议端点**（非内部 API，遵循 A2A 规范路径）：
@@ -404,17 +450,17 @@ sequenceDiagram
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/ai/mcp/servers` | GET | MCP Server 列表（含启用状态/健康状态/工具数/`credentialConfigured` 是否已配置凭据，凭据密文不回显） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers` | POST | 注册外部 MCP Server（名称/描述/传输协议/端点/鉴权方式），注册后自动拉取工具清单 | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers` | GET | MCP Server 列表（含启用状态/健康状态/`lastCheckTime` 最近探测时间/工具数/`credentialConfigured` 是否已配置凭据，凭据密文不回显） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers` | POST | 注册外部 MCP Server（名称/描述/传输协议/端点/鉴权方式），传输协议仅 `streamable-http`/`sse`（stdio 不接受）且端点必填，注册后自动拉取工具清单 | `ai:mcp:manage` | F-M08-006 |
 | `/api/v1/ai/mcp/servers/{id}` | GET | Server 详情（含工具清单、命名空间） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}` | PUT | 更新 Server 配置 | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}` | DELETE | 删除 Server（软删除；校验是否被 Agent 关联，有则提示先解绑） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}/status` | PATCH | 启停 Server（`{status: 0\|1}`） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}/health` | GET | Server 健康探测（连通性/延迟） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}` | PUT | 更新 Server 配置（传输协议仅 `streamable-http`/`sse`，端点不可置空；提交后图缓存失效） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}` | DELETE | 删除 Server（软删除；校验是否被 Agent 关联，有则提示先解绑；提交后图缓存失效） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/status` | PATCH | 启停 Server（`{status: 0\|1}`；提交后图缓存失效，禁用立即不再装载其工具） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/health` | GET | Server 健康探测（连通性/延迟；探测请求携带 Server 凭据鉴权头，结果写 `health` + `lastCheckTime`） | `ai:mcp:manage` | F-M08-006 |
 | `/api/v1/ai/mcp/servers/{id}/tools` | GET | Server 工具清单（工具名/描述/参数 schema 概要） | `ai:mcp:manage` | F-M08-006 |
 | `/api/v1/ai/mcp/servers/{id}/namespaces` | GET | 命名空间列表（工具分组） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}/namespaces` | PUT | 配置命名空间（工具分组覆盖式更新） | `ai:mcp:manage` | F-M08-006 |
-| `/api/v1/ai/mcp/servers/{id}/credentials` | PUT | 配置外部服务凭据（加密存储，仅录入/更新，不回显明文） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/namespaces` | PUT | 配置命名空间（工具分组覆盖式更新；组内工具名须在该 Server 已拉取清单内，否则 A0400 并回显可用工具；提交后图缓存失效） | `ai:mcp:manage` | F-M08-006 |
+| `/api/v1/ai/mcp/servers/{id}/credentials` | PUT | 配置外部服务凭据（加密存储，合并式更新不回显明文；`clear=true` 整体清除；提交后图缓存失效） | `ai:mcp:manage` | F-M08-006 |
 | `/api/v1/ai/mcp/market` | GET | MCP 市场目录（内置常用 Server 预设，含已接入状态） | - | F-M08-006 |
 | `/api/v1/ai/mcp/market/{presetId}/install` | POST | 从市场一键接入预设 Server（返回注册结果） | `ai:mcp:manage` | F-M08-006 |
 | `/api/v1/ai/mcp/calls` | GET | 外部 MCP 工具调用审计（分页，谁/何时/调用什么/结果/耗时） | `ai:mcp:manage` | F-M08-006 |
@@ -425,17 +471,19 @@ sequenceDiagram
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/ai/skills` | GET | Skill 列表（管理员全量含停用/`agentCount` 被关联数；普通用户仅启用项；项含 `scene` 适用场景） | - | F-M08-006 |
-| `/api/v1/ai/skills` | POST | 创建 Skill（Markdown 指令 + `scene` 适用场景 + 可选脚本/模板，指令内容校验） | `ai:skill:manage` | F-M08-006 |
-| `/api/v1/ai/skills/{id}` | GET | Skill 详情（含指令内容、启用状态、适用场景、被 Agent 关联数） | - | F-M08-006 |
-| `/api/v1/ai/skills/{id}` | PUT | 更新 Skill（含 `scene`；更新后新会话生效，进行中会话沿用旧版本） | `ai:skill:manage` | F-M08-006 |
-| `/api/v1/ai/skills/{id}` | DELETE | 删除 Skill（软删除；校验是否被 Agent 关联，有则提示先解绑） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills` | GET | Skill 列表（管理员全量含停用，支持 `keyword`/`status` 筛选/`agentCount` 被关联数；普通用户仅启用项；项含 `scene` 适用场景） | - | F-M08-006 |
+| `/api/v1/ai/skills` | POST | 创建 Skill（Markdown 指令 + `scene` 适用场景，指令内容校验：长度上限/危险操作拦截；**入库即禁用态**） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/upload` | POST | 上传 SKILL 压缩包（multipart zip，Agent Skills 规范；解析校验通过后**以禁用态入库**，被跳过的资源文件在 `skippedFiles` 回显） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | GET | Skill 详情（含指令内容、启用状态、适用场景、被 Agent 关联数、资源文件清单与 `skippedFiles`） | - | F-M08-006 |
+| `/api/v1/ai/skills/{id}/file` | GET | 读取 SKILL 资源文件（`?path=` 相对路径，须命中该 Skill 文件清单，返回文件流） | - | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | PUT | 更新 Skill（含 `scene` 与名称；名称变更校验唯一性；更新后新会话生效，进行中会话沿用旧版本） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/{id}` | DELETE | 删除 Skill（软删除；校验是否被 Agent 关联，有则提示先解绑；级联清理对象存储资源） | `ai:skill:manage` | F-M08-006 |
 | `/api/v1/ai/skills/{id}/status` | PATCH | 启停 Skill（`{status: 0\|1}`） | `ai:skill:manage` | F-M08-006 |
-| `/api/v1/ai/skills/{id}/test` | POST | 试运行 Skill（输入测试数据预览指令执行效果，不入库不推送） | `ai:skill:manage` | F-M08-006 |
-| `/api/v1/ai/skills/market` | GET | SKILL 市场目录（预设/共享 Skill，含启用状态与已关联 Agent 数） | - | F-M08-006 |
+| `/api/v1/ai/skills/{id}/test` | POST | 试运行 Skill（`{inputData}` 必填；以指令为系统提示词**真实推理一次**，返回 `output`/`usage`，独立调试会话不入库不推送） | `ai:skill:manage` | F-M08-006 |
+| `/api/v1/ai/skills/market` | GET | SKILL 市场目录（预设/共享 Skill，含启用状态、适用场景与已关联 Agent 数） | - | F-M08-006 |
 | `/api/v1/ai/skills/market` | POST | 将自建 Skill 共享至市场（需先启用） | `ai:skill:manage` | F-M08-006 |
 
-**SKILL 市场约定**：`sys_ai_skill.market_shared`（0/1）标记是否共享至市场，市场目录只返回 `market_shared=1` 的 Skill（含 `enabled` 与 `agentCount`）；`POST /market` 传 `{skillId}`，需该 Skill 已启用（否则 `A0400`），重复共享幂等返回当前状态。试运行 `POST /{id}/test` 传 `{inputData}`，仅构造测试会话返回指令 + 输入预览，不入库不推送、不触发真实 LLM 推理。
+**SKILL 市场约定**：`sys_ai_skill.market_shared`（0/1）标记是否共享至市场，市场目录只返回 `market_shared=1` 的 Skill（含 `enabled` 与 `agentCount`）；`POST /market` 传 `{skillId}`，需该 Skill 已启用（否则 `A0400`），重复共享幂等返回当前状态。试运行 `POST /{id}/test` 传 `{inputData}`（必填），复用 Agent 测试预览通路真实推理一次，返回模型输出与用量，独立调试会话不入库不推送。
 
 ### 2.13 可观测性接口（F-M08-013）
 
@@ -443,11 +491,13 @@ sequenceDiagram
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/ai/messages/{id}` | GET | 消息详情（扩展：含过程链 `trace_id`、上下文快照、推理步骤与工具调用明细）✅ 已实现 | - | F-M08-013 |
+| `/api/v1/ai/messages/{id}` | GET | 消息详情（含推理步骤与工具调用明细 `thoughts`；过程链下钻走 `/traces/{traceId}` 与会话时间线接口）✅ 已实现 | - | F-M08-013 |
 | `/api/v1/ai/conversations` | GET | 会话列表（扩展：异常标注，`view=admin` 全量 + 状态/异常筛选）✅ 已实现 | `view=admin` 需 `ai:conversation:audit` | F-M08-013 |
 | `/api/v1/ai/observability/summary` | GET | 异常总览统计（成功/失败/中断/超时计数 + 配额拒绝（按拒绝类 `error_type`）+ 高风险调用（步数≥40 或存在失败的工具调用））✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
-| `/api/v1/ai/observability/traces` | GET | 过程链检索（会话/用户/状态/智能体/模型/失败类型 `errorType`/关键词 `keyword`（匹配 trace_id 或会话标题）/能力维度 `capability=memory\|kb\|tools`/时间筛选，分页，时间倒序；含旁路过程链，列表元素含 `traceType` 区分类型）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
-| `/api/v1/ai/observability/traces/{traceId}` | GET | 过程链详情（上下文快照含摘要/记忆原文 + 推理步骤 `thoughts` + 会话消息 `messages` + LLM 调用按 seq 回放，含每轮输入消息原文与工具定义、物理调用尝试明细 `attempts`（`[{providerId, keyId, model, status(1成功/2失败/3跳过-熔断), errorCode, latencyMs}]`，还原逐 Key 重试/路由降级/熔断跳过全过程）；trace 汇总含 `traceType`（conversation/summary/memory_extraction/suggestion/step_summary）；thoughts 元素透出 `agentCode`/`isSubagent` 子 Agent 归属 + 计费明细 `billing`（billType/model/actualModel/providerId/tokens/credits/creditsSaved/latencyMs/errorCode/requestId，按 request_id=trace_id 或 message_id 关联 sys_ai_billing）+ 中间产物 `artifacts`（按 message_id 关联 sys_ai_artifact）+ 失败/中断轮异常详情 `errorDetail`（message/stack））；管理员全量，普通用户仅可查自己会话（跨会话/不存在均 `A0401` 不暴露存在性）✅ 已实现 | 登录用户（管理员需 `ai:conversation:audit`） | F-M08-013 |
+| `/api/v1/ai/observability/traces` | GET | 过程链检索（会话/用户/状态/智能体/模型/失败类型 `errorType`/关键词 `keyword`（匹配 trace_id 或会话标题）/能力维度 `capability=memory\|kb\|tools`/时间筛选，分页，时间倒序；含旁路过程链，列表元素含 `traceType` 区分类型与 `conversationId`/`conversationTitle` 会话归属）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
+| `/api/v1/ai/observability/traces/{traceId}` | GET | 过程链详情（上下文快照含摘要/记忆原文 + 推理步骤 `thoughts` + 会话消息 `messages` + LLM 调用按 seq 回放，含每轮输入消息原文与工具定义、物理调用尝试明细 `attempts`（`[{providerId, keyId, model, status(1成功/2失败/3跳过-熔断), errorCode, latencyMs}]`，还原逐 Key 重试/路由降级/熔断跳过全过程）、`startTime`/`rawRequest`/`rawResponse` wire 级原始报文（老数据为 NULL）；trace 汇总含 `traceType`（conversation/summary/memory_extraction/suggestion/step_summary）；thoughts 元素透出 `agentCode`/`isSubagent` 子 Agent 归属 + 计费明细 `billing`（billType/model/actualModel/providerId/tokens/credits/creditsSaved/latencyMs/errorCode/requestId，按 request_id=trace_id 或 message_id 关联 sys_ai_billing）+ 中间产物 `artifacts`（按 message_id 关联 sys_ai_artifact）+ 失败/中断轮异常详情 `errorDetail`（message/stack））；管理员全量，普通用户仅可查自己会话（跨会话/不存在均 `A0401` 不暴露存在性）✅ 已实现 | 登录用户（管理员需 `ai:conversation:audit`） | F-M08-013 |
+| `/api/v1/ai/observability/conversations/{conversationId}/timeline` | GET | 会话审计时间线（按轮次组织：沿消息分支链 `parent_message_id` 配对 user→assistant，resume 多 trace 并列同一轮；轮内事件按 ts 交织排序，kind=`input/context/llm_call/tool_exec/system_event/billing`，llm_call 用 `start_time` 锚点（老数据以 create_time-duration 近似）、同刻按业务序（seq/position）；旁路 trace（suggestion/step_summary 有 message_id 挂触发轮次、summary/memory_extraction 挂触发时点最新轮次）在主对话之后并列；查询参数 `include=raw` 默认含原始报文，传空省略供轻量预览）✅ 已实现 | 登录用户（管理员需 `ai:conversation:audit`） | F-M08-013 |
+| `/api/v1/ai/observability/conversations/{conversationId}/timeline/export` | GET | 会话时间线整体导出（JSON 全量含 raw 原始报文）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
 | `/api/v1/ai/observability/traces/export` | GET | 过程链导出（CSV，UTF-8 BOM；复用 traces 检索条件全量导出，超 10 万行返回 `A0709`）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
 | `/api/v1/ai/observability/costs` | GET | 资源消耗聚合（按 model/agent/user 维度分页聚合 traceCount 与 total/prompt/completion/cached tokens（与计费口径一致）+ 按日趋势）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |
 | `/api/v1/ai/observability/trends` | GET | 性能趋势（按 model/agent + 日期聚合调用量/成功率/平均总耗时/平均首Token延迟）✅ 已实现 | `ai:conversation:audit` | F-M08-013 |

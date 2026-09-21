@@ -37,9 +37,13 @@ class CostService:
         self.cost_repository = ai_model_cost_repository
         self.billing_repository = ai_billing_repository
 
-    async def create_cost(self, db: AsyncSession, request: ModelCostCreateRequest) -> ModelCostResult:
+    async def create_cost(
+        self, db: AsyncSession, request: ModelCostCreateRequest
+    ) -> ModelCostResult:
         """新增成本单价：同模型同供应商生成新的价格版本，历史版本保留可追溯"""
-        version = await self.cost_repository.next_price_version(db, request.model_id, request.provider_id)
+        version = await self.cost_repository.next_price_version(
+            db, request.model_id, request.provider_id
+        )
         cost = await self.cost_repository.create(
             db,
             SysAiModelCost(
@@ -75,7 +79,9 @@ class CostService:
         await self.cost_repository.soft_delete_by_ids(db, [cost_id])
         await self.cost_repository.soft_delete_details_by_price_id(db, cost_id)
 
-    async def list_costs(self, db: AsyncSession, query: ModelCostQuery) -> PageResult[ModelCostResult]:
+    async def list_costs(
+        self, db: AsyncSession, query: ModelCostQuery
+    ) -> PageResult[ModelCostResult]:
         costs, total = await self.cost_repository.list_costs(
             db,
             query.page,

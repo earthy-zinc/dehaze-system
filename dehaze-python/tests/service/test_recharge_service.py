@@ -10,9 +10,11 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_recharge import SysRecharge
 from app.repository.balance_account_repository import balance_account_repository
 from app.repository.balance_log_repository import balance_log_repository
+from app.repository.mongo_audit_log_repository import MongoAuditLogRepository
 from app.repository.recharge_repository import recharge_repository
 from app.service.order.balance_account_service import BalanceAccountService
 from app.service.order.recharge_service import RechargeService
+from app.service.payment_channel_service import PaymentChannelService
 
 pytestmark = pytest.mark.requires_db
 
@@ -25,12 +27,29 @@ def _callback(order_no: str, amount: int, payment_no="CH-PAY-001"):
     return SimpleNamespace(order_no=order_no, amount=amount, channel_payment_no=payment_no, raw={})
 
 
+class _ChannelStub(PaymentChannelService):
+    """测试替身：仅实现 unified_order（委托注入的下单实现）。"""
+
+    def __init__(self, unified_order):
+        self._unified_order = unified_order
+
+    async def unified_order(self, *args, **kwargs):
+        return await self._unified_order(*args, **kwargs)
+
+
+class _AuditRepoStub(MongoAuditLogRepository):
+    """测试替身：仅实现 create_audit_async（no-op）。"""
+
+    def create_audit_async(self, **kwargs):
+        return None
+
+
 def _build_service(channel_service=None, balance_account_service=None):
     return RechargeService(
         recharge_repository=recharge_repository,
         payment_channel_service=channel_service
-        or SimpleNamespace(unified_order=AsyncMock(return_value=_pay_result())),
-        mongo_audit_log_repository=SimpleNamespace(create_audit_async=lambda *a, **k: None),
+        or _ChannelStub(AsyncMock(return_value=_pay_result())),
+        mongo_audit_log_repository=_AuditRepoStub(),
         balance_account_service=balance_account_service or BalanceAccountService(),
     )
 
@@ -58,6 +77,7 @@ class TestCreateRecharge:
         assert data["rechargeNo"].startswith("RC")
         assert data["payUrl"]
         record = await recharge_repository.get_by_recharge_no(db, data["rechargeNo"])
+        assert record is not None
         assert record.status == 1
         assert record.amount == 5000
 
@@ -78,9 +98,11 @@ class TestRechargeCallback:
         assert ok is True
 
         record = await recharge_repository.get_by_recharge_no(db, "RC-OK-1")
+        assert record is not None
         assert record.status == 2
         assert record.channel_payment_no == "CH-PAY-001"
         account = await balance_account_repository.get_by_user_id(db, 100)
+        assert account is not None
         assert account.balance == 5000
         logs = await balance_log_repository.list_by_user(db, 100)
         assert logs[0].change_type == "recharge"
@@ -106,6 +128,7 @@ class TestRechargeCallback:
         )
         assert second is True
         account = await balance_account_repository.get_by_user_id(db, 100)
+        assert account is not None
         assert account.balance == 5000
 
     async def test_callback_unknown_recharge_no_returns_false(self, db):
@@ -121,4 +144,5 @@ class TestRechargeCallback:
         ok = await svc.handle_payment_callback(db, _callback("RC-CLOSED", 5000), "wechat")
         assert ok is False
         account = await balance_account_repository.get_by_user_id(db, 100)
+        assert account is not None
         assert account.balance == 0

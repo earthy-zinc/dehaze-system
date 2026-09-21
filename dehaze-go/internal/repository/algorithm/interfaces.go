@@ -45,7 +45,7 @@ type IAlgorithmRepository interface {
 	ExistsByVersion(ctx context.Context, algorithmID int64, version string, excludeID ...int64) (bool, error)
 
 	// SearchPublished 搜索已发布算法（status=4），支持关键词模糊匹配
-	SearchPublished(ctx context.Context, keyword string, pageNum, pageSize int) ([]model.SysAlgorithm, int64, error)
+	SearchPublished(ctx context.Context, keyword string) ([]model.SysAlgorithm, error)
 
 	// FindAllPublished 查询所有已发布算法（status=4）
 	FindAllPublished(ctx context.Context) ([]model.SysAlgorithm, error)
@@ -58,4 +58,19 @@ type IAlgorithmRepository interface {
 
 	// ExistsByID 检查算法是否存在
 	ExistsByID(ctx context.Context, id int64) (bool, error)
+
+	// Audit 写入审核人/时间/备注，并把状态流转为调用方给定的目标状态
+	Audit(ctx context.Context, id int64, auditBy int64, status int8, remark *string) error
+
+	// FindVersionByID 按 ID 查询版本行（过滤软删行）
+	FindVersionByID(ctx context.Context, versionID int64) (*model.SysAlgorithmVersion, error)
+
+	// CreateVersion 新增版本行
+	CreateVersion(ctx context.Context, version *model.SysAlgorithmVersion) error
+
+	// UpdateVersion 更新版本行
+	UpdateVersion(ctx context.Context, version *model.SysAlgorithmVersion) error
+
+	// DeactivateActiveVersions 将算法下所有活跃版本置为非活跃（单活跃版本管理）
+	DeactivateActiveVersions(ctx context.Context, algorithmID int64) error
 }

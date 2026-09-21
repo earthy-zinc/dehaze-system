@@ -35,7 +35,7 @@ public class SysDeptController {
     @Operation(summary = "获取部门列表")
     @GetMapping
     public Result<List<DeptVO>> listDepartments(
-            @ParameterObject DeptQuery queryParams
+            @Valid @ParameterObject DeptQuery queryParams
     ) {
         List<DeptVO> list = deptService.listDepartments(queryParams);
         return Result.success(list);

@@ -1,0 +1,38 @@
+{
+  "typeCheckingMode": "standard",
+  "venvPath": "dehaze-python",
+  "venv": ".venv",
+  "include": ["dehaze-python/app", "dehaze-python/tests", "dehaze-mcp-gateway"],
+  "ignore": ["dehaze-python/algorithm", "dehaze-python/logs"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.*",
+    "**/.venv",
+    "**/dehaze-algorithm",
+    "**/dehaze-go",
+    "**/dehaze-java",
+    "**/dehaze-android",
+    "**/dehaze_flutter",
+    "**/dehaze-react-native",
+    "**/dehaze-taro",
+    "**/dehaze-uniapp",
+    "**/dehaze-front-vue",
+    "**/dehaze-front-react",
+    "**/dehaze-sdk-js",
+    "**/scripts",
+    "**/config"
+  ],
+  "extraPaths": [
+    "dehaze-python"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "dehaze-mcp-gateway/tests",
+      "extraPaths": [
+        "dehaze-python",
+        "dehaze-mcp-gateway"
+      ]
+    }
+  ]
+}

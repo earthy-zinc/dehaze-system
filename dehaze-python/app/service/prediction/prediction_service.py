@@ -36,11 +36,11 @@ from app.service.prediction.cache import (
     set_cached_prediction,
 )
 from app.service.prediction.image_source import fetch_image
+from app.service.prediction.inference_executor import run_dehaze
 from app.service.prediction.interceptor import (
     PredictionContext,
     PredictionInterceptorChain,
 )
-from app.service.prediction.inference_executor import run_dehaze
 from app.service.prediction.result_storage import upload_result
 from app.service.prediction.wpxnet_interceptor import WpxNetPredictionInterceptor
 from app.service.storage.base import StorageService
@@ -82,6 +82,7 @@ class PredictionService:
         user_id: int | None = None,
         file_id: int | None = None,
         skip_quota_check: bool = False,
+        recommended_by: int | None = None,
     ) -> dict:
         """
         提交预测任务（异步）
@@ -98,105 +99,123 @@ class PredictionService:
         """
         start = time.time()
 
-        if user_id is not None and not skip_quota_check:
-            from app.service.member.quota_service import member_quota_service
+        # 1. 先校验算法存在，再扣减配额（避免算法不存在时配额被凭空扣减）
+        algorithm = await self.get_algorithm(algorithm_id)
 
+        from app.service.member.quota_service import member_quota_service
+
+        quota_deducted = user_id is not None and not skip_quota_check
+        if quota_deducted:
+            # quota_deducted 蕴含 user_id 非空，显式收窄供类型检查
+            assert user_id is not None
             async with get_db_session() as db:
                 await member_quota_service.check_and_deduct_quota(db, user_id, "dehaze")
 
-        algorithm = await self.get_algorithm(algorithm_id)
-
-        # 2. fileId 存在时查询原始文件并用其真实 object_name 拼接访问 URL
-        #   （对齐 Java resolveImageUrl）
-        origin_file: SysFile | None = None
-        storage_service: StorageService | None = None
-        if file_id is not None:
-            async with async_session_factory() as db:
-                origin_file = await file_repository.get_by_id(db, file_id)
-            if origin_file is None:
-                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"文件不存在: {file_id}")
-            # URL 运行时拼接（baseUrl + object_name），不落库
-            from app.service.storage.factory import get_storage_by_name
-
-            storage_service = get_storage_by_name(origin_file.storage)
-            image_url = storage_service.get_url(origin_file.object_name)
-
-        # 3. 调用拦截器链（命中即短路，不调用算法）
-        context = PredictionContext(
-            algorithm=algorithm,
-            file_id=file_id,
-            image_url=image_url,
-            origin_file=origin_file,
-            params=params,
-            start_time_ms=int(start * 1000),
-        )
-        intercepted = await self._interceptor_chain.intercept(context)
-        if intercepted is not None:
-            elapsed = int((time.time() - start) * 1000)
-            logger.debug(
-                "预测拦截器命中: algorithmId=%s, resultUrl=%s",
-                algorithm_id,
-                intercepted.result_url,
-            )
-            return await self._write_completed_log(
-                algorithm_id=algorithm_id,
-                origin_md5=origin_file.md5 if origin_file else "",
-                origin_url=image_url,
-                pred_md5=intercepted.result_md5,
-                pred_url=intercepted.result_url,
-                pred_file_id=intercepted.result_file_id,
-                origin_file_id=file_id,
-                time_ms=elapsed,
-                user_id=user_id,
-            )
-
-        # 4. 下载输入图片（系统存储文件用 SDK 下载避免 minio 私有 bucket 匿名 GET 403）
-        if origin_file is not None:
-            # origin_file 仅在 file_id 非空分支赋值，此时 storage_service 必已获取
-            assert storage_service is not None
-            bucket = settings.MINIO_BUCKET
-            loop = asyncio.get_running_loop()
-            raw = await loop.run_in_executor(
-                None, lambda: storage_service.download(bucket, origin_file.object_name)
-            )
-            image_bytes = io.BytesIO(raw)
-        else:
-            image_bytes = await fetch_image(image_url)
-        image_md5 = calculate_bytes_md5(image_bytes)
-
-        # 5. 查询 Redis 缓存（基于 algorithmId + imageMd5）
-        cache_key = f"prediction:{algorithm_id}:{image_md5}"
-        cached = await get_cached_prediction(cache_key)
-        if cached is not None:
-            elapsed = int((time.time() - start) * 1000)
-            logger.debug("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
-            return await self._write_completed_log(
-                algorithm_id=algorithm_id,
-                origin_md5=image_md5,
-                origin_url=image_url,
-                pred_md5=cached.get("resultMd5", ""),
-                pred_url=cached["resultUrl"],
-                origin_file_id=file_id,
-                time_ms=elapsed,
-                user_id=user_id,
-                extra=cached,
-            )
-
-        from app.models.base import set_current_user_id
-
-        set_current_user_id(user_id)
+        # 2-6. 前置准备与日志创建（此阶段失败后台任务尚未启动，需归还配额防泄漏）
         try:
-            async with get_db_session() as db:
-                log = await pred_log_repository.create_pending_log(
-                    db=db,
+            # fileId 存在时查询原始文件并用其真实 object_name 拼接访问 URL
+            #   （对齐 Java resolveImageUrl）
+            origin_file: SysFile | None = None
+            storage_service: StorageService | None = None
+            if file_id is not None:
+                async with async_session_factory() as db:
+                    origin_file = await file_repository.get_by_id(db, file_id)
+                if origin_file is None:
+                    raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"文件不存在: {file_id}")
+                # URL 运行时拼接（baseUrl + object_name），不落库
+                from app.service.storage.factory import get_storage_by_name
+
+                storage_service = get_storage_by_name(origin_file.storage)
+                image_url = storage_service.get_url(origin_file.object_name)
+
+            # 调用拦截器链（命中即短路，不调用算法）
+            context = PredictionContext(
+                algorithm=algorithm,
+                file_id=file_id,
+                image_url=image_url,
+                origin_file=origin_file,
+                params=params,
+                start_time_ms=int(start * 1000),
+            )
+            intercepted = await self._interceptor_chain.intercept(context)
+            if intercepted is not None:
+                elapsed = int((time.time() - start) * 1000)
+                logger.debug(
+                    "预测拦截器命中: algorithmId=%s, resultUrl=%s",
+                    algorithm_id,
+                    intercepted.result_url,
+                )
+                return await self._write_completed_log(
+                    algorithm_id=algorithm_id,
+                    origin_md5=origin_file.md5 if origin_file else "",
+                    origin_url=image_url,
+                    pred_md5=intercepted.result_md5,
+                    pred_url=intercepted.result_url,
+                    pred_file_id=intercepted.result_file_id,
+                    origin_file_id=file_id,
+                    time_ms=elapsed,
+                    user_id=user_id,
+                    recommended_by=recommended_by,
+                )
+
+            # 下载输入图片（系统存储文件用 SDK 下载避免 minio 私有 bucket 匿名 GET 403）
+            if origin_file is not None:
+                # origin_file 仅在 file_id 非空分支赋值，此时 storage_service 必已获取
+                assert storage_service is not None
+                bucket = settings.MINIO_BUCKET
+                loop = asyncio.get_running_loop()
+                raw = await loop.run_in_executor(
+                    None, lambda: storage_service.download(bucket, origin_file.object_name)
+                )
+                image_bytes = io.BytesIO(raw)
+            else:
+                image_bytes = await fetch_image(image_url)
+            image_md5 = calculate_bytes_md5(image_bytes)
+
+            # 查询 Redis 缓存（基于 algorithmId + imageMd5）
+            cache_key = f"prediction:{algorithm_id}:{image_md5}"
+            cached = await get_cached_prediction(cache_key)
+            if cached is not None:
+                elapsed = int((time.time() - start) * 1000)
+                logger.debug("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
+                return await self._write_completed_log(
                     algorithm_id=algorithm_id,
                     origin_md5=image_md5,
                     origin_url=image_url,
+                    pred_md5=cached.get("resultMd5", ""),
+                    pred_url=cached["resultUrl"],
                     origin_file_id=file_id,
+                    time_ms=elapsed,
+                    user_id=user_id,
+                    recommended_by=recommended_by,
+                    extra=cached,
                 )
-                log_id = log.id
-        finally:
-            set_current_user_id(None)
+
+            from app.models.base import set_current_user_id
+
+            set_current_user_id(user_id)
+            try:
+                async with get_db_session() as db:
+                    log = await pred_log_repository.create_pending_log(
+                        db=db,
+                        algorithm_id=algorithm_id,
+                        origin_md5=image_md5,
+                        origin_url=image_url,
+                        origin_file_id=file_id,
+                        recommended_by=recommended_by,
+                    )
+                    log_id = log.id
+            finally:
+                set_current_user_id(None)
+        except Exception:
+            if quota_deducted:
+                assert user_id is not None
+                try:
+                    async with get_db_session() as db:
+                        await member_quota_service.restore_quota(db, user_id, "dehaze")
+                except Exception:
+                    logger.warning("预测前置失败归还配额异常: userId=%s", user_id, exc_info=True)
+            raise
 
         # 7. 提交异步任务（不等待完成）
         loop = asyncio.get_running_loop()
@@ -241,6 +260,7 @@ class PredictionService:
         user_id: int | None = None,
         origin_file_id: int | None = None,
         pred_file_id: int | None = None,
+        recommended_by: int | None = None,
         extra: dict | None = None,
     ) -> dict:
         """写 completed 日志并返回完整结果（拦截器命中 / 缓存命中共用）。
@@ -262,6 +282,7 @@ class PredictionService:
                     time_ms=time_ms,
                     origin_file_id=origin_file_id,
                     pred_file_id=pred_file_id,
+                    recommended_by=recommended_by,
                 )
                 log_id = log.id
         finally:
@@ -302,7 +323,9 @@ class PredictionService:
                 with PIL.Image.open(image_bytes) as img:
                     image_size = img.width * img.height
                 image_bytes.seek(0)
-            except Exception:
+            except OSError:
+                # 仅图片头无法解析会影响推理指标（image_size 记 None），不阻断推理；记日志
+                logger.debug("预测图片尺寸解析失败，指标 image_size 记 None: logId=%s", log_id)
                 image_size = None
 
             # 2. 执行去雾推理（CPU 密集型 → 线程池）
@@ -349,7 +372,7 @@ class PredictionService:
                 )
                 result_file_id = result_file.id
 
-                await pred_log_repository.update_result(
+                updated = await pred_log_repository.update_result(
                     db=db,
                     log_id=log_id,
                     pred_md5=result_md5,
@@ -357,6 +380,12 @@ class PredictionService:
                     time_ms=elapsed_ms,
                     pred_file_id=result_file_id,
                 )
+
+            # 任务已被取消（update_result 未流转成功）时丢弃结果，
+            # 不写缓存、不发放成长值，保持已取消终态
+            if not updated:
+                logger.info("预测任务已取消，丢弃推理结果: logId=%s", log_id)
+                return
 
             # 5. 写入 Redis 缓存（存完整 URL，与拦截器命中行为一致）
             await set_cached_prediction(
@@ -390,14 +419,15 @@ class PredictionService:
             )
             try:
                 async with get_db_session() as db:
-                    await pred_log_repository.update_status(
+                    transitioned = await pred_log_repository.update_status(
                         db=db,
                         log_id=log_id,
                         status=LogStatus.FAILED.value,
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )
-                    if user_id is not None:
+                    # 任务已被取消（流转失败）时配额已随取消回滚，不再重复归还
+                    if transitioned and user_id is not None:
                         from app.service.member.quota_service import member_quota_service
 
                         await member_quota_service.restore_quota(db, user_id, "dehaze")
@@ -440,13 +470,14 @@ class PredictionService:
     async def list_logs(
         self,
         db: AsyncSession,
+        user_id: int,
         algorithm_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysPredLog], int]:
-        """分页查询预测日志（管理视图，全量）"""
+        """分页查询当前用户的预测日志"""
         return await pred_log_repository.get_paginated(
-            db, algorithm_id=algorithm_id, page=page, size=size
+            db, algorithm_id=algorithm_id, user_id=user_id, page=page, size=size
         )
 
     async def get_log(self, db: AsyncSession, log_id: int) -> SysPredLog:
@@ -460,6 +491,7 @@ class PredictionService:
         """取消预测任务（幂等）。
 
         契约：
+        - 仅本人可取消（create_by 归属校验，他人任务返回 A0401 防枚举）。
         - 仅"处理中(1)"任务可取消：终止后台推理、回滚已扣减配额、状态置为"已取消(4)"。
         - 已完成(2)/已失败(3)/已取消(4)任务调用时幂等返回当前状态，不重复回滚配额。
         - 任务不存在抛 A0401。
@@ -467,7 +499,7 @@ class PredictionService:
         from app.service.member.quota_service import member_quota_service
 
         log = await pred_log_repository.get_by_id(db, log_id)
-        if not log:
+        if not log or log.create_by != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
 
         if log.status != LogStatus.PROCESSING.value:
@@ -476,7 +508,9 @@ class PredictionService:
 
         await self._cancel_background_task(log_id)
 
-        await pred_log_repository.update_status(
+        # 状态流转带 processing 前置条件：并发取消只有一个生效，
+        # 仅流转成功方回滚配额，防止双重回滚
+        transitioned = await pred_log_repository.update_status(
             db=db,
             log_id=log_id,
             status=LogStatus.CANCELLED.value,
@@ -484,11 +518,12 @@ class PredictionService:
             time_ms=0,
         )
 
-        # 3. 回滚已扣减配额（restore_quota 内部有 used>0 保护，m2m/免配额用户不受影响）
-        try:
-            await member_quota_service.restore_quota(db, user_id, "dehaze")
-        except Exception as e:
-            logger.warning("取消任务回滚配额失败: logId=%s, error=%s", log_id, e)
+        if transitioned:
+            # 回滚任务归属者的已扣减配额（restore_quota 内部有 used>0 保护，m2m/免配额用户不受影响）
+            try:
+                await member_quota_service.restore_quota(db, user_id, "dehaze")
+            except Exception as e:
+                logger.warning("取消任务回滚配额失败: logId=%s, error=%s", log_id, e)
 
         logger.info("预测任务已取消: logId=%s", log_id)
         return {"logId": log.id, "status": LogStatus.CANCELLED.value}
@@ -518,14 +553,12 @@ class PredictionService:
         items: list[BatchPredictionItem],
         user_id: int,
         skip_quota_check: bool = False,
+        recommended_by: int | None = None,
     ) -> list[dict[str, Any]]:
         """批量处理：校验上限后逐张提交预测"""
         # T-DH-027：空 items 直接参数校验失败
         if not items:
             raise BusinessException(ResultCode.PARAM_ERROR, "批量处理图片列表不能为空")
-
-        if len(items) > 20:
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "批量处理最多支持20张图片")
 
         if not skip_quota_check:
             from app.repository.member_benefit_repository import member_benefit_repository
@@ -537,7 +570,8 @@ class PredictionService:
                     raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
                 benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
                 batch_limit = benefit.batch_limit if benefit else 5
-                # T-DH-023：超过会员等级上限返回 A0500（对齐文档）
+                # T-DH-023：超过会员等级上限返回 A0500（对齐文档，batch_limit 为唯一权威，
+                # 不设额外硬编码上限以免拦截高等级权益）
                 if len(items) > batch_limit:
                     raise BusinessException(
                         ResultCode.BUSINESS_ERROR,
@@ -545,7 +579,7 @@ class PredictionService:
                     )
 
         results = []
-        for item in items:
+        for index, item in enumerate(items):
             file_id = item.fileId
             image_url = item.imageUrl
             raw_params = item.params
@@ -577,6 +611,7 @@ class PredictionService:
                     user_id=user_id,
                     file_id=file_id,
                     skip_quota_check=skip_quota_check,
+                    recommended_by=recommended_by,
                 )
                 results.append(
                     {
@@ -588,6 +623,9 @@ class PredictionService:
                     }
                 )
             except Exception as e:
+                # 单张失败不阻断整批：原因写入该条结果（errorMessage）返回调用方；同时记日志
+                # 便于在批量任务中快速定位失败项（index/fileId）
+                logger.warning("批量预测单项失败: index=%s fileId=%s error=%s", index, file_id, e)
                 results.append(
                     {
                         "logId": None,

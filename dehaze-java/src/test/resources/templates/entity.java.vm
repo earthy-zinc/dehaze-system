@@ -77,7 +77,7 @@ public class ${entity} {
 #end
 ## 逻辑删除注解
 #if(${field.logicDeleteField})
-    @TableLogic
+    @TableLogic(value = "0", delval = "id")
 #end
     private ${field.propertyType} ${field.propertyName};
 #end

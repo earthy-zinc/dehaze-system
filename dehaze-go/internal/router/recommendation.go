@@ -16,7 +16,8 @@ func RegisterRecommendationRoutes(rg *gin.RouterGroup, recApi *api.Recommendatio
 
 		// 管理员接口
 		recRouter.GET("/rules", middleware.Permission("sys:recommendation:rule:view"), recApi.GetRules)
-		recRouter.PUT("/rules", middleware.Permission("sys:recommendation:rule:edit"), recApi.UpdateRule)
+		// 更新规则：参数绑定后做权限校验（与 FastAPI body 校验先行顺序对齐，见 middleware.CheckPermission）
+		recRouter.PUT("/rules", recApi.UpdateRule)
 		recRouter.GET("/report", middleware.Permission("sys:recommendation:report"), recApi.GetReport)
 	}
 }

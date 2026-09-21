@@ -28,11 +28,27 @@ def _make_docx(paragraphs: list[str], table_rows: list[list[str]]) -> bytes:
     return buf.getvalue()
 
 
+def _make_docx_ordered(items: list[tuple]) -> bytes:
+    """按顺序构造 docx：("heading", level, text) 转 Heading 样式段落，("para", text) 为普通段落。"""
+    from docx import Document
+
+    doc = Document()
+    for item in items:
+        if item[0] == "heading":
+            doc.add_heading(item[2], level=item[1])
+        else:
+            doc.add_paragraph(item[1])
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
 def _make_xlsx(headers: list, rows: list[list], merged: bool = False) -> bytes:
     from openpyxl import Workbook
 
     wb = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.append(headers)
     for row in rows:
         ws.append(row)
@@ -57,7 +73,9 @@ def _make_pptx(slides_data: list[dict]) -> bytes:
             for text in texts[1:]:
                 tf.add_paragraph().text = text
         if sd.get("notes"):
-            slide.notes_slide.notes_text_frame.text = sd["notes"]
+            notes_text_frame = slide.notes_slide.notes_text_frame
+            assert notes_text_frame is not None
+            notes_text_frame.text = sd["notes"]
     buf = io.BytesIO()
     prs.save(buf)
     return buf.getvalue()
@@ -102,7 +120,8 @@ class TestTextFormats:
             _make_text("# 系统上线说明\n\n本文档介绍去雾系统的部署步骤与回滚方案"), "readme.md"
         )
         assert "系统上线说明" in doc.content
-        assert "部署步骤" in doc.content and "回滚方案" in doc.content
+        assert "部署步骤" in doc.content
+        assert "回滚方案" in doc.content
 
     def test_txt_parsed_with_chinese(self):
         doc = parse_document(_make_text("安装依赖：pip install -r requirements.txt"), "note.txt")
@@ -136,7 +155,8 @@ class TestDirtyTextCorpus:
     def test_zero_width_chars(self):
         text = "\u200b系统启动\u200b完成\u200b"
         doc = parse_document(_make_text(text), "zw.txt")
-        assert "系统启动" in doc.content and "完成" in doc.content
+        assert "系统启动" in doc.content
+        assert "完成" in doc.content
 
     def test_long_unbroken_line(self):
         line = "abcdefghABCDEFGH0123456789" * 400
@@ -160,7 +180,8 @@ class TestDocx:
         doc = parse_document(data, "doc.docx")
         assert "第一章 项目背景" in doc.content
         assert "微服务架构" in doc.content
-        assert "模块" in doc.content and "张三" in doc.content
+        assert "模块" in doc.content
+        assert "张三" in doc.content
 
     def test_table_block_metadata(self):
         data = _make_docx(["说明"], [["名称", "数量"], ["苹果", "5"]])
@@ -169,6 +190,42 @@ class TestDocx:
         assert len(table_blocks) == 1
         assert table_blocks[0]["table_rows"] == 1
         assert table_blocks[0]["table_cols"] == 2
+
+
+class TestDocxHeading:
+    """docx Heading 样式 → Markdown 标题中间表示（父子分块设计 §4.2 格式矩阵）"""
+
+    def test_heading_style_converted_to_markdown_marker(self):
+        data = _make_docx_ordered(
+            [("heading", 1, "第一章 总体架构"), ("para", "系统采用微服务架构部署")]
+        )
+        doc = parse_document(data, "h.docx")
+        assert "# 第一章 总体架构" in doc.content
+        assert "系统采用微服务架构部署" in doc.content
+
+    def test_nested_levels_path_accumulate_in_chunking(self):
+        # 解析层 Heading → 分块层小节归属：标题路径随层级累积（解析-分块层解耦）
+        data = _make_docx_ordered(
+            [
+                ("heading", 1, "第一章"),
+                ("para", "正文甲"),
+                ("heading", 2, "1.1 部署要求"),
+                ("para", "正文乙"),
+            ]
+        )
+        doc = parse_document(data, "h.docx")
+        chunks = chunk_text(doc.content, "fixed", 800, 0)
+        by_path = {c.section_path: c.content for c in chunks}
+        assert "第一章" in by_path
+        assert "正文甲" in by_path["第一章"]
+        assert "第一章 > 1.1 部署要求" in by_path
+        assert "正文乙" in by_path["第一章 > 1.1 部署要求"]
+
+    def test_non_heading_paragraph_stays_plain(self):
+        data = _make_docx(["Heading 以外的普通正文段落"], [])
+        doc = parse_document(data, "p.docx")
+        assert "普通正文段落" in doc.content
+        assert "#" not in doc.content
 
 
 class TestTableVariants:
@@ -186,7 +243,8 @@ class TestTableVariants:
         doc = parse_document(data, "doc.docx")
         assert doc.blocks[0]["table_rows"] == 1
         assert doc.blocks[0]["table_cols"] == 2
-        assert "苹果" in doc.content and "香蕉" in doc.content
+        assert "苹果" in doc.content
+        assert "香蕉" in doc.content
 
     def test_docx_cell_pipe_escaped(self):
         data = _make_docx([], [["名称", "数量"], ["a|b", "5"]])
@@ -233,7 +291,8 @@ class TestPdf:
     def test_fast_strategy_text_extracted(self):
         data = _make_pdf("本期财务摘要：营收同比增长12%")
         doc = parse_document(data, "file.pdf", strategy="fast")
-        assert "营收" in doc.content and "12%" in doc.content
+        assert "营收" in doc.content
+        assert "12%" in doc.content
         assert doc.blocks[0]["type"] == "text"
 
     def test_hires_blocks_metadata(self):
@@ -242,7 +301,8 @@ class TestPdf:
         assert len(doc.blocks) >= 1
         first = doc.blocks[0]
         assert first["type"] == "text"
-        assert "page" in first and "order" in first
+        assert "page" in first
+        assert "order" in first
         assert first["order"] == 0
 
     @pytest.mark.slow
@@ -279,8 +339,10 @@ class TestParseHtml:
     def test_no_tag_residue(self):
         html = "<div><p>第一行</p><p>第二行</p></div>"
         text = parse_html(html)
-        assert "<" not in text and ">" not in text
-        assert "第一行" in text and "第二行" in text
+        assert "<" not in text
+        assert ">" not in text
+        assert "第一行" in text
+        assert "第二行" in text
 
     def test_script_content_with_chinese_and_table_not_in_body(self):
         html = """<html><body>
@@ -294,8 +356,11 @@ class TestParseHtml:
     def test_html_entities_decoded(self):
         html = "<p>Tom &amp; Jerry &lt;b&gt;bold&lt;/b&gt; &nbsp; end</p>"
         text = parse_html(html)
-        assert "&" in text and "Tom" in text and "Jerry" in text
-        assert "<b>" in text and "</b>" in text
+        assert "&" in text
+        assert "Tom" in text
+        assert "Jerry" in text
+        assert "<b>" in text
+        assert "</b>" in text
 
     def test_body_less_malformed_html(self):
         html = "裸文本行一\n裸文本行二"
@@ -304,14 +369,16 @@ class TestParseHtml:
     def test_nested_tables(self):
         html = "<table><tr><td>外层<td>内层</td></tr></table>"
         text = parse_html(html)
-        assert "外层" in text and "内层" in text
+        assert "外层" in text
+        assert "内层" in text
 
 
 class TestEmptyFiles:
     @pytest.mark.parametrize("ext", [".pdf", ".docx", ".xlsx", ".pptx"])
     def test_zero_byte_binary_returns_empty(self, ext):
         doc = parse_document(b"", f"empty{ext}")
-        assert doc.content == "" and doc.blocks == []
+        assert doc.content == ""
+        assert doc.blocks == []
 
     @pytest.mark.parametrize("ext", [".txt", ".md"])
     def test_zero_byte_text_returns_empty(self, ext):
@@ -325,7 +392,8 @@ class TestEmptyFiles:
             doc = parse_document(data, f"corrupt.{ext}")
             assert doc.content == ""
         except BusinessException as exc:
-            assert exc.code == ResultCode.BUSINESS_ERROR
+            if exc.code != ResultCode.BUSINESS_ERROR:
+                pytest.fail(f"意外的业务异常码: {exc.code}")
 
     def test_disguised_pdf_magic_as_txt(self):
         data = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3"
@@ -348,7 +416,9 @@ class TestXlsxAdversarial:
 
     def test_data_interspersed_with_many_blank_rows(self):
         blank_rows = [[None, None]] * 20
-        doc = parse_document(_make_xlsx(["项目", "值"], blank_rows + [["甲", "100"]]), "sparse.xlsx")
+        doc = parse_document(
+            _make_xlsx(["项目", "值"], [*blank_rows, ["甲", "100"]]), "sparse.xlsx"
+        )
         assert "项目: 甲, 值: 100" in doc.content
 
 
@@ -366,17 +436,20 @@ class TestChunkVariantRecognition:
     def test_header_only_table_rows_zero(self):
         table = "| 名称 | 数量 |\n| --- | --- |"
         t = next(c for c in chunk_text(table, "table", 800, 0) if c.metadata.get("type") == "table")
-        assert t.metadata["rows"] == 0 and t.metadata["cols"] == 2
+        assert t.metadata["rows"] == 0
+        assert t.metadata["cols"] == 2
 
     def test_data_only_table_first_row_as_header(self):
         table = "| 苹果 | 5 |\n| 香蕉 | 3 |"
         t = next(c for c in chunk_text(table, "table", 800, 0) if c.metadata.get("type") == "table")
-        assert t.metadata["rows"] == 1 and t.metadata["cols"] == 2
+        assert t.metadata["rows"] == 1
+        assert t.metadata["cols"] == 2
 
     def test_escaped_pipe_cell(self):
         table = "| 名称 | 数量 |\n| --- | --- |\n| a\\|b | 5 |"
         t = next(c for c in chunk_text(table, "table", 800, 0) if c.metadata.get("type") == "table")
-        assert t.metadata["rows"] == 1 and t.metadata["cols"] == 2
+        assert t.metadata["rows"] == 1
+        assert t.metadata["cols"] == 2
         assert "a\\|b" in t.content
 
     def test_mixed_fullwidth_halfwidth_qa_colon(self):

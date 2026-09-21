@@ -16,9 +16,12 @@ PlanTask: {id, description, depends_on[], tool_hint?, paradigm?, status, result?
 from __future__ import annotations
 
 import json
+import logging
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # 子任务默认范式：未标注时按 react（单步 ReAct）执行
 DEFAULT_SUBTASK_PARADIGM = "react"
@@ -70,6 +73,34 @@ def _new_task(
     }
 
 
+def to_wire_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    """把内部计划归一为对外 camelCase 形状（plan 事件与 plan_approve 中断的唯一出口）。
+
+    内部结构保持 snake_case（Redis 中断点与执行器直接消费），仅在 SSE 出口归一一次；
+    可选键（paradigm/toolHint/result）缺失即不下发，不塞 None。
+    """
+    tasks = []
+    for t in plan.get("tasks") or []:
+        task = {
+            "id": t.get("id"),
+            "description": t.get("description"),
+            "dependsOn": t.get("depends_on") or [],
+            "status": t.get("status", "pending"),
+        }
+        if t.get("paradigm") is not None:
+            task["paradigm"] = t["paradigm"]
+        if t.get("tool_hint") is not None:
+            task["toolHint"] = t["tool_hint"]
+        if t.get("result") is not None:
+            task["result"] = t["result"]
+        tasks.append(task)
+    return {
+        "tasks": tasks,
+        "status": plan.get("status", "pending"),
+        "revisions": plan.get("revisions") or [],
+    }
+
+
 # ── Planner ──────────────────────────────────────────
 
 
@@ -80,11 +111,14 @@ async def build_plan(
 ) -> dict[str, Any]:
     """调用 LLM 将任务分解为结构化计划。
 
-    返回 {tasks: [PlanTask], status, revisions}。解析失败时兜底为单任务 react 计划，
-    保证计划始终可执行（宁可退化为单步，也不中断推理）。
+    返回 {tasks: [PlanTask], status, revisions}。仅当 LLM 输出无法解析为合法计划
+    （非 JSON / 结构非法）时降级为单任务 react 计划（宁可退化为单步也不中断推理）；
+    该降级是文档化契约，但会记 warning 日志暴露，便于排查提示词/模型合规问题。
+    模型调用本身的异常（含护栏拦截/配额中断）不在此吞掉，直接冒泡交给调用方处理。
     """
     plan = new_plan()
     user_prompt = f"用户任务：{task}\n工具提示：{tool_hint or '无'}"
+    raw = ""
     try:
         raw = await model_call([{"role": "user", "content": user_prompt}], _PLANNER_PROMPT)
         data = _extract_json(raw)
@@ -101,8 +135,9 @@ async def build_plan(
             )
         if tasks:
             plan["tasks"] = tasks
-    except Exception:
-        # 解析失败：退化为单任务 react 计划，不中断推理
+    except (ValueError, AttributeError, TypeError) as exc:
+        # 仅解析类失败（非 JSON / 结构非法）才降级为单任务，并记日志暴露 LLM 输出不合规
+        logger.warning("Planner 输出解析失败，降级为单任务计划: error=%s raw=%r", exc, raw[:500])
         plan["tasks"] = [_new_task("A", task, [], tool_hint, "react")]
     return plan
 
@@ -195,8 +230,9 @@ async def replan(
             )
         if revised:
             _apply_revision(plan, failed_task_ids, revised)
-    except Exception:
-        # 修订失败：把失败任务直接标注失败，避免无限重规划
+    except (ValueError, AttributeError, TypeError) as exc:
+        # 仅解析类失败才降级（标注失败任务避免无限重规划）；护栏拦截/配额中断必须冒泡
+        logger.warning("Replanner 输出解析失败，失败任务标注为 failed: error=%s", exc)
         for t in plan.get("tasks") or []:
             if t["id"] in set(failed_task_ids):
                 t["status"] = "failed"
@@ -213,9 +249,9 @@ def _apply_revision(
     plan["tasks"] = kept + revised
     plan["revisions"].append(
         {
-            "at": len(plan["revisions"]) + 1,
+            "revisionNo": len(plan["revisions"]) + 1,
             "reason": "，".join(failed_task_ids),
-            "change": json.dumps([t["id"] for t in revised], ensure_ascii=False),
+            "changedTaskIds": [t["id"] for t in revised],
         }
     )
 
@@ -226,7 +262,8 @@ def _apply_revision(
 def apply_plan_edit(plan: dict[str, Any], plan_edit: dict[str, Any] | None) -> dict[str, Any]:
     """合并用户计划干预（resume 透传），并做干预窗口校验。
 
-    plan_edit 结构：{remove: [taskId], reorder: [taskId...], add: {description, depends_on}}
+    plan_edit 为上行请求体（camelCase）：
+    {remove: [taskId], reorder: [taskId...], add: {description, dependsOn, toolHint?, paradigm?}}
 
     干预窗口：仅 plan.status == "pending" 时允许整体调整（remove/reorder/add）；
     executing 之后不允许调整（中途改需求应走新消息）。
@@ -253,8 +290,8 @@ def apply_plan_edit(plan: dict[str, Any], plan_edit: dict[str, Any] | None) -> d
             _new_task(
                 new_id,
                 str(add_spec["description"]),
-                [str(d) for d in (add_spec.get("depends_on") or [])],
-                add_spec.get("tool_hint"),
+                [str(d) for d in (add_spec.get("dependsOn") or [])],
+                add_spec.get("toolHint"),
                 add_spec.get("paradigm"),
             )
         )

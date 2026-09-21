@@ -37,10 +37,15 @@ class SysVoiceProvider(BaseModel, SoftDeleteMixin):
         String(32),
         nullable=False,
         default="bearer",
-        comment="认证方式(bearer:Authorization Bearer;x-api-key;custom:自定义请求头,头名在default_headers配置)",
+        comment=(
+            "认证方式(bearer:Authorization Bearer;x-api-key;"
+            "custom:自定义请求头,头名在default_headers配置)"
+        ),
     )
     default_headers: Mapped[Any | None] = mapped_column(
-        JSON, nullable=True, comment='默认请求头(JSON);auth_type=custom时,需含{"auth_header":"头名"}'
+        JSON,
+        nullable=True,
+        comment='默认请求头(JSON);auth_type=custom时,需含{"auth_header":"头名"}',
     )
     is_default: Mapped[int] = mapped_column(
         SmallInteger,

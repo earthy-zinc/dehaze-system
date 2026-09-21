@@ -55,8 +55,8 @@ public class SysAlgorithmVersion extends BaseEntity {
     private Boolean isActive;
 
     /**
-     * 逻辑删除标识(0:未删除;1:已删除)
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
      */
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 }

@@ -3,7 +3,9 @@ package api
 import (
 	"context"
 	"fmt"
+	"mime"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -11,6 +13,7 @@ import (
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +24,9 @@ type fileResponse struct {
 	model.SysFile
 	URL string `json:"url"`
 }
+
+// md5Pattern MD5 格式：32 位十六进制（与 Python/Java 端一致，无效格式返回 B0404）
+var md5Pattern = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
 
 // attachFileURL 为单个 SysFile 附加运行时拼接的 URL
 func (api *SysFileApi) attachFileURL(ctx context.Context, file model.SysFile) fileResponse {
@@ -44,6 +50,17 @@ func NewSysFileApi(fileService *fileservice.FileService) *SysFileApi {
 	return &SysFileApi{
 		fileService: fileService,
 	}
+}
+
+// ensureFileAccess 归属校验：管理员全量可见，普通用户仅可访问自己上传的文件（越权 B0407）
+func ensureFileAccess(file *model.SysFile, userID int64, isAdmin bool) error {
+	if isAdmin {
+		return nil
+	}
+	if file.CreateBy != userID {
+		return common.NewBizError(common.FILE_ACCESS_DENIED, "无权访问该文件")
+	}
+	return nil
 }
 
 // UploadFile 文件上传
@@ -71,15 +88,17 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 		maxSize = cfg.File.MaxSize
 	}
 	if fileHeader.Size > maxSize {
-		_ = c.Error(common.NewBizError(common.USER_UPLOAD_FILE_SIZE_EXCEEDS, "文件大小超过限制"))
+		// B0402 与 Python/Java 端及文档错误码对齐
+		_ = c.Error(common.NewBizError(common.FILE_TOO_LARGE, "文件大小超过限制"))
 		return
 	}
 
-	// 3. 文件名安全校验
+	// 3. 文件名安全校验，并回写 basename 化后的安全名（Service 层用其生成 name/扩展名）
 	if err := validateFileName(fileHeader.Filename); err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, err.Error()))
 		return
 	}
+	fileHeader.Filename = filepath.Base(strings.ReplaceAll(fileHeader.Filename, "\\", "/"))
 
 	// 4. 打开文件流并计算 MD5
 	file, err := fileHeader.Open()
@@ -95,8 +114,13 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 		return
 	}
 
-	// 5. 调用 Service 上传（URL 不落库，运行时拼接）
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
+	// 5. 调用 Service 上传（URL 不落库，运行时拼接；create_by 记录上传者供归属校验）
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -123,6 +147,26 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 		return
 	}
 
+	// 归属校验：普通用户仅可删除自己上传的文件
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	file, err := api.fileService.GetFileById(c.Request.Context(), fileId)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if file.ID == 0 {
+		_ = c.Error(common.NewBizError(common.FILE_NOT_FOUND, "文件不存在"))
+		return
+	}
+	if err := ensureFileAccess(&file, userID, security.IsAdmin(c)); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
 	err = api.fileService.DeleteFile(c.Request.Context(), fileId)
 	if err != nil {
 		_ = c.Error(err)
@@ -145,6 +189,11 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 	md5 := c.Query("md5")
 	if md5 == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少md5参数"))
+		return
+	}
+	// MD5 格式校验：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404，与 Python/Java 端一致）
+	if !md5Pattern.MatchString(md5) {
+		_ = c.Error(common.NewBizError(common.FILE_MD5_INVALID, "MD5格式无效"))
 		return
 	}
 
@@ -176,21 +225,25 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 func (api *SysFileApi) GetFilePage(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	pageNum := 1
-	pageSize := 10
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			pageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			pageSize = n
-		}
+	// 此前这里的 `err == nil` 即采用，连 pageSize=0/负值都放行（负值会让 LIMIT 子句消失、返回全量）
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
 	}
 	keywords := c.Query("keywords")
 
-	result, err := api.fileService.GetPage(ctx, pageNum, pageSize, keywords)
+	// 普通用户仅可见自己上传的文件，管理员全量
+	var ownerID *int64
+	if !security.IsAdmin(c) {
+		userID, err := security.RequireUserID(c)
+		if err != nil {
+			_ = c.Error(err)
+			return
+		}
+		ownerID = &userID
+	}
+
+	result, err := api.fileService.GetPage(ctx, pageNum, pageSize, keywords, ownerID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -227,9 +280,20 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 		return
 	}
 
-	// 文件不存在时返回 null（与 Java/Python 行为一致），避免返回零值对象
+	// 文件不存在返回 B0401（与 Java/Python 端行为一致）
 	if file.ID == 0 {
-		common.Ok(c)
+		_ = c.Error(common.NewBizError(common.FILE_NOT_FOUND, "文件不存在"))
+		return
+	}
+
+	// 归属校验：普通用户仅可访问自己上传的文件
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if err := ensureFileAccess(&file, userID, security.IsAdmin(c)); err != nil {
+		_ = c.Error(err)
 		return
 	}
 	common.OkWithData(api.attachFileURL(c.Request.Context(), file), c)
@@ -254,13 +318,30 @@ func (api *SysFileApi) DownloadFile(c *gin.Context) {
 		return
 	}
 
+	// 防止路径遍历攻击（对齐 Python 端校验）
+	if strings.Contains(objectName, "..") || strings.HasPrefix(objectName, "/") || strings.Contains(objectName, "\\") {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无效的文件路径"))
+		return
+	}
+
 	file, err := api.fileService.GetFileByObjectName(ctx, objectName)
 	if err != nil {
 		_ = c.Error(common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err))
 		return
 	}
 	if file == nil {
-		_ = c.Error(common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在"))
+		_ = c.Error(common.NewBizError(common.FILE_NOT_FOUND, "文件不存在"))
+		return
+	}
+
+	// 归属校验：普通用户仅可下载自己上传的文件
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if err := ensureFileAccess(file, userID, security.IsAdmin(c)); err != nil {
+		_ = c.Error(err)
 		return
 	}
 
@@ -277,23 +358,40 @@ func (api *SysFileApi) DownloadFile(c *gin.Context) {
 	}
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	c.Header("Content-Type", "application/octet-stream")
-	c.DataFromReader(200, -1, "application/octet-stream", reader, nil)
+	// 按扩展名推断 MIME 类型（对齐 Java/Python 端），推断不出时回退 application/octet-stream
+	contentType := mime.TypeByExtension(filepath.Ext(filename))
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	c.Header("Content-Type", contentType)
+	c.DataFromReader(200, -1, contentType, reader, nil)
 }
 
-// validateFileName 校验文件名安全性
+// validateFileName 校验文件名安全性与长度（三端口径与 Python 端一致：
+// 先 basename 化去除路径前缀，再拒绝非法字符与超长——sys_file.name/object_name 列宽 varchar(100)）
 func validateFileName(fileName string) error {
 	if fileName == "" {
 		return fmt.Errorf("文件名不能为空")
 	}
-	if len(fileName) > 255 {
+	fileName = filepath.Base(strings.ReplaceAll(fileName, "\\", "/"))
+	if fileName == "" || fileName == "." || fileName == ".." {
+		return fmt.Errorf("文件名不能为空")
+	}
+	if len([]rune(fileName)) > 100 {
 		return fmt.Errorf("文件名过长")
 	}
-	// 禁止路径分隔符防止路径穿越
+	// 禁止路径分隔符与特殊字符（与 Python 端 _UNSAFE_FILENAME_PATTERN 对齐）
+	if strings.ContainsAny(fileName, `/:*?"<>|`) {
+		return fmt.Errorf("文件名包含非法字符")
+	}
 	for _, ch := range fileName {
-		if ch == '/' || ch == '\\' || ch == '\x00' {
+		if ch == '\\' || ch < 0x20 {
 			return fmt.Errorf("文件名包含非法字符")
 		}
+	}
+	ext := strings.TrimPrefix(filepath.Ext(fileName), ".")
+	if len(ext) > 20 {
+		return fmt.Errorf("文件扩展名过长")
 	}
 	return nil
 }

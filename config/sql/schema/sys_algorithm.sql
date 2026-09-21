@@ -31,7 +31,7 @@ CREATE TABLE `sys_algorithm`
     `audit_time`   datetime                                                       NULL DEFAULT NULL COMMENT '审核时间',
     `audit_remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '审核备注',
     `recommend_score` decimal(3,2)                                                NULL DEFAULT 3.50 COMMENT '推荐评分(0-5分，由推荐管理模块计算回写，新算法默认3.5)',
-    `deleted`      tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`      bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`    bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',

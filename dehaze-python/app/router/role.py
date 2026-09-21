@@ -41,22 +41,22 @@ async def get_role_page(
         db, query.pageNum, query.pageSize, query.keywords
     )
 
-    role_list = []
-    for role in roles:
-        role_list.append(
-            {
-                "id": role.id,
-                "name": role.name,
-                "code": role.code,
-                "sort": role.sort,
-                "status": role.status,
-                "dataScope": role.data_scope,
-                "dataScopeLabel": DATA_SCOPE_LABELS.get(
-                    role.data_scope if role.data_scope is not None else 0, ""
-                ),
-                "createTime": format_time(role.create_time),
-            }
-        )
+    role_list = [
+        {
+            "id": role.id,
+            "name": role.name,
+            "code": role.code,
+            "sort": role.sort,
+            "status": role.status,
+            "dataScope": role.data_scope,
+            "dataScopeLabel": DATA_SCOPE_LABELS.get(
+                role.data_scope if role.data_scope is not None else 0, ""
+            ),
+            "createTime": format_time(role.create_time),
+            "updateTime": format_time(role.update_time),
+        }
+        for role in roles
+    ]
 
     return success(
         {
@@ -69,9 +69,10 @@ async def get_role_page(
 @router.get("/options", response_model=Result[list[RoleOptionVO]], summary="获取角色下拉列表")
 async def list_role_options(
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    options = await role_service.get_role_options(db, is_root=user.is_root)
+    options = await role_service.get_role_options(db, redis, is_root=user.is_root)
     return success(options)
 
 
@@ -106,6 +107,11 @@ async def get_role_form(
             "sort": role.sort,
             "status": role.status,
             "dataScope": role.data_scope,
+            "dataScopeLabel": DATA_SCOPE_LABELS.get(
+                role.data_scope if role.data_scope is not None else 0, ""
+            ),
+            "createTime": format_time(role.create_time),
+            "updateTime": format_time(role.update_time),
         }
     )
 
@@ -176,6 +182,6 @@ async def assign_menus_to_role(
 ):
     # RootModel 使用 .root 访问实际的列表数据
     menu_ids: list[int] = body.root
-    await role_service.assign_menus_to_role(db, redis, role_id, menu_ids)
+    await role_service.assign_menus_to_role(db, redis, role_id, menu_ids, operator=user)
 
     return success(msg="分配成功")

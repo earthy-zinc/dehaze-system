@@ -60,6 +60,9 @@ func (s *AnnouncementService) Create(ctx context.Context, userID int64, form *bo
 		if err != nil {
 			return nil, common.NewBizError(common.PARAM_ERROR, "定时发送时间格式不正确")
 		}
+		if !t.After(time.Now()) {
+			return nil, common.NewBizError(common.PARAM_ERROR, "定时发送时间必须为未来时间")
+		}
 		ann.SendTime = &t
 		ann.Status = 2
 	}
@@ -189,7 +192,7 @@ func (s *AnnouncementService) Send(ctx context.Context, id int64) (*vo.Announcem
 		return nil, common.NewBizError(common.ANNOUNCEMENT_NOT_FOUND, "公告不存在")
 	}
 	if ann.Status != 1 && ann.Status != 2 {
-		return nil, common.NewBizError(common.DATA_STATE_NOT_ALLOW, "公告状态不允许发送")
+		return nil, common.NewBizError(common.ANNOUNCEMENT_STATUS_INVALID, "公告状态不允许发送")
 	}
 
 	recipientIDs, err := s.resolveTargetUserIDs(ctx, ann)
@@ -200,17 +203,25 @@ func (s *AnnouncementService) Send(ctx context.Context, id int64) (*vo.Announcem
 		return nil, common.NewBizError(common.ANNOUNCEMENT_TARGET_EMPTY, "发送范围为空")
 	}
 
-	msgForm := &bo.MessageSendForm{
-		Type:         "announcement",
-		Title:        ann.Title,
-		Content:      ann.Content,
-		RecipientIDs: recipientIDs,
-		BizModule:    "system",
-		BizID:        fmt.Sprintf("%d", ann.ID),
-		Priority:     int(ann.Importance) + 1,
-	}
-	if _, err := s.msgService.Send(ctx, msgForm); err != nil {
-		return nil, err
+	priority := int(ann.Importance) + 1
+	batchSize := 500
+	for i := 0; i < len(recipientIDs); i += batchSize {
+		end := i + batchSize
+		if end > len(recipientIDs) {
+			end = len(recipientIDs)
+		}
+		msgForm := &bo.MessageSendForm{
+			Type:         "announcement",
+			Title:        ann.Title,
+			Content:      ann.Content,
+			RecipientIDs: recipientIDs[i:end],
+			BizModule:    "system",
+			BizID:        fmt.Sprintf("%d", ann.ID),
+			Priority:     priority,
+		}
+		if _, err := s.msgService.Send(ctx, msgForm); err != nil {
+			return nil, err
+		}
 	}
 
 	now := time.Now()

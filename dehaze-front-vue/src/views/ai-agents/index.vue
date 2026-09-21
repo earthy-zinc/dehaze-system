@@ -28,7 +28,12 @@
         </div>
       </template>
 
-      <AgentTable @edit="openEdit" @copy="openCopy" @test="openTest" />
+      <AgentTable
+        @detail="openDetail"
+        @edit="openEdit"
+        @copy="openCopy"
+        @test="openTest"
+      />
     </el-card>
 
     <!-- 配置表单弹窗：编辑/新建共用 AgentConfigForm，保存生成草稿快照 -->
@@ -122,6 +127,12 @@ import { AgentListItem } from "dehaze-sdk-js";
 import { useAdminAgentStore } from "@/store/modules/adminAgent";
 
 const agentStore = useAdminAgentStore();
+const router = useRouter();
+
+// ==================== 详情 ====================
+function openDetail(row: AgentListItem) {
+  router.push(`/admin/ai-agents/${row.id}`);
+}
 
 function handleQuery() {
   agentStore.query.pageNum = 1;

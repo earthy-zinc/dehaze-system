@@ -45,7 +45,9 @@ _MANAGE_PERMISSION = "ai:mcp:manage"
 # ── Server 注册表 ────────────────────────────────────────────
 
 
-@router.get("/servers", response_model=Result[PageResult[McpServerResult]], summary="MCP Server 列表")
+@router.get(
+    "/servers", response_model=Result[PageResult[McpServerResult]], summary="MCP Server 列表"
+)
 @require_permission(_MANAGE_PERMISSION)
 async def list_servers(
     query: McpServerQuery = Depends(),
@@ -101,7 +103,9 @@ async def delete_server(
     return success(msg="一切ok")
 
 
-@router.patch("/servers/{server_id}/status", response_model=Result[McpServerResult], summary="启停 Server")
+@router.patch(
+    "/servers/{server_id}/status", response_model=Result[McpServerResult], summary="启停 Server"
+)
 @require_permission(_MANAGE_PERMISSION)
 async def switch_server_status(
     server_id: int,
@@ -115,7 +119,9 @@ async def switch_server_status(
 # ── 健康 / 工具 / 命名空间 / 凭据 ────────────────────────────
 
 
-@router.get("/servers/{server_id}/health", response_model=Result[McpHealthResult], summary="Server 健康探测")
+@router.get(
+    "/servers/{server_id}/health", response_model=Result[McpHealthResult], summary="Server 健康探测"
+)
 @require_permission(_MANAGE_PERMISSION)
 async def probe_health(
     server_id: int,
@@ -125,7 +131,11 @@ async def probe_health(
     return success(await ai_mcp_server_service.probe_health(db, server_id))
 
 
-@router.get("/servers/{server_id}/tools", response_model=Result[list[McpToolResult]], summary="Server 工具清单")
+@router.get(
+    "/servers/{server_id}/tools",
+    response_model=Result[list[McpToolResult]],
+    summary="Server 工具清单",
+)
 @require_permission(_MANAGE_PERMISSION)
 async def get_tools(
     server_id: int,
@@ -135,7 +145,11 @@ async def get_tools(
     return success(await mcp_manage_service.get_tools(db, server_id))
 
 
-@router.post("/servers/{server_id}/tools/test", response_model=Result[McpToolTestResult], summary="试调用 MCP 工具")
+@router.post(
+    "/servers/{server_id}/tools/test",
+    response_model=Result[McpToolTestResult],
+    summary="试调用 MCP 工具",
+)
 @require_permission(_MANAGE_PERMISSION)
 async def test_tool(
     server_id: int,
@@ -148,7 +162,11 @@ async def test_tool(
     )
 
 
-@router.get("/servers/{server_id}/namespaces", response_model=Result[list[McpNamespaceItem]], summary="命名空间列表")
+@router.get(
+    "/servers/{server_id}/namespaces",
+    response_model=Result[list[McpNamespaceItem]],
+    summary="命名空间列表",
+)
 @require_permission(_MANAGE_PERMISSION)
 async def list_namespaces(
     server_id: int,
@@ -158,7 +176,11 @@ async def list_namespaces(
     return success(await ai_mcp_server_service.list_namespaces(db, server_id))
 
 
-@router.put("/servers/{server_id}/namespaces", response_model=Result[list[McpNamespaceItem]], summary="配置命名空间")
+@router.put(
+    "/servers/{server_id}/namespaces",
+    response_model=Result[list[McpNamespaceItem]],
+    summary="配置命名空间",
+)
 @require_permission(_MANAGE_PERMISSION)
 async def update_namespaces(
     server_id: int,
@@ -169,7 +191,9 @@ async def update_namespaces(
     return success(await ai_mcp_server_service.update_namespaces(db, server_id, namespaces))
 
 
-@router.put("/servers/{server_id}/credentials", response_model=Result[None], summary="配置外部服务凭据")
+@router.put(
+    "/servers/{server_id}/credentials", response_model=Result[None], summary="配置外部服务凭据"
+)
 @require_permission(_MANAGE_PERMISSION)
 async def update_credentials(
     server_id: int,
@@ -193,7 +217,11 @@ async def get_market(
     return success(await mcp_manage_service.get_market(db))
 
 
-@router.post("/market/{preset_id}/install", response_model=Result[McpServerResult], summary="从市场接入预设 Server")
+@router.post(
+    "/market/{preset_id}/install",
+    response_model=Result[McpServerResult],
+    summary="从市场接入预设 Server",
+)
 @require_permission(_MANAGE_PERMISSION)
 async def install_preset(
     preset_id: str,

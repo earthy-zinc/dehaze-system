@@ -3,7 +3,7 @@
 import logging
 
 from app.database import get_db_session
-from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.middleware.interrupt_handler import ConfirmKind, interrupt_handler
 from app.service.ai_artifact_service import ai_artifact_service
 from app.service.recommendation_service import recommendation_service
 
@@ -17,7 +17,7 @@ async def recommend_algorithm(
     image_url: str,
     user_query: str,
     stream_session_id: str,
-) -> dict:
+) -> tuple[dict, dict]:
     """算法推荐编排
 
     1. 调用推荐管理模块分析图像特征
@@ -38,7 +38,8 @@ async def recommend_algorithm(
         )
 
         if not algorithms:
-            return {"recommendation": None, "alternatives": []}
+            # 与主路径统一返回 (summary, interrupt_data) 二元组；调用方按 summary 判空
+            return {"recommendation": None, "alternatives": []}, {}
 
         # 3. 注册 artifact（summary 只存业务摘要，不含图片 URL）
         top = algorithms[0]
@@ -78,6 +79,7 @@ async def recommend_algorithm(
         "type": "confirm",
         "stream_session_id": stream_session_id,
         "data": {
+            "confirmKind": ConfirmKind.ALGORITHM_RECOMMEND,
             "artifactId": artifact.id,
             "recommendation": summary["algorithm"],
             "alternatives": summary["alternatives"],
@@ -110,8 +112,8 @@ async def handle_user_confirmation(
     if not interrupt:
         return {"status": "no_interrupt"}
 
-    await interrupt_handler.clear_interrupt(thread_id)
-
+    # 不在此清理中断点：resume 的图执行仍可能失败，提前清理会让消息永久挂起、
+    # 用户无法再次确认重试。中断点由 ReasoningService.resume 成功后统一清理。
     if not confirmed:
         return {"status": "rejected", "algorithmId": None}
 
@@ -122,6 +124,6 @@ async def handle_user_confirmation(
     recommendation_id = recommendation.get("recommendationId")
     if recommendation_id:
         async with get_db_session() as db:
-            await recommendation_service.submit_feedback(db, recommendation_id, True)
+            await recommendation_service.submit_feedback(db, user_id, recommendation_id, True)
 
     return {"status": "accepted", "algorithmId": algorithm_id}

@@ -7,6 +7,10 @@
 - Task：工作单元，完整生命周期状态机
 - JSON-RPC 2.0 请求/响应信封
 
+字段以 snake_case 定义、按 camelCase 出入协议：需改名的字段用
+validation_alias + serialization_alias 而非 alias —— 静态检查器按 alias 合成构造签名，
+会把"按字段名构造"误判为未知参数。
+
 任务状态机：submitted → working → (input_required / auth_required) → completed /
 failed / canceled / rejected
 """
@@ -98,10 +102,10 @@ class Message(BaseModel):
 class Artifact(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    artifact_id: str = Field(..., alias="artifactId")
-    name: str | None = Field(default=None, alias="name")
+    artifact_id: str = Field(..., validation_alias="artifactId", serialization_alias="artifactId")
+    name: str | None = None
     parts: list[Part] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     def to_text(self) -> str:
         return "\n".join(part_to_text(p) for p in self.parts)
@@ -114,7 +118,9 @@ class Task(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
-    context_id: str | None = Field(default=None, alias="contextId")
+    context_id: str | None = Field(
+        default=None, validation_alias="contextId", serialization_alias="contextId"
+    )
     status: TaskStatus
     artifacts: list[Artifact] = Field(default_factory=list)
     history: list[Message] = Field(default_factory=list)

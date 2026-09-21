@@ -14,18 +14,18 @@ type MessageTemplateVO struct {
 
 // MessageTemplateDetailVO 模板详情
 type MessageTemplateDetailVO struct {
-	ID              int64            `json:"id"`
-	Code            string           `json:"code"`
-	Name            string           `json:"name"`
-	Type            string           `json:"type"`
-	TitleTemplate   string           `json:"titleTemplate"`
-	ContentTemplate string           `json:"contentTemplate"`
-	Priority        int              `json:"priority"`
-	Channels        interface{}      `json:"channels"`
-	Variables       []TemplateVarVO  `json:"variables"`
-	Status          int              `json:"status"`
-	CreateTime      string           `json:"createTime"`
-	UpdateTime      string           `json:"updateTime"`
+	ID              int64           `json:"id"`
+	Code            string          `json:"code"`
+	Name            string          `json:"name"`
+	Type            string          `json:"type"`
+	TitleTemplate   string          `json:"titleTemplate"`
+	ContentTemplate string          `json:"contentTemplate"`
+	Priority        int             `json:"priority"`
+	Channels        interface{}     `json:"channels"`
+	Variables       []TemplateVarVO `json:"variables"`
+	Status          int             `json:"status"`
+	CreateTime      string          `json:"createTime"`
+	UpdateTime      string          `json:"updateTime"`
 }
 
 // TemplateVarVO 模板变量

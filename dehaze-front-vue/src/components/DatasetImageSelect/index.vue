@@ -3,7 +3,7 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import { IMAGE_TYPE_LABELS } from "@/enums/ImageTypeEnum";
 import {
-  Dataset,
+  DatasetVO,
   DatasetAPI,
   DatasetItemAPI,
   DatasetItemQuery,
@@ -23,7 +23,7 @@ const selectedDatasetId = ref<number>(1);
 const totalPages = ref<number>(1);
 const queryParams = reactive<DatasetItemQuery>({ pageNum: 1, pageSize: 10 });
 const renderCount = ref<number>(0);
-let datasetInfo = ref<Dataset>({
+let datasetInfo = ref<DatasetVO>({
   id: 0,
   parentId: 0,
   name: "",
@@ -95,7 +95,7 @@ async function handleQuery() {
       switchImageUrl();
     })
     .catch((err) => {
-      console.log(err);
+      console.error(err);
     });
 }
 
@@ -109,7 +109,7 @@ function switchImageUrl() {
     return {
       id: item.id,
       src: img.url,
-      originSrc: img.originUrl || img.url,
+      originSrc: img.url,
       alt: img.description || "",
     };
   });
@@ -133,11 +133,7 @@ function selectImage(itemId: number) {
     const haze = imgs.find((i) => i.type === "hazy");
     const clear = imgs.find((i) => i.type === "clear");
     if (haze && clear) {
-      emit(
-        "onSelected",
-        haze.originUrl || haze.url,
-        clear.originUrl || clear.url
-      );
+      emit("onSelected", haze.url, clear.url);
     }
   }
 }

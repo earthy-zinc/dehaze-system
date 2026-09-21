@@ -40,7 +40,9 @@ class SysPromotionPackage(BaseModel):
     promotion_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="促销活动ID")
     package_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="套餐ID")
     discount_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, comment="折扣类型(percent:百分比;fixed:固定金额;full_reduction:满减)"
+        String(16),
+        nullable=False,
+        comment="折扣类型(percent:百分比;fixed:固定金额;full_reduction:满减)",
     )
     discount_value: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment="折扣值"

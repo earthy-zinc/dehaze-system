@@ -5,6 +5,9 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.entity.api_key import SysApiKey
+from app.repository.ai_conversation_repository import AiConversationRepository
+from app.repository.api_key_repository import ApiKeyRepository
 from app.service.ai.service import compatible_api_service as m
 from tests.stubs.fakes import FakeInternalResponse
 
@@ -44,12 +47,53 @@ def _sse_payload(line: str) -> dict:
     raise AssertionError(f"SSE 行缺少 data: {line!r}")
 
 
-def _api_key(**kw):
-    defaults = dict(
-        id=1, model_whitelist=None, daily_quota=None, monthly_quota=None, rpm_limit=None
-    )
+def _api_key(**kw) -> SysApiKey:
+    defaults: dict = {
+        "id": 1,
+        "model_whitelist": None,
+        "daily_quota": None,
+        "monthly_quota": None,
+        "rpm_limit": None,
+    }
     defaults.update(kw)
-    return SimpleNamespace(**defaults)
+    return SysApiKey(**defaults)
+
+
+class _ApiKeyRepo(ApiKeyRepository):
+    """测试替身：仅覆写 get_by_id（按注入回调返回）。"""
+
+    def __init__(self, impl) -> None:
+        self._impl = impl
+
+    async def get_by_id(self, db, id: int, *, with_deleted: bool = False):
+        return await self._impl(db, id)
+
+
+class _GetConvRepo(AiConversationRepository):
+    """测试替身：仅覆写 get_by_id_and_user（按注入回调返回）。"""
+
+    def __init__(self, impl) -> None:
+        self._impl = impl
+
+    async def get_by_id_and_user(self, db, conv_id, user_id):
+        return await self._impl(db, conv_id, user_id)
+
+
+class _ListConvRepo(AiConversationRepository):
+    """测试替身：仅覆写 get_by_ids_and_user（按注入回调返回）。"""
+
+    def __init__(self, impl) -> None:
+        self._impl = impl
+
+    async def get_by_ids_and_user(self, db, ids, user_id):
+        return await self._impl(db, ids, user_id)
+
+
+def _body_text(resp) -> str:
+    """JSONResponse.body 运行时恒为 bytes；starlette Response.render 声明为
+    bytes | memoryview，此处收敛为 bytes 再做解码断言。"""
+    assert isinstance(resp.body, bytes)
+    return resp.body.decode()
 
 
 def _make_request(body):
@@ -185,7 +229,7 @@ async def test_resolve_conversation_reuses_existing(monkeypatch):
         fetched.append((conv_id, user_id))
         return SimpleNamespace(id=42)
 
-    svc = m.CompatibleApiService(ai_conversation_repository=SimpleNamespace(get_by_id_and_user=_get))
+    svc = m.CompatibleApiService(ai_conversation_repository=_GetConvRepo(_get))
     monkeypatch.setattr(
         m.ai_conversation_service, "create_conversation", lambda *a, **k: created.append(a)
     )
@@ -198,12 +242,10 @@ async def test_resolve_conversation_reuses_existing(monkeypatch):
 async def test_enforce_model_whitelist(monkeypatch):
     api_key = _api_key(model_whitelist=["gpt-4"])
 
-    async def _get_by_ids(db, user_id, conv_ids):
+    async def _get_by_ids_and_user(db, conv_ids, user_id):
         return [SimpleNamespace(model="claude-3")]
 
-    svc = m.CompatibleApiService(
-        ai_conversation_repository=SimpleNamespace(get_by_ids=_get_by_ids)
-    )
+    svc = m.CompatibleApiService(ai_conversation_repository=_ListConvRepo(_get_by_ids_and_user))
     await svc._enforce_model_whitelist(None, 1, api_key, "claude-3", None)
     with pytest.raises(m.GovernanceError):
         await svc._enforce_model_whitelist(None, 1, api_key, None, 42)
@@ -213,7 +255,7 @@ def _service(api_key):
     async def _get_by_id(db, key_id):
         return api_key if api_key is not None and api_key.id == key_id else None
 
-    return m.CompatibleApiService(api_key_repository=SimpleNamespace(get_by_id=_get_by_id))
+    return m.CompatibleApiService(api_key_repository=_ApiKeyRepo(_get_by_id))
 
 
 async def test_model_not_available_maps_403_openai(monkeypatch):
@@ -232,12 +274,12 @@ async def test_model_not_available_maps_403_openai(monkeypatch):
         handler=_handler,
     )
     assert resp.status_code == 403
-    assert '"type":"permission_error"' in resp.body.decode()
+    assert '"type":"permission_error"' in _body_text(resp)
 
 
 async def test_list_models_openai_whitelist_chain(monkeypatch):
     model_a = SimpleNamespace(model_id="gpt-4", create_time=None, provider_id=1)
-    api_key = SimpleNamespace(id=1, model_whitelist=["gpt-4"])
+    api_key = SysApiKey(id=1, model_whitelist=["gpt-4"])
     vip_user_id = {"uid": None}
 
     async def _vip_list(db, redis, user_id):

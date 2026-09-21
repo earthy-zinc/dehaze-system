@@ -17,7 +17,7 @@ class BillingRecordResult(OrmResult):
     message_id: int | None = Field(default=None, description="消息ID")
     model: str = Field(description="实际使用模型标识")
     actual_model: str | None = Field(default=None, description="用户原选模型标识")
-    bill_type: str = Field(description="计费类型(chat;tool_llm;kb_inject;asr;tts)")
+    bill_type: str = Field(description="计费类型(chat;chat_subagent;tool_llm;kb_inject;asr;tts)")
     input_tokens: int = Field(description="输入Token数")
     cached_input_tokens: int = Field(description="缓存命中的输入Token数")
     output_tokens: int = Field(description="输出Token数")
@@ -26,7 +26,9 @@ class BillingRecordResult(OrmResult):
     tool_credits: int | None = Field(default=None, description="工具调用额外积分")
     quota_consumed: int = Field(description="实际扣减配额")
     pre_deduct: int = Field(description="预扣积分数")
-    refund_status: int = Field(default=0, description="误扣申诉状态(0:无;1:待审核;2:已通过;3:已驳回)")
+    refund_status: int = Field(
+        default=0, description="误扣申诉状态(0:无;1:待审核;2:已通过;3:已驳回)"
+    )
     create_time: datetime | None = Field(default=None, description="创建时间")
 
 
@@ -75,7 +77,7 @@ class BillingStatQuery(OrmResult):
     bill_type: str | None = Field(default=None, description="计费类型")
     date_start: datetime | None = Field(default=None, description="开始时间")
     date_end: datetime | None = Field(default=None, description="结束时间")
-    group_by: str = Field(default="model", description="统计维度(user/model/bill_type/day)")
+    group_by: str = Field(default="model", description="统计维度(user/model/billType/day)")
 
 
 class BillingStatResult(OrmResult):
@@ -111,7 +113,9 @@ class RefundAuditRequest(OrmResult):
 
 
 class RefundQuery(OrmResult):
-    status: int | None = Field(default=None, ge=1, le=3, description="退款状态筛选(1待审核;2已通过;3已驳回)")
+    status: int | None = Field(
+        default=None, ge=1, le=3, description="退款状态筛选(1待审核;2已通过;3已驳回)"
+    )
     user_id: int | None = Field(default=None, description="用户ID筛选")
     date_start: datetime | None = Field(default=None, description="开始时间")
     date_end: datetime | None = Field(default=None, description="结束时间")
@@ -142,7 +146,9 @@ class AnomalyRecordResult(OrmResult):
     id: int = Field(description="主键")
     user_id: int = Field(description="用户ID")
     billing_id: int | None = Field(default=None, description="关联计费记录ID")
-    anomaly_type: str = Field(description="异常类型(single_high;burst;consecutive_quota_fail;empty_high_output)")
+    anomaly_type: str = Field(
+        description="异常类型(single_high;burst;consecutive_quota_fail;empty_high_output)"
+    )
     detail: str = Field(description="异常详情")
     status: int = Field(description="处理状态(0:待处理;1:已处理;2:已忽略)")
     trigger_at: datetime = Field(description="触发时间")

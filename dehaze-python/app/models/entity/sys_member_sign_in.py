@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import BigInteger, Date, Integer
+from sqlalchemy import BigInteger, Date, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import AppendOnlyModel
@@ -10,7 +10,11 @@ class SysMemberSignIn(AppendOnlyModel):
     """会员签到记录表（只追加，不使用逻辑删除）。"""
 
     __tablename__ = "sys_member_sign_in"
-    __table_args__ = {"comment": "会员签到记录表"}
+    __table_args__ = (
+        # 与 DB schema 的 uk_user_sign_date 对齐：同日双签的最终防线
+        UniqueConstraint("user_id", "sign_date", name="uk_user_sign_date"),
+        {"comment": "会员签到记录表"},
+    )
 
     id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True, autoincrement=True, comment="主键"

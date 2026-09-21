@@ -22,15 +22,33 @@ _inference_executor = ThreadPoolExecutor(
     max_workers=settings.INFERENCE_THREAD_POOL_SIZE, thread_name_prefix="algo-inference"
 )
 
+# 单图推理超时阈值（秒）：超时任务标记失败并回滚配额（需求规格 §2.6.1/§9）。
+INFERENCE_TIMEOUT_SECONDS = 30
+
 
 async def run_dehaze(
     import_path: str, model_relative_path: str, image_bytes: io.BytesIO
 ) -> io.BytesIO:
-    """在线程池中执行去雾推理（避免阻塞事件循环）。"""
+    """在线程池中执行去雾推理（避免阻塞事件循环），超时标记失败。
+
+    线程池中的同步推理无法被强制中断，超时后放弃等待结果，任务按失败处理。
+    """
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        _inference_executor, _run_dehaze_sync, import_path, model_relative_path, image_bytes
-    )
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(
+                _inference_executor, _run_dehaze_sync, import_path, model_relative_path, image_bytes
+            ),
+            timeout=INFERENCE_TIMEOUT_SECONDS,
+        )
+    except TimeoutError:
+        logger.warning(
+            "推理超时(%ss)，任务标记失败: module=%s", INFERENCE_TIMEOUT_SECONDS, import_path
+        )
+        raise BusinessException(
+            ResultCode.SYSTEM_EXECUTION_ERROR,
+            f"任务执行超时（{INFERENCE_TIMEOUT_SECONDS}s），建议更换算法或降低图片分辨率",
+        ) from None
 
 
 def _run_dehaze_sync(
@@ -97,13 +115,12 @@ def _run_dehaze_sync(
 
     if isinstance(result, io.BytesIO):
         return result
-    elif isinstance(result, PIL.Image.Image):
+    if isinstance(result, PIL.Image.Image):
         buf = io.BytesIO()
         result.save(buf, format="PNG")
         buf.seek(0)
         return buf
-    else:
-        raise BusinessException(
-            ResultCode.SYSTEM_EXECUTION_ERROR,
-            f"dehaze() 返回了不支持的类型: {type(result)}",
-        )
+    raise BusinessException(
+        ResultCode.SYSTEM_EXECUTION_ERROR,
+        f"dehaze() 返回了不支持的类型: {type(result)}",
+    )

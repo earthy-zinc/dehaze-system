@@ -7,8 +7,6 @@
 - degradeFault.keyFailoverCount：Redis 中处于冷却期（临时不可用）的 Key 数（近期失败切换的当前快照）
 """
 
-from datetime import datetime
-
 from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -78,17 +76,16 @@ class AiUsageStatsService:
             )
         return items
 
-    async def _model_usage(self, db: AsyncSession, query: UsageStatsQuery) -> list[ModelUsageStatResult]:
-        stmt = (
-            select(
-                SysAiBilling.model,
-                func.count(SysAiBilling.id),
-                func.coalesce(func.sum(SysAiBilling.input_tokens), 0),
-                func.coalesce(func.sum(SysAiBilling.output_tokens), 0),
-                func.coalesce(func.sum(SysAiBilling.credits), 0),
-            )
-            .group_by(SysAiBilling.model)
-        )
+    async def _model_usage(
+        self, db: AsyncSession, query: UsageStatsQuery
+    ) -> list[ModelUsageStatResult]:
+        stmt = select(
+            SysAiBilling.model,
+            func.count(SysAiBilling.id),
+            func.coalesce(func.sum(SysAiBilling.input_tokens), 0),
+            func.coalesce(func.sum(SysAiBilling.output_tokens), 0),
+            func.coalesce(func.sum(SysAiBilling.credits), 0),
+        ).group_by(SysAiBilling.model)
         if query.start_time:
             stmt = stmt.where(SysAiBilling.create_time >= query.start_time)
         if query.end_time:
@@ -99,7 +96,9 @@ class AiUsageStatsService:
         return [
             ModelUsageStatResult(
                 model_id=r[0],
-                display_name=display_names.get(r[0], r[0]),
+                # rows 元素为 Any（SQLAlchemy Row 宽类型）；显式 str 兜底为模型 id，
+                # 缺显示名时回退模型标识
+                display_name=display_names.get(r[0], str(r[0])),
                 call_count=int(r[1]),
                 input_tokens=int(r[2]),
                 output_tokens=int(r[3]),
@@ -152,7 +151,7 @@ class AiUsageStatsService:
             SysAiModel.model_id.in_(model_ids)
         )
         rows = (await db.execute(stmt)).all()
-        return {model_id: display_name for model_id, display_name in rows}
+        return {r[0]: r[1] for r in rows}
 
 
 ai_usage_stats_service = AiUsageStatsService()

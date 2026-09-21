@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 import type { DocumentProcessingStatus } from "dehaze-sdk-js";
 import { computed } from "vue";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "DocumentStatusTags" });
 
@@ -12,7 +13,7 @@ const props = defineProps<{
 
 const STATUS_META: Record<
   DocumentProcessingStatus,
-  { label: string; type: "info" | "warning" | "success" | "danger" }
+  { label: string; type: TagType }
 > = {
   pending: { label: "待处理", type: "info" },
   processing: { label: "处理中", type: "warning" },

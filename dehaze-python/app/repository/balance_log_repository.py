@@ -8,9 +8,7 @@ from app.repository.base import BaseRepository
 class BalanceLogRepository(BaseRepository[SysBalanceLog]):
     model = SysBalanceLog
 
-    async def list_by_user(
-        self, db: AsyncSession, user_id: int
-    ) -> list[SysBalanceLog]:
+    async def list_by_user(self, db: AsyncSession, user_id: int) -> list[SysBalanceLog]:
         stmt = (
             select(SysBalanceLog)
             .where(SysBalanceLog.user_id == user_id)

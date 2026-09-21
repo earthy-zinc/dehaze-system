@@ -1,15 +1,17 @@
 import asyncio
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.service.ai_artifact_service as mod
 import app.service.file_service as fs
 from app.core.exceptions import BusinessException
 from app.repository.ai_artifact_repository import ai_artifact_repository
 from app.service.ai_artifact_service import ai_artifact_service
-from tests.stubs.fakes import LLMChunk, MemberBenefitRepo
 from tests.stubs.factories import make_benefit, make_member
+from tests.stubs.fakes import LLMChunk, MemberBenefitRepo
 
 
 def _make_artifact(**overrides):
@@ -31,8 +33,7 @@ def _make_artifact(**overrides):
 def _quota_repo(level_code="level_0", limit=0, member_exists=True):
     member = make_member(level_code) if member_exists else None
     benefit = make_benefit(multimodal_limit=limit)
-    repo = MemberBenefitRepo(member, benefit)
-    return repo
+    return MemberBenefitRepo(member, benefit)
 
 
 def _make_svc(artifact_repo=None, conv_repo=None, quota=None):
@@ -90,7 +91,7 @@ async def test_quota_limit_per_level(mock_redis):
     benefits = {"level_0": 5, "level_1": 10, "level_2": 20, "level_3": 50}
     for level, limit in benefits.items():
         svc = _make_svc(quota=_quota_repo(level_code=level, limit=limit))
-        used, actual = await svc.check_visual_quota(None, mock_redis, 1)
+        used, actual = await svc.check_visual_quota(AsyncSession(), mock_redis, 1)
         assert actual == limit
         assert used == 0
 
@@ -110,10 +111,10 @@ async def test_quota_consumption_rejects_at_limit(mock_redis):
 
 async def test_quota_count_accumulates_across_calls(mock_redis):
     svc = _make_svc(quota=_quota_repo(level_code="level_3", limit=50))
-    key = _freeze_quota_key(svc)
+    _freeze_quota_key(svc)
     oks = [await svc._consume_visual_quota(mock_redis, 1, limit=50) for _ in range(3)]
     assert oks == [True, True, True]
-    used, limit = await svc.check_visual_quota(None, mock_redis, 1)
+    used, limit = await svc.check_visual_quota(AsyncSession(), mock_redis, 1)
     assert used == 3
     assert limit == 50
 
@@ -141,7 +142,7 @@ async def test_quota_concurrent_cannot_bypass(mock_redis):
 
 async def test_quota_missing_member_defaults_to_level0(mock_redis):
     svc = _make_svc(quota=_quota_repo(level_code="level_0", limit=5, member_exists=False))
-    used, limit = await svc.check_visual_quota(None, mock_redis, 99)
+    used, limit = await svc.check_visual_quota(AsyncSession(), mock_redis, 99)
     assert used == 0
     assert limit == 5
 
@@ -161,11 +162,12 @@ async def test_visual_read_success(monkeypatch, mock_redis):
 
     monkeypatch.setattr(mod.llm_client, "stream_chat", _fake_stream_chat)
 
-    text, input_tokens = await svc.visual_read(None, mock_redis, 1, artifact_id=5)
+    text, input_tokens = await svc.visual_read(AsyncSession(), mock_redis, 1, artifact_id=5)
     assert text == "图像清晰"
     assert input_tokens == 1200
     keys = [k async for k in mock_redis.scan_iter(match="ai:multimodal:1:*")]
-    assert keys and int(await mock_redis.get(keys[0])) == 1
+    assert keys
+    assert int(await mock_redis.get(keys[0])) == 1
 
 
 async def test_visual_read_quota_exceeded_returns_degraded(monkeypatch, mock_redis):
@@ -180,7 +182,7 @@ async def test_visual_read_quota_exceeded_returns_degraded(monkeypatch, mock_red
 
     monkeypatch.setattr(mod.llm_client, "stream_chat", _fake_stream_chat)
 
-    text, input_tokens = await svc.visual_read(None, mock_redis, 1, artifact_id=5)
+    text, input_tokens = await svc.visual_read(AsyncSession(), mock_redis, 1, artifact_id=5)
     assert text.startswith("视觉读取已达今日上限，基于指标判断：")
     assert "31.2" in text
     assert input_tokens == 0
@@ -195,7 +197,7 @@ async def test_visual_read_invalid_artifact_raises(mock_redis):
     svc = _make_svc(artifact_repo=_ArtifactRepo())
 
     with pytest.raises(BusinessException, match="产物不存在或已失效"):
-        await svc.visual_read(None, mock_redis, 1, artifact_id=99)
+        await svc.visual_read(AsyncSession(), mock_redis, 1, artifact_id=99)
 
 
 async def test_mark_invalid_for_file_direct_and_indirect(monkeypatch):
@@ -217,7 +219,7 @@ async def test_mark_invalid_for_file_direct_and_indirect(monkeypatch):
     monkeypatch.setattr(mod, "pred_log_repository", _PredRepo())
     monkeypatch.setattr(mod, "eval_log_repository", _EvalRepo())
 
-    await svc.mark_invalid_for_file(None, file_id=10)
+    await svc.mark_invalid_for_file(AsyncSession(), file_id=10)
     assert marked == [
         ("sys_file", 10),
         ("sys_pred_log", 11),
@@ -239,7 +241,7 @@ async def test_get_message_artifact_refs_grouped(monkeypatch):
 
     svc = _make_svc(artifact_repo=_ArtifactRepo())
 
-    result = await svc.get_message_artifact_refs(None, [10, 11, 12])
+    result = await svc.get_message_artifact_refs(AsyncSession(), [10, 11, 12])
     assert set(result.keys()) == {10, 11}
     assert result[10] == [
         {"id": 1, "type": "image_result", "summary": {"algorithm": "RIDCP"}},
@@ -263,7 +265,10 @@ async def test_list_by_message_ids_sql_filters_invalid():
             captured["stmt"] = stmt
             return _Rows()
 
-    await ai_artifact_repository.list_by_message_ids(_DB(), [10, 11, 12])
+    await ai_artifact_repository.list_by_message_ids(
+        cast(AsyncSession, _DB()),  # 替身：_DB 仅实现 execute，无法子类化 AsyncSession
+        [10, 11, 12],
+    )
     sql = str(captured["stmt"].compile(compile_kwargs={"literal_binds": True}))
     assert "is_invalid = 0" in sql
     assert "message_id IN (10, 11, 12)" in sql
@@ -281,7 +286,7 @@ async def test_get_detail_ownership_check(monkeypatch):
     svc = _make_svc(artifact_repo=_ArtifactRepo(), conv_repo=_ConvRepo())
 
     with pytest.raises(BusinessException, match="产物所属会话不存在"):
-        await svc.get_detail(None, artifact_id=1, user_id=999)
+        await svc.get_detail(AsyncSession(), artifact_id=1, user_id=999)
 
 
 async def test_list_by_ref_filters_owned(monkeypatch):
@@ -300,7 +305,7 @@ async def test_list_by_ref_filters_owned(monkeypatch):
 
     svc = _make_svc(artifact_repo=_ArtifactRepo(), conv_repo=_ConvRepo())
 
-    result = await svc.list_by_ref(None, "sys_file", 10, user_id=5)
+    result = await svc.list_by_ref(AsyncSession(), "sys_file", 10, user_id=5)
     assert len(result) == 1
     assert result[0].id == 1
 
@@ -319,7 +324,7 @@ async def test_metric_report_registration(monkeypatch):
 
     metrics = {"psnr": 32.1, "ssim": 0.91}
     result = await svc.register_artifact(
-        None,
+        AsyncSession(),
         conv_id=1,
         msg_id=2,
         artifact_type="metric_report",
@@ -367,7 +372,9 @@ async def test_file_service_delete_hooks_invalid_for_file(monkeypatch, tmp_path)
     async def _fake_invalidate(db, file_id):
         called["file_id"] = file_id
 
-    monkeypatch.setattr(ai_artifact_service, "mark_invalid_for_file", staticmethod(_fake_invalidate))
+    monkeypatch.setattr(
+        ai_artifact_service, "mark_invalid_for_file", staticmethod(_fake_invalidate)
+    )
 
     # 注入真实本地存储（tmp_path 真实文件读写），断言物理文件被删除
     storage = LocalStorageService(base_dir=str(tmp_path))
@@ -375,6 +382,6 @@ async def test_file_service_delete_hooks_invalid_for_file(monkeypatch, tmp_path)
     assert storage.exists("dehaze", "pred/20260101/x.jpg") is True
     monkeypatch.setattr(fs, "get_storage_by_name", lambda name: storage)
 
-    await fs.file_service.delete_file_with_storage(None, file_id=10)
+    await fs.file_service.delete_file_with_storage(AsyncSession(), file_id=10)
     assert called.get("file_id") == 10
     assert storage.exists("dehaze", "pred/20260101/x.jpg") is False

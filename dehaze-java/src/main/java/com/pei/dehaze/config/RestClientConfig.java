@@ -16,6 +16,9 @@ import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.http.HttpClient;
+import java.time.Duration;
+
 /**
  * HTTP 客户端配置 —— 用于调用 Python 算法服务
  * <p>
@@ -78,6 +81,21 @@ public class RestClientConfig {
         RestTemplate restTemplate = new RestTemplate(factory);
         restTemplate.getInterceptors().add(traceIdInterceptor());
         return restTemplate;
+    }
+
+    /**
+     * AI 转发专用 HttpClient（JDK 原生）
+     * <p>
+     * RestTemplate 无法逐块读取响应体，SSE 转发需要流式管道与取消上游订阅的能力，故单独建 client。
+     * 固定 HTTP/1.1：dehaze-python(uvicorn) 仅支持 HTTP/1.1，避免协商升级带来的额外往返。
+     */
+    @Bean(name = "aiProxyHttpClient")
+    public HttpClient aiProxyHttpClient() {
+        return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofMillis(algorithmProperties.getConnectTimeout()))
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
     }
 
     /**

@@ -218,14 +218,16 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
     });
 
     test("边界：重复申请退款应失败（A0680）", async () => {
-      // 需要一条已存在的计费记录作为退款对象
-      const records = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 1 }));
-      expect(records.list.length, "无计费记录：beforeAll 真实对话未产生计费数据").toBeGreaterThan(
-        0
-      );
+      // 退款上界校验要求 amount ≤ 记录 credits，故须选 credits>0 的记录，
+      // amount 取该记录可退上限（本地免费模型记录 credits=0 无合法退款金额）
+      const records = await AiBillingAPI.getRecords(createBillingRecordQuery({ pageSize: 100 }));
+      const target = records.list.find((r) => r.credits > 0);
+      expect(target, "近 100 条计费记录中无 credits>0 的记录，无法构造退款对象").toBeDefined();
 
-      const billingId = records.list[0]!.id;
-      const form = createRefundApplyForm({ billingId });
+      const form = createRefundApplyForm({
+        billingId: target!.id,
+        amount: target!.credits,
+      });
 
       // 第一次申请；若该记录已有 pending 退款（历史运行残留）返回 A0680，同样视为就绪
       await AiBillingAPI.applyRefund(form).catch((e: any) => {
@@ -566,6 +568,24 @@ describe("消耗汇总/异常监控/成本管理/对账（契约先行）", () =
       expect(typeof stats[0]!.revenue).toBe("number");
       expect(typeof stats[0]!.profit).toBe("number");
     }
+  });
+
+  test("正向：成本统计分组 getCostStats({groupBy: provider})（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    const stats = await AiBillingAPI.getCostStats({ groupBy: "provider" });
+    expect(Array.isArray(stats)).toBe(true);
+    for (const row of stats) {
+      // 分组行仅返回 dimension+cost：订单实收无法按供应商归因
+      expect(row.dimension).toBeDefined();
+      expect(typeof row.cost).toBe("number");
+      expect(row.metric).toBeUndefined();
+      expect(row.revenue).toBeUndefined();
+    }
+  });
+
+  test("负向：非法 groupBy → A0400（管理员）", async () => {
+    await login(USERS.ADMIN.username);
+    await expectBizError(AiBillingAPI.getCostStats({ groupBy: "user" as never }), ["A0400"]);
   });
 
   test("正向：对账数据导入 importReconcile（管理员）", async () => {

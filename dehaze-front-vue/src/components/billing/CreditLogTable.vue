@@ -1,7 +1,7 @@
 <!-- 积分流水表：用户端(scope=self)与管理端(scope=userId)共用 -->
 <script lang="ts" setup>
 import type { CreditLogSource } from "dehaze-sdk-js";
-import { computed, watch } from "vue";
+import { computed, shallowRef, watch } from "vue";
 import type { BillingDataScope } from "@/store/modules/billingData";
 import { useBillingDataStore } from "@/store/modules/billingData";
 
@@ -14,7 +14,7 @@ const props = withDefaults(
   { scope: "self" }
 );
 
-const store = useBillingDataStore();
+const store = shallowRef(useBillingDataStore(props.scope));
 
 const SOURCE_OPTIONS: { value: CreditLogSource | ""; label: string }[] = [
   { value: "", label: "全部来源" },
@@ -28,34 +28,33 @@ const SOURCE_OPTIONS: { value: CreditLogSource | ""; label: string }[] = [
 ];
 
 const source = computed<CreditLogSource | "">({
-  get: () => store.creditLogQuery.source ?? "",
+  get: () => store.value.creditLogQuery.source ?? "",
   set: (value) => {
-    store.creditLogQuery.source = value || undefined;
+    store.value.creditLogQuery.source = value || undefined;
   },
 });
 
 function handleFilterChange() {
-  store.creditLogQuery.pageNum = 1;
-  store.fetchCreditLogs();
+  store.value.creditLogQuery.pageNum = 1;
+  store.value.fetchCreditLogs();
 }
 
 function handleSizeChange(size: number) {
-  store.creditLogQuery.pageSize = size;
-  store.creditLogQuery.pageNum = 1;
-  store.fetchCreditLogs();
+  store.value.creditLogQuery.pageSize = size;
+  store.value.creditLogQuery.pageNum = 1;
+  store.value.fetchCreditLogs();
 }
 
 function handlePageChange(page: number) {
-  store.creditLogQuery.pageNum = page;
-  store.fetchCreditLogs();
+  store.value.creditLogQuery.pageNum = page;
+  store.value.fetchCreditLogs();
 }
 
 watch(
   () => props.scope,
   (next) => {
-    store.initScope(next);
-    store.creditLogQuery.pageNum = 1;
-    store.fetchCreditLogs();
+    store.value = useBillingDataStore(next);
+    store.value.fetchCreditLogs();
   },
   { immediate: true }
 );

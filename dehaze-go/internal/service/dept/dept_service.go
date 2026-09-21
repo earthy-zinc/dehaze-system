@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -173,25 +174,31 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 	// 解引用 parentId（binding:"required" 已保证非 nil）
 	parentID := *form.ParentID
 
-	// 校验同一父部门下名称是否唯一
-	depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
+	// 校验同级名称唯一（含已删除记录，T-DPT-035b：删除后名称不可复用）
+	exists, err := s.deptRepo.ExistsByNameIncludeDeleted(ctx, form.Name, parentID, 0)
 	if err != nil {
-		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "校验部门名称失败", err)
 	}
-	for _, dept := range depts {
-		if dept.Name == form.Name && dept.ParentID == parentID {
-			return 0, common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
-		}
+	if exists {
+		return 0, common.NewBizError(common.DATA_EXISTS, "部门名称已存在")
 	}
 
-	// 校验层级深度限制
+	// 校验层级深度限制（T-DPT-014：超出 5 级报 A0504）
+	sort := 1
+	if form.Sort != nil {
+		sort = *form.Sort
+	}
 	if parentID != 0 {
+		depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
+		if err != nil {
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
+		}
 		depth, err := s.calculateDepth(ctx, parentID, depts)
 		if err != nil {
 			return 0, err // 直接返回，calculateDepth已经返回BizError
 		}
 		if depth+1 > MAX_DEPT_DEPTH {
-			return 0, common.NewBizError(common.BUSINESS_ERROR, "部门层级超过5级限制")
+			return 0, common.NewBizError(common.DATA_BIND_EXISTS, "部门层级不能超过5级")
 		}
 	}
 
@@ -206,12 +213,13 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 		Name:     form.Name,
 		ParentID: parentID,
 		Status:   form.Status,
-		Sort:     form.Sort,
+		Sort:     sort,
 		TreePath: treePath,
 		Deleted:  0,
 	}
-	dept.CreatedAt = time.Now()
-	dept.UpdatedAt = time.Now()
+	// 时间截断到秒：列为 DATETIME（秒精度），直写带纳秒的 time.Now() 会被 MySQL 进位成下一刻
+	dept.CreatedAt = time.Now().Truncate(time.Second)
+	dept.UpdatedAt = time.Now().Truncate(time.Second)
 
 	if err := s.deptRepo.Create(ctx, dept); err != nil {
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建部门失败", err)
@@ -233,15 +241,13 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "根部门不能修改上级部门")
 	}
 
-	// 校验同一父部门下名称是否唯一（排除当前部门）
-	depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
+	// 校验同级名称唯一（含已删除记录，排除当前部门）
+	exists, err := s.deptRepo.ExistsByNameIncludeDeleted(ctx, form.Name, parentID, id)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
+		return common.WrapBizError(common.DATABASE_ERROR, "校验部门名称失败", err)
 	}
-	for _, dept := range depts {
-		if dept.Name == form.Name && dept.ParentID == parentID && dept.ID != id {
-			return common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
-		}
+	if exists {
+		return common.NewBizError(common.DATA_EXISTS, "部门名称已存在")
 	}
 
 	// 检测循环引用：不能将部门移动到自身或其子部门下
@@ -261,6 +267,11 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 		return err
 	}
 
+	// 移动后层级校验（T-DPT-018a：移动至超深层级报 A0504）
+	if len(strings.Split(treePath, ",")) > MAX_DEPT_DEPTH {
+		return common.NewBizError(common.DATA_BIND_EXISTS, "部门层级不能超过5级")
+	}
+
 	// 查询原部门信息
 	oldDept, err := s.deptRepo.FindByID(ctx, id)
 	if err != nil {
@@ -274,9 +285,11 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 	oldDept.Name = form.Name
 	oldDept.ParentID = parentID
 	oldDept.Status = form.Status
-	oldDept.Sort = form.Sort
+	if form.Sort != nil {
+		oldDept.Sort = *form.Sort
+	}
 	oldDept.TreePath = treePath
-	oldDept.UpdatedAt = time.Now()
+	oldDept.UpdatedAt = time.Now().Truncate(time.Second)
 
 	if err := s.deptRepo.Update(ctx, oldDept); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新部门失败", err)
@@ -318,46 +331,30 @@ func (s *DeptService) Delete(ctx context.Context, ids []int64) error {
 		}
 	}
 
-	// 构建父子关系映射，收集所有子部门ID（级联删除）
+	// 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除，A0502）
 	childrenMap := make(map[int64][]int64)
 	for _, dept := range depts {
 		childrenMap[dept.ParentID] = append(childrenMap[dept.ParentID], dept.ID)
 	}
-
-	allIDs := make(map[int64]bool)
-	var collectChildren func(id int64)
-	collectChildren = func(id int64) {
-		if allIDs[id] {
-			return
-		}
-		allIDs[id] = true
-		for _, childID := range childrenMap[id] {
-			collectChildren(childID)
-		}
-	}
 	for _, id := range ids {
-		collectChildren(id)
+		if len(childrenMap[id]) > 0 {
+			return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "该部门下存在子部门，请先删除子部门")
+		}
 	}
 
-	// 转换为切片
-	idList := make([]int64, 0, len(allIDs))
-	for id := range allIDs {
-		idList = append(idList, id)
-	}
-
-	// 批量检查是否有关联用户（避免循环内逐个查询 N+1）
-	hasUsersMap, err := s.deptRepo.HasUsersInBatch(ctx, idList)
+	// 关联用户检查：有用户禁止删除（T-DPT-029，A0502）
+	hasUsersMap, err := s.deptRepo.HasUsersInBatch(ctx, ids)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查关联用户失败", err)
 	}
-	for _, id := range idList {
+	for _, id := range ids {
 		if hasUsersMap[id] {
-			return common.NewBizError(common.DATA_BIND_EXISTS, "部门存在关联用户，不能删除")
+			return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "该部门下存在用户，无法删除")
 		}
 	}
 
-	// 批量删除
-	if err := s.deptRepo.Delete(ctx, idList); err != nil {
+	// 删除指定部门（不含子部门）
+	if err := s.deptRepo.Delete(ctx, ids); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除部门失败", err)
 	}
 

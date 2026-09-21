@@ -1,19 +1,27 @@
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import BusinessException
+from app.models.entity.api_key import SysApiKey
+from app.models.entity.sys_ai_model import SysAiModel
+from app.repository.ai_model_repository import AiModelRepository
+from app.service import api_key_service as aks
+from app.service.ai.service.compatible_governance import (
+    GovernanceError,
+    compatible_governance_service,
+)
 
 pytestmark = pytest.mark.requires_db
 
-from app.core.exceptions import BusinessException
-from app.service import api_key_service as aks
-from app.service.ai.service.compatible_governance import (
-    compatible_governance_service,
-    GovernanceError,
-)
-from app.service.api_key_service import api_key_service
+
+def _db() -> AsyncSession:
+    """真实会话实例：db 仅作形参透传，DB 交互由被测逻辑/仓储桩承接。"""
+    return AsyncSession()
 
 
-def _api_key(**overrides) -> SimpleNamespace:
+def _api_key(**overrides) -> SysApiKey:
     base = {
         "id": 1,
         "daily_quota": None,
@@ -22,16 +30,15 @@ def _api_key(**overrides) -> SimpleNamespace:
         "model_whitelist": None,
     }
     base.update(overrides)
-    return SimpleNamespace(**base)
+    return SysApiKey(**base)
 
 
 async def test_daily_quota_exceeded_raises_rate_limit(mock_redis):
     key = _api_key(daily_quota=2)
+    for _ in range(2):
+        await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     with pytest.raises(GovernanceError) as exc:
-        for _ in range(3):
-            await compatible_governance_service.precheck(
-                mock_redis, key, "gpt-4o", "chat/completions"
-            )
+        await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     assert exc.value.status_code == 429
     assert exc.value.error_type == "rate_limit_error"
     all_keys = [k async for k in mock_redis.scan_iter(match="*")]
@@ -41,22 +48,18 @@ async def test_daily_quota_exceeded_raises_rate_limit(mock_redis):
 
 async def test_monthly_quota_exceeded_raises_rate_limit(mock_redis):
     key = _api_key(monthly_quota=1)
+    await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     with pytest.raises(GovernanceError) as exc:
-        for _ in range(2):
-            await compatible_governance_service.precheck(
-                mock_redis, key, "gpt-4o", "chat/completions"
-            )
+        await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     assert exc.value.status_code == 429
     assert exc.value.error_type == "rate_limit_error"
 
 
 async def test_rpm_limit_exceeded_raises_rate_limit(mock_redis):
     key = _api_key(rpm_limit=1)
+    await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     with pytest.raises(GovernanceError) as exc:
-        for _ in range(2):
-            await compatible_governance_service.precheck(
-                mock_redis, key, "gpt-4o", "chat/completions"
-            )
+        await compatible_governance_service.precheck(mock_redis, key, "gpt-4o", "chat/completions")
     assert exc.value.status_code == 429
     assert exc.value.error_type == "rate_limit_error"
 
@@ -113,41 +116,43 @@ async def test_model_none_skips_whitelist(mock_redis):
 
 async def test_check_model_allowed_second_validation(mock_redis):
     key = _api_key(model_whitelist=["gpt-4o"])
-    await compatible_governance_service.check_model_allowed(None, key, "gpt-4o")
+    await compatible_governance_service.check_model_allowed(_db(), key, "gpt-4o")
     with pytest.raises(GovernanceError) as exc:
-        await compatible_governance_service.check_model_allowed(None, key, "deepseek")
+        await compatible_governance_service.check_model_allowed(_db(), key, "deepseek")
     assert exc.value.error_type == "permission_error"
 
 
 async def test_filter_models_none_key_no_filter(mock_redis):
     models = ["gpt-4o", "deepseek"]
-    assert await compatible_governance_service.filter_models(None, None, models) == models
+    assert await compatible_governance_service.filter_models(_db(), None, models) == models
 
 
 async def test_filter_models_none_whitelist_no_filter(mock_redis):
     models = ["gpt-4o", "deepseek"]
-    result = await compatible_governance_service.filter_models(None, _api_key(), models)
+    result = await compatible_governance_service.filter_models(_db(), _api_key(), models)
     assert result == models
 
 
 async def test_filter_models_filters_by_whitelist(mock_redis):
     key = _api_key(model_whitelist=["gpt-4o"])
     models = ["gpt-4o", "deepseek"]
-    assert await compatible_governance_service.filter_models(None, key, models) == ["gpt-4o"]
+    assert await compatible_governance_service.filter_models(_db(), key, models) == ["gpt-4o"]
     entities = [SimpleNamespace(model_id="gpt-4o"), SimpleNamespace(model_id="deepseek")]
-    assert await compatible_governance_service.filter_models(None, key, entities) == [entities[0]]
+    assert await compatible_governance_service.filter_models(_db(), key, entities) == [entities[0]]
 
 
-class _WhitelistRepo:
-    def __init__(self, enabled):
+class _WhitelistRepo(AiModelRepository):
+    def __init__(self, enabled: dict[str, list[SysAiModel]]):
         self.enabled = enabled
 
-    async def list_enabled_by_model_id(self, db, model_id):
+    async def list_enabled_by_model_id(self, db: AsyncSession, model_id: str) -> list[SysAiModel]:
         return self.enabled.get(model_id, [])
 
 
 async def test_create_api_key_passes_new_fields(db):
-    svc = aks.ApiKeyService(ai_model_repository=_WhitelistRepo({"gpt-4o": ["m1"]}))
+    svc = aks.ApiKeyService(
+        ai_model_repository=_WhitelistRepo({"gpt-4o": [SysAiModel(model_id="gpt-4o")]})
+    )
     result = await svc.create_api_key(
         db,
         7,
@@ -164,15 +169,17 @@ async def test_create_api_key_passes_new_fields(db):
 
 
 async def test_create_api_key_zero_means_unlimited(db):
-    svc = aks.ApiKeyService(ai_model_repository=_WhitelistRepo({"gpt-4o": ["m1"]}))
+    svc = aks.ApiKeyService(
+        ai_model_repository=_WhitelistRepo({"gpt-4o": [SysAiModel(model_id="gpt-4o")]})
+    )
     result = await svc.create_api_key(db, 7, "无限制", daily_quota=0)
     assert result["dailyQuota"] is None
 
 
 async def test_create_api_key_invalid_model_raises(db):
-    svc = aks.ApiKeyService(ai_model_repository=_WhitelistRepo({"gpt-4o": ["m1"]}))
+    svc = aks.ApiKeyService(
+        ai_model_repository=_WhitelistRepo({"gpt-4o": [SysAiModel(model_id="gpt-4o")]})
+    )
     with pytest.raises(BusinessException) as exc:
-        await svc.create_api_key(
-            db=db, user_id=7, name="非法", model_whitelist=["bad-model"]
-        )
+        await svc.create_api_key(db=db, user_id=7, name="非法", model_whitelist=["bad-model"])
     assert exc.value.code.code == "A0400"

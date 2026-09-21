@@ -29,6 +29,55 @@ func (_m *MockIAlgorithmService) EXPECT() *MockIAlgorithmService_Expecter {
 	return &MockIAlgorithmService_Expecter{mock: &_m.Mock}
 }
 
+// Audit provides a mock function with given fields: ctx, id, auditBy, form
+func (_m *MockIAlgorithmService) Audit(ctx context.Context, id int64, auditBy int64, form *bo.AlgorithmAuditForm) error {
+	ret := _m.Called(ctx, id, auditBy, form)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Audit")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, *bo.AlgorithmAuditForm) error); ok {
+		r0 = rf(ctx, id, auditBy, form)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmService_Audit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Audit'
+type MockIAlgorithmService_Audit_Call struct {
+	*mock.Call
+}
+
+// Audit is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+//   - auditBy int64
+//   - form *bo.AlgorithmAuditForm
+func (_e *MockIAlgorithmService_Expecter) Audit(ctx interface{}, id interface{}, auditBy interface{}, form interface{}) *MockIAlgorithmService_Audit_Call {
+	return &MockIAlgorithmService_Audit_Call{Call: _e.mock.On("Audit", ctx, id, auditBy, form)}
+}
+
+func (_c *MockIAlgorithmService_Audit_Call) Run(run func(ctx context.Context, id int64, auditBy int64, form *bo.AlgorithmAuditForm)) *MockIAlgorithmService_Audit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64), args[3].(*bo.AlgorithmAuditForm))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmService_Audit_Call) Return(_a0 error) *MockIAlgorithmService_Audit_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmService_Audit_Call) RunAndReturn(run func(context.Context, int64, int64, *bo.AlgorithmAuditForm) error) *MockIAlgorithmService_Audit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Compare provides a mock function with given fields: ctx, ids
 func (_m *MockIAlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.SysAlgorithm, error) {
 	ret := _m.Called(ctx, ids)
@@ -141,6 +190,64 @@ func (_c *MockIAlgorithmService_Create_Call) Return(_a0 int64, _a1 error) *MockI
 }
 
 func (_c *MockIAlgorithmService_Create_Call) RunAndReturn(run func(context.Context, *bo.AlgorithmFormBO) (int64, error)) *MockIAlgorithmService_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateVersion provides a mock function with given fields: ctx, id, form
+func (_m *MockIAlgorithmService) CreateVersion(ctx context.Context, id int64, form *bo.AlgorithmVersionForm) (int64, error) {
+	ret := _m.Called(ctx, id, form)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateVersion")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *bo.AlgorithmVersionForm) (int64, error)); ok {
+		return rf(ctx, id, form)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64, *bo.AlgorithmVersionForm) int64); ok {
+		r0 = rf(ctx, id, form)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64, *bo.AlgorithmVersionForm) error); ok {
+		r1 = rf(ctx, id, form)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIAlgorithmService_CreateVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateVersion'
+type MockIAlgorithmService_CreateVersion_Call struct {
+	*mock.Call
+}
+
+// CreateVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+//   - form *bo.AlgorithmVersionForm
+func (_e *MockIAlgorithmService_Expecter) CreateVersion(ctx interface{}, id interface{}, form interface{}) *MockIAlgorithmService_CreateVersion_Call {
+	return &MockIAlgorithmService_CreateVersion_Call{Call: _e.mock.On("CreateVersion", ctx, id, form)}
+}
+
+func (_c *MockIAlgorithmService_CreateVersion_Call) Run(run func(ctx context.Context, id int64, form *bo.AlgorithmVersionForm)) *MockIAlgorithmService_CreateVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(*bo.AlgorithmVersionForm))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmService_CreateVersion_Call) Return(_a0 int64, _a1 error) *MockIAlgorithmService_CreateVersion_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIAlgorithmService_CreateVersion_Call) RunAndReturn(run func(context.Context, int64, *bo.AlgorithmVersionForm) (int64, error)) *MockIAlgorithmService_CreateVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -659,6 +766,54 @@ func (_c *MockIAlgorithmService_ListAll_Call) Return(_a0 []vo.AlgorithmVO, _a1 e
 }
 
 func (_c *MockIAlgorithmService_ListAll_Call) RunAndReturn(run func(context.Context) ([]vo.AlgorithmVO, error)) *MockIAlgorithmService_ListAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RollbackVersion provides a mock function with given fields: ctx, id, versionID
+func (_m *MockIAlgorithmService) RollbackVersion(ctx context.Context, id int64, versionID int64) error {
+	ret := _m.Called(ctx, id, versionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RollbackVersion")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) error); ok {
+		r0 = rf(ctx, id, versionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmService_RollbackVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RollbackVersion'
+type MockIAlgorithmService_RollbackVersion_Call struct {
+	*mock.Call
+}
+
+// RollbackVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+//   - versionID int64
+func (_e *MockIAlgorithmService_Expecter) RollbackVersion(ctx interface{}, id interface{}, versionID interface{}) *MockIAlgorithmService_RollbackVersion_Call {
+	return &MockIAlgorithmService_RollbackVersion_Call{Call: _e.mock.On("RollbackVersion", ctx, id, versionID)}
+}
+
+func (_c *MockIAlgorithmService_RollbackVersion_Call) Run(run func(ctx context.Context, id int64, versionID int64)) *MockIAlgorithmService_RollbackVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmService_RollbackVersion_Call) Return(_a0 error) *MockIAlgorithmService_RollbackVersion_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmService_RollbackVersion_Call) RunAndReturn(run func(context.Context, int64, int64) error) *MockIAlgorithmService_RollbackVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

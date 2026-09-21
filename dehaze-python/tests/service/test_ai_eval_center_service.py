@@ -6,7 +6,9 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_ai_agent import SysAiAgent
 from app.models.entity.sys_ai_agent_eval_run import SysAiAgentEvalRun
-from app.repository.ai_agent_eval_repository import ai_agent_eval_review_repository
+from app.repository.ai_agent_eval_repository import (
+    ai_agent_eval_review_repository,
+)
 from app.service.ai_eval_center_service import _sample_hit, eval_center_service
 
 pytestmark = pytest.mark.api
@@ -16,7 +18,9 @@ DIMS = ("result_quality", "process_compliance", "safety_boundary", "efficiency")
 
 
 def _summary(result_quality, process_compliance=90, safety_boundary=100, efficiency=80):
-    dims = dict(zip(DIMS, (result_quality, process_compliance, safety_boundary, efficiency)))
+    dims = dict(
+        zip(DIMS, (result_quality, process_compliance, safety_boundary, efficiency), strict=False)
+    )
     return {"dimensions": dims, "sample_count": 1, "pass_rate": 1.0}
 
 
@@ -26,7 +30,7 @@ def _sample_result(sample_id, passed, risk_level="low", result_quality=90):
         "task_goal": f"任务{sample_id}",
         "risk_level": risk_level,
         "passed": passed,
-        "scores": dict(zip(DIMS, (result_quality, 90, 100, 80))),
+        "scores": dict(zip(DIMS, (result_quality, 90, 100, 80), strict=False)),
     }
 
 

@@ -11,7 +11,8 @@ from app.service.billing.balance_service import balance_service
 class RechargeService:
     """充值与赠送"""
 
-    async def recharge(self, 
+    async def recharge(
+        self,
         db: AsyncSession,
         user_id: int,
         amount: int,
@@ -45,7 +46,8 @@ class RechargeService:
             reason="新用户注册试用赠送",
         )
 
-    async def grant_vip_monthly_gift(self, 
+    async def grant_vip_monthly_gift(
+        self,
         db: AsyncSession,
         user_id: int,
         amount: int,

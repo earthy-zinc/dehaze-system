@@ -44,18 +44,42 @@
       >
         执行回归评测
       </el-button>
+      <el-progress v-if="evalRunning" class="mt-2" :percentage="evalProgress" />
       <el-alert
         v-if="gateResult"
         class="mt-2"
         :type="gateResult.passed ? 'success' : 'error'"
         :closable="false"
-        :title="
-          gateResult.passed
-            ? '回归评测通过，可发布'
-            : `回归评测未通过（Run #${gateResult.runId}），失败样本 ${gateResult.failedSamples?.length ?? 0} 条`
-        "
+        :title="gateTitle(gateResult)"
       />
     </div>
+
+    <el-divider content-position="left">发布豁免（判分漂移）</el-divider>
+    <el-alert
+      v-if="driftPaused"
+      class="mb-3"
+      type="warning"
+      :closable="false"
+      title="判分模型一致率低于阈值，依赖判分的门禁已暂停。确认本次变更与判分无关时，可勾选豁免并强制发布。"
+    />
+    <el-form label-width="140px">
+      <el-form-item label="豁免强制发布">
+        <el-switch v-model="force" />
+        <span class="ml-2 text-xs text-gray-400">
+          勾选后跳过判分漂移门禁，风险由发布人承担
+        </span>
+      </el-form-item>
+      <el-form-item v-if="force" label="豁免原因" required>
+        <el-input
+          v-model="forceReason"
+          type="textarea"
+          :rows="2"
+          maxlength="200"
+          show-word-limit
+          placeholder="必填，随变更说明一并留档（≤200 字）"
+        />
+      </el-form-item>
+    </el-form>
 
     <el-divider content-position="left">变更说明</el-divider>
     <el-input
@@ -75,8 +99,10 @@
 </template>
 
 <script lang="ts" setup>
-import { EvalRunResult } from "dehaze-sdk-js";
+import { EvalRunGateResult, EvalRunResult } from "dehaze-sdk-js";
 import { useAdminAgentStore } from "@/store/modules/adminAgent";
+import { useAdminEvalStore } from "@/store/modules/adminEval";
+import { RUN_STATUS_META } from "@/views/ai-eval-center/eval-meta";
 
 defineOptions({ name: "PublishDialog" });
 
@@ -87,18 +113,19 @@ const emit = defineEmits<{
 }>();
 
 const agentStore = useAdminAgentStore();
+const evalStore = useAdminEvalStore();
 
 const changeNote = ref("");
+/** 判分漂移豁免：勾选后需填写原因，随变更说明留档 */
+const force = ref(false);
+const forceReason = ref("");
+const driftPaused = computed(() => evalStore.judgeStatus?.driftPaused ?? false);
+const evalProgress = computed(() => agentStore.evalProgress);
 const gateLoading = ref(false);
 const evalRunning = ref(false);
 const publishing = ref(false);
 /** 手动触发回归评测的门禁判定结果 */
-const gateResult = ref<{
-  runId?: number;
-  passed?: boolean;
-  scoreSummary?: Record<string, unknown> | null;
-  failedSamples?: Array<Record<string, unknown>> | null;
-} | null>(null);
+const gateResult = ref<EvalRunGateResult | null>(null);
 
 /** 距今最近一次回归集评测 Run（发布门禁依据） */
 const latestGateRun = computed<EvalRunResult | null>(() => {
@@ -113,9 +140,17 @@ const latestGateRun = computed<EvalRunResult | null>(() => {
 });
 
 function gateTag(status: number) {
-  if (status === 2) return { label: "通过", type: "success" as const };
-  if (status === 3) return { label: "失败", type: "danger" as const };
-  return { label: "执行中", type: "warning" as const };
+  return RUN_STATUS_META[status] ?? { label: "执行中", type: "warning" };
+}
+
+/** 门禁结果文案：退化阻断与样本不足时 failedSamples 为空，需分别提示避免"失败样本 0 条"误导 */
+function gateTitle(result: EvalRunGateResult): string {
+  if (result.passed) return "回归评测通过，可发布";
+  if (result.insufficientEval)
+    return "回归集样本不足，无考题可判，发布被门禁阻断";
+  if (result.degraded)
+    return `回归评测未通过（Run #${result.runId}）：评分较上次完成评测退化超阈值，请检查本次变更`;
+  return `回归评测未通过（Run #${result.runId}），失败样本 ${result.failedSamples.length} 条`;
 }
 
 watch(
@@ -123,12 +158,15 @@ watch(
   async (visible) => {
     if (!visible) return;
     changeNote.value = "";
+    force.value = false;
+    forceReason.value = "";
     gateResult.value = null;
     gateLoading.value = true;
     try {
       await Promise.all([
         agentStore.fetchEvalDatasets(props.agentId),
         agentStore.fetchEvalRuns(props.agentId),
+        evalStore.fetchJudgeStatus(),
       ]);
     } finally {
       gateLoading.value = false;
@@ -140,7 +178,11 @@ async function handleRunEval() {
   evalRunning.value = true;
   try {
     const result = await agentStore.runEval(props.agentId);
-    gateResult.value = result as typeof gateResult.value;
+    gateResult.value = result;
+    if (agentStore.evalTask?.status === "failed") {
+      ElMessage.error(agentStore.evalTask.error || "评测执行失败");
+      return;
+    }
     if (gateResult.value?.passed) {
       ElMessage.success("回归评测通过");
     } else {
@@ -152,16 +194,34 @@ async function handleRunEval() {
 }
 
 async function handlePublish() {
+  if (force.value && !forceReason.value.trim()) {
+    ElMessage.warning("勾选豁免强制发布后，豁免原因必填");
+    return;
+  }
+  if (force.value) {
+    try {
+      await ElMessageBox.confirm(
+        "强制发布将跳过判分漂移门禁：本次变更未经过可信的回归判分，可能将质量退化直接带到线上。确认继续？",
+        "豁免确认",
+        { type: "warning" }
+      );
+    } catch {
+      return;
+    }
+  }
+  // 豁免原因随变更说明留档，后端仅存单一 change_note 字段
+  const note = force.value
+    ? `${changeNote.value}\n【判分漂移豁免】${forceReason.value.trim()}`
+    : changeNote.value;
+
   publishing.value = true;
   try {
-    await agentStore.publishAgent(props.agentId, changeNote.value);
+    await agentStore.publishAgent(props.agentId, note, force.value);
     ElMessage.success("发布成功，新会话将使用已发布版本");
     emit("update:modelValue", false);
     emit("published");
-  } catch (e) {
-    // 门禁未通过等业务错误由请求层提示，弹窗保持打开供修正
-    if (e instanceof Error) throw e;
   } finally {
+    // 门禁未通过等业务错误由请求层按后端 msg 提示（见 utils/request.ts onBizError），弹窗保持打开供修正
     publishing.value = false;
   }
 }

@@ -12,16 +12,14 @@ class VoiceProviderRepository(BaseRepository[SysVoiceProvider]):
         self,
         db: AsyncSession,
         provider_code: str,
-        include_deleted: bool = False,
     ) -> SysVoiceProvider | None:
-        """按 provider_code 查询（联合唯一为 provider_code+engine_type，单列查询需结合 engine_type 使用）"""
+        """按 provider_code 查询（联合唯一为 provider_code+engine_type，
+        单列查询需结合 engine_type 使用）"""
         stmt = (
             select(SysVoiceProvider)
             .where(SysVoiceProvider.provider_code == provider_code)
             .order_by(SysVoiceProvider.engine_type)
         )
-        if include_deleted:
-            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalars().first()
 
@@ -30,15 +28,12 @@ class VoiceProviderRepository(BaseRepository[SysVoiceProvider]):
         db: AsyncSession,
         provider_code: str,
         engine_type: str,
-        include_deleted: bool = False,
     ) -> SysVoiceProvider | None:
-        """按业务唯一键 provider_code + engine_type 查询（同厂商按能力注册多条；查重须 include_deleted 绕过软删）"""
+        """按业务唯一键 provider_code + engine_type 查询（同厂商按能力注册多条）"""
         stmt = select(SysVoiceProvider).where(
             SysVoiceProvider.provider_code == provider_code,
             SysVoiceProvider.engine_type == engine_type,
         )
-        if include_deleted:
-            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalars().first()
 

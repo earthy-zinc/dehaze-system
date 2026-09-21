@@ -80,7 +80,6 @@ def login(
 def logout(backend: str = config.DEFAULT_BACKEND) -> None:
     """登出指定后端，清除缓存。"""
     from . import api  # 延迟导入避免循环依赖
-    key_prefix = (backend,)
     for key in list(_session_store.keys()):
         if key[0] == backend:
             session_id = _session_store.pop(key, None)
@@ -100,6 +99,7 @@ def get_current_session(backend: str = config.DEFAULT_BACKEND, username: str = c
 
 def clear_cache() -> None:
     """清除所有缓存的 session（不从后端登出，仅清本地缓存）。"""
+    from . import api  # 延迟导入避免循环依赖
     _session_store.clear()
     api.clear_sessions()
 

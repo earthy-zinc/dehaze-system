@@ -33,16 +33,43 @@ class AiMessageRepository(BaseRepository[SysAiMessage]):
             stmt = stmt.order_by(SysAiMessage.create_time.asc(), SysAiMessage.id.asc())
         return await self.paginate(db, stmt, page, size)
 
+    async def list_by_conversation_cursor(
+        self,
+        db: AsyncSession,
+        conv_id: int,
+        before: int | None,
+        limit: int,
+    ) -> tuple[list[SysAiMessage], int, bool]:
+        """会话消息游标分页：按 id 倒序取一页（id 单调自增等价时间倒序）。
+
+        before 非空时仅返回 id < before 的消息（缺省取最新一页）；多取一条判定
+        hasMore（是否还存在更早消息）；total 为会话消息总数（展示用）。
+        """
+        base = select(SysAiMessage).where(
+            SysAiMessage.conversation_id == conv_id,
+            SysAiMessage.deleted == 0,
+        )
+        # count 聚合恒返回单行，scalar_one() 取该行整数（契约保证恒有值，不以 or 0 掩盖）
+        total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+        stmt = base
+        if before is not None:
+            stmt = stmt.where(SysAiMessage.id < before)
+        stmt = stmt.order_by(SysAiMessage.id.desc()).limit(limit + 1)
+        rows = list((await db.execute(stmt)).scalars().all())
+        has_more = len(rows) > limit
+        return rows[:limit], total, has_more
+
     async def get_by_id(
         self,
         db: AsyncSession,
-        msg_id: int,
+        id: int,
+        *,
+        with_deleted: bool = False,
     ) -> SysAiMessage | None:
         """按主键查消息（不限归属用户，供管理端审计 view=admin 使用）"""
-        stmt = select(SysAiMessage).where(
-            SysAiMessage.id == msg_id,
-            SysAiMessage.deleted == 0,
-        )
+        stmt = select(SysAiMessage).where(SysAiMessage.id == id)
+        if not with_deleted:
+            stmt = stmt.where(SysAiMessage.deleted == 0)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -163,15 +190,20 @@ class AiMessageRepository(BaseRepository[SysAiMessage]):
         limit: int | None = None,
         max_hops: int = 200,
     ) -> list[SysAiMessage]:
-        """沿 parent_message_id 链回溯当前激活分支的消息（过滤 deleted=1，按时间正序）。
+        """沿 parent_message_id 链回溯当前激活分支的消息（过滤已软删行，按时间正序）。
 
         why: 分支对话下上下文须严格取自 current_branch_message_id 所在链，避免其他分支
-        消息污染；用 get_by_ids 批量取并在内存组链，链异常（环/超长）自动截断防死循环。
+        消息污染；一次查询取本会话消息后在内存组链——链回溯处于推理热路径，逐条单行
+        SELECT 会放大成上百次往返。链异常（环/超长）由 visited 与 max_hops 截断防死循环。
         limit=None 时返回全量链（如导出场景）；全量模式 visited 集合已天然防环，
         max_hops 仅作兜底，放宽为 1000 以避免正常长会话被截断；带 limit 的上下文模式维持 200。
         """
+        if start_id is None:
+            return []
         if limit is None:
             max_hops = 1000
+        rows = await db.execute(select(SysAiMessage).where(SysAiMessage.conversation_id == conv_id))
+        by_id = {msg.id: msg for msg in rows.scalars().all()}
         chain: list[SysAiMessage] = []
         current_id = start_id
         visited: set[int] = set()
@@ -180,17 +212,13 @@ class AiMessageRepository(BaseRepository[SysAiMessage]):
             if current_id in visited:
                 break
             visited.add(current_id)
-            batch = await self.get_by_ids(db, [current_id])
             hops += 1
-            if not batch:
+            msg = by_id.get(current_id)
+            if msg is None:
                 break
-            msg = batch[0]
-            if msg.conversation_id != conv_id:
+            chain.append(msg)
+            if limit is not None and len(chain) >= limit:
                 break
-            if msg.deleted == 0:
-                chain.append(msg)
-                if limit is not None and len(chain) >= limit:
-                    break
             current_id = msg.parent_message_id
         chain.reverse()
         return chain

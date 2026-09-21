@@ -59,6 +59,7 @@ class DictImportHandler(ImportHandler):
         success_count = 0
         failure_count = 0
         total = len(rows)
+        imported_type_codes: set[str] = set()
 
         for i, row in enumerate(rows):
             row_num = i + 2
@@ -81,12 +82,13 @@ class DictImportHandler(ImportHandler):
                         "typeCode": type_code,
                         "name": name,
                         "value": value,
-                        "sort": _parse_int(row, "sort", 0),
+                        "sort": _parse_int(row, "sort", 1),
                         "status": _parse_status(row, "status_label", 1),
                         "defaulted": _parse_defaulted(row, "defaulted_label", 0),
                         "remark": _get_str(row, "remark") or "",
                     },
                 )
+                imported_type_codes.add(type_code)
                 success_count += 1
             except Exception as e:
                 failure_count += 1
@@ -103,6 +105,25 @@ class DictImportHandler(ImportHandler):
                 await progress_cb(i + 1, total)
                 if await cancel_cb():
                     break
+
+        # 导入影响下拉/业务读缓存，提交后失效（事务回滚则自动丢弃）
+        if imported_type_codes:
+            from app.database import defer_after_commit
+            from app.dependencies.redis import get_redis_client
+            from app.infrastructure.cache.cache import CacheService
+            from app.service.dict_service import (
+                DICT_OPTIONS_CACHE_PREFIX,
+                _invalidate_dict_value_cache,
+            )
+
+            async def _invalidate():
+                redis = await get_redis_client()
+                cache = CacheService(redis)
+                for type_code in imported_type_codes:
+                    await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
+                    await _invalidate_dict_value_cache(redis, type_code)
+
+            defer_after_commit(db, _invalidate)
 
         return ImportResult(
             total_rows=total,

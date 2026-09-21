@@ -3,6 +3,7 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,5 +20,6 @@ public class MemberGrowthAdjustForm {
 
     @Schema(description = "调整原因", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "调整原因不能为空")
+    @Size(max = 256, message = "调整原因长度不能超过256")
     private String reason;
 }

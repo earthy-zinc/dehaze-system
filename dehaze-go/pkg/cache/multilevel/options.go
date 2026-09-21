@@ -1,6 +1,7 @@
 package multilevel
 
 import (
+	"context"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache/protection"
@@ -20,6 +21,9 @@ type Options struct {
 
 	// 异步回写L1
 	AsyncWriteBack bool
+
+	// 跨实例失效广播：Delete 后发布消息，其他实例收到后清理各自 L1
+	InvalidationPublisher func(ctx context.Context, key string)
 
 	// 防护组件
 	BloomFilter  protection.BloomFilterer
@@ -98,6 +102,13 @@ func WithBreaker(b protection.CircuitBreaker) Option {
 func WithNullCache(nc protection.NullCacher) Option {
 	return func(o *Options) {
 		o.NullCache = nc
+	}
+}
+
+// WithInvalidationPublisher 设置跨实例失效广播发布器
+func WithInvalidationPublisher(publisher func(ctx context.Context, key string)) Option {
+	return func(o *Options) {
+		o.InvalidationPublisher = publisher
 	}
 }
 

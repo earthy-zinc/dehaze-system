@@ -68,6 +68,8 @@ type IMenuRepository interface {
 	// FindPermsByRoleCode 根据单个角色编码获取权限标识列表（用于缓存刷新）
 	FindPermsByRoleCode(ctx context.Context, roleCode string) ([]string, error)
 
+	// FindPermsByMenuIDs 获取菜单集合的非空权限标识（权限提升校验用）
+	FindPermsByMenuIDs(ctx context.Context, menuIDs []int64) ([]string, error)
 	// DeleteCascadeByIDs 批量级联删除：删除所有传入ID对应的菜单及其子孙菜单
 	DeleteCascadeByIDs(ctx context.Context, ids []int64) (int64, error)
 
@@ -76,6 +78,9 @@ type IMenuRepository interface {
 
 	// CountByIDs 统计给定ID集合中存在的菜单数量
 	CountByIDs(ctx context.Context, ids []int64) (int64, error)
+
+	// CountPresetsByIDs 统计给定ID集合中系统预置菜单的数量（预置菜单删除保护）
+	CountPresetsByIDs(ctx context.Context, ids []int64) (int64, error)
 
 	// SaveRoleMenu 新增角色-菜单关联
 	SaveRoleMenu(ctx context.Context, roleID, menuID int64) error

@@ -3,6 +3,8 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.models.entity.sys_promotion import SysPromotion, SysPromotionPackage
 from app.repository.base import BaseRepository, escape_like
 
@@ -61,33 +63,33 @@ class PromotionRepository(BaseRepository[SysPromotion]):
         stmt = stmt.order_by(SysPromotion.id.desc())
         return await self.paginate(db, stmt, page, size)
 
-    async def create(self, db: AsyncSession, promotion: SysPromotion) -> SysPromotion:
-        return await super().create(db, promotion)
+    async def create(self, db: AsyncSession, entity: SysPromotion) -> SysPromotion:
+        return await super().create(db, entity)
 
-    async def update(self, db: AsyncSession, promotion_id: int, data: dict) -> None:
+    async def update(
+        self, db: AsyncSession, entity: SysPromotion | int, data: dict
+    ) -> SysPromotion:
+        """更新促销字段并返回实体：entity 允许传促销 ID 或实体（对齐基类签名）。"""
+        promotion_id = entity.id if isinstance(entity, SysPromotion) else entity
         promotion = await self.get_by_id(db, promotion_id)
-        if promotion:
-            for key, value in data.items():
-                setattr(promotion, key, value)
-            await db.flush()
+        if promotion is None:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "促销活动不存在")
+        for key, value in data.items():
+            setattr(promotion, key, value)
+        await db.flush()
+        return promotion
 
     async def soft_delete(self, db: AsyncSession, promotion_id: int) -> None:
         await self.soft_delete_by_ids(db, [promotion_id])
 
-    async def delete_packages_by_promotion(
-        self, db: AsyncSession, promotion_id: int
-    ) -> None:
-        stmt = select(SysPromotionPackage).where(
-            SysPromotionPackage.promotion_id == promotion_id
-        )
+    async def delete_packages_by_promotion(self, db: AsyncSession, promotion_id: int) -> None:
+        stmt = select(SysPromotionPackage).where(SysPromotionPackage.promotion_id == promotion_id)
         result = await db.execute(stmt)
         for row in result.scalars().all():
             await db.delete(row)
         await db.flush()
 
-    async def list_package_ids_by_promotion(
-        self, db: AsyncSession, promotion_id: int
-    ) -> list[int]:
+    async def list_package_ids_by_promotion(self, db: AsyncSession, promotion_id: int) -> list[int]:
         stmt = select(SysPromotionPackage.package_id).where(
             SysPromotionPackage.promotion_id == promotion_id
         )
@@ -100,9 +102,8 @@ class PromotionRepository(BaseRepository[SysPromotion]):
         promotion_id: int,
         packages: list[SysPromotionPackage],
     ) -> None:
-        del_stmt = (
-            select(SysPromotionPackage)
-            .where(SysPromotionPackage.promotion_id == promotion_id)
+        del_stmt = select(SysPromotionPackage).where(
+            SysPromotionPackage.promotion_id == promotion_id
         )
         result = await db.execute(del_stmt)
         for row in result.scalars().all():

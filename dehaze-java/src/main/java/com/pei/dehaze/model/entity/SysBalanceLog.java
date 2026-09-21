@@ -1,0 +1,36 @@
+package com.pei.dehaze.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.common.base.BaseEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serial;
+
+@Data
+@EqualsAndHashCode(callSuper = false)
+@TableName("sys_balance_log")
+public class SysBalanceLog extends BaseEntity {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private Long userId;
+
+    private String changeType;
+
+    private Long amount;
+
+    private Long balanceAfter;
+
+    private Long relatedId;
+
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+}

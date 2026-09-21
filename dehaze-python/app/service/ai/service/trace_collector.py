@@ -14,19 +14,23 @@
 """
 
 import asyncio
+import json
 import logging
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
 from app.core.exceptions import BusinessException
 from app.core.result import _get_trace_id
 from app.database import get_db_session
+from app.models.base import _shanghai_now
 from app.repository.ai_llm_call_repository import ai_llm_call_repository
 from app.repository.ai_trace_repository import ai_trace_repository
+from app.service.ai.middleware.run_context import current_subagent_code
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +44,75 @@ CALL_STATUS_SUCCESS = 1
 CALL_STATUS_FAILED = 2
 CALL_STATUS_TIMEOUT = 3
 
-# 输出摘要截断长度（纯技术参数，设计 §3 固化为代码常量）
-OUTPUT_SNAPSHOT_MAX_CHARS = 500
-# 系统提示正文快照截断上限（审计回放需正文，防超长提示撑爆快照）
-SYSTEM_PROMPT_MAX_CHARS = 5000
-# input_snapshot 每条消息原文截断上限（审计回放需完整输入消息，防超长内容撑爆快照）
-MESSAGE_CONTENT_MAX_CHARS = 2000
-# memory 构成项每条注入记忆原文截断上限
-MEMORY_CONTENT_MAX_CHARS = 1000
-# 工具描述截断上限
-TOOL_DESC_MAX_CHARS = 500
+# 审计级快照截断上限：存全文为主，上限仅防病态超大载荷（如超长工具结果内联）
+# 撑爆 JSON 列/网络包；正常对话远达不到该量级
+OUTPUT_SNAPSHOT_MAX_CHARS = 20000
+SYSTEM_PROMPT_MAX_CHARS = 50000
+MESSAGE_CONTENT_MAX_CHARS = 20000
+MEMORY_CONTENT_MAX_CHARS = 2000
+TOOL_DESC_MAX_CHARS = 2000
 # 工具调用参数摘要截断长度
-_TOOL_ARGS_MAX_CHARS = 200
+_TOOL_ARGS_MAX_CHARS = 2000
+# wire 级原始报文体积上限（序列化后字节数）：防病态超大载荷撑爆 JSON 列
+RAW_WIRE_MAX_BYTES = 256 * 1024
+
+
+def _wire_guard(value: dict) -> dict:
+    """wire 原始报文体积守护：超上限时以截断标注替换整个报文"""
+    raw = json.dumps(value, ensure_ascii=False)
+    size = len(raw.encode())
+    if size <= RAW_WIRE_MAX_BYTES:
+        return value
+    return {"_truncated": True, "_original_bytes": size}
 
 
 def _estimate_tokens(text: str | None) -> int:
     """token 估算（字符数/4，与 LlmClient.count_tokens 同口径，空文本为 0）"""
     return max(1, len(text) // 4) if text else 0
+
+
+# 在途落盘任务引用，防止被垃圾回收
+_pending_tasks: set[asyncio.Task] = set()
+# 最近一次落盘任务：新任务只等它的前驱，串行化写入且不成环
+_last_write: asyncio.Task | None = None
+
+
+def _spawn_persist(persist: Callable[[Any], Awaitable[None]], log_context: str) -> None:
+    """观测埋点后台落盘：LLM 调用结束/推理收尾的关键路径不等待写库，
+    写库失败仅告警（观测不得影响主链路）。"""
+    global _last_write
+    previous = _last_write
+    if previous is not None and previous.get_loop() is not asyncio.get_running_loop():
+        # 前驱属于另一个（已关闭的）事件循环，等待它会让本次落盘一并失败
+        previous = None
+
+    async def _run() -> None:
+        try:
+            # 落盘串行化：并发写各占一条 DB 连接（连接池压力随并发放大），共享单
+            # 连接的场景还会互相破坏嵌套事务边界
+            if previous is not None:
+                await asyncio.gather(previous, return_exceptions=True)
+            async with get_db_session() as db:
+                await persist(db)
+        except Exception:
+            logger.warning("观测埋点后台落盘未完成 %s", log_context, exc_info=True)
+
+    task = asyncio.create_task(_run())
+    _last_write = task
+    _pending_tasks.add(task)
+    task.add_done_callback(_pending_tasks.discard)
+
+
+async def drain() -> None:
+    """等待全部在途落盘完成。
+
+    供进程优雅退出与用例收尾调用：后台任务若晚于事务/连接池回收执行，会拿着
+    已关闭的连接报错（aiomysql 并发读异常）。
+    """
+    global _last_write
+    while _pending_tasks:
+        await asyncio.gather(*tuple(_pending_tasks), return_exceptions=True)
+    _last_write = None
 
 
 def error_type_of(exc: BaseException) -> str:
@@ -74,7 +130,7 @@ class TraceCollector:
         trace_id: str,
         *,
         conversation_id: int,
-        message_id: int,
+        message_id: int | None,
         user_id: int | None,
         agent_code: str | None,
         model_id: str | None,
@@ -99,6 +155,10 @@ class TraceCollector:
         self.completion_tokens = 0
         self.cached_tokens = 0
         self.first_token_ms: int | None = None
+        # 子智能体用量（按运行期上下文归属内存聚合，键为 agentCode）：子 Agent 模型
+        # 调用期间经 run_context.current_subagent_code() 判定；主 Agent 调用不入此表。
+        # 落库后台异步有竞态、且 DB 无 agent 列，故不做事后 join，仅在内存聚合下发。
+        self.subagent_usage: dict[str, dict] = {}
 
     # ── 上下文快照（§2.2）─────────────────────────────
 
@@ -202,6 +262,56 @@ class TraceCollector:
         ):
             self.first_token_ms = first_token_ms
 
+    # ── 子智能体用量聚合（按运行期归属）───────────────
+
+    async def record_subagent_usage(
+        self,
+        agent_code: str,
+        model_id: str,
+        prompt: int,
+        completion: int,
+        cached: int,
+    ) -> None:
+        """按 agentCode 内存聚合子 Agent 用量（子 Agent 模型调用结束时调用）。
+
+        credits 复用既有计价路径（credits_service.calculate_credits），按调用时刻/模型
+        售价换算，与主用量同价口径；不自造公式、不平摊主 Agent credits。计价失败降级 0
+        （采集为旁路，不得影响主链路）。
+        """
+        entry = self.subagent_usage.setdefault(
+            agent_code,
+            {
+                "agentCode": agent_code,
+                "inputTokens": 0,
+                "outputTokens": 0,
+                "cachedInputTokens": 0,
+                "credits": 0,
+            },
+        )
+        entry["inputTokens"] += prompt
+        entry["outputTokens"] += completion
+        entry["cachedInputTokens"] += cached
+        entry["credits"] += await self._subagent_credits(model_id, prompt, completion, cached)
+
+    async def _subagent_credits(
+        self, model_id: str, prompt: int, completion: int, cached: int
+    ) -> int:
+        """子 Agent 用量积分（复用既有计价路径，失败降级 0）"""
+        from app.service.ai.service.credits_service import calculate_credits
+
+        try:
+            async with get_db_session() as db:
+                return await calculate_credits(db, model_id, prompt, completion, cached)
+        except Exception:
+            logger.warning(
+                "子 Agent 用量计价失败 model=%s（credits 记 0）", model_id, exc_info=True
+            )
+            return 0
+
+    def subagent_usage_payload(self) -> list[dict]:
+        """子智能体用量下发载荷（无子 Agent 调用时为空列表 → 调用方整键省略）"""
+        return list(self.subagent_usage.values())
+
     # ── 消息级汇总落盘（§2.4）─────────────────────────
 
     async def settle(
@@ -217,10 +327,25 @@ class TraceCollector:
         """聚合写入 sys_ai_trace（幂等，重复结算自动跳过）。
 
         消耗优先取计费口径 usage（含多模态归集），缺失时回退 LLM 调用聚合。
+        落盘后台化，采集失败仅告警。
         """
         if self._settled:
             return
         self._settled = True
+        try:
+            self._spawn_settle(status, error_type, error_detail, usage, step_count, actual_model)
+        except Exception:
+            logger.warning("过程链记录采集失败 trace_id=%s", self.trace_id, exc_info=True)
+
+    def _spawn_settle(
+        self,
+        status: int,
+        error_type: str | None,
+        error_detail: Any | None,
+        usage: dict | None,
+        step_count: int,
+        actual_model: str | None,
+    ) -> None:
         usage = usage or {}
         prompt = usage.get("input_tokens") or usage.get("prompt_tokens") or self.prompt_tokens
         completion = (
@@ -247,8 +372,10 @@ class TraceCollector:
             "context_snapshot": {"items": self.context_items, "events": self.context_events},
             "error_detail": error_detail,
         }
-        async with get_db_session() as db:
-            await ai_trace_repository.insert_idempotent(db, values)
+        _spawn_persist(
+            lambda db: ai_trace_repository.insert_idempotent(db, values),
+            f"trace_id={self.trace_id}",
+        )
 
     def record_event(self, **kwargs) -> None:
         """记录推理期事件（护栏命中/计划快照/中断决策），settle 前调用写入 context_events"""
@@ -288,6 +415,11 @@ class LlmCallRecord:
         self._usage: dict = {}
         # 候选路由 + 逐 Key 重试的物理调用尝试明细（B1 审计还原）
         self._attempts: list[dict] = []
+        # wire 级原始报文（协议客户端经 wire_record 通道上报；raw_request 首次上报
+        # 时刻即调用发起时刻 start_time，重试场景最终成功响应覆盖前次失败错误）
+        self._start_time: datetime | None = None
+        self._raw_request: dict | None = None
+        self._raw_response: dict | None = None
         self._finished = False
 
     def observe_attempt(
@@ -312,6 +444,20 @@ class LlmCallRecord:
             }
         )
 
+    def observe_wire_request(self, payload: dict) -> None:
+        """记录实际发送的请求体（首次上报时刻即调用发起时刻 start_time）"""
+        if self._raw_request is None:
+            self._start_time = _shanghai_now()
+            self._raw_request = _wire_guard(payload)
+
+    def observe_wire_response(self, raw: dict) -> None:
+        """记录流聚合后的完整响应（等价非流式结构）"""
+        self._raw_response = _wire_guard(raw)
+
+    def observe_wire_error(self, error_code: str, detail: str) -> None:
+        """物理尝试失败时记录错误结构；后续尝试成功会被真实响应覆盖，全失败保留最后错误"""
+        self._raw_response = _wire_guard({"error": {"code": error_code, "message": detail}})
+
     def observe_chunk(self, chunk) -> None:
         """流式块观测（同步零开销路径，仅内存累积）"""
         if chunk.type in ("text_delta", "thinking_delta"):
@@ -330,7 +476,7 @@ class LlmCallRecord:
             self._usage = chunk.usage
 
     async def finish(self, *, completed: bool, error_type: str | None = None) -> None:
-        """调用结束落盘 sys_ai_llm_call（旁路：失败仅告警）"""
+        """调用结束落盘 sys_ai_llm_call（旁路：后台写库不阻塞调用收尾，失败仅告警）"""
         if self._finished:
             return
         self._finished = True
@@ -341,6 +487,13 @@ class LlmCallRecord:
         status = CALL_STATUS_SUCCESS
         if not completed:
             status = CALL_STATUS_TIMEOUT if error_type == "timeout" else CALL_STATUS_FAILED
+        # 子 Agent 用量按运行期上下文归属内存聚合（主 Agent 无标识不入子聚合）；
+        # 失败调用同样计入（已发生的子 Agent 调用如实呈现，用量缺失记 0）
+        agent_code = current_subagent_code()
+        if agent_code:
+            await self._collector.record_subagent_usage(
+                agent_code, self._model_id, prompt, completion, cached
+            )
         values = {
             "trace_id": self._collector.trace_id,
             "seq": self._seq,
@@ -362,16 +515,30 @@ class LlmCallRecord:
                 "tool_calls": self._tool_calls or None,
             },
             "attempts": self._attempts or None,
+            "start_time": self._start_time,
+            "raw_request": self._raw_request,
+            "raw_response": self._raw_response,
         }
         self._collector._aggregate_call(prompt, completion, cached, self._first_token_ms)
-        try:
-            async with get_db_session() as db:
-                await ai_llm_call_repository.insert_idempotent(db, values)
-        except Exception:
-            logger.warning(
-                "LLM 调用明细采集失败 trace_id=%s seq=%s", self._collector.trace_id, self._seq,
-                exc_info=True,
-            )
+        _spawn_persist(
+            lambda db: ai_llm_call_repository.insert_idempotent(db, values),
+            f"trace_id={self._collector.trace_id} seq={self._seq}",
+        )
+
+    @staticmethod
+    def _tool_brief(t: dict) -> dict:
+        """工具定义摘要：DehazeChatModel 经 _tools_to_openai 传入的是 OpenAI
+        function 嵌套格式（{"type","function":{name,description}}），顶层 name/description
+        恒为空；同时兼容顶层格式（单测直传）。"""
+        fn = t.get("function")
+        if not isinstance(fn, dict):
+            fn = {}
+        return {
+            "name": str(t.get("name") or fn.get("name") or ""),
+            "description": str(t.get("description") or fn.get("description") or "")[
+                :TOOL_DESC_MAX_CHARS
+            ],
+        }
 
     def _build_input_snapshot(self) -> dict:
         """本轮输入构成（§2.3）：system 段/消息按角色计数/tools 定义/用户信息"""
@@ -400,21 +567,13 @@ class LlmCallRecord:
             snapshot["system_content"] = self._system_prompt[:SYSTEM_PROMPT_MAX_CHARS]
         if self._tools:
             snapshot["tool_count"] = len(self._tools)
-            snapshot["tools"] = [
-                {
-                    "name": str(t.get("name", "")),
-                    "description": (t.get("description") or "")[:TOOL_DESC_MAX_CHARS],
-                }
-                for t in self._tools
-            ]
+            snapshot["tools"] = [self._tool_brief(t) for t in self._tools]
         if self._collector.user_id is not None:
             snapshot["user_id"] = self._collector.user_id
         return snapshot
 
 
-_current_collector: ContextVar[TraceCollector | None] = ContextVar(
-    "trace_collector", default=None
-)
+_current_collector: ContextVar[TraceCollector | None] = ContextVar("trace_collector", default=None)
 
 
 def start(
@@ -463,6 +622,25 @@ def begin_llm_call(
     return collector.begin_llm_call(model_id, messages, system_prompt, tools)
 
 
+# 协议客户端 wire 采集上报通道：llm_client 在消费协议流期间挂载当前 LlmCallRecord，
+# 协议客户端经 record_wire_* 上报（不经调用参数，协议客户端签名保持无侵入）
+wire_record: ContextVar[LlmCallRecord | None] = ContextVar("llm_wire_record", default=None)
+
+
+def record_wire_request(payload: dict) -> None:
+    """协议客户端在请求构建处上报实际发送的完整请求体（无采集器时静默跳过）"""
+    call = wire_record.get()
+    if call is not None:
+        call.observe_wire_request(payload)
+
+
+def record_wire_response(raw: dict) -> None:
+    """协议客户端在流聚合完成后上报等价非流式响应结构（无采集器时静默跳过）"""
+    call = wire_record.get()
+    if call is not None:
+        call.observe_wire_response(raw)
+
+
 async def finalize_success(
     *, usage: dict | None = None, step_count: int = 0, actual_model: str | None = None
 ) -> None:
@@ -472,7 +650,9 @@ async def finalize_success(
         return
     try:
         await collector.settle(
-            status=TRACE_STATUS_SUCCESS, usage=usage, step_count=step_count,
+            status=TRACE_STATUS_SUCCESS,
+            usage=usage,
+            step_count=step_count,
             actual_model=actual_model,
         )
     except Exception:
@@ -487,9 +667,7 @@ async def finalize_unsettled(
     if collector is None:
         return
     try:
-        await collector.settle(
-            status=status, error_type=error_type, error_detail=error_detail
-        )
+        await collector.settle(status=status, error_type=error_type, error_detail=error_detail)
     except Exception:
         logger.warning("过程链记录写入失败 trace_id=%s", collector.trace_id, exc_info=True)
 

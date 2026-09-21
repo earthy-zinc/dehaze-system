@@ -7,7 +7,7 @@ import {
   createPresetForm,
   createCompareReportForm,
 } from "#/factories/model";
-import { login, logout } from "#/utils/auth";
+import { login, logout, forceLogin } from "#/utils/auth";
 import { ensureDehazeQuota } from "#/utils/quota";
 import { USERS } from "#/factories/constants";
 import * as fs from "fs";
@@ -17,6 +17,8 @@ describe("预测与评估 API 测试", () => {
   let uploadedFileId: number;
   let uploadedFileUrl: string;
   let clearFileUrl: string;
+  let predLogId = 0; // USER 自己的预测记录（用于报告导出与越权用例）
+  let evalLogId = 0; // USER 自己的评估任务
 
   beforeAll(async () => {
     await ensureDehazeQuota();
@@ -87,6 +89,7 @@ describe("预测与评估 API 测试", () => {
       expect(result.resultUrl!.length).toBeGreaterThan(0);
       expect(typeof result.time).toBe("number");
       expect(result.time!).toBeGreaterThanOrEqual(0);
+      predLogId = result.logId!;
     });
 
     test("参数校验：缺少 algorithmId 应报错", async () => {
@@ -196,6 +199,30 @@ describe("预测与评估 API 测试", () => {
 
     test("异常：取消不存在的任务应失败", async () => {
       await expectBizError(ModelAPI.cancelPredTask(99999999), ["A0401"]);
+    });
+  });
+
+  describe("越权防护（任务归属校验）", () => {
+    test("他人任务查询/取消 → A0401，日志列表仅含本人记录", async () => {
+      // USER（beforeAll 已登录）提交任务，仅取 logId，不等完成
+      const resp = await ModelAPI.predict(predictionForm());
+      const logId = resp.logId!;
+      expect(logId).toBeDefined();
+
+      // 切换 VIP1：查询/取消他人任务 → A0401（与不存在同口径防枚举）
+      await login(USERS.VIP1.username);
+      await expectBizError(ModelAPI.getPredTaskStatus(logId), "A0401");
+      await expectBizError(ModelAPI.cancelPredTask(logId), "A0401");
+
+      // VIP1 的预测日志列表不含 USER 的任务
+      const vipLogs = await ModelAPI.getPredLogs({ pageNum: 1, pageSize: 100 });
+      expect(vipLogs.list.every((l) => l.id !== logId)).toBe(true);
+
+      // 切回 USER：任务仍归属本人可见，未被越权取消（状态非已取消）
+      await forceLogin(USERS.USER.username);
+      const own = await ModelAPI.getPredTaskStatus(logId);
+      expect(own.logId).toBe(logId);
+      expect(own.status).not.toBe(4);
     });
   });
 
@@ -323,6 +350,7 @@ describe("预测与评估 API 测试", () => {
       }
       expect(typeof result.time).toBe("number");
       expect(result.time!).toBeGreaterThanOrEqual(0);
+      evalLogId = result.logId!;
     });
 
     test("参数校验：缺少 algorithmId 应报错", async () => {
@@ -406,6 +434,50 @@ describe("预测与评估 API 测试", () => {
 
     test("异常：查询不存在的报告应失败", async () => {
       await expectBizError(ModelAPI.getReportStatus(99999999), ["A0401"]);
+    });
+  });
+
+  describe("越权访问控制（用户隔离）", () => {
+    test("评估任务状态：查询他人评估任务应返回 A0401", async () => {
+      expect(evalLogId).toBeGreaterThan(0); // 前置：USER 已有评估任务
+      await login(USERS.TEST.username);
+      await expectBizError(ModelAPI.getEvalTaskStatus(evalLogId), ["A0401"]);
+      await login(USERS.USER.username);
+    });
+
+    test("报告导出：用他人处理记录生成报告应返回 A0401", async () => {
+      expect(predLogId).toBeGreaterThan(0); // 前置：USER 已有预测记录
+      await login(USERS.TEST.username);
+      await expectBizError(ModelAPI.generateReport(createCompareReportForm({ logId: predLogId })), [
+        "A0401",
+      ]);
+      await login(USERS.USER.username);
+    });
+
+    test("报告状态/下载：查询他人报告任务应返回 A0401", async () => {
+      // USER 为自己的预测记录生成报告
+      const res = await ModelAPI.generateReport(createCompareReportForm({ logId: predLogId }));
+      expect(res.taskId).toBeGreaterThan(0);
+
+      await login(USERS.TEST.username);
+      await expectBizError(ModelAPI.getReportStatus(res.taskId!), ["A0401"]);
+      await login(USERS.USER.username);
+
+      // 本人可正常查询，且最终到达终态
+      const own = await ModelAPI.getReportStatus(res.taskId!);
+      expect([1, 2, 3]).toContain(own.status);
+    });
+
+    test("评估日志列表：仅返回当前用户日志", async () => {
+      // 本人列表包含自己的评估日志
+      const ownPage = await ModelAPI.getEvalLogs({ pageNum: 1, pageSize: 100 });
+      expect(ownPage.list.some((log) => log.id === evalLogId)).toBe(true);
+
+      // 他人列表不包含该日志（用户隔离）
+      await login(USERS.TEST.username);
+      const otherPage = await ModelAPI.getEvalLogs({ pageNum: 1, pageSize: 100 });
+      await login(USERS.USER.username);
+      expect(otherPage.list.some((log) => log.id === evalLogId)).toBe(false);
     });
   });
 });

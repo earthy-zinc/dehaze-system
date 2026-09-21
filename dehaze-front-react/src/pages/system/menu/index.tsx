@@ -99,7 +99,7 @@ const MenuManagement: React.FC = () => {
         // 获取完整表单数据后修改 visible 字段
         const formData = await MenuAPI.getFormData(record.id!);
         formData.visible = record.visible === 1 ? 0 : 1;
-        await MenuAPI.update(String(record.id), formData);
+        await MenuAPI.update(record.id!, formData);
         message.success(
           `菜单「${record.name}」${formData.visible === 1 ? "显示" : "隐藏"}成功`
         );

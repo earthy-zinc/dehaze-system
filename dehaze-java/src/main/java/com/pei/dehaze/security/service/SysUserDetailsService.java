@@ -1,5 +1,6 @@
 package com.pei.dehaze.security.service;
 
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.service.SysUserService;
@@ -33,7 +34,14 @@ public class SysUserDetailsService implements UserDetailsService {
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        UserAuthInfo userAuthInfo = sysUserService.getUserAuthInfo(username);
+        UserAuthInfo userAuthInfo;
+        try {
+            userAuthInfo = sysUserService.getUserAuthInfo(username);
+        } catch (BusinessException e) {
+            // 用户不存在时 getUserAuthInfo 抛业务异常，转成 UsernameNotFoundException
+            // 使 DaoAuthenticationProvider 按凭证错误（A0210）处理，而非包装成"认证服务不可用"
+            throw new UsernameNotFoundException("用户不存在: " + username, e);
+        }
         if (userAuthInfo == null) {
             throw new UsernameNotFoundException("用户不存在: " + username);
         }

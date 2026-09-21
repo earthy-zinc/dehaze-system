@@ -21,7 +21,9 @@ class SysVoiceModel(BaseModel, SoftDeleteMixin):
         BigInteger, nullable=False, comment="关联引擎ID(关联sys_voice_provider.id)"
     )
     model_id: Mapped[str] = mapped_column(
-        String(64), nullable=False, comment="模型/音色业务编码(sensevoice;paraformer;huayan;删除后不可复用)"
+        String(64),
+        nullable=False,
+        comment="模型/音色业务编码(sensevoice;paraformer;huayan;删除后不可复用)",
     )
     engine_type: Mapped[str] = mapped_column(
         String(16), nullable=False, comment="能力类型(asr:语音识别;tts:语音合成)"

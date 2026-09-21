@@ -7,6 +7,7 @@ import com.pei.dehaze.mapper.SysMemberQuotaMapper;
 import com.pei.dehaze.mapper.SysMemberSignInMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysMember;
+import com.pei.dehaze.model.entity.SysMemberBenefit;
 import com.pei.dehaze.model.entity.SysMemberSignIn;
 import com.pei.dehaze.model.vo.SignInResultVO;
 import com.pei.dehaze.security.util.SecurityUtils;
@@ -58,6 +59,14 @@ class MemberServiceImplTest {
     @Mock
     private SysDictService sysDictService;
     @Mock
+    private com.pei.dehaze.mapper.SysOrderMapper orderMapper;
+    @Mock
+    private com.pei.dehaze.mapper.SysUserCouponMapper userCouponMapper;
+    @Mock
+    private com.pei.dehaze.mapper.SysCouponMapper couponMapper;
+    @Mock
+    private com.pei.dehaze.repository.AuditLogRepository auditLogRepository;
+    @Mock
     private SysMemberMapper memberMapper;
 
     private MemberServiceImpl service;
@@ -65,7 +74,8 @@ class MemberServiceImplTest {
     @BeforeEach
     void setUp() throws Exception {
         service = new MemberServiceImpl(userMapper, growthLogMapper, signInMapper,
-                quotaMapper, memberBenefitService, messageService, stringRedisTemplate, sysDictService);
+                quotaMapper, memberBenefitService, messageService, stringRedisTemplate, sysDictService,
+                orderMapper, userCouponMapper, couponMapper, auditLogRepository);
         // 通过反射设置继承的 baseMapper，支撑 getMemberOrCreate 的 this.getOne
         Field baseMapperField = com.baomidou.mybatisplus.extension.service.impl.ServiceImpl.class
                 .getDeclaredField("baseMapper");
@@ -94,6 +104,30 @@ class MemberServiceImplTest {
         // getMemberOrCreate 的 this.getOne 走 baseMapper.selectOne(wrapper, true) 两参重载
         when(memberMapper.selectOne(any(LambdaQueryWrapper.class), eq(true))).thenReturn(member);
         when(memberBenefitService.listAllOrdered()).thenReturn(List.of());
+    }
+
+    @Test
+    @DisplayName("getMaxDevices - 普通用户按会员等级读取权益上限")
+    void getMaxDevices_readsBenefitByMemberLevel() {
+        SysMember member = new SysMember();
+        member.setUserId(9L);
+        member.setLevelCode("level_1");
+        when(memberMapper.selectOne(any(LambdaQueryWrapper.class), eq(true))).thenReturn(member);
+        SysMemberBenefit benefit = new SysMemberBenefit();
+        benefit.setLevelCode("level_1");
+        benefit.setMaxDevices(3);
+        when(memberBenefitService.getByLevelCode("level_1")).thenReturn(benefit);
+
+        assertThat(service.getMaxDevices(9L)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("getMaxDevices - 无会员记录按 level_0，权益行缺失兜底 1 台")
+    void getMaxDevices_defaultsWhenMemberOrBenefitMissing() {
+        when(memberMapper.selectOne(any(LambdaQueryWrapper.class), eq(true))).thenReturn(null);
+        when(memberBenefitService.getByLevelCode("level_0")).thenReturn(null);
+
+        assertThat(service.getMaxDevices(9L)).isEqualTo(1);
     }
 
     @Test

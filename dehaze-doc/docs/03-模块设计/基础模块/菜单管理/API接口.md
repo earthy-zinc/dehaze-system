@@ -11,14 +11,18 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/menus` | GET | 菜单列表（树形结构） | - | F-MM-001 |
+| `/api/v1/menus` | GET | 菜单列表（树形结构），支持 keywords/perm/path/type/visible 筛选 | - | F-MM-001 |
 | `/api/v1/menus` | POST | 新增菜单 | `sys:menu:add` | F-MM-002 |
 | `/api/v1/menus/{id}/form` | GET | 获取菜单表单数据 | - | F-MM-003 |
 | `/api/v1/menus/{id}` | PUT | 修改菜单 | `sys:menu:edit` | F-MM-003 |
 | `/api/v1/menus/{id}` | DELETE | 删除菜单（支持批量） | `sys:menu:delete` | F-MM-004 |
 | `/api/v1/menus/{menuId}` | PATCH | 修改菜单显示状态 | `sys:menu:edit` | F-MM-005 |
 | `/api/v1/menus/options` | GET | 菜单下拉选项（树形结构） | - | F-MM-007 |
-| `/api/v1/menus/routes` | GET | 路由列表（根据用户权限过滤） | - | F-MM-008 |
+| `/api/v1/menus/routes` | GET | 路由列表（全量路由 + meta.roles 角色标注，前端按角色过滤） | - | F-MM-008 |
+
+> **GET /menus 查询参数**：`keywords`（菜单名称模糊匹配）、`perm`（权限标识模糊匹配）、`path`（路由地址模糊匹配）、`type`（菜单类型精确匹配 1-菜单/2-目录/3-外链/4-按钮）、`visible`（显示状态精确匹配 1-显示/0-隐藏），均为可选。
+
+> **GET /menus/routes 契约**：返回全部目录与菜单类型路由（隐藏菜单一并返回并标记 `meta.hidden=true`），按钮与外链类型不生成路由；每条路由 `meta.roles` 为该菜单关联的角色编码集合，服务端不做用户级裁剪，由前端按当前用户角色过滤渲染。
 
 ## 3. 权限标识汇总
 
@@ -47,3 +51,5 @@
 | `A0503` | 路由地址不能为空 | 菜单/目录类型未配置路由地址 |
 | `A0503` | 外链地址不能为空 | 外链类型未配置外链地址 |
 | `A0503` | 权限标识不能为空 | 菜单类型为"按钮"时未配置权限标识 |
+| `A0503` | 系统预置菜单不可删除 | 删除 `is_preset=1` 的预置菜单（含级联删除命中预置菜单） |
+| `A0503` | 系统预置菜单不可修改类型/权限标识 | 编辑 `is_preset=1` 的预置菜单时修改 type 或 perm |

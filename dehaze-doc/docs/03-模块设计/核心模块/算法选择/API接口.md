@@ -14,12 +14,14 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithms/select/tree` | GET | 获取算法选择树（仅返回已发布状态的算法） | - | F-M03-001 |
-| `/api/v1/algorithms/select/{id}` | GET | 获取算法详情（含样例效果图、评分、使用次数） | - | F-M03-004 |
-| `/api/v1/algorithms/select/{id}/test` | POST | 上传自定义图片测试算法效果 | - | F-M03-004 |
-| `/api/v1/algorithms/select/search` | GET | 搜索算法（关键词/拼音/标签） | - | F-M03-003 |
-| `/api/v1/algorithms/select/compare` | POST | 算法对比（数量需在 2-3 个之间） | - | F-M03-006 |
-| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用） | - | F-M03-007 |
+| `/api/v1/algorithms/select/tree` | GET | 获取算法选择树（仅返回已发布状态的算法；空分类节点隐藏；节点字段 id/parentId/name/type/leaf/children） | - | F-M03-001 |
+| `/api/v1/algorithms/select/{id}` | GET | 获取算法详情（含样例效果图、评分、评价数、使用次数） | - | F-M03-004 |
+| `/api/v1/algorithms/select/{id}/test` | POST | 上传自定义图片测试算法效果（imageUrl/fileId 二选一） | - | F-M03-004 |
+| `/api/v1/algorithms/select/search` | GET | 搜索算法（关键词匹配名称/类型/描述，空关键词返回空列表） | - | F-M03-003 |
+| `/api/v1/algorithms/select/compare` | POST | 算法对比（数量需在 2-3 个之间，对同一图片逐算法执行预测，单算法失败异常隔离置空） | - | F-M03-006 |
+| `/api/v1/algorithms/select/recommend` | POST | 算法推荐匹配（基于关键词/任务类型/样例算法，供 AI 对话 MCP 调用；Python 端承载，Java/Go 规划中） | - | F-M03-007 |
+
+> `taskType` 参数（树/搜索的 Tab 联动）为规划中能力，依赖 `sys_algorithm.task_type` 字段落地，三端暂未实现。
 
 ## 3. 权限标识汇总
 
@@ -35,5 +37,6 @@
 | `A0701` | 文件格式不支持 | 测试算法效果时上传的图片格式不支持 |
 | `A0702` | 文件大小超限 | 测试算法效果时上传图片超过大小限制 |
 | `A0500` | 业务异常 | 算法对比数量需在 2-3 个之间（少于 2 或多于 3 均拒绝）；推荐匹配的 topN 超出 1-10 范围 |
+| `A0400` | 参数校验失败 | 测试/对比缺少图片输入（imageUrl 与 fileId 均为空）；对比数量违反 2-3 约束 |
 | `B0100` | 系统执行超时 | 自定义图片测试算法效果超时 |
 | `A0230` | token无效或已过期 | 未登录访问 |

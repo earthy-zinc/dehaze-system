@@ -79,9 +79,7 @@ async function handleSubmit() {
       ElMessage.success("导出成功");
       handleClose();
     }
-  } catch (e: any) {
-    ElMessage.error(e.message || "导出失败");
-  }
+  } catch {}
 }
 
 const canSubmit = computed(() => !exportLoading.value);

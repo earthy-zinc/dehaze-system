@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies.auth import UserContext
@@ -24,17 +24,22 @@ class DeptRepository(BaseRepository[SysDept]):
         db: AsyncSession,
         dept_id: int,
     ) -> list[int]:
-        """查询部门及所有子部门 ID（基于 tree_path LIKE）"""
+        """查询部门及所有子部门 ID（基于 tree_path 前缀匹配）
+
+        子部门 tree_path 为 "父tree_path,父id[,...]"，前缀须带分隔符，
+        避免 "0,1" 前缀误匹配 "0,10" 等兄弟子树。
+        """
         dept = await self.get_by_id(db, dept_id)
         if not dept:
             return [dept_id]
+        prefix = f"{dept.tree_path},{dept.id}"
         stmt = select(SysDept.id).where(
-            SysDept.tree_path.like(f"{dept.tree_path}%"),
+            or_(SysDept.tree_path == prefix, SysDept.tree_path.like(f"{prefix},%")),
             SysDept.deleted == 0,
         )
         result = await db.execute(stmt)
         child_ids = [int(row[0]) for row in result.fetchall()]
-        return [int(dept.id)] + child_ids
+        return [int(dept.id), *child_ids]
 
     async def check_name_exists(
         self,
@@ -44,11 +49,8 @@ class DeptRepository(BaseRepository[SysDept]):
         exclude_id: int | None = None,
         parent_id: int | None = None,
     ) -> bool:
-        """检查部门名称是否重复（同层级内）"""
-        stmt = select(SysDept).where(
-            SysDept.name == name,
-            SysDept.deleted == 0,
-        )
+        """检查同级部门名称是否重复（含已删除记录，删除后名称不可复用）"""
+        stmt = select(SysDept).where(SysDept.name == name).execution_options(include_deleted=True)
         if exclude_id:
             stmt = stmt.where(SysDept.id != exclude_id)
         if parent_id is not None:
@@ -72,15 +74,21 @@ class DeptRepository(BaseRepository[SysDept]):
             stmt = stmt.where(SysDept.status == status)
 
         if current_user is not None:
-            # 部门表自身即数据权限主体：dept_field 用主键 id（对齐 Java @DataPermission(deptIdColumnName="id")、Go sys_dept.DeptField="id"）
-            from app.repository.data_scope import apply_data_scope
-
+            # 部门表自身即数据权限主体：dept_field 用主键 id
+            # （对齐 Java @DataPermission(deptIdColumnName="id")、
+            # Go sys_dept.DeptField="id"）
+            children_ids = (
+                await self.get_children_ids(db, current_user.dept_id)
+                if current_user.data_scope == 1 and current_user.dept_id is not None
+                else None
+            )
             stmt = await apply_data_scope(
                 stmt,
                 current_user,
                 db,
                 dept_field=SysDept.id,
                 creator_field=SysDept.create_by,
+                children_ids=children_ids,
             )
 
         stmt = stmt.order_by(SysDept.sort, SysDept.create_time.desc())
@@ -141,13 +149,12 @@ class DeptRepository(BaseRepository[SysDept]):
 
         root_options: list[dict[str, Any]] = []
         for dept in dept_list:
-            parent_id = dept.parent_id
-            if parent_id == 0:
+            parent = dept_dict.get(dept.parent_id)
+            # 数据权限过滤后父节点不在可见集时，提升为可见子树的根节点
+            if dept.parent_id == 0 or parent is None:
                 root_options.append(dept_dict[dept.id])
             else:
-                parent = dept_dict.get(parent_id)
-                if parent:
-                    parent["children"].append(dept_dict[dept.id])
+                parent["children"].append(dept_dict[dept.id])
 
         return root_options
 
@@ -162,6 +169,26 @@ class DeptRepository(BaseRepository[SysDept]):
         parent_dept = await self.get_by_id(db, parent_id)
         parent_tree_path = parent_dept.tree_path if parent_dept else None
         return gen_tree_path(parent_tree_path, parent_id)
+
+    async def update_subtree_tree_path(
+        self,
+        db: AsyncSession,
+        old_prefix: str,
+        new_prefix: str,
+    ) -> None:
+        """级联更新子部门 tree_path（部门移动后，子树路径整体平移）
+
+        子部门路径 = 旧前缀 + 后缀，整体替换为新前缀 + 后缀。
+        """
+        await db.execute(
+            update(SysDept)
+            .where(or_(SysDept.tree_path == old_prefix, SysDept.tree_path.like(f"{old_prefix},%")))
+            .values(
+                tree_path=func.concat(
+                    new_prefix, func.substring(SysDept.tree_path, len(old_prefix) + 1)
+                )
+            )
+        )
 
     async def count_children_by_parents(
         self,
@@ -182,5 +209,6 @@ class DeptRepository(BaseRepository[SysDept]):
         )
         result = await db.execute(stmt)
         return {int(row[0]): int(row[1]) for row in result.fetchall()}
+
 
 dept_repository = DeptRepository()

@@ -32,6 +32,8 @@ public class SysEvalLog extends BaseEntity {
 
     private LogStatusEnum status;
 
+    private String taskType;
+
     private String errorMessage;
 
     private String result;

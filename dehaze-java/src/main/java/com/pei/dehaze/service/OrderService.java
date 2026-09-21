@@ -34,6 +34,9 @@ public interface OrderService extends IService<SysOrder> {
 
     Page<MyOrderVO> listMy(MyOrderQuery query);
 
+    /** 管理端按目标用户查询订单分页（会员消费记录弹窗） */
+    Page<MyOrderVO> listByUserId(Long userId, MyOrderQuery query);
+
     OrderDetailVO getDetail(String orderNo);
 
     Page<OrderPageVO> getPage(OrderPageQuery query);

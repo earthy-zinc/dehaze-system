@@ -58,12 +58,13 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |---------|------|---------|---------|-----------|
-| `/api/v1/messages/send` | POST | 发送消息（业务模块调用） | - | F-MN-001 |
+| `/api/v1/messages/send` | POST | 发送消息（业务模块调用） | `message:send` | F-MN-001 |
 
 ## 3. 权限标识汇总
 
 | 权限标识 | 说明 |
 |---------|------|
+| `message:send` | 内部消息发送（防止登录用户伪造系统消息） |
 | `notify:announcement:add` | 创建公告 |
 | `notify:announcement:edit` | 编辑公告 |
 | `notify:announcement:delete` | 删除公告 |

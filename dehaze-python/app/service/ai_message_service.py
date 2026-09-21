@@ -67,6 +67,7 @@ class AiMessageService:
         self.ai_conversation_service = ai_conversation_service
         self.ai_model_service = ai_model_service
         self.get_redis_client = get_redis_client
+        self._title_tasks: set[asyncio.Task] = set()
 
     async def _assert_conversation_not_suspended(self, conv) -> None:
         """会话处于中断挂起（待确认）时拒绝发起新流式操作。
@@ -77,7 +78,9 @@ class AiMessageService:
         if conv.current_branch_message_id and await self.interrupt_handler.get_interrupt(
             f"{conv.id}:{conv.current_branch_message_id}"
         ):
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止")
+            raise BusinessException(
+                ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止"
+            )
 
     async def _needs_tool_call(self, db: AsyncSession, conv) -> bool:
         """判断本次会话推理是否需要工具调用（用于 supports_tool_call 校验）。
@@ -94,13 +97,10 @@ class AiMessageService:
         # 固定为 direct 才跳过工具校验；auto 在此保守按需工具校验（不重复跑复杂度评估，
         # 其运行时解析由 reasoning 层统一负责），避免对 direct 之外的范式放行后中途失败。
         agent = await self.ai_agent_repository.get_by_code(db, conv.agent_code or "default")
-        if agent and agent.reasoning_mode == "direct":
-            return False
-        return True
+        return not (agent and agent.reasoning_mode == "direct")
 
     async def _run_reasoning(
         self,
-        db: AsyncSession,
         conv_id: int,
         user_id: int,
         model: str,
@@ -113,7 +113,6 @@ class AiMessageService:
             reasoning_service=self.reasoning_service,
             get_redis_client=self.get_redis_client,
             sse_emitter_manager=self.sse_emitter_manager,
-            db=db,
             conv_id=conv_id,
             user_id=user_id,
             model=model,
@@ -124,7 +123,6 @@ class AiMessageService:
 
     def _stream_generator(
         self,
-        db: AsyncSession,
         conv_id: int,
         user_id: int,
         model: str,
@@ -137,7 +135,6 @@ class AiMessageService:
             sse_emitter_manager=self.sse_emitter_manager,
             reasoning_service=self.reasoning_service,
             get_redis_client=self.get_redis_client,
-            db=db,
             conv_id=conv_id,
             user_id=user_id,
             model=model,
@@ -171,7 +168,7 @@ class AiMessageService:
         user_id: int,
         form,
         idempotency_key: str,
-    ) -> StreamingResponse:
+    ) -> StreamingResponse | JSONResponse:
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
@@ -185,82 +182,93 @@ class AiMessageService:
 
         redis = await self.get_redis_client()
         idem_key = f"{_IDEMPOTENT_PREFIX}{user_id}:{idempotency_key}"
-        existing = await redis.get(idem_key)
-        if existing:
-            if existing == "pending":
-                # pending 命中：409 冲突语义（对齐设计 §4.2），用 REPEAT_SUBMIT_ERROR 编码表达
-                raise BusinessException(ResultCode.REPEAT_SUBMIT_ERROR)
-            return await self._idempotent_response(db, existing)
+        # SETNX 抢占 pending：get→set 两步之间并发同 key 会双双判定为首次发送并重复落库，
+        # 原子抢占保证同 key 只有一个请求进入发送流程。
         # pending TTL 对齐流式超时（120s）+ 60s 余量，避免长推理 pending 过期后同 key 重复落库
-        await redis.set(idem_key, "pending", ex=settings.AI_MESSAGE_STREAM_TIMEOUT + 60)
+        claimed = await redis.set(
+            idem_key, "pending", nx=True, ex=settings.AI_MESSAGE_STREAM_TIMEOUT + 60
+        )
+        if not claimed:
+            existing = await redis.get(idem_key)
+            # pending 值可能是 "pending" 或 run_reasoning 接管的本轮标识 "pending:{streamId}"
+            if existing and not existing.startswith("pending"):
+                return await self._idempotent_response(db, existing)
+            # pending 命中：409 冲突语义（对齐设计 §4.2），用 REPEAT_SUBMIT_ERROR 编码表达
+            raise BusinessException(ResultCode.REPEAT_SUBMIT_ERROR)
 
         if not await self.sse_emitter_manager.acquire_lock(conv_id):
+            # 抢锁失败时 pending 必须一并回收：否则 TTL 内同 key 重试全部被误判为"处理中"
+            await redis.delete(idem_key)
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
         model = form.model or conv.model or settings.AI_DEFAULT_MODEL
 
-        # 模型能力校验（§2.8）：消息含附件需多模态、本会话推理需工具调用需 supports_tool_call
-        model_entity = await self.ai_model_repository.get_by_model_id(db, model)
-        if not model_entity or model_entity.status != 1:
-            raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
-        await self.ai_model_service.validate_model_caps(
-            model_entity,
-            has_attachments=_has_attachments(form.content),
-            need_tools=await self._needs_tool_call(db, conv),
-        )
-
         stream_session_id = str(uuid4())
-        # 捕获"首条消息"判定所需的本条消息前状态：update_last_message 的批量 UPDATE
-        # 会经 SQLAlchemy synchronize_session 使 conv 属性失效，之后访问 conv.message_count
-        # 会重读数据库（已 +2），导致 <=1 判定恒假、首条消息永不触发标题生成。故提前取值。
-        prev_message_count = conv.message_count
-        prev_title = conv.title
-        prev_title_source = conv.title_source
+        try:
+            # 模型能力校验（§2.8）：消息含附件需多模态、本会话推理需工具调用需 supports_tool_call
+            model_entity = await self.ai_model_repository.get_by_model_id(db, model)
+            if not model_entity or model_entity.status != 1:
+                raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "模型不可用或已禁用")
+            await self.ai_model_service.validate_model_caps(
+                model_entity,
+                has_attachments=_has_attachments(form.content),
+                need_tools=await self._needs_tool_call(db, conv),
+            )
 
-        user_msg = SysAiMessage(
-            conversation_id=conv_id,
-            parent_message_id=conv.current_branch_message_id,
-            role="user",
-            content=form.content,
-            model=model,
-            status=2,
-        )
-        user_msg = await self.ai_message_repository.create(db, user_msg)
+            # 捕获"首条消息"判定所需的本条消息前状态：update_last_message 的批量 UPDATE
+            # 会经 SQLAlchemy synchronize_session 使 conv 属性失效，之后访问 conv.message_count
+            # 会重读数据库（已 +2），导致 <=1 判定恒假、首条消息永不触发标题生成。故提前取值。
+            prev_message_count = conv.message_count
+            prev_title = conv.title
+            prev_title_source = conv.title_source
 
-        assistant_msg = SysAiMessage(
-            conversation_id=conv_id,
-            parent_message_id=user_msg.id,
-            role="assistant",
-            content="",
-            model=model,
-            status=1,
-            # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
-            task_id=None,
-        )
-        assistant_msg = await self.ai_message_repository.create(db, assistant_msg)
+            user_msg = SysAiMessage(
+                conversation_id=conv_id,
+                parent_message_id=conv.current_branch_message_id,
+                role="user",
+                content=form.content,
+                model=model,
+                status=2,
+            )
+            user_msg = await self.ai_message_repository.create(db, user_msg)
 
-        # 消息计数收敛于 update_last_message 单点（本次追加 user+assistant 两条）
-        await self.ai_conversation_repository.update_last_message(
-            db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
-        )
-        # 显式提交：推理后台任务（run_reasoning）用独立 session 读取上下文，
-        # 必须在本请求事务提交后才能读到新消息与最新分支指针（否则读到上一轮旧上下文）。
-        await db.commit()
+            assistant_msg = SysAiMessage(
+                conversation_id=conv_id,
+                parent_message_id=user_msg.id,
+                role="assistant",
+                content="",
+                model=model,
+                status=1,
+                # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
+                task_id=None,
+            )
+            assistant_msg = await self.ai_message_repository.create(db, assistant_msg)
+
+            # 消息计数收敛于 update_last_message 单点（本次追加 user+assistant 两条）
+            await self.ai_conversation_repository.update_last_message(
+                db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
+            )
+            # 显式提交：推理后台任务（run_reasoning）用独立 session 读取上下文，
+            # 必须在本请求事务提交后才能读到新消息与最新分支指针（否则读到上一轮旧上下文）。
+            await db.commit()
+        except Exception:
+            # 幂等 pending 已落、流式锁已获，此后失败需回滚两键，否则会话被锁 TTL 阻塞、
+            # 同幂等键在 pending 过期前被误判为"处理中"
+            await self.sse_emitter_manager.release_lock(conv_id)
+            await redis.delete(idem_key)
+            raise
 
         # 首条消息发送后异步用 LLM 生成标题（不阻塞消息发送）
-        if (
-            prev_message_count <= 1
-            and prev_title == "新对话"
-            and prev_title_source != "manual"
-        ):
-            asyncio.create_task(
+        if prev_message_count <= 1 and prev_title == "新对话" and prev_title_source != "manual":
+            task = asyncio.create_task(
                 self.ai_conversation_service._auto_generate_title(conv_id, form.content)
             )
+            self._title_tasks.add(task)
+            task.add_done_callback(self._title_tasks.discard)
 
         # 上下文由 reasoning_service.run 内部组装，此处不再预热（避免 build_context 二次执行）
         return StreamingResponse(
             self._stream_generator(
-                db=db,
                 conv_id=conv_id,
                 user_id=user_id,
                 model=model,
@@ -300,43 +308,47 @@ class AiMessageService:
         if not await self.sse_emitter_manager.acquire_lock(conv_id):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
-        # 原消息标记为已编辑，保留原文（content 不变，前端用 original_content 展示编辑前）
-        msg.edited = 1
-        msg.original_content = msg.content
-        await db.flush()
-
         model = conv.model or settings.AI_DEFAULT_MODEL
         stream_session_id = str(uuid4())
+        try:
+            # 原消息标记为已编辑，保留原文（content 不变，前端用 original_content 展示编辑前）
+            msg.edited = 1
+            msg.original_content = msg.content
+            await db.flush()
 
-        # 新 user 消息：parent 沿用原 user 消息的 parent，保持上下文链
-        user_msg = SysAiMessage(
-            conversation_id=conv_id,
-            parent_message_id=msg.parent_message_id,
-            role="user",
-            content=form.content,
-            model=model,
-            status=2,
-        )
-        user_msg = await self.ai_message_repository.create(db, user_msg)
+            # 新 user 消息：parent 沿用原 user 消息的 parent，保持上下文链
+            user_msg = SysAiMessage(
+                conversation_id=conv_id,
+                parent_message_id=msg.parent_message_id,
+                role="user",
+                content=form.content,
+                model=model,
+                status=2,
+            )
+            user_msg = await self.ai_message_repository.create(db, user_msg)
 
-        assistant_msg = SysAiMessage(
-            conversation_id=conv_id,
-            parent_message_id=user_msg.id,
-            role="assistant",
-            content="",
-            model=model,
-            status=1,
-            # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
-            task_id=None,
-        )
-        assistant_msg = await self.ai_message_repository.create(db, assistant_msg)
+            assistant_msg = SysAiMessage(
+                conversation_id=conv_id,
+                parent_message_id=user_msg.id,
+                role="assistant",
+                content="",
+                model=model,
+                status=1,
+                # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
+                task_id=None,
+            )
+            assistant_msg = await self.ai_message_repository.create(db, assistant_msg)
 
-        # 消息计数收敛于 update_last_message 单点（本次追加 user+assistant 两条）
-        await self.ai_conversation_repository.update_last_message(
-            db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
-        )
-        # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
-        await db.commit()
+            # 消息计数收敛于 update_last_message 单点（本次追加 user+assistant 两条）
+            await self.ai_conversation_repository.update_last_message(
+                db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
+            )
+            # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
+            await db.commit()
+        except Exception:
+            # 锁获后建消息失败：释放锁，避免会话被锁 TTL 阻塞
+            await self.sse_emitter_manager.release_lock(conv_id)
+            raise
 
         # 编辑重发不参与幂等，使用一次性 key 复用推理后台任务；
         # 上下文由 reasoning_service.run 内部组装，此处不再预热（避免 build_context 二次执行）
@@ -344,7 +356,6 @@ class AiMessageService:
 
         return StreamingResponse(
             self._stream_generator(
-                db=db,
                 conv_id=conv_id,
                 user_id=user_id,
                 model=model,

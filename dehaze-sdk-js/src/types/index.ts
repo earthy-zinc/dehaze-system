@@ -37,6 +37,18 @@ export interface PageResult<T> {
 }
 
 /**
+ * 游标分页响应对象（按 id 倒序游标翻页，用于聊天历史向上增量加载）
+ */
+export interface CursorResult<T> {
+  /** 数据列表 */
+  list: T;
+  /** 总数（符合游标条件的总条数） */
+  total: number;
+  /** 是否还有更早数据（存在 id 小于本页最小 id 的消息） */
+  hasMore: boolean;
+}
+
+/**
  * 通用启用状态：1-启用，0-禁用
  */
 export type EnabledStatus = 0 | 1;

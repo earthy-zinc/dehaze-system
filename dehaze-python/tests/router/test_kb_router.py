@@ -10,12 +10,11 @@ from httpx import ASGITransport, AsyncClient
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
-
-pytestmark = pytest.mark.api
-
 from app.main import app as fastapi_app
 from app.router import kb
 from tests.stubs.factories import make_user_context
+
+pytestmark = pytest.mark.api
 
 
 def _admin_ctx():
@@ -50,8 +49,10 @@ async def kb_client():
 
 async def _as_user(client: AsyncClient):
     """切换为普通用户（用户端权限校验路径）"""
+
     async def _override_user():
         return _user_ctx()
+
     fastapi_app.dependency_overrides[get_current_user] = _override_user
     return client
 
@@ -59,6 +60,7 @@ async def _as_user(client: AsyncClient):
 async def _as_admin(client: AsyncClient):
     async def _override_user():
         return _admin_ctx()
+
     fastapi_app.dependency_overrides[get_current_user] = _override_user
     return client
 

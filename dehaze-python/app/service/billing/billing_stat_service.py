@@ -14,7 +14,7 @@ from app.models.schema.ai_billing import (
     BillingSummaryResult,
     BillingTrendPointResult,
 )
-from app.repository.ai_billing_repository import ai_billing_repository
+from app.repository.ai_billing_repository import CHAT_BILL_TYPES, ai_billing_repository
 
 
 class BillingStatService:
@@ -23,9 +23,15 @@ class BillingStatService:
     def __init__(self, ai_billing_repository=ai_billing_repository):
         self.ai_billing_repository = ai_billing_repository
 
-    async def stats(self, 
-        db: AsyncSession, query: BillingStatQuery, user_id: int | None = None
+    async def stats(
+        self, db: AsyncSession, query: BillingStatQuery, user_id: int | None = None
     ) -> list[BillingStatResult]:
+        # 白名单须与 repository.stats_by_dimension 支持的维度保持一致；不校验的话
+        # 非法值会在 repository 抛 ValueError，以 500 泄漏内部异常而非业务码
+        if query.group_by not in ("user", "model", "billType", "day"):
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "groupBy 仅支持 user/model/billType/day"
+            )
         rows = await self.ai_billing_repository.stats_by_dimension(
             db,
             query.group_by,
@@ -37,9 +43,9 @@ class BillingStatService:
         )
         results = []
         for row in rows:
-            total_input = row["total_input_tokens"]
+            chat_input = row["total_input_tokens"]
             cache_hit_rate = (
-                round(row["cached_input_tokens"] / total_input, 4) if total_input > 0 else 0.0
+                round(row["chat_cached_tokens"] / chat_input, 4) if chat_input > 0 else 0.0
             )
             results.append(
                 BillingStatResult(
@@ -62,7 +68,9 @@ class BillingStatService:
     ) -> BillingSummaryResult:
         """用户端消耗汇总：当前时段（日/月）总消耗、趋势、模型分布、节省汇总。
 
-        仅返回本人数据（收入线），不含任何成本字段（成本数据仅管理员可见）。
+        仅统计 chat 类记录（主图 chat + 子 Agent chat_subagent，子 Agent 消耗
+        实际扣减了用户配额与余额，须与扣减口径一致；asr/tts 的 input_tokens 存储
+        秒数/字符数，语音/对话计量口径不同）；仅返回本人数据（收入线），不含任何成本字段。
         """
         now = datetime.now()
         # create_time 以秒级精度入库（MySQL DATETIME 对微秒做四舍五入），
@@ -77,7 +85,7 @@ class BillingStatService:
             raise BusinessException(ResultCode.PARAM_ERROR, "dimension 仅支持 day/month")
 
         rows = await self.ai_billing_repository.sum_credits_by_user_group_by_period(
-            db, user_id, period_start, now_ceiling, period=dimension
+            db, user_id, period_start, now_ceiling, period=dimension, bill_type=CHAT_BILL_TYPES
         )
         trend = [
             BillingTrendPointResult(
@@ -90,7 +98,7 @@ class BillingStatService:
         ]
 
         dist_rows = await self.ai_billing_repository.sum_credits_by_user_group_by_model(
-            db, user_id, period_start, now_ceiling
+            db, user_id, period_start, now_ceiling, bill_type=CHAT_BILL_TYPES
         )
         dist_rows.sort(key=lambda r: r["credits"], reverse=True)
         model_distribution = [

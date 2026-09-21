@@ -20,8 +20,8 @@ type SysCoupon struct {
 	UsedQty         int            `gorm:"column:used_qty;type:int;not null;default:0;comment:已使用数量" json:"usedQty"`
 	PerUserLimit    int            `gorm:"column:per_user_limit;type:int;not null;default:1;comment:每人限领" json:"perUserLimit"`
 	ApplicableScope sql.NullString `gorm:"column:applicable_scope;type:json;comment:适用套餐ID列表" json:"applicableScope"`
-	Status          int8           `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:状态" json:"status"`
-	Deleted         int8           `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Status          int8           `gorm:"column:status;type:tinyint;not null;index:idx_status;comment:状态" json:"status"`
+	Deleted         int64          `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysCoupon) TableName() string {
@@ -37,7 +37,7 @@ type SysUserCoupon struct {
 	ExpireTime  *time.Time `gorm:"column:expire_time;type:datetime;index:idx_expire_time;comment:过期时间" json:"expireTime"`
 	UsedTime    *time.Time `gorm:"column:used_time;type:datetime;comment:使用时间" json:"usedTime"`
 	UsedOrderID *int64     `gorm:"column:used_order_id;type:bigint;index:idx_used_order_id;comment:使用的订单ID" json:"usedOrderId"`
-	Deleted     int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted     int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysUserCoupon) TableName() string {

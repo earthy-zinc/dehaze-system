@@ -14,8 +14,10 @@ type AppConfig struct {
 	Captcha   options.Captcha   `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
 	DB        options.DB        `mapstructure:"db" json:"db" yaml:"db"`
 	Mongo     options.Mongo     `mapstructure:"mongo" json:"mongo" yaml:"mongo"`
+	ES        options.ES        `mapstructure:"es" json:"es" yaml:"es"`
 	File      options.File      `mapstructure:"file" json:"file" yaml:"file"`
 	Algorithm options.Algorithm `mapstructure:"algorithm" json:"algorithm" yaml:"algorithm"`
+	AI        options.AI        `mapstructure:"ai" json:"ai" yaml:"ai"`
 	RabbitMQ  options.RabbitMQ  `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
 	Kafka     options.Kafka     `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
 	Cors      options.CORS      `mapstructure:"cors" json:"cors" yaml:"cors"`

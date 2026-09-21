@@ -146,6 +146,8 @@ const { height } = useWindowSize();
 const loginData = ref<LoginData>({
   username: "",
   password: "",
+  captchaKey: "",
+  captchaCode: "",
   rememberMe: true,
 });
 
@@ -163,11 +165,6 @@ const loginRules = computed(() => {
         required: true,
         trigger: "blur",
         message: t("login.message.password.required"),
-      },
-      {
-        min: 6,
-        message: t("login.message.password.min"),
-        trigger: "blur",
       },
     ],
     captchaCode: [
@@ -211,6 +208,8 @@ function handleLogin() {
           router.push({ path: redirect, query: otherQueryParams });
         })
         .catch(() => {
+          // 验证码一次性有效，失败后自动刷新并清空输入（前端实现.md §5.4）
+          loginData.value.captchaCode = "";
           getCaptcha();
         })
         .finally(() => {

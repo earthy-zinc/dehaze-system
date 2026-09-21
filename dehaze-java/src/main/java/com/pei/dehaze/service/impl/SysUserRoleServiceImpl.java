@@ -8,6 +8,7 @@ import com.pei.dehaze.model.entity.SysUserRole;
 import com.pei.dehaze.service.SysUserRoleService;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -78,5 +79,13 @@ public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUs
     public boolean hasAssignedUsers(Long roleId) {
         long count = this.baseMapper.countUsersForRole(roleId);
         return count > 0;
+    }
+
+    @Override
+    public List<String> listUsernamesByRoleIds(List<Long> roleIds) {
+        if (CollectionUtil.isEmpty(roleIds)) {
+            return Collections.emptyList();
+        }
+        return this.baseMapper.listUsernamesByRoleIds(roleIds);
     }
 }

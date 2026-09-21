@@ -101,18 +101,48 @@ func (r *recommendationRepository) CountAdoptedAlgorithmDistinct(ctx context.Con
 	return count, err
 }
 
-func (r *recommendationRepository) FindDailyAdoptionRate(ctx context.Context, startTime, endTime string) ([]DailyAdoptionRow, error) {
+func (r *recommendationRepository) CountRecommended(ctx context.Context, startTime, endTime string) (int64, error) {
 	db := r.db.WithContext(ctx).
-		Table("sys_recommendation").
-		Select("DATE(create_time) AS date, IF(COUNT(*) > 0, SUM(CASE WHEN feedback = 1 THEN 1 ELSE 0 END) / COUNT(*), 0) AS adoption_rate").
-		Where("feedback IN (1, 2)")
+		Table("sys_pred_log").
+		Where("recommended_by IS NOT NULL")
 	if startTime != "" {
 		db = db.Where("create_time >= ?", startTime)
 	}
 	if endTime != "" {
 		db = db.Where("create_time <= ?", endTime)
 	}
-	var rows []DailyAdoptionRow
+	var count int64
+	err := db.Count(&count).Error
+	return count, err
+}
+
+func (r *recommendationRepository) FindDailyTotal(ctx context.Context, startTime, endTime string) ([]DailyCountRow, error) {
+	db := r.db.WithContext(ctx).
+		Table("sys_recommendation").
+		Select("DATE(create_time) AS date, COUNT(*) AS cnt")
+	if startTime != "" {
+		db = db.Where("create_time >= ?", startTime)
+	}
+	if endTime != "" {
+		db = db.Where("create_time <= ?", endTime)
+	}
+	var rows []DailyCountRow
+	err := db.Group("DATE(create_time)").Order("date").Scan(&rows).Error
+	return rows, err
+}
+
+func (r *recommendationRepository) FindDailyRecommended(ctx context.Context, startTime, endTime string) ([]DailyCountRow, error) {
+	db := r.db.WithContext(ctx).
+		Table("sys_pred_log").
+		Select("DATE(create_time) AS date, COUNT(*) AS cnt").
+		Where("recommended_by IS NOT NULL")
+	if startTime != "" {
+		db = db.Where("create_time >= ?", startTime)
+	}
+	if endTime != "" {
+		db = db.Where("create_time <= ?", endTime)
+	}
+	var rows []DailyCountRow
 	err := db.Group("DATE(create_time)").Order("date").Scan(&rows).Error
 	return rows, err
 }

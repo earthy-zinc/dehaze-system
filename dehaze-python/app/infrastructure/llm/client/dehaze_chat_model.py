@@ -14,6 +14,7 @@ deepagents 内部以 LangChain 协议调用 model（BaseChatModel.astream / ainv
 import json
 import logging
 from collections.abc import AsyncIterator, Sequence
+from contextvars import ContextVar
 from typing import Any
 
 from langchain_core.callbacks import (
@@ -36,6 +37,7 @@ from langchain_core.utils.function_calling import convert_to_openai_tool
 
 from app.database import get_db_session
 from app.infrastructure.llm.call.llm_client import llm_client
+from app.models.base import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +64,10 @@ def _langchain_message_to_dict(message: BaseMessage) -> dict[str, Any]:
             }
             for tc in message.tool_calls
         ]
-        return {
-            "role": "assistant",
-            "content": message.content or "",
-            **(tool_calls and {"tool_calls": tool_calls} or {}),
-        }
+        result: dict[str, Any] = {"role": "assistant", "content": message.content or ""}
+        if tool_calls:
+            result["tool_calls"] = tool_calls
+        return result
     if isinstance(message, ToolMessage):
         return {
             "role": "tool",
@@ -93,6 +94,19 @@ def _tools_to_openai(tools: list[BaseTool | dict[str, Any]]) -> list[dict]:
     return result
 
 
+# 模型实例按 (agent_id, version_no, model_id) 缓存跨会话复用，单次调用的 usage、
+# 路由归因与绑定工具若存实例字段，并发 run 会互相覆盖（计费/成本归因串到他用户），
+# 故按 asyncio 任务隔离（bind_tools 与随后的 ainvoke 在同一节点任务内执行）
+_usage_var: ContextVar[dict | None] = ContextVar("dehaze_chat_model_usage", default=None)
+_call_meta_var: ContextVar[dict | None] = ContextVar("dehaze_chat_model_call_meta", default=None)
+_bound_tools_var: ContextVar[list | None] = ContextVar(
+    "dehaze_chat_model_bound_tools", default=None
+)
+_bound_tool_choice_var: ContextVar[str | None] = ContextVar(
+    "dehaze_chat_model_bound_tool_choice", default=None
+)
+
+
 class DehazeChatModel(BaseChatModel):
     """包装 LlmClient 的 LangChain ChatModel 适配器。
 
@@ -101,17 +115,20 @@ class DehazeChatModel(BaseChatModel):
     """
 
     model: str
-    # 最近一次调用的 usage（token 统计），供 _agenerate 附加到最终消息
-    _last_usage: dict[str, Any] = {}
-    # 最近一次调用的实际路由归因（actual model/provider/key/latency/request_id），供计费透出
-    _last_call_meta: dict[str, Any] = {}
-    # deepagents 通过 bind_tools 注入工具定义与 tool_choice
-    _bound_tools: list[Any] | None = None
-    _bound_tool_choice: str | None = None
 
     @property
     def _llm_type(self) -> str:
         return "dehaze_llm_client"
+
+    @property
+    def _last_usage(self) -> dict[str, Any]:
+        """本任务最近一次调用的 usage（token 统计），供计费结算透出"""
+        return _usage_var.get() or {}
+
+    @property
+    def _last_call_meta(self) -> dict[str, Any]:
+        """本任务最近一次调用的实际路由归因，供成本归因透出"""
+        return _call_meta_var.get() or {}
 
     def bind_tools(
         self,
@@ -123,10 +140,10 @@ class DehazeChatModel(BaseChatModel):
         """接受 deepagents 绑定的工具定义，返回 self（tools 在调用时读取）。
 
         deepagents 通过 bind_tools 注入工具，_astream/_agenerate 读取
-        _bound_tools 传给 LlmClient。
+        本任务绑定的工具定义传给 LlmClient。
         """
-        self._bound_tools = list(tools)
-        self._bound_tool_choice = tool_choice
+        _bound_tools_var.set(list(tools))
+        _bound_tool_choice_var.set(tool_choice)
         return self
 
     def _generate(
@@ -149,10 +166,11 @@ class DehazeChatModel(BaseChatModel):
         tool_call_chunks = []
         thinking_parts = []
         async for c in self._astream(messages, stop, run_manager, **kwargs):
-            chunk = chunk + c.message
-            if c.message.tool_call_chunks:
-                tool_call_chunks.extend(c.message.tool_call_chunks)
-            thinking = c.message.additional_kwargs.get("thinking")
+            message = c.message
+            chunk = chunk + message
+            if isinstance(message, AIMessageChunk) and message.tool_call_chunks:
+                tool_call_chunks.extend(message.tool_call_chunks)
+            thinking = message.additional_kwargs.get("thinking")
             if thinking:
                 thinking_parts.append(thinking)
         final_message = AIMessage(
@@ -191,21 +209,25 @@ class DehazeChatModel(BaseChatModel):
         model_id = self.model
         converted_messages = [_langchain_message_to_dict(m) for m in messages]
         tools: list[dict] | None = (
-            _tools_to_openai(self._bound_tools or kwargs.get("tools") or []) or None
+            _tools_to_openai(_bound_tools_var.get() or kwargs.get("tools") or []) or None
         )
-        tool_choice: str | None = self._bound_tool_choice or kwargs.get("tool_choice")
+        tool_choice: str | None = _bound_tool_choice_var.get() or kwargs.get("tool_choice")
         temperature = float(kwargs.get("temperature", 0.7))
         max_tokens = kwargs.get("max_tokens")
 
         usage: dict = {}
         call_meta: dict = {}
-        pending_tool_calls: dict[int, dict] = {}
+        pending_tool_calls: dict[str, dict] = {}
         # 工具调用产出序号：tool_call_chunks 的 index 按产出顺序编号（LangChain
         # 多工具并行合并时按 index 匹配增量），不能为 None
         tool_call_seq = 0
         # 思考流累积：LangChain 无标准 thinking 字段，经 additional_kwargs["thinking"]
         # 逐块透出，供 SseEventConverter 识别为思考双流
         thinking_accumulated = ""
+        # 用户身份（供供应商透传）：图按 (agent_id, version, model) 跨用户缓存，
+        # 实例无法携带用户标识，从请求上下文取（与 LlmClient 计费归因同源，
+        # auth 依赖按请求设置）；无请求上下文（评测/A2A 临时会话）时为 None 不注入
+        user_id = get_current_user_id()
         async with get_db_session() as db:
             async for chunk in llm_client.stream_chat(
                 db,
@@ -217,6 +239,7 @@ class DehazeChatModel(BaseChatModel):
                 tools=tools,
                 tool_choice=tool_choice,
                 on_route_result=call_meta.update,
+                user_id=user_id,
             ):
                 if chunk.type == "text_delta":
                     yield ChatGenerationChunk(message=AIMessageChunk(content=chunk.content))
@@ -259,5 +282,5 @@ class DehazeChatModel(BaseChatModel):
                 elif chunk.type == "done":
                     usage = chunk.usage or {}
         # 记录 usage 与实际路由归因，供 _agenerate 附加到最终消息（计费结算透出）
-        self._last_usage = usage
-        self._last_call_meta = call_meta
+        _usage_var.set(usage)
+        _call_meta_var.set(call_meta)

@@ -16,11 +16,13 @@ from app.models.schema.ai_observability import (
     CostsQuery,
     CostsResult,
     SummaryResult,
+    TimelineQuery,
+    TimelineResult,
     TraceDetailResult,
     TraceItem,
     TracePageQuery,
-    TrendsQuery,
     TrendItem,
+    TrendsQuery,
 )
 from app.models.schema.common import PageResult
 from app.service.ai_observability_service import ai_observability_service
@@ -88,9 +90,39 @@ async def get_trace(
     user: UserContext = Depends(get_current_user),
 ):
     admin = check_permission(user, _AUDIT_PERMISSION)
+    return success(await ai_observability_service.get_trace(db, trace_id, user.id, admin=admin))
+
+
+@router.get(
+    "/observability/conversations/{conversation_id}/timeline",
+    response_model=Result[TimelineResult],
+    summary="会话审计时间线",
+)
+async def get_conversation_timeline(
+    conversation_id: int,
+    query: TimelineQuery = Depends(),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    admin = check_permission(user, _AUDIT_PERMISSION)
     return success(
-        await ai_observability_service.get_trace(db, trace_id, user.id, admin=admin)
+        await ai_observability_service.get_conversation_timeline(
+            db, conversation_id, user.id, admin=admin, include_raw=query.include_raw
+        )
     )
+
+
+@router.get(
+    "/observability/conversations/{conversation_id}/timeline/export",
+    summary="会话时间线导出(JSON全量含raw报文)",
+)
+async def export_conversation_timeline(
+    conversation_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    _require_audit(user)
+    return await ai_observability_service.export_timeline(db, conversation_id, user.id)
 
 
 @router.get(

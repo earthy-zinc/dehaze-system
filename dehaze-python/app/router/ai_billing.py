@@ -39,6 +39,7 @@ from app.models.schema.ai_billing_cost import (
     ReconcileImportRequest,
 )
 from app.models.schema.common import PageResult
+from app.repository.user_repository import user_repository
 from app.service.billing.balance_service import balance_service
 from app.service.billing.bill_service import bill_service
 from app.service.billing.billing_anomaly_service import billing_anomaly_service
@@ -58,9 +59,9 @@ router = APIRouter(
 
 
 async def _build_balance(db: AsyncSession, user_id: int) -> BalanceResult:
-    """组装余额账户视图"""
+    """组装余额账户视图（权益缺失/停用时限额展示为 0，配额校验侧 fail-closed）"""
     daily_used, monthly_used = await quota_service.get_used(user_id)
-    daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
+    daily_limit, monthly_limit = await quota_service.get_limits(db, user_id) or (0, 0)
     return BalanceResult(
         user_id=user_id,
         credits_balance=await balance_service.get_balance(db, user_id),
@@ -73,7 +74,9 @@ async def _build_balance(db: AsyncSession, user_id: int) -> BalanceResult:
 
 
 def _resolve_query_user(user: UserContext, user_id_param: int | None) -> int:
-    """解析查询目标用户：管理员可指定 userId 查询他人数据（需 ai:billing:stat），普通用户仅可查本人"""
+    """解析查询目标用户：管理员可指定 userId 查询他人数据（需 ai:billing:stat），
+    普通用户仅可查本人
+    """
     if user_id_param is None or user_id_param == user.id:
         return user.id
     if not check_permission(user, "ai:billing:stat"):
@@ -105,7 +108,9 @@ async def get_summary(
     return success(await billing_stat_service.summary(db, user.id, dimension))
 
 
-@router.get("/records", response_model=Result[PageResult[BillingRecordResult]], summary="计费明细查询")
+@router.get(
+    "/records", response_model=Result[PageResult[BillingRecordResult]], summary="计费明细查询"
+)
 async def list_records(
     userId: int | None = Query(default=None, ge=1),
     pageNum: int = Query(default=1, ge=1),
@@ -132,7 +137,9 @@ async def list_records(
     )
 
 
-@router.get("/credit-logs", response_model=Result[PageResult[CreditLogResult]], summary="余额流水查询")
+@router.get(
+    "/credit-logs", response_model=Result[PageResult[CreditLogResult]], summary="余额流水查询"
+)
 async def list_credit_logs(
     userId: int | None = Query(default=None, ge=1),
     pageNum: int = Query(default=1, ge=1),
@@ -219,7 +226,7 @@ async def get_stats(
     billType: str | None = Query(default=None),
     dateStart: str | None = Query(default=None),
     dateEnd: str | None = Query(default=None),
-    groupBy: str = Query(default="model"),
+    groupBy: str = Query(default="model", description="统计维度(user/model/billType/day)"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -243,6 +250,8 @@ async def adjust_credits(
 ):
     if body.amount == 0:
         raise BusinessException(ResultCode.PARAM_ERROR, "调整积分数不能为 0")
+    if await user_repository.get_by_id(db, body.user_id) is None:
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在")
     await recharge_service.recharge(
         db,
         body.user_id,
@@ -263,13 +272,13 @@ async def audit_refund(
     user: UserContext = Depends(get_current_user),
 ):
     return success(
-        await refund_service.audit_refund(
-            db, refund_id, body.approved, body.audit_remark, user.id
-        )
+        await refund_service.audit_refund(db, refund_id, body.approved, body.audit_remark, user.id)
     )
 
 
-@router.get("/anomalies", response_model=Result[PageResult[AnomalyRecordResult]], summary="异常计费记录查询")
+@router.get(
+    "/anomalies", response_model=Result[PageResult[AnomalyRecordResult]], summary="异常计费记录查询"
+)
 @require_permission("ai:billing:stat")
 async def list_anomalies(
     pageNum: int = Query(default=1, ge=1),
@@ -353,12 +362,20 @@ async def delete_cost(
 async def get_cost_stats(
     startTime: str | None = Query(default=None),
     endTime: str | None = Query(default=None),
+    groupBy: str = Query(default="overall", description="分组维度(overall/model/provider)"),
+    modelId: str | None = Query(default=None),
+    providerId: int | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
     return success(
         await cost_stat_service.cost_stats(
-            db, _parse_datetime(startTime), _parse_datetime(endTime)
+            db,
+            _parse_datetime(startTime),
+            _parse_datetime(endTime),
+            group_by=groupBy,
+            model_id=modelId,
+            provider_id=providerId,
         )
     )
 
@@ -375,7 +392,7 @@ async def import_reconcile(
 
 
 def _parse_datetime(value: str | None) -> datetime | None:
-    """解析前端传入的日期时间字符串，非法格式返回 None"""
+    """解析前端传入的日期时间字符串，非法格式返回参数错误"""
     if not value:
         return None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
@@ -383,4 +400,4 @@ def _parse_datetime(value: str | None) -> datetime | None:
             return datetime.strptime(value, fmt)
         except ValueError:
             continue
-    return None
+    raise BusinessException(ResultCode.PARAM_ERROR, f"时间格式不正确: {value}")

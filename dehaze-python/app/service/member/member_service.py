@@ -4,8 +4,9 @@
 growth/benefit/quota/expiry 子域从此处引用。
 """
 
+import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,7 +14,6 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
-from app.models.base import get_current_user_id
 from app.models.entity.sys_member import IMAGE_TASK_TYPES, QUOTA_TASK_TYPES, SysMember
 from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.repository.ai_credit_log_repository import ai_credit_log_repository
@@ -26,7 +26,11 @@ from app.repository.order_repository import order_repository
 from app.repository.package_repository import package_repository
 from app.service.billing.balance_service import balance_service
 from app.service.billing.quota_service import quota_service as billing_quota_service
-from app.service.member.quota_service import member_quota_service
+from app.service.member.quota_service import (
+    _effective_task_quota,
+    member_quota_service,
+    resolve_card_overrides,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +58,15 @@ def _parse_dt(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
 
 
+def _format_utc_dt(dt: datetime | None) -> str | None:
+    """Mongo 审计时间为 UTC（BSON 读回 naive），转本地时间展示以对齐 MySQL 字段口径"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _benefit_to_vo(b) -> dict:
     vo = {
         "levelCode": b.level_code,
@@ -63,6 +76,7 @@ def _benefit_to_vo(b) -> dict:
         "aiCreditsDaily": b.ai_credits_daily,
         "aiCreditsMonthly": b.ai_credits_monthly,
         "multimodalLimit": b.multimodal_limit,
+        "maxDevices": b.max_devices,
         "vipGiftCredits": b.vip_gift_credits,
         "historyRetention": b.history_retention,
         "batchLimit": b.batch_limit,
@@ -74,7 +88,9 @@ def _benefit_to_vo(b) -> dict:
         "sort": b.sort,
         "status": b.status,
     }
-    vo.update({f"monthly{_camel(t)}Quota": getattr(b, f"monthly_{t}_quota") for t in QUOTA_TASK_TYPES})
+    vo.update(
+        {f"monthly{_camel(t)}Quota": getattr(b, f"monthly_{t}_quota") for t in QUOTA_TASK_TYPES}
+    )
     return vo
 
 
@@ -86,7 +102,9 @@ def _camel(s: str) -> str:
 def _apply_benefit_quotas(member: SysMember, benefit: SysMemberBenefit) -> None:
     """按等级权益刷新会员 8 类任务配额（不含已用量，AI 限额由权益配置读取）。"""
     for task_type in QUOTA_TASK_TYPES:
-        setattr(member, f"monthly_{task_type}_quota", getattr(benefit, f"monthly_{task_type}_quota"))
+        setattr(
+            member, f"monthly_{task_type}_quota", getattr(benefit, f"monthly_{task_type}_quota")
+        )
 
 
 def _calc_progress(benefits: list, level_code: str, growth_value: int) -> tuple[int, int | None]:
@@ -177,8 +195,9 @@ async def _invalidate_member_cache(
         keys.append(f"member:benefit-summary:{user_id}")
         keys.extend(f"member:quota:{user_id}:{t}" for t in QUOTA_TASK_TYPES)
     if level_code is not None:
+        # 全局权益列表缓存仅在权益配置/等级联动变更时失效，用户级操作不清
         keys.append(f"member:benefit:{level_code}")
-    keys.append("member:benefit:all")
+        keys.append("member:benefit:all")
     if not keys:
         return
 
@@ -246,7 +265,7 @@ class MemberService:
             "nextLevelGrowth": next_level_growth,
             "progressPercent": progress_percent,
             "expireTime": _format_dt(member.expire_time),
-            "monthlyUsed": sum(getattr(member, f"monthly_{t}_used", 0) or 0 for t in QUOTA_TASK_TYPES),
+            "monthlyUsed": sum(getattr(member, f"monthly_{t}_used") for t in QUOTA_TASK_TYPES),
             "benefits": _benefit_to_vo(benefit),
             "status": member.status,
         }
@@ -273,9 +292,7 @@ class MemberService:
             member = item["member"]
             benefit = benefit_map.get(member.level_code)
             level_name = benefit.level_name if benefit else ""
-            monthly_used = sum(
-                getattr(member, f"monthly_{t}_used", 0) or 0 for t in QUOTA_TASK_TYPES
-            )
+            monthly_used = sum(getattr(member, f"monthly_{t}_used") for t in QUOTA_TASK_TYPES)
             list_data.append(
                 {
                     "userId": member.user_id,
@@ -319,9 +336,7 @@ class MemberService:
             "nextLevelGrowth": next_level_growth,
             "progressPercent": progress_percent,
             "expireTime": _format_dt(member.expire_time),
-            "monthlyUsed": sum(
-                getattr(member, f"monthly_{t}_used", 0) or 0 for t in QUOTA_TASK_TYPES
-            ),
+            "monthlyUsed": sum(getattr(member, f"monthly_{t}_used") for t in QUOTA_TASK_TYPES),
             "benefits": _benefit_to_vo(benefit),
             "status": member.status,
         }
@@ -335,7 +350,29 @@ class MemberService:
 
         return profile
 
-    async def adjust_level(self, db: AsyncSession, user_id: int, form: dict, operator_id: int) -> None:
+    async def list_member_audit_logs(self, user_id: int, page: int, page_size: int) -> dict:
+        """目标会员后台操作审计日志（详情弹窗「操作日志」页签）"""
+        items, total = await self.mongo_audit_log_repository.list_by_target(
+            "member", user_id, page, page_size
+        )
+        list_data = [
+            {
+                "id": str(item["_id"]),
+                "operatorId": item.get("operator_id"),
+                "action": item.get("action"),
+                "module": item.get("module"),
+                "beforeValue": item.get("before_value"),
+                "afterValue": item.get("after_value"),
+                "ip": item.get("ip"),
+                "createTime": _format_utc_dt(item.get("create_time")),
+            }
+            for item in items
+        ]
+        return {"list": list_data, "total": total}
+
+    async def adjust_level(
+        self, db: AsyncSession, user_id: int, form: dict, operator_id: int
+    ) -> None:
         if not form.get("reason"):
             raise BusinessException(ResultCode.PARAM_ERROR, "调整原因必填")
 
@@ -343,22 +380,28 @@ class MemberService:
         if not member:
             raise BusinessException(ResultCode.MEMBER_NOT_FOUND)
 
+        benefit = await self.member_benefit_repository.get_by_level_code(db, form["levelCode"])
+        if not benefit:
+            raise BusinessException(ResultCode.PARAM_ERROR, "目标等级不存在或未启用")
+
         old_level = member.level_code
         member.level_code = form["levelCode"]
         member.level_source = "admin"
+        _apply_benefit_quotas(member, benefit)
 
         expire_time = form.get("expireTime")
         if expire_time:
-            member.expire_time = _parse_dt(expire_time)
+            try:
+                member.expire_time = _parse_dt(expire_time)
+            except ValueError:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "到期时间格式应为 yyyy-MM-dd HH:mm:ss"
+                ) from None
         else:
             member.expire_time = None
 
         if member.become_member_time is None:
             member.become_member_time = datetime.now()
-
-        benefit = await self.member_benefit_repository.get_by_level_code(db, form["levelCode"])
-        if benefit:
-            _apply_benefit_quotas(member, benefit)
 
         await db.flush()
         await _invalidate_member_cache(user_id=user_id, level_code=old_level)
@@ -371,10 +414,12 @@ class MemberService:
             action="level_change",
             module="member",
             before_value={"levelCode": old_level},
-            after_value=form.dict() if hasattr(form, "dict") else form,
+            after_value=form,
         )
 
-    async def adjust_growth(self, db: AsyncSession, user_id: int, form: dict, operator_id: int) -> None:
+    async def adjust_growth(
+        self, db: AsyncSession, user_id: int, form: dict, operator_id: int
+    ) -> None:
         if not form.get("reason"):
             raise BusinessException(ResultCode.PARAM_ERROR, "调整原因必填")
 
@@ -415,10 +460,12 @@ class MemberService:
             target_id=user_id,
             action="growth_change",
             module="member",
-            after_value=form.dict() if hasattr(form, "dict") else form,
+            after_value=form,
         )
 
-    async def update_status(self, db: AsyncSession, user_id: int, form: dict) -> None:
+    async def update_status(
+        self, db: AsyncSession, user_id: int, form: dict, operator_id: int
+    ) -> None:
         status = form["status"]
         reason = form.get("reason")
 
@@ -453,13 +500,13 @@ class MemberService:
         await _invalidate_member_cache(user_id=user_id)
 
         self.mongo_audit_log_repository.create_audit_async(
-            operator_id=get_current_user_id(),
+            operator_id=operator_id,
             target_type="member",
             target_id=user_id,
             action="status_change",
             module="member",
             before_value={"status": old_status},
-            after_value=form.dict() if hasattr(form, "dict") else form,
+            after_value=form,
         )
 
     # ───────────────────── 履约回调（订单模块同事务调用） ─────────────────────
@@ -491,14 +538,32 @@ class MemberService:
             await _invalidate_member_cache(user_id=order.user_id)
             return
 
-        # 会员卡：按商品等级升级，到期时间叠加（上限 3 年），刷新 8 类任务配额
+        # 会员卡：等级取 max(现等级, 卡等级)（需求 §3.1.1 会员卡期间享有较高者，只升不降），
+        # 到期时间叠加（上限 3 年），配额按卡权益/覆盖项与现等级权益的较高值刷新
         old_level = member.level_code
-        benefit = await self.member_benefit_repository.get_by_level_code(db, order.package_level)
-        if benefit:
-            _apply_benefit_quotas(member, benefit)
+        benefits = await self.member_benefit_repository.list_ordered_by_growth_min(db)
+        benefit_map = {b.level_code: b for b in benefits}
+        card_benefit = benefit_map.get(order.package_level)
+        current_benefit = benefit_map.get(member.level_code)
 
-        member.level_code = order.package_level
+        # 本单已支付，会员卡期间立即生效（覆盖项解析要求 purchase 来源，需先置来源再算配额）
         member.level_source = "purchase"
+        package = await self.package_repository.get_by_level_code(db, order.package_level)
+        card_effective = _effective_task_quota(
+            card_benefit, resolve_card_overrides(member, package)
+        )
+        for task_type in QUOTA_TASK_TYPES:
+            current_quota = getattr(current_benefit, f"monthly_{task_type}_quota", 0) or 0
+            setattr(
+                member, f"monthly_{task_type}_quota", max(card_effective[task_type], current_quota)
+            )
+
+        if (
+            card_benefit is None
+            or current_benefit is None
+            or card_benefit.growth_min > current_benefit.growth_min
+        ):
+            member.level_code = order.package_level
 
         now = datetime.now()
         base_time = member.expire_time if member.expire_time and member.expire_time > now else now
@@ -578,16 +643,18 @@ class MemberService:
         image_details = []
         image_remaining = None
         for task_type in IMAGE_TASK_TYPES:
-            quota = getattr(member, f"monthly_{task_type}_quota", 0) or 0
-            used = getattr(member, f"monthly_{task_type}_used", 0) or 0
+            quota = getattr(member, f"monthly_{task_type}_quota")
+            used = getattr(member, f"monthly_{task_type}_used")
             remaining = quota - used
             if image_remaining is None or remaining < image_remaining:
                 image_remaining = remaining
-            image_details.append({"taskType": task_type, "quota": quota, "used": used, "remaining": remaining})
+            image_details.append(
+                {"taskType": task_type, "quota": quota, "used": used, "remaining": remaining}
+            )
 
         # 评估类目：剩余 = quota - used
-        evaluate_quota = member.monthly_evaluate_quota or 0
-        evaluate_used = member.monthly_evaluate_used or 0
+        evaluate_quota = member.monthly_evaluate_quota
+        evaluate_used = member.monthly_evaluate_used
 
         # AI 类目：余额/今日已用/限额
         credits_balance = int(await self.balance_service.get_balance(db, user_id))
@@ -596,10 +663,12 @@ class MemberService:
         daily_limit = benefit.ai_credits_daily if benefit else 0
         monthly_limit = benefit.ai_credits_monthly if benefit else 0
         # 已购会员卡取覆盖值与等级权益较高值
-        overrides = await self._active_card_overrides(db, member)
+        package = await self.package_repository.get_by_level_code(db, member.level_code)
+        overrides = resolve_card_overrides(member, package)
         if overrides:
-            daily_limit = max(daily_limit, int(overrides.get("ai_credits_daily") or 0))
-            monthly_limit = max(monthly_limit, int(overrides.get("ai_credits_monthly") or 0))
+            # overrides 的 key 为 camelCase（套餐侧写入/DB/Java 序列化统一口径）
+            daily_limit = max(daily_limit, int(overrides.get("aiCreditsDaily") or 0))
+            monthly_limit = max(monthly_limit, int(overrides.get("aiCreditsMonthly") or 0))
 
         result = {
             "imageCategory": {
@@ -619,17 +688,6 @@ class MemberService:
 
         await self._set_summary_cache(cache_key, result)
         return result
-
-    async def _active_card_overrides(self, db: AsyncSession, member: SysMember) -> dict | None:
-        """已购会员卡（level_source=purchase 且未到期）的 benefit_overrides，无则返回 None。"""
-        if member.level_source != "purchase" or (
-            member.expire_time is not None and member.expire_time < datetime.now()
-        ):
-            return None
-        package = await self.package_repository.get_by_level_code(db, member.level_code)
-        if package is None or not package.benefit_overrides:
-            return None
-        return package.benefit_overrides
 
     async def get_trial_status(self, db: AsyncSession, user_id: int) -> dict:
         member = await self.member_repository.get_or_init_member(db, user_id)
@@ -655,9 +713,7 @@ class MemberService:
         paid_membership = member.level_source == "purchase" or member.expire_time is not None
 
         show_trial_entry = (
-            (not voucher_activated)
-            or ai_trial_balance > 0
-            or new_user_exclusive_available
+            (not voucher_activated) or ai_trial_balance > 0 or new_user_exclusive_available
         )
 
         return {
@@ -681,15 +737,15 @@ class MemberService:
         )
         if not raw:
             return None
-        import json
         try:
             return json.loads(raw)
         except (json.JSONDecodeError, TypeError):
+            # 缓存内容非法（序列化异常/历史格式）：按未命中处理并由调用方重算回填，
+            # 记日志便于发现缓存污染，而非静默当作"无缓存"
+            logger.debug("会员权益概览缓存解析失败，按未命中处理: key=%s", key)
             return None
 
     async def _set_summary_cache(self, key: str, value: dict) -> None:
-        import json
-
         async def _set():
             redis = await get_redis_client()
             await redis.setex(key, 300, json.dumps(value, ensure_ascii=False, default=str))

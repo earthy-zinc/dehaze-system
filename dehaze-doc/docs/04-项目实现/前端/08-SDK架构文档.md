@@ -142,18 +142,21 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 | 响应拦截器 | 成功路径 | 回读响应头 `X-Trace-Id` 对齐本地 trace_id；慢请求（>3s）WARN 上报；解包 `Result.data`；二进制响应特殊处理（Blob/arraybuffer 携带 JSON 错误体时转 reject） |
 | 响应拦截器 | 失败路径 | 回读失败响应头对齐 trace_id；构造 API 错误日志（method/path/status/duration/code）ERROR 上报；调宿主 `onResponseError` |
 
-**响应解包约定**：业务码 `code !== SUCCESS` 时统一 reject 为 `AxiosError`（携带后端 `msg`），宿主只需 `try/catch` 处理错误，无需重复判断 `code`。
+**响应解包约定**：业务码 `code !== SUCCESS` 时统一 reject 为 `AxiosError`（携带后端 `msg`），宿主只需 `try/catch` 处理错误，无需重复判断 `code`；reject 前会调用宿主 `onBizError(code, msg)` 钩子（若已注册）。
 
 ### 4.2 配置注入机制
 
-`configAxios(callback)` 是宿主扩展 SDK 请求行为的唯一入口，通过 `ConfigManager` 单例持有回调。宿主可注入四类回调：
+`configAxios(callback)` 是宿主扩展 SDK 请求行为的唯一入口，通过 `ConfigManager` 单例持有回调。宿主可注入五类回调：
 
 | 回调 | 时机 | 典型用途 |
 |------|------|---------|
 | `onRequest` | SDK 内建请求拦截器之后 | 追加 Authorization 头、loading 开关、参数转换 |
 | `onRequestError` | 请求发出失败 | 统一请求错误预处理 |
 | `onResponse` | SDK 解包之后、返回业务数据之前 | 业务数据后处理、全局错误提示 |
-| `onResponseError` | 响应拦截器失败路径 | 全局错误提示、401 跳转登录 |
+| `onResponseError` | 响应拦截器失败路径（HTTP 层错误） | 全局错误提示、401 跳转登录 |
+| `onBizError` | 业务码错误 reject 前（HTTP 200 + `code !== SUCCESS`，含 Blob/arraybuffer 携带 JSON 错误体场景） | 全局业务错误提示（如 ElMessage 弹出后端 msg） |
+
+`onBizError` 为可选钩子，未注册时行为不变；仅承载提示类副作用，不改变 reject 语义，页面 catch 仍会收到错误对象。
 
 宿主拦截器与 SDK 内建拦截器为**追加**关系，SDK 不允许替换 trace_id 注入与错误上报逻辑，保证监控链路完整性。
 

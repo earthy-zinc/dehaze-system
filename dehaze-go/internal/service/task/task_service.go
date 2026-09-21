@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -38,11 +39,11 @@ const (
 
 // TaskService 任务服务
 type TaskService struct {
-	taskRepo     taskrepo.ITaskRepository
-	datasetRepo  datasetrepo.IDatasetRepository
-	cache        types.ICache
-	logger       *zap.Logger
-	taskExecutor AsyncTaskExecutor
+	taskRepo        taskrepo.ITaskRepository
+	datasetRepo     datasetrepo.IDatasetRepository
+	cache           types.ICache
+	logger          *zap.Logger
+	taskExecutor    AsyncTaskExecutor
 	storageRegistry *storage.Registry
 }
 
@@ -56,11 +57,11 @@ func NewTaskService(
 	storageRegistry *storage.Registry,
 ) *TaskService {
 	return &TaskService{
-		taskRepo:     taskRepo,
-		datasetRepo:  datasetRepo,
-		cache:        c,
-		logger:       logger,
-		taskExecutor: taskExecutor,
+		taskRepo:        taskRepo,
+		datasetRepo:     datasetRepo,
+		cache:           c,
+		logger:          logger,
+		taskExecutor:    taskExecutor,
 		storageRegistry: storageRegistry,
 	}
 }
@@ -82,7 +83,8 @@ func (ts *TaskService) GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo
 		item := &readResult.List[i]
 		voItem := vo.TaskVO{
 			TaskID:         item.TaskID,
-			TaskType:       string(item.TaskType),
+			TaskType:       item.TaskType,
+			TaskCategory:   TaskCategoryOf(item.TaskType),
 			Status:         item.Status,
 			Progress:       item.Progress,
 			TotalFiles:     item.TotalFiles,
@@ -126,7 +128,8 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 		if err != nil {
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询幂等任务失败", err)
 		}
-		if existing != nil {
+		// 幂等键按用户隔离：命中他人幂等键视为未命中，防止跨用户信息泄露
+		if existing != nil && existing.CreateBy == userID {
 			ts.logger.Debug("幂等键命中，返回已有任务",
 				zap.String("idempotencyKey", idempotencyKey),
 				zap.String("taskID", existing.TaskID))
@@ -135,7 +138,7 @@ func (ts *TaskService) CreateTask(ctx context.Context, taskType string, params i
 
 		cacheKey := IDEMPOTENCY_KEY_PREFIX + idempotencyKey
 		if cachedTaskID, _ := ts.cache.Get(ctx, cacheKey); cachedTaskID != "" {
-			if cachedTask, _ := ts.taskRepo.FindByTaskID(ctx, cachedTaskID); cachedTask != nil {
+			if cachedTask, _ := ts.taskRepo.FindByTaskID(ctx, cachedTaskID); cachedTask != nil && cachedTask.CreateBy == userID {
 				return cachedTask, nil
 			}
 		}
@@ -356,13 +359,14 @@ func (ts *TaskService) CancelTask(ctx context.Context, taskIDStr string, userID 
 		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "任务已取消")
 	}
 
+	// CAS 更新：仅 PENDING/PROCESSING 可取消，避免与完成回调并发时覆盖终态
 	completedAt := time.Now()
-	err = ts.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
-		"status":       model.TaskStatusCancelled,
-		"completed_at": &completedAt,
-	})
+	rows, err := ts.taskRepo.CancelIfActive(ctx, task.ID)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新任务状态失败", err)
+	}
+	if rows == 0 {
+		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "任务状态已变更，无法取消")
 	}
 
 	// 同步更新内存中的 task 状态后再缓存，避免缓存旧状态
@@ -435,6 +439,8 @@ func (ts *TaskService) cacheTask(ctx context.Context, task *model.SysTask) {
 func (ts *TaskService) ConvertToTaskVO(ctx context.Context, task *model.SysTask) *vo.TaskVO {
 	result := &vo.TaskVO{
 		TaskID:         task.TaskID,
+		TaskType:       string(task.TaskType),
+		TaskCategory:   TaskCategoryOf(string(task.TaskType)),
 		Status:         int8(task.Status),
 		Progress:       task.Progress,
 		TotalFiles:     task.TotalFiles,
@@ -659,6 +665,14 @@ func (ts *TaskService) UpdateRetryCount(ctx context.Context, taskIDStr string, r
 	task.RetryCount = retryCount
 	ts.cacheTask(ctx, task)
 	return nil
+}
+
+// TaskCategoryOf 由任务类型后缀推导任务类别（如 user_export -> export）
+func TaskCategoryOf(taskType string) string {
+	if strings.HasSuffix(taskType, "_import") {
+		return "import"
+	}
+	return "export"
 }
 
 // recordTaskMetrics 记录任务终态指标，耗时优先取 started_at，未启动则取创建时间

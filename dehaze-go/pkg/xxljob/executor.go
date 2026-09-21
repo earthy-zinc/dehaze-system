@@ -1,9 +1,9 @@
 package xxljob
 
 import (
-	xxl "github.com/xxl-job/xxl-job-executor-go"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	xxl "github.com/xxl-job/xxl-job-executor-go"
 	"go.uber.org/zap"
 )
 

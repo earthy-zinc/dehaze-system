@@ -6,6 +6,8 @@
 -- 菜单表，支持四种类型：目录(Catalog)、菜单(Menu)、外链(Link)、按钮(Button)。
 -- type 字段区分类型，perm 字段存储权限标识（如 sys:user:add）用于接口鉴权。
 -- 按钮类型不渲染路由，仅用于前端按钮显示控制和后端权限校验。
+-- is_preset 标记系统预置菜单（由种子数据写入）：不可删除、不可修改 type 与 perm，
+-- 防止权限体系与导航骨架被管理员操作破坏。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_menu`;
 CREATE TABLE `sys_menu`
@@ -25,7 +27,8 @@ CREATE TABLE `sys_menu`
     `redirect`    varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '跳转路径',
     `always_show` tinyint                                                      NULL DEFAULT NULL COMMENT '【目录】只有一个子路由是否始终显示(1:是 0:否)',
     `keep_alive`  tinyint                                                      NULL DEFAULT NULL COMMENT '【菜单】是否开启页面缓存(1:是 0:否)',
-    `deleted`     tinyint                                                      NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `is_preset`   tinyint                                                      NOT NULL DEFAULT 0 COMMENT '系统预置标识(1:预置;0:普通)',
+    `deleted`     bigint                                                       NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time` datetime                                                     NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                     NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`   bigint                                                       NULL DEFAULT NULL COMMENT '创建人ID',

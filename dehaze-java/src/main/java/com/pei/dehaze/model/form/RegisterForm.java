@@ -16,7 +16,7 @@ public class RegisterForm {
     private String username;
 
     @NotBlank(message = "密码不能为空")
-    @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d).{6,20}$", message = "密码必须包含字母和数字，6-20位")
+    @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d).{8,20}$", message = "密码必须包含字母和数字，8-20位")
     @Schema(description = "密码", example = "MyPass123")
     private String password;
 

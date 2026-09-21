@@ -1,6 +1,6 @@
-import { PageResult } from "@/types";
+import { CursorResult, PageResult } from "@/types";
 import request, { service } from "@/utils/request";
-import { fetchSSE, type SSEEvent } from "@/utils/sse";
+import { fetchSSE, type SSEEvent, type SSEStreamOptions } from "@/utils/sse";
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { configManager } from "@/config";
 import { generateTraceId } from "@/logger";
@@ -24,7 +24,7 @@ import type {
   MessageResumeForm,
   MessageStartEvent,
   AiMessageVO,
-  PlanEvent,
+  Plan,
   SendMessageForm,
   SuggestionsEvent,
   ThoughtEvent,
@@ -52,7 +52,7 @@ export interface MessageStreamHandlers {
   /** thought：推理步骤完成（status: 1 成功 / 2 失败 / 3 跳过） */
   onThought?: (data: ThoughtEvent) => void;
   /** plan：Plan-and-Execute 计划推送 */
-  onPlan?: (data: PlanEvent) => void;
+  onPlan?: (data: Plan) => void;
   /** suggestions：回复完成后推荐追问 */
   onSuggestions?: (data: SuggestionsEvent) => void;
   /** interrupt：推理中断（confirm/quota/async_wait/plan_approve） */
@@ -103,7 +103,7 @@ function dispatchSSEEvent(event: SSEEvent, handlers: MessageStreamHandlers): voi
       handlers.onThought?.(payload as ThoughtEvent);
       break;
     case "plan":
-      handlers.onPlan?.(payload as PlanEvent);
+      handlers.onPlan?.(payload as Plan);
       break;
     case "suggestions":
       handlers.onSuggestions?.(payload as SuggestionsEvent);
@@ -323,12 +323,14 @@ class AiConversationAPI {
    * @param conversationId 会话 ID
    * @param data 消息表单（content/model）
    * @param handlers SSE 事件回调
+   * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    * @returns AbortController（用于中断流式）
    */
   static sendMessage(
     conversationId: number,
     data: SendMessageForm,
-    handlers: MessageStreamHandlers
+    handlers: MessageStreamHandlers,
+    options?: SSEStreamOptions
   ): AbortController {
     const controller = new AbortController();
     const idempotencyKey =
@@ -343,6 +345,7 @@ class AiConversationAPI {
         body: data,
         headers: buildSSEHeaders({ "Idempotency-Key": idempotencyKey }),
         signal: controller.signal,
+        ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
       {
         onEvent: (event) => dispatchSSEEvent(event, handlers),
@@ -360,12 +363,14 @@ class AiConversationAPI {
    * @param messageId 中断的消息 ID
    * @param data 恢复表单（confirm/params/planEdit）
    * @param handlers SSE 事件回调（同 sendMessage）
+   * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    * @returns AbortController
    */
   static resumeMessage(
     messageId: number,
     data: MessageResumeForm,
-    handlers: MessageStreamHandlers
+    handlers: MessageStreamHandlers,
+    options?: SSEStreamOptions
   ): AbortController {
     const controller = new AbortController();
     // 后端 MessageResume 为纯 BaseModel，plan_edit 以 snake_case 传输（无 camelCase 别名）；
@@ -382,6 +387,7 @@ class AiConversationAPI {
         body,
         headers: buildSSEHeaders(),
         signal: controller.signal,
+        ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
       {
         onEvent: (event) => dispatchSSEEvent(event, handlers),
@@ -401,12 +407,14 @@ class AiConversationAPI {
    * @param streamSessionId 流式会话 ID
    * @param lastEventId 最后收到的事件 ID
    * @param handlers SSE 事件回调（同 sendMessage）
+   * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    */
   static reconnectStream(
     conversationId: number,
     streamSessionId: string,
     lastEventId: string,
-    handlers: MessageStreamHandlers
+    handlers: MessageStreamHandlers,
+    options?: SSEStreamOptions
   ): void {
     void fetchSSE(
       {
@@ -416,6 +424,7 @@ class AiConversationAPI {
         method: "GET",
         headers: buildSSEHeaders(),
         lastEventId,
+        ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
       {
         onEvent: (event) => dispatchSSEEvent(event, handlers),
@@ -425,17 +434,23 @@ class AiConversationAPI {
     );
   }
 
-  /** 会话消息列表（分页，按时间正序） */
+  /**
+   * 会话消息列表（游标分页，按 id 倒序返回）。
+   *
+   * 向上增量加载更早历史：以本页最小 id 作为下一次的 `before`。
+   */
   static getMessages(
     conversationId: number,
     query?: {
-      pageNum?: number;
-      pageSize?: number;
+      /** 游标：仅返回 id < before 的消息（>=1） */
+      before?: number;
+      /** 每页条数（默认 50，1..100） */
+      limit?: number;
       /** 管理端审计视角：admin 读取任意用户会话的消息（需 ai:conversation:audit），省略为本人 */
       view?: "admin";
     }
   ) {
-    return request<PageResult<AiMessageVO[]>>({
+    return request<CursorResult<AiMessageVO[]>>({
       url: `/api/v1/ai/conversations/${conversationId}/messages`,
       method: "get",
       params: query,
@@ -452,11 +467,36 @@ class AiConversationAPI {
   }
 
   /**
+   * 某消息的分支列表（全部子消息，后端按时间倒序）。
+   *
+   * 后端返回 `MessageResult`（序列化为 camelCase，与 AiMessageVO 同形）。
+   */
+  static getBranches(conversationId: number, messageId: number) {
+    return request<AiMessageVO[]>({
+      url: `/api/v1/ai/conversations/${conversationId}/messages/${messageId}/branches`,
+      method: "get",
+    });
+  }
+
+  /** 切换当前激活分支（更新会话 currentBranchMessageId，返回更新后的会话） */
+  static switchBranch(conversationId: number, messageId: number) {
+    return request<ConversationVO>({
+      url: `/api/v1/ai/conversations/${conversationId}/branches/${messageId}`,
+      method: "put",
+    });
+  }
+
+  /**
    * 重新生成回复（创建分支消息，SSE 流式）。
    *
+   * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    * @returns AbortController
    */
-  static regenerate(messageId: number, handlers: MessageStreamHandlers): AbortController {
+  static regenerate(
+    messageId: number,
+    handlers: MessageStreamHandlers,
+    options?: SSEStreamOptions
+  ): AbortController {
     const controller = new AbortController();
     void fetchSSE(
       {
@@ -464,6 +504,7 @@ class AiConversationAPI {
         method: "POST",
         headers: buildSSEHeaders(),
         signal: controller.signal,
+        ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
       {
         onEvent: (event) => dispatchSSEEvent(event, handlers),
@@ -477,12 +518,14 @@ class AiConversationAPI {
   /**
    * 编辑用户消息并重新触发回复（SSE 流式）。
    *
+   * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    * @returns AbortController
    */
   static editMessage(
     messageId: number,
     data: EditMessageForm,
-    handlers: MessageStreamHandlers
+    handlers: MessageStreamHandlers,
+    options?: SSEStreamOptions
   ): AbortController {
     const controller = new AbortController();
     void fetchSSE(
@@ -492,6 +535,7 @@ class AiConversationAPI {
         body: data,
         headers: buildSSEHeaders(),
         signal: controller.signal,
+        ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
       {
         onEvent: (event) => dispatchSSEEvent(event, handlers),
@@ -595,6 +639,14 @@ class AiConversationAPI {
     return request({
       url: `/api/v1/ai/memories/${id}`,
       method: "delete",
+    });
+  }
+
+  /** 取消归档记忆（`archived` 置 0 并重置衰减计时器，恢复对话注入；未归档 A0502） */
+  static unarchiveMemory(id: number) {
+    return request<MemoryVO>({
+      url: `/api/v1/ai/memories/${id}/unarchive`,
+      method: "post",
     });
   }
 

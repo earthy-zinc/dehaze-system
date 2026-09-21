@@ -13,6 +13,7 @@ import (
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
+	favoriteservice "github.com/earthyzinc/dehaze-go/internal/service/favorite"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
@@ -41,6 +42,7 @@ type DatasetOperationService struct {
 	pairedImageValidator *PairedImageValidator
 	treeUtils            *utils.TreeDataUtils
 	auditLogSvc          *auditlogservice.AuditLogService
+	favoriteSvc          favoriteservice.IFavoriteService
 }
 
 // NewDatasetOperationService 创建数据集操作服务
@@ -55,6 +57,7 @@ func NewDatasetOperationService(
 	taskExecutor taskservice.AsyncTaskExecutor,
 	taskService *taskservice.TaskService,
 	auditLogSvc *auditlogservice.AuditLogService,
+	favoriteSvc favoriteservice.IFavoriteService,
 ) *DatasetOperationService {
 	return &DatasetOperationService{
 		cache:                cache,
@@ -69,6 +72,7 @@ func NewDatasetOperationService(
 		pairedImageValidator: NewPairedImageValidator(),
 		treeUtils:            utils.NewTreeDataUtils(),
 		auditLogSvc:          auditLogSvc,
+		favoriteSvc:          favoriteSvc,
 	}
 }
 
@@ -408,13 +412,19 @@ type BatchItemError struct {
 	Error    string `json:"error"`
 }
 
-// BatchDeleteResult 批量删除结果
+// BatchDeleteResult 批量删除结果（python delete_datasets 同口径：按请求 ID 逐个回报成败）
 type BatchDeleteResult struct {
-	Total      int     `json:"total"`      // 请求删除的数据集数量
-	Deleted    int     `json:"deleted"`    // 实际删除的数据集数量（含子数据集）
-	DatasetIDs []int64 `json:"datasetIds"` // 被删除的数据集ID列表
-	ItemCount  int     `json:"itemCount"`  // 关联删除的数据项数量
-	FileCount  int     `json:"fileCount"`  // 关联删除的文件数量
+	Total     int                     `json:"total"`     // 请求删除的数据集数量
+	Succeeded int                     `json:"succeeded"` // 成功数（按请求 ID 计）
+	Failed    int                     `json:"failed"`    // 失败数
+	Results   []BatchDeleteResultItem `json:"results"`   // 逐 ID 结果明细
+}
+
+type BatchDeleteResultItem struct {
+	ID        int64  `json:"id"`
+	Status    string `json:"status"`
+	Message   string `json:"message,omitempty"`
+	ErrorCode string `json:"errorCode,omitempty"`
 }
 
 // DeleteDatasetItemCascade 级联删除数据项
@@ -498,8 +508,10 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 // 支持级联删除子数据集、数据项和文件
 func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req bo.BatchDeleteForm) (*BatchDeleteResult, error) {
 	if len(req.IDs) == 0 {
-		return nil, common.NewBizError(common.PARAM_ERROR, "删除ID列表不能为空")
+		return nil, common.NewBizError(common.PARAM_ERROR, "未指定要删除的数据集")
 	}
+
+	result := &BatchDeleteResult{Total: len(req.IDs), Results: make([]BatchDeleteResultItem, 0, len(req.IDs))}
 
 	// 1. 查询所有数据集
 	allDatasets, err := dos.datasetRepo.FindAll(ctx)
@@ -512,10 +524,34 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 	for i := range allDatasets {
 		nodes = append(nodes, &allDatasets[i])
 	}
+	existingIDs := make(map[int64]bool, len(allDatasets))
+	for _, ds := range allDatasets {
+		existingIDs[ds.ID] = true
+	}
+
+	// 逐请求 ID 区分成败：不存在的直接计入 failed（软删行视为不存在，python 同口径）
+	validIDs := make([]int64, 0, len(req.IDs))
+	for _, id := range req.IDs {
+		if !existingIDs[id] {
+			result.Failed++
+			result.Results = append(result.Results, BatchDeleteResultItem{
+				ID:        id,
+				Status:    "failed",
+				Message:   "数据集不存在",
+				ErrorCode: "RESOURCE_NOT_FOUND",
+			})
+			continue
+		}
+		validIDs = append(validIDs, id)
+	}
+
+	if len(validIDs) == 0 {
+		return result, nil
+	}
 
 	// 收集所有需要删除的数据集ID（包括子数据集）
 	allDeleteIDs := make(map[int64]bool)
-	for _, id := range req.IDs {
+	for _, id := range validIDs {
 		allDeleteIDs[id] = true
 		// 递归获取子节点
 		children := dos.treeUtils.GetDescendantIDs(nodes, id)
@@ -587,6 +623,11 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "删除数据集失败", err)
 	}
 
+	// 5. 失效联动：标记相关收藏为已失效（对齐 Java DatasetOperationServiceImpl.BatchDeleteDatasets）
+	if err := dos.favoriteSvc.MarkInvalid(ctx, "dataset", idsToDelete); err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "标记收藏失效失败", err)
+	}
+
 	// 6. 异步删除物理文件
 	filePaths := make([]string, 0, len(filePathsMap))
 	for _, path := range filePathsMap {
@@ -613,13 +654,12 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		dos.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "dataset", req.IDs, "delete", "dataset", nil, req, database.GetIP(ctx), database.GetUserAgent(ctx))
 	}
 
-	return &BatchDeleteResult{
-		Total:      len(req.IDs),
-		Deleted:    len(idsToDelete),
-		DatasetIDs: idsToDelete,
-		ItemCount:  len(itemIDs),
-		FileCount:  len(fileIDs),
-	}, nil
+	// 按请求 ID 逐个回报成功（python 同口径）
+	for _, id := range validIDs {
+		result.Succeeded++
+		result.Results = append(result.Results, BatchDeleteResultItem{ID: id, Status: "success"})
+	}
+	return result, nil
 }
 
 // ========== 异步任务相关 ==========

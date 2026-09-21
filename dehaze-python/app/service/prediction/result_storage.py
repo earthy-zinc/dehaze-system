@@ -36,9 +36,7 @@ async def upload_result(result_bytes: io.BytesIO, algorithm_name: str) -> str:
         await loop.run_in_executor(storage_executor, _sync_upload)
     except Exception as e:
         logger.error("预测结果上传存储失败: %s", e, exc_info=True)
-        raise BusinessException(
-            ResultCode.FILE_STORAGE_ERROR, f"结果存储失败: {str(e)}"
-        ) from None
+        raise BusinessException(ResultCode.FILE_STORAGE_ERROR, f"结果存储失败: {e!s}") from None
 
     logger.debug("预测结果已上传到存储: %s", object_name)
     return object_name

@@ -63,10 +63,7 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 def _get_allowed_image_url_prefixes() -> list[str]:
     """基于各存储后端 baseUrl 收集允许的图片 URL 前缀（完整 URL）"""
-    prefixes = []
-    for base_url in settings.FILE_STORAGE_BASE_URLS.values():
-        prefixes.append(base_url.rstrip("/") + "/")
-    return prefixes
+    return [base_url.rstrip("/") + "/" for base_url in settings.FILE_STORAGE_BASE_URLS.values()]
 
 
 def _validate_image_urls(urls: list[str] | None, max_count: int) -> None:
@@ -267,7 +264,10 @@ class FeedbackService:
         count_key = RATING_DAILY_COUNT_KEY.format(user_id=user_id, date=today)
         current_count = await redis.get(count_key)
         daily_limit = await get_dict_int(
-            db, "member_growth_rules", "rating_growth_daily_limit", RATING_DAILY_GROWTH_LIMIT_DEFAULT
+            db,
+            "member_growth_rules",
+            "rating_growth_daily_limit",
+            RATING_DAILY_GROWTH_LIMIT_DEFAULT,
         )
         if current_count is not None and int(current_count) >= daily_limit:
             return
@@ -341,7 +341,9 @@ class FeedbackService:
         rating.comment = form.get("comment")
         rating.tags = form.get("tags")
         rating.image_urls = form.get("imageUrls")
-        rating.is_anonymous = form.get("isAnonymous", 0)
+        # 未显式传入时保留原匿名标志（对齐 Java 语义，避免修改评价意外重置匿名）
+        if "isAnonymous" in form:
+            rating.is_anonymous = form["isAnonymous"]
         await db.flush()
 
         cache = CacheService(redis)
@@ -402,6 +404,7 @@ class FeedbackService:
             rating_min=query.get("ratingMin"),
             rating_max=query.get("ratingMax"),
             has_comment=query.get("hasComment"),
+            tags=query.get("tags"),
             start_time=query.get("startTime"),
             end_time=query.get("endTime"),
         )
@@ -424,7 +427,9 @@ class FeedbackService:
         rating.is_hidden = 1
         await db.flush()
 
-    async def reply_rating(self, db: AsyncSession, rating_id: int, content: str, admin_id: int) -> None:
+    async def reply_rating(
+        self, db: AsyncSession, rating_id: int, content: str, admin_id: int
+    ) -> None:
         rating = await self.rating_repository.get_by_id(db, rating_id)
         if not rating:
             raise BusinessException(ResultCode.RATING_NOT_FOUND)
@@ -452,7 +457,9 @@ class FeedbackService:
             await cache.set_json(cache_key, stats, STATS_CACHE_TTL)
         return stats
 
-    async def create_feedback(self, db: AsyncSession, redis: Redis, user_id: int, form: dict) -> dict:
+    async def create_feedback(
+        self, db: AsyncSession, redis: Redis, user_id: int, form: dict
+    ) -> dict:
         _validate_image_urls(form.get("images"), FEEDBACK_IMAGE_LIMIT)
 
         today = date.today().isoformat()
@@ -528,6 +535,7 @@ class FeedbackService:
     async def supplement_feedback(
         self,
         db: AsyncSession,
+        redis: Redis,
         user_id: int,
         feedback_id: int,
         form: dict,
@@ -545,14 +553,15 @@ class FeedbackService:
             replier_id=user_id,
             replier_type=1,
             content=form["content"],
-            reply_type="supplement",
+            reply_type="info",
             attachments=form.get("attachments"),
         )
         await self.feedback_reply_repository.create(db, reply)
 
         if feedback.status == STATUS_REPLIED:
             feedback.status = STATUS_PROCESSING
-            await db.flush()
+        await db.flush()
+        await CacheService(redis).delete(FEEDBACK_STATS_CACHE_KEY)
 
     async def list_paged_feedback(self, db: AsyncSession, query: dict) -> dict:
         items, total = await self.feedback_repository.get_admin_page(
@@ -581,6 +590,7 @@ class FeedbackService:
     async def assign_feedback(
         self,
         db: AsyncSession,
+        redis: Redis,
         feedback_id: int,
         assignee_id: int,
         admin_id: int,
@@ -596,10 +606,12 @@ class FeedbackService:
         if feedback.status == STATUS_PENDING:
             feedback.status = STATUS_PROCESSING
         await db.flush()
+        await CacheService(redis).delete(FEEDBACK_STATS_CACHE_KEY)
 
     async def reply_feedback(
         self,
         db: AsyncSession,
+        redis: Redis,
         feedback_id: int,
         form: dict,
         admin_id: int,
@@ -621,11 +633,17 @@ class FeedbackService:
         await self.feedback_reply_repository.create(db, reply)
 
         feedback.status = STATUS_REPLIED
+        # 未分配处理人时自动分配给回复的管理员（对齐 Java/文档 §3.4）
+        if feedback.assignee_id is None:
+            feedback.assignee_id = admin_id
+            feedback.assigned_time = datetime.now()
         await db.flush()
+        await CacheService(redis).delete(FEEDBACK_STATS_CACHE_KEY)
 
     async def close_feedback(
         self,
         db: AsyncSession,
+        redis: Redis,
         feedback_id: int,
         close_reason: str,
         admin_id: int,
@@ -639,6 +657,7 @@ class FeedbackService:
         feedback.status = STATUS_CLOSED
         feedback.close_reason = close_reason
         await db.flush()
+        await CacheService(redis).delete(FEEDBACK_STATS_CACHE_KEY)
 
     async def update_feedback_tags(self, db: AsyncSession, feedback_id: int, tags: list) -> None:
         feedback = await self.feedback_repository.get_by_id(db, feedback_id)

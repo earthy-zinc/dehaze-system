@@ -3,17 +3,16 @@ package preset
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	presetrepo "github.com/earthyzinc/dehaze-go/internal/repository/preset"
-	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
-
-const defaultCustomPresetLimit = 3
 
 // 系统预设种子数据（对齐 Python seed_system_presets）
 var systemPresetSeeds = []struct {
@@ -28,13 +27,12 @@ var systemPresetSeeds = []struct {
 }
 
 type PresetService struct {
-	db        *gorm.DB
-	repo      presetrepo.IPresetRepository
-	memberSvc memberservice.IMemberService
+	db   *gorm.DB
+	repo presetrepo.IPresetRepository
 }
 
-func NewPresetService(db *gorm.DB, repo presetrepo.IPresetRepository, memberSvc memberservice.IMemberService) *PresetService {
-	return &PresetService{db: db, repo: repo, memberSvc: memberSvc}
+func NewPresetService(db *gorm.DB, repo presetrepo.IPresetRepository) *PresetService {
+	return &PresetService{db: db, repo: repo}
 }
 
 // PresetVO 参数预设视图
@@ -100,17 +98,9 @@ type PresetForm struct {
 
 // CreatePreset 创建自定义预设
 func (s *PresetService) CreatePreset(ctx context.Context, userID int64, form *PresetForm) (*PresetVO, error) {
-	levelCode, _ := s.memberSvc.GetLevelCode(ctx, userID)
-	limit := s.getPresetLimitByLevel(levelCode)
-
-	count, err := s.repo.CountByUser(ctx, userID)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询预设数量失败", err)
-	}
-	if limit > 0 && int(count) >= limit {
-		return nil, common.NewBizError(common.OPERATION_NOT_ALLOW, "自定义预设数量已达上限")
-	}
-
+	// 不设自定义预设数量上限：python `preset_service.create_preset` 无任何计数校验，
+	// SQL schema 与 python 模型也没有 preset_limit 列，go 侧曾按会员等级硬编码 3/10/20，
+	// 会让第 4 条自定义预设起误报 A0503（SDK model.test.ts「正向测试：删除自定义预设」）。
 	isDefault := int8(0)
 	if form.IsDefault != nil {
 		isDefault = *form.IsDefault
@@ -126,6 +116,11 @@ func (s *PresetService) CreatePreset(ctx context.Context, userID int64, form *Pr
 		IsDefault:   isDefault,
 	}
 	if err := s.repo.Create(ctx, preset); err != nil {
+		if isDuplicateKeyError(err) {
+			// 唯一键 uk_user_name 冲突（同名预设）→ 业务错误 A0501（python preset_service 同口径，
+			// 不把唯一键冲突暴露为 C0300 数据库错误）
+			return nil, common.NewBizError(common.DATA_EXISTS, "预设名称已存在")
+		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建预设失败", err)
 	}
 	vo := toPresetVO(preset)
@@ -190,19 +185,10 @@ func (s *PresetService) DeletePreset(ctx context.Context, id int64, userID int64
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *PresetService) getPresetLimitByLevel(levelCode string) int {
-	// 自定义预设数量：普通3/VIP1-10/VIP2-20/SVIP-无限制(返回0)
-	switch levelCode {
-	case "level_0":
-		return 3
-	case "level_1":
-		return 10
-	case "level_2":
-		return 20
-	case "level_3":
-		return 0 // SVIP 无限制
-	}
-	return defaultCustomPresetLimit
+// isDuplicateKeyError 判断是否为 MySQL 唯一键冲突（1062）。
+func isDuplicateKeyError(err error) bool {
+	var mysqlErr *mysql.MySQLError
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == 1062
 }
 
 // SeedSystemPresets 初始化系统预设种子数据（幂等：已有数据则跳过）

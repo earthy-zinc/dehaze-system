@@ -13,6 +13,7 @@ from app.core.exceptions import BusinessException
 from app.models.base import get_current_user_id
 from app.models.entity.sys_dataset import SysDataset
 from app.repository.dataset_repository import dataset_repository
+from app.repository.favorite_repository import favorite_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.service.dataset._shared import _build_file_vo, logger
 from app.utils.datetime_utils import format_time
@@ -22,6 +23,7 @@ _XSS_PATTERN = re.compile(
     r"<\s*/?\s*[a-zA-Z]|javascript:\s*|on\w+\s*=",
     re.IGNORECASE,
 )
+
 
 def _create_empty_stats() -> dict[str, Any]:
     return {
@@ -36,7 +38,6 @@ def _create_empty_stats() -> dict[str, Any]:
     }
 
 
-
 def _merge_stats(parent: dict[str, Any], child: dict[str, Any]):
     parent["itemCount"] += child.get("itemCount", 0)
     parent["fileCount"] += child.get("fileCount", 0)
@@ -49,7 +50,6 @@ def _merge_stats(parent: dict[str, Any], child: dict[str, Any]):
         parent["hazeDistribution"][k] = parent["hazeDistribution"].get(k, 0) + v
     for k, v in child.get("formatDistribution", {}).items():
         parent["formatDistribution"][k] = parent["formatDistribution"].get(k, 0) + v
-
 
 
 class DatasetService:
@@ -111,22 +111,21 @@ class DatasetService:
         datasets = await self.dataset_repository.find_all(db)
 
         try:
-            serializable = []
-            for ds in datasets:
-                serializable.append(
-                    {
-                        "id": ds.id,
-                        "parent_id": ds.parent_id,
-                        "type": ds.type,
-                        "name": ds.name,
-                        "img": ds.img,
-                        "description": ds.description,
-                        "path": ds.path,
-                        "size": ds.size,
-                        "status": ds.status,
-                        "deleted": ds.deleted,
-                    }
-                )
+            serializable = [
+                {
+                    "id": ds.id,
+                    "parent_id": ds.parent_id,
+                    "type": ds.type,
+                    "name": ds.name,
+                    "img": ds.img,
+                    "description": ds.description,
+                    "path": ds.path,
+                    "size": ds.size,
+                    "status": ds.status,
+                    "deleted": ds.deleted,
+                }
+                for ds in datasets
+            ]
             await redis.setex(
                 self.CACHE_ALL_KEY,
                 self.CACHE_ALL_TTL,
@@ -137,7 +136,9 @@ class DatasetService:
 
         return datasets
 
-    async def get_all_dataset_stats(self, db: AsyncSession, redis: Redis) -> dict[int, dict[str, Any]]:
+    async def get_all_dataset_stats(
+        self, db: AsyncSession, redis: Redis
+    ) -> dict[int, dict[str, Any]]:
         try:
             cached = await redis.get(self.CACHE_STATSMAP_KEY)
             if cached:
@@ -185,7 +186,9 @@ class DatasetService:
                     stats_map[ds_id]["annotatedCount"] = st["annotatedCount"]
                     stats_map[ds_id]["unannotatedCount"] = st["unannotatedCount"]
 
-            scene_results = await self.dataset_repository.count_scene_distribution_batch(db, leaf_ids)
+            scene_results = await self.dataset_repository.count_scene_distribution_batch(
+                db, leaf_ids
+            )
             for ds_id, dist in scene_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["sceneDistribution"] = dist
@@ -195,7 +198,9 @@ class DatasetService:
                 if ds_id in stats_map:
                     stats_map[ds_id]["hazeDistribution"] = dist
 
-            format_results = await self.dataset_repository.count_format_distribution_batch(db, leaf_ids)
+            format_results = await self.dataset_repository.count_format_distribution_batch(
+                db, leaf_ids
+            )
             for ds_id, dist in format_results.items():
                 if ds_id in stats_map:
                     stats_map[ds_id]["formatDistribution"] = dist
@@ -249,7 +254,8 @@ class DatasetService:
 
         return stats_map
 
-    def _entity_to_vo(self, 
+    def _entity_to_vo(
+        self,
         entity: SysDataset,
         stats: dict[str, Any] | None,
         has_children: bool,
@@ -274,7 +280,8 @@ class DatasetService:
             vo["total"] = stats.get("fileCount", 0)
         return vo
 
-    async def get_page(self, 
+    async def get_page(
+        self,
         db: AsyncSession,
         redis: Redis,
         page_num: int = 1,
@@ -315,9 +322,7 @@ class DatasetService:
         for root in root_datasets:
             root_id = int(root.id)
             root_stats = stats_map.get(root_id, _create_empty_stats())
-            root_vo = self._entity_to_vo(
-                root, root_stats, has_children_map.get(root_id, False)
-            )
+            root_vo = self._entity_to_vo(root, root_stats, has_children_map.get(root_id, False))
 
             children = direct_children_map.get(root_id, [])
             child_vos = []
@@ -337,7 +342,8 @@ class DatasetService:
             "pageSize": page_size,
         }
 
-    async def get_children(self, 
+    async def get_children(
+        self,
         db: AsyncSession,
         redis: Redis,
         parent_id: int,
@@ -357,9 +363,7 @@ class DatasetService:
         for child in children:
             cid = int(child.id)
             c_stats = stats_map.get(cid, _create_empty_stats())
-            child_vo = self._entity_to_vo(
-                child, c_stats, has_children_map.get(cid, False)
-            )
+            child_vo = self._entity_to_vo(child, c_stats, has_children_map.get(cid, False))
             child_vo["children"] = []
             result.append(child_vo)
 
@@ -386,7 +390,8 @@ class DatasetService:
 
         return options
 
-    async def get_evaluation_options(self, 
+    async def get_evaluation_options(
+        self,
         db: AsyncSession,
         task_type: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -396,12 +401,10 @@ class DatasetService:
         返回扁平 label-value 列表。
         """
         datasets = await self.dataset_repository.find_datasets_with_clear_gt(db, task_type)
-        return [
-            {"value": int(ds.id), "label": ds.name}
-            for ds in datasets
-        ]
+        return [{"value": int(ds.id), "label": ds.name} for ds in datasets]
 
-    async def get_dataset_by_id(self, 
+    async def get_dataset_by_id(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -428,11 +431,12 @@ class DatasetService:
             "statistics": statistics,
         }
 
-    async def create_dataset(self, 
+    async def create_dataset(
+        self,
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> int:
         parent_id = data.get("parentId", 0)
         name = data.get("name", "")
 
@@ -466,12 +470,13 @@ class DatasetService:
 
         return dataset.id
 
-    async def update_dataset(self, 
+    async def update_dataset(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
         data: dict[str, Any],
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | None:
         dataset = await self.dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
@@ -517,13 +522,16 @@ class DatasetService:
 
         return await self.get_dataset_by_id(db, redis, dataset_id)
 
-    async def _would_create_cycle(self, db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
+    async def _would_create_cycle(
+        self, db: AsyncSession, dataset_id: int, new_parent_id: int
+    ) -> bool:
         if new_parent_id == 0:
             return False
         descendants = await self.dataset_repository.get_all_descendant_ids(db, dataset_id)
         return new_parent_id in descendants
 
-    async def delete_dataset(self, 
+    async def delete_dataset(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int,
@@ -534,7 +542,8 @@ class DatasetService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
         await self.delete_datasets(db, redis, [dataset_id])
 
-    async def delete_datasets(self, 
+    async def delete_datasets(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_ids: list[int],
@@ -547,8 +556,8 @@ class DatasetService:
         failed = 0
         results = []
 
-        # 1. 批量预查询数据集存在性（1 次 IN 查询，替代 N 次 get_by_id）
-        existing_datasets = await self.dataset_repository.get_by_ids(db, dataset_ids, with_deleted=True)
+        # 1. 批量预查询数据集存在性（1 次 IN 查询，替代 N 次 get_by_id；软删行视为不存在）
+        existing_datasets = await self.dataset_repository.get_by_ids(db, dataset_ids)
         existing_map = {int(d.id): d for d in existing_datasets}
 
         # 分类存在/不存在
@@ -605,13 +614,18 @@ class DatasetService:
                         db, all_leaf_ids
                     )
                     if all_item_ids:
-                        await self.dataset_repository.delete_item_files_by_item_ids(db, all_item_ids)
+                        await self.dataset_repository.delete_item_files_by_item_ids(
+                            db, all_item_ids
+                        )
                         await self.dataset_repository.delete_items_by_ids(db, all_item_ids)
 
                 # 7. 批量删除所有数据集（1 次物理删除，替代 N 次 delete_by_ids）
                 await self.dataset_repository.delete_by_ids(db, unique_ids_to_delete)
 
-                # 8. 记录成功结果
+                # 8. 失效联动：标记相关收藏为已失效（对齐 Java DatasetOperationServiceImpl）
+                await favorite_repository.mark_invalid(db, "dataset", unique_ids_to_delete)
+
+                # 9. 记录成功结果
                 for dataset_id in valid_dataset_ids:
                     succeeded += 1
                     results.append({"id": dataset_id, "status": "success"})
@@ -647,7 +661,8 @@ class DatasetService:
             "results": results,
         }
 
-    async def get_image_items(self, 
+    async def get_image_items(
+        self,
         db: AsyncSession,
         redis: Redis,
         dataset_id: int | None,
@@ -670,7 +685,9 @@ class DatasetService:
             return {"list": [], "total": total, "pageNum": page_num, "pageSize": page_size}
 
         item_ids = [int(item.id) for item in items]
-        items_map, files_map = await self.dataset_repository.get_items_with_files_batch(db, item_ids)
+        _items_map, files_map = await self.dataset_repository.get_items_with_files_batch(
+            db, item_ids
+        )
 
         records = []
         for item in items:
@@ -678,22 +695,11 @@ class DatasetService:
             item_files = files_map.get(item_id, [])
 
             files = []
-            image_urls = []
             clear_image = None
             hazy_images = []
             for item_file, file_obj in item_files:
                 file_vo = _build_file_vo(item_file, file_obj)
                 files.append(file_vo)
-                if file_obj is not None:
-                    # image_urls 简化对齐 _build_file_vo 的 url 字段
-                    image_urls.append(
-                        {
-                            "id": file_obj.id,
-                            "type": item_file.type,
-                            "url": file_vo["url"],
-                            "thumbnailUrl": file_vo["url"],
-                        }
-                    )
                 if item_file.type == "clear" and clear_image is None:
                     clear_image = file_vo
                 elif item_file.type == "hazy":
@@ -711,7 +717,6 @@ class DatasetService:
                     if hasattr(item, "update_time")
                     else None,
                     "files": files,
-                    "imgUrl": image_urls,
                     "clearImage": clear_image,
                     "hazyImages": hazy_images,
                 }
@@ -723,8 +728,6 @@ class DatasetService:
             "pageNum": page_num,
             "pageSize": page_size,
         }
-
-
 
 
 dataset_service = DatasetService()

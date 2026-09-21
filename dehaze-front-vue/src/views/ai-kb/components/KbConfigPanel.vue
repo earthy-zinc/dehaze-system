@@ -1,4 +1,4 @@
-<!-- 配置管理区：全量配置编辑（公共 KbConfigForm）+ embedding 迁移入口 -->
+<!-- 配置管理区：全量配置编辑（公共 KbConfigForm） -->
 <script lang="ts" setup>
 import { AiKnowledgeBaseAPI, KnowledgeBaseVO } from "dehaze-sdk-js";
 import { reactive, watch } from "vue";
@@ -60,6 +60,5 @@ async function handleSubmit(form: typeof editForm) {
       scope="admin"
       @submit="handleSubmit"
     />
-    <EmbeddingMigratePanel :kb="props.kb" />
   </el-card>
 </template>

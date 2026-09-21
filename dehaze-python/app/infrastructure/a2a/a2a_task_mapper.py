@@ -50,18 +50,16 @@ class A2ATaskMapper:
     @staticmethod
     def extract_files(messages: list[Message]) -> list[dict]:
         """从 A2A Message 中提取 FilePart 引用（url 或 bytes），供多模态上下文使用。"""
-        files = []
-        for msg in messages:
-            for part in msg.parts:
-                if getattr(part, "type", None) == "file":
-                    files.append(
-                        {
-                            "name": part.file.get("name"),
-                            "url": part.file.get("url"),
-                            "mime_type": part.file.get("mime_type"),
-                        }
-                    )
-        return files
+        return [
+            {
+                "name": part.file.get("name"),
+                "url": part.file.get("url"),
+                "mime_type": part.file.get("mime_type"),
+            }
+            for msg in messages
+            for part in msg.parts
+            if isinstance(part, FilePart)
+        ]
 
     @staticmethod
     def task_to_message(task: Task) -> str:
@@ -93,7 +91,7 @@ class A2ATaskMapper:
         if final_response and not result_artifacts:
             result_artifacts.append(
                 Artifact(
-                    artifactId=f"{task_id}:output",
+                    artifact_id=f"{task_id}:output",
                     name="response",
                     parts=[TextPart(text=final_response)],
                 )

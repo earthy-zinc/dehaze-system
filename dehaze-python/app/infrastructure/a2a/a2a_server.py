@@ -25,9 +25,9 @@ import logging
 import uuid
 from typing import Any
 
+from langchain_core.runnables import RunnableConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.entity.sys_ai_agent import SysAiAgent
 from app.infrastructure.a2a.a2a_protocol import (
     Artifact,
     JsonRpcError,
@@ -35,8 +35,10 @@ from app.infrastructure.a2a.a2a_protocol import (
     JsonRpcResponse,
     Message,
     Task,
+    TaskStatus,
     parse_part,
 )
+from app.models.entity.sys_ai_agent import SysAiAgent
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +126,7 @@ class A2AServer:
     ) -> dict[str, Any]:
         """由已发布版本动态生成 Agent Card。"""
         agent = await self._get_exposed_agent(db, agent_id)
-        snapshot = await agent_service.get_published_snapshot(db, redis, agent_id, None)
+        snapshot = await self._agent_svc().get_published_snapshot(db, redis, agent_id, None)
         version_no = snapshot.get("version_no", "0.0.0") if snapshot else "0.0.0"
         name = agent.name or agent.agent_code
         skills = [{"name": agent.agent_code, "description": agent.description}]
@@ -193,7 +195,8 @@ class A2AServer:
         self._running[task_id] = runner
         runner.add_done_callback(lambda t: self._running.pop(task_id, None))
 
-        # 注册到 TaskTracker，支持优雅关闭与全局任务视图（参照 prediction 模式，task_id 复用 A2A taskId）
+        # 注册到 TaskTracker，支持优雅关闭与全局任务视图
+        # （参照 prediction 模式，task_id 复用 A2A taskId）
         try:
             from app.service.task_tracker import get_task_tracker
 
@@ -288,7 +291,7 @@ class A2AServer:
                 "thoughts": [],
                 "isolated_token_pool": True,
             }
-            config = {"configurable": {"thread_id": f"a2a:{task_id}"}}
+            config: RunnableConfig = {"configurable": {"thread_id": f"a2a:{task_id}"}}
             result = await graph.ainvoke(initial_state, config=config)
             final_response = result.get("final_response", "")
             artifacts = []
@@ -304,7 +307,7 @@ class A2AServer:
         except asyncio.CancelledError:
             await self._update_task_status(redis, task_id, "canceled")
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("A2A 任务 %s 推理失败: %s", task_id, exc, exc_info=True)
             await self._update_task_status(redis, task_id, "failed")
 
@@ -333,7 +336,7 @@ class A2AServer:
         cls,
         redis,
         task_id: str,
-        status: str,
+        status: TaskStatus,
         context_id: str | None,
         history: list[Message],
         metadata: dict[str, Any],

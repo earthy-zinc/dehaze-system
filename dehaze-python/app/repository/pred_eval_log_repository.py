@@ -2,7 +2,6 @@
 预测日志 / 评估日志 Repository
 """
 
-import json
 from datetime import datetime
 
 from sqlalchemy import desc, or_, select, update
@@ -22,9 +21,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         """算法使用次数（预测日志记录数）"""
         from sqlalchemy import func
 
-        stmt = select(func.count(SysPredLog.id)).where(
-            SysPredLog.algorithm_id == algorithm_id
-        )
+        stmt = select(func.count(SysPredLog.id)).where(SysPredLog.algorithm_id == algorithm_id)
         return (await db.execute(stmt)).scalar() or 0
 
     async def list_recent_pred_urls(
@@ -58,6 +55,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         origin_md5: str,
         origin_url: str,
         origin_file_id: int | None = None,
+        recommended_by: int | None = None,
     ) -> SysPredLog:
         """创建 processing 状态的预测日志，返回 log_id 供异步任务更新"""
         log = SysPredLog(
@@ -65,6 +63,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
             origin_file_id=origin_file_id,
             origin_md5=origin_md5,
             origin_url=origin_url,
+            recommended_by=recommended_by,
             pred_md5="",
             pred_url="",
             time=0,
@@ -80,8 +79,12 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         pred_url: str,
         time_ms: int,
         pred_file_id: int | None = None,
-    ) -> None:
-        """更新预测日志为 completed 并写入结果"""
+    ) -> bool:
+        """更新预测日志为 completed 并写入结果。
+
+        仅允许 processing → completed 流转；任务已被取消（终态）时返回 False，
+        防止后台推理完成后覆盖已取消状态。
+        """
         values = {
             "status": LogStatus.COMPLETED.value,
             "pred_md5": pred_md5,
@@ -90,9 +93,14 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         }
         if pred_file_id is not None:
             values["pred_file_id"] = pred_file_id
-        stmt = update(SysPredLog).where(SysPredLog.id == log_id).values(**values)
-        await db.execute(stmt)
+        stmt = (
+            update(SysPredLog)
+            .where(SysPredLog.id == log_id, SysPredLog.status == LogStatus.PROCESSING.value)
+            .values(**values)
+        )
+        result = await db.execute(stmt)
         await db.commit()
+        return result.rowcount > 0
 
     async def update_status(
         self,
@@ -101,19 +109,28 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         status: int,
         error_message: str,
         time_ms: int,
-    ) -> None:
-        """更新预测日志状态为 failed 并写入错误信息"""
+    ) -> bool:
+        """将预测日志从 processing 流转到指定终态（failed/cancelled），返回是否流转成功。
+
+        仅允许 processing 起始的流转，保证终态不可被并发写入覆盖，
+        并以此作为配额回滚的防重依据（两个并发取消只有一个生效）。
+        """
         stmt = (
             update(SysPredLog)
-            .where(SysPredLog.id == log_id)
+            .where(
+                SysPredLog.id == log_id,
+                SysPredLog.status == LogStatus.PROCESSING.value,
+                SysPredLog.status != status,
+            )
             .values(
                 status=status,
                 error_message=error_message,
                 time=time_ms // 1000,
             )
         )
-        await db.execute(stmt)
+        result = await db.execute(stmt)
         await db.commit()
+        return result.rowcount > 0
 
     async def create_log(
         self,
@@ -126,6 +143,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         time_ms: int,
         origin_file_id: int | None = None,
         pred_file_id: int | None = None,
+        recommended_by: int | None = None,
     ) -> SysPredLog:
         """创建已完成的预测日志（缓存命中场景）"""
         log = SysPredLog(
@@ -136,6 +154,7 @@ class PredLogRepository(BaseRepository[SysPredLog]):
             pred_file_id=pred_file_id,
             pred_md5=pred_md5,
             pred_url=pred_url,
+            recommended_by=recommended_by,
             time=time_ms // 1000,
             status=LogStatus.COMPLETED.value,
         )
@@ -145,13 +164,16 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         self,
         db: AsyncSession,
         algorithm_id: int | None = None,
+        user_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysPredLog], int]:
-        """分页查询预测日志"""
+        """分页查询预测日志（user_id 提供时仅返回该用户的日志）"""
         stmt = select(SysPredLog)
         if algorithm_id is not None:
             stmt = stmt.where(SysPredLog.algorithm_id == algorithm_id)
+        if user_id is not None:
+            stmt = stmt.where(SysPredLog.create_by == user_id)
         stmt = stmt.order_by(desc(SysPredLog.id))
         return await self.paginate(db, stmt, page, size)
 
@@ -175,6 +197,35 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         result = await db.execute(stmt)
         await db.commit()
         return result.rowcount
+
+    async def count_recommended(self, db: AsyncSession, start, end) -> int:
+        """推荐采纳数：带推荐来源（recommended_by 非空）的预测记录数"""
+        from sqlalchemy import func
+
+        stmt = select(func.count()).where(SysPredLog.recommended_by.isnot(None))
+        if start is not None:
+            stmt = stmt.where(SysPredLog.create_time >= start)
+        if end is not None:
+            stmt = stmt.where(SysPredLog.create_time <= end)
+        return (await db.execute(stmt)).scalar() or 0
+
+    async def select_daily_recommended(self, db: AsyncSession, start, end) -> list[dict]:
+        """按日统计推荐采纳数（日期 + 带推荐来源的预测记录数）"""
+        from sqlalchemy import func
+
+        stmt = select(
+            func.date(SysPredLog.create_time).label("date"),
+            func.count().label("count"),
+        ).where(SysPredLog.recommended_by.isnot(None))
+        if start is not None:
+            stmt = stmt.where(SysPredLog.create_time >= start)
+        if end is not None:
+            stmt = stmt.where(SysPredLog.create_time <= end)
+        stmt = stmt.group_by(func.date(SysPredLog.create_time)).order_by(
+            func.date(SysPredLog.create_time)
+        )
+        result = await db.execute(stmt)
+        return [{"date": str(row[0]), "count": int(row[1] or 0)} for row in result.all()]
 
 
 class EvalLogRepository(BaseRepository[SysEvalLog]):
@@ -212,6 +263,7 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
             gt_url=gt_url,
             time=0,
             status=LogStatus.PROCESSING.value,
+            task_type="evaluation",
         )
         return await self.create(db, log)
 
@@ -222,13 +274,17 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
         result: dict,
         time_ms: int,
     ) -> None:
-        """更新评估日志为 completed 并写入结果"""
+        """更新评估日志为 completed 并写入结果
+
+        result 为 JSON 类型列，SQLAlchemy 绑定时自动序列化；
+        此处不能手动 json.dumps（会造成双重编码，读取时得到字符串标量）。
+        """
         stmt = (
             update(SysEvalLog)
             .where(SysEvalLog.id == log_id)
             .values(
                 status=LogStatus.COMPLETED.value,
-                result=json.dumps(result) if isinstance(result, dict) else result,
+                result=result,
                 time=time_ms // 1000,
             )
         )
@@ -259,12 +315,13 @@ class EvalLogRepository(BaseRepository[SysEvalLog]):
     async def get_paginated(
         self,
         db: AsyncSession,
+        user_id: int,
         algorithm_id: int | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:
-        """分页查询评估日志"""
-        stmt = select(SysEvalLog)
+        """分页查询指定用户的评估日志"""
+        stmt = select(SysEvalLog).where(SysEvalLog.create_by == user_id)
         if algorithm_id is not None:
             stmt = stmt.where(SysEvalLog.algorithm_id == algorithm_id)
         stmt = stmt.order_by(desc(SysEvalLog.id))

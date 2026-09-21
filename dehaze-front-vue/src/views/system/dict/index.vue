@@ -4,13 +4,24 @@
   <div class="app-container">
     <div class="search-container">
       <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-        <el-form-item label="关键字" prop="name">
+        <el-form-item label="关键字" prop="keywords">
           <el-input
             v-model="queryParams.keywords"
             clearable
             placeholder="字典类型名称/编码"
             @keyup.enter="handleQuery"
           />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select
+            v-model="queryParams.status"
+            clearable
+            placeholder="全部"
+            style="width: 120px"
+          >
+            <el-option :value="1" label="启用" />
+            <el-option :value="0" label="禁用" />
+          </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery()"
@@ -34,6 +45,7 @@
               ><el-icon><Plus /></el-icon>新增</el-button
             >
             <el-button
+              v-hasPerm="['sys:dict:type:delete']"
               :disabled="ids.length === 0"
               type="danger"
               @click="handleDelete()"
@@ -54,7 +66,12 @@
         highlight-current-row
         @selection-change="handleSelectionChange"
       >
-        <el-table-column align="center" type="selection" width="55" />
+        <el-table-column
+          align="center"
+          type="selection"
+          width="55"
+          :selectable="(row) => !row.isPreset"
+        />
         <el-table-column label="字典类型名称" prop="name" width="200" />
         <el-table-column label="字典类型编码" prop="code" width="200" />
         <el-table-column align="center" label="状态" width="100">
@@ -83,6 +100,7 @@
               ><el-icon><Edit /></el-icon>编辑</el-button
             >
             <el-button
+              v-if="!scope.row.isPreset"
               v-hasPerm="['sys:dict:type:delete']"
               link
               size="small"
@@ -119,7 +137,11 @@
           <el-input v-model="formData.name" placeholder="请输入字典名称" />
         </el-form-item>
         <el-form-item label="字典编码" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入字典编码" />
+          <el-input
+            v-model="formData.code"
+            :disabled="formData.id !== undefined"
+            placeholder="请输入字典编码"
+          />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="formData.status">
@@ -180,6 +202,7 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
+import { useDictStoreHook } from "@/store";
 import { ElCheckbox } from "element-plus";
 
 const queryFormRef = ref(ElForm);
@@ -192,6 +215,7 @@ const total = ref(0);
 const queryParams = reactive<DictTypeQuery>({
   pageNum: 1,
   pageSize: 10,
+  status: undefined,
 });
 
 const dictTypeList = ref<DictTypePageVO[]>();
@@ -258,24 +282,19 @@ function openDialog(dicTypeId?: number) {
 function handleSubmit() {
   dataFormRef.value.validate((isValid: boolean) => {
     if (isValid) {
-      loading.value = false;
       const dictTypeId = formData.id;
       if (dictTypeId) {
-        DictAPI.updateDictType(dictTypeId, formData)
-          .then(() => {
-            ElMessage.success("修改成功");
-            closeDialog();
-            handleQuery();
-          })
-          .finally(() => (loading.value = false));
+        DictAPI.updateDictType(dictTypeId, formData).then(() => {
+          ElMessage.success("修改成功");
+          closeDialog();
+          handleQuery();
+        });
       } else {
-        DictAPI.addDictType(formData)
-          .then(() => {
-            ElMessage.success("新增成功");
-            closeDialog();
-            handleQuery();
-          })
-          .finally(() => (loading.value = false));
+        DictAPI.addDictType(formData).then(() => {
+          ElMessage.success("新增成功");
+          closeDialog();
+          handleQuery();
+        });
       }
     }
   });
@@ -297,17 +316,31 @@ function resetForm() {
 }
 
 /** 删除字典类型 */
-function handleDelete(row?: any) {
+async function handleDelete(row?: any) {
   const dictTypeIds = (row ? [row.id] : ids.value).join(",");
   if (!dictTypeIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
+  // 复用字典数据分页接口取 total，确认框展示关联数量
+  let relatedCount: number | undefined;
+  if (row) {
+    try {
+      relatedCount = (
+        await DictAPI.getDictPage({ typeCode: row.code, pageSize: 1 })
+      ).total;
+    } catch {
+      relatedCount = undefined;
+    }
+  }
+  const countText =
+    relatedCount !== undefined ? `该类型下有 ${relatedCount} 条字典数据，` : "";
+
   const forceDelete = ref(false);
   const confirmMsg = row
-    ? `确认删除字典类型「${row.name}」吗？删除后不可恢复。`
-    : "确认删除选中的字典类型吗？删除后不可恢复。";
+    ? `确认删除字典类型「${row.name}」吗？${countText}删除后其下拉选项将不可用。`
+    : "确认删除选中的字典类型吗？删除后其下拉选项将不可用。";
   ElMessageBox.confirm(
     () =>
       h("div", null, [
@@ -333,6 +366,7 @@ function handleDelete(row?: any) {
   ).then(() => {
     DictAPI.deleteDictTypes(dictTypeIds, forceDelete.value).then(() => {
       ElMessage.success("删除成功");
+      useDictStoreHook().invalidate();
       resetQuery();
     });
   });

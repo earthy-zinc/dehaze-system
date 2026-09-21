@@ -6,6 +6,9 @@
 - Embedding（qwen3-embedding-0.6b）：状态停用，仅作统一模型注册表记录，
   不进入对话模型列表；向量调用由 embedding_client 按 sys_ai_provider
   api_base_url 直连 local provider 的 /v1/embeddings 端点，不依赖该记录。
+- Rerank（qwen3-reranker-0.6b）：状态停用，仅登记模型目录；重排调用由
+  rerank_service 按 api_base_url 直连 /v1/rerank 端点。模型文件为可选懒下载
+  （首次重排请求触发），启用与否不影响启动。
 
 TTS/ASR 为进程内引擎（Piper/FunASR，库内推理，无供应商路由语义），
 由 config 中 VOICE_TTS_* / VOICE_ASR_* 配置驱动，不进入模型注册表。
@@ -29,6 +32,7 @@ logger = logging.getLogger(__name__)
 LOCAL_PROVIDER_CODE = "local"
 LOCAL_MODEL_ID = "qwen3-0.6b"
 LOCAL_EMBEDDING_MODEL_ID = "qwen3-embedding-0.6b"
+LOCAL_RERANK_MODEL_ID = "qwen3-reranker-0.6b"
 _LOCAL_KEY_PLAINTEXT = "local-no-key"  # 本地服务不校验鉴权，占位走 Key 轮换链路
 
 
@@ -88,13 +92,20 @@ async def ensure_local_models(db: AsyncSession) -> None:
                 vip_level=0,
             )
         )
-        await _ensure_local_free_price(db, LOCAL_MODEL_ID, provider.id)
         logger.info("播种 qwen3-0.6b 模型（对话兜底）")
+    # 价格幂等补齐须独立于模型记录：模型在早期版本已播种（无价格逻辑）的环境，
+    # 否则永远缺价——计费结算抛"未配置用户售价"，direct 轮次整条 trace 丢失
+    await _ensure_local_free_price(db, LOCAL_MODEL_ID, provider.id)
 
     # Embedding：状态停用，仅登记模型目录（避免出现在对话模型列表）；
     # 实际向量调用由 embedding_client 按 local provider 的 api_base_url 直连。
     # model_type 须显式为 embedding（schema 默认 chat，会污染模型类型筛选与目录展示）
-    if await ai_model_repository.get_by_model_and_provider(db, LOCAL_EMBEDDING_MODEL_ID, provider.id) is None:
+    if (
+        await ai_model_repository.get_by_model_and_provider(
+            db, LOCAL_EMBEDDING_MODEL_ID, provider.id
+        )
+        is None
+    ):
         db.add(
             SysAiModel(
                 provider_id=provider.id,
@@ -114,8 +125,35 @@ async def ensure_local_models(db: AsyncSession) -> None:
                 vip_level=0,
             )
         )
-        await _ensure_local_free_price(db, LOCAL_EMBEDDING_MODEL_ID, provider.id)
         logger.info("播种 qwen3-embedding-0.6b 模型（向量注册表记录）")
+    await _ensure_local_free_price(db, LOCAL_EMBEDDING_MODEL_ID, provider.id)
+    # Rerank：状态停用，仅登记模型目录（同 embedding 语义）；实际重排调用由
+    # rerank_service 按 local provider 的 api_base_url 直连 /v1/rerank 端点。
+    # model_type 须显式为 rerank（schema 默认 chat，会污染模型类型筛选与目录展示）
+    if (
+        await ai_model_repository.get_by_model_and_provider(db, LOCAL_RERANK_MODEL_ID, provider.id)
+        is None
+    ):
+        db.add(
+            SysAiModel(
+                provider_id=provider.id,
+                model_id=LOCAL_RERANK_MODEL_ID,
+                model_type="rerank",
+                display_name="Qwen3-Reranker-0.6B（内置本地，重排）",
+                max_context_tokens=settings.LOCAL_LLM_CTX_SIZE,
+                max_output_tokens=0,
+                supports_multimodal=0,
+                supports_tool_call=0,
+                supports_streaming=0,
+                supports_prompt_cache=0,
+                supports_structured_output=0,
+                prompt_cache_prefix_len=0,
+                status=0,
+                vip_level=0,
+            )
+        )
+        logger.info("播种 qwen3-reranker-0.6b 模型（重排注册表记录）")
+    await _ensure_local_free_price(db, LOCAL_RERANK_MODEL_ID, provider.id)
 
 
 async def _ensure_local_free_price(db: AsyncSession, model_id: str, provider_id: int) -> None:
@@ -123,10 +161,17 @@ async def _ensure_local_free_price(db: AsyncSession, model_id: str, provider_id:
 
     全 0 单价按不扣积分处理（见 AI模型管理 §2.12），使本地兜底模型结算不抛"未配置售价"。
     """
-    if await ai_model_price_repository.get_effective_version(
-        db, model_id, provider_id, datetime.now()
-    ) is not None:
+    if (
+        await ai_model_price_repository.get_effective_version(
+            db, model_id, provider_id, datetime.now()
+        )
+        is not None
+    ):
         return
+    # MySQL DATETIME(0) 对微秒四舍五入到秒：xx.7s 会被进位成下一秒，紧随其后的
+    # 生效判定（effective_from <= now）反而查不到刚插入的行，幂等检查落空。
+    # 落地前截掉微秒，保证生效时间不晚于任何后续查询时刻。
+    effective_from = datetime.now().replace(microsecond=0)
     price = await ai_model_price_repository.create(
         db,
         SysAiModelPrice(
@@ -134,12 +179,13 @@ async def _ensure_local_free_price(db: AsyncSession, model_id: str, provider_id:
             provider_id=provider_id,
             price_version=1,
             unit="credits_per_million",
-            effective_from=datetime.now(),
+            effective_from=effective_from,
             status=1,
         ),
     )
     await ai_model_price_repository.create_details(
-        db, price.id,
+        db,
+        price.id,
         [
             {"token_type": t, "time_slot": s, "min_tokens": 0, "max_tokens": None, "unit_price": 0}
             for t in ("input", "cached", "output")

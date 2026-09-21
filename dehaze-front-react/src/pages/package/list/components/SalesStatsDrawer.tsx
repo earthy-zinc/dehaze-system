@@ -69,7 +69,8 @@ const SalesStatsDrawer = forwardRef<SalesStatsDrawerRef>((_props, ref) => {
           {
             name: "销售额",
             type: "bar",
-            data: data.packageStats.map((p) => p.revenue),
+            // 接口金额单位为分，展示用元
+            data: data.packageStats.map((p) => p.revenue / 100),
             barWidth: 20,
             itemStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -104,7 +105,7 @@ const SalesStatsDrawer = forwardRef<SalesStatsDrawerRef>((_props, ref) => {
             radius: "50%",
             data: data.levelStats.map((l) => ({
               name: l.levelName,
-              value: l.revenue,
+              value: l.revenue / 100,
               itemStyle: { color: LEVEL_COLOR_MAP[l.levelCode] },
             })),
             emphasis: {
@@ -261,7 +262,7 @@ const SalesStatsDrawer = forwardRef<SalesStatsDrawerRef>((_props, ref) => {
                 <Card size="small">
                   <Statistic
                     title="总销售额"
-                    value={statsData.totalRevenue}
+                    value={statsData.totalRevenue / 100}
                     precision={2}
                     prefix="¥"
                   />

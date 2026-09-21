@@ -24,6 +24,13 @@ public class AlgorithmProperties {
     /** 读取超时（毫秒），预测/评估可较长时间 */
     private int readTimeout = 120000;
 
+    /**
+     * AI 转发（B 类端点）SSE 流的空闲超时（毫秒）
+     * <p>
+     * 推理过程可能长时间无输出，该值仅在上游数据完全停滞时触发，用于回收被卡死的转发线程。
+     */
+    private long aiProxyStreamIdleTimeout = 300000;
+
     /** 最大重试次数 */
     private int maxRetry = 3;
 

@@ -65,9 +65,14 @@ public class SysUser extends BaseEntity {
     private String email;
 
     /**
-     * 逻辑删除标识(0:未删除;1:已删除)
+     * 用户类型(personal:个人;enterprise:企业)
      */
-    @TableLogic
-    private Integer deleted;
+    private String userType;
+
+    /**
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
+     */
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
 }

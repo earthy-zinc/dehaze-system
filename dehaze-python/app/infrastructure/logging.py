@@ -4,10 +4,25 @@ import os
 import shutil
 import sys
 import threading
+import traceback
 from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from pythonjsonlogger.json import JsonFormatter as BaseJsonFormatter
+
+logger = logging.getLogger(__name__)
+
+
+def _report_handler_error(message: str) -> None:
+    """日志处理器自身失效时只能写 stderr。
+
+    处理器在 emit 路径内不能再走 logging：根 logger 会把告警重新分发给同一处理器
+    （处理器锁为可重入 RLock），归档失败未复位时会形成无限递归。直写 stderr 与
+    stdlib logging.Handler.handleError 的兜底通道一致。
+    """
+    sys.stderr.write(f"{message}\n{traceback.format_exc()}")
+
 
 _trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
 _request_method_var: ContextVar[str] = ContextVar("request_method", default="")
@@ -97,13 +112,13 @@ class DailyDirectoryFileHandler(logging.FileHandler):
         self.retention_days = retention_days
         self.max_bytes = max_bytes
         self.current_date = datetime.now().strftime("%Y-%m-%d")
-        os.makedirs(os.path.join(self.log_dir, self.current_date), exist_ok=True)
+        Path(self.log_dir, self.current_date).mkdir(parents=True, exist_ok=True)
         super().__init__(
             self._path_for_date(self.current_date), mode="a", encoding=encoding, delay=True
         )
 
     def _path_for_date(self, date_str):
-        return os.path.join(self.log_dir, date_str, self.filename)
+        return str(Path(self.log_dir, date_str, self.filename))
 
     def emit(self, record):
         today = datetime.now().strftime("%Y-%m-%d")
@@ -118,8 +133,10 @@ class DailyDirectoryFileHandler(logging.FileHandler):
             return False
         self.stream.flush()
         try:
-            return os.path.getsize(self.baseFilename) >= self.max_bytes
-        except OSError:
+            return Path(self.baseFilename).stat().st_size >= self.max_bytes
+        except OSError as e:
+            # 探测失败（文件被外部删除/权限/磁盘异常）按未超限处理，但必须可见
+            _report_handler_error(f"日志文件尺寸探测失败: file={self.baseFilename!r}, err={e!r}")
             return False
 
     def _archive(self):
@@ -128,42 +145,46 @@ class DailyDirectoryFileHandler(logging.FileHandler):
         archived = self._next_archived_path()
         renamed = False
         try:
-            os.rename(self.baseFilename, archived)
+            Path(self.baseFilename).rename(archived)
             renamed = True
-        except OSError:
-            # 归档失败则继续追加原文件，避免丢日志
-            pass
+        except OSError as e:
+            # 归档失败则继续追加原文件，避免丢日志；但失败必须可见以排查磁盘/权限问题
+            _report_handler_error(f"日志归档重命名失败: file={self.baseFilename!r}, err={e!r}")
         try:
             self.stream = self._open()
-        except OSError:
+        except OSError as e:
+            # 新活动文件打开失败：先记录（归档成功时随后回滚，未归档时下方重试）
+            _report_handler_error(f"日志归档后重开文件失败: file={self.baseFilename!r}, err={e!r}")
             if renamed:
                 # 新文件打开失败，尝试回滚重命名避免丢日志
                 try:
-                    os.rename(archived, self.baseFilename)
-                except OSError:
-                    pass
+                    Path(archived).rename(self.baseFilename)
+                except OSError as e:
+                    _report_handler_error(f"日志归档回滚重命名失败: {e!r}")
             self.stream = self._open()  # 再次尝试打开原路径
 
     def archive_existing(self):
         """启动时归档当天已存在的活动文件（dev 用），需在文件打开前调用。"""
         if self.stream is not None:
             return
-        if not os.path.exists(self.baseFilename):
+        if not Path(self.baseFilename).exists():
             return
         try:
-            if os.path.getsize(self.baseFilename) == 0:
+            if Path(self.baseFilename).stat().st_size == 0:
                 return
-        except OSError:
+        except OSError as e:
+            # 启动归档前探测失败：跳过归档但必须可见（区别于“文件不存在”）以排查磁盘/权限问题
+            _report_handler_error(f"启动归档前探测文件失败: file={self.baseFilename!r}, err={e!r}")
             return
         archived = self._next_archived_path()
         try:
-            os.rename(self.baseFilename, archived)
-        except OSError:
-            pass
+            Path(self.baseFilename).rename(archived)
+        except OSError as e:
+            logger.warning("启动归档当天日志失败: file=%s, %s", self.baseFilename, e, exc_info=True)
 
     def _next_archived_path(self):
-        dir_ = os.path.dirname(self.baseFilename)
-        stem = os.path.splitext(self.filename)[0]  # info / error
+        dir_ = str(Path(self.baseFilename).parent)
+        stem = Path(self.filename).stem  # info / error
         prefix = f"{stem}."
         n = 0
         try:
@@ -175,21 +196,21 @@ class DailyDirectoryFileHandler(logging.FileHandler):
                     num = name[len(prefix) : -len(".log")]
                     if num.isdigit():
                         n = max(n, int(num))
-        except OSError:
-            pass
-        return os.path.join(dir_, f"{stem}.{n + 1}.log")
+        except OSError as e:
+            _report_handler_error(f"扫描日志归档目录失败: dir={dir_!r}, err={e!r}")
+        return str(Path(dir_) / f"{stem}.{n + 1}.log")
 
     def _rotate(self, new_date):
         if self.stream:
             self.close()
         self.current_date = new_date
-        os.makedirs(os.path.join(self.log_dir, new_date), exist_ok=True)
-        self.baseFilename = os.path.abspath(self._path_for_date(new_date))
+        Path(self.log_dir, new_date).mkdir(parents=True, exist_ok=True)
+        self.baseFilename = str(Path(self._path_for_date(new_date)).resolve())
         self.stream = self._open()
         self._clean_old_logs()
 
     def _clean_old_logs(self):
-        if self.retention_days <= 0 or not os.path.isdir(self.log_dir):
+        if self.retention_days <= 0 or not Path(self.log_dir).is_dir():
             return
         cutoff = (datetime.now() - timedelta(days=self.retention_days)).strftime("%Y-%m-%d")
         for entry in os.scandir(self.log_dir):
@@ -241,7 +262,7 @@ def setup_logging(use_json_format: bool | None = None):
         root_logger.addHandler(console_handler)
 
     if enable_file:
-        os.makedirs(log_dir, exist_ok=True)
+        Path(log_dir).mkdir(parents=True, exist_ok=True)
 
         info_handler = DailyDirectoryFileHandler(
             log_dir, "info.log", retention_days=retention_days, max_bytes=log_max_bytes
@@ -309,7 +330,7 @@ def get_client_logger() -> logging.Logger:
             return _client_logger
         from app.config import settings
 
-        os.makedirs(settings.LOG_DIR, exist_ok=True)
+        Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
         handler = DailyDirectoryFileHandler(
             settings.LOG_DIR,
             "client.log",

@@ -15,10 +15,11 @@
 import asyncio
 import io
 import logging
-import os
 import threading
 import wave
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -37,6 +38,7 @@ _executor = ThreadPoolExecutor(
     max_workers=settings.VOICE_TTS_INFERENCE_THREADS, thread_name_prefix="piper-tts"
 )
 
+
 # 音色模型配置：onnx 文件名、远端大小、下载 URL 模板
 class _VoiceConfig:
     __slots__ = ("onnx", "size", "url_templates")
@@ -46,19 +48,26 @@ class _VoiceConfig:
         self.size = size
         self.url_templates = url_templates or []
 
+
 # 音色注册表 {音色: VoiceConfig}，由 LocalTtsProvider 从 sys_voice_model 解析后注入
 _voice_configs: dict[str, _VoiceConfig] = {}
 
 
 def configure_voices(configs: dict[str, dict]) -> None:
-    """注入音色注册表（{音色: {"onnx","size","urls"}}，替换式更新），元信息由 sys_voice_model 决定"""
+    """注入音色注册表（{音色: {"onnx","size","urls"}}，替换式更新），
+    元信息由 sys_voice_model 决定
+    """
     _voice_configs.clear()
     for voice, cfg in configs.items():
+        onnx = cfg.get("onnx")
+        if not isinstance(onnx, str):
+            raise LocalTtsError(f"音色 {voice} 缺少 onnx 配置")
         _voice_configs[voice] = _VoiceConfig(
-            onnx=cfg.get("onnx"),
+            onnx=onnx,
             size=cfg.get("size"),
             url_templates=cfg.get("urls"),
         )
+
 
 _CHUNK = 1024 * 1024
 
@@ -76,39 +85,41 @@ def _model_path(voice: str) -> str:
     configured = settings.VOICE_TTS_MODEL_PATH.strip()
     if configured:
         return configured
-    return os.path.join(settings.MODEL_CACHE_DIR, "piper", _voice_configs[voice].onnx)
+    return str(Path(settings.MODEL_CACHE_DIR) / "piper" / _voice_configs[voice].onnx)
 
 
 def _file_ready(path: str, expected_size: int | None) -> bool:
-    if not os.path.exists(path):
+    if not Path(path).exists():
         return False
-    return expected_size is None or os.path.getsize(path) == expected_size
+    return expected_size is None or Path(path).stat().st_size == expected_size
 
 
 def _download_file(url: str, path: str, expected_size: int | None) -> None:
     """下载单个文件（断点续传），expected_size 非空时校验最终字节数"""
     part = path + ".part"
-    offset = os.path.getsize(part) if os.path.exists(part) else 0
+    offset = Path(part).stat().st_size if Path(part).exists() else 0
     headers = {"Range": f"bytes={offset}-"} if offset else {}
-    with httpx.Client(
-        timeout=httpx.Timeout(connect=15, read=120, write=30, pool=15), follow_redirects=True
-    ) as client:
-        with client.stream("GET", url, headers=headers) as resp:
-            if offset and resp.status_code != 206:
-                offset = 0  # 服务端不支持续传（返回 200 全量）→ 重头下载
-            resp.raise_for_status()
-            total = offset + int(resp.headers.get("content-length", 0))
-            if expected_size and total and total != expected_size:
-                raise RuntimeError(f"远端文件大小 {total} 与预期 {expected_size} 不一致")
-            mode = "ab" if offset else "wb"
-            downloaded = offset
-            with open(part, mode) as f:
-                for chunk in resp.iter_bytes(chunk_size=_CHUNK):
-                    f.write(chunk)
-                    downloaded += len(chunk)
-            if expected_size and downloaded != expected_size:
-                raise RuntimeError(f"下载数不完整：{downloaded} != {expected_size}")
-    os.replace(part, path)
+    with (
+        httpx.Client(
+            timeout=httpx.Timeout(connect=15, read=120, write=30, pool=15), follow_redirects=True
+        ) as client,
+        client.stream("GET", url, headers=headers) as resp,
+    ):
+        if offset and resp.status_code != 206:
+            offset = 0  # 服务端不支持续传（返回 200 全量）→ 重头下载
+        resp.raise_for_status()
+        total = offset + int(resp.headers.get("content-length", 0))
+        if expected_size and total and total != expected_size:
+            raise RuntimeError(f"远端文件大小 {total} 与预期 {expected_size} 不一致")
+        mode = "ab" if offset else "wb"
+        downloaded = offset
+        with Path(part).open(mode) as f:
+            for chunk in resp.iter_bytes(chunk_size=_CHUNK):
+                f.write(chunk)
+                downloaded += len(chunk)
+        if expected_size and downloaded != expected_size:
+            raise RuntimeError(f"下载数不完整：{downloaded} != {expected_size}")
+    Path(part).replace(path)
 
 
 def _ensure_downloaded(voice: str) -> str:
@@ -118,20 +129,17 @@ def _ensure_downloaded(voice: str) -> str:
     json_path = onnx_path + ".json"
     if _file_ready(onnx_path, cfg.size) and _file_ready(json_path, None):
         return onnx_path
-    os.makedirs(os.path.dirname(onnx_path), exist_ok=True)
-    lock_file = open(onnx_path + ".lock", "w") if fcntl else None  # Windows：无锁直下
-    try:
+    Path(onnx_path).parent.mkdir(parents=True, exist_ok=True)
+    # Windows：无锁直下
+    with Path(onnx_path + ".lock").open("w") if fcntl else nullcontext() as lock_file:
         if lock_file:
+            assert fcntl is not None
             fcntl.flock(lock_file, fcntl.LOCK_EX)
         if not _file_ready(onnx_path, cfg.size):
             _download_with_fallback(cfg.onnx, onnx_path, cfg.size, cfg.url_templates)
         if not _file_ready(json_path, None):
             _download_with_fallback(cfg.onnx + ".json", json_path, None, cfg.url_templates)
         return onnx_path
-    finally:
-        if lock_file:
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
-            lock_file.close()
 
 
 def _download_with_fallback(
@@ -143,9 +151,9 @@ def _download_with_fallback(
     for url_tpl in url_templates:
         try:
             _download_file(url_tpl.format(filename=filename), path, expected_size)
-            logger.info("TTS 模型文件就绪：%s（%dMB）", path, os.path.getsize(path) // 1048576)
+            logger.info("TTS 模型文件就绪：%s（%dMB）", path, Path(path).stat().st_size // 1048576)
             return
-        except Exception as exc:  # noqa: BLE001 逐镜像尝试，全部失败才抛出
+        except Exception as exc:
             last_error = exc
             logger.warning("TTS 模型下载失败（%s）：%s，尝试下一个镜像", url_tpl, exc)
     raise LocalTtsError(
@@ -155,12 +163,17 @@ def _download_with_fallback(
 
 
 def _use_cuda() -> bool:
-    """onnxruntime 带 CUDAExecutionProvider 时启用 GPU 合成（需安装 onnxruntime-gpu）"""
+    """onnxruntime 带 CUDAExecutionProvider 时启用 GPU 合成（需安装 onnxruntime-gpu）。
+
+    CPU 回退是设计内降级契约（onnxruntime-gpu 未安装本就无 CUDA Provider），但导入
+    失败属环境不满足，须记日志暴露，避免静默降级后无法定位"为何没用上 GPU"。
+    """
     try:
         import onnxruntime as ort
 
         return "CUDAExecutionProvider" in ort.get_available_providers()
-    except Exception:  # noqa: BLE001 检测失败按纯 CPU 处理
+    except ImportError:
+        logger.warning("onnxruntime 不可用，本地 TTS 回退 CPU 合成", exc_info=True)
         return False
 
 
@@ -172,9 +185,7 @@ def _load_model(voice: str) -> Any:
         try:
             from piper import PiperVoice
         except ImportError as e:
-            raise LocalTtsError(
-                "piper-tts 未安装，语音合成不可用，请执行 uv sync 修复依赖"
-            ) from e
+            raise LocalTtsError("piper-tts 未安装，语音合成不可用，请执行 uv sync 修复依赖") from e
         onnx_path = _ensure_downloaded(voice)
         use_cuda = _use_cuda()
         logger.info("加载本地 TTS 模型: %s（%s）", onnx_path, "GPU" if use_cuda else "CPU")
@@ -192,9 +203,7 @@ def _resample(pcm: bytes, src_rate: int, dst_rate: int) -> bytes:
 
     samples = torch.frombuffer(bytearray(pcm), dtype=torch.int16).float().div_(32768.0)
     resampled = resample(samples, orig_freq=src_rate, new_freq=dst_rate)
-    return (
-        (resampled * 32768.0).clamp(-32768, 32767).to(torch.int16).numpy().tobytes()
-    )
+    return (resampled * 32768.0).clamp(-32768, 32767).to(torch.int16).numpy().tobytes()
 
 
 def _encode_wav(pcm: bytes, sample_rate: int) -> bytes:
@@ -220,17 +229,17 @@ def _encode_mp3(pcm: bytes, sample_rate: int) -> bytes:
     return bytes(encoder.encode(pcm)) + bytes(encoder.flush())
 
 
-def synthesize(
-    text: str, voice: str, speed: float, format_: str, sample_rate: int
-) -> bytes:
+def synthesize(text: str, voice: str, speed: float, format_: str, sample_rate: int) -> bytes:
     """本地合成语音（阻塞调用，须经线程池执行），返回编码后的音频字节。
 
-    - voice 必须是 _VOICE_MODEL_FILES 中已注册的音色
+    - voice 必须是已注册的音色（sys_voice_model 注入 _voice_configs）
     - speed 为播放倍速（0.5~2.0），映射 Piper length_scale = 1/speed
     - format_ 为 mp3/wav/pcm；输出采样率重采样至 sample_rate
     """
     if voice not in _voice_configs:
-        raise LocalTtsError(f"不支持的音色: {voice}（可选: {'/'.join(_voice_configs) or '未配置'}）")
+        raise LocalTtsError(
+            f"不支持的音色: {voice}（可选: {'/'.join(_voice_configs) or '未配置'}）"
+        )
     model = _load_model(voice)
 
     try:

@@ -44,13 +44,13 @@
         />
         <el-table-column label="类型" width="130" align="center">
           <template #default="{ row }">
-            {{ taskTypeLabel[row.taskType] ?? row.taskType }}
+            {{ TASK_TYPE_LABELS[row.taskType] ?? row.taskType }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :color="statusTagColor[row.status]" effect="dark">
-              {{ statusLabel[row.status] }}
+            <el-tag :type="statusTagType(row.status)">
+              {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -88,16 +88,7 @@
               取消
             </el-button>
             <el-button
-              v-if="row.status === 3 && isImportTask(row.taskType)"
-              type="primary"
-              link
-              :loading="downloadLoadingId === row.taskId"
-              @click="handleDownload(row as TaskVO)"
-            >
-              查看结果
-            </el-button>
-            <el-button
-              v-if="row.status === 3 && !isImportTask(row.taskType)"
+              v-if="row.status === 3 && row.taskCategory === 'export'"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"
@@ -125,11 +116,8 @@
             {{ taskStore.currentTask.taskId }}
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag
-              :color="statusTagColor[taskStore.currentTask.status]"
-              effect="dark"
-            >
-              {{ statusLabel[taskStore.currentTask.status] }}
+            <el-tag :type="statusTagType(taskStore.currentTask.status)">
+              {{ statusLabel(taskStore.currentTask.status) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="进度">
@@ -198,7 +186,13 @@
 <script lang="ts" setup>
 import { TaskVO, TaskQuery, TaskCategory } from "dehaze-sdk-js";
 import { Refresh } from "@element-plus/icons-vue";
+import type { TagType } from "@/enums/TagType";
 import { useTaskStore } from "@/store";
+import {
+  TASK_POLLING_STATUSES,
+  TASK_STATUS_OPTIONS,
+  TASK_TYPE_LABELS,
+} from "../constants";
 import { downloadByUrl } from "@/utils";
 
 defineOptions({
@@ -226,52 +220,15 @@ const cancelLoading = ref(false);
 // 下载操作加载状态（记录正在下载的任务ID）
 const downloadLoadingId = ref<string | null>(null);
 
-// 状态标签颜色映射（按需求规格 5.3 节）
-const statusTagColor: Record<number, string> = {
-  1: "#1890ff",
-  2: "#1890ff",
-  3: "#52c41a",
-  4: "#ff4d4f",
-  5: "#8c8c8c",
-};
-
-// 状态标签文本映射
-const statusLabel: Record<number, string> = {
-  1: "待执行",
-  2: "执行中",
-  3: "已完成",
-  4: "失败",
-  5: "已取消",
-};
-
-// 任务类型文本映射
-const taskTypeLabel: Record<string, string> = {
-  dataset_export: "数据集导出",
-  item_download: "数据项下载",
-  batch_download: "批量下载",
-  custom_export: "自定义导出",
-  user_export: "用户导出",
-  role_export: "角色导出",
-  dept_export: "部门导出",
-  menu_export: "菜单导出",
-  dict_export: "字典导出",
-  algorithm_export: "算法导出",
-  user_import: "用户导入",
-  role_import: "角色导入",
-  dept_import: "部门导入",
-  menu_import: "菜单导入",
-  dict_import: "字典导入",
-  algorithm_import: "算法导入",
-};
-
-// 判断是否为导入任务
-function isImportTask(taskType?: string): boolean {
-  if (!taskType) return false;
-  return taskType.endsWith("_import");
+// 状态标签文本（单源派生）
+function statusLabel(status: number): string | number {
+  return TASK_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status;
 }
 
-// 需要轮询的任务状态
-const POLLING_STATUSES = [1, 2];
+// 状态标签类型（单源派生）
+function statusTagType(status: number): TagType {
+  return TASK_STATUS_OPTIONS.find((o) => o.value === status)?.tag ?? "info";
+}
 
 /**
  * 格式化时间显示
@@ -298,7 +255,7 @@ function progressStatus(
  * @param status 任务状态
  */
 function canCancel(status: number): boolean {
-  return POLLING_STATUSES.includes(status);
+  return TASK_POLLING_STATUSES.includes(status);
 }
 
 /**
@@ -307,13 +264,12 @@ function canCancel(status: number): boolean {
 async function loadTaskList() {
   try {
     await taskStore.getTaskList(queryParams);
-  } catch (e: any) {
-    ElMessage.error(e.message || "加载任务列表失败");
+  } catch {
     return;
   }
   // 存在进行中的任务时启动轮询，否则停止
   const hasActiveTasks = taskStore.taskList.some((t) =>
-    POLLING_STATUSES.includes(t.status)
+    TASK_POLLING_STATUSES.includes(t.status)
   );
   if (hasActiveTasks) {
     taskStore.startPolling();
@@ -377,8 +333,7 @@ async function handleCancel(task: TaskVO) {
       };
     }
     await loadTaskList();
-  } catch (e: any) {
-    ElMessage.error(e.message || "取消任务失败");
+  } catch {
   } finally {
     cancelLoading.value = false;
   }
@@ -394,8 +349,7 @@ async function handleDownload(task: TaskVO) {
     const url = await taskStore.downloadResult(task.taskId);
     downloadByUrl(url);
     ElMessage.success("开始下载");
-  } catch (e: any) {
-    ElMessage.error(e.message || "下载失败");
+  } catch {
   } finally {
     downloadLoadingId.value = null;
   }
@@ -411,7 +365,7 @@ function handleVisibilityChange() {
   } else {
     // 页面恢复可见时，存在进行中任务则恢复轮询
     const hasActiveTasks = taskStore.taskList.some((t) =>
-      POLLING_STATUSES.includes(t.status)
+      TASK_POLLING_STATUSES.includes(t.status)
     );
     if (hasActiveTasks) {
       taskStore.startPolling();

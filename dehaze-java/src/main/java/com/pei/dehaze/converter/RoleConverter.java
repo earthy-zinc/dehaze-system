@@ -19,6 +19,23 @@ import java.util.List;
  */
 @Mapper(componentModel = "spring")
 public interface RoleConverter {
+
+    /**
+     * 数据权限范围 → 中文描述（与 Go dataScopeLabelMap / Python DATA_SCOPE_LABELS 对齐）
+     */
+    default String dataScopeLabel(Integer dataScope) {
+        if (dataScope == null) {
+            return "";
+        }
+        return switch (dataScope) {
+            case 0 -> "全部数据";
+            case 1 -> "部门及子部门数据";
+            case 2 -> "本部门数据";
+            case 3 -> "本人数据";
+            default -> "";
+        };
+    }
+
     @Mappings({
         @Mapping(ignore = true, target = "countId"),
         @Mapping(ignore = true, target = "maxLimit"),
@@ -28,6 +45,9 @@ public interface RoleConverter {
         @Mapping(ignore = true, target = "searchCount"),
     })
     Page<RolePageVO> entity2Page(Page<SysRole> page);
+
+    @Mapping(target = "dataScopeLabel", source = "dataScope")
+    RolePageVO entity2PageVO(SysRole role);
 
     @Mappings({
             @Mapping(target = "value", source = "id"),
@@ -46,5 +66,6 @@ public interface RoleConverter {
     })
     SysRole form2Entity(RoleForm roleForm);
 
+    @Mapping(target = "dataScopeLabel", source = "dataScope")
     RoleForm entity2Form(SysRole entity);
 }

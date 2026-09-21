@@ -22,7 +22,7 @@ DANGEROUS_PATTERN = (
 
 
 class SkillCreate(OrmResult):
-    """创建 Skill 请求体（SDK SkillForm：字段 instruction，另有 scene/scriptContent/templateId 可忽略）"""
+    """创建 Skill 请求体（对齐 SDK SkillForm）"""
 
     name: str = Field(..., min_length=1, max_length=128, description="Skill名称(唯一)")
     description: str = Field(..., min_length=1, max_length=500, description="Skill描述")
@@ -79,6 +79,13 @@ class SkillFileVO(OrmResult):
     fileType: str | None = Field(default=None, description="文件类型(MIME/扩展名)")
 
 
+class SkillSkippedFile(OrmResult):
+    """上传时被跳过的资源文件（部分失败可见，避免静默丢弃）"""
+
+    path: str = Field(description="被跳过的文件路径")
+    reason: str = Field(description="跳过原因")
+
+
 class SkillResult(OrmResult):
     """Skill 详情（管理员全部字段，instruction 映射实体 instruction）"""
 
@@ -88,10 +95,15 @@ class SkillResult(OrmResult):
     scene: str = Field(default="", description="适用场景")
     instruction: str | None = Field(default=None, description="SKILL.md指令正文")
     license: str | None = Field(default=None, description="SKILL.md frontmatter license")
-    compatibility: str | None = Field(default=None, description="SKILL.md frontmatter compatibility")
+    compatibility: str | None = Field(
+        default=None, description="SKILL.md frontmatter compatibility"
+    )
     metadata: dict | None = Field(default=None, description="SKILL.md frontmatter metadata")
     allowedTools: str | None = Field(default=None, description="SKILL.md frontmatter allowed-tools")
     files: list[SkillFileVO] = Field(default_factory=list, description="SKILL目录内资源文件清单")
+    skippedFiles: list[SkillSkippedFile] = Field(
+        default_factory=list, description="上传时被跳过的资源文件（文件名+原因）"
+    )
     status: int = Field(description="启停状态(0:禁用;1:启用)")
     source: str = Field(description="来源(builtin/admin)")
     agentCount: int = Field(default=0, description="被Agent关联数")
@@ -133,6 +145,7 @@ class SkillMarketVO(OrmResult):
     skillId: int = Field(description="Skill主键")
     name: str = Field(description="Skill名称")
     description: str = Field(description="Skill描述")
+    scene: str = Field(default="", description="适用场景")
     enabled: bool = Field(description="是否已启用")
     agentCount: int = Field(default=0, description="已关联Agent数")
 
@@ -141,3 +154,4 @@ class SkillPageQuery(BasePageQuery):
     """Skill 列表查询参数"""
 
     keyword: str | None = Field(default=None, description="关键字(按名称模糊搜索)")
+    status: int | None = Field(default=None, ge=0, le=1, description="状态筛选(1:启用;0:禁用)")

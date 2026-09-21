@@ -3,6 +3,7 @@ import {
   AiEvalAPI,
   AiEvalAgentOverviewItem,
   AiEvalJudgeStatus,
+  AiEvalReviewDetail,
   AiEvalReviewQueueResult,
   AiEvalReviewStatus,
   AiEvalRunCompareResult,
@@ -149,6 +150,19 @@ export const useAdminEvalStore = defineStore("adminEval", () => {
   const reviewStatus = ref<AiEvalReviewStatus | "all">("all");
   const reviewLoading = ref(false);
   const reviewSubmitting = ref(false);
+  /** 当前复核项详情（样本定义 + 实际输出 + 四维得分） */
+  const reviewDetail = ref<AiEvalReviewDetail | null>(null);
+  const reviewDetailLoading = ref(false);
+
+  async function fetchReviewDetail(runId: number, sampleId: number) {
+    reviewDetail.value = null;
+    reviewDetailLoading.value = true;
+    try {
+      reviewDetail.value = await AiEvalAPI.getReviewDetail(runId, sampleId);
+    } finally {
+      reviewDetailLoading.value = false;
+    }
+  }
 
   async function fetchReviews() {
     reviewLoading.value = true;
@@ -216,6 +230,9 @@ export const useAdminEvalStore = defineStore("adminEval", () => {
     reviewStatus,
     reviewLoading,
     reviewSubmitting,
+    reviewDetail,
+    reviewDetailLoading,
+    fetchReviewDetail,
     fetchReviews,
     submitReview,
     // 初始化

@@ -85,7 +85,9 @@
         <el-table-column label="门槛" align="right" width="100">
           <template #default="scope">
             <span v-if="(scope.row as CouponVO).threshold">
-              满¥{{ ((scope.row as CouponVO).threshold ?? 0).toFixed(2) }}
+              满¥{{
+                (((scope.row as CouponVO).threshold ?? 0) / 100).toFixed(2)
+              }}
             </span>
             <span v-else class="text-secondary">无门槛</span>
           </template>
@@ -187,7 +189,11 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="类型" prop="type">
-              <el-select v-model="formData.type" style="width: 100%">
+              <el-select
+                v-model="formData.type"
+                style="width: 100%"
+                @change="handleTypeChange"
+              >
                 <el-option label="满减券" value="full_reduction" />
                 <el-option label="折扣券" value="discount" />
                 <el-option label="无门槛券" value="no_threshold" />
@@ -196,23 +202,30 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="面值" prop="faceValue">
+            <el-form-item
+              :label="formData.type === 'discount' ? '折扣率(%)' : '面值(元)'"
+              prop="faceValue"
+            >
               <el-input-number
                 v-model="formData.faceValue"
                 :min="0"
-                :precision="2"
+                :max="formData.type === 'discount' ? 100 : undefined"
+                :precision="formData.type === 'discount' ? 0 : 2"
+                :disabled="formData.type === 'trial'"
                 controls-position="right"
                 style="width: 100%"
               />
+              <div v-if="formData.type === 'discount'" class="form-tip">
+                减免百分比，如 20 表示 8 折
+              </div>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="门槛" prop="threshold">
+          <el-col v-if="formData.type === 'full_reduction'" :span="12">
+            <el-form-item label="门槛(元)" prop="threshold">
               <el-input-number
                 v-model="formData.threshold"
                 :min="0"
                 :precision="2"
-                :disabled="formData.type !== 'full_reduction'"
                 controls-position="right"
                 style="width: 100%"
                 placeholder="满减必填"
@@ -401,6 +414,7 @@ import {
   type CouponBatchDistributeForm,
   type PackagePageVO,
 } from "dehaze-sdk-js";
+import type { TagType } from "@/enums/TagType";
 import {
   Search,
   Refresh,
@@ -455,7 +469,25 @@ const formData = reactive<CouponForm>({ ...defaultFormData });
 const rules = reactive({
   name: [{ required: true, message: "请输入优惠券名称", trigger: "blur" }],
   type: [{ required: true, message: "请选择类型", trigger: "change" }],
-  faceValue: [{ required: true, message: "请输入面值", trigger: "blur" }],
+  faceValue: [
+    { required: true, message: "请输入面值", trigger: "blur" },
+    {
+      validator: (_rule: any, value: number, callback: any) => {
+        if (formData.type === "discount") {
+          if (!value || value < 1 || value > 100) {
+            callback(new Error("折扣率需为 1-100 的整数"));
+          } else {
+            callback();
+          }
+        } else if (formData.type !== "trial" && (!value || value <= 0)) {
+          callback(new Error("面值必须大于0"));
+        } else {
+          callback();
+        }
+      },
+      trigger: "blur",
+    },
+  ],
   threshold: [
     {
       validator: (_rule: any, value: number, callback: any) => {
@@ -476,6 +508,12 @@ const rules = reactive({
     { required: true, message: "请输入每人限领数", trigger: "blur" },
   ],
 });
+
+/** 类型切换时重置面值/门槛，避免不同单位语义混淆 */
+function handleTypeChange() {
+  formData.faceValue = 0;
+  formData.threshold = 0;
+}
 
 const distributeDialog = reactive({
   visible: false,
@@ -535,35 +573,30 @@ const distributeRules = reactive({
   ],
 });
 
-type TagType = "primary" | "success" | "info" | "warning" | "danger";
-
-const couponTypeLabelMap: Record<string, string> = {
-  full_reduction: "满减券",
-  discount: "折扣券",
-  no_threshold: "无门槛券",
-  trial: "体验券",
-};
-
-const couponTypeTagMap: Record<string, TagType> = {
-  full_reduction: "warning",
-  discount: "success",
-  no_threshold: "primary",
-  trial: "danger",
-};
+const couponTypeOptions: { label: string; value: string; tag: TagType }[] = [
+  { label: "满减券", value: "full_reduction", tag: "warning" },
+  { label: "折扣券", value: "discount", tag: "success" },
+  { label: "无门槛券", value: "no_threshold", tag: "primary" },
+  { label: "体验券", value: "trial", tag: "danger" },
+];
 
 function couponTypeLabel(type: string) {
-  return couponTypeLabelMap[type] ?? type;
+  return couponTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
 function couponTypeTag(type: string): TagType {
-  return couponTypeTagMap[type] ?? "info";
+  return couponTypeOptions.find((o) => o.value === type)?.tag ?? "info";
 }
 
+/** 面值：满减/无门槛为金额(分)，折扣为减免百分比，体验券无面值 */
 function formatFaceValue(coupon: CouponVO) {
   if (coupon.type === "discount") {
-    return `${coupon.faceValue}折`;
+    return `减${coupon.faceValue}%`;
   }
-  return `¥${coupon.faceValue.toFixed(2)}`;
+  if (coupon.type === "trial") {
+    return "体验";
+  }
+  return `¥${((coupon.faceValue ?? 0) / 100).toFixed(2)}`;
 }
 
 function parseUserIds(input: string): number[] {
@@ -612,12 +645,15 @@ function openDialog(id?: number) {
     dialog.title = "编辑优惠券";
     const row = couponList.value.find((c) => c.id === id);
     if (row) {
+      // 满减/无门槛面值与门槛接口单位为分，表单以元输入；折扣率为百分比原值
+      const isMoneyFace =
+        row.type === "full_reduction" || row.type === "no_threshold";
       Object.assign(formData, {
         id: row.id,
         name: row.name,
         type: row.type,
-        faceValue: row.faceValue,
-        threshold: row.threshold,
+        faceValue: isMoneyFace ? row.faceValue / 100 : row.faceValue,
+        threshold: row.threshold ? row.threshold / 100 : undefined,
         validType: row.validType,
         validStart: row.validStart,
         validEnd: row.validEnd,
@@ -643,10 +679,20 @@ function handleSubmit() {
   couponFormRef.value.validate((valid: boolean) => {
     if (!valid) return;
     loading.value = true;
+    // 接口面值/门槛单位为分（折扣率为百分比原值），表单以元输入
+    const isMoneyFace =
+      formData.type === "full_reduction" || formData.type === "no_threshold";
+    const payload: CouponForm = {
+      ...formData,
+      faceValue: isMoneyFace
+        ? Math.round((formData.faceValue ?? 0) * 100)
+        : Math.round(formData.faceValue ?? 0),
+      threshold: formData.threshold
+        ? Math.round(formData.threshold * 100)
+        : undefined,
+    };
     const id = formData.id;
-    const action = id
-      ? CouponAPI.update(id, formData)
-      : CouponAPI.add(formData);
+    const action = id ? CouponAPI.update(id, payload) : CouponAPI.add(payload);
     action
       .then(() => {
         ElMessage.success(id ? "修改成功" : "新增成功");
@@ -743,6 +789,12 @@ onMounted(() => {
 }
 
 .text-secondary {
+  color: var(--el-text-color-secondary);
+}
+
+.form-tip {
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--el-text-color-secondary);
 }
 </style>

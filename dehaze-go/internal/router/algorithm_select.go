@@ -15,6 +15,7 @@ func RegisterAlgorithmSelectRoutes(rg *gin.RouterGroup, selectApi *api.Algorithm
 		selectRouter.GET("/tree", selectApi.GetTree)
 		selectRouter.GET("/search", selectApi.Search)
 		selectRouter.POST("/compare", selectApi.Compare)
+		selectRouter.POST("/recommend", selectApi.Recommend)
 		// 带参数路径最后注册
 		selectRouter.GET("/:id", selectApi.GetDetail)
 		selectRouter.POST("/:id/test", selectApi.Test)

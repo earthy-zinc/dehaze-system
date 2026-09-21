@@ -33,13 +33,14 @@ class AiModelCostRepository(BaseRepository[SysAiModelCost]):
         current = (await db.execute(stmt)).scalar()
         return (current or 0) + 1
 
-    async def get_with_details(self, db: AsyncSession, cost_id: int) -> SysAiModelCost | None:
-        """查询成本价格版本（含档位明细）"""
+    async def get_with_details(
+        self, db: AsyncSession, cost_id: int
+    ) -> tuple[SysAiModelCost, list[SysAiModelCostDetail]] | None:
+        """查询成本价格版本（含档位明细），返回 (版本, 档位明细列表)"""
         cost = await self.get_by_id(db, cost_id)
         if cost is None:
             return None
-        cost.details = await self.list_details(db, cost.id)
-        return cost
+        return cost, await self.list_details(db, cost.id)
 
     async def list_costs(
         self,
@@ -59,9 +60,7 @@ class AiModelCostRepository(BaseRepository[SysAiModelCost]):
         if provider_id:
             stmt = stmt.where(SysAiModelCost.provider_id == provider_id)
         if keyword:
-            stmt = stmt.where(
-                SysAiModelCost.model_id.like(f"%{keyword}%")
-            )
+            stmt = stmt.where(SysAiModelCost.model_id.like(f"%{keyword}%"))
         costs, total = await self.paginate(db, stmt, page, size)
         return costs, total
 
@@ -84,12 +83,10 @@ class AiModelCostRepository(BaseRepository[SysAiModelCost]):
         price_id: int,
         details: list[dict],
     ) -> list[SysAiModelCostDetail]:
-        entities = [
-            SysAiModelCostDetail(price_id=price_id, **d)
-            for d in details
-        ]
+        entities = [SysAiModelCostDetail(price_id=price_id, **d) for d in details]
         if entities:
-            await self.create_all(db, entities)
+            db.add_all(entities)
+            await db.flush()
         return entities
 
     async def get_effective_version(
@@ -113,13 +110,12 @@ class AiModelCostRepository(BaseRepository[SysAiModelCost]):
         result = await db.execute(stmt)
         return result.scalars().first()
 
-
     async def soft_delete_details_by_price_id(self, db: AsyncSession, price_id: int) -> int:
         """逻辑删除某价格版本的全部档位明细"""
         stmt = (
             update(SysAiModelCostDetail)
             .where(SysAiModelCostDetail.price_id == price_id)
-            .values(deleted=1, **get_audit_update_values())
+            .values(deleted=SysAiModelCostDetail.id, **get_audit_update_values())
         )
         result = await db.execute(stmt)
         return result.rowcount

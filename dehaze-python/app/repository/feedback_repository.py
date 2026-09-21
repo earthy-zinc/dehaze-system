@@ -111,6 +111,7 @@ class RatingRepository(BaseRepository[SysRating]):
         rating_min: int | None = None,
         rating_max: int | None = None,
         has_comment: bool | None = None,
+        tags: list[str] | None = None,
         start_time: str | None = None,
         end_time: str | None = None,
     ) -> tuple[list[dict], int]:
@@ -146,6 +147,10 @@ class RatingRepository(BaseRepository[SysRating]):
             stmt = stmt.where(SysRating.comment.isnot(None), SysRating.comment != "")
         elif has_comment is False:
             stmt = stmt.where(or_(SysRating.comment.is_(None), SysRating.comment == ""))
+        if tags:
+            # tags 为 JSON 数组字符串存储，逐个 LIKE（对齐 Java/Go 契约）
+            for tag in tags:
+                stmt = stmt.where(SysRating.tags.like(f"%{escape_like(tag)}%", escape="\\"))
         if start_time:
             stmt = stmt.where(
                 SysRating.create_time >= datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
@@ -222,7 +227,7 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysRating.create_time <= datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
             )
         dist_rows = (await db.execute(dist_stmt)).all()
-        rating_distribution = {i: 0 for i in range(1, 6)}
+        rating_distribution = dict.fromkeys(range(1, 6), 0)
         for r, c in dist_rows:
             rating_distribution[r] = int(c)
 
@@ -240,12 +245,12 @@ class RatingRepository(BaseRepository[SysRating]):
             )
         tag_rows = (await db.execute(tags_stmt)).all()
 
-        positive_counts = {
-            t: 0 for t in ["去雾彻底", "色彩自然", "细节清晰", "处理速度快", "整体提升明显"]
-        }
-        negative_counts = {
-            t: 0 for t in ["残留雾气", "色彩失真", "细节丢失", "处理速度慢", "无明显改善"]
-        }
+        positive_counts = dict.fromkeys(
+            ["去雾彻底", "色彩自然", "细节清晰", "处理速度快", "整体提升明显"], 0
+        )
+        negative_counts = dict.fromkeys(
+            ["残留雾气", "色彩失真", "细节丢失", "处理速度慢", "无明显改善"], 0
+        )
         for (tags_list,) in tag_rows:
             if tags_list:
                 for tag in tags_list:
@@ -325,6 +330,14 @@ class RatingRepository(BaseRepository[SysRating]):
         avg = (await db.execute(stmt)).scalar()
         return float(avg) if avg else 0.0
 
+    async def count_by_algorithm(self, db: AsyncSession, algorithm_id: int) -> int:
+        """算法评价总数（算法选择详情页 ratingCount 口径，对齐 Java getDetail）"""
+        stmt = select(func.count()).where(
+            SysRating.algorithm_id == algorithm_id,
+            SysRating.deleted == 0,
+        )
+        return (await db.execute(stmt)).scalar() or 0
+
     async def count_low_ratings_by_algorithm_24h(
         self,
         db: AsyncSession,
@@ -361,15 +374,15 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
     model = SysFeedback
 
     async def get_detail_with_users(self, db: AsyncSession, feedback_id: int) -> dict | None:
-        Assignee = aliased(SysUser)
+        assignee = aliased(SysUser)
         stmt = (
             select(
                 SysFeedback,
                 SysUser.username.label("username"),
-                Assignee.username.label("assignee_name"),
+                assignee.username.label("assignee_name"),
             )
             .outerjoin(SysUser, SysFeedback.user_id == SysUser.id)
-            .outerjoin(Assignee, SysFeedback.assignee_id == Assignee.id)
+            .outerjoin(assignee, SysFeedback.assignee_id == assignee.id)
             .where(SysFeedback.id == feedback_id, SysFeedback.deleted == 0)
         )
         result = await db.execute(stmt)
@@ -389,15 +402,15 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
         page: int,
         page_size: int,
     ) -> tuple[list[dict], int]:
-        Assignee = aliased(SysUser)
+        assignee = aliased(SysUser)
         stmt = (
             select(
                 SysFeedback,
                 SysUser.username.label("username"),
-                Assignee.username.label("assignee_name"),
+                assignee.username.label("assignee_name"),
             )
             .outerjoin(SysUser, SysFeedback.user_id == SysUser.id)
-            .outerjoin(Assignee, SysFeedback.assignee_id == Assignee.id)
+            .outerjoin(assignee, SysFeedback.assignee_id == assignee.id)
             .where(
                 SysFeedback.user_id == user_id,
                 SysFeedback.deleted == 0,
@@ -437,16 +450,16 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
         start_time: str | None = None,
         end_time: str | None = None,
     ) -> tuple[list[dict], int]:
-        Assignee = aliased(SysUser)
+        assignee = aliased(SysUser)
         stmt = (
             select(
                 SysFeedback,
                 SysUser.username.label("username"),
                 SysUser.nickname.label("nickname"),
-                Assignee.username.label("assignee_name"),
+                assignee.username.label("assignee_name"),
             )
             .outerjoin(SysUser, SysFeedback.user_id == SysUser.id)
-            .outerjoin(Assignee, SysFeedback.assignee_id == Assignee.id)
+            .outerjoin(assignee, SysFeedback.assignee_id == assignee.id)
             .where(SysFeedback.deleted == 0)
         )
 
@@ -522,7 +535,7 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             .group_by(SysFeedback.feedback_type)
         )
         type_rows = (await db.execute(type_stmt)).all()
-        type_distribution = {t: 0 for t in ["suggestion", "bug", "experience", "complaint"]}
+        type_distribution = dict.fromkeys(["suggestion", "bug", "experience", "complaint"], 0)
         for t, c in type_rows:
             type_distribution[t] = int(c)
 
@@ -532,7 +545,7 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             .group_by(SysFeedback.status)
         )
         status_rows = (await db.execute(status_stmt)).all()
-        status_distribution = {s: 0 for s in ["pending", "processing", "replied", "closed"]}
+        status_distribution = dict.fromkeys(["pending", "processing", "replied", "closed"], 0)
         for s, c in status_rows:
             status_name = FEEDBACK_STATUS_REVERSE_MAP.get(s, "pending")
             status_distribution[status_name] = int(c)
@@ -590,7 +603,7 @@ class FeedbackRepository(BaseRepository[SysFeedback]):
             [{"keyword": k, "count": v} for k, v in word_counts.items()],
             key=lambda x: x["count"],
             reverse=True,
-        )[:20]
+        )[:10]
 
         return {
             "totalFeedback": total_feedback,

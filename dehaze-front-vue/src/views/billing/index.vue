@@ -13,7 +13,7 @@ import { useBillingStore } from "@/store/modules/billing";
 
 defineOptions({ name: "Billing", inheritAttrs: false });
 
-const billingDataStore = useBillingDataStore();
+const billingDataStore = useBillingDataStore("self");
 const billingStore = useBillingStore();
 
 const rechargeAlert = computed(() =>
@@ -24,7 +24,6 @@ const rechargeAlert = computed(() =>
 const reentered = ref(false);
 
 async function loadPageData() {
-  billingDataStore.initScope("self");
   if (reentered.value) {
     await billingDataStore.fetchBalance();
   }

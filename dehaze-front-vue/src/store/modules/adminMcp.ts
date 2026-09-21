@@ -16,9 +16,8 @@ import {
 /** Server 抽屉 Tab：配置（注册/编辑）/工具与命名空间/凭据 */
 export type McpServerDrawerTab = "config" | "tools" | "credentials";
 
-/** 传输协议展示名 */
+/** 传输协议展示名：仅 URL 型协议可注册（存量 stdio 行由列表单独提示不受支持） */
 export const MCP_PROTOCOL_LABELS: Record<string, string> = {
-  stdio: "stdio（本地进程）",
   "streamable-http": "streamable-http",
   sse: "sse（传统 SSE）",
 };
@@ -194,7 +193,7 @@ export const useAdminMcpStore = defineStore("adminMcp", () => {
     form: McpCredentialForm
   ) {
     await AiMCPAPI.updateCredentials(serverId, form);
-    ElMessage.success("凭据已加密保存");
+    ElMessage.success(form.clear ? "凭据已清除" : "凭据已加密保存");
     // 凭据不回显，"已配置"状态以后端 credentialConfigured 为准，保存后刷新
     await fetchServers();
     if (serverForm.server?.id === serverId) {
@@ -235,14 +234,13 @@ export const useAdminMcpStore = defineStore("adminMcp", () => {
     return AiMCPAPI.testTool(serverId, { toolName, arguments: arguments_ });
   }
 
-  /** 健康探测：结果同步回列表行，异常 Server 在列表显著标注 */
+  /** 健康探测：结果与探测时间由列表刷新统一回写，异常 Server 在列表显著标注 */
   async function probeHealth(server: McpServerVO) {
     healthServerId.value = server.id;
     healthLoading.value = true;
     try {
-      const result = await AiMCPAPI.probeHealth(server.id);
-      health.value[server.id] = result;
-      server.health = result.status;
+      health.value[server.id] = await AiMCPAPI.probeHealth(server.id);
+      await fetchServers();
     } finally {
       healthLoading.value = false;
     }

@@ -24,6 +24,8 @@ type MenuVO struct {
 	Redirect string `json:"redirect"`
 	// 按钮权限标识
 	Perm string `json:"perm"`
+	// 系统预置标识(1:预置;0:普通)
+	IsPreset int `json:"isPreset"`
 	// 子菜单
 	Children []MenuVO `json:"children"`
 }

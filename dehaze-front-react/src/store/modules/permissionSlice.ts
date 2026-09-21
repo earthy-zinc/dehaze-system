@@ -25,7 +25,7 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]): RouteVO[] => {
     if (tmpRoute.component === "Layout") {
       tmpRoute.component = undefined;
     }
-    if (tmpRoute.children) {
+    if (route.children) {
       tmpRoute.children = filterAsyncRoutes(route.children, roles);
     }
     asyncRoutes.push(tmpRoute);

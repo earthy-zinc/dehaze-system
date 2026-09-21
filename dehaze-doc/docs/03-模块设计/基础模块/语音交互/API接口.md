@@ -5,7 +5,9 @@
 本文档定义 **语音交互** 模块的 HTTP API 和 WebSocket 规范。
 
 - **基础路径**：`/api/v1/voice`
-- **流式协议**：WebSocket（ASR 实时语音识别，端点 `ws://{host}/ws/asr`）+ HTTP 流式响应（TTS 语音合成）
+- **流式协议**：WebSocket（ASR 实时语音识别，端点 `ws(s)://{客户端可达的 host}/ws/asr`）+ HTTP 流式响应（TTS 语音合成）
+- **WebSocket 建连鉴权**：`/api/v1/voice/asr/stream-session` 返回的 `wsUrl` 为**相对路径**（`/ws/asr?sessionId=...&sid=...`，内嵌当前登录会话凭证——浏览器 WS 握手无法携带自定义 Header；服务端建连时校验 `sid` 对应登录会话有效且与 ASR 会话归属一致，失败以 4001 关闭）
+- **wsUrl 相对路径解析**（后端不拼绝对地址——外部可见 origin 只有客户端与最外层代理知道，后端在反代后拼绝对地址必然出错）：浏览器直接以相对路径建连（按页面 origin 解析，https 页面自动得到 `wss`，同源经反代/vite 代理转发 `/ws`）；非浏览器环境（Node 集成测试）由 SDK 按 axios baseURL 拼绝对地址（http→ws）
 
 ## 2. 接口清单
 
@@ -47,7 +49,7 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/voice/providers` | GET | 引擎分页列表（含健康状态看板） | `voice:engine:manage` | F-VS-005 |
-| `/api/v1/voice/providers` | POST | 新增引擎（provider_code 唯一，删除后不可复用） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/providers` | POST | 新增引擎（provider_code + engine_type 唯一，软删后可重建） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/providers/{id}` | PUT | 更新引擎（含 `is_default`/`status`） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/providers/{id}` | DELETE | 删除引擎（有启用模型引用时需先禁用，provider_code 保留） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/providers/enabled` | GET | 指定能力维度启用引擎列表（`engine_type=asr\|tts`） | `voice:engine:manage` | F-VS-005 |
@@ -57,7 +59,7 @@
 | `/api/v1/voice/providers/{id}/keys/{keyId}` | PUT | 更新 API Key（禁用/权重/限额等） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/providers/{id}/keys/{keyId}` | DELETE | 删除 API Key（物理删除，状态控制） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/models` | GET | 模型/音色列表（按 `engine_type` 筛选） | `voice:engine:manage` | F-VS-005 |
-| `/api/v1/voice/models` | POST | 新增模型/音色（`model_id` 删除后不可复用） | `voice:engine:manage` | F-VS-005 |
+| `/api/v1/voice/models` | POST | 新增模型/音色（`model_id` + `provider_id` 唯一，软删后可重建） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/models/{modelId}` | PUT | 更新模型/音色（含 params） | `voice:engine:manage` | F-VS-005 |
 | `/api/v1/voice/models/{modelId}` | DELETE | 删除模型/音色（`model_id` 保留） | `voice:engine:manage` | F-VS-005 |
 
@@ -75,9 +77,9 @@
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
 | `A0230` | token 无效或已过期 | 未登录访问 |
-| `A0400` | 请求参数错误 | TTS 空/超长文本、不支持的音色、离线 ASR 非 WAV/PCM 格式或空文件、热词内容为空 |
-| `A0401` | 请求资源不存在 | ASR 会话不存在、热词不存在、缓存音频不存在或已过期 |
-| `A0301` | 权限不足 | 普通用户管理全局热词、访问他人 ASR 会话/热词 |
+| `A0400` | 请求参数错误 | TTS 空/超长文本、不支持的音色、离线 ASR 非 WAV/PCM 格式（含伪装音频文件、奇数字节裸流）或空文件、热词内容为空 |
+| `A0401` | 请求资源不存在 | ASR 会话不存在、热词不存在（含删除他人热词，防枚举按不存在处理）、缓存音频不存在或已过期 |
+| `A0301` | 权限不足 | 普通用户管理全局热词、访问他人 ASR 会话；WebSocket 建连凭证无效或会话归属不一致（以 4001 关闭） |
 | `A0500` | 业务异常 | ASR 并发会话超上限、热词数量超上限、本地 TTS 引擎失败、纯云端部署下默认引擎冲突（`is_default` 指向 `local` 而本地引擎不可用，抛错不降级） |
 | `A0682` | 配额不足或欠费熔断 | ASR/TTS 调用前 AI 积分余额/配额校验不通过 |
 | `C0001` | 第三方服务调用失败 | 云端 ASR/TTS 调用失败 |

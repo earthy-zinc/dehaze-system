@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import BigInteger, Integer, Text
+from sqlalchemy import BigInteger, Integer, String, Text
 from sqlalchemy.dialects.mysql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,8 +20,14 @@ class SysKnowledgeChunk(BaseModel):
     knowledge_base_id: Mapped[int] = mapped_column(
         BigInteger, index=True, nullable=False, comment="知识库ID(冗余，便于跨文档检索)"
     )
-    chunk_index: Mapped[int] = mapped_column(
-        Integer, nullable=False, comment="分块序号(从0开始)"
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False, comment="分块序号(从0开始)")
+    section_index: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="所属小节序号(文档内递增,0=无标题文档整篇)"
+    )
+    section_path: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment='小节标题路径(如 "4 核心设计 > 4.2 检索引擎",注入上下文作锚点)',
     )
     content: Mapped[str] = mapped_column(Text, nullable=False, comment="分块后的文本片段")
     token_count: Mapped[int] = mapped_column(

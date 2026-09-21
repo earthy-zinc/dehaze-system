@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +21,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -53,17 +56,16 @@ func initCaptchaBackend(t *testing.T) *miniredis.Miniredis {
 }
 
 // newRealCacheService 用真实 miniredis 缓存构造 AuthService，返回实例与底层 miniredis 供断言真实语义。
-// memberService 传 nil：当前 internal/service/mocks 未生成 IMemberService（属批次2职责），
-// Register 成功路径需调用 InitDefaultMember，故本文件仅覆盖不触发 memberService 的 Register 分支。
-func newRealCacheService(t *testing.T, userService *mocks.MockIUserService) (*AuthService, *miniredis.Miniredis) {
+func newRealCacheService(t *testing.T, userService *mocks.MockIUserService) (*AuthService, *miniredis.Miniredis, *mocks.MockIMemberService) {
 	t.Helper()
 	mr := initCaptchaBackend(t)
 	// 进程级 miniredis 实例在所有用例间共享，构造前清空避免跨用例状态污染
 	mr.FlushAll()
 	// 注入实例连同一 miniredis 实例，独立 client 不影响全局验证码 store
 	realCache := cacheredis.NewRedisCache(redisClient.NewClient(&redisClient.Options{Addr: mr.Addr(), DB: 0}))
-	svc := NewAuthService(realCache, userService, nil, nil).(*AuthService)
-	return svc, mr
+	mockMember := mocks.NewMockIMemberService(t)
+	svc := NewAuthService(realCache, userService, nil, mockMember).(*AuthService)
+	return svc, mr, mockMember
 }
 
 // setCaptcha 写入一个能通过校验的验证码（走全局 miniredis 验证码 store）。
@@ -77,7 +79,7 @@ func setCaptcha(t *testing.T, key, code string) {
 
 func TestLogin_Success_WritesSession(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, mr := newRealCacheService(t, mockUser)
+	svc, mr, mockMember := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.5"
@@ -89,6 +91,8 @@ func TestLogin_Success_WritesSession(t *testing.T) {
 	mockUser.EXPECT().Login(ctx, mock.MatchedBy(func(u *model.SysUser) bool {
 		return u.Username == "zhangsan" && u.Password == "Secret@123"
 	})).Return(user, nil).Once()
+	// 登录成功兜底会员档案（种子账号/后台建用户不走注册）
+	mockMember.EXPECT().EnsureMemberProfile(ctx, user.UserId).Return(nil).Once()
 
 	req := &bo.LoginRequest{
 		Username:    "zhangsan",
@@ -122,7 +126,7 @@ func TestLogin_Success_WritesSession(t *testing.T) {
 
 func TestLogin_PasswordWrong_WritesFailCount(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, mr := newRealCacheService(t, mockUser)
+	svc, mr, _ := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.9"
@@ -161,7 +165,7 @@ func TestLogin_PasswordWrong_WritesFailCount(t *testing.T) {
 
 func TestLogin_UserDisabled(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, mr := newRealCacheService(t, mockUser)
+	svc, mr, _ := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.11"
@@ -195,7 +199,7 @@ func TestLogin_UserDisabled(t *testing.T) {
 
 func TestLogin_CaptchaError(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, mr := newRealCacheService(t, mockUser)
+	svc, mr, _ := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.13"
@@ -222,7 +226,7 @@ func TestLogin_CaptchaError(t *testing.T) {
 
 func TestRegister_CaptchaError(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, _ := newRealCacheService(t, mockUser)
+	svc, _, _ := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.25"
@@ -245,7 +249,7 @@ func TestRegister_CaptchaError(t *testing.T) {
 
 func TestRegister_UserServiceError(t *testing.T) {
 	mockUser := mocks.NewMockIUserService(t)
-	svc, _ := newRealCacheService(t, mockUser)
+	svc, _, _ := newRealCacheService(t, mockUser)
 
 	ctx := context.Background()
 	clientIP := "10.0.0.23"
@@ -267,4 +271,103 @@ func TestRegister_UserServiceError(t *testing.T) {
 
 	assert.Nil(t, result)
 	assertBizError(t, err, common.USER_NOT_EXIST)
+}
+
+// enableMultiPoint 打开多点登录开关（用例结束自动还原）
+func enableMultiPoint(t *testing.T) {
+	t.Helper()
+	prev := config.Config.System.UseMultiPoint
+	config.Config.System.UseMultiPoint = true
+	t.Cleanup(func() { config.Config.System.UseMultiPoint = prev })
+}
+
+// seedIndexedSession 写入会话键并登记进设备索引（score 显式指定以固定登录先后）
+func seedIndexedSession(t *testing.T, sessionID string, userID int64, score float64) {
+	t.Helper()
+	client := cacheredis.GetClient()
+	payload, marshalErr := json.Marshal(middleware.SessionData{UserID: userID, Username: "u"})
+	assert.NoError(t, marshalErr)
+	assert.NoError(t, client.Set(context.Background(), common.SessionPrefix+sessionID, payload, middleware.SessionTTL).Err())
+	indexKey := common.SessionUserPrefix + strconv.FormatInt(userID, 10)
+	assert.NoError(t, client.ZAdd(context.Background(), indexKey, redisClient.Z{Score: score, Member: sessionID}).Err())
+}
+
+// 普通用户：登录按等级权益上限踢最早会话（F-AM-011 新语义，不区分设备类型）
+func TestLogin_UseMultiPoint_MemberLimitEvictsEarliest(t *testing.T) {
+	mockUser := mocks.NewMockIUserService(t)
+	svc, mr, mockMember := newRealCacheService(t, mockUser)
+
+	ctx := context.Background()
+	clientIP := "10.0.0.31"
+	captchaKey := "ck-mp-member"
+	setCaptcha(t, captchaKey, "4321")
+
+	user := newTestUser()
+	user.Roles = []string{"GUEST"} // 非管理员 → 走等级权益
+	mockUser.EXPECT().Login(ctx, mock.Anything).Return(user, nil).Once()
+	mockMember.EXPECT().EnsureMemberProfile(ctx, user.UserId).Return(nil).Once()
+	mockMember.EXPECT().GetMaxDevices(ctx, user.UserId).Return(2, nil).Once()
+
+	enableMultiPoint(t)
+
+	base := float64(time.Now().Unix() - 3600)
+	seedIndexedSession(t, "s-mp-oldest", user.UserId, base)
+	seedIndexedSession(t, "s-mp-newer", user.UserId, base+1)
+	indexKey := common.SessionUserPrefix + strconv.FormatInt(user.UserId, 10)
+
+	result, err := svc.Login(ctx, &bo.LoginRequest{
+		Username:    "zhangsan",
+		Password:    "Secret@123",
+		CaptchaKey:  captchaKey,
+		CaptchaCode: "4321",
+	}, clientIP, "")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	// 上限 2：第 3 台登录踢掉最早登录者，新会话保留
+	assert.Equal(t, int64(2), cacheredis.GetClient().ZCard(ctx, indexKey).Val())
+	_, getErr := mr.Get(common.SessionPrefix + "s-mp-oldest")
+	assert.Error(t, getErr, "被踢会话应已删除")
+	_, getErr = mr.Get(common.SessionPrefix + "s-mp-newer")
+	assert.NoError(t, getErr)
+	_, getErr = mr.Get(common.SessionPrefix + result.SessionID)
+	assert.NoError(t, getErr)
+}
+
+// 管理员：固定 10 台，完全不查等级权益（未预期 GetMaxDevices 调用会让 mock 直接失败）
+func TestLogin_UseMultiPoint_AdminFixedTen(t *testing.T) {
+	mockUser := mocks.NewMockIUserService(t)
+	svc, mr, mockMember := newRealCacheService(t, mockUser)
+
+	ctx := context.Background()
+	captchaKey := "ck-mp-admin"
+	setCaptcha(t, captchaKey, "1357")
+
+	user := newTestUser()
+	user.Roles = []string{"ADMIN"}
+	mockUser.EXPECT().Login(ctx, mock.Anything).Return(user, nil).Once()
+	mockMember.EXPECT().EnsureMemberProfile(ctx, user.UserId).Return(nil).Once()
+
+	enableMultiPoint(t)
+
+	base := float64(time.Now().Unix() - 3600)
+	for idx := 0; idx < 10; idx++ {
+		seedIndexedSession(t, "s-admin-"+strconv.Itoa(idx), user.UserId, base+float64(idx))
+	}
+	indexKey := common.SessionUserPrefix + strconv.FormatInt(user.UserId, 10)
+
+	result, err := svc.Login(ctx, &bo.LoginRequest{
+		Username:    "zhangsan",
+		Password:    "Secret@123",
+		CaptchaKey:  captchaKey,
+		CaptchaCode: "1357",
+	}, "10.0.0.32", "")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, int64(10), cacheredis.GetClient().ZCard(ctx, indexKey).Val())
+	_, getErr := mr.Get(common.SessionPrefix + "s-admin-0")
+	assert.Error(t, getErr)
+	_, getErr = mr.Get(common.SessionPrefix + "s-admin-1")
+	assert.NoError(t, getErr)
 }

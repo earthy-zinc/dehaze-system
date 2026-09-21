@@ -71,32 +71,46 @@ func (s *DictTypeService) GetFormData(ctx context.Context, id int64) (*bo.DictTy
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
 	}
 
+	status := dictType.Status
 	form := &bo.DictTypeFormBO{
-		ID:     &dictType.ID,
-		Name:   dictType.Name,
-		Code:   dictType.Code,
-		Status: dictType.Status,
-		Remark: dictType.Remark,
+		ID:       &dictType.ID,
+		Name:     dictType.Name,
+		Code:     dictType.Code,
+		Status:   &status,
+		Remark:   dictType.Remark,
+		IsPreset: &[]bool{systemPresetDictTypeCodes[dictType.Code]}[0],
 	}
 
 	return form, nil
 }
 
+// systemPresetDictTypeCodes 系统预置字典类型编码（T-DM-025：预置类型不可删除），与种子数据一致
+var systemPresetDictTypeCodes = map[string]bool{
+	"gender": true, "ai_guardrail_defaults": true, "ai_provider_health": true,
+	"ai_embedding": true, "member_growth_rules": true, "favorite_capacity": true,
+	"ai_eval": true,
+}
+
 // Create 创建字典类型
 func (s *DictTypeService) Create(ctx context.Context, form *bo.DictTypeFormBO) error {
-	// 校验编码是否存在（查全表含软删行）
+	// 编码唯一性仅覆盖活跃行（python 全局软删过滤，软删行不占编码）
 	exists, err := s.dictTypeRepo.ExistsByCode(ctx, form.Code)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查字典类型编码是否存在失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "字典类型编码已被历史记录占用")
+		return common.NewBizError(common.DATA_EXISTS, "字典类型编码已存在")
+	}
+
+	status := int8(1)
+	if form.Status != nil {
+		status = *form.Status
 	}
 
 	dictType := &model.SysDictType{
 		Name:   form.Name,
 		Code:   form.Code,
-		Status: form.Status,
+		Status: status,
 		Remark: form.Remark,
 	}
 
@@ -117,66 +131,25 @@ func (s *DictTypeService) Update(ctx context.Context, id int64, form *bo.DictTyp
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
 	}
 
-	// 校验编码是否存在（排除当前记录，查全表含软删行）
-	if oldDictType.Code != form.Code {
-		exists, err := s.dictTypeRepo.ExistsByCode(ctx, form.Code, id)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "检查字典类型编码是否存在失败", err)
-		}
-		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "字典类型编码已被历史记录占用")
-		}
+	// code 只读：禁止修改编码（T-DM-015 编码创建后不可变）
+	if form.Code != oldDictType.Code {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "字典类型编码不可修改")
 	}
 
-	oldCode := oldDictType.Code
-	needSyncCode := oldCode != form.Code
-
-	// 如果不需要同步更新字典数据，直接更新
-	if !needSyncCode {
-		oldDictType.Name = form.Name
-		oldDictType.Code = form.Code
-		oldDictType.Status = form.Status
-		oldDictType.Remark = form.Remark
-		oldDictType.UpdatedAt = time.Now()
-
-		if err := s.dictTypeRepo.Update(ctx, oldDictType); err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "更新字典类型失败", err)
-		}
-		return nil
+	oldDictType.Name = form.Name
+	// 时间截断到秒：列为 DATETIME（秒精度），直写带纳秒的 time.Now() 会被 MySQL 进位成下一刻
+	oldDictType.UpdatedAt = time.Now().Truncate(time.Second)
+	if form.Status != nil {
+		oldDictType.Status = *form.Status
 	}
+	oldDictType.Remark = form.Remark
 
-	// 使用事务处理更新操作（需要同时更新字典类型和字典数据的 type_code）
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 创建事务内的 Repository 实例
-		txDictTypeRepo := s.dictTypeRepo.WithDB(tx)
-		txDictRepo := s.dictRepo.WithDB(tx)
-
-		// 更新字典类型
-		oldDictType.Name = form.Name
-		oldDictType.Code = form.Code
-		oldDictType.Status = form.Status
-		oldDictType.Remark = form.Remark
-		oldDictType.UpdatedAt = time.Now()
-
-		if err := txDictTypeRepo.Update(ctx, oldDictType); err != nil {
-			return err
-		}
-
-		// 同步更新字典数据的类型编码
-		if err := txDictRepo.UpdateTypeCode(ctx, oldCode, form.Code); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
+	if err := s.dictTypeRepo.Update(ctx, oldDictType); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新字典类型失败", err)
 	}
 
-	// 清除缓存（新旧类型编码都需要清除）
-	s.clearOptionsCache(ctx, oldCode)
-	s.clearOptionsCache(ctx, form.Code)
+	// 清除缓存
+	s.clearOptionsCache(ctx, oldDictType.Code)
 
 	return nil
 }
@@ -196,6 +169,13 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64, force bool) e
 	// 校验字典类型是否存在（所有 ID 都不存在时返回错误）
 	if len(dictTypeCodes) == 0 {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
+	}
+
+	// T-DM-025：系统预置字典类型不可删除
+	for _, code := range dictTypeCodes {
+		if systemPresetDictTypeCodes[code] {
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "系统预置字典类型不可删除")
+		}
 	}
 
 	if len(dictTypeCodes) > 0 {

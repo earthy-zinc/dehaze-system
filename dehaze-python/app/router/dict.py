@@ -19,7 +19,11 @@ from app.models.schema.dict import (
     DictTypeFormVO,
     DictTypePageVO,
 )
-from app.service.dict_service import dict_service, dict_type_service
+from app.service.dict_service import (
+    SYSTEM_PRESET_DICT_TYPE_CODES,
+    dict_service,
+    dict_type_service,
+)
 
 router = APIRouter(
     prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)]
@@ -33,11 +37,14 @@ async def get_dict_type_page(
     pageNum: int = Query(default=1, ge=1),
     pageSize: int = Query(default=10, ge=1, le=100),
     keywords: str | None = Query(default=None, description="关键词(名称/编码)"),
+    status: int | None = Query(default=None, ge=0, le=1, description="状态(1-启用 0-禁用)"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
     """获取字典类型分页列表"""
-    items, total = await dict_type_service.get_dict_type_page(db, pageNum, pageSize, keywords)
+    items, total = await dict_type_service.get_dict_type_page(
+        db, pageNum, pageSize, keywords, status
+    )
 
     type_list = [
         {
@@ -46,6 +53,7 @@ async def get_dict_type_page(
             "code": item.code,
             "status": item.status,
             "remark": item.remark,
+            "isPreset": item.code in SYSTEM_PRESET_DICT_TYPE_CODES,
             "createTime": item.create_time.strftime("%Y-%m-%d %H:%M:%S")
             if item.create_time
             else None,
@@ -78,9 +86,10 @@ async def get_dict_type_form(
 async def create_dict_type(
     body: DictTypeForm,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    await dict_type_service.create_dict_type(db, body.model_dump(exclude_none=True))
+    await dict_type_service.create_dict_type(db, redis, body.model_dump(exclude_none=True))
     return success(msg="新增成功")
 
 
@@ -125,13 +134,16 @@ async def get_dict_page(
     pageSize: int = Query(default=10, ge=1, le=100),
     keywords: str | None = Query(default=None, description="关键词"),
     typeCode: str | None = Query(default=None, description="字典类型编码"),
+    status: int | None = Query(default=None, ge=0, le=1, description="状态(1-启用 0-禁用)"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
     """获取字典分页列表"""
     if not typeCode:
         raise BusinessException(ResultCode.PARAM_IS_NULL, "字典类型编码不能为空")
-    items, total = await dict_service.get_dict_page(db, pageNum, pageSize, keywords, typeCode)
+    items, total = await dict_service.get_dict_page(
+        db, pageNum, pageSize, keywords, typeCode, status
+    )
 
     dict_list = [
         {

@@ -1,7 +1,7 @@
 import { PageQuery } from "@/types";
 
-/** MCP 传输协议：stdio-本地进程 / streamable-http-流式 HTTP / sse-传统 SSE */
-export type McpProtocolType = "stdio" | "streamable-http" | "sse";
+/** MCP 传输协议：仅 URL 型协议可注册（stdio 无网络端点，拉取/装载/探测均不支持，已退役） */
+export type McpProtocolType = "streamable-http" | "sse";
 
 /** Server 健康状态：online-在线 / offline-离线 */
 export type McpHealthStatus = "online" | "offline";
@@ -13,7 +13,7 @@ export interface McpServerForm {
   description?: string;
   /** 传输协议 */
   protocolType: McpProtocolType;
-  /** 端点 URL（stdio 可为空） */
+  /** 端点 URL */
   endpoint?: string;
   /** 鉴权方式（none/api_key/oauth2 等） */
   authType?: string;
@@ -24,13 +24,16 @@ export interface McpServerVO {
   id: number;
   name: string;
   description?: string;
-  protocolType: McpProtocolType;
+  /** 传输协议：stdio 为历史存量（服务端已不接受注册，仅作不受支持提示） */
+  protocolType: McpProtocolType | "stdio";
   endpoint?: string;
   authType?: string;
   /** 状态：1-启用，0-禁用 */
   status: 0 | 1;
   /** 健康状态 */
   health?: McpHealthStatus | null;
+  /** 最近一次健康探测时间（手动探测与后台巡检共用） */
+  lastCheckTime?: string | null;
   /** 工具数量 */
   toolCount?: number;
   /** 是否已配置凭据（凭据仅写入不回显） */
@@ -74,6 +77,8 @@ export interface McpCredentialForm {
   apiKey?: string;
   /** 其他凭据字段 */
   extra?: Record<string, string>;
+  /** 清除已配置凭据（轮换/吊销场景，与 apiKey/extra 互斥） */
+  clear?: boolean;
 }
 
 /** MCP 市场预设目录项 */
@@ -105,8 +110,6 @@ export interface McpCallVO {
 export interface McpCallQuery extends PageQuery {
   serverId?: number;
   toolName?: string;
-  startTime?: string;
-  endTime?: string;
 }
 
 /** 外部 MCP 工具试调用表单 */

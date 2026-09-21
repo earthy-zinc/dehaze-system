@@ -33,6 +33,9 @@ public class BenefitVO {
     @Schema(description = "批量处理上限（张）")
     private Integer batchLimit;
 
+    @Schema(description = "同时在线设备数上限")
+    private Integer maxDevices;
+
     @Schema(description = "处理优先级(1:普通;2:优先;3:高优先;4:最高)")
     private Integer priority;
 

@@ -29,7 +29,7 @@ public class AnnouncementController {
 
     @Operation(summary = "公告分页列表")
     @GetMapping("/page")
-    public PageResult<AnnouncementVO> getPage(@ParameterObject AnnouncementQuery query) {
+    public PageResult<AnnouncementVO> getPage(@Valid @ParameterObject AnnouncementQuery query) {
         Page<AnnouncementVO> page = announcementService.getPage(query);
         return PageResult.success(page);
     }

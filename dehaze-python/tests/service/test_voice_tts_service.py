@@ -17,19 +17,25 @@ import wave
 from types import SimpleNamespace
 
 import pytest
+from cryptography.exceptions import InvalidTag
 from fakeredis import FakeAsyncRedis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.exceptions import BusinessException
 from app.infrastructure.voice import piper_tts_engine
 from app.infrastructure.voice.piper_tts_engine import LocalTtsError
+from app.infrastructure.voice.provider.registry import VoiceEngineRegistry
 from app.service.voice import tts_service as m
 from app.service.voice.tts_service import (
-    tts_service,
     _cache_key,
     decrypt_audio,
     encrypt_audio,
+    tts_service,
 )
+
+# 直连测试的 db 替身：合成链路中 db 仅透传给被替换的 file/billing 桩，不真正落库
+_DB = AsyncSession()
 
 # 注册表化后引擎依赖注入的音色注册表；测试初始化内置默认音色（与 voice_engine_seeder 一致）
 piper_tts_engine.configure_voices(
@@ -62,8 +68,8 @@ class FakeTtsProvider:
         return {}
 
 
-class FakeEngineRegistry:
-    """注册表桩：get_tts_provider 返回预设的 Provider。"""
+class FakeEngineRegistry(VoiceEngineRegistry):
+    """测试替身：仅覆写 get_tts_provider（返回预设 Provider）。"""
 
     def __init__(self, provider):
         self._provider = provider
@@ -74,9 +80,7 @@ class FakeEngineRegistry:
 
 def _make_svc(provider=None):
     """构造注入 fake Provider 的 TtsService（file_service/voice_billing_service 走模块单例）。"""
-    return tts_service.__class__(
-        engine_registry=FakeEngineRegistry(provider or FakeTtsProvider())
-    )
+    return tts_service.__class__(engine_registry=FakeEngineRegistry(provider or FakeTtsProvider()))
 
 
 # 对抗性脏语料：全角/半角标点混杂、emoji、零宽字符、CRLF、连续空行
@@ -104,7 +108,7 @@ def test_cache_key_deterministic_and_distinct():
 
 def test_cache_key_adversarial_inputs_stable():
     """对抗性输入下 Key 仍为稳定哈希（同输入同 Key，不同输入不同 Key）"""
-    corpus = _DIRTY_CORPUS + ["", " ", " ​"]
+    corpus = [*_DIRTY_CORPUS, "", " ", " \u200b"]
     keys = [_cache_key(t, "huayan", 1.0) for t in corpus]
     assert all(len(k) == 64 for k in keys)
     assert len(set(keys)) == len(keys)
@@ -125,13 +129,13 @@ def test_encrypt_decrypt_roundtrip():
 def test_decrypt_tampered_ciphertext_fails():
     blob = bytearray(encrypt_audio(b"secret audio"))
     blob[-1] ^= 0xFF  # 篡改 GCM tag 附近字节
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         decrypt_audio(bytes(blob))
 
 
 def test_decrypt_garbage_fails():
     rng = random.Random(7)
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         decrypt_audio(bytes(rng.randrange(256) for _ in range(64)))
 
 
@@ -173,7 +177,9 @@ def test_validate_params_accepts_catalog_voices():
 @pytest.fixture(scope="module")
 def synthesized_default() -> bytes:
     """模块级一次性合成（模型懒加载仅一次），供多条断言复用"""
-    return piper_tts_engine.synthesize("图像去雾处理完成，请查看结果。", "huayan", 1.0, "wav", 16000)
+    return piper_tts_engine.synthesize(
+        "图像去雾处理完成，请查看结果。", "huayan", 1.0, "wav", 16000
+    )
 
 
 class TestEngineSynthesis:
@@ -185,9 +191,7 @@ class TestEngineSynthesis:
             assert w.getsampwidth() == 2
             assert w.getnframes() > 0
 
-    @pytest.mark.parametrize(
-        "sample_rate", [8000, 16000, 24000, 48000], ids=lambda r: f"{r}Hz"
-    )
+    @pytest.mark.parametrize("sample_rate", [8000, 16000, 24000, 48000], ids=lambda r: f"{r}Hz")
     def test_resample_to_all_sample_rates(self, sample_rate: int):
         wav = piper_tts_engine.synthesize("采样率测试", "huayan", 1.0, "wav", sample_rate)
         with wave.open(io.BytesIO(wav)) as w:
@@ -202,7 +206,8 @@ class TestEngineSynthesis:
 
     def test_mp3_format_is_mpeg_stream(self):
         mp3 = piper_tts_engine.synthesize("编码测试", "huayan", 1.0, "mp3", 16000)
-        assert mp3[0] == 0xFF and mp3[1] & 0xE0 == 0xE0  # MPEG 帧同步字
+        assert mp3[0] == 0xFF
+        assert mp3[1] & 0xE0 == 0xE0
         assert len(mp3) > 1000
 
     @pytest.mark.parametrize("text", _DIRTY_CORPUS, ids=lambda t: repr(t[:12]))
@@ -276,24 +281,18 @@ async def test_synthesize_caches_second_call(redis: FakeAsyncRedis, monkeypatch)
     _install_service_stubs(monkeypatch, calls)
     svc = _make_svc()
 
-    first = await svc.synthesize(
-        None, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000
-    )
+    first = await svc.synthesize(_DB, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000)
     assert first["audioUrl"].startswith("/api/v1/voice/tts/audio/")
     assert first["format"] == "wav"
     assert calls == ["check", "store", "charge"]
 
     calls.clear()
-    second = await svc.synthesize(
-        None, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000
-    )
+    second = await svc.synthesize(_DB, redis, 1, "缓存命中测试", "huayan", 1.0, "wav", 16000)
     assert second["audioUrl"] == first["audioUrl"]  # 命中缓存
     assert calls == []  # 不再合成、不重复扣费
 
     # 语速不同 → 缓存 Key 不同 → 重新合成
-    third = await svc.synthesize(
-        None, redis, 1, "缓存命中测试", "huayan", 0.8, "wav", 16000
-    )
+    third = await svc.synthesize(_DB, redis, 1, "缓存命中测试", "huayan", 0.8, "wav", 16000)
     assert third["audioUrl"] != first["audioUrl"]
     assert calls == ["check", "store", "charge"]
 
@@ -303,7 +302,7 @@ async def test_synthesize_default_voice_applied(redis: FakeAsyncRedis, monkeypat
     _install_service_stubs(monkeypatch, calls)
     svc = _make_svc()
     # voice=None → 使用默认音色配置
-    result = await svc.synthesize(None, redis, 1, "默认音色", None, 1.0, "mp3", 16000)
+    result = await svc.synthesize(_DB, redis, 1, "默认音色", None, 1.0, "mp3", 16000)
     assert result["format"] == "mp3"
 
 
@@ -313,11 +312,11 @@ async def test_synthesize_engine_error_wrapped(redis: FakeAsyncRedis, monkeypatc
     # Provider 合成抛错 → 服务层包装为业务异常，不存储不扣费
     svc = _make_svc(provider=FakeTtsProvider(error=LocalTtsError("引擎故障模拟")))
     with pytest.raises(BusinessException):
-        await svc.synthesize(None, redis, 1, "触发故障", "huayan", 1.0, "wav", 16000)
+        await svc.synthesize(_DB, redis, 1, "触发故障", "huayan", 1.0, "wav", 16000)
     assert calls == ["check"]  # 失败不存储不扣费
 
 
 async def test_synthesize_rejects_unknown_voice_without_synth(redis: FakeAsyncRedis):
     svc = _make_svc()
     with pytest.raises(BusinessException):
-        await svc.synthesize(None, redis, 1, "文本", "aixia", 1.0, "wav", 16000)
+        await svc.synthesize(_DB, redis, 1, "文本", "aixia", 1.0, "wav", 16000)

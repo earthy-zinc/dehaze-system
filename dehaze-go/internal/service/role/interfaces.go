@@ -38,8 +38,8 @@ type IRoleService interface {
 	// GetMenuIDs 获取角色菜单 ID 集合
 	GetMenuIDs(ctx context.Context, roleID int64) ([]int64, error)
 
-	// AssignMenus 分配菜单权限
-	AssignMenus(ctx context.Context, roleID int64, menuIDs []int64) error
+	// AssignMenus 分配菜单权限（operatorPerms 为操作者权限标识集合，operatorIsRoot 标识超级管理员）
+	AssignMenus(ctx context.Context, roleID int64, menuIDs []int64, operatorPerms []string, operatorIsRoot bool) error
 
 	// GetMaximumDataScope 获取最大范围的数据权限
 	GetMaximumDataScope(ctx context.Context, roles []string) (dataScope *int8, err error)

@@ -401,6 +401,16 @@ describe("会员管理模块接口测试", () => {
       expect(levelCodes).toContain("level_1");
       expect(levelCodes).toContain("level_2");
       expect(levelCodes).toContain("level_3");
+
+      // 同时在线设备数上限随等级递增（种子梯度 1/3/5/10）
+      const maxDevicesByLevel = Object.fromEntries(
+        benefits.map((b) => [b.levelCode, b.maxDevices])
+      );
+      expect(maxDevicesByLevel.level_0).toBe(1);
+      expect(maxDevicesByLevel.level_1).toBe(3);
+      expect(maxDevicesByLevel.level_2).toBe(5);
+      expect(maxDevicesByLevel.level_3).toBe(10);
+      expect(levelCodes).toContain("level_3");
     });
   });
 
@@ -639,24 +649,46 @@ describe("会员管理模块接口测试", () => {
 
 /**
  * 会员权益概览与试用引导（会员管理 API接口.md /api/v1/members/benefit-summary、trial-status）。
- *
- * 后端尚未实现 benefit-summary / trial-status 路由：测试先行契约，
- * 接口 404 时正向用例失败暴露，待后端实现后统一验证。
+ * 后端已实现两条路由，此处验证契约结构与聚合口径。
  */
-describe("会员权益概览与试用引导（契约先行）", () => {
-  test("正向：权益概览 benefit-summary（含 AI 类目）", async () => {
+describe("会员权益概览与试用引导", () => {
+  test("正向：权益概览 benefit-summary（图像最低剩余/AI 类目口径）", async () => {
     await login(USERS.USER.username);
     const summary = await MemberAPI.getBenefitSummary();
-    expect(typeof summary.imageCategory.remaining).toBe("number");
+    // 图像处理类目：7 类任务明细，聚合 remaining 为各任务最低剩余
+    expect(summary.imageCategory.details).toHaveLength(7);
+    const minRemaining = Math.min(...summary.imageCategory.details!.map((d) => d.remaining));
+    expect(summary.imageCategory.remaining).toBe(minRemaining);
+    for (const d of summary.imageCategory.details!) {
+      expect(d.used).toBeLessThanOrEqual(d.quota);
+    }
     expect(typeof summary.evaluateCategory.remaining).toBe("number");
+    // AI 类目：余额/今日已用/日/月限额字段齐全
     expect(typeof summary.aiCategory.creditsBalance).toBe("number");
-    expect(typeof summary.aiCategory.dailyLimit).toBe("number");
+    expect(typeof summary.aiCategory.todayUsed).toBe("number");
+    expect(summary.aiCategory.dailyLimit).toBeGreaterThan(0);
+    expect(summary.aiCategory.monthlyLimit).toBeGreaterThanOrEqual(summary.aiCategory.dailyLimit);
   });
 
-  test("正向：试用引导状态 trial-status", async () => {
+  test("正向：试用引导状态 trial-status（结构与派生不变量）", async () => {
     await login(USERS.USER.username);
     const status = await MemberAPI.getTrialStatus();
     expect(typeof status.showTrialEntry).toBe("boolean");
     expect(typeof status.newUserExclusiveAvailable).toBe("boolean");
+    expect(status.trialDays).toBeGreaterThan(0);
+    expect(status.trialCredits).toBeGreaterThan(0);
+    // 派生不变量：已激活体验券必须携带到期时间；试用入口与三载体状态自洽
+    // （开发库 USER 可能已有激活体验券/付费订单，故断言不变量而非固定值）
+    if (status.voucherActivated) {
+      expect(status.voucherExpireTime).toBeTruthy();
+      expect(status.voucherExpireTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    } else {
+      expect(status.voucherExpireTime).toBeNull();
+    }
+    expect(status.showTrialEntry).toBe(
+      !status.voucherActivated ||
+        status.aiTrialCreditsBalance > 0 ||
+        status.newUserExclusiveAvailable
+    );
   });
 });

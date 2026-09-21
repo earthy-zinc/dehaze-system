@@ -1,8 +1,20 @@
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.models.entity.sys_ai_agent_version import SysAiAgentVersion
 from app.repository.base import BaseRepository
+
+# 版本列表不加载 snapshot（快照为完整配置 JSON，列表接口逐行反序列化代价高）
+_LIST_COLUMNS = (
+    SysAiAgentVersion.id,
+    SysAiAgentVersion.agent_id,
+    SysAiAgentVersion.version_no,
+    SysAiAgentVersion.status,
+    SysAiAgentVersion.change_note,
+    SysAiAgentVersion.operator_id,
+    SysAiAgentVersion.create_time,
+)
 
 
 class AiAgentVersionRepository(BaseRepository[SysAiAgentVersion]):
@@ -18,6 +30,16 @@ class AiAgentVersionRepository(BaseRepository[SysAiAgentVersion]):
         )
         result = await db.execute(stmt)
         return result.scalars().first()
+
+    async def get_latest_draft(self, db: AsyncSession, agent_id: int) -> SysAiAgentVersion | None:
+        """查询最新草稿版本（评测门禁对象：即将生效的草稿配置，见评测后端实现 §1.1）。"""
+        stmt = (
+            select(SysAiAgentVersion)
+            .where(SysAiAgentVersion.agent_id == agent_id, SysAiAgentVersion.status == 1)
+            .order_by(SysAiAgentVersion.version_no.desc())
+            .limit(1)
+        )
+        return (await db.execute(stmt)).scalars().first()
 
     async def get_by_agent_and_version(
         self, db: AsyncSession, agent_id: int, version_no: int
@@ -47,14 +69,29 @@ class AiAgentVersionRepository(BaseRepository[SysAiAgentVersion]):
             .values(status=0)
         )
 
-    async def list_versions(self, db: AsyncSession, agent_id: int) -> list[SysAiAgentVersion]:
+    async def list_versions(
+        self, db: AsyncSession, agent_id: int, offset: int, limit: int
+    ) -> tuple[list[SysAiAgentVersion], int]:
+        """分页查询版本历史，返回 (当前页, 总数)。
+
+        分页下推到 SQL：版本行随发布持续增长，全量加载后在内存切片会把整个版本历史的
+        快照 JSON 都读进内存。
+        """
+        where = SysAiAgentVersion.agent_id == agent_id
+        total = (
+            await db.execute(select(func.count(SysAiAgentVersion.id)).where(where))
+        ).scalar() or 0
+        if not total:
+            return [], 0
         stmt = (
             select(SysAiAgentVersion)
-            .where(SysAiAgentVersion.agent_id == agent_id)
+            .where(where)
+            .options(load_only(*_LIST_COLUMNS))
             .order_by(SysAiAgentVersion.version_no.desc())
+            .offset(offset)
+            .limit(limit)
         )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
+        return list((await db.execute(stmt)).scalars().all()), int(total)
 
     async def get_published_snapshot(
         self, db: AsyncSession, agent_id: int, version_no: int | None = None

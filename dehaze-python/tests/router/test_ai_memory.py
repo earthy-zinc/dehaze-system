@@ -2,12 +2,11 @@
 
 覆盖重点：路由注册、参数校验（A0400）、confirm 二次确认（A0400）、camelCase 序列化、导出流式。
 """
+
 from datetime import datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -18,6 +17,9 @@ from app.models.schema.ai_memory import MemoryResult
 from app.models.schema.common import PageResult
 from app.repository.ai_memory_repository import ai_memory_repository
 from app.service.ai_memory_service import ai_memory_service
+from tests.stubs.fakes import StubAsyncSession
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -47,7 +49,8 @@ def _memory(**overrides) -> MemoryResult:
 @pytest.fixture
 async def memory_client():
     async def _override_db():
-        return object()
+        # 走真实 service 的用例（清空需登记提交后审计回调）依赖 session.info
+        return StubAsyncSession()
 
     current_user = {"user": _FakeUser(id=8)}
 
@@ -75,6 +78,7 @@ def test_memory_paths_registered(app):
         "/api/v1/ai/memories/restore",
         "/api/v1/ai/memories/export",
         "/api/v1/ai/memories/{memory_id}",
+        "/api/v1/ai/memories/{memory_id}/unarchive",
     ):
         assert path in schema["paths"], f"缺少路径 {path}"
 
@@ -224,6 +228,58 @@ class TestCreateUpdateDelete:
         assert captured == {"memory_id": 20, "user_id": 8}
 
 
+class TestUnarchive:
+    """取消归档是独立端点：通用 PUT 不提供 archived 写入口（归档为系统遗忘策略行为）。"""
+
+    async def test_unarchive_forwards_ids(self, memory_client, monkeypatch):
+        client, _ = memory_client
+        captured: dict = {}
+
+        async def _fake_unarchive(db, memory_id, user_id):
+            captured.update(memory_id=memory_id, user_id=user_id)
+            return _memory(id=memory_id, archived=0)
+
+        monkeypatch.setattr(ai_memory_service, "unarchive_memory", _fake_unarchive)
+        resp = await client.post("/api/v1/ai/memories/20/unarchive")
+        assert resp.status_code == 200
+        assert captured == {"memory_id": 20, "user_id": 8}
+        assert resp.json()["data"]["archived"] == 0
+
+    async def test_update_rejects_archived_field(self, memory_client, monkeypatch):
+        client, _ = memory_client
+        captured: dict = {}
+
+        async def _fake_update(db, memory_id, user_id, form):
+            captured["form"] = form
+
+        monkeypatch.setattr(ai_memory_service, "update_memory", _fake_update)
+        resp = await client.put("/api/v1/ai/memories/20", json={"archived": 0})
+        assert resp.status_code == 200
+        assert not hasattr(captured["form"], "archived")
+
+    async def test_unarchive_not_archived_maps_a0502(self, memory_client, monkeypatch):
+        client, _ = memory_client
+
+        async def _fake_unarchive(db, memory_id, user_id):
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该记忆未处于归档状态")
+
+        monkeypatch.setattr(ai_memory_service, "unarchive_memory", _fake_unarchive)
+        resp = await client.post("/api/v1/ai/memories/20/unarchive")
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0502"
+
+    async def test_unarchive_foreign_memory_maps_a0401(self, memory_client, monkeypatch):
+        client, _ = memory_client
+
+        async def _fake_unarchive(db, memory_id, user_id):
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "记忆不存在")
+
+        monkeypatch.setattr(ai_memory_service, "unarchive_memory", _fake_unarchive)
+        resp = await client.post("/api/v1/ai/memories/999/unarchive")
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0401"
+
+
 class TestSearch:
     async def test_search_forwards_keyword_and_limit(self, memory_client, monkeypatch):
         client, _ = memory_client
@@ -246,6 +302,39 @@ class TestSearch:
         resp = await client.get("/api/v1/ai/memories/search")
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
+
+    @pytest.mark.parametrize("limit", [-1, 0])
+    async def test_search_rejects_non_positive_limit(self, memory_client, monkeypatch, limit):
+        """负值/0 统一 400+A0400：GORM 会把负 Limit 当作取全量、SQLAlchemy 直接报错，必须前置拒绝"""
+        client, _ = memory_client
+        called: list = []
+
+        async def _fake_search(db, user_id, keyword, limit=5):
+            called.append(limit)
+            return []
+
+        monkeypatch.setattr(ai_memory_service, "search_memories", _fake_search)
+        resp = await client.get(
+            "/api/v1/ai/memories/search", params={"keyword": "简洁", "limit": limit}
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0400"
+        assert called == []  # 校验早于 service/DB，不得穿透
+
+    async def test_search_accepts_lower_bound_limit(self, memory_client, monkeypatch):
+        client, _ = memory_client
+
+        async def _fake_search(db, user_id, keyword, limit=5):
+            return [_memory()]
+
+        monkeypatch.setattr(ai_memory_service, "search_memories", _fake_search)
+        resp = await client.get(
+            "/api/v1/ai/memories/search", params={"keyword": "简洁", "limit": 1}
+        )
+
+        assert resp.status_code == 200
+        assert resp.json()["code"] == "00000"
 
 
 class TestClearAndRestore:
@@ -287,9 +376,7 @@ class TestClearAndRestore:
         async def _fake_list_deleted(db, user_id, memory_type, start, end):
             raise AssertionError("未二次确认不应查询可恢复记忆")
 
-        monkeypatch.setattr(
-            ai_memory_repository, "list_deleted_for_restore", _fake_list_deleted
-        )
+        monkeypatch.setattr(ai_memory_repository, "list_deleted_for_restore", _fake_list_deleted)
         resp = await client.post("/api/v1/ai/memories/restore")
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
@@ -297,7 +384,7 @@ class TestClearAndRestore:
     async def test_restore_with_confirm_returns_count(self, memory_client, monkeypatch):
         client, _ = memory_client
         captured: dict = {}
-        now = datetime(2026, 8, 29, 10, 0, 0)
+        datetime(2026, 8, 29, 10, 0, 0)
 
         async def _fake_list_deleted(db, user_id, memory_type, start, end):
             captured.update(start=start, end=end)
@@ -307,9 +394,7 @@ class TestClearAndRestore:
             captured["ids"] = ids
             return len(ids)
 
-        monkeypatch.setattr(
-            ai_memory_repository, "list_deleted_for_restore", _fake_list_deleted
-        )
+        monkeypatch.setattr(ai_memory_repository, "list_deleted_for_restore", _fake_list_deleted)
         monkeypatch.setattr(ai_memory_repository, "restore_deleted", _fake_restore)
         resp = await client.post(
             "/api/v1/ai/memories/restore",

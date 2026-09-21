@@ -5,11 +5,9 @@
 对齐《API接口.md》§2.1/2.2/2.3，权限标识 kb:manage / kb:document:manage。
 """
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Path, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Path, Query, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi import HTTPException, status
 
 from app.core.code import ResultCode
 from app.core.result import success
@@ -53,6 +51,7 @@ def _filters_to_dict(f) -> dict | None:
         "entities": f.entities,
         "relations": f.relations,
     }
+
 
 router = APIRouter(
     prefix="/api/v1/kb",
@@ -356,7 +355,7 @@ async def preview_chunks(
     user: UserContext = Depends(get_current_user),
 ):
     result = await document_service.preview_chunks(
-        body.fileId, body.chunking_strategy, body.chunk_size, body.chunk_overlap
+        body.fileId, body.chunking_strategy, body.chunk_size, body.chunk_overlap, user
     )
     return success(result)
 
@@ -431,9 +430,7 @@ async def create_test_set(
     user: UserContext = Depends(get_current_user),
 ):
     """创建召回测试集（问题 + 期望命中段落，作为评估基线）。"""
-    vo = await test_set_service.create_test_set(
-        db, kb_id, body.question, body.expected_chunk_ids
-    )
+    vo = await test_set_service.create_test_set(db, kb_id, body.question, body.expected_chunk_ids)
     return success(vo)
 
 
@@ -463,9 +460,7 @@ async def run_test_set(
 ):
     """执行召回测试集，返回 Recall@K 与命中率。"""
     top_k = body.topK if body else 5
-    vo = await test_set_service.run_test_set(
-        db, redis, user.id, kb_id, test_set_id, top_k
-    )
+    vo = await test_set_service.run_test_set(db, redis, user.id, kb_id, test_set_id, top_k)
     return success(vo)
 
 

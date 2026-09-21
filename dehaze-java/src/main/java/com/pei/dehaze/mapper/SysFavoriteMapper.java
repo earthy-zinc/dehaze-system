@@ -39,7 +39,7 @@ public interface SysFavoriteMapper extends BaseMapper<SysFavorite> {
             "</if> " +
             "ORDER BY " +
             "<choose>" +
-            "  <when test='sortBy == \"createTime\" and sortOrder == \"asc\"'>f.create_time ASC</when>" +
+            "  <when test='sortOrder == \"asc\"'>f.create_time ASC</when>" +
             "  <otherwise>f.create_time DESC</otherwise>" +
             "</choose>" +
             "</script>")
@@ -51,12 +51,12 @@ public interface SysFavoriteMapper extends BaseMapper<SysFavorite> {
                                         @Param("sortOrder") String sortOrder);
 
     /**
-     * upsert 收藏：user_id + target_type + target_id 唯一键冲突时复活软删行。
+     * upsert 收藏：唯一键含 deleted（软删行不占键位），冲突只可能命中活跃行；
      * UPDATE 分支通过 LAST_INSERT_ID(id) 拿回原行 id，MyBatis 回填到 entity.id。
      */
     @Insert("INSERT INTO sys_favorite (user_id, target_type, target_id, is_invalid, deleted, update_time) " +
             "VALUES (#{userId}, #{targetType}, #{targetId}, 0, 0, NOW()) " +
-            "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), deleted = 0, is_invalid = 0, update_time = NOW()")
+            "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), is_invalid = 0, update_time = NOW()")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int upsertByUserAndTarget(SysFavorite favorite);
 }

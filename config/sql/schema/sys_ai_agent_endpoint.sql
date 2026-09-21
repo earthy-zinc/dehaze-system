@@ -8,7 +8,7 @@
 -- auth_type 遵循 A2A Agent Card securitySchemes 声明的方案（OpenAPI 3.2 五种类型）：
 --   apiKey / http / oauth2 / openIdConnect / mutualTLS。
 -- 子 Agent 关联（sys_ai_agent_subagent.endpoint_id）指向本表，区分本地/远程子 Agent。
--- 配置类表，使用逻辑删除；唯一键 base_url 不含 deleted（类别①，upsert 复活）。
+-- 配置类表，使用逻辑删除；唯一键含 deleted，软删后可重建同 base_url。
 -- ------------------------------------------------------------
 DROP TABLE IF EXISTS `sys_ai_agent_endpoint`;
 CREATE TABLE `sys_ai_agent_endpoint`
@@ -21,13 +21,13 @@ CREATE TABLE `sys_ai_agent_endpoint`
     `credential`     varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '凭证密文(AES加密后base64编码,运行时解密按声明方案注入请求头)',
     `agent_card`     json                                                            NULL COMMENT '缓存的Agent Card JSON(注册时拉取,作为发现依据)',
     `status`         tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',
-    `deleted`        tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`        bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_by`      bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`      bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time`    datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_base_url` (`base_url`) USING BTREE
+    UNIQUE INDEX `uk_base_url` (`base_url`, `deleted`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci COMMENT = 'AI外部A2A端点注册表'

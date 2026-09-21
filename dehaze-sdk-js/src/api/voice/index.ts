@@ -1,4 +1,4 @@
-import request from "@/utils/request";
+import request, { service } from "@/utils/request";
 import { createWebSocket, type WSClient } from "@/utils/websocket";
 import { PageResult } from "@/types";
 import {
@@ -49,10 +49,26 @@ export interface AsrStreamSession {
 
 class VoiceAPI {
   /**
+   * 将后端返回的 WS 相对路径（`/ws/asr?...`）解析为可连接地址。
+   *
+   * 后端只返回相对路径（外部可见 origin 由客户端解析）：
+   * - baseURL 为空（浏览器同源部署）：保持相对路径，`new WebSocket` 按页面
+   *   origin 解析，https 页面自动得到 wss，经反代/vite 代理转发 `/ws` 即可
+   * - baseURL 非空（如 Node 集成测试直连后端）：基于 baseURL 拼绝对地址
+   *   （http→ws / https→wss）
+   */
+  private static resolveWsUrl(path: string): string {
+    if (/^wss?:\/\//.test(path)) return path;
+    const base = service.defaults.baseURL || "";
+    if (!base) return path;
+    return `${base.replace(/^http/, "ws").replace(/\/$/, "")}${path}`;
+  }
+
+  /**
    * 创建并启动流式 ASR 会话。
    *
    * 封装完整流程：
-   * 1. 调用 `createStreamAsrSession` 获取 WebSocket 地址
+   * 1. 调用 `createStreamAsrSession` 获取 WebSocket 地址（相对路径，见 resolveWsUrl）
    * 2. 建立 WebSocket 连接
    * 3. 返回会话句柄，调用方通过 `sendAudio` 推送 PCM 音频块，
    *    通过 `stop` 发送结束信号
@@ -68,7 +84,7 @@ class VoiceAPI {
     const session = await this.createStreamAsrSession(form);
 
     const ws = createWebSocket({
-      url: session.wsUrl,
+      url: this.resolveWsUrl(session.wsUrl),
       handlers: {
         onMessage: (data: string) => {
           try {

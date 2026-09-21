@@ -16,11 +16,13 @@ from app.models.schema.recommendation import (
     IdVO,
     ImageFeatureAnalysisVO,
     RecommendationReportVO,
+    RecommendationRuleForm,
     RecommendationRuleVO,
     RecommendedAlgorithmVO,
     TrendItem,
 )
-from app.repository.algorithm_repository import AlgorithmStatus, algorithm_repository
+from app.repository.algorithm_repository import algorithm_repository
+from app.repository.pred_eval_log_repository import pred_log_repository
 from app.repository.recommendation_repository import recommendation_repository
 from app.repository.recommendation_rule_repository import recommendation_rule_repository
 
@@ -59,11 +61,20 @@ def _resolve_and_validate_image_url(image_url: str | None, image_id: int | None)
     return image_url
 
 
+def _validate_rule_form(form: RecommendationRuleForm) -> None:
+    if form.sceneType not in VALID_SCENE_TYPES:
+        raise BusinessException(
+            ResultCode.PARAM_ERROR,
+            f"场景类型不合法，仅支持：{'/'.join(VALID_SCENE_TYPES)}",
+        )
+
+
 class RecommendationService:
     async def analyze(self, image_id: int | None, image_url: str | None) -> ImageFeatureAnalysisVO:
         url = _resolve_and_validate_image_url(image_url, image_id)
         md5_val = hashlib.md5(url.encode("utf-8")).hexdigest()
-        seed = abs(hash(md5_val))
+        # 以图像 MD5 为固定种子：同一 URL 的特征跨进程、跨重启保持稳定
+        seed = int(md5_val, 16)
 
         return ImageFeatureAnalysisVO(
             imageMd5=md5_val,
@@ -88,9 +99,8 @@ class RecommendationService:
         analysis_id: int | None,
         image_md5: str | None,
     ) -> list[RecommendedAlgorithmVO]:
-        # 全量取出（含软删）后过滤已发布
-        all_algorithms = await algorithm_repository.get_all(db, with_deleted=True)
-        published = [a for a in all_algorithms if a.status == AlgorithmStatus.PUBLISHED]
+        # 仅取已发布且未删除的算法作为推荐候选池
+        published = await algorithm_repository.list_published(db)
 
         rules = await recommendation_rule_repository.get_enabled_rules(db)
 
@@ -135,7 +145,8 @@ class RecommendationService:
                 )
             )
 
-        result.sort(key=lambda x: x.matchScore, reverse=True)
+        # 主排序 matchScore 降序，次排序 algorithmId 升序，保证跨端排序一致
+        result.sort(key=lambda x: (-x.matchScore, x.algorithmId))
         result = result[:TOP_N]
 
         # 无论有无结果，都写入 sys_recommendation 记录，确保 feedback 能找到记录
@@ -149,7 +160,7 @@ class RecommendationService:
         ]
         rec = SysRecommendation(
             user_id=user_id,
-            image_md5=image_md5 or "",
+            image_md5=image_md5,
             target_type="algorithm",
             top_algorithms=top_algorithms,
             feedback=0,
@@ -163,9 +174,12 @@ class RecommendationService:
 
         return result
 
-    async def submit_feedback(self, db: AsyncSession, recommendation_id: int, useful: bool) -> IdVO:
+    async def submit_feedback(
+        self, db: AsyncSession, user_id: int, recommendation_id: int, useful: bool
+    ) -> IdVO:
+        # 仅允许反馈本人产生的推荐记录；他人/不存在记录统一 404，不泄露存在性
         rec = await recommendation_repository.get_by_id(db, recommendation_id)
-        if not rec:
+        if not rec or rec.user_id != user_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
         rec.feedback = 1 if useful else 2
         await db.flush()
@@ -185,14 +199,31 @@ class RecommendationService:
             for r in rules
         ]
 
-    async def update_rule(self, db: AsyncSession, rule_id: int, form: dict) -> IdVO:
+    async def update_rule(
+        self, db: AsyncSession, rule_id: int, form: RecommendationRuleForm
+    ) -> IdVO:
+        _validate_rule_form(form)
+
+        if rule_id != 0:
+            existing = await recommendation_rule_repository.get_by_id(db, rule_id)
+            if not existing:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
+
+        rules = await recommendation_rule_repository.get_all_rules(db)
+        target = set(form.algorithmIds)
+        for r in rules:
+            if r.id == rule_id or not r.enabled:
+                continue
+            if r.scene_type == form.sceneType and set(r.algorithm_ids) == target:
+                raise BusinessException(ResultCode.DATA_EXISTS, "同场景下已存在相同算法组合的规则")
+
         if rule_id == 0:
             rule = SysRecommendationRule(
-                rule_name=form["ruleName"],
-                scene_type=form["sceneType"],
-                algorithm_ids=form["algorithmIds"],
-                weight=form["weight"],
-                enabled=1 if form.get("enabled", True) else 0,
+                rule_name=form.ruleName,
+                scene_type=form.sceneType,
+                algorithm_ids=form.algorithmIds,
+                weight=form.weight,
+                enabled=1 if form.enabled else 0,
             )
             db.add(rule)
             await db.flush()
@@ -203,11 +234,11 @@ class RecommendationService:
         if not rule:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
 
-        rule.rule_name = form["ruleName"]
-        rule.scene_type = form["sceneType"]
-        rule.algorithm_ids = form["algorithmIds"]
-        rule.weight = form["weight"]
-        rule.enabled = 1 if form.get("enabled", True) else 0
+        rule.rule_name = form.ruleName
+        rule.scene_type = form.sceneType
+        rule.algorithm_ids = form.algorithmIds
+        rule.weight = form.weight
+        rule.enabled = 1 if form.enabled else 0
         await db.flush()
         return IdVO(id=rule.id)
 
@@ -222,15 +253,19 @@ class RecommendationService:
         if start_date:
             try:
                 d = date.fromisoformat(start_date)
-                start = datetime(d.year, d.month, d.day, 0, 0, 0)
-            except ValueError:
-                pass
+            except ValueError as e:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd"
+                ) from e
+            start = datetime(d.year, d.month, d.day, 0, 0, 0)
         if end_date:
             try:
                 d = date.fromisoformat(end_date)
-                end = datetime(d.year, d.month, d.day, 23, 59, 59)
-            except ValueError:
-                pass
+            except ValueError as e:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd"
+                ) from e
+            end = datetime(d.year, d.month, d.day, 23, 59, 59)
 
         total = await recommendation_repository.count_total(db, start, end)
         useful_count = await recommendation_repository.count_useful(db, start, end)
@@ -238,19 +273,32 @@ class RecommendationService:
         adopted_distinct = await recommendation_repository.count_adopted_algorithm_distinct(
             db, start, end
         )
+        adopted_pred_count = await pred_log_repository.count_recommended(db, start, end)
 
-        all_algorithms = await algorithm_repository.get_all(db, with_deleted=True)
-        published_count = len([a for a in all_algorithms if a.status == AlgorithmStatus.PUBLISHED])
+        all_published = await algorithm_repository.list_published(db)
+        published_count = len(all_published)
 
-        adoption_rate = useful_count / feedback_total if feedback_total > 0 else 0.0
+        # 采纳率口径：带推荐来源（recommended_by）的预测记录数 / 推荐总数，
+        # 即用户从推荐入口真正发起去雾处理的比例
+        adoption_rate = adopted_pred_count / total if total > 0 else 0.0
+        # 满意度口径：有用反馈占比（有用即满意）
+        satisfaction_rate = useful_count / feedback_total if feedback_total > 0 else 0.0
 
-        daily_data = await recommendation_repository.select_daily_adoption_rate(db, start, end)
-        trend = [TrendItem(date=d["date"], adoptionRate=d["adoptionRate"]) for d in daily_data]
+        daily_totals = await recommendation_repository.select_daily_totals(db, start, end)
+        daily_adopted = await pred_log_repository.select_daily_recommended(db, start, end)
+        adopted_map = {d["date"]: d["count"] for d in daily_adopted}
+        trend = [
+            TrendItem(
+                date=d["date"],
+                adoptionRate=adopted_map.get(d["date"], 0) / d["total"] if d["total"] > 0 else 0.0,
+            )
+            for d in daily_totals
+        ]
 
         return RecommendationReportVO(
             totalRecommendations=total,
             adoptionRate=adoption_rate,
-            satisfactionRate=adoption_rate,
+            satisfactionRate=satisfaction_rate,
             coverageRate=adopted_distinct / published_count if published_count > 0 else 0.0,
             coldStartSuccessRate=0.0,
             trend=trend,

@@ -16,6 +16,8 @@ def generate_template_excel(handler: ImportHandler) -> bytes:
     headers, sample_rows = _build_template_data(handler)
     wb = Workbook()
     ws = wb.active
+    if ws is None:  # 新建 Workbook 恒有活动工作表；为 None 属异常态，显式报错
+        raise RuntimeError("新建工作簿缺少活动工作表")
     ws.title = "Sheet1"
     ws.append(headers)
     for row in sample_rows:

@@ -8,6 +8,7 @@ URL 不落库，永远运行时拼接（StorageService.get_url）。
 import asyncio
 import hashlib
 import logging
+import mimetypes
 import re
 from collections.abc import AsyncIterator
 from datetime import datetime
@@ -30,7 +31,37 @@ logger = logging.getLogger(__name__)
 # 文件名安全校验正则：禁止路径遍历、空字节、管道等特殊字符
 _UNSAFE_FILENAME_PATTERN = re.compile(r'[\\/:*?"<>|\x00-\x1f]|\.\./')
 
+# sys_file.name / object_name 列宽为 varchar(100)，超长文件名/扩展名会导致入库失败
+_MAX_FILENAME_LENGTH = 100
+_MAX_EXTENSION_LENGTH = 20
+
+# 图片扩展名 → 合法文件头魔数（仅图片类型做内容校验，完整 MIME 嗅探规划中）
+_JPEG_MAGIC = b"\xff\xd8\xff"
+_IMAGE_MAGIC: dict[str, tuple[bytes, ...]] = {
+    "jpg": (_JPEG_MAGIC,),
+    "jpeg": (_JPEG_MAGIC,),
+    "png": (b"\x89PNG\r\n\x1a\n",),
+    "gif": (b"GIF87a", b"GIF89a"),
+    "bmp": (b"BM",),
+}
+
 _DOWNLOAD_CHUNK_SIZE = 1024 * 1024
+
+
+def validate_image_magic_bytes(extension: str, content: bytes) -> None:
+    """图片类型扩展名需与文件头魔数一致，防止伪装扩展名上传恶意内容。
+
+    非图片类型不校验；内容为空或头部不匹配视为伪装，抛出 B0403。
+    """
+    if extension == "webp":
+        if not content.startswith(b"RIFF") or content[8:12] != b"WEBP":
+            raise BusinessException(ResultCode.FILE_TYPE_NOT_SUPPORTED, "文件内容与图片类型不符")
+        return
+    magics = _IMAGE_MAGIC.get(extension)
+    if magics is None:
+        return
+    if not any(content.startswith(magic) for magic in magics):
+        raise BusinessException(ResultCode.FILE_TYPE_NOT_SUPPORTED, "文件内容与图片类型不符")
 
 
 def generate_object_name(md5: str, extension: str) -> str:
@@ -62,13 +93,20 @@ def sanitize_filename(filename: str) -> str:
     if not filename:
         raise BusinessException(ResultCode.PARAM_ERROR, "文件名无效")
 
+    if len(filename) > _MAX_FILENAME_LENGTH:
+        raise BusinessException(ResultCode.PARAM_ERROR, "文件名过长")
+
+    if "." in filename and len(filename.rsplit(".", 1)[-1]) > _MAX_EXTENSION_LENGTH:
+        raise BusinessException(ResultCode.PARAM_ERROR, "文件扩展名过长")
+
     return filename
 
 
 class FileService:
     """文件服务类（异步版本）"""
 
-    async def upload_file(self, 
+    async def upload_file(
+        self,
         db: AsyncSession,
         filename: str,
         content: bytes,
@@ -99,6 +137,7 @@ class FileService:
             return existing_file
 
         file_extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
+        validate_image_magic_bytes(file_extension, content)
         object_name = generate_object_name(file_md5, file_extension)
 
         # 上传到默认存储后端（在线程池中执行，避免阻塞事件循环）
@@ -114,9 +153,7 @@ class FileService:
             await loop.run_in_executor(storage_executor, _sync_upload)
         except Exception as e:
             logger.error("文件上传到存储服务失败: %s", e, exc_info=True)
-            raise BusinessException(
-                ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {str(e)}"
-            ) from None
+            raise BusinessException(ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {e!s}") from None
 
         # 构造 SysFile 实体对象（URL 不落库，运行时拼接）
         new_file = SysFile(
@@ -130,7 +167,7 @@ class FileService:
         )
 
         # 主动 upsert：冲突时复活 deleted=0，返回已有或新记录
-        created_file = await file_repository.upsert_by_md5(
+        return await file_repository.upsert_by_md5(
             db,
             md5=new_file.md5,
             type=file_extension,
@@ -140,8 +177,6 @@ class FileService:
             size=new_file.size,
             size_bytes=file_size,
         )
-
-        return created_file
 
     async def delete_file_with_storage(self, db: AsyncSession, file_id: int) -> None:
         """
@@ -160,7 +195,7 @@ class FileService:
         file_info = await file_repository.get_by_id(db, file_id)
 
         if not file_info:
-            raise BusinessException("不存在当前文件")
+            raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在")
 
         object_name = file_info.object_name
 
@@ -230,11 +265,13 @@ class FileService:
         """
         return await file_repository.get_by_object_name(db, object_name)
 
-    async def get_file_page(self, 
+    async def get_file_page(
+        self,
         db: AsyncSession,
         page: int,
         size: int,
         keywords: str | None = None,
+        owner_id: int | None = None,
     ) -> tuple[list[SysFile], int]:
         """
         分页查询文件列表
@@ -244,14 +281,15 @@ class FileService:
             page: 页码（从 1 开始）
             size: 每页数量
             keywords: 搜索关键词（模糊匹配文件名）
+            owner_id: 归属过滤（普通用户仅见自己上传的文件，None=全量）
 
         Returns:
             (items, total) 元组
         """
-        return await file_repository.get_page(db, page, size, keywords)
+        return await file_repository.get_page(db, page, size, keywords, owner_id)
 
-    async def download_file_stream(self, 
-        object_name: str, storage: str = "minio"
+    async def download_file_stream(
+        self, object_name: str, storage: str = "minio"
     ) -> AsyncIterator[bytes]:
         """
         从指定存储后端流式下载文件（避免大文件 OOM）
@@ -271,7 +309,7 @@ class FileService:
 
         # nginx-static 后端是 HTTP GET 取流，可直接通过 requests 流式迭代；
         # minio/local 也是同步读取，统一通过生产者-消费者队列桥接到异步生成器
-        _SENTINEL = object()
+        _sentinel = object()
         queue: asyncio.Queue = asyncio.Queue(maxsize=8)
         loop = asyncio.get_running_loop()
 
@@ -284,14 +322,14 @@ class FileService:
             except Exception as exc:
                 asyncio.run_coroutine_threadsafe(queue.put(exc), loop).result()
             finally:
-                asyncio.run_coroutine_threadsafe(queue.put(_SENTINEL), loop).result()
+                asyncio.run_coroutine_threadsafe(queue.put(_sentinel), loop).result()
 
         loop.run_in_executor(storage_executor, _producer)
 
         try:
             while True:
                 item = await queue.get()
-                if item is _SENTINEL:
+                if item is _sentinel:
                     break
                 if isinstance(item, Exception):
                     logger.error("文件下载失败 [%s]: %s", object_name, item)
@@ -320,9 +358,10 @@ class FileService:
         content_disposition = (
             f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{encoded_filename}"
         )
+        media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
         return StreamingResponse(
             self.download_file_stream(object_name, storage=storage),
-            media_type="application/octet-stream",
+            media_type=media_type,
             headers={"Content-Disposition": content_disposition},
         )
 
@@ -345,10 +384,15 @@ class FileService:
         try:
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(storage_executor, _sync_stat)
-        except Exception:
+        except Exception as e:
+            # 契约是"取不到返回 None"（对象缺失已由各存储后端返回 None，不抛），
+            # 能进到这里的是后端异常/执行器故障等真实错误，必须留痕
+            logger.error("获取文件大小失败 [%s]: %s", object_name, e, exc_info=True)
             return None
 
-    async def ensure_bucket_exists(self, ) -> None:
+    async def ensure_bucket_exists(
+        self,
+    ) -> None:
         """启动时确保存储 Bucket 存在（仅 MinIO 模式）"""
         if settings.FILE_STORAGE_TYPE != "minio":
             logger.info("非 MinIO 模式，跳过 Bucket 检查")

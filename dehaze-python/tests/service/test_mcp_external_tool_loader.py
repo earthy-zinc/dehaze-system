@@ -17,6 +17,7 @@ from app.service.ai_mcp.mcp_external_tool_loader import (
 
 pytestmark = pytest.mark.requires_db
 
+
 # 测试环境 DNS 无法解析外部域名，SSRF 守卫会保守拒绝；默认 mock 放行，
 # SSRF 拦截语义由 test_mcp_connection 覆盖，本文件专注装载逻辑。
 @pytest.fixture(autouse=True)
@@ -24,9 +25,7 @@ def _allow_ssrf(monkeypatch):
     async def _allow(_server):
         return True, ""
 
-    monkeypatch.setattr(
-        "app.service.ai_mcp.mcp_external_tool_loader.apply_ssrf_guard", _allow
-    )
+    monkeypatch.setattr("app.service.ai_mcp.mcp_external_tool_loader.apply_ssrf_guard", _allow)
 
 
 _TOOLS = [
@@ -80,12 +79,34 @@ class TestArgsSchema:
         model = _build_args_schema(schema)
         assert model is not None
         fields = model.model_fields
-        assert "url" in fields and "limit" in fields
+        assert "url" in fields
+        assert "limit" in fields
         assert fields["url"].is_required() is True
         assert fields["limit"].is_required() is False
 
     def test_empty_properties_returns_none(self):
         assert _build_args_schema({"type": "object"}) is None
+
+
+class TestToolNameSanitize:
+    def test_illegal_chars_replaced_and_truncated(self):
+        sanitize = McpExternalToolLoader._sanitize_tool_name
+        assert sanitize("weird name.x") == "weird_name_x"
+        assert sanitize("run\u200btool") == "run_tool"  # 零宽字符
+        assert sanitize("tool\r\ninject") == "tool__inject"
+        assert sanitize("🚀tool") == "_tool"  # emoji
+        assert len(sanitize("x" * 100)) <= 64
+
+    async def test_build_tool_sanitizes_namespace_and_raw_name(self, db):
+        server = await _create_server(db)
+        loader = McpExternalToolLoader()
+        tool = loader._build_tool(
+            server,
+            "image space",
+            {"name": "dehaze.v2", "description": "", "input_schema": {}},
+            {},
+        )
+        assert tool.name == "image_space_dehaze_v2"
 
 
 class TestLoadTools:
@@ -139,9 +160,7 @@ class TestLoadTools:
         async def _deny(_server):
             return False, "MCP 端点不安全（仅允许 https 且禁止内网地址）"
 
-        monkeypatch.setattr(
-            "app.service.ai_mcp.mcp_external_tool_loader.apply_ssrf_guard", _deny
-        )
+        monkeypatch.setattr("app.service.ai_mcp.mcp_external_tool_loader.apply_ssrf_guard", _deny)
 
         tools = await loader.load_tools(db, ["image"], {})
         assert tools == []
@@ -166,9 +185,7 @@ class TestToolCall:
         )
         monkeypatch.setattr(loader, "_record_call", _fake_record)
 
-        tool = loader._build_tool(
-            server, "image", _TOOLS[0], {"user_id": 7}
-        )
+        tool = loader._build_tool(server, "image", _TOOLS[0], {"user_id": 7})
         out = await tool.ainvoke({"url": "https://x/a.png"})
 
         assert out == "result of dehaze: {'url': 'https://x/a.png'}"

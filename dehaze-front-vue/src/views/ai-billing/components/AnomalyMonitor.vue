@@ -1,4 +1,4 @@
-<!-- 异常监控：异常类型筛选 + 时间范围 + 分页表格 -->
+<!-- 异常监控：异常规则筛选 + 时间范围 + 分页表格 -->
 <template>
   <div>
     <div class="flex items-center gap-2 mb-2 flex-wrap">
@@ -9,9 +9,12 @@
         style="width: 180px"
         @change="handleQuery"
       >
-        <el-option label="异常计费" value="anomalous" />
-        <el-option label="人工调整" value="manual" />
-        <el-option label="自动补偿" value="auto_compensated" />
+        <el-option
+          v-for="option in ANOMALY_TYPE_OPTIONS"
+          :key="option.value"
+          :label="option.label"
+          :value="option.value"
+        />
       </el-select>
       <el-date-picker
         v-model="dateRange"
@@ -28,12 +31,8 @@
       :data="billingStore.anomalies"
       size="small"
     >
-      <el-table-column label="用户" min-width="120">
-        <template #default="{ row }">
-          {{ row.username ?? row.userId }}
-        </template>
-      </el-table-column>
-      <el-table-column label="异常类型" width="120" align="center">
+      <el-table-column label="用户ID" prop="userId" width="90" align="center" />
+      <el-table-column label="异常类型" width="130" align="center">
         <template #default="{ row }">
           <el-tag type="warning" size="small">{{
             anomalyTypeLabel(row.anomalyType)
@@ -41,21 +40,9 @@
         </template>
       </el-table-column>
       <el-table-column
-        label="理论成本（积分）"
-        prop="costCredits"
-        width="140"
-        align="center"
-      />
-      <el-table-column
-        label="实收积分"
-        prop="credits"
-        width="110"
-        align="center"
-      />
-      <el-table-column
-        label="原因"
-        prop="reason"
-        min-width="180"
+        label="详情"
+        prop="detail"
+        min-width="220"
         show-overflow-tooltip
       />
       <el-table-column label="状态" width="100" align="center">
@@ -65,7 +52,7 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="时间" prop="createTime" width="160" />
+      <el-table-column label="触发时间" prop="triggerAt" width="160" />
     </el-table>
 
     <pagination
@@ -87,21 +74,24 @@ const billingStore = useAdminBillingStore();
 
 const dateRange = ref<[string, string]>(["", ""]);
 
-const anomalyTypeMap: Record<string, string> = {
-  anomalous: "异常计费",
-  manual: "人工调整",
-  auto_compensated: "自动补偿",
-};
+const ANOMALY_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "single_high", label: "单次超高" },
+  { value: "burst", label: "突发峰值" },
+  { value: "consecutive_quota_fail", label: "连续配额不足" },
+  { value: "empty_high_output", label: "空回复高耗" },
+];
 
 function anomalyTypeLabel(type: string) {
-  return anomalyTypeMap[type] ?? type;
+  return (
+    ANOMALY_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type
+  );
 }
 
-function statusTag(status?: string) {
+function statusTag(status: number) {
   switch (status) {
-    case "compensated":
-      return { label: "已补偿", type: "success" as const };
-    case "ignored":
+    case 1:
+      return { label: "已处理", type: "success" as const };
+    case 2:
       return { label: "已忽略", type: "info" as const };
     default:
       return { label: "待处理", type: "warning" as const };

@@ -48,6 +48,7 @@ class RolePageVO(BaseModel):
     dataScope: int = Field(description="数据权限")
     dataScopeLabel: str | None = Field(default=None, description="数据权限标签")
     createTime: str | None = Field(default=None, description="创建时间")
+    updateTime: str | None = Field(default=None, description="更新时间")
 
 
 class RoleOptionVO(BaseModel):
@@ -68,3 +69,4 @@ class RoleFormVO(BaseModel):
     dataScope: int = Field(description="数据权限")
     dataScopeLabel: str | None = Field(default=None, description="数据权限标签")
     createTime: str | None = Field(default=None, description="创建时间")
+    updateTime: str | None = Field(default=None, description="更新时间")

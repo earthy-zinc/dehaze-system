@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.core.constants import TASK_CACHE_PREFIX
-
-pytestmark = pytest.mark.requires_db
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import TaskStatus
 from app.service.task.task_consumer import consume_dlq_message, consume_export_message
+
+pytestmark = pytest.mark.requires_db
 
 
 def _make_task(status: int) -> SysTask:
@@ -46,9 +46,7 @@ async def test_consume_export_skips_terminal_state(monkeypatch, db, mock_redis):
     task = _make_task(TaskStatus.COMPLETED.value)
     execute, push = _patch_consumption(monkeypatch, task)
 
-    await consume_export_message(
-        {"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {}
-    )
+    await consume_export_message({"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {})
 
     execute.assert_not_awaited()
     push.assert_not_awaited()
@@ -58,9 +56,7 @@ async def test_consume_export_executes_pending_task(monkeypatch, db, mock_redis)
     task = _make_task(TaskStatus.PENDING.value)
     execute, _ = _patch_consumption(monkeypatch, task)
 
-    await consume_export_message(
-        {"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {}
-    )
+    await consume_export_message({"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {})
 
     execute.assert_awaited_once_with(1, "t1", "user_export", "{}")
 
@@ -87,9 +83,7 @@ async def test_consume_dlq_skips_terminal_state(monkeypatch, db, mock_redis):
     task = _make_task(TaskStatus.COMPLETED.value)
     _, push = _patch_consumption(monkeypatch, task)
 
-    await consume_dlq_message(
-        {"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {}
-    )
+    await consume_dlq_message({"db_task_id": 1, "task_id": "t1", "task_type": "user_export"}, {})
 
     assert task.status == TaskStatus.COMPLETED.value
     push.assert_not_awaited()

@@ -13,5 +13,5 @@ type SysItemFile struct {
 	Height          *int    `gorm:"column:height;type:int;comment:图片高度" json:"height"`
 	Description     *string `gorm:"column:description;type:varchar(255);comment:描述" json:"description"`
 	UsageCount      int64   `gorm:"column:usage_count;type:bigint;default:0;comment:使用次数" json:"usageCount"`
-	Deleted         int8    `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
+	Deleted         int64   `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }

@@ -29,7 +29,7 @@ CREATE TABLE `sys_feedback`
     `assigned_time`  datetime                                                       NULL DEFAULT NULL COMMENT '分配时间',
     `tags`           json                                                           NULL DEFAULT NULL COMMENT '反馈标签（JSON数组，后台打标）',
     `close_reason`   varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '关闭原因',
-    `deleted`        tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`        bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`    datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`      bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',

@@ -115,12 +115,12 @@
             placeholder="请选择场景类型"
             style="width: 100%"
           >
-            <el-option label="城市" value="urban" />
-            <el-option label="风景" value="landscape" />
-            <el-option label="建筑" value="building" />
-            <el-option label="夜景" value="night" />
-            <el-option label="逆光" value="backlight" />
-            <el-option label="室内" value="indoor" />
+            <el-option
+              v-for="opt in sceneTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
           </el-select>
         </el-form-item>
 
@@ -210,16 +210,19 @@ const rules = {
   ],
 };
 
+const sceneTypeOptions: { label: string; value: string }[] = [
+  { label: "城市", value: "urban" },
+  { label: "风景", value: "landscape" },
+  { label: "建筑", value: "building" },
+  { label: "夜景", value: "night" },
+  { label: "逆光", value: "backlight" },
+  { label: "室内", value: "indoor" },
+];
+
 function getSceneTypeLabel(sceneType: string): string {
-  const map: Record<string, string> = {
-    urban: "城市",
-    landscape: "风景",
-    building: "建筑",
-    night: "夜景",
-    backlight: "逆光",
-    indoor: "室内",
-  };
-  return map[sceneType] || sceneType;
+  return (
+    sceneTypeOptions.find((o) => o.value === sceneType)?.label ?? sceneType
+  );
 }
 
 function getAlgoNames(ids?: number[]): string[] {
@@ -239,7 +242,6 @@ async function loadData() {
       algoNameMap.value[Number(a.value)] = a.label;
     });
   } catch {
-    ElMessage.error("加载推荐规则失败");
   } finally {
     loading.value = false;
   }
@@ -269,14 +271,13 @@ async function handleSubmit() {
     if (!valid) return;
     submitting.value = true;
     try {
-      const id = await RecommendationAPI.updateRule(formData.id!, formData);
+      const id = await RecommendationAPI.updateRule(formData.id ?? 0, formData);
       if (id) {
         ElMessage.success("更新成功");
         closeDialog();
         loadData();
       }
     } catch {
-      ElMessage.error("操作失败");
     } finally {
       submitting.value = false;
     }
@@ -288,7 +289,6 @@ async function handleWeightChange(rule: RecommendationRule) {
     await RecommendationAPI.updateRule(rule.id!, { ...rule });
     ElMessage.success("权重已更新");
   } catch {
-    ElMessage.error("权重更新失败");
     loadData();
   }
 }
@@ -297,7 +297,6 @@ async function handleEnabledChange(rule: RecommendationRule) {
   try {
     await RecommendationAPI.updateRule(rule.id!, { ...rule });
   } catch {
-    ElMessage.error("状态更新失败");
     loadData();
   }
 }

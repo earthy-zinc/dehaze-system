@@ -8,10 +8,11 @@ import pytest
 from openpyxl import load_workbook
 
 from app.service.import_export.handlers.user_export import UserExportHandler, _user_to_row
-
-pytestmark = pytest.mark.requires_db
 from app.service.import_export.handlers.user_import import UserImportHandler
 from app.service.import_export.models import ExportContext, ImportOptions
+
+pytestmark = pytest.mark.requires_db
+
 
 HASHED_PASSWORD = "$2b$12$abcdefghijklmnopqrstuvwxYz0123456789ABCDEFG"
 
@@ -32,9 +33,10 @@ def _export_repos():
 
 
 @contextmanager
-def _import_repos(existing_usernames=None, create_side_effect=None):
+def _import_repos(existing_usernames=None, create_side_effect=None, role_code_map=None):
     with (
         patch("app.service.import_export.handlers.user_import.user_repository") as user_repo,
+        patch("app.service.import_export.handlers.user_import.role_repository") as role_repo,
         patch(
             "app.service.import_export.handlers.user_import.hash_password_async",
             new=AsyncMock(return_value=HASHED_PASSWORD),
@@ -42,6 +44,7 @@ def _import_repos(existing_usernames=None, create_side_effect=None):
     ):
         user_repo.get_existing_usernames = AsyncMock(return_value=existing_usernames or set())
         user_repo.create_user = AsyncMock(side_effect=create_side_effect)
+        role_repo.get_role_code_id_map = AsyncMock(return_value=role_code_map or {})
         yield user_repo
 
 
@@ -111,7 +114,7 @@ class TestUserExportHandler:
                 "create_time": None,
             },
         ]
-        with _export_repos() as (user_repo, dept_repo):
+        with _export_repos() as (user_repo, _dept_repo):
             user_repo.get_user_list = AsyncMock(side_effect=[(users, 2), ([], 0)])
             output = io.BytesIO()
             ctx = ExportContext(
@@ -124,6 +127,7 @@ class TestUserExportHandler:
             await handler.export(db, ctx, output, *_callbacks())
             output.seek(0)
             ws = load_workbook(output).active
+            assert ws is not None
             rows = list(ws.iter_rows(values_only=True))
             assert len(rows[0]) == 10
             assert rows[1][1] == "=cmd|'/c calc'!A0"
@@ -157,7 +161,7 @@ class TestUserExportHandler:
                 "create_time": None,
             }
         ]
-        with _export_repos() as (user_repo, dept_repo):
+        with _export_repos() as (user_repo, _dept_repo):
             user_repo.get_user_list = AsyncMock(side_effect=[(users, 1), ([], 0)])
             output = io.BytesIO()
             ctx = ExportContext(
@@ -192,7 +196,7 @@ class TestUserExportHandler:
                 "email": "zhangsan@example.com",
             }
         ]
-        with _export_repos() as (user_repo, dept_repo):
+        with _export_repos() as (user_repo, _dept_repo):
             user_repo.get_user_list = AsyncMock(side_effect=[(users, 1), ([], 0)])
             output = io.BytesIO()
             ctx = ExportContext(
@@ -206,6 +210,7 @@ class TestUserExportHandler:
             await handler.export(db, ctx, output, *_callbacks())
             output.seek(0)
             ws = load_workbook(output).active
+            assert ws is not None
             rows = list(ws.iter_rows(values_only=True))
             assert rows[0] == ("用户名", "邮箱")
             assert rows[1] == ("zhangsan", "zhangsan@example.com")
@@ -221,7 +226,7 @@ class TestUserExportHandler:
                 "status": 1,
             }
         ]
-        with _export_repos() as (user_repo, dept_repo):
+        with _export_repos() as (user_repo, _dept_repo):
             user_repo.get_user_list = AsyncMock(return_value=(users, 1))
             progress_cb, cancel_cb = _callbacks(cancel=True)
             output = io.BytesIO()
@@ -240,12 +245,15 @@ class TestUserImportHandler:
     def test_get_field_configs(self):
         handler = UserImportHandler()
         fields = handler.get_field_configs()
-        assert len(fields) == 8
+        assert len(fields) == 6
         username_field = next(f for f in fields if f.field == "username")
         assert username_field.required is True
         assert username_field.max_length == 64
         nickname_field = next(f for f in fields if f.field == "nickname")
         assert nickname_field.required is True
+        # 模板不提供密码列（统一使用系统默认密码），角色按编码关联
+        assert all(f.field != "password" for f in fields)
+        assert any(f.field == "roleCodes" for f in fields)
 
     def test_get_template_sample_data(self):
         handler = UserImportHandler()
@@ -323,7 +331,7 @@ class TestUserImportHandler:
             {"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"},
             {"username": "zhangsan", "nickname": "张三同学", "mobile": "13900139000"},
         ]
-        with _import_repos() as user_repo:
+        with _import_repos():
             result = await handler.import_batch(
                 db,
                 rows,
@@ -350,7 +358,7 @@ class TestUserImportHandler:
     async def test_import_batch_create_exception_recorded(self, db):
         handler = UserImportHandler()
         rows = [{"username": "zhangsan", "nickname": "张三", "mobile": "13800138000"}]
-        with _import_repos(create_side_effect=RuntimeError("DB 错误")) as user_repo:
+        with _import_repos(create_side_effect=RuntimeError("DB 错误")):
             result = await handler.import_batch(
                 db,
                 rows,
@@ -362,7 +370,9 @@ class TestUserImportHandler:
 
     async def test_import_batch_gender_female(self, db):
         handler = UserImportHandler()
-        rows = [{"username": "zhangsan", "nickname": "张三", "gender": "女", "mobile": "13800138000"}]
+        rows = [
+            {"username": "zhangsan", "nickname": "张三", "gender": "女", "mobile": "13800138000"}
+        ]
         with _import_repos() as user_repo:
             await handler.import_batch(
                 db,
@@ -388,17 +398,17 @@ class TestUserImportHandler:
             assert "性别取值无效" in result.errors[0].message
             user_repo.create_user.assert_not_called()
 
-    async def test_import_batch_role_ids_parsed(self, db):
+    async def test_import_batch_role_codes_resolved(self, db):
         handler = UserImportHandler()
         rows = [
             {
                 "username": "zhangsan",
                 "nickname": "张三",
                 "mobile": "13800138000",
-                "role_ids": "1, 2, 3",
+                "roleCodes": "guest, user",
             }
         ]
-        with _import_repos() as user_repo:
+        with _import_repos(role_code_map={"guest": 3, "user": 4}) as user_repo:
             await handler.import_batch(
                 db,
                 rows,
@@ -406,7 +416,29 @@ class TestUserImportHandler:
                 *_callbacks(),
             )
             role_ids = user_repo.create_user.call_args.args[2]
-            assert role_ids == [1, 2, 3]
+            assert role_ids == [3, 4]
+
+    async def test_import_batch_unknown_role_code_recorded_as_error(self, db):
+        handler = UserImportHandler()
+        rows = [
+            {
+                "username": "zhangsan",
+                "nickname": "张三",
+                "mobile": "13800138000",
+                "roleCodes": "notexist",
+            }
+        ]
+        with _import_repos(role_code_map={"guest": 3}) as user_repo:
+            result = await handler.import_batch(
+                db,
+                rows,
+                ImportOptions(mode="partial"),
+                *_callbacks(),
+            )
+            assert result.failure_count == 1
+            assert result.success_count == 0
+            assert "角色编码不存在" in result.errors[0].message
+            user_repo.create_user.assert_not_called()
 
     async def test_import_batch_fullwidth_role_ids_recorded_as_error(self, db):
         handler = UserImportHandler()
@@ -415,7 +447,7 @@ class TestUserImportHandler:
                 "username": "zhangsan",
                 "nickname": "张三",
                 "mobile": "13800138000",
-                "role_ids": "1，2,3",
+                "roleCodes": "guest，user",
             }
         ]
         with _import_repos() as user_repo:

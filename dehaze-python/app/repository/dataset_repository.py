@@ -121,7 +121,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         db: AsyncSession,
     ) -> list[dict]:
         """获取数据集下拉选项（树形结构）"""
-        children_map, datasets = await self._build_children_map(db)
+        _children_map, datasets = await self._build_children_map(db)
 
         # 过滤启用状态
         enabled_datasets = [d for d in datasets if bool(d.status == 1)]
@@ -200,8 +200,10 @@ class DatasetRepository(BaseRepository[SysDataset]):
         db: AsyncSession,
         dataset_id: int,
     ) -> int:
-        """获取子数据集数量"""
-        stmt = select(func.count(SysDataset.id)).where(SysDataset.parent_id == dataset_id)
+        """获取子数据集数量（列查询不走全局软删过滤器，需显式排除已删除）"""
+        stmt = select(func.count(SysDataset.id)).where(
+            SysDataset.parent_id == dataset_id, SysDataset.deleted == 0
+        )
         result = await db.execute(stmt)
         return result.scalar() or 0
 
@@ -711,5 +713,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
             files_map[iid].append((item_file, file_obj))
 
         return items_map, files_map
+
 
 dataset_repository = DatasetRepository()

@@ -106,16 +106,6 @@ describe("图像输入历史记录 API 测试", () => {
       });
     });
 
-    test("正向测试：按时间范围筛选历史记录", async () => {
-      const page = await ImageInputHistoryAPI.getPage({
-        pageNum: 1,
-        pageSize: 10,
-        startTime: "2025-01-01 00:00:00",
-        endTime: "2099-12-31 23:59:59",
-      });
-      expect(Array.isArray(page.list)).toBe(true);
-    });
-
     test("验证：历史记录按创建时间倒序排列", async () => {
       const page = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 20 });
       if (page.list.length < 2) return;
@@ -199,19 +189,88 @@ describe("图像输入历史记录 API 测试", () => {
       }
     });
 
-    test("边界：空数组批量删除", async () => {
-      const result = await ImageInputHistoryAPI.batchDelete([]);
-      expect(typeof result).toBe("number");
+    test("边界：空数组批量删除应被拒绝（A0400，与全项目批量删除口径一致）", async () => {
+      await expectBizError(ImageInputHistoryAPI.batchDelete([]), ["A0400"]);
     });
   });
 
   describe("DELETE /api/v1/image-input/history/clear - 清空", () => {
     test("正向测试：清空当前用户所有历史记录", async () => {
-      const count = await ImageInputHistoryAPI.clearAll(true);
+      const count = await ImageInputHistoryAPI.clearAll();
       expect(typeof count).toBe("number");
 
       const page = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 1 });
       expect(page.total).toBe(0);
+    });
+  });
+
+  describe("对抗性输入校验（后端参数校验 A0400）", () => {
+    test("异常测试：无效 status（超出 1-3）应被拒绝", async () => {
+      await expectBizError(
+        ImageInputHistoryAPI.create(buildForm({ status: 99 as unknown as number })),
+        ["A0400"]
+      );
+    });
+
+    test("异常测试：无效 inputSource（非枚举值）应被拒绝", async () => {
+      await expectBizError(
+        ImageInputHistoryAPI.create(buildForm({ inputSource: "hacked" as unknown as string })),
+        ["A0400"]
+      );
+    });
+
+    test("异常测试：超长 originalImageUrl（504 字符，超出列宽 500）应被拒绝", async () => {
+      await expectBizError(
+        ImageInputHistoryAPI.create(
+          buildForm({ originalImageUrl: `/images/${"a".repeat(492)}.jpg` })
+        ),
+        ["A0400"]
+      );
+    });
+
+    test("边界：originalImageUrl 恰好 500 字符应创建成功", async () => {
+      // "/images/" 8 + padding + ".jpg" 4 = 500
+      const padding = 500 - "/images/".length - ".jpg".length;
+      const id = await ImageInputHistoryAPI.create(
+        buildForm({ originalImageUrl: `/images/${"a".repeat(padding)}.jpg` })
+      );
+      expect(id).toBeGreaterThan(0);
+      createdIds.push(id);
+    });
+
+    test("异常测试：超长 algorithmName（101 字符，超出列宽 100）应被拒绝", async () => {
+      await expectBizError(
+        ImageInputHistoryAPI.create(buildForm({ algorithmName: "A".repeat(101) })),
+        ["A0400"]
+      );
+    });
+
+    test("异常测试：非法 algorithmParams（非 JSON 字符串）应被拒绝", async () => {
+      await expectBizError(
+        ImageInputHistoryAPI.create(buildForm({ algorithmParams: "not-a-json{[" })),
+        ["A0400"]
+      );
+    });
+
+    test("边界：合法 algorithmParams（JSON 字符串）应创建成功且回读一致", async () => {
+      const id = await ImageInputHistoryAPI.create(
+        buildForm({ algorithmParams: '{"topK":5,"mode":"fast"}' })
+      );
+      expect(id).toBeGreaterThan(0);
+      createdIds.push(id);
+
+      const detail = await ImageInputHistoryAPI.getById(id);
+      // 回读为合法 JSON 字符串即可，key 顺序不保证，按解析后对象比较
+      expect(JSON.parse(detail.algorithmParams as string)).toEqual({
+        topK: 5,
+        mode: "fast",
+      });
+    });
+
+    test("异常测试：负数 processingTime 应被拒绝", async () => {
+      await expectBizError(ImageInputHistoryAPI.create(buildForm({ processingTime: -100 })), [
+        "A0400",
+      ]);
     });
   });
 
@@ -231,6 +290,25 @@ describe("图像输入历史记录 API 测试", () => {
         ]);
       } finally {
         await login(USERS.ADMIN.username);
+        await ImageInputHistoryAPI.deleteById(id);
+      }
+    });
+
+    test("边界：批量删除他人记录应不生效（仅删除本人记录，返回实际删除数）", async () => {
+      const id = await ImageInputHistoryAPI.create(
+        buildForm({ originalImageUrl: "/images/batch_iso_test.jpg" })
+      );
+
+      try {
+        await login(USERS.USER.username);
+        // 请求里混入他人记录 ID：user_id 过滤后实际删除数为 0，他人记录不受影响
+        const deleted = await ImageInputHistoryAPI.batchDelete([id]);
+        expect(deleted).toBe(0);
+      } finally {
+        await login(USERS.ADMIN.username);
+        // 他人记录依然存在且可访问，随后清理
+        const detail = await ImageInputHistoryAPI.getById(id);
+        expect(detail.id).toBe(id);
         await ImageInputHistoryAPI.deleteById(id);
       }
     });

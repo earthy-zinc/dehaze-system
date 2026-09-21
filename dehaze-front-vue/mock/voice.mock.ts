@@ -213,7 +213,7 @@ export default defineMock([
         code: "00000",
         data: {
           sessionId,
-          wsUrl: `ws://127.0.0.1:8991/ws/asr?sessionId=${sessionId}`,
+          wsUrl: `/ws/asr?sessionId=${sessionId}`,
         },
         msg: "一切ok",
       };

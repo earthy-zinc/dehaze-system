@@ -111,6 +111,8 @@
 <script lang="ts" setup>
 import { AlgorithmAPI, Algorithm, AlgorithmMonitorVO } from "dehaze-sdk-js";
 import { Picture } from "@element-plus/icons-vue";
+import { algorithmStatusMap } from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "AlgorithmDetail" });
 
@@ -122,33 +124,12 @@ const algorithm = ref<Algorithm | null>(null);
 const monitorData = ref<AlgorithmMonitorVO | null>(null);
 const activeTab = ref("basic");
 
-const statusLabel = computed(() => {
-  const map: Record<number, string> = {
-    1: "草稿",
-    2: "测试中",
-    3: "待审核",
-    4: "已发布",
-    5: "已停用",
-    6: "已归档",
-  };
-  return map[algorithm.value?.status ?? 0] || "未知";
-});
+const statusLabel = computed(
+  () => algorithmStatusMap[algorithm.value?.status ?? 0]?.label ?? "未知"
+);
 
 const statusType = computed(
-  (): "primary" | "success" | "warning" | "info" | "danger" => {
-    const map: Record<
-      number,
-      "primary" | "success" | "warning" | "info" | "danger"
-    > = {
-      1: "info",
-      2: "warning",
-      3: "warning",
-      4: "success",
-      5: "danger",
-      6: "info",
-    };
-    return map[algorithm.value?.status ?? 0] || "info";
-  }
+  (): TagType => algorithmStatusMap[algorithm.value?.status ?? 0]?.tag ?? "info"
 );
 
 async function loadMonitor(id: number) {
@@ -173,8 +154,7 @@ onMounted(async () => {
     loading.value = true;
     algorithm.value = await AlgorithmAPI.getAlgorithmInfoById(id);
     loadMonitor(id);
-  } catch (e: any) {
-    ElMessage.error("获取算法详情失败：" + (e.message || "未知错误"));
+  } catch {
   } finally {
     loading.value = false;
   }

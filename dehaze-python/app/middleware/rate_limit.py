@@ -89,6 +89,7 @@ class RateLimitMiddleware:
                     "data": None,
                 },
             )
-            return
+            return None
 
         await self.app(scope, receive, send)
+        return None

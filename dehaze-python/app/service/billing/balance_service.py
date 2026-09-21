@@ -12,7 +12,7 @@ db 为事务资源经参数显式传递；redis 经 get_redis_client() 自取。
 """
 
 import logging
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from redis.exceptions import ResponseError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,7 +45,8 @@ class BalanceService:
         for _ in range(_CAS_RETRY):
             current = await self.user_repository.get_credits_balance_and_version(db, user_id)
             if current is None:
-                return
+                # Redis 已加而 MySQL 无账户：静默跳过会造成余额永久背离，必须显式失败
+                raise RuntimeError(f"余额增加落库失败（用户余额账户不存在）: user_id={user_id}")
             _, version = current
             if await self.user_repository.increase_balance_cas(db, user_id, amount, version):
                 return
@@ -56,7 +57,7 @@ class BalanceService:
         for _ in range(_CAS_RETRY):
             current = await self.user_repository.get_credits_balance_and_version(db, user_id)
             if current is None:
-                return
+                raise RuntimeError(f"余额扣减落库失败（用户余额账户不存在）: user_id={user_id}")
             _, version = current
             if await self.user_repository.deduct_balance_cas(db, user_id, amount, version):
                 return
@@ -69,8 +70,12 @@ class BalanceService:
         if val is not None:
             try:
                 return Decimal(val)
-            except Exception:
-                # 缓存坏值（非数字）：删除后走 MySQL 整数化回填
+            except InvalidOperation:
+                # 缓存坏值（非数字）：删除后走 MySQL 整数化回填。每次自愈都记 warning——
+                # 坏值反复出现说明仍有写入源在产出污染数据，必须可被运维发现而非静默修复
+                logger.warning(
+                    "余额缓存值非法（非数字），已删除并回填: user_id=%s value=%r", user_id, val
+                )
                 await redis.delete(_BALANCE_KEY.format(user_id=user_id))
         current = await self.user_repository.get_credits_balance_and_version(db, user_id)
         balance = current[0] if current else Decimal(0)
@@ -126,7 +131,8 @@ class BalanceService:
         else:
             await self._deduct_cas(db, user_id, Decimal(credits))
 
-    async def increase(self, 
+    async def increase(
+        self,
         db: AsyncSession,
         user_id: int,
         amount: int,

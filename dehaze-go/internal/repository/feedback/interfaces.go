@@ -27,11 +27,11 @@ type FeedbackWithUser struct {
 }
 
 type AlgorithmRatingStatRow struct {
-	AlgorithmID   int64   `gorm:"column:algorithm_id" json:"algorithmId"`
-	AlgorithmName string  `gorm:"column:algorithm_name" json:"algorithmName"`
-	AverageRating float64 `gorm:"column:average_rating" json:"averageRating"`
-	TotalRatings  int64   `gorm:"column:total_ratings" json:"totalRatings"`
-	LowRatingCount int64  `gorm:"column:low_rating_count" json:"lowRatingCount"`
+	AlgorithmID    int64   `gorm:"column:algorithm_id" json:"algorithmId"`
+	AlgorithmName  string  `gorm:"column:algorithm_name" json:"algorithmName"`
+	AverageRating  float64 `gorm:"column:average_rating" json:"averageRating"`
+	TotalRatings   int64   `gorm:"column:total_ratings" json:"totalRatings"`
+	LowRatingCount int64   `gorm:"column:low_rating_count" json:"lowRatingCount"`
 }
 
 type ModuleCountRow struct {

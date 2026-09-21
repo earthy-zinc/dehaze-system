@@ -9,17 +9,51 @@ import asyncio
 import logging
 
 from app.config import settings
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
+from app.repository.file_repository import file_repository
 from app.service.ai_artifact_service import ai_artifact_service
 from app.service.prediction.prediction_service import prediction_service
 
 logger = logging.getLogger(__name__)
 
+# 批量处理并发与规模上限：纯技术参数，随版本调整，不提供运行时配置
+BATCH_MAX_PARALLEL = 5
+BATCH_STRATEGY = "auto"
+BATCH_MAX_IMAGES = 20
+# 异步阈值：超过该数量走 async_wait 中断（提交后台任务 + 回调自动恢复），
+# 不超过保持同步直返，避免轻任务中断体验劣化
+BATCH_ASYNC_THRESHOLD = 3
+
+
+def _system_object_name(image_url: str) -> str | None:
+    """把本系统存储 URL 还原为 object_name，非本系统地址返回 None。"""
+    for base in settings.FILE_STORAGE_BASE_URLS.values():
+        prefix = base.rstrip("/") + "/"
+        if image_url.startswith(prefix):
+            return image_url[len(prefix) :]
+    return None
+
+
+async def validate_owned_image_url(db, user_id: int, image_url: str) -> None:
+    """校验 image_url 是本系统、且归属当前用户的图片地址。
+
+    地址由 LLM 经工具入参给出，预测侧会据此下载图片——放行任意地址即为 SSRF
+    （内网探测）与越权处理他人图片的入口，故只认本系统存储地址且 sys_file 归属本人。
+    """
+    object_name = _system_object_name(image_url)
+    if not object_name:
+        raise BusinessException(ResultCode.PARAM_ERROR, "图片地址必须是本系统产物地址")
+    file_info = await file_repository.get_by_object_name(db, object_name)
+    if not file_info or file_info.deleted != 0 or file_info.create_by != user_id:
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片不存在或不属于当前用户")
+
 
 def _resolve_strategy(total: int) -> str:
     """解析批量调度策略：serial / parallel / auto（图片数 <= 3 串行，否则并行）"""
-    strategy = settings.AI_BATCH_STRATEGY
+    strategy = BATCH_STRATEGY
     if strategy == "auto":
         return "serial" if total <= 3 else "parallel"
     return strategy
@@ -38,7 +72,7 @@ async def process_batch(
     预测服务为异步任务模式（立即返回 logId），产物先注册、结果由后台任务完成，
     用户通过产物/进度事件感知处理进度。评估需参考图且依赖预测完成，暂不执行。
     """
-    image_urls = image_urls[: settings.AI_BATCH_MAX_IMAGES]
+    image_urls = image_urls[:BATCH_MAX_IMAGES]
     total = len(image_urls)
 
     if _resolve_strategy(total) == "parallel":
@@ -84,7 +118,7 @@ async def _run_parallel(
     stream_session_id: str,
 ) -> list[dict]:
     """并行调度：用信号量控制并发数，asyncio.gather 收集结果"""
-    semaphore = asyncio.Semaphore(settings.AI_BATCH_MAX_PARALLEL)
+    semaphore = asyncio.Semaphore(BATCH_MAX_PARALLEL)
     total = len(image_urls)
 
     async def _wrapped(index: int, image_url: str) -> dict:
@@ -113,8 +147,10 @@ async def _process_single(
     total: int,
     stream_session_id: str,
 ) -> dict:
-    """处理单张图片：调用预测服务 → 注册 artifact → 评估 → 推送进度"""
+    """处理单张图片：校验图片归属 → 调用预测服务 → 注册 artifact → 评估 → 推送进度"""
     try:
+        async with get_db_session() as db:
+            await validate_owned_image_url(db, user_id, image_url)
         pred_result = await prediction_service.predict(
             algorithm_id=algorithm_id,
             image_url=image_url,

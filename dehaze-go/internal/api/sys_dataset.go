@@ -27,8 +27,8 @@ func NewSysDatasetApi(datasetService *datasetservice.DatasetService, operationSe
 // @Tags 数据集接口
 // @Accept application/json
 // @Produce application/json
-// @Param pageNum query int false "页码"
-// @Param pageSize query int false "每页数量"
+// @Param pageNum query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(10)
 // @Param keyword query string false "关键字"
 // @Param type query string false "类型"
 // @Param status query int false "状态"
@@ -36,11 +36,20 @@ func NewSysDatasetApi(datasetService *datasetservice.DatasetService, operationSe
 // @Router /api/v1/datasets [get]
 func (api *SysDatasetApi) GetDatasetList(c *gin.Context) {
 	ctx := c.Request.Context()
+
+	// 分页字段不参与绑定（query.DatasetQuery 已标 form:"-"），只由本 helper 裁决：
+	// 非数字/越界一律 A0400，对齐 python dataset.py:29-30（默认 1/10，pageSize ≤ 100）。
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 10)
+	if !ok {
+		return
+	}
+
 	var queryParams query.DatasetQuery
 	if err := c.ShouldBindQuery(&queryParams); err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数绑定失败"))
 		return
 	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
 
 	result, err := api.datasetService.GetPage(ctx, &queryParams)
 	if err != nil {
@@ -97,6 +106,17 @@ func (api *SysDatasetApi) GetDatasetChildren(c *gin.Context) {
 // @Router /api/v1/datasets/options [get]
 func (api *SysDatasetApi) GetDatasetOptions(c *gin.Context) {
 	options, err := api.datasetService.GetDatasetOptions(c.Request.Context())
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(options, "查询成功", c)
+}
+
+// GetEvaluationOptions 测试集选项查询（评估接入，T-DS-046~048）
+func (api *SysDatasetApi) GetEvaluationOptions(c *gin.Context) {
+	options, err := api.datasetService.GetEvaluationOptions(c.Request.Context(), c.Query("taskType"))
 	if err != nil {
 		_ = c.Error(err)
 		return

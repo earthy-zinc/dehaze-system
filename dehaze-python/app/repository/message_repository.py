@@ -136,7 +136,7 @@ class MessageRepository(BaseRepository[SysMessage]):
                 SysMessage.id.in_(ids),
                 SysMessage.recipient_id == recipient_id,
             )
-            .values(deleted=1)
+            .values(deleted=SysMessage.id)
         )
         result = await db.execute(stmt)
         return result.rowcount

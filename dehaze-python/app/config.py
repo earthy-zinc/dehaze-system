@@ -82,9 +82,7 @@ class Settings(BaseSettings):
 
     @property
     def REDIS_URL(self) -> str:
-        return (
-            f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
-        )
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     # ===== MongoDB（审计日志） =====
     MONGODB_HOST: str = Field(default="127.0.0.1")
@@ -109,6 +107,8 @@ class Settings(BaseSettings):
     FILE_STORAGE_TYPE: Literal["minio", "local", "nginx-static"] = "minio"
     LOCAL_STORAGE_PATH: str = "/data/files"
     FILE_TEMP_CLEANUP_HOURS: int = Field(default=24, gt=0)
+    # 孤儿文件保留阈值（小时）：物理文件存在但无元数据引用且超过该时长才清理
+    ORPHAN_FILE_RETENTION_HOURS: int = Field(default=48, gt=0)
     # 统一模型文件目录（算法权重缓存 / LLM / embedding / TTS 模型均存放于此）
     MODEL_CACHE_DIR: str = str(PROJECT_ROOT / "models")
     MODEL_FALLBACK_TO_LOCAL: bool = True
@@ -215,6 +215,9 @@ class Settings(BaseSettings):
     CAPTCHA_NOISE_LINES: int = Field(default=5, ge=0)
     CAPTCHA_EXPIRES: int = Field(default=300, gt=0)
 
+    # 注册开关（用户注册设计.md §9：运营可在需要时临时关闭注册）
+    REGISTER_ENABLED: bool = True
+
     # Session Cookie
     SESSION_COOKIE_SECURE: bool = True
     SESSION_COOKIE_PATH: str = "/api"
@@ -243,8 +246,9 @@ class Settings(BaseSettings):
     ANTI_REPEAT_ENABLED: bool = True
     ANTI_REPEAT_TTL_SECONDS: int = Field(default=5, gt=0)
 
-    # 密码策略
+    # 密码策略（8-20 位含字母和数字）
     PASSWORD_MIN_LENGTH: int = Field(default=8, gt=0)
+    PASSWORD_MAX_LENGTH: int = Field(default=20, gt=0)
     PASSWORD_REQUIRE_COMPLEXITY: bool = True
 
     # CORS 跨域
@@ -348,7 +352,12 @@ class Settings(BaseSettings):
     LOCAL_LLM_HOST: str = "127.0.0.1"
     LOCAL_LLM_PORT: int = 8992
     LOCAL_LLM_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-0.6B-Q4_K_M.gguf（对话）
-    LOCAL_LLM_EMBEDDING_MODEL_PATH: str = ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf（向量）
+    LOCAL_LLM_EMBEDDING_MODEL_PATH: str = (
+        ""  # 空 = 默认 models/Qwen3-Embedding-0.6B-Q8_0.gguf（向量）
+    )
+    LOCAL_LLM_RERANK_MODEL_PATH: str = (
+        ""  # 空 = 默认 models/Qwen3-Reranker-0.6B-q8_0.gguf（重排，可选，首次 /v1/rerank 时懒下载）
+    )
     LOCAL_LLM_CTX_SIZE: int = 16384
     LOCAL_LLM_THREADS: int = 0  # 0 = 自动（物理核数）
     LOCAL_LLM_NGPU_LAYERS: int | None = None  # None = 自动（CUDA 构建全量卸载 -1，纯 CPU 构建 0）
@@ -359,6 +368,8 @@ class Settings(BaseSettings):
     AI_PROVIDER_KEY_ENCRYPTION_KEY: str = ""
     # MCP 能力网关
     MCP_GATEWAY_URL: str = "http://127.0.0.1:8082/mcp"
+    # 网关共享密钥（X-MCP-Key 请求头，与根 .env 同源）；未配置时拒绝连接网关
+    MCP_GATEWAY_KEY: str = ""
     # 能力扩展（F-M08-006）约束
     # 虚拟文件系统工作区容量上限（字节，默认 100MB）
     AI_VFS_MAX_BYTES: int = Field(default=100 * 1024 * 1024, gt=0)
@@ -398,13 +409,6 @@ class Settings(BaseSettings):
     # 月结账单 Redis 缓存 TTL（秒，90 天）
     AI_BILLING_BILL_CACHE_TTL: int = 90 * 24 * 3600
 
-    # 批量处理
-    AI_BATCH_MAX_PARALLEL: int = 5
-    AI_BATCH_STRATEGY: str = "auto"
-    AI_BATCH_MAX_IMAGES: int = 20
-    # 批量处理异步阈值：超过该数量采用 async_wait 中断（提交后台任务 + 回调自动恢复），
-    # 不超过保持同步直返，避免轻任务中断体验劣化
-    AI_BATCH_ASYNC_THRESHOLD: int = 3
     # 长期记忆管理
     AI_MEMORY_MAX_COUNT: int = Field(default=200, gt=0)
     AI_MEMORY_FORGET_THRESHOLD: int = Field(default=10, ge=0)
@@ -421,7 +425,8 @@ class Settings(BaseSettings):
     # 历史上下文均值滑动的窗口权重（新值占比）
     AI_BILLING_CTX_AVG_WEIGHT: float = Field(default=0.5, gt=0, le=1)
 
-    # ===== Elasticsearch（记忆向量检索 / 会话全文检索，必选基础设施，docker-compose 统一部署） =====
+    # ===== Elasticsearch（记忆向量检索 / 会话全文检索，必选基础设施，
+    # docker-compose 统一部署） =====
     ES_URL: str = "http://localhost:9200"
     ES_API_KEY: str = ""  # 可选；与用户名密码二选一
     ES_USERNAME: str = "elastic"  # docker-compose 启用 xpack security，elastic 超级用户
@@ -563,4 +568,4 @@ settings = get_settings()
 # 必须在任何 prometheus_client 导入（如 starlette_exporter）之前完成
 if settings.PROMETHEUS_MULTIPROC_DIR:
     os.environ["PROMETHEUS_MULTIPROC_DIR"] = settings.PROMETHEUS_MULTIPROC_DIR
-    os.makedirs(settings.PROMETHEUS_MULTIPROC_DIR, exist_ok=True)
+    Path(settings.PROMETHEUS_MULTIPROC_DIR).mkdir(parents=True, exist_ok=True)

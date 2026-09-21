@@ -68,6 +68,18 @@ class AiModelAPI {
     });
   }
 
+  /** 模型可用性测试（管理员）：发最小真实推理请求并落库结果 */
+  static testModel(modelId: string) {
+    return request<{
+      success: boolean;
+      latencyMs: number | null;
+      error: string | null;
+    }>({
+      url: `/api/v1/ai/models/${modelId}/test`,
+      method: "post",
+    });
+  }
+
   // ==================== 模型用户售价（价格版本） ====================
 
   /** 价格版本分页列表（管理员） */

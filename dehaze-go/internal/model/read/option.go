@@ -4,5 +4,6 @@ package read
 type Option struct {
 	Value    int64    `json:"value"`
 	Label    string   `json:"label"`
+	Code     string   `json:"code,omitempty" gorm:"column:code"`
 	Children []Option `json:"children,omitempty" gorm:"-"`
 }

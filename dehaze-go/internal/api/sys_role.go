@@ -2,6 +2,7 @@ package api
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -38,7 +39,11 @@ func (api *SysRoleApi) GetRolePage(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.RolePageQuery
 	queryParams.Keywords = c.Query("keywords")
-	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
 
 	// 调用服务获取分页数据
 	result, err := api.roleService.GetPage(ctx, &queryParams)
@@ -203,7 +208,7 @@ func (api *SysRoleApi) DeleteRoles(c *gin.Context) {
 // @Param roleId path int true "角色ID"
 // @Param status query int true "状态(1:启用;0:禁用)"
 // @Success 200 {object} common.Response
-// @Router /api/v1/roles/{roleId}/status [put]
+// @Router /api/v1/roles/{roleId}/status [patch]
 func (api *SysRoleApi) UpdateRoleStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -291,8 +296,19 @@ func (api *SysRoleApi) AssignMenusToRole(c *gin.Context) {
 		return
 	}
 
+	// 操作者权限上下文（权限提升校验用）：ROOT 忽略权限判断
+	operatorIsRoot := security.IsRoot(c)
+	operatorPerms := make([]string, 0)
+	if claims := security.GetUserInfo(c); claims != nil {
+		for _, authority := range claims.Authorities {
+			if !strings.HasPrefix(authority, "ROLE_") {
+				operatorPerms = append(operatorPerms, authority)
+			}
+		}
+	}
+
 	// 调用服务分配菜单给角色
-	err = api.roleService.AssignMenus(ctx, roleId, menuIds)
+	err = api.roleService.AssignMenus(ctx, roleId, menuIds, operatorPerms, operatorIsRoot)
 	if err != nil {
 		_ = c.Error(err)
 		return

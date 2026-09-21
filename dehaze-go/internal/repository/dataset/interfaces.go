@@ -31,6 +31,7 @@ type DistributionResult struct {
 type IDatasetRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysDataset, error)
 	FindAll(ctx context.Context) ([]model.SysDataset, error)
+	FindDatasetsWithClearGT(ctx context.Context, taskType string) ([]model.SysDataset, error)
 	FindAllActive(ctx context.Context) ([]model.SysDataset, error)
 	FindRootPage(ctx context.Context, q *query.DatasetQuery) ([]model.SysDataset, int64, error)
 	FindByParentID(ctx context.Context, parentID int64) ([]model.SysDataset, error)

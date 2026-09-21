@@ -52,9 +52,7 @@ class BalanceAccountService:
             account = await self.balance_account_repository.get_or_create(db, user_id)
             if account.balance < amount:
                 raise BusinessException(ResultCode.BALANCE_INSUFFICIENT)
-            if await self.balance_account_repository.freeze(
-                db, user_id, amount, account.version
-            ):
+            if await self.balance_account_repository.freeze(db, user_id, amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,
@@ -70,9 +68,7 @@ class BalanceAccountService:
         self._validate_amount(amount)
         for _ in range(_CAS_RETRY):
             account = await self.balance_account_repository.get_or_create(db, user_id)
-            if await self.balance_account_repository.unfreeze(
-                db, user_id, amount, account.version
-            ):
+            if await self.balance_account_repository.unfreeze(db, user_id, amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,
@@ -88,9 +84,7 @@ class BalanceAccountService:
         self._validate_amount(amount)
         for _ in range(_CAS_RETRY):
             account = await self.balance_account_repository.get_or_create(db, user_id)
-            if await self.balance_account_repository.deduct(
-                db, user_id, amount, account.version
-            ):
+            if await self.balance_account_repository.deduct(db, user_id, amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,
@@ -106,9 +100,7 @@ class BalanceAccountService:
         self._validate_amount(amount)
         for _ in range(_CAS_RETRY):
             account = await self.balance_account_repository.get_or_create(db, user_id)
-            if await self.balance_account_repository.refund(
-                db, user_id, amount, account.version
-            ):
+            if await self.balance_account_repository.refund(db, user_id, amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,
@@ -124,9 +116,7 @@ class BalanceAccountService:
         self._validate_amount(amount)
         for _ in range(_CAS_RETRY):
             account = await self.balance_account_repository.get_or_create(db, user_id)
-            if await self.balance_account_repository.refund(
-                db, user_id, amount, account.version
-            ):
+            if await self.balance_account_repository.refund(db, user_id, amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,
@@ -144,9 +134,7 @@ class BalanceAccountService:
             account = await self.balance_account_repository.get_or_create(db, user_id)
             if account.balance < amount:
                 raise BusinessException(ResultCode.BALANCE_INSUFFICIENT)
-            if await self.balance_account_repository.refund(
-                db, user_id, -amount, account.version
-            ):
+            if await self.balance_account_repository.refund(db, user_id, -amount, account.version):
                 await self.balance_log_repository.create_log(
                     db,
                     user_id=user_id,

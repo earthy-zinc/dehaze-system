@@ -80,7 +80,9 @@ def _enter(patches):
     return stack
 
 
-async def _create_and_fetch(db, kb_id: int, question: str, expected: list[int]) -> SysKnowledgeTestSet:
+async def _create_and_fetch(
+    db, kb_id: int, question: str, expected: list[int]
+) -> SysKnowledgeTestSet:
     vo = await test_set_service.create_test_set(db, kb_id, question, expected)
     stmt = select(SysKnowledgeTestSet).where(SysKnowledgeTestSet.id == vo.id)
     return (await db.execute(stmt)).scalar_one()
@@ -125,9 +127,7 @@ class TestTestSetRun:
     async def test_run_all_expected_hit_gives_full_recall(self, db, mock_redis):
         ts = await _create_and_fetch(db, 1, "去雾算法", [10, 11])
         with _enter(_retrieval_patches(_es_doc(chunk_id=10), _es_doc(chunk_id=11))):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.test_set_id == ts.id
         assert result.recall_at_k == 1.0
         assert result.hit_rate == 1.0
@@ -139,9 +139,7 @@ class TestTestSetRun:
         ts = await _create_and_fetch(db, 1, "去雾算法", [10, 11, 12])
         # 仅召回 chunk 10、11，chunk 12 未命中 → recall 2/3
         with _enter(_retrieval_patches(_es_doc(chunk_id=10), _es_doc(chunk_id=11))):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.recall_at_k == pytest.approx(2 / 3)
         assert result.hit_rate == 1.0
         assert result.hit_cases == 1
@@ -151,9 +149,7 @@ class TestTestSetRun:
         ts = await _create_and_fetch(db, 1, "不相关问题", [99])
         # 检索返回空结果（库外问题/低分被阈值过滤）
         with _enter(_retrieval_patches()):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.recall_at_k == 0.0
         assert result.hit_rate == 0.0
         assert result.hit_cases == 0
@@ -163,9 +159,7 @@ class TestTestSetRun:
         ts = await _create_and_fetch(db, 1, "去雾算法", [999])
         # 期望 chunk 已被删除：检索返回其它 chunk，期望 chunk 缺失按未命中计
         with _enter(_retrieval_patches(_es_doc(chunk_id=1))):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.recall_at_k == 0.0
         assert result.hit_cases == 0
 
@@ -185,9 +179,7 @@ class TestTestSetRun:
                 ),
             ]
         ):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.recall_at_k == 0.0
         assert result.hit_cases == 0
 
@@ -196,9 +188,7 @@ class TestTestSetRun:
         # 期望 chunk 列表为空：total_expected 为 0，recall 定义分母为 0 → 计 0.0
         ts = await _create_and_fetch(db, 1, "无期望集问题", [])
         with _enter(_retrieval_patches(_es_doc(chunk_id=1))):
-            result = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts.id, top_k=5
-            )
+            result = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts.id, top_k=5)
         assert result.recall_at_k == 0.0
         assert result.hit_rate == 0.0
         assert result.total_cases == 1
@@ -209,17 +199,13 @@ class TestTestSetRun:
         # 两个用例：用例1全命中（recall 1.0/hit），用例2未命中（recall 0.0/miss）
         ts1 = await _create_and_fetch(db, 1, "去雾算法", [10, 11])
         ts2 = await _create_and_fetch(db, 1, "冷门问题", [999])
-        with _enter(
-            _retrieval_patches(_es_doc(chunk_id=10), _es_doc(chunk_id=11))
-        ):
-            r1 = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts1.id, top_k=5
-            )
-            r2 = await test_set_service.run_test_set(
-                db, mock_redis, 100, 1, ts2.id, top_k=5
-            )
-        assert r1.recall_at_k == 1.0 and r1.hit_cases == 1
-        assert r2.recall_at_k == 0.0 and r2.hit_cases == 0
+        with _enter(_retrieval_patches(_es_doc(chunk_id=10), _es_doc(chunk_id=11))):
+            r1 = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts1.id, top_k=5)
+            r2 = await test_set_service.run_test_set(db, mock_redis, 100, 1, ts2.id, top_k=5)
+        assert r1.recall_at_k == 1.0
+        assert r1.hit_cases == 1
+        assert r2.recall_at_k == 0.0
+        assert r2.hit_cases == 0
         # 跨用例聚合口径：命中率 = 命中用例数 / 总用例数
         agg_hit_rate = (r1.hit_cases + r2.hit_cases) / (r1.total_cases + r2.total_cases)
         assert agg_hit_rate == pytest.approx(0.5)

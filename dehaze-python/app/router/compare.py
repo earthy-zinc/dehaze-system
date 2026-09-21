@@ -9,10 +9,8 @@ import logging
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
-from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.compare import CompareReportForm, CompareReportResultVO
 from app.service.compare_service import compare_service
@@ -54,16 +52,16 @@ async def get_or_download_report(
     download: bool = Query(
         default=False, description="下载标识（true时返回HTML文件流，否则返回JSON状态）"
     ),
-    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     """
-    查询对比报告任务状态，或下载已完成的报告 HTML 文件
+    查询对比报告任务状态，或下载已完成的报告 HTML 文件（仅报告归属用户可访问）
 
     - download=false（默认）：返回 JSON 格式任务状态
     - download=true：返回 HTML 文件流（仅 completed 状态可用）
     """
     if not download:
-        status_data = await compare_service.get_report_status(task_id)
+        status_data = await compare_service.get_report_status(task_id, user_id=user.id)
         return success(
             CompareReportResultVO(
                 taskId=status_data["taskId"],
@@ -73,7 +71,7 @@ async def get_or_download_report(
             )
         )
 
-    report_html = await compare_service.get_report_html(task_id)
+    report_html = await compare_service.get_report_html(task_id, user_id=user.id)
     return HTMLResponse(
         content=report_html,
         status_code=200,

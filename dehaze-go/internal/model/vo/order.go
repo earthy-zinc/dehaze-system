@@ -4,7 +4,9 @@ type MyOrderVO struct {
 	ID                int64   `json:"id"`
 	OrderNo           string  `json:"orderNo"`
 	PackageName       string  `json:"packageName"`
+	PackageType       string  `json:"packageType"`
 	PackageLevel      string  `json:"packageLevel"`
+	CreditAmount      *int64  `json:"creditAmount"`
 	PayableAmount     int64   `json:"payableAmount"`
 	PaidAmount        int64   `json:"paidAmount"`
 	PayMethod         *string `json:"payMethod"`
@@ -24,13 +26,13 @@ type OrderPageVO struct {
 }
 
 type PaymentRecordVO struct {
-	ID            int64   `json:"id"`
-	PaymentNo     string  `json:"paymentNo"`
-	Channel       string  `json:"channel"`
-	Amount        int64   `json:"amount"`
-	Status        int     `json:"status"`
-	CallbackTime  *string `json:"callbackTime"`
-	CreateTime    string  `json:"createTime"`
+	ID           int64   `json:"id"`
+	PaymentNo    string  `json:"paymentNo"`
+	Channel      string  `json:"channel"`
+	Amount       int64   `json:"amount"`
+	Status       int     `json:"status"`
+	CallbackTime *string `json:"callbackTime"`
+	CreateTime   string  `json:"createTime"`
 }
 
 type RefundRecordVO struct {
@@ -41,8 +43,10 @@ type RefundRecordVO struct {
 	UserID          int64   `json:"userId"`
 	Username        string  `json:"username"`
 	RefundAmount    int64   `json:"refundAmount"`
+	ReasonType      string  `json:"reasonType"`
 	Reason          string  `json:"reason"`
-	UsedQuota       int     `json:"usedQuota"`
+	UsedDays        *int    `json:"usedDays"`
+	UsedCredits     *int64  `json:"usedCredits"`
 	Status          string  `json:"status"`
 	Channel         *string `json:"channel"`
 	ChannelRefundNo string  `json:"channelRefundNo"`
@@ -54,33 +58,50 @@ type RefundRecordVO struct {
 	ErrorMessage    string  `json:"errorMessage"`
 }
 
+type BalanceVO struct {
+	Balance       int64 `json:"balance"`
+	FrozenBalance int64 `json:"frozenBalance"`
+}
+
+type BalanceRefundResult struct {
+	RefundNo string `json:"refundNo"`
+	Amount   int64  `json:"amount"`
+}
+
+type RechargeResult struct {
+	RechargeNo string  `json:"rechargeNo"`
+	PayMethod  string  `json:"payMethod"`
+	PayURL     *string `json:"payUrl"`
+	QRCode     *string `json:"qrCode"`
+}
+
 type OrderDetailVO struct {
 	OrderPageVO
-	ExpireTime      string             `json:"expireTime"`
-	EffectiveTime   *string            `json:"effectiveTime"`
-	CancelReason    string             `json:"cancelReason"`
-	IsAutoRenew     int                `json:"isAutoRenew"`
-	PaymentRecords  []PaymentRecordVO  `json:"paymentRecords"`
-	RefundRecord    *RefundRecordVO    `json:"refundRecord"`
+	ExpireTime     string            `json:"expireTime"`
+	EffectiveTime  *string           `json:"effectiveTime"`
+	CancelReason   string            `json:"cancelReason"`
+	IsAutoRenew    int               `json:"isAutoRenew"`
+	PaymentRecords []PaymentRecordVO `json:"paymentRecords"`
+	RefundRecord   *RefundRecordVO   `json:"refundRecord"`
 }
 
 type PayResult struct {
-	OrderNo   string  `json:"orderNo"`
-	PayMethod string  `json:"payMethod"`
-	PayURL    string  `json:"payUrl"`
-	QRCode    string  `json:"qrCode"`
-	Paid      bool    `json:"paid"`
+	OrderNo   string `json:"orderNo"`
+	PayMethod string `json:"payMethod"`
+	PayURL    string `json:"payUrl"`
+	QRCode    string `json:"qrCode"`
+	Paid      bool   `json:"paid"`
 }
 
 type OrderStatsVO struct {
-	TotalOrders           int64                      `json:"totalOrders"`
-	TotalRevenue          int64                      `json:"totalRevenue"`
-	TotalRefund           int64                      `json:"totalRefund"`
-	RefundRate            float64                    `json:"refundRate"`
-	StatusDistribution    map[string]int64           `json:"statusDistribution"`
-	PayMethodDistribution map[string]int64           `json:"payMethodDistribution"`
-	PackageDistribution   []OrderPackageStatItem     `json:"packageDistribution"`
-	DailyStats            []OrderDailyStatItem       `json:"dailyStats"`
+	TotalOrders           int64                  `json:"totalOrders"`
+	TotalRevenue          int64                  `json:"totalRevenue"`
+	TotalRefund           int64                  `json:"totalRefund"`
+	RefundRate            float64                `json:"refundRate"`
+	StatusDistribution    map[string]int64       `json:"statusDistribution"`
+	PayMethodDistribution map[string]int64       `json:"payMethodDistribution"`
+	PackageDistribution   []OrderPackageStatItem `json:"packageDistribution"`
+	DailyStats            []OrderDailyStatItem   `json:"dailyStats"`
 }
 
 type OrderPackageStatItem struct {

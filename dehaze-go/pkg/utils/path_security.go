@@ -36,7 +36,8 @@ var DEFAULT_BASE_DIRECTORY = ""
 // SetDefaultBaseDirectory 设置默认基础目录
 //
 // 参数:
-//   dir: 基础目录路径
+//
+//	dir: 基础目录路径
 //
 // 使用示例:
 //
@@ -49,12 +50,14 @@ func (u *PathSecurityUtil) SetDefaultBaseDirectory(dir string) {
 // ValidatePath 校验路径是否安全，防止路径遍历攻击
 //
 // 参数:
-//   fullPath: 完整的文件路径（用户输入或构建的路径）
-//   basePath: 基础路径（允许访问的根目录）
+//
+//	fullPath: 完整的文件路径（用户输入或构建的路径）
+//	basePath: 基础路径（允许访问的根目录）
 //
 // 返回:
-//   string: 规范化后的安全路径
-//   error: 如果路径不安全则返回错误
+//
+//	string: 规范化后的安全路径
+//	error: 如果路径不安全则返回错误
 //
 // 安全原理:
 // 1. 使用 filepath.Clean() 规范化路径，解析 . 和 ..
@@ -116,10 +119,12 @@ func (u *PathSecurityUtil) ValidatePath(fullPath string, basePath string) (strin
 // ValidateFileName 校验文件名是否安全
 //
 // 参数:
-//   fileName: 文件名（不含路径）
+//
+//	fileName: 文件名（不含路径）
 //
 // 返回:
-//   error: 如果文件名不安全则返回错误
+//
+//	error: 如果文件名不安全则返回错误
 //
 // 安全检查:
 // 1. 文件名不能为空
@@ -128,11 +133,13 @@ func (u *PathSecurityUtil) ValidatePath(fullPath string, basePath string) (strin
 // 4. 不能是 Windows 系统保留名称（如 CON、PRN、AUX 等）
 //
 // Windows 非法字符:
-//   < > : " | ? * \ /
+//
+//	< > : " | ? * \ /
 //
 // Windows 保留名称:
-//   CON, PRN, AUX, NUL
-//   COM1-COM9, LPT1-LPT9
+//
+//	CON, PRN, AUX, NUL
+//	COM1-COM9, LPT1-LPT9
 //
 // 使用示例:
 //
@@ -183,11 +190,13 @@ func (u *PathSecurityUtil) ValidateFileName(fileName string) error {
 // ValidateFileNameWithRegex 使用正则表达式校验文件名
 //
 // 参数:
-//   fileName: 文件名（不含路径）
-//   pattern: 正则表达式模式（如果为空则使用默认模式）
+//
+//	fileName: 文件名（不含路径）
+//	pattern: 正则表达式模式（如果为空则使用默认模式）
 //
 // 返回:
-//   error: 如果文件名不匹配正则表达式则返回错误
+//
+//	error: 如果文件名不匹配正则表达式则返回错误
 //
 // 使用示例:
 //
@@ -223,10 +232,12 @@ func (u *PathSecurityUtil) ValidateFileNameWithRegex(fileName string, pattern st
 // 将不安全字符替换为下划线
 //
 // 参数:
-//   fileName: 原始文件名
+//
+//	fileName: 原始文件名
 //
 // 返回:
-//   string: 清理后的安全文件名
+//
+//	string: 清理后的安全文件名
 //
 // 清理规则:
 // 1. 将路径分隔符（/、\）替换为下划线
@@ -271,12 +282,14 @@ func (u *PathSecurityUtil) SanitizeFileName(fileName string) string {
 // 组合使用文件名清理和路径校验
 //
 // 参数:
-//   baseDir: 基础目录
-//   fileName: 文件名
+//
+//	baseDir: 基础目录
+//	fileName: 文件名
 //
 // 返回:
-//   string: 安全的完整文件路径
-//   error: 如果路径不安全则返回错误
+//
+//	string: 安全的完整文件路径
+//	error: 如果路径不安全则返回错误
 //
 // 使用示例:
 //
@@ -313,12 +326,14 @@ func (u *PathSecurityUtil) GetSafeFilePath(baseDir string, fileName string) (str
 // 防止通过相对路径创建目录到基础路径之外
 //
 // 参数:
-//   basePath: 基础路径
-//   relativePath: 相对路径
+//
+//	basePath: 基础路径
+//	relativePath: 相对路径
 //
 // 返回:
-//   string: 创建的目录路径
-//   error: 如果创建失败则返回错误
+//
+//	string: 创建的目录路径
+//	error: 如果创建失败则返回错误
 //
 // 安全原理:
 // 1. 规范化相对路径
@@ -373,12 +388,14 @@ func (u *PathSecurityUtil) CreateSafeDir(basePath string, relativePath string) (
 // CheckFileInDirectory 检查文件是否在指定目录内
 //
 // 参数:
-//   filePath: 文件路径
-//   dirPath: 目录路径
+//
+//	filePath: 文件路径
+//	dirPath: 目录路径
 //
 // 返回:
-//   bool: 如果文件在目录内返回 true，否则返回 false
-//   error: 如果路径计算失败则返回错误
+//
+//	bool: 如果文件在目录内返回 true，否则返回 false
+//	error: 如果路径计算失败则返回错误
 //
 // 使用示例:
 //
@@ -423,11 +440,13 @@ func (u *PathSecurityUtil) CheckFileInDirectory(filePath string, dirPath string)
 // 如果设置了默认基础目录，则可以使用此方法简化调用
 //
 // 参数:
-//   relativePath: 相对路径
+//
+//	relativePath: 相对路径
 //
 // 返回:
-//   string: 安全的完整文件路径
-//   error: 如果路径不安全或未设置默认目录则返回错误
+//
+//	string: 安全的完整文件路径
+//	error: 如果路径不安全或未设置默认目录则返回错误
 //
 // 使用示例:
 //
@@ -446,10 +465,12 @@ func (u *PathSecurityUtil) GetSafeFilePathWithDefault(relativePath string) (stri
 // IsPathTraversalAttack 检测是否为路径遍历攻击
 //
 // 参数:
-//   pathStr: 路径字符串
+//
+//	pathStr: 路径字符串
 //
 // 返回:
-//   bool: 如果是路径遍历攻击返回 true
+//
+//	bool: 如果是路径遍历攻击返回 true
 //
 // 检测特征:
 // - 包含 ../ 或 ..\
@@ -496,12 +517,14 @@ func (u *PathSecurityUtil) IsPathTraversalAttack(pathStr string) bool {
 // GetAbsolutePathWithValidation 获取绝对路径并进行安全验证
 //
 // 参数:
-//   pathStr: 路径字符串
-//   basePath: 基础路径
+//
+//	pathStr: 路径字符串
+//	basePath: 基础路径
 //
 // 返回:
-//   string: 安全的绝对路径
-//   error: 如果路径不安全则返回错误
+//
+//	string: 安全的绝对路径
+//	error: 如果路径不安全则返回错误
 //
 // 使用示例:
 //
@@ -533,10 +556,12 @@ func (u *PathSecurityUtil) GetAbsolutePathWithValidation(pathStr string, basePat
 // 统一路径分隔符，解析 . 和 ..
 //
 // 参数:
-//   pathStr: 路径字符串
+//
+//	pathStr: 路径字符串
 //
 // 返回:
-//   string: 规范化后的路径
+//
+//	string: 规范化后的路径
 //
 // 使用示例:
 //
@@ -556,12 +581,14 @@ func (u *PathSecurityUtil) NormalizePath(pathStr string) string {
 // 防止通过路径连接进行攻击
 //
 // 参数:
-//   basePath: 基础路径
-//   paths: 要连接的路径部分
+//
+//	basePath: 基础路径
+//	paths: 要连接的路径部分
 //
 // 返回:
-//   string: 连接后的安全路径
-//   error: 如果路径不安全则返回错误
+//
+//	string: 连接后的安全路径
+//	error: 如果路径不安全则返回错误
 //
 // 使用示例:
 //

@@ -39,7 +39,11 @@ func (api *SysDictApi) GetDictPage(c *gin.Context) {
 	var queryParams query.DictPageQuery
 	queryParams.Keywords = c.Query("keywords")
 	queryParams.TypeCode = c.Query("typeCode")
-	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
 
 	// typeCode 必填校验
 	if queryParams.TypeCode == "" {
@@ -208,7 +212,11 @@ func (api *SysDictApi) GetDictTypePage(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.DictTypePageQuery
 	queryParams.Keywords = c.Query("keywords")
-	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
 
 	// 调用服务获取分页数据
 	result, err := api.dictTypeService.GetPage(c.Request.Context(), &queryParams)

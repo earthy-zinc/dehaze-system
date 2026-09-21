@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Algorithm, AlgorithmAPI, Dataset, DatasetAPI } from "dehaze-sdk-js";
+import { Algorithm, AlgorithmAPI, DatasetVO, DatasetAPI } from "dehaze-sdk-js";
 
 defineOptions({
   name: "EditDialog",
@@ -123,7 +123,7 @@ Object.assign(
 const type = ref<string>("");
 
 // 打开编辑/新增对话框
-function open<T extends Dataset | Algorithm>(operation: String, row: T) {
+function open<T extends DatasetVO | Algorithm>(operation: String, row: T) {
   if (operation === "编辑") {
     Object.assign(formData, row);
     // 获取数据集/模型大小单位 MB | DB

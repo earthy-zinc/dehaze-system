@@ -91,18 +91,32 @@ class TestQuery:
         # 12 条命中（page=2/size=10 应返回第 11-12 条），外加各 1 条 key/model/时间不命中的干扰记录
         docs = [
             {
-                "user_id": 1, "key_id": 5, "model": "gpt-4",
+                "user_id": 1,
+                "key_id": 5,
+                "model": "gpt-4",
                 "create_time": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
             }
             for _ in range(12)
         ]
         docs += [
-            {"user_id": 1, "key_id": 5, "model": "gpt-3.5",
-             "create_time": datetime(2026, 1, 1, 12, 0, tzinfo=UTC)},
-            {"user_id": 1, "key_id": 6, "model": "gpt-4",
-             "create_time": datetime(2026, 1, 1, 12, 0, tzinfo=UTC)},
-            {"user_id": 1, "key_id": 5, "model": "gpt-4",
-             "create_time": datetime(2026, 1, 5, 12, 0, tzinfo=UTC)},
+            {
+                "user_id": 1,
+                "key_id": 5,
+                "model": "gpt-3.5",
+                "create_time": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+            },
+            {
+                "user_id": 1,
+                "key_id": 6,
+                "model": "gpt-4",
+                "create_time": datetime(2026, 1, 1, 12, 0, tzinfo=UTC),
+            },
+            {
+                "user_id": 1,
+                "key_id": 5,
+                "model": "gpt-4",
+                "create_time": datetime(2026, 1, 5, 12, 0, tzinfo=UTC),
+            },
         ]
         await self._seed(mongo_db, docs)
         repo = MongoAiCallLogRepository()
@@ -139,7 +153,8 @@ class TestRecordCall:
     def test_request_id_auto_generated(self, monkeypatch):
         captured = self._stub_repository(monkeypatch)
         record_call(**INSERT_DEFAULTS)
-        assert isinstance(captured["request_id"], str) and captured["request_id"]
+        assert isinstance(captured["request_id"], str)
+        assert captured["request_id"]
 
     def test_request_id_passed_through(self, monkeypatch):
         captured = self._stub_repository(monkeypatch)

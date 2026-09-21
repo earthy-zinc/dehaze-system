@@ -15,7 +15,7 @@ import UserAPI from "@/api/user";
 import { expectBizError } from "#/utils/assertion";
 import { login, logout } from "#/utils/auth";
 import { getRedis, disconnectRedis } from "#/utils/redis";
-import { uniqueName } from "#/factories/common";
+import { uniqueUsername } from "#/factories/common";
 import { USERS, ROLES } from "#/factories/constants";
 import { ADMIN_PASSWORD } from "#/config/constant";
 
@@ -167,7 +167,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
 
   test("正向测试：注册新用户并自动登录", async () => {
     const { key, code } = await captchaPair();
-    const username = uniqueName("testreg");
+    const username = uniqueUsername("testreg");
     const result = await AuthAPI.register({
       username,
       password: ADMIN_PASSWORD,
@@ -210,7 +210,7 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
     const captcha = await AuthAPI.getCaptcha();
     await expectBizError(
       AuthAPI.register({
-        username: uniqueName("testcaptcha"),
+        username: uniqueUsername("testcaptcha"),
         password: ADMIN_PASSWORD,
         nickname: "验证码测试",
         captchaKey: captcha.captchaKey,
@@ -245,7 +245,7 @@ describe("POST /api/v1/auth/logout - 用户注销", () => {
     await login(USERS.ADMIN.username);
     // logout() 同时清空内存缓存的 sessionId，避免后续 login() 复用已失效会话
     await logout();
-    await expect(AuthAPI.getCurrentUser()).rejects.toThrow();
+    await expect(UserAPI.getInfo()).rejects.toThrow();
   });
 });
 
@@ -255,7 +255,7 @@ describe("GET /api/v1/auth/me - 获取权限信息", () => {
   });
 
   test("正向测试：获取当前用户权限信息并验证数据完整性", async () => {
-    const result = await AuthAPI.getCurrentUser();
+    const result = await UserAPI.getInfo();
     expect(result.userId).toBe(USERS.ADMIN.id);
     expect(result.username).toBe(USERS.ADMIN.username);
     expect(result.nickname).toBe(USERS.ADMIN.nickname);
@@ -310,9 +310,8 @@ describe("GET /api/v1/auth/login-logs - 登录日志查询", () => {
   });
 });
 
-// 规划中：文档 T-AM-090~097 定义多端会话共存（按 deviceType 区分存储、多 Session 并存、管理员踢出）架构，
-// 当前 python 后端为单点登录模型（USE_MULTI_POINT=False，无 deviceType 追踪），属超前规划，未实现。保持 skip。
-describe.skip("GET /api/v1/auth/sessions - 会话管理 [规划中]", () => {
+// 会话管理（F-AM-011）：后端已实现在线会话查询/踢出（session:* SCAN + deviceType 区分）
+describe("GET /api/v1/auth/sessions - 会话管理", () => {
   beforeAll(async () => {
     await login(USERS.ADMIN.username);
   });
@@ -331,6 +330,21 @@ describe.skip("GET /api/v1/auth/sessions - 会话管理 [规划中]", () => {
     const result = await AuthAPI.getSessions("nonexistent_user_xyz");
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBe(0);
+  });
+
+  test("正向测试：踢出指定会话后从列表消失", async () => {
+    // 以 USER 身份新登录产生一个可踢出的会话（不影响当前 admin 登录态）
+    await login(USERS.USER.username);
+    await login(USERS.ADMIN.username);
+
+    const before = await AuthAPI.getSessions(USERS.USER.username);
+    expect(before.length).toBeGreaterThan(0);
+    const target = before[0]!;
+
+    await AuthAPI.kickSession(target.sessionId);
+
+    const after = await AuthAPI.getSessions(USERS.USER.username);
+    expect(after.some((s) => s.sessionId === target.sessionId)).toBe(false);
   });
 });
 

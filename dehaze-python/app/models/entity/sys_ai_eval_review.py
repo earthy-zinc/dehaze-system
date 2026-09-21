@@ -43,6 +43,4 @@ class SysAiEvalReview(BaseModel):
     reviewer_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True, comment="复核人ID(关联sys_user.id)"
     )
-    remark: Mapped[str | None] = mapped_column(
-        String(500), nullable=True, comment="复核备注"
-    )
+    remark: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="复核备注")

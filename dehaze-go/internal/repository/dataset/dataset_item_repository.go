@@ -44,10 +44,11 @@ func (r *DatasetItemRepository) FindByDatasetID(ctx context.Context, datasetID i
 // Create 创建数据项
 func (r *DatasetItemRepository) Create(ctx context.Context, item *model.SysDatasetItem) error {
 	if item.CreatedAt.IsZero() {
-		item.CreatedAt = time.Now()
+		// 时间截断到秒：列为 DATETIME（秒精度），直写带纳秒的 time.Now() 会被 MySQL 进位成下一刻
+		item.CreatedAt = time.Now().Truncate(time.Second)
 	}
 	if item.UpdatedAt.IsZero() {
-		item.UpdatedAt = time.Now()
+		item.UpdatedAt = time.Now().Truncate(time.Second)
 	}
 	return r.db.WithContext(ctx).Create(item).Error
 }
@@ -105,7 +106,7 @@ func (r *DatasetItemRepository) FindPage(ctx context.Context, datasetID int64, p
 
 // Update 更新数据项
 func (r *DatasetItemRepository) Update(ctx context.Context, item *model.SysDatasetItem) error {
-	item.UpdatedAt = time.Now()
+	item.UpdatedAt = time.Now().Truncate(time.Second)
 	return r.db.WithContext(ctx).Model(item).
 		Select("name", "update_time").
 		Updates(item).Error

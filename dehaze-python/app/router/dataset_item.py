@@ -108,7 +108,7 @@ async def upload_dataset_item_with_images(
         raise BusinessException(ResultCode.PARAM_ERROR, "有雾图数量与雾霾程度数量不匹配")
 
     clear_content = await clearImage.read() if clearImage else None
-    clear_ctype = clearImage.content_type if clearImage else ""
+    clear_ctype = (clearImage.content_type or "") if clearImage else ""
 
     hazy_data = []
     for i, hf in enumerate(hazyImages):

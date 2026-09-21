@@ -90,14 +90,20 @@ func (r *CouponRepository) DeleteByIDs(ctx context.Context, ids []int64) error {
 	return r.db.WithContext(ctx).
 		Model(&model.SysCoupon{}).
 		Where("id IN ? AND deleted = 0", ids).
-		Update("deleted", 1).Error
+		Update("deleted", gorm.Expr("id")).Error
 }
 
-func (r *CouponRepository) IncrementIssuedQty(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).
+// IncrementIssuedQtyWithLimit 条件原子递增发放量：total_qty=-1 不限量，否则 issued_qty+n 不得超过库存。
+// 返回 false 表示库存不足或券已删除，调用方据此拒绝领取（防并发超发）。
+func (r *CouponRepository) IncrementIssuedQtyWithLimit(ctx context.Context, id int64, n int64) (bool, error) {
+	res := r.db.WithContext(ctx).
 		Model(&model.SysCoupon{}).
-		Where("id = ? AND deleted = 0", id).
-		UpdateColumn("issued_qty", gorm.Expr("issued_qty + ?", 1)).Error
+		Where("id = ? AND deleted = 0 AND (total_qty = -1 OR issued_qty + ? <= total_qty)", id, n).
+		UpdateColumn("issued_qty", gorm.Expr("issued_qty + ?", n))
+	if res.Error != nil {
+		return false, res.Error
+	}
+	return res.RowsAffected > 0, nil
 }
 
 func (r *CouponRepository) IncrementUsedQty(ctx context.Context, id int64) error {

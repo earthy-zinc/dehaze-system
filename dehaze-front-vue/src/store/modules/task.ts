@@ -1,8 +1,7 @@
 // 任务管理 store
 import { TaskAPI, TaskVO, TaskQuery } from "dehaze-sdk-js";
+import { TASK_POLLING_STATUSES } from "@/views/task/constants";
 
-// 需要轮询的任务状态
-const POLLING_STATUSES = [1, 2];
 // 轮询间隔（毫秒）
 const POLLING_INTERVAL = 3000;
 
@@ -52,7 +51,7 @@ export const useTaskStore = defineStore("task", () => {
   /** 轮询更新进行中任务的状态 */
   const pollTaskStatuses = async () => {
     const activeTasks = taskList.value.filter((t) =>
-      POLLING_STATUSES.includes(t.status)
+      TASK_POLLING_STATUSES.includes(t.status)
     );
     if (activeTasks.length === 0) {
       stopPolling();

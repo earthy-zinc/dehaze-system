@@ -4,7 +4,11 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.service.import_export.models import ExportFieldConfig, ImportFieldConfig
+from app.service.import_export.models import (
+    ExportFieldConfig,
+    ImportFieldConfig,
+    ImportResult,
+)
 from app.service.import_export.registry import (
     ExportHandler,
     ExportHandlerRegistry,
@@ -40,8 +44,8 @@ class _StubImportHandler(ImportHandler):
     def get_field_configs(self) -> list[ImportFieldConfig]:
         return [ImportFieldConfig(field="f", label="F")]
 
-    async def import_batch(self, db, rows, options, progress_cb, cancel_cb):
-        return None
+    async def import_batch(self, db, rows, options, progress_cb, cancel_cb) -> ImportResult:
+        return ImportResult()
 
 
 class TestExportHandlerRegistry:

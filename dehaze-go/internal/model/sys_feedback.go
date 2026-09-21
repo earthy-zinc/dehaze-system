@@ -17,7 +17,7 @@ type SysFeedback struct {
 	AssignedTime  *time.Time `gorm:"column:assigned_time;type:datetime;comment:分配时间" json:"assignedTime"`
 	Tags          string     `gorm:"column:tags;type:json;comment:反馈标签（JSON数组）" json:"tags"`
 	CloseReason   string     `gorm:"column:close_reason;type:varchar(256);comment:关闭原因" json:"closeReason"`
-	Deleted       int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
+	Deleted       int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysFeedback) TableName() string {

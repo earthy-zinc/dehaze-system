@@ -12,12 +12,14 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
-from app.dependencies.auth import get_current_user
+from app.decorators.permission import require_permission
+from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
 from app.models.schema.dataset import BatchOperationResultVO, ItemFileUpdateForm, ItemFileVO
 from app.service.dataset.item_file_service import item_file_service
 
+# 图片文件是数据项的附属资源，写操作与数据项管理同权限（对齐 dataset-items 路由）
 router = APIRouter(
     prefix="/api/v1/item-files",
     tags=["图片文件管理"],
@@ -26,6 +28,7 @@ router = APIRouter(
 
 
 @router.post("", response_model=Result[ItemFileVO], summary="上传数据项图片")
+@require_permission("sys:dataset:edit")
 async def upload_item_file(
     file: UploadFile = File(..., description="图片文件"),
     itemId: int = Form(..., description="所属数据项ID"),
@@ -35,6 +38,7 @@ async def upload_item_file(
     description: str = Form(default="", description="描述"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     result = await item_file_service.upload_item_file(
         db=db,
@@ -50,10 +54,12 @@ async def upload_item_file(
 
 
 @router.delete("/batch", response_model=Result[BatchOperationResultVO], summary="批量删除图片")
+@require_permission("sys:dataset:delete")
 async def batch_delete_item_files(
     body: BatchDeleteForm = Body(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     result = await item_file_service.batch_delete_item_files(db, redis, body.ids)
     return success(result, "删除成功")
@@ -71,11 +77,13 @@ async def get_item_file(
 
 
 @router.put("/{file_id}", response_model=Result[None], summary="修改图片信息")
+@require_permission("sys:dataset:edit")
 async def update_item_file(
     file_id: int = Path(..., description="图片文件关联ID"),
     body: ItemFileUpdateForm = Body(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     await item_file_service.update_item_file(
         db,
@@ -87,10 +95,12 @@ async def update_item_file(
 
 
 @router.delete("/{file_id}", response_model=Result[None], summary="删除图片")
+@require_permission("sys:dataset:delete")
 async def delete_item_file(
     file_id: int = Path(..., description="图片文件关联ID"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     await item_file_service.delete_item_file(db, redis, file_id)
     return success(msg="删除成功")

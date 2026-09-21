@@ -26,6 +26,56 @@ func (_m *MockIAlgorithmRepository) EXPECT() *MockIAlgorithmRepository_Expecter 
 	return &MockIAlgorithmRepository_Expecter{mock: &_m.Mock}
 }
 
+// Audit provides a mock function with given fields: ctx, id, auditBy, status, remark
+func (_m *MockIAlgorithmRepository) Audit(ctx context.Context, id int64, auditBy int64, status int8, remark *string) error {
+	ret := _m.Called(ctx, id, auditBy, status, remark)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Audit")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int8, *string) error); ok {
+		r0 = rf(ctx, id, auditBy, status, remark)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmRepository_Audit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Audit'
+type MockIAlgorithmRepository_Audit_Call struct {
+	*mock.Call
+}
+
+// Audit is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+//   - auditBy int64
+//   - status int8
+//   - remark *string
+func (_e *MockIAlgorithmRepository_Expecter) Audit(ctx interface{}, id interface{}, auditBy interface{}, status interface{}, remark interface{}) *MockIAlgorithmRepository_Audit_Call {
+	return &MockIAlgorithmRepository_Audit_Call{Call: _e.mock.On("Audit", ctx, id, auditBy, status, remark)}
+}
+
+func (_c *MockIAlgorithmRepository_Audit_Call) Run(run func(ctx context.Context, id int64, auditBy int64, status int8, remark *string)) *MockIAlgorithmRepository_Audit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64), args[3].(int8), args[4].(*string))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_Audit_Call) Return(_a0 error) *MockIAlgorithmRepository_Audit_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_Audit_Call) RunAndReturn(run func(context.Context, int64, int64, int8, *string) error) *MockIAlgorithmRepository_Audit_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountPublished provides a mock function with given fields: ctx
 func (_m *MockIAlgorithmRepository) CountPublished(ctx context.Context) (int64, error) {
 	ret := _m.Called(ctx)
@@ -125,6 +175,100 @@ func (_c *MockIAlgorithmRepository_Create_Call) Return(_a0 error) *MockIAlgorith
 }
 
 func (_c *MockIAlgorithmRepository_Create_Call) RunAndReturn(run func(context.Context, *model.SysAlgorithm) error) *MockIAlgorithmRepository_Create_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// CreateVersion provides a mock function with given fields: ctx, version
+func (_m *MockIAlgorithmRepository) CreateVersion(ctx context.Context, version *model.SysAlgorithmVersion) error {
+	ret := _m.Called(ctx, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateVersion")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *model.SysAlgorithmVersion) error); ok {
+		r0 = rf(ctx, version)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmRepository_CreateVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateVersion'
+type MockIAlgorithmRepository_CreateVersion_Call struct {
+	*mock.Call
+}
+
+// CreateVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - version *model.SysAlgorithmVersion
+func (_e *MockIAlgorithmRepository_Expecter) CreateVersion(ctx interface{}, version interface{}) *MockIAlgorithmRepository_CreateVersion_Call {
+	return &MockIAlgorithmRepository_CreateVersion_Call{Call: _e.mock.On("CreateVersion", ctx, version)}
+}
+
+func (_c *MockIAlgorithmRepository_CreateVersion_Call) Run(run func(ctx context.Context, version *model.SysAlgorithmVersion)) *MockIAlgorithmRepository_CreateVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*model.SysAlgorithmVersion))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_CreateVersion_Call) Return(_a0 error) *MockIAlgorithmRepository_CreateVersion_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_CreateVersion_Call) RunAndReturn(run func(context.Context, *model.SysAlgorithmVersion) error) *MockIAlgorithmRepository_CreateVersion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeactivateActiveVersions provides a mock function with given fields: ctx, algorithmID
+func (_m *MockIAlgorithmRepository) DeactivateActiveVersions(ctx context.Context, algorithmID int64) error {
+	ret := _m.Called(ctx, algorithmID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeactivateActiveVersions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, algorithmID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmRepository_DeactivateActiveVersions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeactivateActiveVersions'
+type MockIAlgorithmRepository_DeactivateActiveVersions_Call struct {
+	*mock.Call
+}
+
+// DeactivateActiveVersions is a helper method to define mock.On call
+//   - ctx context.Context
+//   - algorithmID int64
+func (_e *MockIAlgorithmRepository_Expecter) DeactivateActiveVersions(ctx interface{}, algorithmID interface{}) *MockIAlgorithmRepository_DeactivateActiveVersions_Call {
+	return &MockIAlgorithmRepository_DeactivateActiveVersions_Call{Call: _e.mock.On("DeactivateActiveVersions", ctx, algorithmID)}
+}
+
+func (_c *MockIAlgorithmRepository_DeactivateActiveVersions_Call) Run(run func(ctx context.Context, algorithmID int64)) *MockIAlgorithmRepository_DeactivateActiveVersions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_DeactivateActiveVersions_Call) Return(_a0 error) *MockIAlgorithmRepository_DeactivateActiveVersions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_DeactivateActiveVersions_Call) RunAndReturn(run func(context.Context, int64) error) *MockIAlgorithmRepository_DeactivateActiveVersions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -656,6 +800,65 @@ func (_c *MockIAlgorithmRepository_FindPage_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// FindVersionByID provides a mock function with given fields: ctx, versionID
+func (_m *MockIAlgorithmRepository) FindVersionByID(ctx context.Context, versionID int64) (*model.SysAlgorithmVersion, error) {
+	ret := _m.Called(ctx, versionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindVersionByID")
+	}
+
+	var r0 *model.SysAlgorithmVersion
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*model.SysAlgorithmVersion, error)); ok {
+		return rf(ctx, versionID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *model.SysAlgorithmVersion); ok {
+		r0 = rf(ctx, versionID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SysAlgorithmVersion)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, versionID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIAlgorithmRepository_FindVersionByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindVersionByID'
+type MockIAlgorithmRepository_FindVersionByID_Call struct {
+	*mock.Call
+}
+
+// FindVersionByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - versionID int64
+func (_e *MockIAlgorithmRepository_Expecter) FindVersionByID(ctx interface{}, versionID interface{}) *MockIAlgorithmRepository_FindVersionByID_Call {
+	return &MockIAlgorithmRepository_FindVersionByID_Call{Call: _e.mock.On("FindVersionByID", ctx, versionID)}
+}
+
+func (_c *MockIAlgorithmRepository_FindVersionByID_Call) Run(run func(ctx context.Context, versionID int64)) *MockIAlgorithmRepository_FindVersionByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_FindVersionByID_Call) Return(_a0 *model.SysAlgorithmVersion, _a1 error) *MockIAlgorithmRepository_FindVersionByID_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_FindVersionByID_Call) RunAndReturn(run func(context.Context, int64) (*model.SysAlgorithmVersion, error)) *MockIAlgorithmRepository_FindVersionByID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindVersionsByAlgorithmID provides a mock function with given fields: ctx, algorithmID
 func (_m *MockIAlgorithmRepository) FindVersionsByAlgorithmID(ctx context.Context, algorithmID int64) ([]model.SysAlgorithmVersion, error) {
 	ret := _m.Called(ctx, algorithmID)
@@ -715,41 +918,34 @@ func (_c *MockIAlgorithmRepository_FindVersionsByAlgorithmID_Call) RunAndReturn(
 	return _c
 }
 
-// SearchPublished provides a mock function with given fields: ctx, keyword, pageNum, pageSize
-func (_m *MockIAlgorithmRepository) SearchPublished(ctx context.Context, keyword string, pageNum int, pageSize int) ([]model.SysAlgorithm, int64, error) {
-	ret := _m.Called(ctx, keyword, pageNum, pageSize)
+// SearchPublished provides a mock function with given fields: ctx, keyword
+func (_m *MockIAlgorithmRepository) SearchPublished(ctx context.Context, keyword string) ([]model.SysAlgorithm, error) {
+	ret := _m.Called(ctx, keyword)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchPublished")
 	}
 
 	var r0 []model.SysAlgorithm
-	var r1 int64
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) ([]model.SysAlgorithm, int64, error)); ok {
-		return rf(ctx, keyword, pageNum, pageSize)
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]model.SysAlgorithm, error)); ok {
+		return rf(ctx, keyword)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) []model.SysAlgorithm); ok {
-		r0 = rf(ctx, keyword, pageNum, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, string) []model.SysAlgorithm); ok {
+		r0 = rf(ctx, keyword)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.SysAlgorithm)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, int, int) int64); ok {
-		r1 = rf(ctx, keyword, pageNum, pageSize)
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, keyword)
 	} else {
-		r1 = ret.Get(1).(int64)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, int, int) error); ok {
-		r2 = rf(ctx, keyword, pageNum, pageSize)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockIAlgorithmRepository_SearchPublished_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SearchPublished'
@@ -760,25 +956,23 @@ type MockIAlgorithmRepository_SearchPublished_Call struct {
 // SearchPublished is a helper method to define mock.On call
 //   - ctx context.Context
 //   - keyword string
-//   - pageNum int
-//   - pageSize int
-func (_e *MockIAlgorithmRepository_Expecter) SearchPublished(ctx interface{}, keyword interface{}, pageNum interface{}, pageSize interface{}) *MockIAlgorithmRepository_SearchPublished_Call {
-	return &MockIAlgorithmRepository_SearchPublished_Call{Call: _e.mock.On("SearchPublished", ctx, keyword, pageNum, pageSize)}
+func (_e *MockIAlgorithmRepository_Expecter) SearchPublished(ctx interface{}, keyword interface{}) *MockIAlgorithmRepository_SearchPublished_Call {
+	return &MockIAlgorithmRepository_SearchPublished_Call{Call: _e.mock.On("SearchPublished", ctx, keyword)}
 }
 
-func (_c *MockIAlgorithmRepository_SearchPublished_Call) Run(run func(ctx context.Context, keyword string, pageNum int, pageSize int)) *MockIAlgorithmRepository_SearchPublished_Call {
+func (_c *MockIAlgorithmRepository_SearchPublished_Call) Run(run func(ctx context.Context, keyword string)) *MockIAlgorithmRepository_SearchPublished_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
 
-func (_c *MockIAlgorithmRepository_SearchPublished_Call) Return(_a0 []model.SysAlgorithm, _a1 int64, _a2 error) *MockIAlgorithmRepository_SearchPublished_Call {
-	_c.Call.Return(_a0, _a1, _a2)
+func (_c *MockIAlgorithmRepository_SearchPublished_Call) Return(_a0 []model.SysAlgorithm, _a1 error) *MockIAlgorithmRepository_SearchPublished_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockIAlgorithmRepository_SearchPublished_Call) RunAndReturn(run func(context.Context, string, int, int) ([]model.SysAlgorithm, int64, error)) *MockIAlgorithmRepository_SearchPublished_Call {
+func (_c *MockIAlgorithmRepository_SearchPublished_Call) RunAndReturn(run func(context.Context, string) ([]model.SysAlgorithm, error)) *MockIAlgorithmRepository_SearchPublished_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -874,6 +1068,53 @@ func (_c *MockIAlgorithmRepository_UpdateStatus_Call) Return(_a0 error) *MockIAl
 }
 
 func (_c *MockIAlgorithmRepository_UpdateStatus_Call) RunAndReturn(run func(context.Context, int64, int8) error) *MockIAlgorithmRepository_UpdateStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateVersion provides a mock function with given fields: ctx, version
+func (_m *MockIAlgorithmRepository) UpdateVersion(ctx context.Context, version *model.SysAlgorithmVersion) error {
+	ret := _m.Called(ctx, version)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateVersion")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, *model.SysAlgorithmVersion) error); ok {
+		r0 = rf(ctx, version)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockIAlgorithmRepository_UpdateVersion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateVersion'
+type MockIAlgorithmRepository_UpdateVersion_Call struct {
+	*mock.Call
+}
+
+// UpdateVersion is a helper method to define mock.On call
+//   - ctx context.Context
+//   - version *model.SysAlgorithmVersion
+func (_e *MockIAlgorithmRepository_Expecter) UpdateVersion(ctx interface{}, version interface{}) *MockIAlgorithmRepository_UpdateVersion_Call {
+	return &MockIAlgorithmRepository_UpdateVersion_Call{Call: _e.mock.On("UpdateVersion", ctx, version)}
+}
+
+func (_c *MockIAlgorithmRepository_UpdateVersion_Call) Run(run func(ctx context.Context, version *model.SysAlgorithmVersion)) *MockIAlgorithmRepository_UpdateVersion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*model.SysAlgorithmVersion))
+	})
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_UpdateVersion_Call) Return(_a0 error) *MockIAlgorithmRepository_UpdateVersion_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockIAlgorithmRepository_UpdateVersion_Call) RunAndReturn(run func(context.Context, *model.SysAlgorithmVersion) error) *MockIAlgorithmRepository_UpdateVersion_Call {
 	_c.Call.Return(run)
 	return _c
 }

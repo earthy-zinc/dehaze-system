@@ -185,6 +185,13 @@ import {
   CircleClose,
   Picture,
 } from "@element-plus/icons-vue";
+import {
+  feedbackTypeOptions,
+  feedbackStatusOptions,
+  feedbackReplyTypeOptions,
+  feedbackModuleOptions,
+} from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "FeedbackDetail" });
 
@@ -195,60 +202,24 @@ const detail = ref<FeedbackDetailVO | null>(null);
 const supplementContent = ref("");
 const supplementLoading = ref(false);
 
-const MODULE_LABEL_MAP: Record<string, string> = {
-  dehaze: "去雾处理",
-  evaluate: "指标评估",
-  dataset: "数据集",
-  member: "会员",
-  package: "套餐",
-  order: "订单",
-  other: "其他",
-};
-
 function statusLabel(status: FeedbackStatus): string {
-  const map: Record<FeedbackStatus, string> = {
-    pending: "待处理",
-    processing: "处理中",
-    replied: "已回复",
-    closed: "已关闭",
-  };
-  return map[status] || status;
+  return feedbackStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
 function typeLabel(type: FeedbackType): string {
-  const map: Record<FeedbackType, string> = {
-    suggestion: "功能建议",
-    bug: "问题报告",
-    experience: "体验反馈",
-    complaint: "投诉",
-  };
-  return map[type] || type;
+  return feedbackTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
 function moduleLabel(module: string): string {
-  return MODULE_LABEL_MAP[module] || module;
+  return feedbackModuleOptions.find((o) => o.value === module)?.label ?? module;
 }
 
 function replyTypeLabel(type: FeedbackReplyType): string {
-  const map: Record<FeedbackReplyType, string> = {
-    info: "通知",
-    resolved: "已解决",
-    unsupported: "不支持",
-    dev_transfer: "转开发",
-  };
-  return map[type] || type;
+  return feedbackReplyTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
-function replyTypeTagType(
-  type: FeedbackReplyType
-): "info" | "success" | "warning" {
-  const map: Record<FeedbackReplyType, "info" | "success" | "warning"> = {
-    info: "info",
-    resolved: "success",
-    unsupported: "info",
-    dev_transfer: "warning",
-  };
-  return map[type];
+function replyTypeTagType(type: FeedbackReplyType): TagType {
+  return feedbackReplyTypeOptions.find((o) => o.value === type)!.tag;
 }
 
 function loadDetail() {

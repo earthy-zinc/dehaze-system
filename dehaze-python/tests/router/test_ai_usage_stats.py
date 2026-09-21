@@ -2,11 +2,11 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.database import get_db
-
-pytestmark = pytest.mark.api
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.service.ai_usage_stats_service import ai_usage_stats_service
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:

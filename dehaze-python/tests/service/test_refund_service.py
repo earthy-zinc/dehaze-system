@@ -8,8 +8,8 @@ import pytest
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.entity.sys_refund_record import SysRefundRecord
 from app.models.entity.sys_order import SysOrder
+from app.models.entity.sys_refund_record import SysRefundRecord
 from app.repository.balance_refund_repository import balance_refund_repository
 from app.repository.order_repository import order_repository
 from app.repository.refund_record_repository import refund_record_repository
@@ -27,26 +27,26 @@ def _refund_result(success=True, channel_refund_no="CR-1", error_message=None):
 
 
 async def _seed_order(db, *, order_no="RF-001", user_id=100, package_type="vip", **overrides):
-    base = dict(
-        order_no=order_no,
-        user_id=user_id,
-        package_id=1,
-        package_name="黄金月卡",
-        package_type=package_type,
-        package_level="level_1" if package_type == "vip" else None,
-        period_days=30 if package_type == "vip" else None,
-        credit_amount=None if package_type == "vip" else 10000,
-        original_price=10000,
-        discount_amount=1000,
-        payable_amount=9000,
-        balance_amount=0,
-        paid_amount=9000,
-        pay_method="balance",
-        status=2,
-        paid_time=datetime.now() - timedelta(days=10),
-        expire_time=datetime.now() + timedelta(minutes=5),
-        is_auto_renew=0,
-    )
+    base = {
+        "order_no": order_no,
+        "user_id": user_id,
+        "package_id": 1,
+        "package_name": "黄金月卡",
+        "package_type": package_type,
+        "package_level": "level_1" if package_type == "vip" else None,
+        "period_days": 30 if package_type == "vip" else None,
+        "credit_amount": None if package_type == "vip" else 10000,
+        "original_price": 10000,
+        "discount_amount": 1000,
+        "payable_amount": 9000,
+        "balance_amount": 0,
+        "paid_amount": 9000,
+        "pay_method": "balance",
+        "status": 2,
+        "paid_time": datetime.now() - timedelta(days=10),
+        "expire_time": datetime.now() + timedelta(minutes=5),
+        "is_auto_renew": 0,
+    }
     base.update(overrides)
     order = SysOrder(**base)
     await order_repository.create(db, order)
@@ -55,25 +55,23 @@ async def _seed_order(db, *, order_no="RF-001", user_id=100, package_type="vip",
 
 
 def _build_service(**kw):
-    defaults = dict(
-        mongo_audit_log_repository=SimpleNamespace(create_audit_async=lambda *a, **k: None),
-        order_repository=order_repository,
-        payment_record_repository=SimpleNamespace(
+    defaults = {
+        "mongo_audit_log_repository": SimpleNamespace(create_audit_async=lambda *a, **k: None),
+        "order_repository": order_repository,
+        "payment_record_repository": SimpleNamespace(
             list_by_order_id=AsyncMock(
                 return_value=[SimpleNamespace(channel="wechat", payment_no="PAY-REF")]
             )
         ),
-        refund_record_repository=refund_record_repository,
-        balance_refund_repository=SimpleNamespace(create=AsyncMock(), get_by_id=AsyncMock()),
-        payment_channel_service=SimpleNamespace(
-            refund=AsyncMock(return_value=_refund_result())
-        ),
-        balance_account_service=SimpleNamespace(refund=AsyncMock()),
-        member_service=SimpleNamespace(on_order_refunded=AsyncMock()),
-        ai_balance_service=SimpleNamespace(
+        "refund_record_repository": refund_record_repository,
+        "balance_refund_repository": SimpleNamespace(create=AsyncMock(), get_by_id=AsyncMock()),
+        "payment_channel_service": SimpleNamespace(refund=AsyncMock(return_value=_refund_result())),
+        "balance_account_service": SimpleNamespace(refund=AsyncMock()),
+        "member_service": SimpleNamespace(on_order_refunded=AsyncMock()),
+        "ai_balance_service": SimpleNamespace(
             deduct=AsyncMock(), get_balance=AsyncMock(return_value=10000)
         ),
-    )
+    }
     defaults.update(kw)
     return RefundService(**defaults)
 
@@ -102,6 +100,7 @@ class TestApplyRefund:
         assert refund.reason_type == "after_sale"
         assert refund.used_days == 10
         order = await order_repository.get_by_order_no(db, "RF-VIP")
+        assert order is not None
         assert order.status == 5
 
     async def test_apply_credit_prorated_by_usage(self, db):
@@ -197,8 +196,10 @@ class TestApproveRefund:
         await svc.approve_refund(db, refund.id, {"remark": "同意"}, 200)
         balance_refund.assert_awaited_once_with(db, 100, 6000)
         refreshed = await refund_record_repository.get_by_id(db, refund.id)
+        assert refreshed is not None
         assert refreshed.status == 2
         order_ref = await order_repository.get_by_id(db, order.id)
+        assert order_ref is not None
         assert order_ref.status == 6
 
     async def test_approve_combined_splits(self, db):
@@ -229,12 +230,15 @@ class TestApproveRefund:
         refund = await self._seed_refund(db, order, amount=6000)
         on_order_refunded = AsyncMock()
         svc = _build_service(
-            payment_channel_service=SimpleNamespace(refund=AsyncMock(return_value=_refund_result())),
+            payment_channel_service=SimpleNamespace(
+                refund=AsyncMock(return_value=_refund_result())
+            ),
             member_service=SimpleNamespace(on_order_refunded=on_order_refunded),
         )
         await svc.approve_refund(db, refund.id, {"remark": "同意"}, 200)
         on_order_refunded.assert_awaited_once()
         refund_ref = await refund_record_repository.get_by_id(db, refund.id)
+        assert refund_ref is not None
         assert refund_ref.status == 2
 
     async def test_approve_failure_restores_order(self, db):
@@ -242,14 +246,18 @@ class TestApproveRefund:
         refund = await self._seed_refund(db, order, amount=6000)
         svc = _build_service(
             payment_channel_service=SimpleNamespace(
-                refund=AsyncMock(return_value=_refund_result(success=False, error_message="渠道失败"))
+                refund=AsyncMock(
+                    return_value=_refund_result(success=False, error_message="渠道失败")
+                )
             )
         )
         await svc.approve_refund(db, refund.id, {"remark": "同意"}, 200)
         refund_ref = await refund_record_repository.get_by_id(db, refund.id)
+        assert refund_ref is not None
         assert refund_ref.status == 3
         assert refund_ref.error_message
         order_ref = await order_repository.get_by_id(db, order.id)
+        assert order_ref is not None
         assert order_ref.status in (2, 3)
 
 
@@ -265,6 +273,7 @@ class TestBalanceRefund:
         assert data["refundNo"]
         assert data["amount"] == 5000
         record = await balance_refund_repository.get_by_refund_no(db, data["refundNo"])
+        assert record is not None
         assert record.status == 1
 
     async def test_approve_balance_refund_withdraws(self, db):
@@ -278,9 +287,7 @@ class TestBalanceRefund:
         svc = _build_service(
             balance_refund_repository=balance_refund_repo,
             balance_account_service=SimpleNamespace(
-                get_account=AsyncMock(
-                    return_value=SimpleNamespace(balance=5000, frozen_balance=0)
-                ),
+                get_account=AsyncMock(return_value=SimpleNamespace(balance=5000, frozen_balance=0)),
                 withdraw=withdraw,
             ),
         )

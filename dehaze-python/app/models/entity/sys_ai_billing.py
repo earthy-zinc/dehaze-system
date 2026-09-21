@@ -41,7 +41,9 @@ class SysAiBilling(AppendOnlyModel):
     )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="调用耗时(毫秒)")
     bill_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, comment="计费类型(chat;tool_llm;kb_inject;asr;tts)"
+        String(32),
+        nullable=False,
+        comment="计费类型(chat;chat_subagent;tool_llm;kb_inject;asr;tts)",
     )
     input_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="输入Token数(含缓存命中部分)"

@@ -14,9 +14,8 @@ import {
 /**
  * SKILL 管理（F-M08-006 §2.6.11/§2.6.14，管理操作需 ai:skill:manage）。
  *
- * 后端尚未实现 SKILL 管理路由：测试先行契约（以 dehaze-doc API接口.md §2.14 为行为断言依据），
- * 接口 404 时正向用例失败暴露，待后端实现后统一验证。
- * 数据前缀 test_skill_，普通用户 403（A0301）。
+ * 断言依据 dehaze-doc API接口.md §2.12；数据前缀 test_skill_，普通用户 403（A0301），
+ * 禁用 Skill 对普通用户按不存在处理（A0401）。
  */
 describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
   describe("Skill CRUD", () => {
@@ -27,7 +26,8 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
       expect(result.id).toBeGreaterThan(0);
       expect(result.name).toBe(form.name);
       expect(result.instruction).toBe(form.instruction);
-      expect(result.status).toBe(1);
+      // 新建 Skill 默认禁用（status=0），需显式启用
+      expect(result.status).toBe(0);
     });
 
     test("T-MF-001 正向：Skill 列表（管理员全量）", async () => {
@@ -35,6 +35,24 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
       const result = await AiSkillAPI.listSkills(createSkillQuery());
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
+    });
+
+    test("T-MF-001 正向：管理员状态筛选（status=0 仅含禁用项）", async () => {
+      await login(USERS.ADMIN.username);
+      const enabled = await AiSkillAPI.createSkill(createSkillForm());
+      // 创建默认禁用，需显式启用才能进入 status=1 侧
+      await AiSkillAPI.switchSkillStatus(enabled.id, 1);
+      const disabled = await AiSkillAPI.createSkill(createSkillForm());
+      await AiSkillAPI.switchSkillStatus(disabled.id, 0);
+      try {
+        const result = await AiSkillAPI.listSkills({ status: 0, pageNum: 1, pageSize: 100 });
+        const names = result.list.map((s) => s.id);
+        expect(names).toContain(disabled.id);
+        expect(names).not.toContain(enabled.id);
+      } finally {
+        await AiSkillAPI.deleteSkill(enabled.id).catch(() => {});
+        await AiSkillAPI.deleteSkill(disabled.id).catch(() => {});
+      }
     });
 
     test("T-MF-004 正向：更新 Skill", async () => {
@@ -67,9 +85,28 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
       expect(enabled.status).toBe(1);
     });
 
+    test("T-MF-084a 越权：禁用 Skill 对普通用户按不存在处理 → A0401", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiSkillAPI.createSkill(createSkillForm());
+      await AiSkillAPI.switchSkillStatus(created.id, 0);
+      try {
+        // 管理员仍可见
+        const adminView = await AiSkillAPI.getSkill(created.id);
+        expect(adminView.status).toBe(0);
+        // 普通用户按不存在处理（与列表"仅启用"口径一致）
+        await login(USERS.USER.username);
+        await expectBizError(AiSkillAPI.getSkill(created.id), ["A0401"]);
+      } finally {
+        await login(USERS.ADMIN.username);
+        await AiSkillAPI.deleteSkill(created.id).catch(() => {});
+      }
+    });
+
     test("T-MF-087 正向：Skill 试运行（不入库不推送）", async () => {
       await login(USERS.ADMIN.username);
       const created = await AiSkillAPI.createSkill(createSkillForm());
+      // 试运行要求启用态：新建默认禁用
+      await AiSkillAPI.switchSkillStatus(created.id, 1);
       const result = await AiSkillAPI.testSkill(created.id, createSkillTestForm());
       expect(result).toBeDefined();
     });
@@ -83,6 +120,8 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
     test("T-MF-088 正向：共享 Skill 至市场（需先启用）", async () => {
       await login(USERS.ADMIN.username);
       const created = await AiSkillAPI.createSkill(createSkillForm());
+      // python 契约：共享要求启用态，禁用 Skill 共享 → A0400
+      await AiSkillAPI.switchSkillStatus(created.id, 1);
       const shared = await AiSkillAPI.shareToMarket(created.id);
       expect(shared.id).toBe(created.id);
       expect(shared.marketShared).toBe(1);
@@ -120,7 +159,8 @@ describe("SKILL 管理 - AiSkillAPI (T-MF-086~089)", () => {
     test("T-MF-094 正向：zip 校验失败返回业务错误（缺 SKILL.md）", async () => {
       await login(USERS.ADMIN.username);
       const badZip = buildSkillZip({ "readme-only/README.md": "# 无 SKILL.md" });
-      const file = new File([badZip], "bad.zip", { type: "application/zip" });
+      // Node Buffer 的 ArrayBufferLike 不满足 BlobPart，转成 Uint8Array（字节等价）
+      const file = new File([new Uint8Array(badZip)], "bad.zip", { type: "application/zip" });
       await expectBizError(AiSkillAPI.uploadSkill(file), ["A0400"]);
     });
   });

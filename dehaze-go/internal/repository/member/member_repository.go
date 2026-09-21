@@ -3,6 +3,7 @@ package member
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -28,6 +29,17 @@ func (r *MemberRepository) FindByUserID(ctx context.Context, userID int64) (*mod
 		return nil, nil
 	}
 	return &m, err
+}
+
+func (r *MemberRepository) FindByUserIDs(ctx context.Context, userIDs []int64) ([]model.SysMember, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	var list []model.SysMember
+	err := r.db.WithContext(ctx).
+		Where("user_id IN ? AND deleted = 0", userIDs).
+		Find(&list).Error
+	return list, err
 }
 
 func (r *MemberRepository) FindWithUserByUserID(ctx context.Context, userID int64) (*MemberWithUser, error) {
@@ -64,7 +76,8 @@ func (r *MemberRepository) FindPageWithUser(ctx context.Context, q *query.Member
 		Where("m.deleted = 0 AND u.deleted = 0")
 
 	if q.Keywords != "" {
-		kw := "%" + q.Keywords + "%"
+		// 先转义字面关键字，再包裹通配符（python escape_like 同口径）
+		kw := "%" + esc(q.Keywords) + "%"
 		db = db.Where("u.username LIKE ? OR u.nickname LIKE ? OR u.mobile LIKE ?", kw, kw, kw)
 	}
 	if q.LevelCode != "" {
@@ -238,3 +251,11 @@ func (r *MemberRepository) Transaction(ctx context.Context, fn func(repo IMember
 }
 
 var _ IMemberRepository = (*MemberRepository)(nil)
+
+// esc 转义 LIKE 通配符（% _ \），配合 ESCAPE 子句使用
+func esc(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}

@@ -23,7 +23,7 @@ public class AlgorithmForm {
 
     @Schema(description = "算法名称")
     @NotBlank(message = "算法名称不能为空")
-    @Size(max = 50, message = "算法名称长度不能超过50")
+    @Size(max = 64, message = "算法名称长度不能超过64")
     private String name;
 
     @Schema(description = "算法模型文件存储路径")

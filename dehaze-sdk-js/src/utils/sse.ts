@@ -71,7 +71,12 @@ export interface SSERequestConfig {
   lastEventId?: string;
   /** 外部 AbortSignal，用于中断流式 */
   signal?: AbortSignal;
+  /** fetch 实现（缺省用全局 fetch；供调用方注入，便于测试不触碰全局 fetch） */
+  fetchImpl?: typeof fetch;
 }
+
+/** 流式入口的注入选项（当前仅 fetch 实现，供测试注入假 fetch） */
+export type SSEStreamOptions = Pick<SSERequestConfig, "fetchImpl">;
 
 /** SSE 事件回调 */
 export interface SSEHandlers {
@@ -118,7 +123,7 @@ export async function fetchSSE(config: SSERequestConfig, handlers: SSEHandlers):
   }
 
   try {
-    const response = await fetch(config.url, init);
+    const response = await (config.fetchImpl ?? fetch)(config.url, init);
 
     if (!response.ok) {
       throw new Error(`SSE request failed: ${response.status} ${response.statusText}`);

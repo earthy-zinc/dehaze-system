@@ -12,11 +12,13 @@ tools/call 直接映射为工具），而非仅靠文本注入。
 - 工具执行时建立短会话调用 tools/call（streamable-http 无状态），记录调用审计
   （sys_ai_mcp_call，与调用审计面板打通）
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import re
 import time
 from contextlib import AsyncExitStack
 from typing import Any
@@ -52,7 +54,6 @@ def _schema_py_type(schema: dict[str, Any]) -> Any:
 
         return Literal[tuple(enum)]  # type: ignore[valid-type]
     if stype == "array":
-
         return list[_schema_py_type(schema.get("items") or {"type": "string"})]  # type: ignore[index]
     if stype == "object":
         return dict
@@ -113,7 +114,7 @@ class McpExternalToolLoader:
                 )
             except TimeoutError:
                 logger.warning("MCP 外部工具装载超时: server=%s", server.name)
-            except Exception as exc:  # noqa: BLE001 单 Server 失败不影响整体构图
+            except Exception as exc:
                 logger.warning("MCP 外部工具装载失败: server=%s err=%s", server.name, exc)
         if tools:
             logger.info("MCP 外部工具装载完成，共 %s 个", len(tools))
@@ -131,8 +132,6 @@ class McpExternalToolLoader:
         命名空间配置了 tool_names（归属工具清单）时按清单过滤；未配置时该
         命名空间承载 Server 全部工具。
         """
-        if server.protocol_type == "stdio" or not server.endpoint:
-            return []
         allowed, _reason = await apply_ssrf_guard(server)
         if not allowed:
             return []
@@ -164,12 +163,13 @@ class McpExternalToolLoader:
             from mcp.client.sse import sse_client
             from mcp.client.streamable_http import streamablehttp_client
 
-            client_fn = (
-                sse_client if server.protocol_type == "sse" else streamablehttp_client
-            )
+            client_fn = sse_client if server.protocol_type == "sse" else streamablehttp_client
+            if not server.endpoint:
+                return []
             async with AsyncExitStack() as stack:
                 transport = client_fn(server.endpoint, headers=headers)
-                read, write, _ = await stack.enter_async_context(transport)
+                # sse_client 产出 2 元组、streamablehttp_client 产出 3 元组，取前两个流
+                read, write, *_ = await stack.enter_async_context(transport)
                 session = await stack.enter_async_context(ClientSession(read, write))
                 listed = await asyncio.wait_for(session.list_tools(), _LOAD_TIMEOUT)
                 return [
@@ -180,9 +180,14 @@ class McpExternalToolLoader:
                     }
                     for t in listed.tools or []
                 ]
-        except Exception as exc:  # noqa: BLE001 外部 Server 不可用降级为空
+        except Exception as exc:
             logger.warning("MCP 外部 Server 工具清单拉取失败: server=%s err=%s", server.name, exc)
             return []
+
+    @staticmethod
+    def _sanitize_tool_name(raw: str) -> str:
+        """净化为合法工具名片段（LLM function calling 要求字母数字下划线连字符）。"""
+        return re.sub(r"[^a-zA-Z0-9_-]", "_", raw)[:64]
 
     def _build_tool(
         self,
@@ -193,7 +198,7 @@ class McpExternalToolLoader:
     ) -> StructuredTool:
         """构造可调用的 StructuredTool（<namespace>_<tool> 命名 + 调用审计）。"""
         raw_name = tool["name"]
-        name = f"{namespace}_{raw_name}"
+        name = f"{self._sanitize_tool_name(namespace)}_{self._sanitize_tool_name(raw_name)}"
         desc = tool.get("description") or f"调用外部 MCP Server「{server.name}」的工具 {raw_name}"
         args_schema = _build_args_schema(tool.get("input_schema") or {})
         server_id = server.id
@@ -205,7 +210,7 @@ class McpExternalToolLoader:
             try:
                 text = await call_remote_tool(server, raw_name, kwargs)
                 result = "success"
-            except Exception as exc:  # noqa: BLE001 错误作为工具结果回喂模型
+            except Exception as exc:
                 logger.warning(
                     "MCP 外部工具调用失败: server=%s tool=%s err=%s",
                     server_name,
@@ -262,7 +267,7 @@ class McpExternalToolLoader:
                     request={"arguments": request},
                     response=response,
                 )
-        except Exception as exc:  # noqa: BLE001 审计失败不影响工具调用
+        except Exception as exc:
             logger.warning(
                 "MCP 外部调用审计写入失败: server=%s tool=%s err=%s",
                 server_id,

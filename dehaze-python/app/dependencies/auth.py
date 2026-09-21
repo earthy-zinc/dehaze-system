@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -24,6 +25,7 @@ class UserContext(BaseModel):
     data_scope: int | None = None
     roles: list[str] = []
     permissions: list[str] = []
+    device_type: str | None = None
     is_m2m: bool = False
 
     @property
@@ -75,7 +77,9 @@ async def get_current_user(
 
     ttl = await redis.ttl(SESSION_PREFIX + session_id)
     if ttl > 0 and ttl < RENEW_THRESHOLD:
-        await redis.expire(SESSION_PREFIX + session_id, SESSION_TTL)
+        # 续期时同步 lastAccessTime（F-AM-011 会话列表展示字段）
+        session["lastAccessTime"] = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+        await redis.set(SESSION_PREFIX + session_id, json.dumps(session), ex=SESSION_TTL)
 
     user_id = session.get("userId")
     if not user_id:
@@ -95,6 +99,7 @@ async def get_current_user(
         data_scope=session.get("dataScope"),
         roles=roles,
         permissions=perms,
+        device_type=session.get("deviceType") or "web",
     )
 
     set_current_user_id(user_context.id)
@@ -104,8 +109,9 @@ async def get_current_user(
 async def get_current_user_optional(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme),
+    redis=Depends(get_redis_client),
 ) -> UserContext | None:
     try:
-        return await get_current_user(request, credentials)
+        return await get_current_user(request, credentials, redis)
     except HTTPException:
         return None

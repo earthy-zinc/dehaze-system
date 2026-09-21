@@ -154,7 +154,7 @@ async def run_schedule(
                 await schedule_executor.trigger_once(
                     bg_db, redis_client, schedule_id, user.id, manual=True
                 )
-        except Exception as exc:  # noqa: BLE001 后台执行异常不影响受理响应
+        except Exception as exc:
             logger.error("定时任务手动触发后台执行失败: schedule_id=%s err=%s", schedule_id, exc)
 
     _track_task(asyncio.create_task(_trigger_once()))

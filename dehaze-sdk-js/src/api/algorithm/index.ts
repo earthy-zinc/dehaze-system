@@ -141,11 +141,10 @@ class AlgorithmAPI {
   }
 
   /** 获取算法选择树（仅已发布算法） */
-  static tree(taskType?: string) {
+  static tree() {
     return request<AlgorithmSelectNodeVO[]>({
       url: "/api/v1/algorithms/select/tree",
       method: "get",
-      params: taskType ? { taskType } : undefined,
     });
   }
 
@@ -166,12 +165,12 @@ class AlgorithmAPI {
     });
   }
 
-  /** 搜索算法（关键词/拼音/标签） */
-  static search(keyword: string, taskType?: string) {
+  /** 搜索算法（关键词匹配名称/类型/描述，空关键词返回空列表） */
+  static search(keyword: string) {
     return request<AlgorithmSelectNodeVO[]>({
       url: "/api/v1/algorithms/select/search",
       method: "get",
-      params: taskType ? { keyword, taskType } : { keyword },
+      params: { keyword },
     });
   }
 

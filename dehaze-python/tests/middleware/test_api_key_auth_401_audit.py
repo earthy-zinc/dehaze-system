@@ -1,20 +1,32 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
+
+from starlette.requests import Request
 
 from app.middleware.api_key_auth import ApiKeyAuthMiddleware
 
 
+async def _noop_app(scope, receive, send):  # pragma: no cover
+    raise AssertionError("中间件测试仅测 _audit_401，不调用 ASGI app")
+
+
 def _make_mw():
     rc = MagicMock()
-    mw = ApiKeyAuthMiddleware(app=None, record_call=rc)  # type: ignore[arg-type]
+    mw = ApiKeyAuthMiddleware(app=_noop_app, record_call=rc)
     return mw, rc
 
 
-def _request(path: str, headers: dict | None = None):
-    return SimpleNamespace(
-        url=SimpleNamespace(path=path),
-        headers=headers or {},
-        client=SimpleNamespace(host="203.0.113.9"),
+def _request(path: str, headers: dict | None = None) -> Request:
+    raw_headers = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": path,
+            "query_string": b"",
+            "headers": raw_headers,
+            "client": ("203.0.113.9", 0),
+            "server": ("test", 80),
+        }
     )
 
 
@@ -28,7 +40,8 @@ class TestAudit401:
         )
         kwargs = rc.call_args.kwargs
         assert rc.call_count == 1
-        assert kwargs["user_id"] is None and kwargs["key_id"] is None
+        assert kwargs["user_id"] is None
+        assert kwargs["key_id"] is None
         assert kwargs["key_prefix"] == "dhak_ab3"
         assert kwargs["endpoint"] == "completions"
         assert kwargs["protocol"] == "openai"

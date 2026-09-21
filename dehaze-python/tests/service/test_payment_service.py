@@ -1,6 +1,5 @@
 """支付服务测试：余额/组合支付、支付回调校验/幂等/履约分流、优惠券核销。"""
 
-import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -11,7 +10,6 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_order import SysOrder
 from app.repository.order_repository import order_repository
-from app.repository.payment_record_repository import PaymentRecordRepository
 from app.service.order.payment_service import PaymentService
 
 pytestmark = pytest.mark.requires_db
@@ -32,25 +30,25 @@ def _callback(order_no, amount, payment_no, success=True, raw=None):
 
 
 async def _seed_order(db, *, order_no="PAY-001", user_id=100, package_type="vip", **overrides):
-    base = dict(
-        order_no=order_no,
-        user_id=user_id,
-        package_id=1,
-        package_name="黄金月卡",
-        package_type=package_type,
-        package_level="level_1" if package_type == "vip" else None,
-        period_days=30 if package_type == "vip" else None,
-        credit_amount=None if package_type == "vip" else 10000,
-        original_price=10000,
-        discount_amount=1000,
-        payable_amount=9000,
-        balance_amount=0,
-        paid_amount=0,
-        pay_method=None,
-        status=1,
-        expire_time=datetime.now() + timedelta(minutes=5),
-        is_auto_renew=0,
-    )
+    base = {
+        "order_no": order_no,
+        "user_id": user_id,
+        "package_id": 1,
+        "package_name": "黄金月卡",
+        "package_type": package_type,
+        "package_level": "level_1" if package_type == "vip" else None,
+        "period_days": 30 if package_type == "vip" else None,
+        "credit_amount": None if package_type == "vip" else 10000,
+        "original_price": 10000,
+        "discount_amount": 1000,
+        "payable_amount": 9000,
+        "balance_amount": 0,
+        "paid_amount": 0,
+        "pay_method": None,
+        "status": 1,
+        "expire_time": datetime.now() + timedelta(minutes=5),
+        "is_auto_renew": 0,
+    }
     base.update(overrides)
     order = SysOrder(**base)
     await order_repository.create(db, order)
@@ -59,26 +57,26 @@ async def _seed_order(db, *, order_no="PAY-001", user_id=100, package_type="vip"
 
 
 def _build_service(**kw):
-    defaults = dict(
-        order_repository=order_repository,
-        package_repository=SimpleNamespace(get_by_id=AsyncMock(return_value=None)),
-        payment_record_repository=SimpleNamespace(
+    defaults = {
+        "order_repository": order_repository,
+        "package_repository": SimpleNamespace(get_by_id=AsyncMock(return_value=None)),
+        "payment_record_repository": SimpleNamespace(
             create=AsyncMock(),
             get_by_payment_no=AsyncMock(return_value=None),
             get_pending_by_order_id=AsyncMock(return_value=None),
         ),
-        payment_channel_service=SimpleNamespace(
+        "payment_channel_service": SimpleNamespace(
             unified_order=AsyncMock(return_value=_pay_result()),
             verify_callback=AsyncMock(return_value=_callback("PAY-001", 9000, "CHAN-001")),
         ),
-        coupon_repository=SimpleNamespace(increment_used_qty=AsyncMock()),
-        user_coupon_repository=SimpleNamespace(
+        "coupon_repository": SimpleNamespace(increment_used_qty=AsyncMock()),
+        "user_coupon_repository": SimpleNamespace(
             consume_coupon=AsyncMock(), get_by_id=AsyncMock(return_value=None)
         ),
-        balance_account_service=SimpleNamespace(freeze=AsyncMock(), deduct=AsyncMock()),
-        member_service=SimpleNamespace(on_order_paid=AsyncMock()),
-        ai_balance_service=SimpleNamespace(increase=AsyncMock()),
-    )
+        "balance_account_service": SimpleNamespace(freeze=AsyncMock(), deduct=AsyncMock()),
+        "member_service": SimpleNamespace(on_order_paid=AsyncMock()),
+        "ai_balance_service": SimpleNamespace(increase=AsyncMock()),
+    }
     defaults.update(kw)
     return PaymentService(**defaults)
 
@@ -103,6 +101,7 @@ class TestBalancePay:
         freeze.assert_awaited_once_with(db, 100, 9000)
         deduct.assert_awaited_once_with(db, 100, 9000)
         order = await _get_order(db, "PAY-BAL")
+        assert order is not None
         assert order.status == 2
         assert order.paid_amount == 9000
 
@@ -119,6 +118,7 @@ class TestBalancePay:
             await svc.pay(db, "PAY-INS", {"payMethod": "balance"}, 100)
         assert excinfo.value.code == ResultCode.BALANCE_INSUFFICIENT
         order = await _get_order(db, "PAY-INS")
+        assert order is not None
         assert order.status == 1
 
     async def test_pay_already_paid_raises(self, db):
@@ -130,23 +130,49 @@ class TestBalancePay:
 
 
 class TestCombinedPay:
+    async def test_combined_pay_requires_channel(self, db):
+        await _seed_order(db, order_no="PAY-CMB-NC", balance_amount=3000)
+        svc = _build_service()
+        with pytest.raises(BusinessException) as excinfo:
+            await svc.pay(db, "PAY-CMB-NC", {"payMethod": "combined"}, 100)
+        assert excinfo.value.code == ResultCode.PARAM_ERROR
+
+    async def test_combined_pay_rejects_invalid_channel(self, db):
+        await _seed_order(db, order_no="PAY-CMB-IC", balance_amount=3000)
+        svc = _build_service()
+        with pytest.raises(BusinessException) as excinfo:
+            await svc.pay(db, "PAY-CMB-IC", {"payMethod": "combined", "channel": "balance"}, 100)
+        assert excinfo.value.code == ResultCode.PARAM_ERROR
+
     async def test_combined_pay_freeze_and_channel_unified(self, db):
         await _seed_order(db, order_no="PAY-CMB", balance_amount=3000)
         freeze = AsyncMock()
         unified = AsyncMock(return_value=_pay_result())
+        payment_repo = SimpleNamespace(
+            create=AsyncMock(),
+            get_pending_by_order_id=AsyncMock(return_value=None),
+            get_by_payment_no=AsyncMock(return_value=None),
+        )
         svc = _build_service(
             balance_account_service=SimpleNamespace(freeze=freeze, deduct=AsyncMock()),
+            payment_record_repository=payment_repo,
             payment_channel_service=SimpleNamespace(
                 unified_order=unified, verify_callback=AsyncMock()
             ),
         )
 
-        result = await svc.pay(db, "PAY-CMB", {"payMethod": "combined"}, 100)
+        result = await svc.pay(db, "PAY-CMB", {"payMethod": "combined", "channel": "wechat"}, 100)
 
         assert result["paid"] is False
+        assert result["payMethod"] == "combined"
         freeze.assert_awaited_once_with(db, 100, 3000)
-        unified.assert_awaited_once_with("combined", "PAY-CMB", 6000, "黄金月卡")
+        unified.assert_awaited_once_with("wechat", "PAY-CMB", 6000, "黄金月卡")
+        # 预写流水渠道即为真实第三方渠道，退款与对账直接可用
+        created = payment_repo.create.await_args.args[1]
+        assert created.channel == "wechat"
+        assert created.amount == 6000
         order = await _get_order(db, "PAY-CMB")
+        assert order is not None
         assert order.pay_method == "combined"
         assert order.balance_amount == 3000
 
@@ -183,6 +209,7 @@ class TestPaymentCallback:
         assert result is True
         on_order_paid.assert_awaited_once()
         order = await _get_order(db, "PAY-CB3")
+        assert order is not None
         assert order.status == 2
 
     async def test_callback_credit_credits_and_completed(self, db):
@@ -197,6 +224,7 @@ class TestPaymentCallback:
         await svc.handle_payment_callback(db, "alipay", {}, b"")
         increase.assert_awaited_once()
         order = await _get_order(db, "PAY-CB4")
+        assert order is not None
         assert order.status == 3
 
     async def test_callback_consumes_coupon(self, db):
@@ -205,7 +233,8 @@ class TestPaymentCallback:
         consume_coupon = AsyncMock()
         increment_used_qty = AsyncMock()
         uc_repo = SimpleNamespace(
-            consume_coupon=consume_coupon, get_by_id=AsyncMock(return_value=SimpleNamespace(coupon_id=3))
+            consume_coupon=consume_coupon,
+            get_by_id=AsyncMock(return_value=SimpleNamespace(coupon_id=3)),
         )
         svc = _build_service(
             payment_channel_service=SimpleNamespace(verify_callback=AsyncMock(return_value=cb)),

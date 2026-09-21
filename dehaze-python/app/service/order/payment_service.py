@@ -9,7 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.cache.redis_lock import acquire_lock, release_lock
 from app.models.entity.sys_payment_record import SysPaymentRecord
+from app.repository.auto_renew_repository import auto_renew_repository
 from app.repository.coupon_repository import coupon_repository, user_coupon_repository
 from app.repository.order_repository import order_repository
 from app.repository.package_repository import package_repository
@@ -91,6 +93,15 @@ class PaymentService:
             )
             await self.payment_record_repository.create(db, payment)
 
+    def _ensure_payable(self, order) -> None:
+        """支付前置校验：锁内复检，防止并发请求在锁外通过校验后重复支付。"""
+        if order.status in (2, 3):
+            raise BusinessException(ResultCode.ORDER_ALREADY_PAID)
+        if order.status != 1:
+            raise BusinessException(ResultCode.ORDER_STATUS_INVALID)
+        if order.expire_time and order.expire_time < datetime.now():
+            raise BusinessException(ResultCode.ORDER_EXPIRED)
+
     async def pay(self, db: AsyncSession, order_no: str, form: dict, user_id: int) -> dict:
         order = await self.order_repository.get_by_order_no(db, order_no)
         if not order:
@@ -102,46 +113,62 @@ class PaymentService:
         if pay_method not in PAY_METHODS:
             raise BusinessException(ResultCode.PARAM_ERROR, "不支持的支付方式")
 
-        # 状态校验补全：已支付/已完成、已取消/退款中/已退款、超时
-        if order.status in (2, 3):
-            raise BusinessException(ResultCode.ORDER_ALREADY_PAID)
-        if order.status in (4, 5, 6):
-            raise BusinessException(ResultCode.ORDER_STATUS_INVALID)
-        if order.expire_time and order.expire_time < datetime.now():
-            raise BusinessException(ResultCode.ORDER_EXPIRED)
+        self._ensure_payable(order)
 
         if pay_method == "balance":
-            await self.balance_account_service.freeze(
-                db, user_id, order.payable_amount
-            )
-            order.pay_method = "balance"
-            await self.complete_payment(
-                db, order, channel="balance", payment_no=_gen_payment_no("balance")
-            )
-            return {"orderNo": order.order_no, "payMethod": "balance", "paid": True}
+            # 余额支付在本请求内即完成履约，订单级锁防止并发重复支付造成重复冻结/重复履约
+            lock_key = f"payment:lock:{order_no}"
+            lock_token = await acquire_lock(lock_key, PAYMENT_LOCK_TTL)
+            if lock_token is None:
+                raise BusinessException(ResultCode.REPEAT_SUBMIT_ERROR, "支付处理中，请勿重复提交")
+            try:
+                self._ensure_payable(order)
+                await self.balance_account_service.freeze(db, user_id, order.payable_amount)
+                order.pay_method = "balance"
+                await self.complete_payment(
+                    db, order, channel="balance", payment_no=_gen_payment_no("balance")
+                )
+                return {"orderNo": order.order_no, "payMethod": "balance", "paid": True}
+            finally:
+                await release_lock(lock_key, lock_token)
 
         if pay_method == "combined":
-            balance_amount = order.balance_amount or form.get("balanceAmount") or 0
-            if not (0 < balance_amount < order.payable_amount):
-                raise BusinessException(ResultCode.PARAM_ERROR, "组合支付余额部分金额非法")
-            await self.balance_account_service.freeze(db, user_id, balance_amount)
-            order.balance_amount = balance_amount
-            order.pay_method = "combined"
-            await db.flush()
-            third_party_amount = order.payable_amount - balance_amount
-            pay_result = await self.payment_channel_service.unified_order(
-                pay_method, order_no, third_party_amount, order.package_name
-            )
-            await self._prewrite_payment_record(
-                db, order, channel=pay_method, amount=third_party_amount
-            )
-            return {
-                "orderNo": order.order_no,
-                "payMethod": pay_method,
-                "payUrl": pay_result.pay_url,
-                "qrCode": pay_result.qr_code,
-                "paid": False,
-            }
+            # 组合支付的第三方部分必须指定渠道，unified_order 仅接受 wechat/alipay
+            channel = form.get("channel")
+            if channel not in ("wechat", "alipay"):
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "组合支付需指定第三方支付渠道(wechat/alipay)"
+                )
+            # 组合支付冻结余额部分同样走订单级锁，防止并发重复冻结
+            lock_key = f"payment:lock:{order_no}"
+            lock_token = await acquire_lock(lock_key, PAYMENT_LOCK_TTL)
+            if lock_token is None:
+                raise BusinessException(ResultCode.REPEAT_SUBMIT_ERROR, "支付处理中，请勿重复提交")
+            try:
+                self._ensure_payable(order)
+                balance_amount = order.balance_amount or form.get("balanceAmount") or 0
+                if not (0 < balance_amount < order.payable_amount):
+                    raise BusinessException(ResultCode.PARAM_ERROR, "组合支付余额部分金额非法")
+                await self.balance_account_service.freeze(db, user_id, balance_amount)
+                order.balance_amount = balance_amount
+                order.pay_method = "combined"
+                await db.flush()
+                third_party_amount = order.payable_amount - balance_amount
+                pay_result = await self.payment_channel_service.unified_order(
+                    channel, order_no, third_party_amount, order.package_name
+                )
+                await self._prewrite_payment_record(
+                    db, order, channel=channel, amount=third_party_amount
+                )
+                return {
+                    "orderNo": order.order_no,
+                    "payMethod": pay_method,
+                    "payUrl": pay_result.pay_url,
+                    "qrCode": pay_result.qr_code,
+                    "paid": False,
+                }
+            finally:
+                await release_lock(lock_key, lock_token)
 
         # wechat/alipay：渠道统一下单
         order.pay_method = pay_method
@@ -175,10 +202,18 @@ class PaymentService:
         """
         from app.repository.package_repository import package_repository as _pkg_repo
 
+        if order.status != 1:
+            logger.info(
+                "订单非待支付，跳过重复履约 orderNo=%s status=%s", order.order_no, order.status
+            )
+            return
+
         now = datetime.now()
-        # 优先更新 pay 阶段预写的处理中流水；余额支付无预写则新建
+        # 优先更新 pay 阶段预写的处理中流水（渠道即为真实支付渠道）；余额支付无预写则新建。
+        # 退款与对账均依赖流水的真实渠道
         payment = await self.payment_record_repository.get_pending_by_order_id(db, order.id)
         if payment:
+            payment.channel = channel
             payment.payment_no = payment_no
             payment.status = 2
             payment.callback_time = now
@@ -224,9 +259,11 @@ class PaymentService:
             order.status = 3
         else:
             pkg = await _pkg_repo.get_by_id(db, order.package_id)
-            order.package_expire_time = (order.paid_time + timedelta(days=pkg.period_days)) if (
-                pkg and pkg.period_days
-            ) else order.paid_time
+            order.package_expire_time = (
+                (order.paid_time + timedelta(days=pkg.period_days))
+                if (pkg and pkg.period_days)
+                else order.paid_time
+            )
 
         await self.member_service.on_order_paid(db, order)
 
@@ -242,13 +279,42 @@ class PaymentService:
             pkg.sales_count = (pkg.sales_count or 0) + 1
             await db.flush()
 
+        # 自动续费订单支付成功：回写续费配置（下次扣款时间=会员叠加后到期时间、失败次数归零），
+        # 否则 wechat/alipay 半自动续费在用户支付后下轮扫描仍会重复创建续费订单
+        if order.is_auto_renew == 1:
+            member = await self.member_service.member_repository.get_by_user_id(db, order.user_id)
+            await auto_renew_repository.mark_renewed(
+                db,
+                user_id=order.user_id,
+                package_id=order.package_id,
+                next_renew_time=member.expire_time if member else None,
+                order_id=order.id,
+            )
+
+        # 支付成功站内信通知（后端实现 §4.3 步骤 8）；通知失败不阻断支付主流程
+        try:
+            from app.service.message_service import message_service
+
+            await message_service.send(
+                db,
+                {
+                    "type": "business",
+                    "title": "支付成功通知",
+                    "content": f"您的订单 {order.order_no}（{order.package_name}）支付成功。",
+                    "recipientIds": [order.user_id],
+                    "bizModule": "order",
+                    "bizId": order.order_no,
+                    "priority": 2,
+                },
+            )
+        except Exception:
+            logger.warning("发送支付成功通知失败 orderNo=%s", order.order_no, exc_info=True)
+
         await _invalidate_order_detail_cache(order.order_no)
 
     async def handle_payment_callback(
         self, db: AsyncSession, channel: str, headers: dict, body: bytes
     ) -> bool:
-        from app.infrastructure.cache.redis_lock import acquire_lock, release_lock
-
         callback = await self.payment_channel_service.verify_callback(channel, headers, body)
         if not callback.success:
             logger.warning(
@@ -268,9 +334,7 @@ class PaymentService:
 
         # 金额校验：回调金额 > 0 且与渠道应付金额一致，否则 A0538
         # （组合支付渠道仅收取第三方部分 = 应付 - 余额部分）
-        expected_amount = order.payable_amount - (
-            order.balance_amount if order.balance_amount > 0 else 0
-        )
+        expected_amount = order.payable_amount - order.balance_amount
         if callback.amount <= 0 or callback.amount != expected_amount:
             logger.error(
                 "支付回调金额不一致 orderNo=%s expected=%s actual=%s",

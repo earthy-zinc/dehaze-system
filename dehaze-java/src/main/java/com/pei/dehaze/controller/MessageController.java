@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "10.消息通知")
@@ -25,6 +26,7 @@ public class MessageController {
     private final MessageService messageService;
 
     @Operation(summary = "内部消息发送")
+    @PreAuthorize("@ss.hasPerm('message:send')")
     @PostMapping("/send")
     public Result<MessageSendResultVO> send(@Valid @RequestBody MessageSendForm form) {
         return Result.success(messageService.send(form));
@@ -32,7 +34,7 @@ public class MessageController {
 
     @Operation(summary = "消息列表（分页）")
     @GetMapping
-    public PageResult<MessageVO> getPage(@ParameterObject MessageQuery query) {
+    public PageResult<MessageVO> getPage(@Valid @ParameterObject MessageQuery query) {
         Page<MessageVO> page = messageService.getPage(query);
         return PageResult.success(page);
     }

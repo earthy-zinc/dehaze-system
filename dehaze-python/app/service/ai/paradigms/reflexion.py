@@ -11,9 +11,12 @@ reflexion_threshold 时 self_reflection 分析根因并生成改进策略 → �
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # evaluator 提示词：要求 LLM 按评估维度给 0-1 分
 _EVALUATOR_PROMPT = """你是质量评审。根据任务要求评估给定输出，仅返回 JSON（不要额外文字）：
@@ -45,7 +48,7 @@ def _looks_like_json(s: str) -> bool:
     try:
         json.loads(s)
         return True
-    except Exception:
+    except (json.JSONDecodeError, TypeError):
         return (s.strip().startswith("{") and s.strip().endswith("}")) or (
             s.strip().startswith("[") and s.strip().endswith("]")
         )
@@ -72,8 +75,10 @@ async def evaluate_output(
         data = _parse_score_json(raw)
         score = max(0.0, min(1.0, float(data.get("score") or 0.0)))
         feedback = str(data.get("feedback") or "")
-    except Exception:
-        # 自评失败保守给低分，让 reflection 有机会介入
+    except Exception as exc:
+        # 自评 LLM 调用/解析失败：保守给 0 分让 reflection 介入（降级是契约）；
+        # 但必须留痕，否则评估器故障会被误判为"输出质量差"而掩盖真实原因
+        logger.warning("输出自评失败，按不达标处理: %s", exc, exc_info=True)
         score = 0.0
         feedback = "评估器解析失败，按不达标处理"
 
@@ -107,7 +112,8 @@ async def reflect_failure(
             "root_cause": str(data.get("root_cause") or "未知"),
             "strategy": str(data.get("strategy") or ""),
         }
-    except Exception:
+    except Exception as exc:
+        logger.warning("反思生成失败，使用默认策略: %s", exc, exc_info=True)
         return {"root_cause": "评估失败", "strategy": "重试一次"}
 
 

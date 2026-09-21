@@ -2,19 +2,28 @@
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_refund import SysAiRefund
-from app.models.schema.ai_billing import BillingRecordQuery
+from app.models.schema.ai_billing import BillingRecordQuery, BillingStatQuery
 from app.repository.ai_billing_repository import ai_billing_repository
 from app.repository.ai_refund_repository import ai_refund_repository
 from app.service.billing.billing_record_service import BillingRecordService
 from app.service.billing.billing_stat_service import BillingStatService
 
+pytestmark = pytest.mark.requires_db
 
-def _billing(user_id, *, model="gpt-4o", credits=100, input_tokens=1000, output_tokens=500,
-             cached=0, saved=0, bill_type="chat"):
+
+def _billing(
+    user_id,
+    *,
+    model="gpt-4o",
+    credits=100,
+    input_tokens=1000,
+    output_tokens=500,
+    cached=0,
+    saved=0,
+    bill_type="chat",
+):
     return SysAiBilling(
         user_id=user_id,
         model=model,
@@ -32,12 +41,21 @@ def _billing(user_id, *, model="gpt-4o", credits=100, input_tokens=1000, output_
 class TestSummary:
     async def test_day_summary_aggregates_only_self(self, db):
         stat_svc = BillingStatService(ai_billing_repository=ai_billing_repository)
-        db.add_all([
-            _billing(1, credits=100, input_tokens=1000, output_tokens=500),
-            _billing(1, credits=200, input_tokens=2000, output_tokens=1000,
-                     model="gpt-4o-mini", saved=30, cached=200),
-            _billing(2, credits=999),  # 其他用户不计入
-        ])
+        db.add_all(
+            [
+                _billing(1, credits=100, input_tokens=1000, output_tokens=500),
+                _billing(
+                    1,
+                    credits=200,
+                    input_tokens=2000,
+                    output_tokens=1000,
+                    model="gpt-4o-mini",
+                    saved=30,
+                    cached=200,
+                ),
+                _billing(2, credits=999),  # 其他用户不计入
+            ]
+        )
         await db.flush()
 
         result = await stat_svc.summary(db, 1, "day")
@@ -60,6 +78,45 @@ class TestSummary:
         result = await stat_svc.summary(db, 1, "month")
         assert result.total_credits == 50
         assert len(result.trend) == 1
+
+    async def test_summary_excludes_non_chat_bill_types(self, db):
+        """asr/tts 的 input_tokens 存储秒数/字符数（非 token），summary 仅统计 chat 类"""
+        stat_svc = BillingStatService(ai_billing_repository=ai_billing_repository)
+        db.add_all(
+            [
+                _billing(1, credits=100, input_tokens=1000, output_tokens=500),
+                _billing(1, bill_type="asr", credits=10, input_tokens=60, output_tokens=0),
+                _billing(1, bill_type="tts", credits=20, input_tokens=300, output_tokens=0),
+            ]
+        )
+        await db.flush()
+
+        result = await stat_svc.summary(db, 1, "day")
+        assert result.total_credits == 100
+        assert result.input_tokens == 1000
+        assert result.output_tokens == 500
+        assert [d.model for d in result.model_distribution] == ["gpt-4o"]
+
+    async def test_stats_tokens_exclude_voice_metering(self, db):
+        """管理端 stats 的 token 列仅统计 chat 类：asr 秒数/tts 字符数不计入 token，
+        但 credits 全量（语音计费是真实积分消耗）"""
+        stat_svc = BillingStatService(ai_billing_repository=ai_billing_repository)
+        db.add_all(
+            [
+                _billing(1, credits=100, input_tokens=1000, output_tokens=500, cached=200),
+                _billing(1, bill_type="asr", credits=10, input_tokens=60, output_tokens=0),
+                _billing(1, bill_type="tts", credits=20, input_tokens=300, output_tokens=0),
+            ]
+        )
+        await db.flush()
+
+        rows = await stat_svc.stats(db, BillingStatQuery(group_by="user"))
+        assert len(rows) == 1
+        row = rows[0]
+        assert row.total_credits == 130
+        assert row.total_input_tokens == 1000
+        assert row.total_output_tokens == 500
+        assert row.cache_hit_rate == 0.2
 
     async def test_invalid_dimension_rejected(self, db):
         stat_svc = BillingStatService(ai_billing_repository=ai_billing_repository)
@@ -92,10 +149,19 @@ class TestRefundStatus:
         approved = _billing(1, credits=200, model="gpt-4o-mini")
         db.add_all([pending, approved])
         await db.flush()
-        db.add_all([
-            SysAiRefund(user_id=1, billing_id=pending.id, amount=50, reason="误扣", status=1),
-            SysAiRefund(user_id=1, billing_id=approved.id, amount=100, reason="误扣", status=2, auditor_id=1),
-        ])
+        db.add_all(
+            [
+                SysAiRefund(user_id=1, billing_id=pending.id, amount=50, reason="误扣", status=1),
+                SysAiRefund(
+                    user_id=1,
+                    billing_id=approved.id,
+                    amount=100,
+                    reason="误扣",
+                    status=2,
+                    auditor_id=1,
+                ),
+            ]
+        )
         await db.flush()
 
         result = await record_svc.list_by_user(db, 1, BillingRecordQuery(page=1, size=10))
@@ -111,10 +177,19 @@ class TestRefundStatus:
         billing = _billing(1)
         db.add(billing)
         await db.flush()
-        db.add_all([
-            SysAiRefund(user_id=1, billing_id=billing.id, amount=50, reason="误扣", status=1),
-            SysAiRefund(user_id=1, billing_id=billing.id, amount=50, reason="误扣", status=3, auditor_id=1),
-        ])
+        db.add_all(
+            [
+                SysAiRefund(user_id=1, billing_id=billing.id, amount=50, reason="误扣", status=1),
+                SysAiRefund(
+                    user_id=1,
+                    billing_id=billing.id,
+                    amount=50,
+                    reason="误扣",
+                    status=3,
+                    auditor_id=1,
+                ),
+            ]
+        )
         await db.flush()
 
         result = await record_svc.list_by_user(db, 1, BillingRecordQuery(page=1, size=10))

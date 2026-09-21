@@ -4,32 +4,36 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"regexp"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
-	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
-	"github.com/earthyzinc/dehaze-go/internal/service/mapper"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	predlog "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	favoriteservice "github.com/earthyzinc/dehaze-go/internal/service/favorite"
+	"github.com/earthyzinc/dehaze-go/internal/service/mapper"
+	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/utils"
 )
 
 // AlgorithmService 算法服务
 type AlgorithmService struct {
 	algorithmRepo algorepo.IAlgorithmRepository
 	predLogRepo   predlog.IPredLogRepository
+	favoriteSvc   favoriteservice.IFavoriteService
 	treeUtils     *utils.TreeDataUtils
 }
 
 // NewAlgorithmService 创建算法服务实例
-func NewAlgorithmService(algorithmRepo algorepo.IAlgorithmRepository, predLogRepo predlog.IPredLogRepository) *AlgorithmService {
+func NewAlgorithmService(algorithmRepo algorepo.IAlgorithmRepository, predLogRepo predlog.IPredLogRepository, favoriteSvc favoriteservice.IFavoriteService) *AlgorithmService {
 	return &AlgorithmService{
 		algorithmRepo: algorithmRepo,
 		predLogRepo:   predLogRepo,
+		favoriteSvc:   favoriteSvc,
 		treeUtils:     utils.NewTreeDataUtils(),
 	}
 }
@@ -179,6 +183,19 @@ func (s *AlgorithmService) GetFormData(ctx context.Context, id int64) (*bo.Algor
 
 // Create 创建算法
 func (s *AlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO) (int64, error) {
+	// 名称唯一性（A0501，仅活跃行；软删行不占键位可重建）
+	if form.Name != "" {
+		sameName, err := s.algorithmRepo.FindAll(ctx, &query.AlgorithmQuery{Keywords: form.Name})
+		if err != nil {
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+		}
+		for _, algo := range sameName {
+			if algo.Name == form.Name {
+				return 0, common.NewBizError(common.DATA_EXISTS, "算法名称 '"+form.Name+"' 已存在")
+			}
+		}
+	}
+
 	// 如果父节点ID不为0，检查父节点是否存在
 	if form.ParentID != 0 {
 		parentAlgorithm, err := s.algorithmRepo.FindByID(ctx, form.ParentID)
@@ -296,6 +313,10 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 
 	if err := s.algorithmRepo.Delete(ctx, idsToDelete); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除算法失败", err)
+	}
+	// 失效联动：标记相关收藏为已失效（对齐 Java SysAlgorithmServiceImpl.deleteAlgorithms）
+	if err := s.favoriteSvc.MarkInvalid(ctx, "algorithm", idsToDelete); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "标记收藏失效失败", err)
 	}
 	return nil
 }
@@ -457,3 +478,110 @@ func mapAlgorithmReadChildren(children []read.Algorithm) []vo.AlgorithmVO {
 	return result
 }
 
+// Audit 审核算法：通过→已发布(4)；驳回→回到测试中(2)，且必须填原因。
+// 仅"待审核(3)"状态可审核（对齐 python `audit_algorithm`）。
+func (s *AlgorithmService) Audit(ctx context.Context, id int64, auditBy int64, form *bo.AlgorithmAuditForm) error {
+	algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+	}
+	if algorithm.Status != bo.AlgorithmStatusAuditing {
+		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "仅待审核状态的算法可审核")
+	}
+	passed := form.Approved != nil && *form.Approved
+	if !passed && (form.Remark == nil || *form.Remark == "") {
+		return common.NewBizError(common.PARAM_ERROR, "驳回时必须填写原因")
+	}
+	status := int8(bo.AlgorithmStatusTesting)
+	if passed {
+		status = bo.AlgorithmStatusPublished
+	}
+	if err := s.algorithmRepo.Audit(ctx, id, auditBy, status, form.Remark); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "审核算法失败", err)
+	}
+	return nil
+}
+
+// versionPattern 版本号格式（python `AlgorithmVersionForm.validate_version`：^v\d+\.\d+\.\d+$）
+var versionPattern = regexp.MustCompile(`^v\d+\.\d+\.\d+$`)
+
+// CreateVersion 新增版本：版本号唯一校验 → 旧活跃版本置非活跃 → 新版本为活跃 → 同步主表版本号。
+func (s *AlgorithmService) CreateVersion(ctx context.Context, id int64, form *bo.AlgorithmVersionForm) (int64, error) {
+	if !versionPattern.MatchString(form.Version) {
+		return 0, common.NewBizError(common.PARAM_ERROR, "版本号格式必须为 vX.Y.Z")
+	}
+	algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+	}
+	exists, err := s.algorithmRepo.ExistsByVersion(ctx, id, form.Version)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询版本失败", err)
+	}
+	if exists {
+		// python 该分支为 `BusinessException("版本号 {version} 已存在")`（仅传消息），
+		// 按 python `core/exceptions.py` 的规则取默认码 SYSTEM_EXECUTION_ERROR(B0001)，非 A0502
+		return 0, common.NewBizError(common.SYSTEM_EXECUTION_ERROR, fmt.Sprintf("版本号 %s 已存在", form.Version))
+	}
+	if err := s.algorithmRepo.DeactivateActiveVersions(ctx, id); err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "停用历史版本失败", err)
+	}
+	active := int8(1)
+	version := &model.SysAlgorithmVersion{
+		AlgorithmID: id,
+		Version:     form.Version,
+		ChangeLog:   form.ChangeLog,
+		Status:      &algorithm.Status,
+		ConfigJSON:  form.ConfigJSON,
+		ModelFileID: form.ModelFileID,
+		IsActive:    &active,
+	}
+	if err := s.algorithmRepo.CreateVersion(ctx, version); err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "新增版本失败", err)
+	}
+	algorithm.Version = &form.Version
+	if err := s.algorithmRepo.Update(ctx, algorithm); err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "更新算法版本号失败", err)
+	}
+	return id, nil
+}
+
+// RollbackVersion 回滚到指定版本（对齐 python `rollback_version`：is_active 切换 + 防重复回滚）
+func (s *AlgorithmService) RollbackVersion(ctx context.Context, id, versionID int64) error {
+	algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+	}
+	version, err := s.algorithmRepo.FindVersionByID(ctx, versionID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询版本失败", err)
+	}
+	if version == nil || version.AlgorithmID != id {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "版本不存在或不属于该算法")
+	}
+	if version.IsActive != nil && *version.IsActive == 1 {
+		return common.NewBizError(common.DATA_STATE_NOT_ALLOW, "当前已是该版本，无需回滚")
+	}
+	if err := s.algorithmRepo.DeactivateActiveVersions(ctx, id); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "停用当前版本失败", err)
+	}
+	active := int8(1)
+	version.IsActive = &active
+	if err := s.algorithmRepo.UpdateVersion(ctx, version); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "激活目标版本失败", err)
+	}
+	algorithm.Version = &version.Version
+	if err := s.algorithmRepo.Update(ctx, algorithm); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "更新算法版本号失败", err)
+	}
+	return nil
+}

@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import success
 from app.database import get_db
+from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.message import MessageSendRequest
 from app.service.message_service import message_service
@@ -59,6 +62,7 @@ async def mark_all_read(
 
 
 @router.post("/send", summary="内部消息发送")
+@require_permission("message:send")
 async def send_message(
     body: MessageSendRequest,
     db: AsyncSession = Depends(get_db),
@@ -95,8 +99,10 @@ async def delete_messages(
     user: UserContext = Depends(get_current_user),
 ):
     try:
-        id_list = [int(i) for i in ids.split(",")]
-    except ValueError:
-        id_list = []
+        id_list = [int(i) for i in ids.split(",") if i.strip()]
+    except ValueError as e:
+        raise BusinessException(ResultCode.PARAM_ERROR, "消息ID格式不正确") from e
+    if not id_list:
+        raise BusinessException(ResultCode.PARAM_ERROR, "消息ID列表不能为空")
     await message_service.delete_by_ids(db, user.id, id_list)
     return success()

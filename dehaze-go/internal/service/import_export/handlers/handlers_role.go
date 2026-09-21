@@ -118,12 +118,16 @@ func (h *RoleImportHandler) GetTemplateSampleData() []map[string]interface{} {
 	}
 }
 
+// builtinRoleCodes 内置角色编码（python BUILTIN_ROLE_CODES 同口径），导入时拒绝
+var builtinRoleCodes = map[string]bool{"ROOT": true, "ADMIN": true}
+
 func (h *RoleImportHandler) ImportBatch(rows []map[string]interface{}, options import_export.ImportOptions, callback import_export.ProgressCallback) import_export.ImportResult {
 	total := len(rows)
 	successCount := 0
 	failureCount := 0
 	var errors []import_export.ImportError
 	ctx := context.Background()
+	partial := options.Mode == "partial"
 
 	for i, row := range rows {
 		rowNum := i + 2
@@ -144,11 +148,25 @@ func (h *RoleImportHandler) ImportBatch(rows []map[string]interface{}, options i
 			continue
 		}
 
+		// 内置角色编码不可导入（T-RM-050/051）
+		if builtinRoleCodes[code] {
+			failureCount++
+			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "code", Message: "内置角色编码不可导入: " + code})
+			if !partial {
+				break
+			}
+			continue
+		}
+
+		// 编码唯一性仅覆盖活跃行（uk_code 含 deleted，软删行不占键位）
 		var exists int64
-		h.db.Model(&model.SysRole{}).Where("code = ?", code).Count(&exists)
+		h.db.Model(&model.SysRole{}).Where("code = ? AND deleted = 0", code).Count(&exists)
 		if exists > 0 {
 			failureCount++
-			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "code", Message: "角色编码已存在: " + code})
+			errors = append(errors, import_export.ImportError{Row: rowNum, Field: "code", Message: "角色编码已被历史记录占用: " + code})
+			if !partial {
+				break
+			}
 			continue
 		}
 
@@ -161,7 +179,7 @@ func (h *RoleImportHandler) ImportBatch(rows []map[string]interface{}, options i
 			Code:      code,
 			Sort:      sort,
 			Status:    int8(status),
-			DataScope: 5,
+			DataScope: 2,
 			Deleted:   0,
 		}
 		role.CreatedAt = now
@@ -170,6 +188,9 @@ func (h *RoleImportHandler) ImportBatch(rows []map[string]interface{}, options i
 		if err := h.db.WithContext(ctx).Create(&role).Error; err != nil {
 			failureCount++
 			errors = append(errors, import_export.ImportError{Row: rowNum, Message: fmt.Sprintf("保存角色失败: %v", err)})
+			if !partial {
+				break
+			}
 			continue
 		}
 

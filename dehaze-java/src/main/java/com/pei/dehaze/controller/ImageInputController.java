@@ -34,7 +34,7 @@ public class ImageInputController {
 
     @Operation(summary = "分页查询历史记录")
     @GetMapping
-    public PageResult<InputHistoryVO> getHistoryPage(@ParameterObject HistoryQuery query) {
+    public PageResult<InputHistoryVO> getHistoryPage(@Valid @ParameterObject HistoryQuery query) {
         Page<InputHistoryVO> page = historyService.getHistoryPage(query);
         return PageResult.success(page);
     }

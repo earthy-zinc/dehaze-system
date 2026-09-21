@@ -118,8 +118,7 @@ async def test_replan_records_revision_and_keeps_unaffected():
     assert "C" in [t["id"] for t in plan["tasks"]]
     assert "B2" in [t["id"] for t in plan["tasks"]]
     assert "B" not in [t["id"] for t in plan["tasks"]]
-    assert len(plan["revisions"]) == 1
-    assert plan["revisions"][0]["reason"] == "B"
+    assert plan["revisions"] == [{"revisionNo": 1, "reason": "B", "changedTaskIds": ["B2"]}]
 
 
 async def test_replan_no_failed_is_noop():
@@ -177,7 +176,7 @@ def test_plan_edit_remove_reorder_add():
         {
             "remove": ["B"],
             "reorder": ["C", "A"],
-            "add": {"description": "新增任务", "depends_on": ["A"]},
+            "add": {"description": "新增任务", "dependsOn": ["A"]},
         },
     )
     ids = [t["id"] for t in plan["tasks"]]
@@ -206,7 +205,7 @@ def test_plan_edit_add_cleans_removed_depends():
 
 def test_plan_edit_rejected_when_executing():
     plan = _plan_with_status("executing")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="计划已开始执行，无法整体干预"):
         plan_execute.apply_plan_edit(plan, {"remove": ["A"]})
 
 

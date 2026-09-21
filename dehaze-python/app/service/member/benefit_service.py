@@ -9,8 +9,12 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.models.entity.sys_member import QUOTA_TASK_TYPES
 from app.repository.member_benefit_repository import member_benefit_repository
+from app.repository.member_repository import member_repository
+from app.repository.package_repository import package_repository
 from app.service.member.member_service import _benefit_to_vo, _invalidate_member_cache
+from app.service.member.quota_service import _effective_task_quota, resolve_card_overrides
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +35,7 @@ BENEFIT_FIELD_MAP = {
     "aiCreditsDaily": "ai_credits_daily",
     "aiCreditsMonthly": "ai_credits_monthly",
     "multimodalLimit": "multimodal_limit",
+    "maxDevices": "max_devices",
     "vipGiftCredits": "vip_gift_credits",
     "historyRetention": "history_retention",
     "batchLimit": "batch_limit",
@@ -54,11 +59,10 @@ AI_LIMIT_FIELDS = (
 
 async def _invalidate_benefit_summary_cache() -> None:
     """权益配置修改后失效所有用户的权益概览聚合缓存"""
+
     async def _scan_delete():
         redis = await get_redis_client()
-        keys = []
-        async for key in redis.scan_iter("member:benefit-summary:*", count=100):
-            keys.append(key)
+        keys = [key async for key in redis.scan_iter("member:benefit-summary:*", count=100)]
         if keys:
             await redis.delete(*keys)
 
@@ -85,7 +89,8 @@ class MemberBenefitService:
             try:
                 return json.loads(cached_raw)
             except (json.JSONDecodeError, TypeError):
-                pass
+                # 缓存体损坏：忽略缓存回源 DB 重建（降级），但需可见以暴露缓存被写坏
+                logger.warning("权益列表缓存损坏，回退查库重建: key=%s", cache_key, exc_info=True)
 
         benefits = await self.member_benefit_repository.list_all(db)
         result = [_benefit_to_vo(b) for b in benefits]
@@ -103,6 +108,37 @@ class MemberBenefitService:
         )
 
         return result
+
+    async def _refresh_level_member_quotas(self, db: AsyncSession, benefit) -> None:
+        """权益配置修改立即生效：批量刷新该等级活跃会员的 8 类配额快照（不含已用）
+        并失效其配额缓存
+        """
+        package = await package_repository.get_by_level_code(db, benefit.level_code)
+
+        offset, batch_size = 0, 500
+        while True:
+            members = await member_repository.list_active_by_level(
+                db, benefit.level_code, offset=offset, limit=batch_size
+            )
+            if not members:
+                return
+
+            keys = []
+            for m in members:
+                effective = _effective_task_quota(benefit, resolve_card_overrides(m, package))
+                for task_type in QUOTA_TASK_TYPES:
+                    setattr(m, f"monthly_{task_type}_quota", effective[task_type])
+                    keys.append(f"member:quota:{m.user_id}:{task_type}")
+            await db.flush()
+
+            async def _del(batch_keys: tuple[str, ...] = tuple(keys)):
+                redis = await get_redis_client()
+                await redis.delete(*batch_keys)
+
+            await redis_operation_with_fallback(
+                _del, default=None, operation_name="benefit_update_member_quota_cache"
+            )
+            offset += batch_size
 
     async def update_benefit(self, db: AsyncSession, level_code: str, form: dict) -> None:
         benefit = await self.member_benefit_repository.get_by_level_code(db, level_code)
@@ -124,7 +160,13 @@ class MemberBenefitService:
             if getattr(benefit, field) is not None and getattr(benefit, field) < 0:
                 raise BusinessException(ResultCode.BENEFIT_CONFIG_INVALID, "AI 限额字段不能为负数")
 
+        if benefit.max_devices < 1:
+            raise BusinessException(
+                ResultCode.BENEFIT_CONFIG_INVALID, "同时在线设备数上限不能小于1"
+            )
+
         await db.flush()
+        await self._refresh_level_member_quotas(db, benefit)
         await _invalidate_member_cache(level_code=level_code)
         await _invalidate_benefit_summary_cache()
 

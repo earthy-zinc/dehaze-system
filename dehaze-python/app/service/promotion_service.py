@@ -1,4 +1,3 @@
-import json
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,8 +53,8 @@ class PromotionService:
     async def get_page(
         self,
         db: AsyncSession,
-        page: int,
-        size: int,
+        page_num: int,
+        page_size: int,
         name: str | None = None,
         type: str | None = None,
         status: int | None = None,
@@ -64,8 +63,8 @@ class PromotionService:
     ) -> dict:
         rows, total = await promotion_repository.get_page(
             db,
-            page=page,
-            size=size,
+            page=page_num,
+            size=page_size,
             name=name,
             type=type,
             status=status,
@@ -91,9 +90,7 @@ class PromotionService:
         created = await promotion_repository.create(db, promotion)
         return _promotion_to_vo(created)
 
-    async def update(
-        self, db: AsyncSession, promotion_id: int, form: PromotionForm
-    ) -> dict:
+    async def update(self, db: AsyncSession, promotion_id: int, form: PromotionForm) -> dict:
         existing = await promotion_repository.get_by_id(db, promotion_id)
         if not existing:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "促销活动不存在")
@@ -115,16 +112,12 @@ class PromotionService:
         await promotion_repository.update(db, promotion_id, data)
         return _promotion_to_vo(existing)
 
-    async def update_status(
-        self, db: AsyncSession, promotion_id: int, status: int
-    ) -> dict:
+    async def update_status(self, db: AsyncSession, promotion_id: int, status: int) -> dict:
         existing = await promotion_repository.get_by_id(db, promotion_id)
         if not existing:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "促销活动不存在")
         await promotion_repository.update(db, promotion_id, {"status": status})
-        package_ids = await promotion_repository.list_package_ids_by_promotion(
-            db, promotion_id
-        )
+        package_ids = await promotion_repository.list_package_ids_by_promotion(db, promotion_id)
         await _invalidate_package_cache(package_ids)
         return _promotion_to_vo(existing)
 
@@ -132,9 +125,7 @@ class PromotionService:
         existing = await promotion_repository.get_by_id(db, promotion_id)
         if not existing:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "促销活动不存在")
-        package_ids = await promotion_repository.list_package_ids_by_promotion(
-            db, promotion_id
-        )
+        package_ids = await promotion_repository.list_package_ids_by_promotion(db, promotion_id)
         await promotion_repository.soft_delete(db, promotion_id)
         await promotion_repository.delete_packages_by_promotion(db, promotion_id)
         await _invalidate_package_cache(package_ids)

@@ -48,14 +48,18 @@ export const useSettingsStore = defineStore("setting", () => {
 
       if (newThemeColor !== oldThemeColor) {
         const rootStyle = document.documentElement.style;
-        rootStyle.setProperty(`--el-color-primary`, newThemeColor);
-        rootStyle.setProperty(`--el-color-primary-dark-2`, newThemeColor);
+        try {
+          rootStyle.setProperty(`--el-color-primary`, newThemeColor);
+          rootStyle.setProperty(`--el-color-primary-dark-2`, newThemeColor);
 
-        for (let i = 1; i < 10; i++) {
-          rootStyle.setProperty(
-            `--el-color-primary-light-${i}`,
-            `${Color(newThemeColor).alpha(1 - i * 0.1)}`
-          );
+          for (let i = 1; i < 10; i++) {
+            rootStyle.setProperty(
+              `--el-color-primary-light-${i}`,
+              `${Color(newThemeColor).alpha(1 - i * 0.1)}`
+            );
+          }
+        } catch {
+          // 非法颜色值（空串/无法解析）跳过本轮主题色刷新，保持上一个有效主题
         }
       }
     },

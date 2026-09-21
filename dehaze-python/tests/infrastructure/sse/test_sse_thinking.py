@@ -6,13 +6,12 @@ from tests.stubs.fakes import RecorderEmitter
 
 
 class _Repo:
-
     def __init__(self):
         self.thoughts = []
 
     async def create_thought(self, db, **kwargs):
         self.thoughts.append(kwargs)
-        return None
+        return
 
 
 @pytest.fixture
@@ -21,7 +20,9 @@ def conv(monkeypatch):
     emitter = RecorderEmitter()
     repo = _Repo()
     monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter)
-    monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository", repo)
+    monkeypatch.setattr(
+        "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository", repo
+    )
     return SseEventConverter(ctx), emitter, repo
 
 
@@ -124,7 +125,7 @@ async def test_tool_status_2_failure_persisted_and_emitted(conv):
     thought = repo.thoughts[0]
     assert thought["status"] == 2
     assert "超时" in thought["error"]
-    event = [e[1] for e in emitter.events if e[0] == "thought"][0]
+    event = next(e[1] for e in emitter.events if e[0] == "thought")
     assert event["status"] == 2
     assert "超时" in event["error"]
 
@@ -157,7 +158,7 @@ async def test_tool_status_3_skipped_persisted_and_emitted(conv):
     thought = repo.thoughts[0]
     assert thought["status"] == 3
     assert thought["error"] == "服务不可用"
-    event = [e[1] for e in emitter.events if e[0] == "thought"][0]
+    event = next(e[1] for e in emitter.events if e[0] == "thought")
     assert event["status"] == 3
     assert event["error"] == "服务不可用"
 
@@ -166,9 +167,13 @@ async def test_multiple_thinking_segments_each_own_block(conv):
     """多段思考（思考→回复→思考→回复）每段独立内容块并分别落库"""
     converter, emitter, repo = conv
     await converter.handle({"type": "messages", "ns": [], "data": [_thinking_chunk("思考1")]})
-    await converter.handle({"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复1")]})
+    await converter.handle(
+        {"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复1")]}
+    )
     await converter.handle({"type": "messages", "ns": [], "data": [_thinking_chunk("思考2")]})
-    await converter.handle({"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复2")]})
+    await converter.handle(
+        {"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复2")]}
+    )
     await converter.finish()
     # 第二段思考重新推送 content_block.start（多段独立块）
     thinking_starts = [
@@ -188,4 +193,5 @@ async def test_finish_flushes_residual_thinking(conv):
     await converter.finish()
     assert ("content_block.stop", {"index": 1}) in emitter.events
     thinking_thoughts = [t for t in repo.thoughts if t["tool"] is None]
-    assert thinking_thoughts and thinking_thoughts[0]["thought"] == "只思考"
+    assert thinking_thoughts
+    assert thinking_thoughts[0]["thought"] == "只思考"

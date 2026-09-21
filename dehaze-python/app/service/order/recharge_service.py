@@ -112,7 +112,9 @@ class RechargeService:
                 return True
             if recharge.status != 1:
                 logger.warning(
-                    "充值回调状态异常 rechargeNo=%s status=%s", recharge.recharge_no, recharge.status
+                    "充值回调状态异常 rechargeNo=%s status=%s",
+                    recharge.recharge_no,
+                    recharge.status,
                 )
                 return False
 

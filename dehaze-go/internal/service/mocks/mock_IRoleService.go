@@ -27,17 +27,17 @@ func (_m *MockIRoleService) EXPECT() *MockIRoleService_Expecter {
 	return &MockIRoleService_Expecter{mock: &_m.Mock}
 }
 
-// AssignMenus provides a mock function with given fields: ctx, roleID, menuIDs
-func (_m *MockIRoleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []int64) error {
-	ret := _m.Called(ctx, roleID, menuIDs)
+// AssignMenus provides a mock function with given fields: ctx, roleID, menuIDs, operatorPerms, operatorIsRoot
+func (_m *MockIRoleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []int64, operatorPerms []string, operatorIsRoot bool) error {
+	ret := _m.Called(ctx, roleID, menuIDs, operatorPerms, operatorIsRoot)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AssignMenus")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, []int64) error); ok {
-		r0 = rf(ctx, roleID, menuIDs)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, []int64, []string, bool) error); ok {
+		r0 = rf(ctx, roleID, menuIDs, operatorPerms, operatorIsRoot)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -54,13 +54,15 @@ type MockIRoleService_AssignMenus_Call struct {
 //   - ctx context.Context
 //   - roleID int64
 //   - menuIDs []int64
-func (_e *MockIRoleService_Expecter) AssignMenus(ctx interface{}, roleID interface{}, menuIDs interface{}) *MockIRoleService_AssignMenus_Call {
-	return &MockIRoleService_AssignMenus_Call{Call: _e.mock.On("AssignMenus", ctx, roleID, menuIDs)}
+//   - operatorPerms []string
+//   - operatorIsRoot bool
+func (_e *MockIRoleService_Expecter) AssignMenus(ctx interface{}, roleID interface{}, menuIDs interface{}, operatorPerms interface{}, operatorIsRoot interface{}) *MockIRoleService_AssignMenus_Call {
+	return &MockIRoleService_AssignMenus_Call{Call: _e.mock.On("AssignMenus", ctx, roleID, menuIDs, operatorPerms, operatorIsRoot)}
 }
 
-func (_c *MockIRoleService_AssignMenus_Call) Run(run func(ctx context.Context, roleID int64, menuIDs []int64)) *MockIRoleService_AssignMenus_Call {
+func (_c *MockIRoleService_AssignMenus_Call) Run(run func(ctx context.Context, roleID int64, menuIDs []int64, operatorPerms []string, operatorIsRoot bool)) *MockIRoleService_AssignMenus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].([]int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].([]int64), args[3].([]string), args[4].(bool))
 	})
 	return _c
 }
@@ -70,7 +72,7 @@ func (_c *MockIRoleService_AssignMenus_Call) Return(_a0 error) *MockIRoleService
 	return _c
 }
 
-func (_c *MockIRoleService_AssignMenus_Call) RunAndReturn(run func(context.Context, int64, []int64) error) *MockIRoleService_AssignMenus_Call {
+func (_c *MockIRoleService_AssignMenus_Call) RunAndReturn(run func(context.Context, int64, []int64, []string, bool) error) *MockIRoleService_AssignMenus_Call {
 	_c.Call.Return(run)
 	return _c
 }

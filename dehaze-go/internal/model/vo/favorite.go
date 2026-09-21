@@ -2,13 +2,14 @@ package vo
 
 // FavoriteVO 收藏列表视图对象
 type FavoriteVO struct {
-	ID         int64  `json:"id"`
-	UserID     int64  `json:"userId"`
-	TargetType string `json:"targetType"`
-	TargetID   int64  `json:"targetId"`
-	TargetName string `json:"targetName"`
-	IsInvalid  bool   `json:"isInvalid"`
-	CreateTime string `json:"createTime"`
+	ID              int64  `json:"id"`
+	UserID          int64  `json:"userId"`
+	TargetType      string `json:"targetType"`
+	TargetID        int64  `json:"targetId"`
+	TargetName      string `json:"targetName"`
+	TargetThumbnail string `json:"targetThumbnail,omitempty"`
+	IsInvalid       bool   `json:"isInvalid"`
+	CreateTime      string `json:"createTime"`
 }
 
 // FavoriteStatusVO 收藏状态视图对象

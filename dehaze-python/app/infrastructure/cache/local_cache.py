@@ -102,6 +102,7 @@ class SingleFlight:
     def __init__(self):
         self._calls: dict[str, asyncio.Future[Any]] = {}
         self._lock = asyncio.Lock()
+        self._load_tasks: set[asyncio.Task] = set()
 
     async def do(
         self,
@@ -127,8 +128,10 @@ class SingleFlight:
                 # 创建 Future 并注册
                 future: asyncio.Future[T] = asyncio.get_event_loop().create_future()
                 self._calls[key] = future
-                # 启动加载任务
-                asyncio.create_task(self._load(key, fn, future))
+                # 启动加载任务（持强引用：事件循环对 task 仅弱引用，不持有会被 GC 中途丢弃）
+                task = asyncio.create_task(self._load(key, fn, future))
+                self._load_tasks.add(task)
+                task.add_done_callback(self._load_tasks.discard)
                 existing = future
 
         # 等待结果（锁已释放）

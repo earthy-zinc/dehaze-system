@@ -1,4 +1,4 @@
-import { DatasetAPI, DatasetItemAPI, BatchDeleteForm } from "../../../index";
+import { DatasetAPI, DatasetItemAPI, ItemFileAPI, BatchDeleteForm } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import {
   createDatasetForm,
@@ -224,6 +224,51 @@ describe("数据项接口测试", () => {
       if (result.failedCount !== undefined) {
         expect(result.failedCount).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe("安全与参数边界", () => {
+    let itemId: number;
+
+    beforeAll(async () => {
+      itemId = await createTestItem();
+    });
+
+    afterAll(async () => {
+      await cleanupTestItem(itemId);
+    });
+
+    test("参数校验：数据项名称超过列宽 64 字符", async () => {
+      await expectBizError(
+        DatasetItemAPI.add(createDatasetItemForm(testDatasetId, { name: "长" + "x".repeat(64) })),
+        ["A0400"]
+      );
+    });
+
+    test("参数校验：数据集名称超过列宽 64 字符", async () => {
+      await expectBizError(DatasetAPI.add(createDatasetForm({ name: "长" + "x".repeat(64) })), [
+        "A0400",
+      ]);
+    });
+
+    test("文件安全：item-files 上传非图片内容（.html 伪装）", async () => {
+      const form = new FormData();
+      form.append("itemId", String(itemId));
+      form.append("type", "hazy");
+      form.append(
+        "file",
+        new Blob([`<script>alert(1)</script>`], { type: "text/html" }),
+        "payload.html"
+      );
+      await expectBizError(ItemFileAPI.upload(form), ["A0400"]);
+    });
+
+    test("参数校验：item-files 上传非法图片类型枚举", async () => {
+      const form = new FormData();
+      form.append("itemId", String(itemId));
+      form.append("type", "banner");
+      form.append("file", new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }), "a.png");
+      await expectBizError(ItemFileAPI.upload(form), ["A0400"]);
     });
   });
 

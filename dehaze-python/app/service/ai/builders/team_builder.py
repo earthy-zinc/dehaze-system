@@ -15,11 +15,14 @@ import logging
 
 from langgraph_supervisor import create_supervisor
 
+from app.core.exceptions import BusinessException
 from app.infrastructure.llm.client.dehaze_chat_model import DehazeChatModel
 from app.service.ai.builders.deep_agent_builder import (
     DeepAgentBuilder,
     _build_remote_tool,
     _load_endpoint,
+    _make_ctx,
+    register_graph_ctx_template,
 )
 
 logger = logging.getLogger(__name__)
@@ -51,23 +54,35 @@ class TeamBuilder:
         Returns:
             编译后的 supervisor 图（CompiledStateGraph）。
         """
-        # 本地成员编译为 deep agent 子图
+        # 本地成员编译为 deep agent 子图；携带成员身份（被 supervisor transfer_to_* 移交时
+        # 其模型调用用量按成员 agentCode 归属）
         agents = []
         for snap in member_snapshots:
             compiled = await DeepAgentBuilder.build_from_snapshot(
-                db, redis, snap, checkpointer=checkpointer
+                db,
+                redis,
+                snap,
+                checkpointer=checkpointer,
+                subagent={"name": snap.get("name") or "", "priority": 0},
             )
             agents.append(compiled)
 
         # 远程成员构造为 supervisor 可直接调用的远程 task 工具
         remote_tools = []
+        failures: list[str] = []
         for rel in remote_members or []:
-            endpoint = await _load_endpoint(db, rel.get("endpoint_id"))
+            endpoint_id = int(rel.get("endpoint_id") or 0)
+            endpoint = await _load_endpoint(db, endpoint_id)
             if not endpoint:
+                # 配置错误不得静默跳过（对齐 _build_subagents）：否则团队会少一个远程成员
+                # 上线而无人知晓，聚合所有失败项一并报错暴露。
+                failures.append(f"远程成员 {rel.get('agent_id')}: 端点 {endpoint_id} 不可用")
                 continue
             remote_tools.append(
                 _build_remote_tool(endpoint, f"remote_{rel.get('agent_id')}", endpoint.name, {})
             )
+        if failures:
+            raise BusinessException("Team 远程成员配置不完整，拒绝构建团队: " + "; ".join(failures))
 
         lead_config = lead_snapshot["config"]
         # langgraph-supervisor 的 parallel_tool_calls 为 bool（是否允许并行移交）；
@@ -84,4 +99,8 @@ class TeamBuilder:
             parallel_tool_calls=parallel_tool_calls,
             supervisor_name=lead_snapshot.get("name") or "supervisor",
         )
-        return supervisor_graph.compile(checkpointer=checkpointer)
+        compiled = supervisor_graph.compile(checkpointer=checkpointer)
+        # 登记 run ctx 模板（成员 deep agent 子图的 before_agent 节点经预置共享 ctx
+        # 取得会话标识，与 DeepAgentBuilder 同一机制）
+        register_graph_ctx_template(compiled, _make_ctx(lead_snapshot, lead_config))
+        return compiled

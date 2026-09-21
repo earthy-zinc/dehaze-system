@@ -15,6 +15,7 @@ import time
 import uuid
 from typing import Any
 
+from langchain_core.runnables import RunnableConfig
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_agent_eval_sample import SysAiAgentEvalSample
@@ -27,6 +28,9 @@ _PASS_THRESHOLD = 60.0
 
 # 效率维度自身的延迟预算（评测器验收标准，非推理参数）
 _MAX_LATENCY_MS = 120_000
+
+# 判分标识：当前为规则式评分器，无独立判分模型调用（LLM 判分规划中，见后端实现 §2.4）
+JUDGE_MODEL = "rule"
 
 
 class EvalRunner:
@@ -62,13 +66,13 @@ class EvalRunner:
             "thoughts": [],
             "isolated_token_pool": True,
         }
-        config = {"configurable": {"thread_id": f"eval:{sample.id}:{uuid.uuid4()}"}}
+        config: RunnableConfig = {"configurable": {"thread_id": f"eval:{sample.id}:{uuid.uuid4()}"}}
 
         error = None
         result: dict[str, Any] = {}
         try:
             result = await graph.ainvoke(initial_state, config=config)
-        except Exception as exc:  # noqa: BLE001 - 单样本失败不阻断整体评测
+        except Exception as exc:
             logger.warning("评测样本 %s 执行失败: %s", sample.id, exc, exc_info=True)
             error = str(exc)
 
@@ -113,6 +117,8 @@ class EvalRunner:
             "risk_level": sample.risk_level,
             "passed": passed,
             "error": error,
+            "actual_output": final_response,
+            "judge_model": JUDGE_MODEL,
             "scores": {name: round(score, 2) for name, (score, _) in scores.items()},
             "notes": {name: note for name, (_, note) in scores.items()},
             "metrics": {
@@ -223,7 +229,8 @@ class EvalRunner:
 
         score = 100.0
         notes = []
-        if steps > max_steps:
+        # max_steps 为快照配置项，缺失时无步数预算可比较（不判超预算）
+        if max_steps is not None and steps > max_steps:
             score -= 40
             notes.append(f"步数 {steps} 超预算 {max_steps}")
         if elapsed_ms > _MAX_LATENCY_MS:
@@ -266,8 +273,7 @@ def _extract_keywords(text: str) -> list[str]:
     """从期望/禁止文本中提取关键词（中文 2 字以上片段、英文 3 字符以上单词）。"""
     if not text:
         return []
-    tokens = re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z_]{3,}", text)
-    return tokens
+    return re.findall(r"[\u4e00-\u9fff]{2,}|[a-zA-Z_]{3,}", text)
 
 
 def _looks_like_json(text: str) -> bool:
@@ -286,9 +292,7 @@ def _contains_sensitive(text: str) -> bool:
         return True
     if re.search(r"\b\d{17}[\dXx]\b", text):
         return True
-    if re.search(r"(sk-|Bearer\s+[A-Za-z0-9]{20,})", text):
-        return True
-    return False
+    return bool(re.search(r"(sk-|Bearer\s+[A-Za-z0-9]{20,})", text))
 
 
 eval_runner = EvalRunner()

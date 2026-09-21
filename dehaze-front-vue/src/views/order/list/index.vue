@@ -26,7 +26,22 @@
             style="width: 140px"
           >
             <el-option
-              v-for="opt in statusOptions"
+              v-for="opt in orderStatusOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="商品类型" prop="packageType">
+          <el-select
+            v-model="queryParams.packageType"
+            clearable
+            placeholder="全部"
+            style="width: 120px"
+          >
+            <el-option
+              v-for="opt in packageTypeOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -50,7 +65,7 @@
         </el-form-item>
         <el-form-item label="金额区间">
           <el-input-number
-            v-model="queryParams.amountMin"
+            v-model="amountRange.min"
             :min="0"
             :precision="2"
             controls-position="right"
@@ -58,7 +73,7 @@
           />
           <span style="margin: 0 6px">-</span>
           <el-input-number
-            v-model="queryParams.amountMax"
+            v-model="amountRange.max"
             :min="0"
             :precision="2"
             controls-position="right"
@@ -123,7 +138,7 @@
           align="right"
         >
           <template #default="scope">
-            ¥{{ ((scope.row as OrderPageVO).payableAmount ?? 0).toFixed(2) }}
+            ¥{{ yuan((scope.row as OrderPageVO).payableAmount) }}
           </template>
         </el-table-column>
         <el-table-column label="优惠" width="120" align="right">
@@ -135,10 +150,10 @@
               "
             >
               -¥{{
-                (
-                  ((scope.row as OrderPageVO).discountAmount ?? 0) +
-                  ((scope.row as OrderPageVO).couponAmount ?? 0)
-                ).toFixed(2)
+                yuan(
+                  (scope.row as OrderPageVO).discountAmount +
+                    (scope.row as OrderPageVO).couponAmount
+                )
               }}
             </span>
             <span v-else>-</span>
@@ -218,24 +233,16 @@
             }})</el-descriptions-item
           >
           <el-descriptions-item label="原价"
-            >¥{{
-              detailDialog.data.originalPrice.toFixed(2)
-            }}</el-descriptions-item
+            >¥{{ yuan(detailDialog.data.originalPrice) }}</el-descriptions-item
           >
           <el-descriptions-item label="折扣优惠"
-            >¥{{
-              detailDialog.data.discountAmount.toFixed(2)
-            }}</el-descriptions-item
+            >¥{{ yuan(detailDialog.data.discountAmount) }}</el-descriptions-item
           >
           <el-descriptions-item label="优惠券抵扣"
-            >¥{{
-              detailDialog.data.couponAmount.toFixed(2)
-            }}</el-descriptions-item
+            >¥{{ yuan(detailDialog.data.couponAmount) }}</el-descriptions-item
           >
           <el-descriptions-item label="实付"
-            >¥{{
-              detailDialog.data.payableAmount.toFixed(2)
-            }}</el-descriptions-item
+            >¥{{ yuan(detailDialog.data.payableAmount) }}</el-descriptions-item
           >
           <el-descriptions-item label="支付方式">{{
             detailDialog.data.payMethod
@@ -243,9 +250,7 @@
               : "-"
           }}</el-descriptions-item>
           <el-descriptions-item label="已支付金额"
-            >¥{{
-              detailDialog.data.paidAmount.toFixed(2)
-            }}</el-descriptions-item
+            >¥{{ yuan(detailDialog.data.paidAmount) }}</el-descriptions-item
           >
           <el-descriptions-item label="创建时间">{{
             detailDialog.data.createTime
@@ -289,9 +294,7 @@
                 width="100"
               >
                 <template #default="scope"
-                  >¥{{
-                    (scope.row as PaymentRecordVO).amount.toFixed(2)
-                  }}</template
+                  >¥{{ yuan((scope.row as PaymentRecordVO).amount) }}</template
                 >
               </el-table-column>
               <el-table-column
@@ -324,15 +327,22 @@
                 }}</el-descriptions-item>
                 <el-descriptions-item label="退款金额"
                   >¥{{
-                    detailDialog.data.refundRecord.refundAmount.toFixed(2)
+                    yuan(detailDialog.data.refundRecord.refundAmount)
                   }}</el-descriptions-item
                 >
                 <el-descriptions-item label="退款原因">{{
                   detailDialog.data.refundRecord.reason
                 }}</el-descriptions-item>
-                <el-descriptions-item label="已用配额">{{
-                  detailDialog.data.refundRecord.usedQuota
-                }}</el-descriptions-item>
+                <el-descriptions-item
+                  v-if="detailDialog.data.refundRecord.usedDays != null"
+                  label="已使用天数"
+                  >{{ detailDialog.data.refundRecord.usedDays }} 天
+                </el-descriptions-item>
+                <el-descriptions-item
+                  v-if="detailDialog.data.refundRecord.usedCredits != null"
+                  label="已消耗积分"
+                  >{{ detailDialog.data.refundRecord.usedCredits }}
+                </el-descriptions-item>
                 <el-descriptions-item label="状态">{{
                   refundStatusLabel(detailDialog.data.refundRecord.status)
                 }}</el-descriptions-item>
@@ -390,7 +400,7 @@
               <el-card shadow="never">
                 <div class="stats-label">总收入</div>
                 <div class="stats-value">
-                  ¥{{ statsDrawer.data.totalRevenue.toFixed(2) }}
+                  ¥{{ yuan(statsDrawer.data.totalRevenue) }}
                 </div>
               </el-card>
             </el-col>
@@ -398,7 +408,7 @@
               <el-card shadow="never">
                 <div class="stats-label">总退款</div>
                 <div class="stats-value">
-                  ¥{{ statsDrawer.data.totalRefund.toFixed(2) }}
+                  ¥{{ yuan(statsDrawer.data.totalRefund) }}
                 </div>
               </el-card>
             </el-col>
@@ -438,11 +448,18 @@ import {
   OrderStatsVO,
   PaymentRecordVO,
   OrderStatus,
+  OrderPackageType,
   PayMethod,
   RefundStatus,
 } from "dehaze-sdk-js";
 import { Search, Refresh, View, DataLine } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
+import {
+  orderStatusOptions,
+  payMethodOptions,
+  refundStatusOptions,
+} from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "OrderList" });
 
@@ -457,68 +474,39 @@ const queryParams = reactive<OrderQuery>({
   pageSize: 10,
 });
 
-const statusOptions: { label: string; value: OrderStatus }[] = [
-  { label: "待支付", value: "pending" },
-  { label: "已支付", value: "paid" },
-  { label: "已完成", value: "completed" },
-  { label: "已取消", value: "cancelled" },
-  { label: "退款中", value: "refunding" },
-  { label: "已退款", value: "refunded" },
-];
+// 金额区间表单以元输入，提交时转为分（后端金额单位为分）
+const amountRange = reactive<{
+  min: number | undefined;
+  max: number | undefined;
+}>({
+  min: undefined,
+  max: undefined,
+});
 
-const payMethodOptions: { label: string; value: PayMethod }[] = [
-  { label: "微信支付", value: "wechat" },
-  { label: "支付宝", value: "alipay" },
-  { label: "余额支付", value: "balance" },
-  { label: "组合支付", value: "combined" },
+/** 后端金额单位为分，前端展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
+}
+
+const packageTypeOptions: { label: string; value: OrderPackageType }[] = [
+  { label: "会员卡", value: "vip" },
+  { label: "积分卡", value: "credit" },
 ];
 
 function statusLabel(status: OrderStatus): string {
-  const map: Record<OrderStatus, string> = {
-    pending: "待支付",
-    paid: "已支付",
-    completed: "已完成",
-    cancelled: "已取消",
-    refunding: "退款中",
-    refunded: "已退款",
-  };
-  return map[status] || status;
+  return orderStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
-function statusTagType(
-  status: OrderStatus
-): "success" | "warning" | "info" | "primary" | "danger" {
-  const map: Record<
-    OrderStatus,
-    "success" | "warning" | "info" | "primary" | "danger"
-  > = {
-    pending: "warning",
-    paid: "primary",
-    completed: "info",
-    cancelled: "info",
-    refunding: "warning",
-    refunded: "info",
-  };
-  return map[status];
+function statusTagType(status: OrderStatus): TagType {
+  return orderStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 function payMethodLabel(method: PayMethod): string {
-  const map: Record<PayMethod, string> = {
-    wechat: "微信支付",
-    alipay: "支付宝",
-    balance: "余额支付",
-    combined: "组合支付",
-  };
-  return map[method] || method;
+  return payMethodOptions.find((o) => o.value === method)?.label ?? method;
 }
 
 function refundStatusLabel(status: RefundStatus): string {
-  const map: Record<RefundStatus, string> = {
-    refunding: "退款中",
-    refunded: "退款成功",
-    refund_failed: "退款失败",
-  };
-  return map[status] || status;
+  return refundStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
 function handleQuery() {
@@ -530,6 +518,10 @@ function handleQuery() {
     queryParams.paidTimeStart = undefined;
     queryParams.paidTimeEnd = undefined;
   }
+  queryParams.amountMin =
+    amountRange.min != null ? Math.round(amountRange.min * 100) : undefined;
+  queryParams.amountMax =
+    amountRange.max != null ? Math.round(amountRange.max * 100) : undefined;
   OrderAPI.getPage(queryParams)
     .then((data) => {
       pageData.value = data.list;
@@ -543,9 +535,12 @@ function handleQuery() {
 function resetQuery() {
   queryFormRef.value?.resetFields();
   paidTimeRange.value = null;
+  amountRange.min = undefined;
+  amountRange.max = undefined;
   queryParams.orderNo = undefined;
   queryParams.keywords = undefined;
   queryParams.status = undefined;
+  queryParams.packageType = undefined;
   queryParams.payMethod = undefined;
   queryParams.amountMin = undefined;
   queryParams.amountMax = undefined;
@@ -686,7 +681,7 @@ function initCharts(data: OrderStatsVO) {
         {
           name: "收入",
           type: "bar",
-          data: data.packageDistribution.map((p) => p.revenue),
+          data: data.packageDistribution.map((p) => p.revenue / 100),
         },
         {
           name: "订单数",
@@ -718,7 +713,7 @@ function initCharts(data: OrderStatsVO) {
           name: "收入",
           type: "line",
           yAxisIndex: 0,
-          data: data.dailyStats.map((d) => d.revenue),
+          data: data.dailyStats.map((d) => d.revenue / 100),
         },
         {
           name: "订单数",

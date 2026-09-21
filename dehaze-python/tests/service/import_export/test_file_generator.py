@@ -35,6 +35,7 @@ class TestWriteExcel:
         output.seek(0)
         wb = load_workbook(output)
         ws = wb.active
+        assert ws is not None
         all_rows = list(ws.iter_rows(values_only=True))
         assert all_rows[0] == ("昵称", "用户名")
         assert all_rows[1] == ("n1", "u1")
@@ -49,6 +50,7 @@ class TestWriteExcel:
         output.seek(0)
         wb = load_workbook(output)
         ws = wb.active
+        assert ws is not None
         all_rows = list(ws.iter_rows(values_only=True))
         assert all_rows[1] == (None,)
 
@@ -72,6 +74,7 @@ class TestWriteExcel:
         output.seek(0)
         wb = load_workbook(output)
         ws = wb.active
+        assert ws is not None
         all_rows = list(ws.iter_rows(values_only=True))
         assert all_rows[0] == ("名称", "备注")
         assert all_rows[1][0] == "=cmd|'/c calc'!A0"
@@ -95,6 +98,7 @@ class TestWriteExcel:
         output.seek(0)
         wb = load_workbook(output)
         ws = wb.active
+        assert ws is not None
         all_rows = list(ws.iter_rows(values_only=True))
         assert all_rows[1] == ("2026-07-27",)
 
@@ -150,6 +154,7 @@ class TestParseExcel:
 
         wb = Workbook()
         ws = wb.active
+        assert ws is not None
         ws.append(header)
         for row in data_rows:
             ws.append(row)

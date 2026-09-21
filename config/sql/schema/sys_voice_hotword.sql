@@ -19,7 +19,7 @@ CREATE TABLE `sys_voice_hotword`
     `update_by`   bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     `create_time` datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time` datetime                                                        NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted`     tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`     bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_scope_user_deleted` (`scope`, `user_id`, `deleted`) USING BTREE,
     INDEX `idx_user_id` (`user_id`) USING BTREE

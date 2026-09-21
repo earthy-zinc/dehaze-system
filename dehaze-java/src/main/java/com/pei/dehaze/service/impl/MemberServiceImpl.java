@@ -12,12 +12,15 @@ import com.pei.dehaze.mapper.SysMemberGrowthLogMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.mapper.SysMemberQuotaMapper;
 import com.pei.dehaze.mapper.SysMemberSignInMapper;
+import com.pei.dehaze.mapper.SysOrderMapper;
+import com.pei.dehaze.mapper.SysUserCouponMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysMember;
 import com.pei.dehaze.model.entity.SysMemberBenefit;
 import com.pei.dehaze.model.entity.SysMemberGrowthLog;
 import com.pei.dehaze.model.entity.SysMemberQuota;
 import com.pei.dehaze.model.entity.SysMemberSignIn;
+import com.pei.dehaze.model.entity.SysOrder;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.MemberGrowthAdjustForm;
 import com.pei.dehaze.model.form.MemberLevelAdjustForm;
@@ -42,11 +45,14 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -77,6 +83,10 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     private final MessageService messageService;
     private final StringRedisTemplate stringRedisTemplate;
     private final SysDictService sysDictService;
+    private final SysOrderMapper orderMapper;
+    private final SysUserCouponMapper userCouponMapper;
+    private final com.pei.dehaze.mapper.SysCouponMapper couponMapper;
+    private final com.pei.dehaze.repository.AuditLogRepository auditLogRepository;
 
     @Override
     public MemberProfileVO getProfile() {
@@ -94,8 +104,8 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         LambdaQueryWrapper<SysMember> wrapper = new LambdaQueryWrapper<SysMember>()
                 .eq(CharSequenceUtil.isNotBlank(query.getLevelCode()), SysMember::getLevelCode, query.getLevelCode())
                 .eq(query.getStatus() != null, SysMember::getStatus, query.getStatus())
-                .ge(query.getExpireTimeStart() != null, SysMember::getExpireTime, query.getExpireTimeStart() != null ? query.getExpireTimeStart().atStartOfDay() : null)
-                .le(query.getExpireTimeEnd() != null, SysMember::getExpireTime, query.getExpireTimeEnd() != null ? query.getExpireTimeEnd().atTime(23, 59, 59) : null)
+                .ge(query.getExpireTimeStart() != null, SysMember::getExpireTime, query.getExpireTimeStart())
+                .le(query.getExpireTimeEnd() != null, SysMember::getExpireTime, query.getExpireTimeEnd())
                 .ge(query.getGrowthMin() != null, SysMember::getGrowthValue, query.getGrowthMin())
                 .le(query.getGrowthMax() != null, SysMember::getGrowthValue, query.getGrowthMax())
                 .orderByDesc(SysMember::getBecomeMemberTime);
@@ -192,6 +202,10 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     @Transactional(rollbackFor = Exception.class)
     @AuditLog(module = "member", action = "growth_change", targetType = "member", targetIdSpel = "#userId", afterSpel = "#form")
     public void adjustGrowth(Long userId, MemberGrowthAdjustForm form) {
+        // 变动值为 0 属无意义流水，拒绝落库（python adjust_growth 同款口径）
+        if (form.getChangeValue() == null || form.getChangeValue() == 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "变动值不能为0");
+        }
         SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId));
         if (member == null) {
@@ -218,7 +232,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
         stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
         recordGrowthLog(userId, "admin_adjust", actualChange, newGrowth,
-                null, "管理员调整成长值：" + form.getReason(), operatorId);
+                null, form.getReason(), operatorId);
     }
 
     @Override
@@ -248,7 +262,11 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     public Page<GrowthLogVO> getGrowthLogs(GrowthLogQuery query) {
-        Long userId = SecurityUtils.getUserId();
+        return getGrowthLogsByUser(SecurityUtils.getUserId(), query);
+    }
+
+    @Override
+    public Page<GrowthLogVO> getGrowthLogsByUser(Long userId, GrowthLogQuery query) {
         Page<SysMemberGrowthLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysMemberGrowthLog> wrapper = new LambdaQueryWrapper<SysMemberGrowthLog>()
                 .eq(SysMemberGrowthLog::getUserId, userId)
@@ -333,7 +351,28 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void onOrderPaid(SysOrder order) {
+        long consumeGrowth = order.getPaidAmount() != null ? order.getPaidAmount() : 0L;
+        if (consumeGrowth <= 0) {
+            return;
+        }
+        SysMember member = getMemberOrCreate(order.getUserId());
+        long newGrowth = member.getGrowthValue() + consumeGrowth;
+        member.setGrowthValue(newGrowth);
+        member.setTotalConsumption(
+                (member.getTotalConsumption() != null ? member.getTotalConsumption() : 0L) + consumeGrowth);
+        this.updateById(member);
+        stringRedisTemplate.delete("member:level:" + order.getUserId());
+        recordGrowthLog(order.getUserId(), "consume", (int) consumeGrowth, newGrowth,
+                String.valueOf(order.getId()), "购买" + order.getPackageName(), null);
+    }
+
+    @Override
     public SignInCalendarVO getSignInCalendar(Integer year, Integer month) {
+        if (year == null || month == null || month < 1 || month > 12) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "月份取值应为1-12");
+        }
         Long userId = SecurityUtils.getUserId();
         YearMonth ym = YearMonth.of(year, month);
         LocalDate start = ym.atDay(1);
@@ -431,6 +470,170 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         // upsert：user_id 相同即同一自然人，无越权风险；复活时降级为 level_0、清空 monthly_*_quota，保留 total_consumption（风控用）
         Long totalConsumption = 0L;
         this.baseMapper.upsertByUser(userId, totalConsumption);
+    }
+
+    /** 图像处理 7 类任务（权益概览按类目聚合，python IMAGE_TASK_TYPES 同款） */
+    private static final List<String> IMAGE_TASK_TYPES = List.of(
+            "dehaze", "derain", "desnow", "lowlight", "super_resolution", "denoise", "inpaint");
+
+    @Override
+    public Map<String, Object> getBenefitSummary(Long userId) {
+        SysMember member = getMemberOrCreate(userId);
+        SysMemberBenefit benefit = memberBenefitService.getByLevelCode(member.getLevelCode());
+
+        // 图像处理 7 类：各自剩余取最低值，details 返回各任务明细
+        List<Map<String, Object>> imageDetails = new ArrayList<>();
+        long imageRemaining = Long.MAX_VALUE;
+        for (String taskType : IMAGE_TASK_TYPES) {
+            long[] qu = memberTaskQuota(member, taskType);
+            long remaining = qu[0] - qu[1];
+            if (remaining < imageRemaining) {
+                imageRemaining = remaining;
+            }
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("taskType", taskType);
+            detail.put("quota", qu[0]);
+            detail.put("used", qu[1]);
+            detail.put("remaining", remaining);
+            imageDetails.add(detail);
+        }
+
+        long evaluateQuota = member.getMonthlyEvaluateQuota() != null ? member.getMonthlyEvaluateQuota() : 0;
+        long evaluateUsed = member.getMonthlyEvaluateUsed() != null ? member.getMonthlyEvaluateUsed() : 0;
+
+        // AI 类目：日/月限额取等级权益（java 无 AI 积分流水域，余额/今日已用为 0）
+        long dailyLimit = benefit != null && benefit.getAiCreditsDaily() != null ? benefit.getAiCreditsDaily() : 0;
+        long monthlyLimit = benefit != null && benefit.getAiCreditsMonthly() != null ? benefit.getAiCreditsMonthly() : 0;
+        if (monthlyLimit < dailyLimit) {
+            monthlyLimit = dailyLimit;
+        }
+        Map<String, Object> aiCategory = new LinkedHashMap<>();
+        aiCategory.put("creditsBalance", 0L);
+        aiCategory.put("todayUsed", 0L);
+        aiCategory.put("dailyLimit", dailyLimit);
+        aiCategory.put("monthlyLimit", monthlyLimit);
+
+        Map<String, Object> imageCategory = new LinkedHashMap<>();
+        imageCategory.put("remaining", imageRemaining == Long.MAX_VALUE ? 0L : imageRemaining);
+        imageCategory.put("details", imageDetails);
+
+        Map<String, Object> evaluateCategory = new LinkedHashMap<>();
+        evaluateCategory.put("remaining", evaluateQuota - evaluateUsed);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("imageCategory", imageCategory);
+        result.put("evaluateCategory", evaluateCategory);
+        result.put("aiCategory", aiCategory);
+        return result;
+    }
+
+    private long[] memberTaskQuota(SysMember member, String taskType) {
+        return switch (taskType) {
+            case "dehaze" -> new long[]{nvlQuota(member.getMonthlyDehazeQuota()), nvlQuota(member.getMonthlyDehazeUsed())};
+            case "derain" -> new long[]{nvlQuota(member.getMonthlyDerainQuota()), nvlQuota(member.getMonthlyDerainUsed())};
+            case "desnow" -> new long[]{nvlQuota(member.getMonthlyDesnowQuota()), nvlQuota(member.getMonthlyDesnowUsed())};
+            case "lowlight" -> new long[]{nvlQuota(member.getMonthlyLowlightQuota()), nvlQuota(member.getMonthlyLowlightUsed())};
+            case "super_resolution" -> new long[]{nvlQuota(member.getMonthlySuperResolutionQuota()), nvlQuota(member.getMonthlySuperResolutionUsed())};
+            case "denoise" -> new long[]{nvlQuota(member.getMonthlyDenoiseQuota()), nvlQuota(member.getMonthlyDenoiseUsed())};
+            default -> new long[]{nvlQuota(member.getMonthlyInpaintQuota()), nvlQuota(member.getMonthlyInpaintUsed())};
+        };
+    }
+
+    private long nvlQuota(Integer value) {
+        return value != null ? value : 0;
+    }
+
+    @Override
+    public Map<String, Object> getTrialStatus(Long userId) {
+        SysMember member = getMemberOrCreate(userId);
+
+        // 体验券激活状态：持有未使用且未过期的 trial 券即视为已激活
+        List<Long> trialCouponIds = couponMapper.selectList(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysCoupon>()
+                .eq(com.pei.dehaze.model.entity.SysCoupon::getType, "trial")
+                .select(com.pei.dehaze.model.entity.SysCoupon::getId))
+                .stream().map(com.pei.dehaze.model.entity.SysCoupon::getId).toList();
+        com.pei.dehaze.model.entity.SysUserCoupon activeTrial = null;
+        if (!trialCouponIds.isEmpty()) {
+            activeTrial = userCouponMapper.selectOne(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysUserCoupon>()
+                    .eq(com.pei.dehaze.model.entity.SysUserCoupon::getUserId, userId)
+                    .in(com.pei.dehaze.model.entity.SysUserCoupon::getCouponId, trialCouponIds)
+                    .eq(com.pei.dehaze.model.entity.SysUserCoupon::getStatus, 1)
+                    .gt(com.pei.dehaze.model.entity.SysUserCoupon::getExpireTime, LocalDateTime.now())
+                    .orderByAsc(com.pei.dehaze.model.entity.SysUserCoupon::getExpireTime)
+                    .last("LIMIT 1"));
+        }
+        boolean voucherActivated = activeTrial != null;
+
+        // 新用户专享可用：无历史付费订单
+        Long paidCount = orderMapper.selectCount(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysOrder>()
+                .eq(com.pei.dehaze.model.entity.SysOrder::getUserId, userId)
+                .in(com.pei.dehaze.model.entity.SysOrder::getStatus, 2, 3));
+        boolean newUserExclusiveAvailable = paidCount == 0;
+
+        boolean showTrialEntry = !voucherActivated || newUserExclusiveAvailable;
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("showTrialEntry", showTrialEntry);
+        result.put("trialDays", 3);
+        result.put("trialCredits", 100);
+        result.put("voucherActivated", voucherActivated);
+        result.put("voucherExpireTime", activeTrial != null && activeTrial.getExpireTime() != null
+                ? activeTrial.getExpireTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null);
+        result.put("aiTrialCreditsBalance", 0L);
+        result.put("newUserExclusiveAvailable", newUserExclusiveAvailable);
+        result.put("paidMembership", "purchase".equals(member.getLevelSource()) || member.getExpireTime() != null);
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> listMemberAuditLogs(Long userId, int pageNum, int pageSize) {
+        // 目标会员后台操作审计日志（Mongo，倒序，详情弹窗「操作日志」页签）
+        List<com.pei.dehaze.model.entity.AuditLog> all =
+                auditLogRepository.findByTargetTypeAndTargetIdOrderByCreateTimeDesc("member", userId);
+        int total = all.size();
+        int from = (int) Math.min((long) (pageNum - 1) * pageSize, total);
+        int to = Math.min(from + pageSize, total);
+
+        List<Map<String, Object>> listData = new ArrayList<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        for (com.pei.dehaze.model.entity.AuditLog log : all.subList(from, to)) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", log.getId());
+            item.put("operatorId", log.getOperatorId());
+            item.put("action", log.getAction());
+            item.put("module", log.getModule());
+            item.put("beforeValue", log.getBeforeValue());
+            item.put("afterValue", log.getAfterValue());
+            item.put("ip", log.getIp());
+            item.put("createTime", log.getCreateTime() != null ? log.getCreateTime().format(fmt) : null);
+            listData.add(item);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("list", listData);
+        result.put("total", (long) total);
+        return result;
+    }
+
+    @Override
+    public void ensureMemberProfile(Long userId) {
+        // 会员档案兜底：种子账号与后台创建的用户不走注册流程，无 sys_member 行会导致
+        // 计费配额校验 fail-closed 误报"配额不足"；已有活跃档案直接跳过（initMember 的
+        // upsert 会降级 level_0，不可对活跃会员调用）
+        long activeCount = this.count(new LambdaQueryWrapper<SysMember>()
+                .eq(SysMember::getUserId, userId));
+        if (activeCount == 0) {
+            initMember(userId);
+        }
+    }
+
+    @Override
+    public int getMaxDevices(Long userId) {
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
+                .eq(SysMember::getUserId, userId));
+        String levelCode = member != null ? member.getLevelCode() : "level_0";
+        SysMemberBenefit benefit = memberBenefitService.getByLevelCode(levelCode);
+        // 权益行缺失属数据异常，按 level_0 的 1 台兜底，避免解析为 0 后踢掉刚登录的会话
+        return benefit != null && benefit.getMaxDevices() != null ? benefit.getMaxDevices() : 1;
     }
 
     @Override
@@ -666,6 +869,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         }
         vo.setLevelCode(member.getLevelCode());
         vo.setLevelName(benefit != null ? benefit.getLevelName() : member.getLevelCode());
+        vo.setLevelSource(member.getLevelSource());
         vo.setGrowthValue(member.getGrowthValue());
         vo.setExpireTime(member.getExpireTime());
         vo.setMonthlyDehazeQuota(member.getMonthlyDehazeQuota());

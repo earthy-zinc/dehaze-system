@@ -8,9 +8,9 @@ import lombok.Data;
 @Schema(description = "退款申请表单")
 public class RefundApplyForm {
 
-    @Schema(description = "退款原因", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "退款原因不能为空")
-    private String reason;
+    @Schema(description = "售后原因类型(after_sale/force_majeure/merchant/other)", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "售后原因类型不能为空")
+    private String reasonType;
 
     @Schema(description = "自定义补充说明")
     private String customReason;

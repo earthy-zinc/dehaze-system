@@ -24,9 +24,7 @@ VOICE_CATALOG = [
 
 
 class TtsForm(BaseModel):
-    text: str = Field(
-        ..., min_length=1, max_length=10000, description="待合成文本(最长10000字符)"
-    )
+    text: str = Field(..., min_length=1, max_length=10000, description="待合成文本(最长10000字符)")
     voice: str | None = Field(default=None, max_length=32, description="音色(默认huayan)")
     speed: float = Field(default=1.0, ge=0.5, le=2.0, description="语速(0.8慢/1.0正常/1.2快)")
     format: str = Field(default="mp3", description="音频格式(mp3/wav/pcm)")

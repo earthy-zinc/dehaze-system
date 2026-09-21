@@ -22,13 +22,13 @@ CREATE TABLE `sys_auto_renew`
     `fail_count`          int                                                            NOT NULL DEFAULT 0 COMMENT '连续失败次数',
     `last_renew_order_id` bigint                                                         NULL DEFAULT NULL COMMENT '上次续费订单ID',
     `close_reason`        varchar(256) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '关闭原因',
-    `deleted`             tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`             bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`         datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`         datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`           bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`           bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_user_package` (`user_id`, `package_id`) USING BTREE,
+    UNIQUE INDEX `uk_user_package` (`user_id`, `package_id`, `deleted`) USING BTREE,
     INDEX `idx_status_renew_time` (`status`, `next_renew_time`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

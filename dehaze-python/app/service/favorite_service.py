@@ -59,12 +59,23 @@ class FavoriteService:
     ) -> int:
         """添加收藏
 
-        1. 对象存在性校验（algorithm/dataset/result 必须存在，否则 A0401）
-        2. 容量校验
-        3. 单条 upsert（冲突时复活 deleted=0, is_invalid=0）
+        1. 合法类型校验（非法 targetType 抛 A0400，image/preset 预留类型跳过存在性校验）
+        2. 对象存在性校验（algorithm/dataset/result 必须存在，否则 A0401）
+        3. 已收藏幂等返回原 id（先于容量校验，保证重复收藏不因容量满而失败）
+        4. 容量校验
+        5. 单条 upsert（重复收藏幂等返回原行；取消后重收藏插入新的未删除行，软删历史行保留）
         """
+        if target_type not in ("algorithm", "result", "dataset", "image", "preset"):
+            raise BusinessException(ResultCode.PARAM_ERROR, "非法的收藏对象类型")
+
         if not await favorite_repository.target_exists(db, target_type, target_id):
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "收藏目标不存在")
+
+        existing = await favorite_repository.get_by_user_and_target(
+            db, user_id, target_type, target_id
+        )
+        if existing is not None:
+            return existing.id
 
         current_count = await favorite_repository.count_user_favorites(db, user_id)
         capacity = await self._get_capacity(db, user_id)
@@ -74,7 +85,7 @@ class FavoriteService:
                 f"收藏已达上限（{capacity}条），请清理后重试",
             )
 
-        # upsert：已收藏（deleted=0）幂等返回原 id；已取消（deleted=1）复活返回原 id
+        # upsert：已取消（软删）的记录复活返回原 id
         return await favorite_repository.upsert_by_user_and_target(
             db, user_id, target_type, target_id
         )
@@ -104,7 +115,6 @@ class FavoriteService:
             query["pageSize"],
             target_type=query.get("targetType"),
             keywords=query.get("keywords"),
-            sort_by=query.get("sortBy"),
             sort_order=query.get("sortOrder"),
         )
 
@@ -153,4 +163,3 @@ class FavoriteService:
 
 
 favorite_service = FavoriteService()
-

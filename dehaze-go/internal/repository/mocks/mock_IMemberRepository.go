@@ -259,6 +259,65 @@ func (_c *MockIMemberRepository_FindByUserID_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// FindByUserIDs provides a mock function with given fields: ctx, userIDs
+func (_m *MockIMemberRepository) FindByUserIDs(ctx context.Context, userIDs []int64) ([]model.SysMember, error) {
+	ret := _m.Called(ctx, userIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByUserIDs")
+	}
+
+	var r0 []model.SysMember
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) ([]model.SysMember, error)); ok {
+		return rf(ctx, userIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) []model.SysMember); ok {
+		r0 = rf(ctx, userIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]model.SysMember)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
+		r1 = rf(ctx, userIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIMemberRepository_FindByUserIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByUserIDs'
+type MockIMemberRepository_FindByUserIDs_Call struct {
+	*mock.Call
+}
+
+// FindByUserIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userIDs []int64
+func (_e *MockIMemberRepository_Expecter) FindByUserIDs(ctx interface{}, userIDs interface{}) *MockIMemberRepository_FindByUserIDs_Call {
+	return &MockIMemberRepository_FindByUserIDs_Call{Call: _e.mock.On("FindByUserIDs", ctx, userIDs)}
+}
+
+func (_c *MockIMemberRepository_FindByUserIDs_Call) Run(run func(ctx context.Context, userIDs []int64)) *MockIMemberRepository_FindByUserIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int64))
+	})
+	return _c
+}
+
+func (_c *MockIMemberRepository_FindByUserIDs_Call) Return(_a0 []model.SysMember, _a1 error) *MockIMemberRepository_FindByUserIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIMemberRepository_FindByUserIDs_Call) RunAndReturn(run func(context.Context, []int64) ([]model.SysMember, error)) *MockIMemberRepository_FindByUserIDs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // FindExpiredNonGrowth provides a mock function with given fields: ctx, now
 func (_m *MockIMemberRepository) FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error) {
 	ret := _m.Called(ctx, now)

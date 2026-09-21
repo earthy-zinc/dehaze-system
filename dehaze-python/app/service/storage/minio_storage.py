@@ -7,12 +7,16 @@ from collections.abc import Iterator
 from io import BytesIO
 
 from minio import Minio
+from minio.error import S3Error
 
 from app.config import settings
 from app.infrastructure.storage.minio_client import get_minio_client
 from app.service.storage.base import StorageService
 
 logger = logging.getLogger(__name__)
+
+# stat_object 的"对象不存在"错误码：存在性/大小探测的正常结果，不作为故障上报
+_NOT_FOUND_CODES = frozenset({"NoSuchKey", "NoSuchBucket"})
 
 
 class MinioStorageService(StorageService):
@@ -83,14 +87,16 @@ class MinioStorageService(StorageService):
         try:
             self._client.stat_object(bucket, object_name)
             return True
-        except Exception:
+        except S3Error as e:
+            _log_stat_error(bucket, object_name, e)
             return False
 
     def get_size(self, bucket: str, object_name: str) -> int | None:
         try:
             stat = self._client.stat_object(bucket, object_name)
             return stat.size
-        except Exception:
+        except S3Error as e:
+            _log_stat_error(bucket, object_name, e)
             return None
 
     def ensure_bucket(self, bucket: str) -> None:
@@ -98,6 +104,17 @@ class MinioStorageService(StorageService):
             self._client.make_bucket(bucket)
             logger.info(f"已自动创建 MinIO Bucket: {bucket}")
 
-    def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
+    def list_objects(self, bucket: str, prefix: str = "") -> list[tuple[str, float]]:
         objects = self._client.list_objects(bucket, prefix=prefix, recursive=True)
-        return [obj.object_name for obj in objects if obj.object_name is not None]
+        return [
+            (obj.object_name, obj.last_modified.timestamp() if obj.last_modified else 0.0)
+            for obj in objects
+            if obj.object_name is not None
+        ]
+
+
+def _log_stat_error(bucket: str, object_name: str, err: S3Error) -> None:
+    """stat_object 失败留痕：对象不存在（NoSuchKey/NoSuchBucket）是探测的正常结果，
+    其余 S3 错误（鉴权/存储侧故障）必须可见，不得与"不存在"混为一谈"""
+    if err.code not in _NOT_FOUND_CODES:
+        logger.warning("MinIO stat_object 失败 [bucket=%s object=%s]: %s", bucket, object_name, err)

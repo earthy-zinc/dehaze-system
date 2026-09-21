@@ -39,6 +39,21 @@ class TaskCancelledException(BusinessException):
         super().__init__(ResultCode.TASK_CANCELLED)
 
 
+def public_error(exc: Exception) -> dict:
+    """异常 → 可对外暴露的 {code, message}。
+
+    BusinessException 透出业务码与文案（如配额拒绝 A0503、模型不可用 A0601）；
+    其余异常统一按 LLM 调用失败呈现，堆栈/连接串等内部细节只进日志，
+    不随 SSE error 事件或消息 error 字段（客户端可见）外泄。
+    """
+    if isinstance(exc, BusinessException):
+        return {"code": exc.code.code, "message": exc.message or exc.code.msg}
+    return {
+        "code": ResultCode.AI_LLM_CALL_FAILED.code,
+        "message": ResultCode.AI_LLM_CALL_FAILED.msg,
+    }
+
+
 def register_exception_handlers(app: FastAPI):
     @app.exception_handler(BusinessException)
     async def business_exception_handler(request: Request, exc: BusinessException):

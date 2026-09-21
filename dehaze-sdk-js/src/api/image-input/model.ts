@@ -14,13 +14,10 @@ export interface HistoryForm {
   inputSource?: string;
 }
 
-/** 历史记录查询参数 */
+/** 历史记录查询参数（收藏状态由收藏管理模块 /api/v1/favorites 维护，不在此接口） */
 export interface HistoryQuery extends PageQuery {
   status?: number;
   inputSource?: string;
-  isFavorite?: boolean;
-  startTime?: string;
-  endTime?: string;
 }
 
 /** 历史记录视图对象 */

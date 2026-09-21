@@ -132,9 +132,7 @@ async def update_task_progress(
         await redis.setex(
             progress_key,
             TASK_EXPIRE_HOURS * 3600,
-            json.dumps(
-                {"progress": progress, "processed": processed_files, "total": total_files}
-            ),
+            json.dumps({"progress": progress, "processed": processed_files, "total": total_files}),
         )
 
         await refresh_task_cache(redis, sys_task)

@@ -17,7 +17,6 @@ export default {
       },
       password: {
         required: "请输入密码",
-        min: "密码不能少于6位",
       },
       captchaCode: {
         required: "请输入验证码",

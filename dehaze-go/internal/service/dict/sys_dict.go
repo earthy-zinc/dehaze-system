@@ -17,7 +17,7 @@ import (
 
 const (
 	// DictOptionsCachePrefix 字典下拉选项缓存前缀
-	DictOptionsCachePrefix = "dict:options:"
+	DictOptionsCachePrefix = "dict:data:"
 	// DictOptionsCacheTTL 字典下拉选项缓存过期时间（1小时）
 	DictOptionsCacheTTL = time.Hour
 )
@@ -131,13 +131,15 @@ func (s *DictService) GetFormData(ctx context.Context, id int64) (*bo.DictFormBO
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "字典数据项不存在")
 	}
 
+	status := dict.Status
+	sort := dict.Sort
 	form := &bo.DictFormBO{
 		ID:        &dict.ID,
 		TypeCode:  dict.TypeCode,
 		Name:      dict.Name,
 		Value:     dict.Value,
-		Status:    dict.Status,
-		Sort:      dict.Sort,
+		Status:    &status,
+		Sort:      &sort,
 		Remark:    dict.Remark,
 		Defaulted: dict.Defaulted,
 	}
@@ -166,12 +168,21 @@ func (s *DictService) Create(ctx context.Context, form *bo.DictFormBO) error {
 		return common.NewBizError(common.DATA_EXISTS, "该类型下字典值已存在")
 	}
 
+	status := int8(1)
+	if form.Status != nil {
+		status = *form.Status
+	}
+	sort := 1
+	if form.Sort != nil {
+		sort = *form.Sort
+	}
+
 	dict := &model.SysDict{
 		TypeCode:  form.TypeCode,
 		Name:      form.Name,
 		Value:     form.Value,
-		Status:    form.Status,
-		Sort:      form.Sort,
+		Status:    status,
+		Sort:      sort,
 		Remark:    form.Remark,
 		Defaulted: form.Defaulted,
 	}
@@ -204,18 +215,23 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 			return common.WrapBizError(common.DATABASE_ERROR, "检查字典值唯一性失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.DATA_EXISTS, "该类型下字典值已被历史记录占用")
+			return common.NewBizError(common.DATA_EXISTS, "该类型下字典值已存在")
 		}
 	}
 
-	// 更新字典数据（typeCode 只读，不更新）
+	// 更新字典数据（typeCode 只读，不更新；未提供的字段保留原值）
 	dict.Name = form.Name
 	dict.Value = form.Value
-	dict.Status = form.Status
-	dict.Sort = form.Sort
+	if form.Status != nil {
+		dict.Status = *form.Status
+	}
+	if form.Sort != nil {
+		dict.Sort = *form.Sort
+	}
 	dict.Remark = form.Remark
 	dict.Defaulted = form.Defaulted
-	dict.UpdatedAt = time.Now()
+	// 时间截断到秒：列为 DATETIME（秒精度），直写带纳秒的 time.Now() 会被 MySQL 进位成下一刻
+	dict.UpdatedAt = time.Now().Truncate(time.Second)
 
 	if err := s.dictRepo.Update(ctx, dict); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新字典数据失败", err)

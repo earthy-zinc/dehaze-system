@@ -3,13 +3,12 @@
 覆盖重点：路由注册、ai:agent:manage 权限拦截（A0301）、参数校验（A0400）、
 端点 CRUD 与 Agent Card 手动刷新、camelCase 序列化。
 """
+
 from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -17,6 +16,9 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.service.ai_agent_endpoint_service import ai_agent_endpoint_service
+
+pytestmark = pytest.mark.api
+
 
 MANAGE_PERM = "ai:agent:manage"
 _ENDPOINTS = "/api/v1/ai/a2a/endpoints"
@@ -67,8 +69,11 @@ async def endpoint_client():
 
 def test_endpoint_paths_registered(app):
     schema = app.openapi()
-    for path in (_ENDPOINTS, f"{_ENDPOINTS}/{{endpoint_id}}",
-                 f"{_ENDPOINTS}/{{endpoint_id}}/refresh-card"):
+    for path in (
+        _ENDPOINTS,
+        f"{_ENDPOINTS}/{{endpoint_id}}",
+        f"{_ENDPOINTS}/{{endpoint_id}}/refresh-card",
+    ):
         assert path in schema["paths"], f"缺少路径 {path}"
 
 
@@ -153,9 +158,7 @@ class TestCreate:
             )
 
         monkeypatch.setattr(ai_agent_endpoint_service, "create_endpoint", _fake_create)
-        resp = await client.post(
-            _ENDPOINTS, json={"name": "n", "base_url": "http://10.0.0.1/a2a"}
-        )
+        resp = await client.post(_ENDPOINTS, json={"name": "n", "base_url": "http://10.0.0.1/a2a"})
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
 

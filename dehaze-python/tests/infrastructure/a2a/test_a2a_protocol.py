@@ -83,19 +83,19 @@ class TestJsonRpc:
 
     def test_invalid_jsonrpc_version_rejected(self):
         with pytest.raises(ValidationError):
-            JsonRpcRequest(jsonrpc="1.0", method="x")
+            JsonRpcRequest(jsonrpc="1.0", method="x")  # pyright: ignore[reportArgumentType]  # 负向用例：故意构造非法 jsonrpc 版本
 
 
 class TestTaskModel:
     def test_task_serialization_with_alias(self):
-        task = Task(id="t1", contextId="c1", status="working")
+        task = Task.model_validate({"id": "t1", "contextId": "c1", "status": "working"})
         d = task.model_dump(by_alias=True)
         assert d["contextId"] == "c1"
         assert d["status"] == "working"
 
     def test_task_invalid_status_rejected(self):
         with pytest.raises(ValidationError):
-            Task(id="t1", status="not-a-status")
+            Task(id="t1", status="not-a-status")  # pyright: ignore[reportArgumentType]  # 负向用例：故意构造非法 status
 
     def test_task_message_to_text(self):
         task = Task(
@@ -162,11 +162,12 @@ class TestTaskMapper:
         )
         assert art.artifact_id == "1"
         types = [type(p).__name__ for p in art.parts]
-        assert "FilePart" in types and "DataPart" in types
+        assert "FilePart" in types
+        assert "DataPart" in types
 
     def test_artifact_to_context_with_bytes(self):
         art = Artifact(
-            artifactId="a1",
+            artifact_id="a1",
             parts=[
                 FilePart(file={"bytes": encode_bytes(b"\x01\x02"), "name": "b.bin"}),
             ],
@@ -187,7 +188,7 @@ class TestTaskStateMachine:
 
         from app.infrastructure.a2a.a2a_server import A2AServer
 
-        task = Task(id="t1", contextId="c1", status="submitted", history=[])
+        task = Task(id="t1", context_id="c1", status="submitted", history=[])
         payload = A2AServer._serialize_task(task, "submitted")
         assert payload["id"] == "t1"
         assert payload["contextId"] == "c1"

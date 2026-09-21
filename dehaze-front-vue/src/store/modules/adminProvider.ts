@@ -9,6 +9,7 @@ import {
   ProviderUpdateForm,
   ProviderVO,
 } from "dehaze-sdk-js";
+import type { TagType } from "@/enums/TagType";
 
 // 管理端供应商 Store：列表/配置抽屉/API Key/连通性测试/熔断处置
 export const useAdminProviderStore = defineStore("adminProvider", () => {
@@ -140,14 +141,12 @@ export const useAdminProviderStore = defineStore("adminProvider", () => {
   }
 
   /** 健康状态标签配置：open 熔断醒目 */
-  const healthTagMap: Record<
-    ProviderHealth,
-    { label: string; type: "success" | "warning" | "danger" }
-  > = {
-    healthy: { label: "健康", type: "success" },
-    suspicious: { label: "可疑", type: "warning" },
-    open: { label: "熔断", type: "danger" },
-  };
+  const healthTagMap: Record<ProviderHealth, { label: string; type: TagType }> =
+    {
+      healthy: { label: "健康", type: "success" },
+      suspicious: { label: "可疑", type: "warning" },
+      open: { label: "熔断", type: "danger" },
+    };
 
   return {
     providers,

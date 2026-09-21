@@ -5,7 +5,6 @@ tests.stubs.fakes / tests.stubs.factories 导入，禁止在此内联重复定�
 """
 
 from tests.stubs.fakes import FakeGraph, StubInterruptHandler
-from tests.stubs.factories import make_conv
 
 
 def patch_reasoning_boundaries(
@@ -61,7 +60,11 @@ def patch_reasoning_boundaries(
         return 1, 1
 
     async def _load_snapshot(db, redis, agent_id, version_no):
-        return snapshot if snapshot is not None else {"reasoning_mode": "react", "config": {"max_steps": 10}}
+        return (
+            snapshot
+            if snapshot is not None
+            else {"reasoning_mode": "react", "config": {"max_steps": 10}}
+        )
 
     async def _build_graph(db, redis, agent_id, version_no, model_id=None):
         return graph

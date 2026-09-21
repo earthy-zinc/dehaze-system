@@ -2,6 +2,7 @@ import request from "@/utils/request";
 import type {
   AiEvalAgentOverviewItem,
   AiEvalJudgeStatus,
+  AiEvalReviewDetail,
   AiEvalReviewQueueResult,
   AiEvalReviewsQuery,
   AiEvalReviewSubmitForm,
@@ -64,6 +65,14 @@ class AiEvalAPI {
       url: "/api/v1/ai/eval-center/reviews",
       method: "get",
       params: query,
+    });
+  }
+
+  /** 复核项详情（样本定义 + 实际输出 + 四维得分，供人工据实判定） */
+  static getReviewDetail(runId: number, sampleId: number) {
+    return request<AiEvalReviewDetail>({
+      url: `/api/v1/ai/eval-center/runs/${runId}/samples/${sampleId}`,
+      method: "get",
     });
   }
 

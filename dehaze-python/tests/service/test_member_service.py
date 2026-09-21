@@ -14,17 +14,13 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.core.code import ResultCode
-from app.core.exceptions import BusinessException
-from app.models.entity.sys_member import QUOTA_TASK_TYPES
 from app.models.entity.sys_coupon import SysCoupon
+from app.models.entity.sys_member import QUOTA_TASK_TYPES
 from app.models.entity.sys_order import SysOrder
-from app.models.entity.sys_package import SysPackage
 from app.models.entity.sys_user_coupon import SysUserCoupon
 from app.repository.member_benefit_repository import member_benefit_repository
 from app.repository.member_growth_log_repository import member_growth_log_repository
 from app.repository.member_repository import member_repository
-from app.repository.package_repository import package_repository
 from app.service.member.member_service import member_service
 
 pytestmark = pytest.mark.requires_db
@@ -32,11 +28,19 @@ pytestmark = pytest.mark.requires_db
 USER_ID = 1002001
 
 
-async def _setup_benefit(db, level_code: str, *, quota: int = 50, ai_daily: int = 100,
-                         ai_monthly: int = 1000, growth_min: int = 1000,
-                         growth_max: int = 4999):
+async def _setup_benefit(
+    db,
+    level_code: str,
+    *,
+    quota: int = 50,
+    ai_daily: int = 100,
+    ai_monthly: int = 1000,
+    growth_min: int = 1000,
+    growth_max: int = 4999,
+):
     """更新指定等级权益配置：8 类任务配额统一为 quota，并设定 AI 限额与成长值区间"""
     benefit = await member_benefit_repository.get_by_level_code(db, level_code)
+    assert benefit is not None
     for task_type in QUOTA_TASK_TYPES:
         setattr(benefit, f"monthly_{task_type}_quota", quota)
     benefit.ai_credits_daily = ai_daily
@@ -74,9 +78,15 @@ async def _grant_trial_coupon(db, expire_time: datetime) -> None:
     await db.flush()
 
 
-async def _setup_member(db, user_id: int = USER_ID, *, level_code: str = "level_0",
-                        growth_value: int = 0, level_source: str = "growth",
-                        expire_time: datetime | None = None):
+async def _setup_member(
+    db,
+    user_id: int = USER_ID,
+    *,
+    level_code: str = "level_0",
+    growth_value: int = 0,
+    level_source: str = "growth",
+    expire_time: datetime | None = None,
+):
     member = await member_repository.get_or_init_member(db, user_id)
     member.level_code = level_code
     member.level_source = level_source
@@ -86,9 +96,16 @@ async def _setup_member(db, user_id: int = USER_ID, *, level_code: str = "level_
     return member
 
 
-def _make_order(user_id: int, *, package_type: str, package_level: str | None,
-                paid_amount: int, period_days: int = 30, package_name: str = "测试套餐",
-                paid_time: datetime | None = None) -> SysOrder:
+def _make_order(
+    user_id: int,
+    *,
+    package_type: str,
+    package_level: str | None,
+    paid_amount: int,
+    period_days: int = 30,
+    package_name: str = "测试套餐",
+    paid_time: datetime | None = None,
+) -> SysOrder:
     return SysOrder(
         order_no=f"test_mem_{user_id}_{package_type}",
         user_id=user_id,
@@ -109,20 +126,23 @@ def _make_order(user_id: int, *, package_type: str, package_level: str | None,
 
 # ===================== 修复验证：_check_and_adjust_level 不再 NameError =====================
 
+
 async def test_adjust_growth_triggers_level_check_no_name_error(db):
     """成长值调整触发等级检查，模块级函数不再因引用注入仓储而 NameError"""
-    member = await _setup_member(db, level_code="level_1", growth_value=1500)
+    await _setup_member(db, level_code="level_1", growth_value=1500)
     await member_service.adjust_growth(
         db, USER_ID, {"changeValue": -100, "reason": "测试降级"}, operator_id=2
     )
     await db.flush()
     updated = await member_repository.get_by_user_id(db, USER_ID)
+    assert updated is not None
     assert updated.growth_value == 1400
     # level_1 下限 1000，1400 仍达标，等级不变且不报错
     assert updated.level_code == "level_1"
 
 
 # ===================== get_profile 含 levelSource =====================
+
 
 async def test_get_profile_contains_level_source(db):
     await _setup_member(db, level_code="level_2", growth_value=8000)
@@ -146,15 +166,18 @@ async def test_get_profile_monthly_used_sums_8_types(db):
 
 # ===================== on_order_paid：vip 升级 =====================
 
+
 async def test_on_order_paid_vip_upgrade_and_quota_refresh(db):
     await _setup_benefit(db, "level_1", quota=60, ai_daily=200, ai_monthly=2000)
-    order = _make_order(USER_ID, package_type="vip", package_level="level_1",
-                        paid_amount=8000, period_days=30)
+    order = _make_order(
+        USER_ID, package_type="vip", package_level="level_1", paid_amount=8000, period_days=30
+    )
     order.id = 1001
     await member_service.on_order_paid(db, order)
     await db.flush()
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.level_code == "level_1"
     assert member.level_source == "purchase"
     assert member.expire_time is not None
@@ -168,21 +191,23 @@ async def test_on_order_paid_vip_upgrade_and_quota_refresh(db):
 
     # consume 成长值流水已写
     logs, _ = await member_growth_log_repository.get_page(db, USER_ID, 1, 10)
-    assert any(l.change_type == "consume" and l.change_value == 8000 for l in logs)
+    assert any(log.change_type == "consume" and log.change_value == 8000 for log in logs)
 
 
 async def test_on_order_paid_vip_renewal_stack_expire(db):
     """续费在原到期时间上叠加（上限 3 年）"""
     await _setup_benefit(db, "level_1", quota=60)
     base_expire = datetime.now() + timedelta(days=10)
-    await _setup_member(db, level_code="level_1", level_source="purchase",
-                        expire_time=base_expire)
-    order = _make_order(USER_ID, package_type="vip", package_level="level_1",
-                        paid_amount=8000, period_days=30)
+    await _setup_member(db, level_code="level_1", level_source="purchase", expire_time=base_expire)
+    order = _make_order(
+        USER_ID, package_type="vip", package_level="level_1", paid_amount=8000, period_days=30
+    )
     order.id = 1002
     await member_service.on_order_paid(db, order)
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
+    assert member.expire_time is not None
     # 原到期 + 30 天
     assert (member.expire_time - base_expire) >= timedelta(days=29)
 
@@ -190,12 +215,14 @@ async def test_on_order_paid_vip_renewal_stack_expire(db):
 async def test_on_order_paid_credit_only_growth_no_level_change(db):
     """积分卡仅累积成长值：不设置 purchase 来源、不刷新权益配额、不改到期时间"""
     await _setup_member(db, level_code="level_0", growth_value=0)
-    order = _make_order(USER_ID, package_type="credit", package_level=None,
-                        paid_amount=100, period_days=0)
+    order = _make_order(
+        USER_ID, package_type="credit", package_level=None, paid_amount=100, period_days=0
+    )
     order.id = 1003
     await member_service.on_order_paid(db, order)
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     # 小额积分卡未触发成长值升级
     assert member.level_code == "level_0"
     assert member.level_source == "growth"
@@ -203,15 +230,62 @@ async def test_on_order_paid_credit_only_growth_no_level_change(db):
     assert member.expire_time is None
 
 
+async def test_on_order_paid_lower_card_no_downgrade(db):
+    """高成长值用户购买低级会员卡：等级保持较高者不降级（需求 §3.1.1），配额取两等级较高值"""
+    await _setup_benefit(db, "level_2", quota=500, growth_min=5000, growth_max=19999)
+    await _setup_benefit(db, "level_1", quota=60, growth_min=1000, growth_max=4999)
+    await _setup_member(db, level_code="level_2", level_source="growth", growth_value=8000)
+    order = _make_order(
+        USER_ID, package_type="vip", package_level="level_1", paid_amount=1000, period_days=30
+    )
+    order.id = 1007
+    await member_service.on_order_paid(db, order)
+    await db.flush()
+
+    member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
+    assert member.level_code == "level_2"
+    # 已进入会员卡期间：来源 purchase、到期时间生效
+    assert member.level_source == "purchase"
+    assert member.expire_time is not None
+    for task_type in QUOTA_TASK_TYPES:
+        assert getattr(member, f"monthly_{task_type}_quota") == 500
+
+
+async def test_adjust_level_admin_explicit_override(db):
+    """管理员等级调整为显式覆盖：直接写入目标等级与 admin 来源，不受 max(较高者) 约束"""
+    await _setup_member(db, level_code="level_2", level_source="growth", growth_value=8000)
+    await member_service.adjust_level(
+        db,
+        USER_ID,
+        {"levelCode": "level_0", "expireTime": None, "reason": "运营调整"},
+        operator_id=2,
+    )
+    await db.flush()
+    member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
+    assert member.level_code == "level_0"
+    assert member.level_source == "admin"
+    # 调整不改变成长值
+    assert member.growth_value == 8000
+
+
 # ===================== on_order_refunded：vip 扣成长值 =====================
+
 
 async def test_on_order_refunded_vip_deduct_and_downgrade(db):
     await _setup_benefit(db, "level_1", quota=60, growth_min=1000, growth_max=4999)
     # 已购会员卡，成长值 3000，全部未使用退款 → 扣回全部 3000
-    await _setup_member(db, level_code="level_1", level_source="purchase",
-                        growth_value=3000, expire_time=datetime.now() + timedelta(days=30))
-    order = _make_order(USER_ID, package_type="vip", package_level="level_1",
-                        paid_amount=3000, period_days=30)
+    await _setup_member(
+        db,
+        level_code="level_1",
+        level_source="purchase",
+        growth_value=3000,
+        expire_time=datetime.now() + timedelta(days=30),
+    )
+    order = _make_order(
+        USER_ID, package_type="vip", package_level="level_1", paid_amount=3000, period_days=30
+    )
     order.id = 1004
 
     class RefundRecord:
@@ -221,6 +295,7 @@ async def test_on_order_refunded_vip_deduct_and_downgrade(db):
     await db.flush()
 
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 0
     # 成长值跌至 0 → 降级 level_0，来源切 growth、到期清空
     assert member.level_code == "level_0"
@@ -228,16 +303,22 @@ async def test_on_order_refunded_vip_deduct_and_downgrade(db):
     assert member.expire_time is None
 
     logs, _ = await member_growth_log_repository.get_page(db, USER_ID, 1, 10)
-    assert any(l.change_type == "refund_deduct" and l.change_value == -3000 for l in logs)
+    assert any(log.change_type == "refund_deduct" and log.change_value == -3000 for log in logs)
 
 
 async def test_on_order_refunded_vip_used_days_no_deduct(db):
     """已用天数等于周期天数 → 未使用比例 0，不扣成长值"""
     await _setup_benefit(db, "level_1", quota=60, growth_min=1000, growth_max=4999)
-    await _setup_member(db, level_code="level_1", level_source="purchase",
-                        growth_value=3000, expire_time=datetime.now() + timedelta(days=5))
-    order = _make_order(USER_ID, package_type="vip", package_level="level_1",
-                        paid_amount=3000, period_days=30)
+    await _setup_member(
+        db,
+        level_code="level_1",
+        level_source="purchase",
+        growth_value=3000,
+        expire_time=datetime.now() + timedelta(days=5),
+    )
+    order = _make_order(
+        USER_ID, package_type="vip", package_level="level_1", paid_amount=3000, period_days=30
+    )
     order.id = 1005
 
     class RefundRecord:
@@ -246,14 +327,16 @@ async def test_on_order_refunded_vip_used_days_no_deduct(db):
     await member_service.on_order_refunded(db, order, RefundRecord())
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 3000
 
 
 async def test_on_order_refunded_credit_noop(db):
     """积分卡退款不改变会员成长值与等级"""
     await _setup_member(db, level_code="level_0", growth_value=5000)
-    order = _make_order(USER_ID, package_type="credit", package_level=None,
-                        paid_amount=5000, period_days=0)
+    order = _make_order(
+        USER_ID, package_type="credit", package_level=None, paid_amount=5000, period_days=0
+    )
     order.id = 1006
 
     class RefundRecord:
@@ -262,11 +345,13 @@ async def test_on_order_refunded_credit_noop(db):
     await member_service.on_order_refunded(db, order, RefundRecord())
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 5000
     assert member.level_code == "level_0"
 
 
 # ===================== adjust_growth 降级规则 =====================
+
 
 async def test_adjust_growth_growth_source_downgrade(db):
     await _setup_benefit(db, "level_1", quota=60, growth_min=1000, growth_max=4999)
@@ -277,6 +362,7 @@ async def test_adjust_growth_growth_source_downgrade(db):
     )
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.level_code == "level_0"
     assert member.level_source == "growth"
 
@@ -289,6 +375,7 @@ async def test_adjust_growth_admin_source_no_downgrade(db):
     )
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     # admin 来源不自动降级
     assert member.level_code == "level_1"
 
@@ -300,21 +387,30 @@ async def test_adjust_growth_deduct_not_negative(db):
     )
     await db.flush()
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     assert member.growth_value == 0
 
 
 # ===================== 权益概览 =====================
+
 
 async def test_benefit_summary_image_category_min_remaining(db):
     """图像处理类目 remaining 取 7 类任务最低剩余；各项数字非空"""
     await _setup_benefit(db, "level_1", quota=50)
     member = await _setup_member(db, level_code="level_1", growth_value=1500)
     # 权益概览按会员当前 8 类配额/已用读取
-    for task_type in ["dehaze", "derain", "desnow", "lowlight",
-                      "super_resolution", "denoise", "inpaint"]:
+    for task_type in [
+        "dehaze",
+        "derain",
+        "desnow",
+        "lowlight",
+        "super_resolution",
+        "denoise",
+        "inpaint",
+    ]:
         setattr(member, f"monthly_{task_type}_quota", 50)
-    member.monthly_dehaze_used = 10   # remaining 40
-    member.monthly_derain_used = 40   # remaining 10（最低）
+    member.monthly_dehaze_used = 10  # remaining 40
+    member.monthly_derain_used = 40  # remaining 10（最低）
     await db.flush()
 
     summary = await member_service.get_benefit_summary(db, USER_ID)
@@ -357,6 +453,7 @@ async def test_benefit_summary_cached(db, mock_redis):
 
 # ===================== 试用引导 =====================
 
+
 async def test_trial_status_structure_complete(db):
     """试用引导状态结构字段完整且类型正确"""
     await _setup_member(db, level_code="level_0", growth_value=0)
@@ -381,8 +478,12 @@ async def test_trial_status_paid_membership_false_new_user(db):
 
 
 async def test_trial_status_purchase_member(db):
-    await _setup_member(db, level_code="level_1", level_source="purchase",
-                        expire_time=datetime.now() + timedelta(days=30))
+    await _setup_member(
+        db,
+        level_code="level_1",
+        level_source="purchase",
+        expire_time=datetime.now() + timedelta(days=30),
+    )
     status = await member_service.get_trial_status(db, USER_ID)
     assert status["paidMembership"] is True
 
@@ -411,18 +512,29 @@ async def test_trial_status_expired_voucher_not_activated(db):
 
 # ===================== list_paged_members 8 类月度已用 =====================
 
+
 async def test_list_paged_members_monthly_used_8_types(db):
     await _setup_member(db, level_code="level_1", growth_value=1500)
     member = await member_repository.get_by_user_id(db, USER_ID)
+    assert member is not None
     member.monthly_dehaze_used = 2
     member.monthly_inpaint_used = 3
     member.monthly_denoise_used = 1
     await db.flush()
 
     page = await member_service.list_paged_members(
-        db, {"pageNum": 1, "pageSize": 10, "keywords": None, "levelCode": None,
-             "status": None, "expireTimeStart": None, "expireTimeEnd": None,
-             "growthMin": None, "growthMax": None}
+        db,
+        {
+            "pageNum": 1,
+            "pageSize": 10,
+            "keywords": None,
+            "levelCode": None,
+            "status": None,
+            "expireTimeStart": None,
+            "expireTimeEnd": None,
+            "growthMin": None,
+            "growthMax": None,
+        },
     )
     row = next(x for x in page["list"] if x["userId"] == USER_ID)
     assert row["monthlyUsed"] == 6

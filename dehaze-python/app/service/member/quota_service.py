@@ -1,7 +1,9 @@
 """配额域：8 类任务权益校验 + Redis 原子扣减/归还 + 月度重置（归档历史 + 冻结顺延）。"""
 
 import logging
+from collections.abc import Awaitable
 from datetime import datetime
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,16 +22,28 @@ logger = logging.getLogger(__name__)
 
 _QUOTA_DEDUCT_LUA = """
 local key = KEYS[1]
+local expected = tonumber(ARGV[1])
 local remaining = redis.call('get', key)
-if remaining then
-    local val = tonumber(remaining)
-    if val <= 0 then
-        return -1
-    end
-    return redis.call('decr', key)
-else
+if not remaining then
     return nil
 end
+local val = tonumber(remaining)
+if val > expected then
+    -- 缓存剩余与生效配额漂移（如等级配额上调）时校正，避免长期误拦
+    redis.call('set', key, expected)
+    val = expected
+end
+if val <= 0 then
+    return -1
+end
+return redis.call('decr', key)
+"""
+
+_QUOTA_RESTORE_LUA = """
+if redis.call('exists', KEYS[1]) == 1 then
+    return redis.call('incr', KEYS[1])
+end
+return 0
 """
 
 
@@ -52,9 +66,23 @@ def _effective_task_quota(benefit, overrides: dict | None) -> dict[str, int]:
     for task_type in QUOTA_TASK_TYPES:
         base = getattr(benefit, f"monthly_{task_type}_quota", 0) or 0
         if overrides:
-            base = max(base, int(overrides.get(f"monthly_{task_type}_quota", 0) or 0))
+            # overrides 的 key 为 camelCase（套餐侧写入/DB/Java 序列化统一口径，
+            # 如 monthlySuperResolutionQuota）
+            camel = "".join(part.capitalize() for part in task_type.split("_"))
+            base = max(base, int(overrides.get(f"monthly{camel}Quota", 0) or 0))
         result[task_type] = base
     return result
+
+
+def resolve_card_overrides(member: SysMember, package) -> dict | None:
+    """已购会员卡（level_source=purchase 且未到期）生效的覆盖项，其余回退等级权益。"""
+    if member.level_source != "purchase":
+        return None
+    if member.expire_time is not None and member.expire_time < datetime.now():
+        return None
+    if package is None or not package.benefit_overrides:
+        return None
+    return package.benefit_overrides
 
 
 class MemberQuotaService:
@@ -68,24 +96,14 @@ class MemberQuotaService:
         self.member_benefit_repository = member_benefit_repository
         self.package_repository = package_repository
 
-    async def _active_card_overrides(self, db: AsyncSession, member: SysMember) -> dict | None:
-        """已购会员卡（level_source=purchase 且未到期）的 benefit_overrides，无则 None"""
-        if member.level_source != "purchase" or (
-            member.expire_time is not None and member.expire_time < datetime.now()
-        ):
-            return None
-        package = await self.package_repository.get_by_level_code(db, member.level_code)
-        if package is None or not package.benefit_overrides:
-            return None
-        return package.benefit_overrides
-
     async def check_and_deduct_quota(self, db: AsyncSession, user_id: int, quota_type: str) -> None:
         """权益校验 + Redis 原子扣减 + 落库
 
         Args:
             db: 数据库会话
             user_id: 用户ID
-            quota_type: 8 类任务之一（dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）
+            quota_type: 8 类任务之一
+            （dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）
 
         Raises:
             BusinessException: 会员不存在/已冻结/次数用完
@@ -105,8 +123,10 @@ class MemberQuotaService:
         # 生效配额：已购会员卡取覆盖值与等级权益较高值，无覆盖则用等级权益
         benefit = await self.member_benefit_repository.get_by_level_code(db, member.level_code)
         if benefit:
-            overrides = await self._active_card_overrides(db, member)
-            quota = _effective_task_quota(benefit, overrides).get(quota_type, 0)
+            package = await self.package_repository.get_by_level_code(db, member.level_code)
+            quota = _effective_task_quota(benefit, resolve_card_overrides(member, package)).get(
+                quota_type, 0
+            )
         else:
             quota = 0
 
@@ -118,7 +138,12 @@ class MemberQuotaService:
 
         async def _deduct_via_redis():
             redis = await get_redis_client()
-            return await redis.eval(_QUOTA_DEDUCT_LUA, 1, cache_key)
+            # redis-py 同步/异步客户端共用 eval 签名（Union[Awaitable[str], str]）；
+            # 此处为异步客户端，运行时恒返回协程，await 正确，用 cast 收窄类型；
+            # Lua 内 tonumber 解析数值，数值实参按字符串传入
+            return await cast(
+                Awaitable[str], redis.eval(_QUOTA_DEDUCT_LUA, 1, cache_key, str(quota - used))
+            )
 
         result = await redis_operation_with_fallback(
             _deduct_via_redis, default=None, operation_name=f"quota_deduct:{quota_type}"
@@ -144,11 +169,17 @@ class MemberQuotaService:
             )
             return
 
-        # Redis 命中且扣减成功，落库条件更新防超扣
-        updated = await member_repository.increase_used_conditional(
-            db, user_id, quota_type, quota
-        )
+        # Redis 命中且扣减成功，落库条件更新防超扣；落库失败回补 Redis 计数保持两侧一致
+        updated = await member_repository.increase_used_conditional(db, user_id, quota_type, quota)
         if not updated:
+
+            async def _compensate():
+                redis = await get_redis_client()
+                await redis.incr(cache_key)
+
+            await redis_operation_with_fallback(
+                _compensate, default=None, operation_name=f"quota_deduct_compensate:{quota_type}"
+            )
             raise BusinessException(ResultCode.QUOTA_EXCEEDED)
 
     async def restore_quota(self, db: AsyncSession, user_id: int, quota_type: str) -> None:
@@ -170,18 +201,20 @@ class MemberQuotaService:
 
         async def _incr():
             redis = await get_redis_client()
-            await redis.incr(cache_key)
+            # 键不存在时不创建（incr 会生成无 TTL 的持久键，污染后续扣减）
+            # redis-py 同步/异步共用 eval 签名 → 异步客户端恒返回协程
+            await cast(Awaitable[str], redis.eval(_QUOTA_RESTORE_LUA, 1, cache_key))
 
         await redis_operation_with_fallback(
             _incr, default=None, operation_name=f"quota_restore:{quota_type}"
         )
 
-    async def refresh_member_quota(
-        self, db: AsyncSession, member: SysMember, benefit
-    ) -> None:
+    async def refresh_member_quota(self, db: AsyncSession, member: SysMember, benefit) -> None:
         """会员卡履约/等级联动时刷新会员 8 类任务配额（不含已用量）"""
         for task_type in QUOTA_TASK_TYPES:
-            setattr(member, f"monthly_{task_type}_quota", getattr(benefit, f"monthly_{task_type}_quota"))
+            setattr(
+                member, f"monthly_{task_type}_quota", getattr(benefit, f"monthly_{task_type}_quota")
+            )
         await db.flush()
 
     async def reset_monthly_quota(self, db: AsyncSession) -> int:
@@ -242,8 +275,12 @@ class MemberQuotaService:
 
                     benefit = benefit_map.get(member.level_code)
                     if benefit:
-                        overrides = await self._active_card_overrides(db, member)
-                        effective = _effective_task_quota(benefit, overrides)
+                        package = await self.package_repository.get_by_level_code(
+                            db, member.level_code
+                        )
+                        effective = _effective_task_quota(
+                            benefit, resolve_card_overrides(member, package)
+                        )
                         for task_type in QUOTA_TASK_TYPES:
                             setattr(member, f"monthly_{task_type}_quota", effective[task_type])
                     for task_type in QUOTA_TASK_TYPES:
@@ -251,16 +288,16 @@ class MemberQuotaService:
                     member.quota_reset_month = current_month
                     total_count += 1
                 except Exception:
-                    logger.warning("月度配额重置失败，跳过: user_id=%s", member.user_id, exc_info=True)
+                    logger.warning(
+                        "月度配额重置失败，跳过: user_id=%s", member.user_id, exc_info=True
+                    )
 
             await db.flush()
 
             async def _invalidate_quota_cache(batch_members=members):
                 redis = await get_redis_client()
                 keys = [
-                    f"member:quota:{m.user_id}:{t}"
-                    for m in batch_members
-                    for t in QUOTA_TASK_TYPES
+                    f"member:quota:{m.user_id}:{t}" for m in batch_members for t in QUOTA_TASK_TYPES
                 ]
                 if keys:
                     await redis.delete(*keys)

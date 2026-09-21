@@ -181,11 +181,15 @@ async function handleStatusChange(row: AgentListItem) {
 }
 
 async function handleDelete(row: AgentListItem) {
-  await ElMessageBox.confirm(
-    `确认删除智能体「${row.name}」？若存在会话引用或被其他 Agent 作为子 Agent 引用，需先解绑后删除。`,
-    "删除确认",
-    { type: "warning" }
-  );
+  try {
+    await ElMessageBox.confirm(
+      `确认删除智能体「${row.name}」？同时清理该 Agent 的评测数据（评测集/样本/评测执行记录，不可恢复）；若存在会话引用或被其他 Agent 作为子 Agent 引用，需先解绑后删除。`,
+      "删除确认",
+      { type: "warning" }
+    );
+  } catch {
+    return;
+  }
   await agentStore.deleteAgent(row.id);
   ElMessage.success("已删除");
 }

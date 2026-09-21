@@ -131,7 +131,7 @@ func (r *DatasetItemFileRepository) createOrReuseFile(ctx context.Context, tx *g
 
 	now := time.Now()
 	newFile := model.SysFile{
-		BaseModel: model.BaseModel{CreatedAt: now, UpdatedAt: now},
+		BaseModel:  model.BaseModel{CreatedAt: now, UpdatedAt: now},
 		Type:       fileTypePtr,
 		Name:       file.Name,
 		ObjectName: file.ObjectName,

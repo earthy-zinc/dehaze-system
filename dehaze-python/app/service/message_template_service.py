@@ -15,7 +15,8 @@ def _format_dt(dt: datetime | None) -> str | None:
 
 
 class MessageTemplateService:
-    async def get_page(self, 
+    async def get_page(
+        self,
         db: AsyncSession,
         page: int,
         page_size: int,

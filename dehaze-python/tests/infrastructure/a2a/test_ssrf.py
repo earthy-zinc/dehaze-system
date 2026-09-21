@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from app.infrastructure.a2a import a2a_client as a2a_client_mod
 from app.infrastructure.a2a.a2a_client import A2AClient, A2AClientError
+from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.utils import ssrf
 
 
@@ -101,16 +102,13 @@ class TestIsSafeUrl:
         assert count["n"] == 1
 
 
-class _FakeEndpoint:
-    def __init__(self, base_url, credential="", auth_type=""):
-        self.base_url = base_url
-        self.credential = credential
-        self.auth_type = auth_type
-        self.id = 1
+def _endpoint(base_url: str) -> SysAiAgentEndpoint:
+    """构造真实端点实体（脱离 session 实例化），满足 A2AClient 的入参契约。"""
+    return SysAiAgentEndpoint(name="test-endpoint", base_url=base_url)
 
 
 async def test_a2a_runtime_rejects_unsafe_url(monkeypatch):
-    endpoint = _FakeEndpoint("http://192.168.1.1/a2a")
+    endpoint = _endpoint("http://192.168.1.1/a2a")
 
     async def unsafe(x):
         return False

@@ -2,6 +2,7 @@
 import Camera from "@/components/Camera/index.vue";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
+import { computeFileMd5 } from "@/utils";
 import examples from "@/views/presentation/dehaze/exampleImages";
 import { FileAPI } from "dehaze-sdk-js";
 import { UploadFilled } from "@element-plus/icons-vue";
@@ -169,13 +170,21 @@ function handleBeforeUpload(file: UploadRawFile): boolean {
   return true;
 }
 
-// 自定义上传请求，支持进度回调
+// 自定义上传请求，支持进度回调与 MD5 秒传（需求 §2.1.7）
 async function handleUploadRequest(options: UploadRequestOptions) {
   uploading.value = true;
   uploadProgress.value = 0;
   previewUrl.value = URL.createObjectURL(options.file);
 
   try {
+    const md5 = await computeFileMd5(options.file);
+    const existing = await FileAPI.uploadCheck(md5);
+    if (existing) {
+      uploadProgress.value = 100;
+      ElMessage.success("图片已存在，秒传成功");
+      handleImageSelected(existing.url, "upload");
+      return;
+    }
     const res = await FileAPI.upload(
       options.file,
       imageShowStore.modelId,
@@ -189,8 +198,7 @@ async function handleUploadRequest(options: UploadRequestOptions) {
     ElMessage.success("上传成功");
     const url = res.url;
     handleImageSelected(url, "upload");
-  } catch (err: any) {
-    ElMessage.error("上传失败：" + (err?.message || "未知错误"));
+  } catch {
   } finally {
     uploading.value = false;
     setTimeout(() => {
@@ -201,19 +209,19 @@ async function handleUploadRequest(options: UploadRequestOptions) {
 }
 
 // ========== 拍照面板 ==========
-function handleCameraSave(file: File) {
+async function handleCameraSave(file: File) {
   uploading.value = true;
-  FileAPI.upload(file, imageShowStore.modelId)
-    .then((res) => {
-      const url = res.url;
-      handleImageSelected(url, "camera");
-    })
-    .catch((err: any) => {
-      ElMessage.error("上传失败：" + (err?.message || "未知错误"));
-    })
-    .finally(() => {
-      uploading.value = false;
-    });
+  try {
+    const md5 = await computeFileMd5(file);
+    const existing = await FileAPI.uploadCheck(md5);
+    const url = existing
+      ? existing.url
+      : (await FileAPI.upload(file, imageShowStore.modelId)).url;
+    handleImageSelected(url, "camera");
+  } catch {
+  } finally {
+    uploading.value = false;
+  }
 }
 
 // 拍照取消时切回上传 Tab

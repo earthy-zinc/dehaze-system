@@ -55,7 +55,7 @@ public class CouponVO {
     private Integer perUserLimit;
 
     @Schema(description = "适用套餐ID列表")
-    private List<Long> applicableScope;
+    private List<Object> applicableScope;
 
     @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;

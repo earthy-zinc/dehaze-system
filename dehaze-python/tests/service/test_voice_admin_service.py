@@ -11,7 +11,7 @@ from fakeredis import FakeAsyncRedis
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.infrastructure.voice.provider.registry import VoiceEngineRegistry, _ENGINE_CACHE_KEY
+from app.infrastructure.voice.provider.registry import _ENGINE_CACHE_KEY, VoiceEngineRegistry
 from app.models.schema.voice_admin import (
     VoiceModelCreate,
     VoiceProviderCreate,
@@ -39,35 +39,37 @@ async def test_set_default_provider_clears_other_default(db):
 
     assert second.is_default == 1
     first_re = await voice_provider_repository.get_by_id(db, first.id)
+    assert first_re is not None
     assert first_re.is_default == 0  # 旧 default 已被清除，保证每能力仅一条 default
 
 
 @pytest.mark.requires_db
-async def test_provider_code_not_reusable_after_delete(db):
-    """provider_code 删除后不可复用：软删记录仍占用 (provider_code, engine_type)"""
-    p = await voice_admin_service.create_provider(
-        db, _provider_form("tencent", "asr", "腾讯")
-    )
+async def test_provider_code_reusable_after_delete(db):
+    """唯一键含 deleted：软删行不占键位，删除后可重建同 (provider_code, engine_type)"""
+    p = await voice_admin_service.create_provider(db, _provider_form("tencent", "asr", "腾讯"))
     await voice_admin_service.delete_provider(db, p.id)
 
-    with pytest.raises(BusinessException) as exc:
-        await voice_admin_service.create_provider(
-            db, _provider_form("tencent", "asr", "腾讯2")
-        )
-    assert exc.value.code == ResultCode.DATA_EXISTS
+    recreated = await voice_admin_service.create_provider(
+        db, _provider_form("tencent", "asr", "腾讯2")
+    )
+    assert recreated.id != p.id
+    row = await voice_provider_repository.get_by_provider_and_engine(db, "tencent", "asr")
+    assert row is not None
+    assert row.id == recreated.id
 
 
 @pytest.mark.requires_db
 async def test_delete_provider_with_enabled_model_rejected(db):
     """删除引擎时存在启用模型引用 → 拒绝（DATA_BIND_EXISTS）"""
-    p = await voice_admin_service.create_provider(
-        db, _provider_form("xfyun", "asr", "讯飞")
-    )
+    p = await voice_admin_service.create_provider(db, _provider_form("xfyun", "asr", "讯飞"))
     await voice_admin_service.create_model(
         db,
         VoiceModelCreate(
-            provider_id=p.id, model_id="sensevoice", engine_type="asr",
-            model_type="stream", display_name="流式",
+            provider_id=p.id,
+            model_id="sensevoice",
+            engine_type="asr",
+            model_type="stream",
+            display_name="流式",
         ),
     )
 
@@ -78,7 +80,9 @@ async def test_delete_provider_with_enabled_model_rejected(db):
 
 @pytest.mark.requires_db
 async def test_default_change_invalidates_engine_cache(db):
-    """is_default/status 变更失效默认引擎 Redis 缓存（后端实现 §2.4 切换即时生效）；无关变更不失效"""
+    """is_default/status 变更失效默认引擎 Redis 缓存（后端实现 §2.4 切换即时生效）；
+    无关变更不失效
+    """
     redis = FakeAsyncRedis(decode_responses=True)
 
     async def _redis_factory():
@@ -113,21 +117,27 @@ async def test_default_change_invalidates_engine_cache(db):
 @pytest.mark.requires_db
 async def test_list_models_filters_by_engine_type(db):
     """模型/音色列表按 engine_type 筛选，含全部状态（管理端展示）"""
-    p = await voice_admin_service.create_provider(
-        db, _provider_form("local", "asr", "本地ASR")
-    )
+    p = await voice_admin_service.create_provider(db, _provider_form("local", "asr", "本地ASR"))
     await voice_admin_service.create_model(
         db,
         VoiceModelCreate(
-            provider_id=p.id, model_id="sensevoice", engine_type="asr",
-            model_type="stream", display_name="流式", status=1,
+            provider_id=p.id,
+            model_id="sensevoice",
+            engine_type="asr",
+            model_type="stream",
+            display_name="流式",
+            status=1,
         ),
     )
     await voice_admin_service.create_model(
         db,
         VoiceModelCreate(
-            provider_id=p.id, model_id="paraformer", engine_type="asr",
-            model_type="offline", display_name="离线", status=0,
+            provider_id=p.id,
+            model_id="paraformer",
+            engine_type="asr",
+            model_type="offline",
+            display_name="离线",
+            status=0,
         ),
     )
 
@@ -135,7 +145,10 @@ async def test_list_models_filters_by_engine_type(db):
     tts_models = await voice_admin_service.list_models(db, engine_type="tts")
     all_models = await voice_admin_service.list_models(db)
 
-    assert [m.model_id for m in asr_models] == ["paraformer", "sensevoice"]  # 含禁用模型，按 model_id 排序
+    assert [m.model_id for m in asr_models] == [
+        "paraformer",
+        "sensevoice",
+    ]  # 含禁用模型，按 model_id 排序
     assert tts_models == []
     assert len(all_models) == 2
 
@@ -155,9 +168,7 @@ async def test_test_connection_local_reports_connected(db):
 @pytest.mark.requires_db
 async def test_test_connection_cloud_skips_until_vendor_protocol_ready(db):
     """云端厂商协议未接入：显式跳过连通性测试（connected=None，仅提示不阻断）"""
-    p = await voice_admin_service.create_provider(
-        db, _provider_form("azure", "tts", "Azure TTS")
-    )
+    p = await voice_admin_service.create_provider(db, _provider_form("azure", "tts", "Azure TTS"))
 
     result = await voice_admin_service.test_connection(db, p.id)
 

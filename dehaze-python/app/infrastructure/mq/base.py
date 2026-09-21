@@ -16,6 +16,7 @@ RabbitMQ 客户端基类
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import math
 from typing import Any
@@ -131,10 +132,8 @@ class BaseRabbitMQClient:
 
         if self._reconnect_task and not self._reconnect_task.done():
             self._reconnect_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._reconnect_task
-            except asyncio.CancelledError:
-                pass
 
         if self._channel and not self._channel.is_closed:
             await self._channel.close()

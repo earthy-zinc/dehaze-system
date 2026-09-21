@@ -20,8 +20,8 @@ export const createKbForm = (
   description: "测试知识库",
   visibility: "private",
   // 测试环境使用本地 embedding 服务（8992 /v1/embeddings，Qwen3-Embedding-0.6B，1024 维）
-  // bge-m3 与本地模型同维度且为后端维度表已知模型，保证 create 时 ES 索引维度正确
-  embeddingProvider: "local",
+  // bge-m3 与本地模型同维度且为后端维度表已知模型，保证 create 时 ES 索引维度正确；
+  // 供应商由后端按模型注册表推导（bge-m3 注册在 local）
   embeddingModel: "bge-m3",
   chunkingStrategy: "fixed",
   chunkSize: 800,

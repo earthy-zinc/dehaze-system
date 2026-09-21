@@ -34,6 +34,27 @@ export async function resetMemberQuota(userIds: number[]): Promise<void> {
   }
 }
 
+/**
+ * 确保用户余额账户存在且可用余额不低于 minAmount（测试套件自愈）。
+ *
+ * 余额支付真实扣减 sys_balance，多文件/多轮运行会耗尽 USER/ADMIN 余额，
+ * 导致 pay 拒绝 A053B 级联失败。充值无公开入账端点（回调驱动），此处直写库。
+ * 金额上限需远小于边界用例的天价套餐（999999900），否则 A053B 用例失效。
+ */
+export async function ensureBalance(userId: number, minAmount: number): Promise<void> {
+  const pool = getPool();
+  await pool.execute(
+    `INSERT INTO sys_balance (user_id, balance, frozen_balance, version, deleted)
+     VALUES (?, ?, 0, 0, 0)
+     ON DUPLICATE KEY UPDATE user_id = user_id`,
+    [userId, minAmount]
+  );
+  await pool.execute(
+    "UPDATE sys_balance SET balance = ? WHERE user_id = ? AND balance < ? AND deleted = 0",
+    [minAmount, userId, minAmount]
+  );
+}
+
 export async function createCompletedPredLog(
   userId: number,
   algorithmId: number = 13

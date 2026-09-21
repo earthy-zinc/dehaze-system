@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 
 from prometheus_client import Gauge
@@ -95,17 +96,16 @@ class GPUMetricsCollector:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
         if self._pynvml and self._pynvml_available:
             try:
                 self._pynvml.nvmlShutdown()
-            except Exception:
-                pass
+            except Exception as e:
+                # 关闭失败不阻断采集器停止流程，但需可见以定位驱动/句柄异常
+                logger.warning("NVML 关闭失败: %s", e, exc_info=True)
         logger.info("GPU 指标采集器已停止")
 
     async def _collect_loop(self) -> None:
@@ -144,14 +144,14 @@ class GPUMetricsCollector:
                 try:
                     temp = pynvml.nvmlDeviceGetTemperature(handle, pynvml.NVML_TEMPERATURE_GPU)
                     GPU_TEMPERATURE.labels(**device_labels).set(float(temp))
-                except Exception:
-                    pass  # 部分设备可能不支持
+                except Exception as e:  # 部分设备不支持温度采集，属预期，不应中断其他指标
+                    logger.debug("GPU %d 温度指标跳过: %s", i, e, exc_info=True)
 
                 try:
                     power = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000  # mW -> W
                     GPU_POWER_USAGE.labels(**device_labels).set(float(power))
-                except Exception:
-                    pass  # 部分设备可能不支持
+                except Exception as e:  # 部分设备不支持功耗采集，属预期，不应中断其他指标
+                    logger.debug("GPU %d 功耗指标跳过: %s", i, e, exc_info=True)
 
             except Exception as e:
                 logger.warning(f"GPU {i} 指标采集失败: {e}")

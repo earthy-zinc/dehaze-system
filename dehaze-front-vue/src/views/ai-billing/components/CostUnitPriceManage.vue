@@ -255,6 +255,7 @@
 
 <script lang="ts" setup>
 import { Plus } from "@element-plus/icons-vue";
+import type { FormInstance } from "element-plus";
 import {
   AiModelAPI,
   AiModelVO,
@@ -273,11 +274,16 @@ const billingStore = useAdminBillingStore();
 const dialogVisible = ref(false);
 const editingId = ref<number>();
 const submitting = ref(false);
-const formRef = ref(ElForm);
+const formRef = ref<FormInstance>();
 const modelOptions = ref<AiModelVO[]>([]);
 const providerOptions = ref<ProviderVO[]>([]);
 
-const form = reactive<ModelCostForm>({
+/** 表单态：providerId 新增时由选择器填写，提交前经 rules 校验必填（ModelCostForm.providerId 为必填契约） */
+type ModelCostFormState = Omit<ModelCostForm, "providerId"> & {
+  providerId?: number;
+};
+
+const form = reactive<ModelCostFormState>({
   modelId: "",
   providerId: undefined,
   currency: "CNY",
@@ -346,7 +352,7 @@ async function openDialog(row: ModelCostVO | null) {
 }
 
 async function submit() {
-  await formRef.value.validate();
+  await formRef.value?.validate();
   if (detailRows.length === 0) {
     ElMessage.warning("请至少配置一条成本档位");
     return;
@@ -354,7 +360,12 @@ async function submit() {
   submitting.value = true;
   try {
     await billingStore.saveCostVersion(
-      { ...form, details: detailRows.map((row) => ({ ...row })) },
+      // providerId 已由 rules 校验必填，此处按契约收窄类型
+      {
+        ...form,
+        providerId: form.providerId!,
+        details: detailRows.map((row) => ({ ...row })),
+      },
       editingId.value
     );
     ElMessage.success("成本版本已保存");

@@ -1,11 +1,16 @@
 package api
 
 import (
+	"bytes"
+	"io"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -78,6 +83,14 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 	sceneType := c.PostForm("sceneType")
 	hazeLevel := c.PostForm("hazeLevel")
 
+	// 图片类型枚举校验（python ITEM_FILE_TYPES 同口径，先于内容校验）
+	switch fileType {
+	case "clear", "hazy", "trans", "depth", "segment":
+	default:
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "图片类型仅支持 clear/hazy/trans/depth/segment"))
+		return
+	}
+
 	// 打开文件流并计算 MD5
 	file, err := fileHeader.Open()
 	if err != nil {
@@ -92,8 +105,29 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 		return
 	}
 
-	// 上传文件
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
+	// 数据项图片仅允许真实位图格式：非图片扩展名（如 html/svg）经文件 URL 以
+	// text/html 渲染会形成存储型 XSS，必须在入库前拦截（python _shared.validate_image_content 同口径）
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(fileHeader.Filename), "."))
+	if !fileservice.IsImageExtension(ext) {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "仅支持图片格式（jpg/png/gif/bmp/webp）"))
+		return
+	}
+	// 魔数与扩展名一致性校验（伪装扩展名上传恶意内容在此拒绝）
+	head := make([]byte, 12)
+	n, _ := io.ReadFull(reader, head)
+	if err := fileservice.ValidateImageMagicBytes(ext, head[:n]); err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件内容不是有效的图片"))
+		return
+	}
+	uploadReader := io.MultiReader(bytes.NewReader(head[:n]), reader)
+
+	// 上传文件（create_by 记录上传者）
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, uploadReader, md5Hash, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return

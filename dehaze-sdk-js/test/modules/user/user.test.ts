@@ -1,10 +1,16 @@
 import { expectBizError } from "#/utils/assertion";
 import { createUserForm, createUserQuery } from "#/factories/user";
 import { uniqueName, uniqueEmail, uniqueMobile } from "#/factories/common";
+import { login, clearLoginFailCounters } from "#/utils/auth";
+import { getRedis } from "#/utils/redis";
 import UserAPI from "@/api/user";
+import AuthAPI from "@/api/auth";
 import { UserForm, UserQuery, UserPageVO } from "@/api/user/model";
 import { ImportExportAPI } from "../../../index";
 import { ROLES, USERS, DEPTS, ADMIN_VISIBLE_USER_COUNT } from "#/factories/constants";
+
+/** 跨 describe 共享的测试用户清理队列（文件级 afterAll 统一软删） */
+const createdUserIdsForCleanup: number[] = [];
 
 /** 创建用户并校验其出现在列表中，返回列表项 */
 async function createUserAndFetch(form: UserForm): Promise<UserPageVO> {
@@ -42,6 +48,8 @@ function blobSize(result: unknown): number {
 }
 
 describe("用户管理接口测试", () => {
+  afterAll(() => cleanupUsers(createdUserIdsForCleanup));
+
   describe("GET /api/v1/auth/me - 获取当前登录用户信息", () => {
     test("获取当前登录用户信息并验证数据完整性", async () => {
       const result = await UserAPI.getInfo();
@@ -310,8 +318,10 @@ describe("用户管理接口测试", () => {
         nickname: "测试用户",
         status: 1,
         deptId: existingDeptId,
+        roleIds: [ROLES.GUEST.id],
       };
-      await expectBizError(UserAPI.add(form), ["A0400"]);
+      // 三端统一业务码 A0501（数据已存在），与 Java/Go 端一致
+      await expectBizError(UserAPI.add(form), ["A0501"]);
     });
 
     test("参数校验：手机号格式不正确应失败", async () => {
@@ -577,7 +587,8 @@ describe("用户管理接口测试", () => {
     afterAll(() => cleanupUsers([testUserId]));
 
     test("修改用户密码并验证密码确实被修改", async () => {
-      const newPassword = `NewPwd_${Date.now()}!`;
+      // 密码策略 8-20 位含字母数字，时间戳后缀取末 6 位保证总长不超 20
+      const newPassword = `NewPwd_${Date.now().toString().slice(-6)}!`;
       await UserAPI.updatePassword(testUserId, newPassword);
 
       const formData = await UserAPI.getFormData(testUserId);
@@ -725,6 +736,231 @@ describe("用户管理接口测试", () => {
       const isBlob = typeof size === "number" && size > 0;
       const isTaskResult = !isBlob && typeof (result as { taskId?: string }).taskId === "string";
       expect(isBlob || isTaskResult).toBe(true);
+    });
+  });
+
+  describe("参数边界与对抗性输入强化", () => {
+    test("分页边界：pageNum=0 应返回 A0400", async () => {
+      await expectBizError(UserAPI.getPage({ pageNum: 0, pageSize: 10 } as UserQuery), ["A0400"]);
+    });
+
+    test("分页边界：pageSize=101 超过上限应返回 A0400", async () => {
+      await expectBizError(UserAPI.getPage({ pageNum: 1, pageSize: 101 } as UserQuery), ["A0400"]);
+    });
+
+    test("时间范围筛选：覆盖种子用户创建时间应命中 [T-UM-005]", async () => {
+      const result = await UserAPI.getPage({
+        pageNum: 1,
+        pageSize: 100,
+        startTime: "2020-01-01",
+        endTime: "2030-01-01",
+      } as UserQuery);
+      expect(result.total).toBeGreaterThan(0);
+    });
+
+    test("时间范围筛选：未来时间窗应为空", async () => {
+      const result = await UserAPI.getPage({
+        pageNum: 1,
+        pageSize: 100,
+        startTime: "2999-01-01",
+        endTime: "2999-12-31",
+      } as UserQuery);
+      expect(result.list.length).toBe(0);
+      expect(result.total).toBe(0);
+    });
+
+    test("对抗语料：XSS/emoji/超长关键词搜索正常返回且结果匹配 [T-UM-008]", async () => {
+      const dirtyKeywords = ["<script>alert(1)</script>", "🎮🎭💀混杂Ｅｍｏｊｉ", "k".repeat(300)];
+      for (const keywords of dirtyKeywords) {
+        const result = await UserAPI.getPage({ pageNum: 1, pageSize: 10, keywords } as UserQuery);
+        expect(Array.isArray(result.list)).toBe(true);
+        expect(result.total).toBe(0); // 不存在匹配用户，不允许模糊命中或报错
+      }
+    });
+
+    test("对抗语料：昵称含 emoji 与全半角混杂创建后读回一致", async () => {
+      const dirtyNickname = "测试Γ用户·Ｆｕｌｌ-ｗｉｄｔｈ🎮ab_123";
+      const form = createUserForm({
+        nickname: dirtyNickname,
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      const createdId = await createUserAndGetId(form);
+      createdUserIdsForCleanup.push(createdId);
+      const formData = await UserAPI.getFormData(createdId);
+      expect(formData.nickname).toBe(dirtyNickname);
+    });
+
+    test("参数校验：用户名超过列宽 64 字符应返回 A0400", async () => {
+      const form = createUserForm({
+        username: "u".repeat(65),
+        nickname: "超长用户名",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      await expectBizError(UserAPI.add(form), ["A0400"]);
+    });
+
+    test("用户名唯一性：大小写变体视为重复 [T-UM-012]", async () => {
+      const base = `tumcase_${Date.now()}`;
+      const form1 = createUserForm({
+        username: base,
+        nickname: "大小写基准",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      const createdId = await createUserAndGetId(form1);
+      createdUserIdsForCleanup.push(createdId);
+
+      const form2 = createUserForm({
+        username: base.toUpperCase(),
+        nickname: "大小写变体",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      await expectBizError(UserAPI.add(form2), ["A0501"]);
+    });
+
+    test("密码校验：弱密码重置应被拒绝 [T-UM-035]", async () => {
+      const form = createUserForm({
+        nickname: "弱密码测试",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      const createdId = await createUserAndGetId(form);
+      createdUserIdsForCleanup.push(createdId);
+
+      for (const weak of ["Aa1", "a".repeat(21), "abcdefgh", "12345678"]) {
+        await expectBizError(UserAPI.updatePassword(createdId, weak), ["A0400"]);
+      }
+      // 边界合法密码（8 位）可重置
+      await UserAPI.updatePassword(createdId, "Ab1aaaaa");
+    });
+  });
+
+  describe("越权访问控制", () => {
+    let targetUserId: number;
+
+    beforeAll(async () => {
+      const form = createUserForm({
+        nickname: "越权目标用户",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      targetUserId = await createUserAndGetId(form);
+      createdUserIdsForCleanup.push(targetUserId);
+    });
+
+    afterAll(async () => {
+      // 越权用例可能因实现缺陷实际修改了目标用户，切回 admin 恢复后统一清理
+      await login("admin");
+      try {
+        await UserAPI.updateStatus(targetUserId, 1);
+      } catch {
+        // 目标用户可能已被删除或状态未变
+      }
+    });
+
+    test("普通用户新增用户应 403 [T-UM-018]", async () => {
+      await login("user");
+      const form = createUserForm({
+        nickname: "越权新增",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      await expectBizError(UserAPI.add(form), ["A0301"]);
+    });
+
+    test("普通用户删除用户应 403 [T-UM-032]", async () => {
+      await login("user");
+      await expectBizError(UserAPI.deleteByIds(String(targetUserId)), ["A0301"]);
+    });
+
+    test("普通用户编辑用户应 403 [T-UM-025]", async () => {
+      await login("user");
+      const form = createUserForm({
+        nickname: "越权编辑",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      await expectBizError(UserAPI.update(targetUserId, form), ["A0301"]);
+    });
+
+    test("普通用户修改他人密码应拒绝 A0301", async () => {
+      await login("user");
+      await expectBizError(UserAPI.updatePassword(targetUserId, "Abcd1234"), ["A0301"]);
+    });
+
+    test("普通用户修改用户状态应 403 [需决策-D2]", async () => {
+      // 文档契约：状态接口需 sys:user:status 权限。当前 python/java 端无权限校验，
+      // 普通用户可禁用任意用户（安全缺陷），go 端用 sys:user:edit。本用例按文档
+      // 契约断言，在权限口径统一前失败暴露，不允许弱化为现状行为。
+      await login("user");
+      await expectBizError(UserAPI.updateStatus(targetUserId, 0), ["A0301"]);
+    });
+  });
+
+  describe("密码生命周期与登录阻断", () => {
+    let userId: number;
+    let username: string;
+    const P1 = "TumPwd_2026a";
+    const P2 = "TumPwd_2026b";
+
+    /** 使用自定义密码登录（不走 utils/auth 的 ADMIN_PASSWORD 缓存通道） */
+    async function loginWithPassword(name: string, password: string): Promise<string> {
+      const captcha = await AuthAPI.getCaptcha();
+      const code = await getRedis().get(`captcha_code:${captcha.captchaKey}`);
+      if (!code) throw new Error(`验证码已过期: ${captcha.captchaKey}`);
+      const result = await AuthAPI.login({
+        username: name,
+        password,
+        captchaKey: captcha.captchaKey,
+        captchaCode: code,
+      });
+      return result.sessionId;
+    }
+
+    beforeAll(async () => {
+      username = `tum_pwd_cycle_${Date.now()}`;
+      const form = createUserForm({
+        username,
+        nickname: "密码生命周期",
+        deptId: DEPTS.CQUPT.id,
+        roleIds: [ROLES.GUEST.id],
+      });
+      userId = await createUserAndGetId(form);
+      createdUserIdsForCleanup.push(userId);
+    });
+
+    afterAll(async () => {
+      await clearLoginFailCounters();
+      await login("admin");
+    });
+
+    test("管理员重置密码后新密码可登录", async () => {
+      await login("admin");
+      await UserAPI.updatePassword(userId, P1);
+      const sessionId = await loginWithPassword(username, P1);
+      expect(sessionId).toBeTruthy();
+    });
+
+    test("再次重置后旧密码失效（A0210），新密码可登录 [T-UM-034]", async () => {
+      await login("admin");
+      await UserAPI.updatePassword(userId, P2);
+      await clearLoginFailCounters();
+      await expectBizError(loginWithPassword(username, P1), ["A0210"]);
+      const sessionId = await loginWithPassword(username, P2);
+      expect(sessionId).toBeTruthy();
+    });
+
+    test("禁用用户登录被阻断（A0202），启用后恢复 [T-UM-039]", async () => {
+      await login("admin");
+      await UserAPI.updateStatus(userId, 0);
+      await clearLoginFailCounters();
+      await expectBizError(loginWithPassword(username, P2), ["A0202"]);
+      await UserAPI.updateStatus(userId, 1);
+      const sessionId = await loginWithPassword(username, P2);
+      expect(sessionId).toBeTruthy();
     });
   });
 });

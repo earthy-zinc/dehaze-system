@@ -18,7 +18,7 @@
             style="width: 140px"
           >
             <el-option
-              v-for="opt in typeOptions"
+              v-for="opt in feedbackTypeOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -33,7 +33,7 @@
             style="width: 140px"
           >
             <el-option
-              v-for="opt in statusOptions"
+              v-for="opt in feedbackStatusOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -425,7 +425,7 @@
             style="width: 200px"
           >
             <el-option
-              v-for="opt in replyTypeOptions"
+              v-for="opt in feedbackReplyTypeOptions"
               :key="opt.value"
               :label="opt.label"
               :value="opt.value"
@@ -497,6 +497,12 @@ import {
   CollectionTag,
   DataLine,
 } from "@element-plus/icons-vue";
+import {
+  feedbackTypeOptions,
+  feedbackStatusOptions,
+  feedbackReplyTypeOptions,
+} from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({
   name: "FeedbackList",
@@ -521,128 +527,52 @@ const queryParams = reactive<FeedbackQuery>({
 
 const pageData = ref<FeedbackPageVO[]>([]);
 
-const typeOptions: { label: string; value: FeedbackType }[] = [
-  { label: "功能建议", value: "suggestion" },
-  { label: "问题报告", value: "bug" },
-  { label: "体验反馈", value: "experience" },
-  { label: "投诉", value: "complaint" },
-];
-
-const statusOptions: { label: string; value: FeedbackStatus }[] = [
-  { label: "待处理", value: "pending" },
-  { label: "处理中", value: "processing" },
-  { label: "已回复", value: "replied" },
-  { label: "已关闭", value: "closed" },
-];
-
-const priorityOptions: { label: string; value: number }[] = [
-  { label: "低", value: 1 },
-  { label: "中", value: 2 },
-  { label: "高", value: 3 },
-  { label: "紧急", value: 4 },
-];
-
-const replyTypeOptions: { label: string; value: FeedbackReplyType }[] = [
-  { label: "通知", value: "info" },
-  { label: "已解决", value: "resolved" },
-  { label: "不支持", value: "unsupported" },
-  { label: "转开发", value: "dev_transfer" },
+// 优先级枚举与后端一致：1=普通 2=紧急 3=高优
+const priorityOptions: { label: string; value: number; tag: TagType }[] = [
+  { label: "普通", value: 1, tag: "info" },
+  { label: "紧急", value: 2, tag: "warning" },
+  { label: "高优", value: 3, tag: "danger" },
 ];
 
 function typeLabel(type: FeedbackType): string {
-  const map: Record<FeedbackType, string> = {
-    suggestion: "功能建议",
-    bug: "问题报告",
-    experience: "体验反馈",
-    complaint: "投诉",
-  };
-  return map[type] || type;
+  return feedbackTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
-function typeTagType(
-  type: FeedbackType
-): "primary" | "danger" | "success" | "warning" {
-  const map: Record<
-    FeedbackType,
-    "primary" | "danger" | "success" | "warning"
-  > = {
-    suggestion: "primary",
-    bug: "danger",
-    experience: "success",
-    complaint: "warning",
-  };
-  return map[type];
+function typeTagType(type: FeedbackType): TagType {
+  return feedbackTypeOptions.find((o) => o.value === type)!.tag;
 }
 
 function statusLabel(status: FeedbackStatus): string {
-  const map: Record<FeedbackStatus, string> = {
-    pending: "待处理",
-    processing: "处理中",
-    replied: "已回复",
-    closed: "已关闭",
-  };
-  return map[status] || status;
+  return feedbackStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
-function statusTagType(
-  status: FeedbackStatus
-): "warning" | "primary" | "success" | "info" {
-  const map: Record<
-    FeedbackStatus,
-    "warning" | "primary" | "success" | "info"
-  > = {
-    pending: "warning",
-    processing: "primary",
-    replied: "success",
-    closed: "info",
-  };
-  return map[status];
+function statusTagType(status: FeedbackStatus): TagType {
+  return feedbackStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 function priorityLabel(priority: number): string {
-  const map: Record<number, string> = { 1: "低", 2: "中", 3: "高", 4: "紧急" };
-  return map[priority] || String(priority);
+  return (
+    priorityOptions.find((o) => o.value === priority)?.label ?? String(priority)
+  );
 }
 
-function priorityTagType(
-  priority: number
-): "info" | "primary" | "warning" | "danger" {
-  const map: Record<number, "info" | "primary" | "warning" | "danger"> = {
-    1: "info",
-    2: "primary",
-    3: "warning",
-    4: "danger",
-  };
-  return map[priority] || "info";
+function priorityTagType(priority: number): TagType {
+  return priorityOptions.find((o) => o.value === priority)?.tag ?? "info";
 }
 
 function replyTypeLabel(type: FeedbackReplyType): string {
-  const map: Record<FeedbackReplyType, string> = {
-    info: "通知",
-    resolved: "已解决",
-    unsupported: "不支持",
-    dev_transfer: "转开发",
-  };
-  return map[type] || type;
+  return feedbackReplyTypeOptions.find((o) => o.value === type)?.label ?? type;
 }
 
-function replyTypeTagType(
-  type: FeedbackReplyType
-): "info" | "success" | "warning" {
-  const map: Record<FeedbackReplyType, "info" | "success" | "warning"> = {
-    info: "info",
-    resolved: "success",
-    unsupported: "info",
-    dev_transfer: "warning",
-  };
-  return map[type];
+function replyTypeTagType(type: FeedbackReplyType): TagType {
+  return feedbackReplyTypeOptions.find((o) => o.value === type)!.tag;
 }
 
 function handleQuery() {
   loading.value = true;
   if (timeRange.value && timeRange.value.length === 2) {
-    queryParams.startTime = timeRange.value[0];
-    queryParams.endTime = timeRange.value[1];
+    queryParams.startTime = `${timeRange.value[0]} 00:00:00`;
+    queryParams.endTime = `${timeRange.value[1]} 23:59:59`;
   } else {
     queryParams.startTime = undefined;
     queryParams.endTime = undefined;

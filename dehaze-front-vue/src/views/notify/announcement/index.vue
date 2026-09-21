@@ -253,7 +253,7 @@
         >
           <el-input-number
             v-model="targetLevel"
-            :min="1"
+            :min="0"
             :max="10"
             controls-position="right"
           />

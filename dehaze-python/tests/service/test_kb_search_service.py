@@ -1,20 +1,37 @@
 import asyncio
 from contextlib import ExitStack
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.es import kb_chunk_index
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
-from app.service.kb.search_service import search_service, _mmr_rerank
+from app.service.kb.kb_billing_service import kb_billing_service
+from app.service.kb.search_service import _group_sections, _mmr_rerank, search_service
 
 CODE_UNAUTHORIZED = ResultCode.ACCESS_UNAUTHORIZED.code
 CODE_NOT_FOUND = ResultCode.RESOURCE_NOT_FOUND.code
 
 _SI = "app.service.kb.search_service"
+
+# app 签名过窄：SearchService.search 的 db 注解为 AsyncSession，但运行期支持 db=None
+# （无会话降级分支，内部 _fill_section_contents 以 `db is not None` 判定）。测试按真实
+# 契约对"无会话"场景传 None，此处显式窄化以满足类型检查（非兜底，测试语义即无会话）。
+_NO_DB = cast(AsyncSession, None)  # 替身：search 无会话降级分支需传 None（App 注解过窄）
+
+
+@pytest.fixture(autouse=True)
+def _no_kb_billing(monkeypatch):
+    """本文件测检索引擎行为本身，不测计费：跳过 KB 计费校验与扣费
+    （计费不变量与拒绝透传见 test_kb_billing.py）"""
+    monkeypatch.setattr(kb_billing_service, "ensure", AsyncMock())
+    monkeypatch.setattr(kb_billing_service, "charge_embedding", AsyncMock())
+    monkeypatch.setattr(kb_billing_service, "charge_rerank", AsyncMock())
 
 
 def _kb(
@@ -52,12 +69,21 @@ def _kb(
     )
 
 
-def _es_doc(*, doc_id: int, chunk_id: int, content: str, relevance: float, idx: int = 0):
+def _es_doc(
+    *,
+    doc_id: int,
+    chunk_id: int,
+    content: str,
+    relevance: float,
+    idx: int = 0,
+    section_index: int = 0,
+):
     return {
         "doc_id": doc_id,
         "chunk_id": chunk_id,
         "doc_title": f"《检索文档{doc_id}》",
         "chunk_index": idx,
+        "section_index": section_index,
         "content": content,
         "relevance": relevance,
         "metadata": {"source": "test"},
@@ -81,13 +107,13 @@ def _embed_mock(vector=None):
 
 
 def _fake_settings(**over):
-    base = dict(
-        KB_SEARCH_TIMEOUT_MS=5000,
-        KB_SEARCH_DEFAULT_TOP_K=5,
-        KB_SEARCH_MAX_TOP_K=20,
-        KB_SEARCH_HYBRID_RANK_CONSTANT=60,
-        KB_SEARCH_HYBRID_RANK_WINDOW=20,
-    )
+    base = {
+        "KB_SEARCH_TIMEOUT_MS": 5000,
+        "KB_SEARCH_DEFAULT_TOP_K": 5,
+        "KB_SEARCH_MAX_TOP_K": 20,
+        "KB_SEARCH_HYBRID_RANK_CONSTANT": 60,
+        "KB_SEARCH_HYBRID_RANK_WINDOW": 20,
+    }
     base.update(over)
     return SimpleNamespace(**base)
 
@@ -99,7 +125,7 @@ class TestSearchVisibility:
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
                 await search_service.search(
-                    None, mock_redis, 100, "量子纠缠科普", knowledge_base_ids=[1]
+                    _NO_DB, mock_redis, 100, "量子纠缠科普", knowledge_base_ids=[1]
                 )
             assert excinfo.value.code.code == CODE_UNAUTHORIZED
 
@@ -116,7 +142,7 @@ class TestSearchVisibility:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "量子纠缠", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "量子纠缠", knowledge_base_ids=[1]
             )
         assert len(result["results"]) == 1
         assert result["results"][0]["content"] == content
@@ -128,7 +154,7 @@ class TestSearchVisibility:
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
             with pytest.raises(BusinessException) as excinfo:
                 await search_service.search(
-                    None, mock_redis, 100, "缺失知识库", knowledge_base_ids=[999]
+                    _NO_DB, mock_redis, 100, "缺失知识库", knowledge_base_ids=[999]
                 )
             assert excinfo.value.code.code == CODE_NOT_FOUND
 
@@ -136,13 +162,13 @@ class TestSearchVisibility:
         kb_repo = AsyncMock()
         kb_repo.list_visible_by_user.return_value = []
         with patch(f"{_SI}.knowledge_base_repository", kb_repo):
-            result = await search_service.search(None, mock_redis, 100, "无可见库检索")
+            result = await search_service.search(_NO_DB, mock_redis, 100, "无可见库检索")
         assert result["results"] == []
         assert result["knowledgeBaseIds"] == []
 
     async def test_empty_ids_array_raises_param_error(self, mock_redis):
         with pytest.raises(BusinessException) as excinfo:
-            await search_service.search(None, mock_redis, 100, "空数组", knowledge_base_ids=[])
+            await search_service.search(_NO_DB, mock_redis, 100, "空数组", knowledge_base_ids=[])
         assert excinfo.value.code.code == ResultCode.PARAM_ERROR.code
 
 
@@ -161,7 +187,7 @@ class TestSearchThreshold:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
             )
         assert result["results"] == []
 
@@ -179,7 +205,7 @@ class TestSearchThreshold:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "阈值过滤", knowledge_base_ids=[1]
             )
         assert len(result["results"]) == 1
         assert result["results"][0]["score"] == pytest.approx(0.7)
@@ -205,7 +231,7 @@ class TestSearchRerank:
         patches.append(patch(f"{_SI}.rerank", rerank_mock))
         with _enter(patches):
             result = await search_service.search(
-                None, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
+                _NO_DB, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
             )
         contents = [r["content"] for r in result["results"]]
         assert contents == ["候选二：语义重排优先段落", "候选一：全文检索命中段落"]
@@ -220,7 +246,7 @@ class TestSearchRerank:
         patches.append(patch(f"{_SI}.rerank", rerank_mock))
         with _enter(patches):
             result = await search_service.search(
-                None, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
+                _NO_DB, mock_redis, 100, "检索重排", knowledge_base_ids=[1], top_k=2
             )
         contents = [r["content"] for r in result["results"]]
         assert contents == ["候选一：全文检索命中段落", "候选二：语义重排优先段落"]
@@ -245,7 +271,7 @@ class TestSearchTimeout:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "超时降级", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "超时降级", knowledge_base_ids=[1]
             )
         assert result["results"] == []
         assert await mock_redis.keys("kb:search:*") == []
@@ -265,7 +291,7 @@ class TestSearchDegraded:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "ES 异常检索", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "ES 异常检索", knowledge_base_ids=[1]
             )
         assert result["results"] == []
         assert await mock_redis.keys("kb:search:*") == []
@@ -286,10 +312,10 @@ class TestSearchCache:
             ]
         ):
             first = await search_service.search(
-                None, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
             )
             second = await search_service.search(
-                None, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "缓存验证", knowledge_base_ids=[1]
             )
         assert embed_mock.call_count == 1
         assert second == first
@@ -304,14 +330,16 @@ class TestSearchCache:
             [
                 patch(f"{_SI}.knowledge_base_repository", kb_repo),
                 patch(f"{_SI}.embed_text", embed_mock),
-                _vec_patch(_es_doc(doc_id=1, chunk_id=1, content="缓存键随参数变化", relevance=0.9)),
+                _vec_patch(
+                    _es_doc(doc_id=1, chunk_id=1, content="缓存键随参数变化", relevance=0.9)
+                ),
             ]
         ):
             await search_service.search(
-                None, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=3
+                _NO_DB, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=3
             )
             await search_service.search(
-                None, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=7
+                _NO_DB, mock_redis, 100, "缓存失效", knowledge_base_ids=[1], top_k=7
             )
         assert embed_mock.call_count == 2
 
@@ -348,9 +376,7 @@ _KI = "app.infrastructure.es.kb_chunk_index"
 
 
 def _hybrid_doc(chunk_id: int) -> dict:
-    doc = _es_doc(
-        doc_id=chunk_id, chunk_id=chunk_id, content=f"片段{chunk_id}", relevance=0.9
-    )
+    doc = _es_doc(doc_id=chunk_id, chunk_id=chunk_id, content=f"片段{chunk_id}", relevance=0.9)
     doc.pop("content_vector")  # RRF 融合只依赖排名，keyword 候选无向量
     return doc
 
@@ -414,6 +440,8 @@ class TestHybridRrfFusion:
             ]
         ):
             await kb_chunk_index.hybrid_search(1, "q", [0.1] * 8, filters, top_k=5)
+        assert vec_mock.await_args is not None
+        assert kw_mock.await_args is not None
         assert vec_mock.await_args.args[2] == filters
         assert kw_mock.await_args.args[2] == filters
 
@@ -437,7 +465,7 @@ class TestSearchHybridStrategy:
         keyword_docs = [_hybrid_doc(2), _hybrid_doc(3)]
         with _enter(self._patches(vector_docs, keyword_docs)):
             result = await search_service.search(
-                None, mock_redis, 100, "混合检索", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "混合检索", knowledge_base_ids=[1]
             )
         # hybrid_weight=0.7 → vector_weight=0.7/keyword_weight=0.3，
         # 融合分 2: 0.7/61+0.3/61=0.01639 > 1: 0.7/62+0.3/62=0.01613
@@ -456,7 +484,206 @@ class TestSearchHybridStrategy:
             ]
         ):
             result = await search_service.search(
-                None, mock_redis, 100, "空向量混合", knowledge_base_ids=[1]
+                _NO_DB, mock_redis, 100, "空向量混合", knowledge_base_ids=[1]
             )
         assert result["results"] == []
         vec_mock.assert_not_called()
+
+
+def _section_row(
+    chunk_id: int, content: str, *, doc_id: int = 1, section_index: int = 1, path=None
+):
+    """模拟 list_by_document_sections 返回的 MySQL chunk 行（SQL 已按 chunk_index 排序）"""
+    return SimpleNamespace(
+        id=chunk_id,
+        document_id=doc_id,
+        section_index=section_index,
+        section_path=path,
+        content=content,
+    )
+
+
+class TestGroupDedup:
+    """child 候选按 (doc_id, section_index) 分组去重为节（父子分块设计 §4.3）"""
+
+    def _patches(self, docs, *, repo_return=None, repo_error=None):
+        kb = _kb(kb_id=1)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        chunk_repo = AsyncMock()
+        if repo_error is not None:
+            chunk_repo.list_by_document_sections = AsyncMock(side_effect=repo_error)
+        else:
+            chunk_repo.list_by_document_sections = AsyncMock(return_value=repo_return or [])
+        return [
+            patch(f"{_SI}.knowledge_base_repository", kb_repo),
+            patch(f"{_SI}.embed_text", _embed_mock()),
+            _vec_patch(*docs),
+            patch(f"{_SI}.knowledge_chunk_repository", chunk_repo),
+        ], chunk_repo
+
+    async def test_same_section_children_dedup_to_one_with_max_score(self, mock_redis):
+        # 同 doc 同节的 3 个 child 去重为 1 个节；节分 = 组内 max（0.9），他节 child 独立成节
+        docs = [
+            _es_doc(doc_id=1, chunk_id=1, content="甲段", relevance=0.5, idx=0, section_index=1),
+            _es_doc(doc_id=1, chunk_id=2, content="乙段", relevance=0.9, idx=1, section_index=1),
+            _es_doc(doc_id=1, chunk_id=3, content="丙段", relevance=0.7, idx=2, section_index=1),
+            _es_doc(
+                doc_id=1, chunk_id=4, content="另节内容", relevance=0.8, idx=0, section_index=2
+            ),
+        ]
+        patches, _ = self._patches(docs)
+        with _enter(patches):
+            result = await search_service.search(
+                _NO_DB, mock_redis, 100, "分组去重", knowledge_base_ids=[1]
+            )
+        results = result["results"]
+        assert len(results) == 2
+        top = results[0]
+        assert top["score"] == pytest.approx(0.9)
+        assert top["chunkId"] == 2  # 节代表 = 组内最高分 child
+        assert top["content"] == "甲段\n\n乙段\n\n丙段"
+        assert "sectionPath" not in top  # 降级路径无 section_path，字段省略
+        assert results[1]["score"] == pytest.approx(0.8)
+
+    async def test_vector_candidates_expanded_to_top_k_x2(self, mock_redis):
+        # 候选扩大到 top_k×2：分组去重后仍够 top_k 个节
+        docs = [
+            _es_doc(doc_id=1, chunk_id=i, content=f"段{i}", relevance=0.9, idx=i) for i in (1, 2)
+        ]
+        kb = _kb(kb_id=1)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        chunk_repo = AsyncMock()
+        vec_mock = AsyncMock(return_value=list(docs))
+        with _enter(
+            [
+                patch(f"{_SI}.knowledge_base_repository", kb_repo),
+                patch(f"{_SI}.embed_text", _embed_mock()),
+                patch(f"{_SI}.kb_chunk_index.vector_search", vec_mock),
+                patch(f"{_SI}.knowledge_chunk_repository", chunk_repo),
+            ]
+        ):
+            await search_service.search(
+                _NO_DB, mock_redis, 100, "候选扩大", knowledge_base_ids=[1], top_k=1
+            )
+        assert vec_mock.await_args is not None
+        assert vec_mock.await_args.kwargs["top_n"] == 2  # top_k=1 → fetch_k=2
+
+    async def test_section_sorted_by_representative_score(self, mock_redis):
+        # 节按节代表分降序：低分节的多个 child 不影响高分节排序
+        docs = [
+            _es_doc(doc_id=1, chunk_id=1, content="低节A", relevance=0.4, idx=0, section_index=1),
+            _es_doc(doc_id=1, chunk_id=2, content="低节B", relevance=0.6, idx=1, section_index=1),
+            _es_doc(doc_id=1, chunk_id=3, content="高节", relevance=0.5, idx=0, section_index=2),
+        ]
+        patches, _ = self._patches(docs)
+        with _enter(patches):
+            result = await search_service.search(
+                _NO_DB, mock_redis, 100, "节排序", knowledge_base_ids=[1]
+            )
+        scores = [r["score"] for r in result["results"]]
+        assert scores == sorted(scores, reverse=True)
+        assert scores[0] == pytest.approx(0.6)  # 节分 = 组内 max 而非首个 child 分
+
+    async def test_group_sections_keeps_representative_fields(self):
+        # 直接测试纯函数：代表字段（chunk_id/chunk_index/向量）取组内最高分 child
+        docs = [
+            _es_doc(doc_id=1, chunk_id=1, content="甲", relevance=0.5, idx=0, section_index=3),
+            _es_doc(doc_id=1, chunk_id=2, content="乙", relevance=0.9, idx=1, section_index=3),
+        ]
+        sections = _group_sections(docs, top_k=5)
+        assert len(sections) == 1
+        assert sections[0]["chunk_id"] == 2
+        assert sections[0]["chunk_index"] == 1
+        assert sections[0]["section_index"] == 3
+        assert len(sections[0]["_members"]) == 2
+
+
+class TestSectionContentFetch:
+    """节内容拉取：MySQL in 查询拼节内容；失败降级用候选 child 还原"""
+
+    # 传非空 db 会话占位才走 MySQL 拉取分支（knowledge_chunk_repository 已 patch，不执行真实 SQL）。
+    # 测试替身：占位会话仅用于让 search 走"有会话"分支。
+    _DB = AsyncSession()
+
+    def _patches(self, docs, *, repo_return=None, repo_error=None):
+        kb = _kb(kb_id=1)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        chunk_repo = AsyncMock()
+        if repo_error is not None:
+            chunk_repo.list_by_document_sections = AsyncMock(side_effect=repo_error)
+        else:
+            chunk_repo.list_by_document_sections = AsyncMock(return_value=repo_return or [])
+        return [
+            patch(f"{_SI}.knowledge_base_repository", kb_repo),
+            patch(f"{_SI}.embed_text", _embed_mock()),
+            _vec_patch(*docs),
+            patch(f"{_SI}.knowledge_chunk_repository", chunk_repo),
+        ], chunk_repo
+
+    async def test_content_from_mysql_rows_in_chunk_order(self, mock_redis):
+        # MySQL 拉到节内全部 child（含未命中候选），按 chunk_index 顺序拼接
+        docs = [
+            _es_doc(doc_id=1, chunk_id=2, content="命中段", relevance=0.9, idx=1, section_index=1)
+        ]
+        rows = [
+            _section_row(11, "第一节", doc_id=1, section_index=1, path="4 核心设计 > 4.2 检索"),
+            _section_row(12, "命中段", doc_id=1, section_index=1, path="4 核心设计 > 4.2 检索"),
+            _section_row(13, "第三节", doc_id=1, section_index=1, path="4 核心设计 > 4.2 检索"),
+        ]
+        patches, chunk_repo = self._patches(docs, repo_return=rows)
+        with _enter(patches):
+            result = await search_service.search(
+                self._DB, mock_redis, 100, "节内容拉取", knowledge_base_ids=[1]
+            )
+        chunk_repo.list_by_document_sections.assert_awaited_once()
+        top = result["results"][0]
+        assert top["content"] == "第一节\n\n命中段\n\n第三节"
+        assert top["chunkIds"] == [11, 12, 13]
+        assert top["sectionPath"] == "4 核心设计 > 4.2 检索"
+        # 节分数仍为命中 child 的分数
+        assert top["score"] == pytest.approx(0.9)
+
+    async def test_fallback_to_candidates_when_repo_fails(self, mock_redis):
+        # 拉取失败降级：节内容用 ES 候选 child 按 chunk_index 拼接，检索不中断
+        docs = [
+            _es_doc(doc_id=1, chunk_id=2, content="候选乙", relevance=0.9, idx=1, section_index=1),
+            _es_doc(doc_id=1, chunk_id=1, content="候选甲", relevance=0.5, idx=0, section_index=1),
+        ]
+        patches, _ = self._patches(docs, repo_error=RuntimeError("MySQL 宕机"))
+        with _enter(patches):
+            result = await search_service.search(
+                self._DB, mock_redis, 100, "拉取降级", knowledge_base_ids=[1]
+            )
+        top = result["results"][0]
+        assert top["content"] == "候选甲\n\n候选乙"
+        assert top["chunkIds"] == [1, 2]
+
+    async def test_section_path_omitted_when_none(self, mock_redis):
+        # 无标题文档节（section_path NULL）不输出 sectionPath 字段
+        docs = [_es_doc(doc_id=1, chunk_id=1, content="无标题节", relevance=0.9, idx=0)]
+        rows = [_section_row(11, "无标题节", doc_id=1, section_index=0, path=None)]
+        patches, _ = self._patches(docs, repo_return=rows)
+        with _enter(patches):
+            result = await search_service.search(
+                self._DB, mock_redis, 100, "无路径", knowledge_base_ids=[1]
+            )
+        assert "sectionPath" not in result["results"][0]
+
+    async def test_no_db_skips_mysql_and_uses_candidates(self, mock_redis):
+        # 无 db 会话（存量索引未重算）：不发起 MySQL 拉取，直接用 ES 候选拼接
+        docs = [
+            _es_doc(doc_id=1, chunk_id=2, content="候选乙", relevance=0.9, idx=1, section_index=1),
+            _es_doc(doc_id=1, chunk_id=1, content="候选甲", relevance=0.5, idx=0, section_index=1),
+        ]
+        patches, chunk_repo = self._patches(docs, repo_return=[_section_row(11, "不该被用到")])
+        with _enter(patches):
+            result = await search_service.search(
+                _NO_DB, mock_redis, 100, "无db降级", knowledge_base_ids=[1]
+            )
+        chunk_repo.list_by_document_sections.assert_not_awaited()
+        top = result["results"][0]
+        assert top["content"] == "候选甲\n\n候选乙"
+        assert top["chunkIds"] == [1, 2]

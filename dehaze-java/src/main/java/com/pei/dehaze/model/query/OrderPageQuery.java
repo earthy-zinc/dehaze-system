@@ -21,6 +21,9 @@ public class OrderPageQuery extends BasePageQuery {
     @Schema(description = "订单状态")
     private String status;
 
+    @Schema(description = "商品类型(vip/credit)")
+    private String packageType;
+
     @Schema(description = "支付方式")
     private String payMethod;
 

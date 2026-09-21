@@ -20,14 +20,13 @@ from app.infrastructure.es.kb_chunk_index import (
     get_index_stats,
 )
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
-from app.models.schema.knowledge_base import (
-    CHUNKING_STRATEGY_VALUES,
-    EMBEDDING_MODEL_VALUES,
-)
+from app.models.schema.knowledge_base import CHUNKING_STRATEGY_VALUES
+from app.repository.ai_provider_repository import ai_provider_repository
 from app.repository.knowledge_base_repository import knowledge_base_repository
+from app.repository.knowledge_chunk_repository import knowledge_chunk_repository
 from app.repository.knowledge_document_repository import knowledge_document_repository
 from app.repository.member_repository import member_repository
-from app.infrastructure.embedding.embedding_client import get_embedding_dim
+from app.service.ai_model_service import ai_model_service
 
 logger = logging.getLogger(__name__)
 
@@ -59,16 +58,40 @@ _EDITABLE_FIELDS = (
 )
 
 
-def _check_visibility_and_strategies(
-    visibility: str, embedding_model: str, chunking_strategy: str
-) -> None:
-    """校验可见性与策略枚举合法性。"""
+def _check_visibility_and_chunking(visibility: str, chunking_strategy: str) -> None:
+    """校验可见性与分块策略枚举合法性。"""
     if visibility not in ("public", "private"):
         raise BusinessException(ResultCode.PARAM_ERROR, "可见性取值必须为 public/private")
-    if embedding_model not in EMBEDDING_MODEL_VALUES:
-        raise BusinessException(ResultCode.PARAM_ERROR, "不支持的 embedding 模型")
     if chunking_strategy not in CHUNKING_STRATEGY_VALUES:
         raise BusinessException(ResultCode.PARAM_ERROR, "不支持的 chunking 策略")
+
+
+async def _resolve_embedding_model(
+    db: AsyncSession, redis: Redis, user, embedding_model: str
+) -> tuple[int, str]:
+    """校验 embedding 模型来自模型注册表且启用，返回 (向量维度, 供应商编码)。
+
+    模型/维度/供应商均以 sys_ai_model 注册表为单一事实源（走 ai:model:list 缓存，
+    管理员注册的新 embedding 模型即对知识库可用）；供应商由模型所属注册行推导，
+    不接受前端指定（避免与注册表不一致路由到错误端点）。维度供 ES 索引 mapping 用。
+    """
+    models = await ai_model_service.list_enabled_models(db, redis, user.id, "embedding")
+    model = next((m for m in models if m.model_id == embedding_model), None)
+    if model is None:
+        raise BusinessException(
+            ResultCode.PARAM_ERROR,
+            "不支持的 embedding 模型（须为模型注册表中启用的 embedding 模型）",
+        )
+    provider = await ai_provider_repository.get_by_id(db, model.provider_id)
+    if not provider:
+        raise BusinessException(
+            ResultCode.PARAM_ERROR, f"embedding 模型 {embedding_model} 的供应商不存在"
+        )
+    if not model.dimension:
+        raise BusinessException(
+            ResultCode.BUSINESS_ERROR, f"embedding 模型 {embedding_model} 未配置向量维度"
+        )
+    return model.dimension, provider.provider_code
 
 
 async def _check_manage_permission(db: AsyncSession, kb: SysKnowledgeBase, user) -> None:
@@ -82,8 +105,12 @@ async def _check_manage_permission(db: AsyncSession, kb: SysKnowledgeBase, user)
 
 
 async def _invalidate_cache(redis: Redis, user_id: int, kb_id: int) -> None:
-    """知识库变更后失效相关缓存键。"""
-    await redis.delete(f"kb:list:{user_id}", f"kb:detail:{kb_id}", f"kb:config:{kb_id}")
+    """知识库变更后失效相关缓存键。
+
+    kb:list:admin 为全局键，任何用户新建/变更/删除库都会改变管理端全量列表，须一并失效，
+    否则管理端 view=admin 在缓存 TTL 内看不到新库。
+    """
+    await redis.delete(f"kb:list:{user_id}", f"kb:detail:{kb_id}", "kb:list:admin")
 
 
 class KnowledgeBaseService:
@@ -100,11 +127,12 @@ class KnowledgeBaseService:
             新知识库 ID
         """
         visibility = data["visibility"]
-        embedding_provider = data.get("embedding_provider", "openai")
         embedding_model = data["embedding_model"]
         chunking_strategy = data["chunking_strategy"]
 
-        _check_visibility_and_strategies(visibility, embedding_model, chunking_strategy)
+        _check_visibility_and_chunking(visibility, chunking_strategy)
+        # embedding 模型/供应商/维度均以模型注册表为准
+        dims, embedding_provider = await _resolve_embedding_model(db, redis, user, embedding_model)
 
         # 公开库需管理员角色；私有库校验可建数量配额
         if visibility == "public":
@@ -122,18 +150,9 @@ class KnowledgeBaseService:
                 )
 
         # 同 create_by 下名称不得重复（未删除）
-        existing = await knowledge_base_repository.get_by_name_and_owner(
-            db, data["name"], user.id
-        )
+        existing = await knowledge_base_repository.get_by_name_and_owner(db, data["name"], user.id)
         if existing:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "知识库名称已存在")
-
-        # ES 索引维度 = embedding 模型维度，初始化失败则创建失败（回滚）
-        dims = get_embedding_dim(embedding_provider, embedding_model)
-        if dims <= 0:
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"无法获取 embedding 模型 {embedding_model} 的维度"
-            )
 
         kb = SysKnowledgeBase(
             name=data["name"],
@@ -155,7 +174,7 @@ class KnowledgeBaseService:
         if not await ensure_kb_index(created.id, dims):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "ES 索引初始化失败")
 
-        await redis.delete(f"kb:list:{user.id}")
+        await _invalidate_cache(redis, user.id, created.id)
         return created.id
 
     async def _resolve_private_kb_limit(self, db: AsyncSession, user_id: int) -> int:
@@ -207,26 +226,31 @@ class KnowledgeBaseService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         await _check_manage_permission(db, kb, user)
 
-        # 软删知识库与关联文档（分块记录保留）
+        # 软删知识库与关联文档，物理清分块行 + 删 ES 索引（三者一致，避免残留孤儿分块）
         await knowledge_base_repository.soft_delete_by_ids(db, [kb_id])
         doc_ids = await knowledge_document_repository.list_ids_by_kb(db, kb_id)
         if doc_ids:
             await knowledge_document_repository.soft_delete_by_ids(db, doc_ids)
+            await knowledge_chunk_repository.delete_by_documents(db, doc_ids)
 
         await delete_kb_index(kb_id)
         await _invalidate_cache(redis, user.id, kb_id)
 
     async def get_detail(self, db: AsyncSession, redis: Redis, kb_id: int, user_id: int) -> dict:
-        """知识库详情（含统计），私有库仅 owner 可见；走 30min 缓存。"""
-        cached = await redis.get(f"kb:detail:{kb_id}")
-        if cached:
-            return json.loads(cached)
+        """知识库详情（含统计），私有库仅 owner 可见；走 30min 缓存。
 
+        可见性校验必须先于缓存读取：缓存为库级共享键，若先读缓存则 owner 首次
+        访问后其他用户可命中缓存读到私有库详情（越权）。
+        """
         kb = await knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         if kb.visibility == "private" and kb.create_by != user_id:
             raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权查看他人私有知识库")
+
+        cached = await redis.get(f"kb:detail:{kb_id}")
+        if cached:
+            return json.loads(cached)
 
         from app.models.schema.knowledge_base import KnowledgeBaseVO
 
@@ -262,9 +286,7 @@ class KnowledgeBaseService:
                 return json.loads(cached)
 
         if admin:
-            items, total = await knowledge_base_repository.paginate_all(
-                db, keyword, page, size
-            )
+            items, total = await knowledge_base_repository.paginate_all(db, keyword, page, size)
         else:
             items, total = await knowledge_base_repository.paginate_visible(
                 db, user_id, keyword, page, size

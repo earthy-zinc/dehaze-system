@@ -13,6 +13,7 @@ import com.pei.dehaze.model.form.CompareReportForm;
 import com.pei.dehaze.model.vo.CompareReportResultVO;
 import com.pei.dehaze.service.CompareService;
 import com.pei.dehaze.service.SysAlgorithmService;
+import com.pei.dehaze.security.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -35,7 +37,8 @@ public class CompareServiceImpl implements CompareService {
     @Override
     public CompareReportResultVO generateReport(CompareReportForm form) {
         SysPredLog predLog = predLogMapper.selectById(form.getLogId());
-        if (predLog == null) {
+        // 非本人处理记录按不存在处理，不泄露资源存在性
+        if (predLog == null || !Objects.equals(predLog.getCreateBy(), SecurityUtils.getUserId())) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "处理记录不存在");
         }
         if (predLog.getStatus() != LogStatusEnum.COMPLETED) {
@@ -47,11 +50,9 @@ public class CompareServiceImpl implements CompareService {
         reportTask.setPredUrl(predLog.getOriginUrl());
         reportTask.setGtUrl(predLog.getPredUrl());
         reportTask.setStatus(LogStatusEnum.PROCESSING);
+        reportTask.setTaskType("report");
         reportTask.setResult(JSONUtil.createObj()
                 .set("logId", form.getLogId())
-                .set("format", form.getFormat())
-                .set("includeMetrics", form.getIncludeMetrics())
-                .set("includeFilters", form.getIncludeFilters())
                 .toString());
         evalLogMapper.insert(reportTask);
 

@@ -22,12 +22,14 @@ class DictExportHandler(ExportHandler):
     async def estimate_count(self, db: AsyncSession, query_params: dict) -> int:
         keywords = query_params.get("keywords")
         type_code = query_params.get("typeCode")
+        status = query_params.get("status")
         _, total = await dict_repository.get_page(
             db,
             page=1,
             page_size=1,
             keywords=keywords,
             type_code=type_code,
+            status=status,
         )
         return int(total)
 
@@ -42,6 +44,7 @@ class DictExportHandler(ExportHandler):
         params = ctx.query_params
         keywords = params.get("keywords")
         type_code = params.get("typeCode")
+        status = params.get("status")
         total = ctx.total_count or await self.estimate_count(db, params)
 
         page = 1
@@ -54,6 +57,7 @@ class DictExportHandler(ExportHandler):
                 page_size=page_size,
                 keywords=keywords,
                 type_code=type_code,
+                status=status,
             )
             if not items:
                 break

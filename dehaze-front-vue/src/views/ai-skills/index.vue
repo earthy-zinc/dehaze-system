@@ -15,21 +15,22 @@ const skillStore = useAdminSkillStore();
 const activeTab = ref<"market" | "manage">("market");
 
 async function handleSaved(skill: SkillVO) {
-  // 创建即试用：保存后引导试运行，验证指令效果再交付使用
+  // 新建/上传入库后为禁用态：引导管理员启用，否则 Agent 侧不可见
+  if (skill.status === 1) return;
   try {
     await ElMessageBox.confirm(
-      "是否立即试运行该 Skill 验证指令效果？",
+      "该 Skill 已入库但处于禁用态，是否立即启用？",
       "保存成功",
       {
         type: "success",
-        confirmButtonText: "试运行",
+        confirmButtonText: "启用",
         cancelButtonText: "稍后",
       }
     );
   } catch {
     return;
   }
-  skillStore.openTestPanel(skill);
+  await skillStore.switchSkillStatus(skill, 1);
 }
 
 onMounted(() => {

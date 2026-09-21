@@ -17,7 +17,7 @@ import (
 var (
 	// 默认使用 Nop，避免在未显式 Init 时出现空指针。
 	_globalLogger *zap.Logger = zap.NewNop()
-	_once         sync.Once // 保证Init方法仅执行一次
+	_once         sync.Once   // 保证Init方法仅执行一次
 )
 
 func InitDefaultLogger() {

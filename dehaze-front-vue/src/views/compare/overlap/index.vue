@@ -3,12 +3,7 @@ import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import {
-  Algorithm,
-  AlgorithmAPI,
-  ModelAPI,
-  CompareReportForm,
-} from "dehaze-sdk-js";
+import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
 
 interface MetricItem {
   label: string;
@@ -44,30 +39,18 @@ const algorithmLoading = ref(false);
 const algorithmError = ref(false);
 const metrics = ref<MetricItem[]>();
 
-// Export report
-const reportDialogVisible = ref(false);
+// Export report（logId 为去雾处理的预测记录ID，来自 imageShowStore.predLogId）
 const reportGenerating = ref(false);
-const lastLogId = ref(0);
-const reportForm = ref<CompareReportForm>({
-  logId: 0,
-  format: "pdf",
-  includeMetrics: true,
-  includeFilters: false,
-});
-
-function openReportDialog() {
-  reportForm.value.logId = lastLogId.value;
-  reportDialogVisible.value = true;
-}
 
 async function handleExportReport() {
-  if (reportForm.value.logId === 0) {
+  const logId = imageShowStore.predLogId;
+  if (!logId) {
     ElMessage.warning("当前没有可导出的对比记录");
     return;
   }
   reportGenerating.value = true;
   try {
-    const res = await ModelAPI.generateReport(reportForm.value);
+    const res = await ModelAPI.generateReport({ logId });
     if (!res.taskId) {
       throw new Error("未返回任务ID");
     }
@@ -78,7 +61,7 @@ async function handleExportReport() {
         if (status.downloadUrl) {
           const link = document.createElement("a");
           link.href = status.downloadUrl;
-          link.download = `dehaze-report.${reportForm.value.format}`;
+          link.download = "dehaze-report.html";
           link.click();
         } else {
           ElMessage.success("报告生成完成，请前往任务中心下载");
@@ -90,9 +73,11 @@ async function handleExportReport() {
       }
       await new Promise((r) => setTimeout(r, 2000));
     }
-    reportDialogVisible.value = false;
   } catch (e: any) {
-    ElMessage.error("导出报告失败：" + (e.message || "未知错误"));
+    // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底轮询中本地抛出的生成失败
+    if (!e.isAxiosError) {
+      ElMessage.error("导出报告失败：" + (e.message || "未知错误"));
+    }
   } finally {
     reportGenerating.value = false;
   }
@@ -176,9 +161,8 @@ onMounted(() => {
     .then((res) => {
       algorithmInfo.value = res;
     })
-    .catch((e: any) => {
+    .catch(() => {
       algorithmError.value = true;
-      ElMessage.error("获取算法信息失败：" + (e.message || "未知错误"));
     })
     .finally(() => {
       algorithmLoading.value = false;
@@ -193,7 +177,6 @@ onMounted(() => {
       if (res.status === 3) {
         throw new Error(res.errorMessage || "评估失败");
       }
-      lastLogId.value = (res as any).logId || 0;
       metrics.value = Object.entries(res.metrics || {}).map(
         ([label, value]) => ({
           label,
@@ -202,7 +185,10 @@ onMounted(() => {
       );
     })
     .catch((e: any) => {
-      ElMessage.error("评估失败：" + (e.message || "未知错误"));
+      // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底本地抛出的评估失败
+      if (!e.isAxiosError) {
+        ElMessage.error("评估失败：" + (e.message || "未知错误"));
+      }
     });
 });
 </script>
@@ -213,7 +199,7 @@ onMounted(() => {
       <div class="evaluation-header">
         <el-button
           type="primary"
-          @click="openReportDialog"
+          @click="handleExportReport"
           :loading="reportGenerating"
         >
           <el-icon><Download /></el-icon>
@@ -380,32 +366,6 @@ onMounted(() => {
         </div>
       </div>
     </el-card>
-
-    <el-dialog v-model="reportDialogVisible" title="导出对比报告" width="420px">
-      <el-form label-position="top">
-        <el-form-item label="报告格式">
-          <el-radio-group v-model="reportForm.format">
-            <el-radio label="pdf">PDF</el-radio>
-            <el-radio label="image">图片 (PNG)</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="包含内容">
-          <el-checkbox v-model="reportForm.includeMetrics"
-            >包含评价指标</el-checkbox
-          >
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="reportDialogVisible = false">取消</el-button>
-        <el-button
-          type="primary"
-          @click="handleExportReport"
-          :loading="reportGenerating"
-        >
-          导出
-        </el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 

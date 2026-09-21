@@ -11,9 +11,9 @@ from app.service.ai_mcp.mcp_presets import PRESET_ENDPOINTS
 
 
 def _server(
-    credentials=None,
-    protocol_type="streamable-http",
-    endpoint="https://api.example.com/mcp",
+    credentials: dict | None = None,
+    protocol_type: str = "streamable-http",
+    endpoint: str | None = "https://api.example.com/mcp",
 ):
     return SysAiMcpServer(
         name="srv",
@@ -70,16 +70,9 @@ class TestApplySsrfGuard:
             return False
 
         monkeypatch.setattr("app.service.ai_mcp.mcp_connection.is_safe_url", _safe)
-        ok, reason = await apply_ssrf_guard(
-            _server(endpoint="http://192.168.1.1/mcp")
-        )
+        ok, reason = await apply_ssrf_guard(_server(endpoint="http://192.168.1.1/mcp"))
         assert not ok
         assert "不安全" in reason
-
-    async def test_stdio_local_process_bypasses(self):
-        ok, reason = await apply_ssrf_guard(_server(protocol_type="stdio", endpoint=None))
-        assert ok is True
-        assert reason == ""
 
     async def test_missing_endpoint_rejected(self):
         ok, _ = await apply_ssrf_guard(_server(endpoint=None))

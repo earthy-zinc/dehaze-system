@@ -11,6 +11,7 @@ from app.dependencies.redis import get_redis
 from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.models.schema.ai_provider import (
     ProviderCreate,
+    ProviderEnabledResult,
     ProviderKeyCreate,
     ProviderKeyResult,
     ProviderKeyUpdate,
@@ -42,7 +43,7 @@ async def _run_connection_test(provider_id: int) -> None:
         redis = await get_redis_client()
         async with get_db_session() as db:
             await test_connection(db, redis, provider_id)
-    except Exception as exc:  # noqa: BLE001 - 后台连通性测试失败不影响保存流程
+    except Exception as exc:
         logger.warning("供应商 %s 连通性测试后台执行失败: %s", provider_id, exc)
 
 
@@ -63,7 +64,9 @@ async def list_providers(
 
 
 @router.get(
-    "/providers/enabled", response_model=Result[list[ProviderResult]], summary="启用供应商列表"
+    "/providers/enabled",
+    response_model=Result[list[ProviderEnabledResult]],
+    summary="启用供应商列表(精简视图,不含供应商内部配置)",
 )
 async def list_enabled_providers(
     db: AsyncSession = Depends(get_db),

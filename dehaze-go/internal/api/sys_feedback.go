@@ -82,7 +82,10 @@ func (api *FeedbackApi) ListMyRatings(c *gin.Context) {
 		return
 	}
 
-	pageNum, pageSize := parsePagination(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	result, err := api.ratingService.ListMyRatings(c.Request.Context(), userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
@@ -112,22 +115,16 @@ func (api *FeedbackApi) GetRatingByPrediction(c *gin.Context) {
 }
 
 func (api *FeedbackApi) ListRatings(c *gin.Context) {
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.RatingPageQuery{
 		Keywords:  c.Query("keywords"),
 		StartTime: c.Query("startTime"),
 		EndTime:   c.Query("endTime"),
-		PageNum:   1,
-		PageSize:  10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:   pageNum,
+		PageSize:  pageSize,
 	}
 	if v := c.Query("algorithmId"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
@@ -235,7 +232,10 @@ func (api *FeedbackApi) ListMyFeedback(c *gin.Context) {
 		return
 	}
 
-	pageNum, pageSize := parsePagination(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	result, err := api.feedbackService.ListMyFeedback(c.Request.Context(), userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
@@ -293,6 +293,10 @@ func (api *FeedbackApi) SupplementFeedback(c *gin.Context) {
 }
 
 func (api *FeedbackApi) ListFeedback(c *gin.Context) {
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.FeedbackPageQuery{
 		Keywords:      c.Query("keywords"),
 		FeedbackType:  c.Query("feedbackType"),
@@ -300,18 +304,8 @@ func (api *FeedbackApi) ListFeedback(c *gin.Context) {
 		RelatedModule: c.Query("relatedModule"),
 		StartTime:     c.Query("startTime"),
 		EndTime:       c.Query("endTime"),
-		PageNum:       1,
-		PageSize:      10,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:       pageNum,
+		PageSize:      pageSize,
 	}
 	if v := c.Query("priority"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -430,18 +424,39 @@ func (api *FeedbackApi) GetFeedbackStats(c *gin.Context) {
 	common.OkWithDetailed(result, "查询成功", c)
 }
 
-func parsePagination(c *gin.Context) (int, int) {
-	pageNum := 1
-	pageSize := 10
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			pageNum = n
-		}
+// parsePaginationWithSize 解析分页参数，对齐 python 各端点的
+// `pageNum: Query(default=1, ge=1)` / `pageSize: Query(default=<N>, ge=1, le=100)`：
+// 未传取 defaultSize；传了但非数字、<1 或 >100 一律 A0400，不做静默钳制
+// （静默钳制会让 pageSize=500 在 go 返回 500 行、在 python 报 A0400，形成客户端可触发的行为分叉）。
+//
+// 各端点的 defaultSize 必须逐个对 python router 核实，不可一刀切 10——favorite/message/
+// message_template 是 20。它是分页解析的唯一实现，不得再新增第二套。
+// parsePaginationNamed 与 parsePaginationWithSize 同语义，但参数名可配——
+// python 模型售价端点用的是 `page`/`size`（schema/ai_model_price.py:63），不是 pageNum/pageSize。
+func parsePaginationNamed(c *gin.Context, numKey, sizeKey string, defaultSize int) (int, int, bool) {
+	rawPageNum, numOK := parseOptionalInt(c.Query(numKey))
+	rawPageSize, sizeOK := parseOptionalInt(c.Query(sizeKey))
+	pageNum, pageSize := 1, defaultSize
+	if rawPageNum != nil {
+		pageNum = *rawPageNum
 	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			pageSize = n
-		}
+	if rawPageSize != nil {
+		pageSize = *rawPageSize
 	}
-	return pageNum, pageSize
+	if !numOK || !sizeOK || pageNum < 1 || pageSize < 1 || pageSize > 100 {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR,
+			"分页参数不合法："+numKey+">=1，1<="+sizeKey+"<=100"))
+		return 0, 0, false
+	}
+	return pageNum, pageSize, true
+}
+
+// parsePaginationWithSize pageNum/pageSize 端点的简写。
+func parsePaginationWithSize(c *gin.Context, defaultSize int) (int, int, bool) {
+	return parsePaginationNamed(c, "pageNum", "pageSize", defaultSize)
+}
+
+// parsePagination defaultSize=10 端点的简写（python BasePageQuery 主口径）。
+func parsePagination(c *gin.Context) (int, int, bool) {
+	return parsePaginationWithSize(c, 10)
 }

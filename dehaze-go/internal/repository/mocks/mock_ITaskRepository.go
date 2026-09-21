@@ -28,6 +28,63 @@ func (_m *MockITaskRepository) EXPECT() *MockITaskRepository_Expecter {
 	return &MockITaskRepository_Expecter{mock: &_m.Mock}
 }
 
+// CancelIfActive provides a mock function with given fields: ctx, id
+func (_m *MockITaskRepository) CancelIfActive(ctx context.Context, id int64) (int64, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CancelIfActive")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (int64, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) int64); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockITaskRepository_CancelIfActive_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CancelIfActive'
+type MockITaskRepository_CancelIfActive_Call struct {
+	*mock.Call
+}
+
+// CancelIfActive is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+func (_e *MockITaskRepository_Expecter) CancelIfActive(ctx interface{}, id interface{}) *MockITaskRepository_CancelIfActive_Call {
+	return &MockITaskRepository_CancelIfActive_Call{Call: _e.mock.On("CancelIfActive", ctx, id)}
+}
+
+func (_c *MockITaskRepository_CancelIfActive_Call) Run(run func(ctx context.Context, id int64)) *MockITaskRepository_CancelIfActive_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockITaskRepository_CancelIfActive_Call) Return(_a0 int64, _a1 error) *MockITaskRepository_CancelIfActive_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockITaskRepository_CancelIfActive_Call) RunAndReturn(run func(context.Context, int64) (int64, error)) *MockITaskRepository_CancelIfActive_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CountDatasetItems provides a mock function with given fields: ctx, datasetID
 func (_m *MockITaskRepository) CountDatasetItems(ctx context.Context, datasetID int64) (int64, error) {
 	ret := _m.Called(ctx, datasetID)

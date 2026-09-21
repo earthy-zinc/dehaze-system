@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+from typing import cast
+
 import redis
 
 from . import config
@@ -43,7 +45,8 @@ def disconnect_redis() -> None:
 
 def get_captcha(captcha_key: str) -> str | None:
     """根据 captchaKey 从 Redis 读取验证码明文（key 格式: captcha_code:{captchaKey}）。"""
-    return get_redis().get(f"captcha_code:{captcha_key}")
+    # redis-py 同步/异步共用一套签名，返回值是 ResponseT 泛型，静态推不出 str，此处显式收窄
+    return cast(str | None, get_redis().get(f"captcha_code:{captcha_key}"))
 
 
 def scan_keys(pattern: str, count: int = 1000) -> list[str]:
@@ -56,4 +59,4 @@ def delete_pattern(pattern: str) -> int:
     keys = scan_keys(pattern)
     if not keys:
         return 0
-    return get_redis().delete(*keys)
+    return cast(int, get_redis().delete(*keys))

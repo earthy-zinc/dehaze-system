@@ -19,7 +19,7 @@ CREATE TABLE `sys_recommendation_rule`
     `algorithm_ids` json                                                          NOT NULL COMMENT '候选算法ID列表（JSON数组）',
     `weight`       int                                                            NOT NULL DEFAULT 0 COMMENT '规则权重（数值越大越优先）',
     `enabled`      tinyint                                                        NOT NULL DEFAULT 1 COMMENT '是否启用(0:禁用;1:启用)',
-    `deleted`      tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`      bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`  datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`    bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',

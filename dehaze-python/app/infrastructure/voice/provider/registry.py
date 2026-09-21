@@ -10,7 +10,8 @@ VoiceAdminService 失效缓存即时生效，无需重启。Provider 实例按 e
 
 import json
 import logging
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any, Literal, overload
 
 from redis.asyncio import Redis
 
@@ -22,6 +23,7 @@ from app.infrastructure.voice.provider.cloud_asr import CloudAsrProvider
 from app.infrastructure.voice.provider.cloud_tts import CloudTtsProvider
 from app.infrastructure.voice.provider.local_asr import LocalAsrProvider
 from app.infrastructure.voice.provider.local_tts import LocalTtsProvider
+
 # 单例：显式注入真实依赖（无兜底路径；测试经 VoiceEngineRegistry(桩) 独立构造）
 from app.repository.voice_provider_repository import voice_provider_repository
 
@@ -40,7 +42,9 @@ def _local_engine_available(engine_type: str) -> bool:
     try:
         __import__(_LOCAL_ENGINE_DEP[engine_type])
         return True
-    except ImportError:
+    except ImportError as exc:
+        # "未安装"与"已安装但装载失败（依赖损坏）"都归为不可用；记录原始异常以便区分诊断
+        logger.warning("本地语音引擎依赖不可用(engine_type=%s): %s", engine_type, exc)
         return False
 
 
@@ -95,21 +99,25 @@ class VoiceEngineRegistry:
         try:
             redis = await self._redis_factory()
             await redis.delete(_ENGINE_CACHE_KEY.format(engine_type))
-        except Exception as exc:  # noqa: BLE001 - 缓存失效失败仅降级为等待 TTL 过期
+        except Exception as exc:
             logger.warning("失效语音引擎默认缓存失败(engine_type=%s): %s", engine_type, exc)
 
+    @overload
+    async def _resolve(self, engine_type: Literal["asr"]) -> ASRProvider: ...
+    @overload
+    async def _resolve(self, engine_type: Literal["tts"]) -> TTSProvider: ...
     async def _resolve(self, engine_type: str) -> ASRProvider | TTSProvider:
         cached = await self._cache_get(engine_type)
-        if (
-            engine_type in self._providers
-            and self._default_ids.get(engine_type) == (cached or {}).get("provider_id")
-        ):
+        if engine_type in self._providers and self._default_ids.get(engine_type) == (
+            cached or {}
+        ).get("provider_id"):
             # Redis 缓存与内存实例一致（含 Redis 不可用缓存为 None 的情况）：不查库直接复用
             return self._providers[engine_type]
         row = await self._load_default(engine_type, cached)
         if row is None:
             raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"未配置默认{engine_type}语音引擎，请检查 sys_voice_provider"
+                ResultCode.BUSINESS_ERROR,
+                f"未配置默认{engine_type}语音引擎，请检查 sys_voice_provider",
             )
         if self._default_ids.get(engine_type) == row.id and engine_type in self._providers:
             return self._providers[engine_type]
@@ -148,7 +156,7 @@ class VoiceEngineRegistry:
             redis = await self._redis_factory()
             raw = await redis.get(_ENGINE_CACHE_KEY.format(engine_type))
             return json.loads(raw) if raw else None
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("读取语音引擎默认缓存失败(engine_type=%s): %s", engine_type, exc)
             return None
 
@@ -157,15 +165,18 @@ class VoiceEngineRegistry:
             redis = await self._redis_factory()
             payload = json.dumps({"provider_id": row.id, "provider_code": row.provider_code})
             await redis.set(_ENGINE_CACHE_KEY.format(engine_type), payload, ex=_ENGINE_CACHE_TTL)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("写入语音引擎默认缓存失败(engine_type=%s): %s", engine_type, exc)
 
     @staticmethod
     def _instantiate(engine_type: str, provider: Any) -> ASRProvider | TTSProvider:
         """按 provider_code 实例化 Provider：'local' → 本地，其余 → 云端占位"""
         if provider.provider_code == "local":
-            return LocalAsrProvider(provider) if engine_type == "asr" else LocalTtsProvider(provider)
+            return (
+                LocalAsrProvider(provider) if engine_type == "asr" else LocalTtsProvider(provider)
+            )
         return CloudAsrProvider(provider) if engine_type == "asr" else CloudTtsProvider(provider)
+
 
 voice_engine_registry = VoiceEngineRegistry(
     repository=voice_provider_repository,

@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { mount, type VueWrapper } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 import Waterfall from "../index.vue";
@@ -23,14 +23,22 @@ vi.mock("@vueuse/core", () => ({
   }),
 }));
 
-// Mock utils
-vi.mock("@/utils", () => ({
-  assign: vi.fn((target, ...sources) => Object.assign(target, ...sources)),
-  getValue: vi.fn((item, selector) => [item[selector]]),
-  addClass: vi.fn(),
-  hasClass: vi.fn(() => false),
-  prefixStyle: vi.fn((prop) => prop),
-}));
+// Mock utils：局部 mock（保留其余真实导出，防止源码新增依赖后 mock 缺导出而全文件报错）。
+// hasIntersectionObserver 在 utils 模块导入时求值（jsdom 下为 false，会走 Lazy
+// "不支持 IntersectionObserver" 的抛错分支），强制为 true 并 stub 全局 IO，
+// 对齐浏览器的真实懒加载路径。
+vi.mock("@/utils", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/utils")>();
+  return {
+    ...actual,
+    hasIntersectionObserver: true,
+    assign: vi.fn((target, ...sources) => Object.assign(target, ...sources)),
+    getValue: vi.fn((item, selector) => [item[selector]]),
+    addClass: vi.fn(),
+    hasClass: vi.fn(() => false),
+    prefixStyle: vi.fn((prop) => prop),
+  };
+});
 
 describe("Waterfall Component", () => {
   const mockList = [
@@ -58,16 +66,30 @@ describe("Waterfall Component", () => {
       layoutHandle: vi.fn().mockResolvedValue(true),
     });
 
-    // Mock requestAnimationFrame
+    // Mock requestAnimationFrame（帧驱动改为定时器，cancel 对应清理，卸载后可停止循环）
     vi.stubGlobal(
       "requestAnimationFrame",
       vi.fn((cb) => setTimeout(cb, 16))
     );
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.stubGlobal(
+      "cancelAnimationFrame",
+      vi.fn((id) => clearTimeout(id))
+    );
+
+    // jsdom 无 IntersectionObserver，stub 空实现使 Lazy 懒加载挂载路径不抛错
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        disconnect() {}
+        observe() {}
+        unobserve() {}
+      }
+    );
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe("组件渲染", () => {
@@ -96,7 +118,7 @@ describe("Waterfall Component", () => {
         props: { list: mockList },
       });
 
-      const lazyImgs = wrapper.findAll("[data-testid='lazy-img']");
+      const lazyImgs = wrapper.findAll(".lazy__box");
       expect(lazyImgs).toHaveLength(mockList.length * 2);
     });
 
@@ -109,9 +131,10 @@ describe("Waterfall Component", () => {
       });
 
       const waterfallList = wrapper.find(".waterfall-list");
+      // jsdom 会把 #ff0000 归一化为 rgb() 形式
       expect(
         (waterfallList.element as HTMLDivElement).style.backgroundColor
-      ).toBe("#ff0000");
+      ).toBe("rgb(255, 0, 0)");
     });
   });
 
@@ -191,7 +214,11 @@ describe("Waterfall Component", () => {
         props: { list: mockList },
       });
 
-      // 等待 nextTick 确保 watcher 被触发
+      // mock 的 useCalculateCols 返回值恒定，watch 不会因宽度变化触发，
+      // 靠 list 变化驱动 watch → renderer(useDebounceFn 已 mock 为直调) → afterRender
+      await wrapper.setProps({
+        list: [...mockList, { id: "4", src: "image4.jpg" }],
+      });
       await nextTick();
 
       expect(wrapper.emitted("afterRender")).toBeTruthy();
@@ -213,67 +240,52 @@ describe("Waterfall Component", () => {
   });
 
   describe("滚动功能", () => {
-    it("应该正确初始化滚动", () => {
-      const wrapper = mount(Waterfall, {
-        props: { list: mockList },
-      });
-
-      expect(window.requestAnimationFrame).toHaveBeenCalled();
+    // rAF 被 stub 为 setTimeout(16)，假时钟下按帧推进断言 transform 可观测行为
+    // （useLayout mock 高度 800，正向阈值 -(800-700)=-100）
+    beforeEach(() => {
+      vi.useFakeTimers();
     });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function listTransform(wrapper: VueWrapper): string {
+      return (wrapper.find(".waterfall-list").element as HTMLDivElement).style
+        .transform;
+    }
 
     it("应该正确处理正向滚动", async () => {
       const wrapper = mount(Waterfall, {
-        props: {
-          list: mockList,
-          speed: 1,
-        },
+        props: { list: mockList, speed: 1 },
       });
 
-      const vm = wrapper.vm as any;
-      vm.wrapperHeight = 1000;
-      vm.translateY = -800;
-
-      // 手动调用滚动函数
-      vm.scroll();
-
-      expect(vm.translateY).toBe(-801);
+      expect(listTransform(wrapper)).toContain("translateY(0px)");
+      await vi.advanceTimersByTimeAsync(32);
+      expect(listTransform(wrapper)).toContain("translateY(-2px)");
+      wrapper.unmount();
     });
 
     it("应该正确处理反向滚动", async () => {
       const wrapper = mount(Waterfall, {
-        props: {
-          list: mockList,
-          speed: -1,
-        },
+        props: { list: mockList, speed: -1 },
       });
 
-      const vm = wrapper.vm as any;
-      vm.wrapperHeight = 1000;
-      vm.translateY = -100;
-
-      // 手动调用滚动函数
-      vm.scroll();
-
-      expect(vm.translateY).toBe(-101);
+      // 反向速度 translateY 递增，触及 0 即重置到 -(高度-700)
+      await vi.advanceTimersByTimeAsync(16);
+      expect(listTransform(wrapper)).toContain("translateY(-100px)");
+      wrapper.unmount();
     });
 
     it("应该在适当条件下重置位置实现无缝滚动", async () => {
       const wrapper = mount(Waterfall, {
-        props: {
-          list: mockList,
-          speed: 1,
-        },
+        props: { list: mockList, speed: 1 },
       });
 
-      const vm = wrapper.vm as any;
-      vm.wrapperHeight = 1000;
-      vm.translateY = -301; // 超过阈值
-
-      // 手动调用滚动函数
-      vm.scroll();
-
-      // 应该重置位置
-      expect(vm.translateY).toBe(-302);
+      // 连续推进 100 帧越过 -100 阈值后重置回顶部
+      await vi.advanceTimersByTimeAsync(16 * 100);
+      expect(listTransform(wrapper)).toContain("translateY(0px)");
+      wrapper.unmount();
     });
   });
 

@@ -56,9 +56,15 @@ class BillingAnomalyService:
         """
         redis = await _try_get_redis(user_id)
         try:
-            await _check_single_high(db, redis, user_id, billing_record, monthly_limit, self._anomaly_repository)
-            await _check_burst_peak(db, redis, user_id, billing_record, daily_limit, self._anomaly_repository)
-            await _check_empty_high_output(db, redis, user_id, billing_record, self._anomaly_repository)
+            await _check_single_high(
+                db, redis, user_id, billing_record, monthly_limit, self._anomaly_repository
+            )
+            await _check_burst_peak(
+                db, redis, user_id, billing_record, daily_limit, self._anomaly_repository
+            )
+            await _check_empty_high_output(
+                db, redis, user_id, billing_record, self._anomaly_repository
+            )
         except Exception as e:  # 异常检测失败不阻断主流程
             logger.warning("异常检测执行失败 user_id=%s: %s", user_id, e)
 
@@ -85,7 +91,9 @@ class BillingAnomalyService:
         except Exception as e:
             logger.warning("配额不足异常计数失败 user_id=%s: %s", user_id, e)
 
-    async def list_anomalies(self, db: AsyncSession, query: AnomalyRecordQuery) -> PageResult[AnomalyRecordResult]:
+    async def list_anomalies(
+        self, db: AsyncSession, query: AnomalyRecordQuery
+    ) -> PageResult[AnomalyRecordResult]:
         """异常清单分页查询（管理员 ai:billing:stat）"""
         items, total = await self._anomaly_repository.list_page(
             db,

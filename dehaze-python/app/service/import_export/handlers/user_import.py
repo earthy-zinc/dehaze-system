@@ -1,6 +1,4 @@
-"""
-用户导入处理器
-"""
+"""用户导入处理器（模板字段与 Java 权威实现对齐：角色按编码关联，密码统一使用默认密码）"""
 
 from __future__ import annotations
 
@@ -8,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.entity.sys_user import SysUser
+from app.repository.role_repository import role_repository
 from app.repository.user_repository import user_repository
 from app.service.import_export.models import (
     ImportError,
@@ -27,12 +26,10 @@ class UserImportHandler(ImportHandler):
         return [
             ImportFieldConfig(field="username", label="用户名", required=True, max_length=64),
             ImportFieldConfig(field="nickname", label="昵称", required=True, max_length=64),
-            ImportFieldConfig(field="password", label="密码", max_length=64),
             ImportFieldConfig(field="email", label="邮箱", max_length=128),
             ImportFieldConfig(field="mobile", label="手机号", max_length=20),
             ImportFieldConfig(field="gender", label="性别(男/女)"),
-            ImportFieldConfig(field="dept_id", label="部门ID"),
-            ImportFieldConfig(field="role_ids", label="角色ID(多个用英文逗号分隔)"),
+            ImportFieldConfig(field="roleCodes", label="角色编码(多个用英文逗号分隔)"),
         ]
 
     def get_template_sample_data(self) -> list[dict]:
@@ -40,12 +37,10 @@ class UserImportHandler(ImportHandler):
             {
                 "username": "zhangsan",
                 "nickname": "张三",
-                "password": "",
                 "email": "zhangsan@example.com",
                 "mobile": "13800138000",
                 "gender": "男",
-                "dept_id": "1",
-                "role_ids": "1",
+                "roleCodes": "guest",
             }
         ]
 
@@ -65,6 +60,14 @@ class UserImportHandler(ImportHandler):
         seen: set[str] = set()
         default_dept_id = options.extra.get("deptId")
 
+        role_codes: list[str] = []
+        for row in rows:
+            raw = str(row.get("roleCodes") or "").strip()
+            role_codes.extend(code.strip() for code in raw.split(",") if code.strip())
+        role_code_map = await role_repository.get_role_code_id_map(db, role_codes)
+
+        hashed_password = await hash_password_async(settings.DEFAULT_PASSWORD)
+
         for idx, row in enumerate(rows, start=2):
             try:
                 username = str(row.get("username") or "").strip()
@@ -79,9 +82,6 @@ class UserImportHandler(ImportHandler):
                     continue
                 seen.add(username)
 
-                password = str(row.get("password") or "").strip() or settings.DEFAULT_PASSWORD
-                hashed = await hash_password_async(password)
-
                 gender_str = str(row.get("gender") or "").strip()
                 if gender_str and gender_str not in ("男", "女"):
                     errors.append(
@@ -91,28 +91,25 @@ class UserImportHandler(ImportHandler):
                     continue
                 gender_value = 2 if gender_str == "女" else 1
 
-                dept_id_raw = row.get("dept_id")
-                dept_id = (
-                    int(dept_id_raw)
-                    if dept_id_raw not in (None, "", "None")
-                    else (default_dept_id or None)
-                )
-
                 role_ids: list[int] = []
-                role_ids_raw = row.get("role_ids")
+                role_ids_raw = str(row.get("roleCodes") or "").strip()
                 if role_ids_raw:
-                    role_ids = [
-                        int(rid.strip()) for rid in str(role_ids_raw).split(",") if rid.strip()
-                    ]
+                    for code in (c.strip() for c in role_ids_raw.split(",")):
+                        if not code:
+                            continue
+                        role_id = role_code_map.get(code)
+                        if role_id is None:
+                            raise ValueError(f"角色编码不存在或已停用: {code}")
+                        role_ids.append(role_id)
 
                 user = SysUser(
                     username=username,
                     nickname=nickname,
-                    password=hashed,
+                    password=hashed_password,
                     email=str(row.get("email") or "").strip() or None,
                     mobile=str(row.get("mobile") or "").strip() or None,
                     gender=gender_value,
-                    dept_id=dept_id,
+                    dept_id=default_dept_id,
                     status=1,
                 )
                 await user_repository.create_user(db, user, role_ids)

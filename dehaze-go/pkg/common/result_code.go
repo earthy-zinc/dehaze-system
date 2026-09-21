@@ -69,23 +69,25 @@ var (
 	DATA_STATE_NOT_ALLOW = &ResultCode{"A0502", "数据状态不允许"}
 	OPERATION_NOT_ALLOW  = &ResultCode{"A0503", "操作不允许"}
 	DATA_BIND_EXISTS     = &ResultCode{"A0504", "存在关联数据，无法删除"}
+	// 用户模块受保护资源（超级管理员）错误码，与 Python/Java 端对齐
+	ROOT_USER_PROTECTED = &ResultCode{"A0505", "超级管理员不可删除"}
 
 	// 会员模块业务错误码 A051x
-	MEMBER_NOT_FOUND      = &ResultCode{"A0510", "会员不存在"}
-	MEMBER_FROZEN         = &ResultCode{"A0511", "会员已冻结"}
-	SIGN_IN_ALREADY       = &ResultCode{"A0512", "今日已签到"}
-	GROWTH_INSUFFICIENT   = &ResultCode{"A0513", "成长值不足"}
+	MEMBER_NOT_FOUND       = &ResultCode{"A0510", "会员不存在"}
+	MEMBER_FROZEN          = &ResultCode{"A0511", "会员已冻结"}
+	SIGN_IN_ALREADY        = &ResultCode{"A0512", "今日已签到"}
+	GROWTH_INSUFFICIENT    = &ResultCode{"A0513", "成长值不足"}
 	BENEFIT_CONFIG_INVALID = &ResultCode{"A0514", "权益配置无效"}
-	QUOTA_EXCEEDED        = &ResultCode{"A0515", "配额已用尽"}
+	QUOTA_EXCEEDED         = &ResultCode{"A0515", "配额已用尽"}
 
 	// 套餐模块业务错误码 A052x
-	PACKAGE_NOT_FOUND    = &ResultCode{"A0520", "套餐不存在"}
-	PACKAGE_OFF_SHELF    = &ResultCode{"A0521", "套餐已下架"}
-	PACKAGE_HAS_ORDERS   = &ResultCode{"A0522", "套餐下已有关联订单，无法删除"}
-	COUPON_NOT_FOUND     = &ResultCode{"A0523", "优惠券不存在"}
-	COUPON_EXPIRED       = &ResultCode{"A0524", "优惠券已过期"}
-	COUPON_ALREADY_USED  = &ResultCode{"A0525", "优惠券已使用"}
-	COUPON_STOCK_EMPTY   = &ResultCode{"A0526", "优惠券已领完"}
+	PACKAGE_NOT_FOUND     = &ResultCode{"A0520", "套餐不存在"}
+	PACKAGE_OFF_SHELF     = &ResultCode{"A0521", "套餐已下架"}
+	PACKAGE_HAS_ORDERS    = &ResultCode{"A0522", "套餐下已有关联订单，无法删除"}
+	COUPON_NOT_FOUND      = &ResultCode{"A0523", "优惠券不存在"}
+	COUPON_EXPIRED        = &ResultCode{"A0524", "优惠券已过期"}
+	COUPON_ALREADY_USED   = &ResultCode{"A0525", "优惠券已使用"}
+	COUPON_STOCK_EMPTY    = &ResultCode{"A0526", "优惠券已领完"}
 	COUPON_NOT_APPLICABLE = &ResultCode{"A0527", "优惠券不适用于该套餐"}
 	COUPON_LIMIT_EXCEEDED = &ResultCode{"A0528", "超过每人限领数量"}
 	COUPON_STATUS_INVALID = &ResultCode{"A0529", "优惠券状态无效"}
@@ -93,24 +95,25 @@ var (
 	PACKAGE_IN_PROMOTION  = &ResultCode{"A052B", "套餐参与进行中促销活动，无法下架"}
 
 	// 订单模块业务错误码 A053x
-	ORDER_NOT_FOUND       = &ResultCode{"A0530", "订单不存在"}
-	ORDER_STATUS_INVALID  = &ResultCode{"A0531", "订单状态不允许此操作"}
-	ORDER_EXPIRED         = &ResultCode{"A0532", "订单已超时"}
-	ORDER_ALREADY_PAID    = &ResultCode{"A0533", "订单已支付"}
-	REFUND_TIME_EXCEEDED  = &ResultCode{"A0534", "超过退款时限"}
-	REFUND_USAGE_EXCEEDED = &ResultCode{"A0535", "权益使用超限"}
-	REFUND_NOT_SUPPORTED  = &ResultCode{"A0536", "该套餐不支持退款"}
-	REFUND_NOT_FOUND      = &ResultCode{"A0537", "退款记录不存在"}
+	ORDER_NOT_FOUND         = &ResultCode{"A0530", "订单不存在"}
+	ORDER_STATUS_INVALID    = &ResultCode{"A0531", "订单状态不允许此操作"}
+	ORDER_EXPIRED           = &ResultCode{"A0532", "订单已超时"}
+	ORDER_ALREADY_PAID      = &ResultCode{"A0533", "订单已支付"}
+	REFUND_TIME_EXCEEDED    = &ResultCode{"A0534", "超过退款时限"}
+	REFUND_USAGE_EXCEEDED   = &ResultCode{"A0535", "权益使用超限"}
+	REFUND_NOT_SUPPORTED    = &ResultCode{"A0536", "该套餐不支持退款"}
+	REFUND_NOT_FOUND        = &ResultCode{"A0537", "退款记录不存在"}
 	PAYMENT_AMOUNT_MISMATCH = &ResultCode{"A0538", "支付金额与订单金额不一致"}
-	DUPLICATE_ORDER       = &ResultCode{"A0539", "短时间内重复下单"}
-	REFUND_ALREADY_EXISTS = &ResultCode{"A053A", "该订单已存在退款申请"}
+	DUPLICATE_ORDER         = &ResultCode{"A0539", "短时间内重复下单"}
+	REFUND_ALREADY_EXISTS   = &ResultCode{"A053A", "该订单已存在退款申请"}
+	BALANCE_INSUFFICIENT    = &ResultCode{"A053B", "余额不足"}
 
 	// 反馈评价模块业务错误码 A054x
 	RATING_ALREADY_EXISTS    = &ResultCode{"A0540", "该处理记录已评价"}
 	RATING_NOT_FOUND         = &ResultCode{"A0541", "评价不存在"}
 	RATING_EXPIRED           = &ResultCode{"A0542", "已超过评价时限"}
 	FEEDBACK_NOT_FOUND       = &ResultCode{"A0543", "反馈不存在"}
-	FEEDBACK_CLOSED         = &ResultCode{"A0544", "反馈已关闭"}
+	FEEDBACK_CLOSED          = &ResultCode{"A0544", "反馈已关闭"}
 	FEEDBACK_LIMIT_EXCEEDED  = &ResultCode{"A0545", "今日反馈次数已达上限"}
 	PREDICTION_LOG_NOT_FOUND = &ResultCode{"A0546", "处理记录不存在"}
 
@@ -126,9 +129,9 @@ var (
 	TEMPLATE_DISABLED              = &ResultCode{"A0558", "模板已禁用"}
 	MESSAGE_ALREADY_READ           = &ResultCode{"A0559", "消息已读"}
 
-	// A06xx: 操作相关
-	OPERATION_FAILED    = &ResultCode{"A0600", "操作失败"}
-	OPERATION_COMPLETED = &ResultCode{"A0601", "操作已完成"}
+	// AI 计费模块业务错误码 A068x
+	AI_REFUND_ALREADY_EXISTS = &ResultCode{"A0680", "退款申请已存在"}
+	REFUND_AUDIT_FAILED      = &ResultCode{"A0681", "退款审核失败"}
 
 	// A07xx: 文件上传与导入导出
 	USER_UPLOAD_FILE_ERROR          = &ResultCode{"A0700", "用户上传文件异常"}
@@ -161,6 +164,12 @@ var (
 	// B03xx: 资源相关
 	SYSTEM_RESOURCE_ERROR      = &ResultCode{"B0300", "系统资源异常"}
 	SYSTEM_RESOURCE_EXHAUSTION = &ResultCode{"B0310", "系统资源耗尽"}
+	// B04xx: 文件模块（与 Python/Java 端及文档错误码对齐）
+	FILE_NOT_FOUND             = &ResultCode{"B0401", "文件不存在"}
+	FILE_TOO_LARGE             = &ResultCode{"B0402", "文件大小超过限制"}
+	FILE_TYPE_NOT_SUPPORTED    = &ResultCode{"B0403", "不支持的文件类型"}
+	FILE_MD5_INVALID           = &ResultCode{"B0404", "MD5格式无效"}
+	FILE_ACCESS_DENIED         = &ResultCode{"B0407", "无权访问该文件"}
 	SYSTEM_RESOURCE_ACCESS_ERR = &ResultCode{"B0320", "系统资源访问异常"}
 	SYSTEM_READ_DISK_FILE_ERR  = &ResultCode{"B0321", "系统读取磁盘文件失败"}
 	TASK_CONCURRENT_EXCEED     = &ResultCode{"B0308", "导入导出任务并发数超限"}
@@ -227,6 +236,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0502": DATA_STATE_NOT_ALLOW,
 	"A0503": OPERATION_NOT_ALLOW,
 	"A0504": DATA_BIND_EXISTS,
+	"A0505": ROOT_USER_PROTECTED,
 	// 会员模块 A051x
 	"A0510": MEMBER_NOT_FOUND,
 	"A0511": MEMBER_FROZEN,
@@ -259,6 +269,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0538": PAYMENT_AMOUNT_MISMATCH,
 	"A0539": DUPLICATE_ORDER,
 	"A053A": REFUND_ALREADY_EXISTS,
+	"A053B": BALANCE_INSUFFICIENT,
 	// 反馈评价模块 A054x
 	"A0540": RATING_ALREADY_EXISTS,
 	"A0541": RATING_NOT_FOUND,
@@ -278,8 +289,9 @@ var allResultCodes = map[string]*ResultCode{
 	"A0557": NOTIFICATION_SETTING_NOT_FOUND,
 	"A0558": TEMPLATE_DISABLED,
 	"A0559": MESSAGE_ALREADY_READ,
-	"A0600": OPERATION_FAILED,
-	"A0601": OPERATION_COMPLETED,
+	// AI 计费模块 A068x
+	"A0680": AI_REFUND_ALREADY_EXISTS,
+	"A0681": REFUND_AUDIT_FAILED,
 	"A0700": USER_UPLOAD_FILE_ERROR,
 	"A0701": USER_UPLOAD_FILE_TYPE_NOT_MATCH,
 	"A0702": USER_UPLOAD_FILE_SIZE_EXCEEDS,
@@ -305,6 +317,11 @@ var allResultCodes = map[string]*ResultCode{
 	"B0310": SYSTEM_RESOURCE_EXHAUSTION,
 	"B0320": SYSTEM_RESOURCE_ACCESS_ERR,
 	"B0321": SYSTEM_READ_DISK_FILE_ERR,
+	"B0401": FILE_NOT_FOUND,
+	"B0402": FILE_TOO_LARGE,
+	"B0403": FILE_TYPE_NOT_SUPPORTED,
+	"B0404": FILE_MD5_INVALID,
+	"B0407": FILE_ACCESS_DENIED,
 
 	// C 类：第三方服务错误
 	"C0001": CALL_THIRD_PARTY_SERVICE_ERROR,

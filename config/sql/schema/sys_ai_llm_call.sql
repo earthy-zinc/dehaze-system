@@ -8,6 +8,8 @@
 -- （sys_ai_agent_thought.position，模型调用不总落在 thought 步骤边界，可为空）。
 -- input_snapshot(JSON) 存本轮输入构成（system/消息按角色计数/tools/用户信息）；
 -- output_snapshot(JSON) 存输出摘要（文本截断 + tool_calls 参数），不存完整输出正文；
+-- raw_request/raw_response 存 wire 级原始报文（审计原文，256KB 上限，超限截断标注）；
+-- start_time 为调用发起时刻(datetime(3)毫秒精度)，create_time 为结算落库时刻，两者并存；
 -- cached_tokens 存缓存命中 token（LlmClient 流式结束 usage 返回），未提供置 0。
 -- 日志/历史类表，只追加记录，不删除、不使用逻辑删除；保留 180 天由定时任务物理清理。
 -- ------------------------------------------------------------
@@ -19,6 +21,7 @@ CREATE TABLE `sys_ai_llm_call`
     `seq`               int                                                            NOT NULL COMMENT '调用序号(1起递增，贯穿推理步骤链路)',
     `step_position`     int                                                            NULL DEFAULT NULL COMMENT '关联推理步骤序号(关联sys_ai_agent_thought.position，可为空)',
     `model`             varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '本次调用模型(多步推理中可能切换模型)',
+    `start_time`        datetime(3)                                                    NULL DEFAULT NULL COMMENT '调用发起时刻(时间线排序锚点)',
     `status`            tinyint                                                        NOT NULL DEFAULT 1 COMMENT '调用状态(1:成功;2:失败;3:超时)',
     `error_type`        varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '失败类型',
     `duration_ms`       int                                                            NOT NULL DEFAULT 0 COMMENT '本次调用总耗时(毫秒)',
@@ -30,6 +33,8 @@ CREATE TABLE `sys_ai_llm_call`
     `input_snapshot`    json                                                           NULL COMMENT '本次调用输入构成JSON(system/消息按角色计数/tools/用户信息)',
     `output_snapshot`   json                                                           NULL COMMENT '本次调用输出摘要JSON(文本截断 + tool_calls参数)',
     `attempts`          json                                                           NULL COMMENT '物理调用尝试明细JSON(逐Key/逐路由: provider_id/key_id/model/status/error_code/latency_ms)',
+    `raw_request`       json                                                           NULL COMMENT 'wire级原始请求体JSON(实际发送的完整请求体，不存headers/URL/API Key)',
+    `raw_response`      json                                                           NULL COMMENT 'wire级原始响应JSON(流式聚合的等价非流式结构；失败存{"error":{...}})',
     `create_time`       datetime                                                       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_trace_seq` (`trace_id`, `seq`) USING BTREE,

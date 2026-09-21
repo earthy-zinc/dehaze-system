@@ -1,3 +1,4 @@
+from langchain.agents.middleware.types import ModelRequest, ModelResponse
 from langchain_core.messages import AIMessage
 
 from app.service.ai.middleware.dehaze_hooks_middleware import DehazeHooksMiddleware
@@ -19,18 +20,16 @@ def _make_middleware():
     return ctx, DehazeHooksMiddleware(ctx)
 
 
-class _Request:
-    state = {"messages": []}
-    system_message = None
+class _Request(ModelRequest):
+    """ModelRequest 测试替身：单测直调中间件，仅提供 state/system_message。
 
-    def override(self, system_message=None):
-        self.system_message = system_message
-        return self
+    直调路径不涉及 model/messages 装配，故以 object.__setattr__ 绕过
+    ModelRequest.__setattr__ 的弃用告警直接置入所需字段。
+    """
 
-
-class _Resp:
-    def __init__(self, content="ok"):
-        self.result = AIMessage(content=content)
+    def __init__(self):
+        object.__setattr__(self, "state", {"messages": []})
+        object.__setattr__(self, "system_message", None)
 
 
 def _install(monkeypatch, handler_flag_key="hit"):
@@ -43,10 +42,15 @@ def _install(monkeypatch, handler_flag_key="hit"):
 
     async def _handler(request):
         handler_called[handler_flag_key] = True
-        return _Resp()
+        return ModelResponse(result=[AIMessage(content="ok")])
 
-    monkeypatch.setattr("app.service.ai.middleware.dehaze_hooks_middleware.interrupt", _fake_interrupt)
-    monkeypatch.setattr("app.service.ai.middleware.dehaze_hooks_middleware.interrupt_handler", StubInterruptHandler())
+    monkeypatch.setattr(
+        "app.service.ai.middleware.dehaze_hooks_middleware.interrupt", _fake_interrupt
+    )
+    monkeypatch.setattr(
+        "app.service.ai.middleware.dehaze_hooks_middleware.interrupt_handler",
+        StubInterruptHandler(),
+    )
     return captured, handler_called, _handler
 
 
@@ -60,13 +64,13 @@ async def test_precharge_quota_becomes_interrupt(monkeypatch, mock_redis):
 
     assert captured["interrupt_data"]["type"] == "quota"
     assert captured["interrupt_data"]["stream_session_id"] == "s1"
-    assert "upgrade_tip" in captured["interrupt_data"]["data"]
+    assert "upgradeTip" in captured["interrupt_data"]["data"]
     assert handler_called.get("hit")
     assert "precharge_blocked" not in ctx
 
 
 async def test_before_model_quota_becomes_interrupt(monkeypatch, mock_redis):
-    ctx, mw = _make_middleware()
+    _ctx, mw = _make_middleware()
 
     class _Hooks:
         async def run_hooks(self, point, state):
@@ -111,12 +115,10 @@ async def test_quota_data_assembly_failure_sets_error_flag(monkeypatch):
     async def _boom(db):
         raise RuntimeError("quota read failed")
 
-    monkeypatch.setattr(
-        "app.service.billing.quota_service.quota_service.get_used", _boom
-    )
+    monkeypatch.setattr("app.service.billing.quota_service.quota_service.get_used", _boom)
 
     await mw.awrap_model_call(request=_Request(), handler=handler)
 
     assert captured["interrupt_data"]["type"] == "quota"
-    assert captured["interrupt_data"]["data"]["quota_data_error"] is True
+    assert captured["interrupt_data"]["data"]["quotaDataError"] is True
     assert handler_called.get("hit")

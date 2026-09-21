@@ -7,7 +7,8 @@ piper_tts_engine），云端 Provider 为占位（厂商适配待实现）。
 """
 
 import abc
-from typing import AsyncIterator, ClassVar
+from collections.abc import AsyncIterator
+from typing import ClassVar
 
 
 class ASRStreamSession(abc.ABC):

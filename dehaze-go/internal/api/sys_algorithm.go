@@ -294,11 +294,16 @@ func (api *AlgorithmApi) GetMonitorStatsReport(c *gin.Context) {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
 		return
 	}
+	// 与 python `days: int = Query(default=7, ge=1)` 同口径：非整数或非正值一律 A0400。
+	// 不得静默回退默认值——那会让 days=0 在 go 按 7 天出报表、在 python 报参数错误。
 	days := 7
 	if d := c.Query("days"); d != "" {
-		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
-			days = parsed
+		parsed, convErr := strconv.Atoi(d)
+		if convErr != nil || parsed < 1 {
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "days 参数不正确"))
+			return
 		}
+		days = parsed
 	}
 	stats, err := api.algorithmService.GetMonitorStatsReport(ctx, id, days)
 	if err != nil {
@@ -306,4 +311,71 @@ func (api *AlgorithmApi) GetMonitorStatsReport(c *gin.Context) {
 		return
 	}
 	common.OkWithData(stats, c)
+}
+
+// Audit 审核算法（PUT /algorithms/:id/audit）
+func (api *AlgorithmApi) Audit(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	operatorID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	var form bo.AlgorithmAuditForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if err := api.algorithmService.Audit(ctx, id, operatorID, &form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithMessage("算法审核完成", c)
+}
+
+// CreateVersion 新增算法版本（POST /algorithms/:id/version，返回算法ID，对齐 python 契约）
+func (api *AlgorithmApi) CreateVersion(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	var form bo.AlgorithmVersionForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	algorithmID, err := api.algorithmService.CreateVersion(ctx, id, &form)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(algorithmID, c)
+}
+
+// RollbackVersion 版本回滚（POST /algorithms/:id/rollback?versionId=），
+// versionId 走 query 参数——与 python `Query(..., description="目标版本ID")` 一致。
+func (api *AlgorithmApi) RollbackVersion(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	versionID, err := strconv.ParseInt(c.Query("versionId"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "versionId 参数不正确"))
+		return
+	}
+	if err := api.algorithmService.RollbackVersion(ctx, id, versionID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithMessage("版本回滚成功", c)
 }

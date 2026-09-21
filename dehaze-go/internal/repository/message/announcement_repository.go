@@ -88,7 +88,7 @@ func (r *AnnouncementRepository) Update(ctx context.Context, id int64, updates m
 func (r *AnnouncementRepository) SoftDelete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).Model(&model.SysAnnouncement{}).
 		Where("id = ?", id).
-		Update("deleted", 1).Error
+		Update("deleted", gorm.Expr("id")).Error
 }
 
 var _ IAnnouncementRepository = (*AnnouncementRepository)(nil)

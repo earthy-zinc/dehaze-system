@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-
 from sqlalchemy import select
 
 from app.models.entity.sys_auto_renew import SysAutoRenew
@@ -18,29 +17,29 @@ pytestmark = pytest.mark.requires_db
 
 
 def _pkg(**overrides):
-    base = dict(
-        id=1,
-        name="黄金月卡",
-        package_type="vip",
-        level_code="level_1",
-        period_days=30,
-        status=1,
-        deleted=0,
-        original_price=10000,
-        sale_price=9000,
-    )
+    base = {
+        "id": 1,
+        "name": "黄金月卡",
+        "package_type": "vip",
+        "level_code": "level_1",
+        "period_days": 30,
+        "status": 1,
+        "deleted": 0,
+        "original_price": 10000,
+        "sale_price": 9000,
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 
 
 def _build_service(**kw):
-    defaults = dict(
-        auto_renew_repository=auto_renew_repository,
-        package_repository=SimpleNamespace(get_by_id=AsyncMock(return_value=_pkg())),
-        order_repository=order_repository,
-        payment_service=SimpleNamespace(complete_payment=AsyncMock()),
-        balance_account_service=SimpleNamespace(freeze=AsyncMock()),
-    )
+    defaults = {
+        "auto_renew_repository": auto_renew_repository,
+        "package_repository": SimpleNamespace(get_by_id=AsyncMock(return_value=_pkg())),
+        "order_repository": order_repository,
+        "payment_service": SimpleNamespace(complete_payment=AsyncMock()),
+        "balance_account_service": SimpleNamespace(freeze=AsyncMock()),
+    }
     defaults.update(kw)
     return AutoRenewService(**defaults)
 
@@ -90,7 +89,7 @@ class TestExecuteRenewal:
         return config
 
     async def test_balance_renewal_direct_deduct(self, db):
-        config = await self._seed_due_config(db)
+        await self._seed_due_config(db)
         freeze = AsyncMock()
         complete_payment = AsyncMock(return_value=None)
         payment_svc = SimpleNamespace(complete_payment=complete_payment)
@@ -104,9 +103,29 @@ class TestExecuteRenewal:
         assert count == 1
         freeze.assert_awaited_once_with(db, 100, 8550)  # 9000 * 0.95 = 8550
         complete_payment.assert_awaited_once()
+        # next_renew_time/fail_count 由 complete_payment（此处为 mock）负责回写，
+        # 本测试仅验证扣款与下单，配置回写见 test_mark_renewed_updates_config
         refreshed = await _get_config(db, 100, 1)
+        assert refreshed is not None
+        assert refreshed.fail_count == 0
+
+    async def test_mark_renewed_updates_config(self, db):
+        config = await self._seed_due_config(db, user_id=110)
+        await auto_renew_repository.mark_renewed(
+            db,
+            user_id=110,
+            package_id=1,
+            next_renew_time=datetime.now() + timedelta(days=30),
+            order_id=999,
+        )
+        await db.flush()
+        refreshed = await _get_config(db, 110, 1)
+        assert refreshed is not None
+        assert refreshed.id == config.id
         assert refreshed.fail_count == 0
         assert refreshed.next_renew_time is not None
+        assert refreshed.last_renew_order_id == 999
+        assert refreshed.status == 1
 
     async def test_wechat_half_auto_creates_pending_order(self, db):
         await self._seed_due_config(db, user_id=101, pay_method="wechat")
@@ -124,13 +143,15 @@ class TestExecuteRenewal:
         assert pending_order is not None
         assert pending_order.status == 1
         refreshed = await _get_config(db, 101, 1)
+        assert refreshed is not None
         assert refreshed.next_renew_time is not None
 
     async def test_fail_max_closes_config(self, db):
-        config = await self._seed_due_config(db, user_id=102, fail_count=3, status=1)
+        await self._seed_due_config(db, user_id=102, fail_count=3, status=1)
         svc = _build_service()
         await svc.execute_renewal(db)
 
         refreshed = await _get_config(db, 102, 1)
+        assert refreshed is not None
         assert refreshed.status == 0
         assert refreshed.close_reason

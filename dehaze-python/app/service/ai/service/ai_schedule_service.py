@@ -104,9 +104,7 @@ class ScheduledTaskService:
             task.enabled = form.enabled
 
         if form.cron is not None or form.timezone is not None or form.enabled == 1:
-            task.next_trigger_time = self._compute_next_trigger(
-                task.cron, task.timezone
-            )
+            task.next_trigger_time = self._compute_next_trigger(task.cron, task.timezone)
 
         await db.flush()
         await db.refresh(task)
@@ -152,7 +150,9 @@ class ScheduledTaskService:
         ]
         return PageResult[ScheduleListItem](list=rows, total=total)
 
-    async def set_enabled(self, db: AsyncSession, user_id: int, schedule_id: int, enabled: int) -> None:
+    async def set_enabled(
+        self, db: AsyncSession, user_id: int, schedule_id: int, enabled: int
+    ) -> None:
         """启停任务。
 
         - 启用(true)：若当前熔断停用(status=2)则同时 reset_circuit（清零计数+status=1）；
@@ -303,70 +303,59 @@ class ScheduledTaskService:
     def _describe_cron(self, cron: str) -> str:
         """Cron 的人类可读描述（自研简版映射）。
 
-        覆盖：每小时/每天/每周几/每月几号/每月的H点M分；无法归类时返回原始表达式。
+        覆盖：每小时/每天/每周几/每月几号/每月的H点M分。字段数不为 5 时返回原始
+        表达式；字段数符合但未匹配任何已知模式时返回 ``Cron(表达式)`` 兜底展示。
+        此函数为纯字符串映射，不应吞异常——归类逻辑若出错须直接暴露。
         """
-        try:
-            parts = cron.split()
-            if len(parts) != 5:
-                return cron
-            minute, hour, day, month, weekday = parts
-            weekday_num = {
-                "0": "日",
-                "1": "一",
-                "2": "二",
-                "3": "三",
-                "4": "四",
-                "5": "五",
-                "6": "六",
-                "7": "日",
-            }
+        parts = cron.split()
+        if len(parts) != 5:
+            return cron
+        minute, hour, day, month, weekday = parts
+        weekday_num = {
+            "0": "日",
+            "1": "一",
+            "2": "二",
+            "3": "三",
+            "4": "四",
+            "5": "五",
+            "6": "六",
+            "7": "日",
+        }
 
-            # 每分钟
-            if minute == "*" and hour == "*" and day == "*" and month == "*" and weekday == "*":
-                return "每分钟"
-            # 每小时（整点或指定分钟）
-            if hour == "*" and day == "*" and month == "*" and weekday == "*":
-                if minute == "0":
-                    return "每小时整点"
-                return f"每小时 {self._fmt_minute(minute)}分"
-            # 每天 H 点 M 分
-            if hour != "*" and day == "*" and month == "*" and weekday == "*":
-                return (
-                    f"每天 {self._fmt_hour(hour)}点"
-                    f"{self._fmt_minute(minute)}分"
-                )
-            # 每周几
-            if day == "*" and month == "*" and weekday != "*":
-                days = "、".join(
-                    f"周{weekday_num[w]}" for w in weekday.split(",") if w in weekday_num
-                )
-                time_part = (
-                    f"{self._fmt_hour(hour)}点"
-                    f"{self._fmt_minute(minute)}分"
-                    if hour != "*"
-                    else f"每小时{self._fmt_minute(minute)}分"
-                )
-                return f"每周{days} {time_part}"
-            # 每月几号
-            if month == "*" and weekday == "*" and day != "*":
-                days = "、".join(f"{d}号" for d in day.split(","))
-                time_part = (
-                    f"{self._fmt_hour(hour)}点"
-                    f"{self._fmt_minute(minute)}分"
-                    if hour != "*"
-                    else f"每小时{self._fmt_minute(minute)}分"
-                )
-                return f"每月{days} {time_part}"
-            # 每月的第几天（指定月份）
-            if month != "*" and weekday == "*" and day != "*":
-                months = "、".join(f"{m}月" for m in month.split(","))
-                days = "、".join(f"{d}号" for d in day.split(","))
-                return (
-                    f"每年{months}{days} {self._fmt_hour(hour)}点"
-                    f"{self._fmt_minute(minute)}分"
-                )
-        except Exception:
-            pass
+        # 每分钟
+        if minute == "*" and hour == "*" and day == "*" and month == "*" and weekday == "*":
+            return "每分钟"
+        # 每小时（整点或指定分钟）
+        if hour == "*" and day == "*" and month == "*" and weekday == "*":
+            if minute == "0":
+                return "每小时整点"
+            return f"每小时 {self._fmt_minute(minute)}分"
+        # 每天 H 点 M 分
+        if hour != "*" and day == "*" and month == "*" and weekday == "*":
+            return f"每天 {self._fmt_hour(hour)}点{self._fmt_minute(minute)}分"
+        # 每周几
+        if day == "*" and month == "*" and weekday != "*":
+            days = "、".join(f"周{weekday_num[w]}" for w in weekday.split(",") if w in weekday_num)
+            time_part = (
+                f"{self._fmt_hour(hour)}点{self._fmt_minute(minute)}分"
+                if hour != "*"
+                else f"每小时{self._fmt_minute(minute)}分"
+            )
+            return f"每周{days} {time_part}"
+        # 每月几号
+        if month == "*" and weekday == "*" and day != "*":
+            days = "、".join(f"{d}号" for d in day.split(","))
+            time_part = (
+                f"{self._fmt_hour(hour)}点{self._fmt_minute(minute)}分"
+                if hour != "*"
+                else f"每小时{self._fmt_minute(minute)}分"
+            )
+            return f"每月{days} {time_part}"
+        # 每月的第几天（指定月份）
+        if month != "*" and weekday == "*" and day != "*":
+            months = "、".join(f"{m}月" for m in month.split(","))
+            days = "、".join(f"{d}号" for d in day.split(","))
+            return f"每年{months}{days} {self._fmt_hour(hour)}点{self._fmt_minute(minute)}分"
         return f"Cron({cron})"
 
     def _fmt_hour(self, hour: str) -> str:

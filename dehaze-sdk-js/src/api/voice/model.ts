@@ -10,7 +10,7 @@ export interface StreamAsrSessionForm {
 export interface StreamAsrSessionVO {
   /** 会话 ID，用于查询识别结果与绑定 WebSocket */
   sessionId: string;
-  /** WebSocket 连接地址（业务后端 /ws/asr） */
+  /** WebSocket 连接地址（相对路径 `/ws/asr?sessionId=...&sid=...`，客户端按自身 origin 解析） */
   wsUrl: string;
 }
 
@@ -208,8 +208,8 @@ export interface VoiceProviderPageQuery extends PageQuery {
 export interface VoiceProviderTestResultVO {
   /** 结果说明 */
   result: string;
-  /** 是否连通（云端引擎待接入测试能力时为 null） */
-  connected: boolean | null;
+  /** 是否连通；云端引擎待接入测试能力时字段缺失（后端 NonNullJSONResponse 递归剔除 null） */
+  connected?: boolean;
 }
 
 /** 引擎 API Key */

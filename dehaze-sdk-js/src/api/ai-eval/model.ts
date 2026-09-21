@@ -187,3 +187,34 @@ export interface AiEvalReviewSubmitResult {
   agree: boolean;
   remark?: string;
 }
+
+/**
+ * 复核项详情（GET /eval-center/runs/{runId}/samples/{sampleId}）：
+ * 样本定义（任务目标/允许输入/可用工具/期望过程/期望结果/禁止行为）+ 本次执行快照
+ * （实际输出/执行异常/四维得分/各维度说明）+ 判分结论与风险等级，
+ * 供复核人据实判定，避免仅凭样本 ID 与判分结果盲判。
+ *
+ * 样本随数据集被删除时定义字段为 null；执行快照取自 run.results，仍可复核。
+ */
+export interface AiEvalReviewDetail {
+  runId: number;
+  agentId: number;
+  agentName?: string | null;
+  sampleId: number;
+  taskGoal: string;
+  allowedInput?: string | null;
+  expectedResult?: string | null;
+  expectedProcess?: string | null;
+  forbiddenBehavior?: string | null;
+  tools?: string[] | null;
+  riskLevel: string;
+  judgePassed: boolean;
+  /** 本次评测的智能体实际输出 */
+  actualOutput?: string | null;
+  /** 样本执行异常信息 */
+  error?: string | null;
+  /** 四维得分（键为 snake_case 指标名，无判分结果时为空） */
+  scores: Record<string, number>;
+  /** 判分模型给出的各维度说明（键为 snake_case 指标名） */
+  notes?: Record<string, string> | null;
+}

@@ -69,8 +69,13 @@ async def _resolve_reaches_internal(host: str) -> bool:
         logger.warning("SSRF 域名解析失败，保守拒绝 %s", host)
         return True
     for info in infos:
-        ip = info[4][0]
-        if _is_internal_ip(ip):
+        addr = info[4][0]
+        # sockaddr 联合类型含非 INET 族的 tuple[int, bytes]；其地址无法判定内外网，
+        # 按本函数"解析失败保守拒绝"的口径拒绝（此处不得 fail-open）
+        if not isinstance(addr, str):
+            logger.warning("SSRF 解析得到非字符串地址，保守拒绝 %s: %r", host, info[4])
+            return True
+        if _is_internal_ip(addr):
             return True
     return False
 

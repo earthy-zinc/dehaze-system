@@ -30,10 +30,11 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 	}
 
 	var req struct {
-		AlgorithmID int64  `json:"algorithmId" binding:"required"`
-		ImageURL    string `json:"imageUrl"`
-		FileID      *int64 `json:"fileId"`
-		Params      string `json:"params"`
+		AlgorithmID   int64  `json:"algorithmId" binding:"required"`
+		ImageURL      string `json:"imageUrl"`
+		FileID        *int64 `json:"fileId"`
+		Params        string `json:"params"`
+		RecommendedBy *int64 `json:"recommendedBy"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err)
@@ -55,7 +56,7 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 		return
 	}
 
-	result, err := api.service.Predict(ctx, req.AlgorithmID, imageURL, req.Params, userID)
+	result, err := api.service.Predict(ctx, req.AlgorithmID, imageURL, req.Params, userID, req.RecommendedBy)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -64,6 +65,28 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 }
 
 // GetPredictionLog 查询预测任务状态
+// CancelPrediction 取消预测任务（POST /prediction/:id/cancel，幂等）
+func (api *SysPredictionApi) CancelPrediction(c *gin.Context) {
+	ctx := c.Request.Context()
+	taskID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无效的任务ID: "+c.Param("id")))
+		return
+	}
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.service.CancelTask(ctx, taskID, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "取消成功", c)
+}
+
 func (api *SysPredictionApi) GetPredictionLog(c *gin.Context) {
 	ctx := c.Request.Context()
 	idStr := c.Param("id")
@@ -72,8 +95,13 @@ func (api *SysPredictionApi) GetPredictionLog(c *gin.Context) {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
 		return
 	}
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
-	result, err := api.service.GetTaskStatus(ctx, id)
+	result, err := api.service.GetTaskStatus(ctx, id, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -93,9 +121,17 @@ func (api *SysPredictionApi) ListPredictionLogs(c *gin.Context) {
 			return
 		}
 	}
-	pageNum, pageSize := getPageParams(c)
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
-	result, err := api.service.GetLogPage(ctx, algorithmID, pageNum, pageSize)
+	result, err := api.service.GetLogPage(ctx, algorithmID, userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -113,15 +149,16 @@ func (api *SysPredictionApi) BatchPredict(c *gin.Context) {
 	}
 
 	var req struct {
-		AlgorithmID int64                     `json:"algorithmId" binding:"required"`
-		Items       []predservice.BatchPredictionInput `json:"items" binding:"required"`
+		AlgorithmID   int64                              `json:"algorithmId" binding:"required"`
+		Items         []predservice.BatchPredictionInput `json:"items" binding:"required"`
+		RecommendedBy *int64                             `json:"recommendedBy"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	results, err := api.service.BatchPredict(ctx, req.AlgorithmID, req.Items, userID)
+	results, err := api.service.BatchPredict(ctx, req.AlgorithmID, req.Items, userID, req.RecommendedBy)
 	if err != nil {
 		_ = c.Error(err)
 		return

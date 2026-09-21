@@ -2,15 +2,18 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/api"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
+	aidomainrepo "github.com/earthyzinc/dehaze-go/internal/repository/aidomain"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
 	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
-	algoSelectService "github.com/earthyzinc/dehaze-go/internal/service/algorithm_select"
 	apikeyrepo "github.com/earthyzinc/dehaze-go/internal/repository/api_key"
 	auditlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/audit_log"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
@@ -21,6 +24,7 @@ import (
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
+	kborepo "github.com/earthyzinc/dehaze-go/internal/repository/kb"
 	loginlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/login_log"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
@@ -34,12 +38,14 @@ import (
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/internal/router"
-	recservice "github.com/earthyzinc/dehaze-go/internal/service/recommendation"
-	compareservice "github.com/earthyzinc/dehaze-go/internal/service/compare"
+	aiservice "github.com/earthyzinc/dehaze-go/internal/service/ai"
+	aidomainservice "github.com/earthyzinc/dehaze-go/internal/service/aidomain"
 	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
+	algoSelectService "github.com/earthyzinc/dehaze-go/internal/service/algorithm_select"
 	apikeyservice "github.com/earthyzinc/dehaze-go/internal/service/api_key"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	authservice "github.com/earthyzinc/dehaze-go/internal/service/auth"
+	compareservice "github.com/earthyzinc/dehaze-go/internal/service/compare"
 	datasetservice "github.com/earthyzinc/dehaze-go/internal/service/dataset"
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
@@ -50,6 +56,7 @@ import (
 	importexportservice "github.com/earthyzinc/dehaze-go/internal/service/import_export"
 	"github.com/earthyzinc/dehaze-go/internal/service/import_export/handlers"
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
+	kbservice "github.com/earthyzinc/dehaze-go/internal/service/kb"
 	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
@@ -59,9 +66,11 @@ import (
 	pkgsaleservice "github.com/earthyzinc/dehaze-go/internal/service/pkgsale"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	presetservice "github.com/earthyzinc/dehaze-go/internal/service/preset"
+	recservice "github.com/earthyzinc/dehaze-go/internal/service/recommendation"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
+	"github.com/earthyzinc/dehaze-go/pkg/aiclient"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/redis"
@@ -201,6 +210,7 @@ func (a *Application) Init() error {
 	packageRepo := pkgsalerepo.NewPackageRepository(gormDB)
 	couponRepo := pkgsalerepo.NewCouponRepository(gormDB)
 	userCouponRepo := pkgsalerepo.NewUserCouponRepository(gormDB)
+	promotionRepo := pkgsalerepo.NewPromotionRepository(gormDB)
 	orderRepo := orderrepo.NewOrderRepository(gormDB)
 	paymentRepo := orderrepo.NewPaymentRecordRepository(gormDB)
 	refundRepo := orderrepo.NewRefundRecordRepository(gormDB)
@@ -223,19 +233,23 @@ func (a *Application) Init() error {
 	// audit log services (MongoDB)
 	mongoDB := mongo.GetMongoDatabase("")
 	var loginLogService *loginlogservice.LoginLogService
+	// 审计仓储提到 if 外：member 操作日志端点也需要它（Mongo 不可用时保持 nil，端点回空列表）
+	var auditLogRepo *auditlogrepo.AuditLogRepository
 	if mongoDB != nil {
 		loginLogRepo := loginlogrepo.NewLoginLogRepository(mongoDB)
-		auditLogRepo := auditlogrepo.NewAuditLogRepository(mongoDB)
+		auditLogRepo = auditlogrepo.NewAuditLogRepository(mongoDB)
 		loginLogService = loginlogservice.NewLoginLogService(loginLogRepo)
 		a.auditLogService = auditlogservice.NewAuditLogService(auditLogRepo)
 	}
-	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, a.auditLogService)
-	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
+	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo, memberRepo, a.auditLogService)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo, roleRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo, a.auditLogService)
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
 	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
+	// favorite module services（需在 algorithmService/datasetOperationService 之前构造：对象删除时标记收藏失效）
+	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo, dictService)
+	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo, favoriteService)
 	// 存储服务注册表（根据配置构建所有存储后端实例）
 	cfg := config.GetConfig()
 	storageRegistry, err := storage.NewRegistry(cfg.File)
@@ -301,16 +315,22 @@ func (a *Application) Init() error {
 		taskExecutor,
 		taskService,
 		a.auditLogService,
+		favoriteService,
 	)
 	taskApi := api.NewSysTaskApi(taskService)
 	importExportApi := api.NewImportExportApi(importExportService)
-	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
+	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo, memberRepo, memberBenefitRepo)
 	algoClient, err := algo.NewClient(cfg.Algorithm)
 	if err != nil {
 		return fmt.Errorf("初始化算法客户端失败: %w", err)
 	}
+	aiClient, err := aiclient.New(cfg.AI)
+	if err != nil {
+		return fmt.Errorf("初始化 AI 转发客户端失败: %w", err)
+	}
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
-	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService)
+	// 模型白名单存在性校验需读 sys_ai_model（对齐 python ApiKeyService._validate_whitelist）
+	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService, airepo.NewModelRepository(gormDB))
 
 	// message module services
 	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo, userLookupRepo, cacheClient)
@@ -319,7 +339,16 @@ func (a *Application) Init() error {
 	notificationSettingService := msgservice.NewNotificationSettingService(notifySettingRepo)
 
 	// member module services（需在 predictionService/authService 之前构造，预测/评估/注册需调用权益校验）
-	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService, a.lifecycleMgr, dictService)
+	// aiBillingRepo 同时供 member 试用引导（source='trial' 积分汇总）与下方 AI 计费域使用
+	aiBillingRepo := airepo.NewBillingRepository(gormDB)
+	memberTrialDeps := trialStatusDepsAdapter{coupons: userCouponRepo, billing: aiBillingRepo, packages: packageRepo}
+	var memberAuditLister memberservice.AuditLogLister
+	if auditLogRepo != nil {
+		memberAuditLister = auditLogListerAdapter{repo: auditLogRepo}
+	}
+	// aiBillingService 同时供 member 权益概览的 AI 类目（余额/今日已用）与下方计费域 A 类端点使用
+	aiBillingService := aiservice.NewBillingService(gormDB, aiBillingRepo, redis.GetClient())
+	memberService := memberservice.NewMemberService(gormDB, memberRepo, memberBenefitRepo, memberGrowthLogRepo, memberSignInRepo, cacheClient, a.auditLogService, messageService, a.lifecycleMgr, dictService, memberTrialDeps, memberAuditLister, aiCreditsAdapter{billing: aiBillingService}, packageOverridesAdapter{packages: packageRepo})
 
 	// authService 依赖 userService + memberService（注册流程通过 UserService 创建用户、MemberService 初始化会员）
 	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberService)
@@ -330,11 +359,9 @@ func (a *Application) Init() error {
 	// package & order module services
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
 	couponService := pkgsaleservice.NewCouponService(gormDB, couponRepo, userCouponRepo, memberRepo, userRepo, cacheClient)
+	promotionService := pkgsaleservice.NewPromotionService(gormDB, promotionRepo, cacheClient)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
 	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, userRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService, memberService)
-
-	// favorite module services
-	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo, dictService)
 
 	// algorithm select module services
 	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(algorithmRepo, predLogRepo, ratingRepo, predictionService)
@@ -349,10 +376,12 @@ func (a *Application) Init() error {
 	}
 	a.publisher = alertPublisher
 	lowRatingAlertService := fbservice.NewLowRatingAlertService(ratingRepo, userRepo, algorithmRepo, messageService, alertPublisher, zap.L())
-	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cacheClient, lowRatingAlertService, zap.L(), dictService)
-	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, userRepo, cacheClient)
-	recommendationService := recservice.NewRecommendationService(algoClient, recommendationRepo, recommendationRuleRepo, algorithmRepo)
-	presetService := presetservice.NewPresetService(gormDB, presetRepo, memberService)
+	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cache.GetCacheManager().GetL2Cache(), lowRatingAlertService, zap.L(), dictService)
+	// 反馈/评价的日限计数器在 python 端直接存 Redis（测试与运维会直接操作该键），
+	// 必须绕过多级缓存的 L1 本地层，否则外部清理 Redis 后计数器仍滞留 L1
+	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, userRepo, cache.GetCacheManager().GetL2Cache())
+	recommendationService := recservice.NewRecommendationService(recommendationRepo, recommendationRuleRepo, algorithmRepo)
+	presetService := presetservice.NewPresetService(gormDB, presetRepo)
 	presetservice.SeedSystemPresets(gormDB)
 	compareService := compareservice.NewCompareService(evalLogRepo, predLogRepo, algorithmRepo)
 
@@ -364,12 +393,12 @@ func (a *Application) Init() error {
 		if err := a.consumer.Connect(); err != nil {
 			logger.Error("MQ Consumer 连接失败，死信队列将无法消费", zap.Error(err))
 		} else {
-		if err := a.consumer.ConsumeDLQ("task.export", taskService.HandleDLQMessage); err != nil {
-			logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
-		}
-		if err := a.consumer.Consume("feedback.low_rating", lowRatingAlertService.HandleMessage); err != nil {
-			logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
-		}
+			if err := a.consumer.ConsumeDLQ("task.export", taskService.HandleDLQMessage); err != nil {
+				logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
+			}
+			if err := a.consumer.Consume("feedback.low_rating", lowRatingAlertService.HandleMessage); err != nil {
+				logger.Error("注册低分告警队列 Consumer 失败", zap.Error(err))
+			}
 			logger.Debug("MQ Consumer 已启动，消费 export 死信队列与 feedback.low_rating 队列")
 		}
 	}
@@ -409,10 +438,11 @@ func (a *Application) Init() error {
 	notificationSettingApi := api.NewNotificationSettingApi(notificationSettingService)
 
 	// member module apis
-	memberApi := api.NewMemberApi(memberService)
+	memberApi := api.NewMemberApi(memberService, orderService)
 
 	// package & order module apis
 	packageApi := api.NewPackageApi(packageService, couponService)
+	promotionApi := api.NewPromotionApi(promotionService)
 	orderApi := api.NewOrderApi(orderService)
 	paymentApi := api.NewPaymentApi(paymentSvc, orderService)
 
@@ -437,6 +467,73 @@ func (a *Application) Init() error {
 	// compare module apis
 	compareApi := api.NewCompareApi(compareService)
 
+	// AI 域 B 类端点转发（行为在 dehaze-python）
+	aiProxyApi := api.NewAIProxyApi(aiClient)
+
+	// AI 域 A 类端点（原生实现，共享 MySQL/Redis，行为对齐 dehaze-python）
+	aiModelRepo := airepo.NewModelRepository(gormDB)
+	aiProviderRepo := airepo.NewProviderRepository(gormDB)
+	aiProviderKeyRepo := airepo.NewProviderKeyRepository(gormDB)
+	aiModelPriceRepo := airepo.NewModelPriceRepository(gormDB)
+	aiMcpRepo := airepo.NewMcpRepository(gormDB)
+	aiSkillRepo := airepo.NewSkillRepository(gormDB)
+	aiHealthService := aiservice.NewHealthService(gormDB)
+	aiModelService := aiservice.NewModelService(gormDB, aiModelRepo, aiModelPriceRepo, aiHealthService, messageService)
+	aiProviderService := aiservice.NewProviderService(aiProviderRepo, aiProviderKeyRepo, aiHealthService)
+	aiMcpService := aiservice.NewMcpServerService(gormDB, aiMcpRepo)
+	aiSkillService := aiservice.NewSkillService(aiSkillRepo, storageRegistry)
+	aiModelApi := api.NewAiModelApi(aiModelService)
+	aiProviderApi := api.NewAiProviderApi(aiProviderService)
+	aiMcpApi := api.NewAiMcpApi(aiMcpService)
+	aiSkillApi := api.NewAiSkillApi(aiSkillService)
+	aiKbApi := api.NewAiKbApi(kbservice.NewService(kborepo.NewRepository(gormDB)))
+	aiA2AApi := api.NewAiA2AApi(aiservice.NewA2AService(airepo.NewA2ARepository(gormDB)))
+	// 兼容调用审计走 MongoDB（ai_api_call_log）；采集不可用时端点内返回中间件服务错误，不摘路由
+	var aiCompatAuditRepo *airepo.CompatAuditRepository
+	if mongoDB != nil {
+		aiCompatAuditRepo = airepo.NewCompatAuditRepository(mongoDB)
+	}
+	aiCompatApi := api.NewAiCompatAuditApi(aiservice.NewCompatAuditService(aiCompatAuditRepo))
+
+	// AI 对话域 A 类端点（会话/消息/反馈/产物/记忆/Agent 与版本/A2A 端点/评测中心/定时任务）
+	aiConvRepo := aidomainrepo.NewConversationRepository(gormDB)
+	aiMsgRepo := aidomainrepo.NewMessageRepository(gormDB)
+	aiAgentRepo := aidomainrepo.NewAgentRepository(gormDB)
+	aiEvalRepo := aidomainrepo.NewEvalRepository(gormDB)
+	aiMemoryRepo := aidomainrepo.NewMemoryRepository(gormDB)
+	aiConversationApi := api.NewAiConversationApi(
+		aidomainservice.NewConversationService(aiConvRepo, aiMsgRepo, aiAgentRepo),
+		aidomainservice.NewMessageService(aiConvRepo, aiMsgRepo, aidomainrepo.NewThoughtRepository(gormDB)),
+		aidomainservice.NewFeedbackService(aiMsgRepo, aidomainrepo.NewMessageFeedbackRepository(gormDB), aiMemoryRepo),
+		aidomainservice.NewArtifactService(aidomainrepo.NewArtifactRepository(gormDB), aiConvRepo, aiMsgRepo, storageRegistry),
+	)
+	aiMemoryApi := api.NewAiMemoryApi(aidomainservice.NewMemoryService(aiMemoryRepo, a.auditLogService))
+	aiEvalCenterService := aidomainservice.NewEvalCenterService(aiEvalRepo, aiAgentRepo)
+	aiEvalApi := api.NewAiEvalApi(
+		aidomainservice.NewEvalService(aiEvalRepo, aiAgentRepo, a.auditLogService),
+		aiEvalCenterService,
+	)
+	aiAgentApi := api.NewAiAgentApi(
+		aidomainservice.NewAgentService(aiAgentRepo, aiEvalRepo, a.auditLogService),
+		aidomainservice.NewAgentVersionService(aiAgentRepo, a.auditLogService),
+		aidomainservice.NewEndpointService(aiAgentRepo, a.auditLogService),
+	)
+	aiScheduleApi := api.NewAiScheduleApi(aidomainservice.NewScheduleService(aidomainrepo.NewScheduleRepository(gormDB)))
+	aiUsageApi := api.NewAiUsageApi(aidomainservice.NewUsageService(aidomainrepo.NewUsageRepository(gormDB)))
+
+	// AI 计费与可观测性域 A 类端点（原生实现，直接读写共享 MySQL/Redis）
+	aiBillingApi := api.NewAiBillingApi(
+		aiBillingService,
+		aiservice.NewCostService(airepo.NewCostRepository(gormDB)),
+	)
+	aiObservabilityApi := api.NewAiObservabilityApi(aiservice.NewObservabilityService(
+		airepo.NewObservabilityRepository(gormDB),
+		aiBillingRepo,
+		aiConvRepo,
+		aiMsgRepo,
+		aidomainrepo.NewThoughtRepository(gormDB),
+	))
+
 	// routes
 	engine := a.Server.GetEngine()
 
@@ -445,6 +542,12 @@ func (a *Application) Init() error {
 
 	// WebSocket 端点（通过 query 参数 token 认证，不走 JWT 中间件）
 	engine.GET("/ws", websocket.HandleWebSocket)
+	// 语音流式 ASR 的 WebSocket 转发（鉴权与帧协议事实源在 python，见 voice_proxy.go）
+	router.RegisterVoiceWSProxyRoute(engine, aiProxyApi)
+
+	// AI 兼容 API（OpenAI/Claude）与 A2A 标准入口：鉴权由 python 全局 ApiKeyAuthMiddleware 决定，
+	// Go 侧不能先拦（x-api-key 协议入口过 AuthMiddleware 会一律 401）
+	router.RegisterAICompatRoutes(engine, aiProxyApi)
 
 	v1 := engine.Group("/api/v1")
 	// 全局 IP 限流兜底（使用 config.yaml 的 ip-limit-count/ip-limit-time）
@@ -453,8 +556,6 @@ func (a *Application) Init() error {
 	// 公开路由（无需认证）
 	router.RegisterNoAuthRoutes(v1, authApi)
 	router.RegisterPaymentRoutes(v1, paymentApi)
-	// 文件下载 - 公开访问（对齐 Java SecurityConfig permitAll，供算法服务等内部调用无需鉴权）
-	v1.GET("/files/download/*objectName", fileApi.DownloadFile)
 	// 前端日志接收 - 匿名允许上报（OptionalSessionAuth 仅注入已登录 user_id），对齐 Java permitAll
 	router.RegisterClientLogRoutes(v1, clientLogApi)
 
@@ -463,6 +564,9 @@ func (a *Application) Init() error {
 	protectedV1.Use(middleware.AuthMiddleware())
 	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)
+	// 导入导出须先于各模块 CRUD 注册：其静态 `/{module}/template|_export|_import` 必须早于模块自己的
+	// `/{module}/:id` 建节点，否则 `/dict/template` 会被 dict 的 `:id` 抢先匹配成 id="template"（404）
+	router.RegisterImportExportRoutes(protectedV1, importExportApi)
 	router.RegisterSysUserRoutes(protectedV1, sysUserApi)
 	router.RegisterSysRoleRoutes(protectedV1, sysRoleApi)
 	router.RegisterSysDeptRoutes(protectedV1, sysDeptApi)
@@ -472,7 +576,6 @@ func (a *Application) Init() error {
 	router.RegisterFileRoutes(protectedV1, fileApi)
 	router.RegisterDatasetItemRoutes(protectedV1, datasetItemApi)
 	router.RegisterItemFileRoutes(protectedV1, itemFileApi)
-	router.RegisterImportExportRoutes(protectedV1, importExportApi)
 	router.RegisterAlgorithmRoutes(protectedV1, algorithmApi)
 	router.RegisterTaskRoutes(protectedV1, taskApi)
 	router.RegisterImageInputRoutes(protectedV1, inputHistoryApi)
@@ -485,6 +588,7 @@ func (a *Application) Init() error {
 	router.RegisterMessageTemplateRoutes(protectedV1, messageTemplateApi)
 	router.RegisterMemberRoutes(protectedV1, memberApi)
 	router.RegisterPackageRoutes(protectedV1, packageApi)
+	router.RegisterPromotionRoutes(protectedV1, promotionApi)
 	router.RegisterOrderRoutes(protectedV1, orderApi)
 	router.RegisterFeedbackRoutes(protectedV1, feedbackApi)
 	router.RegisterRecommendationRoutes(protectedV1, recommendationApi)
@@ -492,6 +596,25 @@ func (a *Application) Init() error {
 	router.RegisterPresetRoutes(protectedV1, presetApi)
 	router.RegisterCompareRoutes(protectedV1, compareApi)
 	router.RegisterAlgorithmSelectRoutes(protectedV1, algorithmSelectApi)
+	// AI 域 A 类端点（原生 CRUD/查询，共享 MySQL/Redis，行为对齐 dehaze-python）
+	router.RegisterAiModelRoutes(protectedV1, aiModelApi)
+	router.RegisterAiProviderRoutes(protectedV1, aiProviderApi)
+	router.RegisterAiMcpRoutes(protectedV1, aiMcpApi)
+	router.RegisterAiSkillRoutes(protectedV1, aiSkillApi)
+	router.RegisterAiKbRoutes(protectedV1, aiKbApi)
+	router.RegisterAiA2ARoutes(protectedV1, aiA2AApi)
+	router.RegisterAiCompatAuditRoutes(protectedV1, aiCompatApi)
+	router.RegisterAiConversationRoutes(protectedV1, aiConversationApi)
+	router.RegisterAiMemoryRoutes(protectedV1, aiMemoryApi)
+	router.RegisterAiAgentRoutes(protectedV1, aiAgentApi)
+	router.RegisterAiEvalRoutes(protectedV1, aiEvalApi)
+	router.RegisterAiScheduleRoutes(protectedV1, aiScheduleApi, aiUsageApi)
+	router.RegisterAiBillingRoutes(protectedV1, aiBillingApi)
+	router.RegisterAiObservabilityRoutes(protectedV1, aiObservabilityApi)
+	// AI 域 B 类端点（强依赖 deepagents/LLM/ES）：Go 只做转发，行为唯一实现在 dehaze-python
+	router.RegisterAIProxyRoutes(protectedV1, aiProxyApi)
+	// 语音域端点（本地 ASR/TTS 引擎仅在 python 进程内）：同样是转发
+	router.RegisterVoiceProxyRoutes(protectedV1, aiProxyApi)
 
 	middleware.ApiKeyAuth = func(ctx context.Context, rawKey string) (*security.CustomClaims, error) {
 		authInfo, err := apiKeyService.AuthenticateByKey(ctx, rawKey)
@@ -631,8 +754,9 @@ func (a *Application) initMongoIndexes() {
 	}
 
 	loginLogIndexes := []mongodriver.IndexModel{
-		{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "createTime", Value: -1}}},
-		{Keys: bson.D{{Key: "createTime", Value: -1}}},
+		{Keys: bson.D{{Key: "user_id", Value: 1}, {Key: "create_time", Value: -1}}},
+		{Keys: bson.D{{Key: "create_time", Value: -1}}},
+		{Keys: bson.D{{Key: "username", Value: 1}}},
 		{Keys: bson.D{{Key: "status", Value: 1}}},
 	}
 	if _, err := db.Collection("login_log").Indexes().CreateMany(context.Background(), loginLogIndexes); err != nil {
@@ -753,3 +877,111 @@ func (a *Application) readinessHandler() gingin.HandlerFunc {
 		})
 	}
 }
+
+// trialStatusDepsAdapter 组装层适配器：把券仓储 / AI 积分流水仓储 / 套餐仓储接到
+// member.TrialStatusDeps 窄接口，使 member 包不依赖这些模块的结构体（无导入环）。
+type trialStatusDepsAdapter struct {
+	coupons  *pkgsalerepo.UserCouponRepository
+	billing  *airepo.BillingRepository
+	packages *pkgsalerepo.PackageRepository
+}
+
+func (d trialStatusDepsAdapter) ActiveTrialCouponExpireTime(ctx context.Context, userID int64) (*time.Time, error) {
+	return d.coupons.FindActiveTrialCouponExpireTime(ctx, userID)
+}
+
+// SumTrialCredits 取 source='trial' 的积分累计（python `sum_amount_by_user_and_source` 的 trial 桶）
+func (d trialStatusDepsAdapter) SumTrialCredits(ctx context.Context, userID int64) (int64, error) {
+	sums, err := d.billing.SumCreditLogBySource(ctx, userID, nil, nil)
+	if err != nil {
+		return 0, err
+	}
+	return sums["trial"], nil
+}
+
+// HasPaidOrder 是否存在已支付订单（python `has_paid_order`：status 2/3、未删除）
+func (d trialStatusDepsAdapter) HasPaidOrder(ctx context.Context, userID int64) (bool, error) {
+	count, err := d.packages.CountPaidOrdersByUser(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+var _ memberservice.TrialStatusDeps = trialStatusDepsAdapter{}
+
+// auditLogListerAdapter 组装层适配器：Mongo 审计仓储 → member.AuditLogLister，
+// 负责把审计模型转成 member 自洽的取数结构（member 包不引审计模块的 bson 标签）。
+type auditLogListerAdapter struct {
+	repo *auditlogrepo.AuditLogRepository
+}
+
+func (a auditLogListerAdapter) ListByTarget(
+	ctx context.Context, targetType string, targetID int64, page, pageSize int,
+) ([]memberservice.MemberAuditLog, int64, error) {
+	items, total, err := a.repo.ListByTarget(ctx, targetType, targetID, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	result := make([]memberservice.MemberAuditLog, 0, len(items))
+	for _, item := range items {
+		result = append(result, memberservice.MemberAuditLog{
+			ID:          item.ID.Hex(),
+			OperatorID:  item.OperatorID,
+			Action:      item.Action,
+			Module:      item.Module,
+			BeforeValue: item.BeforeValue,
+			AfterValue:  item.AfterValue,
+			IP:          item.IP,
+			CreateTime:  item.CreateTime,
+		})
+	}
+	return result, total, nil
+}
+
+var _ memberservice.AuditLogLister = auditLogListerAdapter{}
+
+// aiCreditsAdapter 组装层适配器：AI 计费服务 → member.AICreditsProvider
+// （余额取 creditsBalance 字符串解析为整数，与 python `int(balance)` 同口径；今日已用取 dailyUsed）
+type aiCreditsAdapter struct {
+	billing *aiservice.BillingService
+}
+
+func (a aiCreditsAdapter) AICredits(ctx context.Context, userID int64) (int64, int64, error) {
+	balance, err := a.billing.Balance(ctx, userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	// creditsBalance 是**小数形态的字符串**（Decimal 序列化，如 "0.00"），不能用 ParseInt；
+	// python 侧 `int(balance)` 是截断取整，故这里 ParseFloat 后向零截断（与 int() 同语义）。
+	credits, err := strconv.ParseFloat(balance.CreditsBalance, 64)
+	if err != nil {
+		return 0, 0, err
+	}
+	return int64(credits), balance.DailyUsed, nil
+}
+
+var _ memberservice.AICreditsProvider = aiCreditsAdapter{}
+
+// packageOverridesAdapter 组装层适配器：套餐仓储 → member.PackageOverridesProvider
+// （python `resolve_card_overrides` 读 package.benefit_overrides，key 为 camelCase）
+type packageOverridesAdapter struct {
+	packages *pkgsalerepo.PackageRepository
+}
+
+func (a packageOverridesAdapter) PackageBenefitOverrides(ctx context.Context, levelCode string) (map[string]int, error) {
+	pkg, err := a.packages.FindActiveVipByLevelCode(ctx, levelCode)
+	if err != nil {
+		return nil, err
+	}
+	if pkg == nil || !pkg.BenefitOverrides.Valid || pkg.BenefitOverrides.String == "" {
+		return nil, nil
+	}
+	overrides := map[string]int{}
+	if err := json.Unmarshal([]byte(pkg.BenefitOverrides.String), &overrides); err != nil {
+		return nil, err
+	}
+	return overrides, nil
+}
+
+var _ memberservice.PackageOverridesProvider = packageOverridesAdapter{}

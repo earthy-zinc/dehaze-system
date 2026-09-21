@@ -29,7 +29,8 @@ class BillingRecordService:
         self.ai_credit_log_repository = ai_credit_log_repository
         self.ai_refund_repository = ai_refund_repository
 
-    async def list_by_user(self, 
+    async def list_by_user(
+        self,
         db: AsyncSession,
         user_id: int,
         query: BillingRecordQuery,
@@ -58,7 +59,8 @@ class BillingRecordService:
             total=total,
         )
 
-    async def get_by_id(self, 
+    async def get_by_id(
+        self,
         db: AsyncSession,
         user_id: int,
         billing_id: int,
@@ -69,7 +71,8 @@ class BillingRecordService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "计费记录不存在")
         return BillingRecordResult.model_validate(record)
 
-    async def list_credit_logs(self, 
+    async def list_credit_logs(
+        self,
         db: AsyncSession,
         user_id: int,
         query: CreditLogQuery,

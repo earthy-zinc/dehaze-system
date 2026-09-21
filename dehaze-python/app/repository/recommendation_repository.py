@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_recommendation import SysRecommendation
@@ -56,31 +56,23 @@ class RecommendationRepository(BaseRepository[SysRecommendation]):
             stmt = stmt.where(SysRecommendation.create_time <= end)
         return (await db.execute(stmt)).scalar() or 0
 
-    async def select_daily_adoption_rate(
+    async def select_daily_totals(
         self, db: AsyncSession, start: datetime | None, end: datetime | None
     ) -> list[dict]:
-        subq = select(
+        """按日统计推荐总数（日期 + 数量），供采纳率趋势与采纳数合并计算"""
+        stmt = select(
             func.date(SysRecommendation.create_time).label("date"),
             func.count().label("total"),
-            func.sum(case((SysRecommendation.feedback == 1, 1), else_=0)).label("useful"),
-        ).where(SysRecommendation.feedback.in_([1, 2]))
-
+        )
         if start:
-            subq = subq.where(SysRecommendation.create_time >= start)
+            stmt = stmt.where(SysRecommendation.create_time >= start)
         if end:
-            subq = subq.where(SysRecommendation.create_time <= end)
-
-        subq = subq.group_by(func.date(SysRecommendation.create_time)).subquery()
-
-        stmt = select(
-            subq.c.date,
-            (func.coalesce(subq.c.useful, 0) * 1.0 / func.nullif(subq.c.total, 0)).label(
-                "adoptionRate"
-            ),
-        ).order_by(subq.c.date.asc())
-
+            stmt = stmt.where(SysRecommendation.create_time <= end)
+        stmt = stmt.group_by(func.date(SysRecommendation.create_time)).order_by(
+            func.date(SysRecommendation.create_time)
+        )
         result = await db.execute(stmt)
-        return [{"date": str(row[0]), "adoptionRate": float(row[1] or 0)} for row in result.all()]
+        return [{"date": str(row[0]), "total": int(row[1] or 0)} for row in result.all()]
 
     async def get_latest_by_image_md5(
         self, db: AsyncSession, image_md5: str

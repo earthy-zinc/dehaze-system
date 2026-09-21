@@ -20,6 +20,11 @@ type ICache interface {
 	Exists(ctx context.Context, key string) (bool, error)
 	SetNX(ctx context.Context, key string, value any, expiration time.Duration) (bool, error)
 
+	// GetDel 原子取走并删除（Redis GETDEL）。用于一次性凭证（验证码）的并发消费：
+	// 同一 key 并发消费时只有恰好一个调用能拿到值，其余返回 ErrKeyNotFound
+	// （python `verify_captcha_status` 同口径）。
+	GetDel(ctx context.Context, key string) (string, error)
+
 	// MGet 批量获取多个key的值
 	MGet(ctx context.Context, keys ...string) ([]string, error)
 	// MSet 批量设置多个key-value对

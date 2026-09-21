@@ -66,6 +66,7 @@
     <el-dropdown class="setting-item" trigger="click">
       <div class="flex-center h100% p10px">
         <img
+          v-if="userStore.user.avatar"
           :src="userStore.user.avatar"
           class="rounded-full mr-10px w24px w24px"
         />

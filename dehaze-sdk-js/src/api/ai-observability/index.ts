@@ -4,6 +4,8 @@ import type {
   AiObservabilityCostsQuery,
   AiObservabilityCostsResult,
   AiObservabilitySummary,
+  AiObservabilityTimeline,
+  AiObservabilityTimelineQuery,
   AiObservabilityTraceDetail,
   AiObservabilityTraceItem,
   AiObservabilityTraceQuery,
@@ -46,6 +48,24 @@ class AiObservabilityAPI {
     return request<AiObservabilityTraceDetail>({
       url: `/api/v1/ai/observability/traces/${traceId}`,
       method: "get",
+    });
+  }
+
+  /** 会话审计时间线（按轮次组织的事件流；管理员全量，普通用户仅自己会话） */
+  static getConversationTimeline(conversationId: number, query?: AiObservabilityTimelineQuery) {
+    return request<AiObservabilityTimeline>({
+      url: `/api/v1/ai/observability/conversations/${conversationId}/timeline`,
+      method: "get",
+      params: query,
+    });
+  }
+
+  /** 会话时间线整体导出（JSON 全量含 raw 原始报文），返回 Blob 下载 */
+  static exportConversationTimeline(conversationId: number) {
+    return request<Blob>({
+      url: `/api/v1/ai/observability/conversations/${conversationId}/timeline/export`,
+      method: "get",
+      responseType: "blob",
     });
   }
 

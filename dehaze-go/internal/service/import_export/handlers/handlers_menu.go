@@ -31,8 +31,8 @@ func (h *MenuExportHandler) EstimateCount(params map[string]interface{}) int64 {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ?", like)
 	}
-	if q.Status != nil {
-		tx = tx.Where("visible = ?", *q.Status)
+	if q.Visible != nil {
+		tx = tx.Where("visible = ?", *q.Visible)
 	}
 	tx.Count(&count)
 	return count
@@ -70,8 +70,8 @@ func (p *menuExportProvider) FetchBatch(pageNum, pageSize int) [][]interface{} {
 		like := "%" + q.Keywords + "%"
 		tx = tx.Where("name LIKE ?", like)
 	}
-	if q.Status != nil {
-		tx = tx.Where("visible = ?", *q.Status)
+	if q.Visible != nil {
+		tx = tx.Where("visible = ?", *q.Visible)
 	}
 	tx.Order("sort ASC, id ASC").Offset((pageNum - 1) * pageSize).Limit(pageSize).Find(&menus)
 
@@ -107,9 +107,9 @@ func buildMenuQuery(params map[string]interface{}) *query.MenuQuery {
 		switch s := v.(type) {
 		case float64:
 			si := int(s)
-			q.Status = &si
+			q.Visible = &si
 		case int:
-			q.Status = &s
+			q.Visible = &s
 		}
 	}
 	return q
@@ -144,16 +144,16 @@ func (h *MenuImportHandler) GetFieldConfigs() []import_export.ImportFieldConfig 
 func (h *MenuImportHandler) GetTemplateSampleData() []map[string]interface{} {
 	return []map[string]interface{}{
 		{
-			"name":       "用户管理",
-			"parentId":   "0",
-			"typeLabel":  "菜单",
-			"path":       "/system/user",
-			"component":  "system/user/index",
-			"perm":       "sys:user:list",
-			"visible":    "显示",
-			"sort":       "1",
-			"icon":       "user",
-			"redirect":   "",
+			"name":      "用户管理",
+			"parentId":  "0",
+			"typeLabel": "菜单",
+			"path":      "/system/user",
+			"component": "system/user/index",
+			"perm":      "sys:user:list",
+			"visible":   "显示",
+			"sort":      "1",
+			"icon":      "user",
+			"redirect":  "",
 		},
 	}
 }

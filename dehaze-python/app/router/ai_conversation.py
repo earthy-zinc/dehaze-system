@@ -16,7 +16,8 @@ from app.models.schema.ai_conversation import (
     ConversationResult,
     ConversationUpdate,
     MessageEdit,
-    MessagePageQuery,
+    MessageListQuery,
+    MessageListResult,
     MessageResult,
     MessageResume,
     MessageSend,
@@ -204,7 +205,8 @@ async def send_message(
     form: MessageSend,
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
-    # 发送触发 LLM 调用与计费，幂等键必传（缺失返回 422），保证同 key 只执行一次
+    # 发送触发 LLM 调用与计费，幂等键必传（缺失由校验异常 handler 统一返回 HTTP 400 + A0400），
+    # 保证同 key 只执行一次
     idempotency_key: str = Header(
         alias="Idempotency-Key", description="幂等键（UUID，客户端生成）"
     ),
@@ -214,12 +216,12 @@ async def send_message(
 
 @router.get(
     "/conversations/{conv_id}/messages",
-    response_model=Result[PageResult[MessageResult]],
+    response_model=Result[MessageListResult],
     summary="会话消息列表",
 )
 async def list_messages(
     conv_id: int,
-    query: MessagePageQuery = Depends(),
+    query: MessageListQuery = Depends(),
     view: str | None = Query(
         default=None,
         description="视角(admin:管理端会话审计,读取任意用户会话消息,需ai:conversation:audit;默认当前用户)",
@@ -231,7 +233,7 @@ async def list_messages(
     if admin:
         _require_conversation_audit(user)
     result = await ai_conversation_service.list_messages(
-        db, conv_id, user.id, query.pageNum, query.pageSize, admin=admin
+        db, conv_id, user.id, query.before, query.limit, admin=admin
     )
     return success(result)
 

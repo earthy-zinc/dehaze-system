@@ -10,7 +10,8 @@ public enum LogStatusEnum implements IBaseEnum<Integer> {
 
     PROCESSING(1, "处理中"),
     COMPLETED(2, "已完成"),
-    FAILED(3, "失败");
+    FAILED(3, "失败"),
+    CANCELLED(4, "已取消");
 
     @JsonValue
     @EnumValue

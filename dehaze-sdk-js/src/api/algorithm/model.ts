@@ -88,8 +88,6 @@ export interface AlgorithmCompareVO {
   resultUrl?: string;
   /** 处理耗时（毫秒） */
   time?: number;
-  /** 评估指标（PSNR/SSIM 等，JSON 字符串） */
-  metrics?: string;
 }
 
 /** 算法选择树节点 */
@@ -101,7 +99,7 @@ export interface AlgorithmSelectNodeVO {
   /** 算法类型 */
   type: string;
   /** 是否为叶子节点（算法节点） */
-  isLeaf: boolean;
+  leaf: boolean;
   children?: AlgorithmSelectNodeVO[];
 }
 

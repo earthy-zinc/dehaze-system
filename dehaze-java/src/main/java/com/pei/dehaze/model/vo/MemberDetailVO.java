@@ -14,9 +14,6 @@ import java.time.LocalDateTime;
 @Schema(description = "会员详情视图对象（后台）")
 public class MemberDetailVO extends MemberProfileVO {
 
-    @Schema(description = "等级来源(growth:成长值达标;purchase:套餐购买;admin:管理员调整)")
-    private String levelSource;
-
     @Schema(description = "累计消费金额（单位：分）")
     private Long totalConsumption;
 

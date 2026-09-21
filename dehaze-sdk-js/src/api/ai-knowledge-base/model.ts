@@ -30,9 +30,7 @@ export interface KnowledgeBaseCreateForm {
   description?: string;
   /** 公开/私有 */
   visibility: KnowledgeBaseVisibility;
-  /** Embedding 提供商（默认 openai） */
-  embeddingProvider?: string;
-  /** Embedding 模型标识（text-embedding-3-small / bge-m3 等） */
+  /** Embedding 模型标识（text-embedding-3-small / bge-m3 等；供应商由后端按模型注册表推导） */
   embeddingModel: string;
   /** 分块策略 */
   chunkingStrategy: ChunkingStrategy;

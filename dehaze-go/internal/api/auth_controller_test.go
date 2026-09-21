@@ -23,7 +23,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/dto"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
@@ -36,6 +39,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// TestMain 注册全局自定义校验器（password_complexity 等），生产路径由 app.go 调用，
+// 契约测试不经 app 启动流程，需在此补齐，否则含自定义 tag 的 binding 会失败。
+func TestMain(m *testing.M) {
+	dehazevalidator.Init()
+	os.Exit(m.Run())
+}
 
 // envelope 是响应信封的通用反序列化结构，专注契约字段而非业务 data 细节。
 type envelope struct {
@@ -145,14 +155,29 @@ func TestAuthContract_Register_FieldTooShort(t *testing.T) {
 
 	r := newAuthTestEngine(t, http.MethodPost, "/auth/register", api.Register)
 
-	// username 要求 min=3，传入 "ab" 触发长度校验失败
+	// username 要求 min=3，传入 "ab" 触发长度校验失败（password 用合法 8-20 位值，聚焦 username 校验）
 	w, env := doRequest(t, r, http.MethodPost, "/auth/register", "application/json",
-		[]byte(`{"username":"ab","password":"123456","nickname":"x","captchaCode":"c","captchaKey":"k"}`))
+		[]byte(`{"username":"ab","password":"12345678","nickname":"x","captchaCode":"c","captchaKey":"k"}`))
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.NotEqual(t, common.SUCCESS.Code, env.Code)
 	assert.Equal(t, common.PARAM_ERROR.Code, env.Code)
 	assert.NotEmpty(t, env.Msg)
+}
+
+func TestAuthContract_Register_PasswordComplexity(t *testing.T) {
+	authSvc := mocks.NewMockIAuthService(t)
+	api := NewAuthApi(authSvc)
+
+	r := newAuthTestEngine(t, http.MethodPost, "/auth/register", api.Register)
+
+	// 纯数字 8 位密码：长度满足 min=8 但缺字母，触发 password_complexity 校验失败
+	w, env := doRequest(t, r, http.MethodPost, "/auth/register", "application/json",
+		[]byte(`{"username":"alice","password":"12345678","nickname":"x","captchaCode":"c","captchaKey":"k"}`))
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, common.PARAM_ERROR.Code, env.Code)
+	assert.Contains(t, env.Msg, "必须包含字母和数字")
 }
 
 // ============ 业务错误（透传） ============

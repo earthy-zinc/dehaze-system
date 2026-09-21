@@ -40,6 +40,8 @@ type IDeptRepository interface {
 
 	// HasUsersInBatch 批量检查部门是否关联用户（避免 N+1 查询）
 	HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error)
+	// ExistsByNameIncludeDeleted 同级名称唯一性检查（含已删除记录，删除后名称不可复用 T-DPT-035b）
+	ExistsByNameIncludeDeleted(ctx context.Context, name string, parentID int64, excludeID int64) (bool, error)
 
 	// FindIDsByNames 根据部门名称批量查询 ID（返回 name→id 映射，避免 N+1 查询）
 	FindIDsByNames(ctx context.Context, names []string) (map[string]int64, error)

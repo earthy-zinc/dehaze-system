@@ -7,6 +7,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -156,6 +157,12 @@ func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 	// 绑定请求参数
 	var deptFormBO bo.DeptFormBO
 	if err := c.ShouldBindJSON(&deptFormBO); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 参数合法后再做权限校验（与 FastAPI body 校验先行顺序对齐）
+	if err := middleware.CheckPermission(c, "sys:dept:edit"); err != nil {
 		_ = c.Error(err)
 		return
 	}

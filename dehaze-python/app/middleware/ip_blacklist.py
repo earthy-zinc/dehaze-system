@@ -26,6 +26,8 @@ from app.middleware._shared import EXCLUDE_PATHS, send_json_response
 
 logger = logging.getLogger(__name__)
 
+_background_tasks: set[asyncio.Task] = set()
+
 
 def _is_internal_ip(ip: str) -> bool:
     """判断是否为内网/回环 IP（使用标准库 ipaddress，避免字符串前缀匹配的误判）"""
@@ -80,7 +82,7 @@ class IPBlacklistMiddleware:
                         "data": None,
                     },
                 )
-                return
+                return None
 
         response_status = 0
 
@@ -94,7 +96,9 @@ class IPBlacklistMiddleware:
             await self.app(scope, receive, send_wrapper)
         finally:
             if response_status >= 400 and redis:
-                asyncio.create_task(_track_ip_error(ip, response_status, redis))
+                task = asyncio.create_task(_track_ip_error(ip, response_status, redis))
+                _background_tasks.add(task)
+                task.add_done_callback(_background_tasks.discard)
 
 
 async def _track_ip_error(ip: str, status: int, redis):

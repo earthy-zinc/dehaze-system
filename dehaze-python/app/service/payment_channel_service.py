@@ -6,10 +6,12 @@
 """
 
 import base64
+import binascii
 import json
 import logging
 import secrets
 import time
+from pathlib import Path
 
 import httpx
 
@@ -89,7 +91,10 @@ class MockPaymentChannel(BasePaymentChannel):
     async def verify_callback(self, headers: dict, body: bytes) -> CallbackResult:
         try:
             data = json.loads(body)
-        except Exception:
+        except (json.JSONDecodeError, TypeError) as e:
+            # mock 渠道回调体必须是合法 JSON；解析失败说明回调格式不对，
+            # 不能静默按空字典继续（会把所有字段判为默认值），须留痕
+            logger.warning("mock 支付回调体解析失败，按空载荷处理: %s", e)
             data = {}
         order_no = data.get("out_trade_no", "")
         channel_payment_no = data.get("transaction_id", f"MOCKPAY{order_no}")
@@ -126,18 +131,23 @@ class WechatPayService(BasePaymentChannel):
         self._private_key = None
 
     def _get_private_key(self):
-        if self._private_key is None:
-            import os
-
-            if not self.private_key_path or not os.path.exists(self.private_key_path):
+        key = self._private_key
+        if key is None:
+            if not self.private_key_path or not Path(self.private_key_path).exists():
                 raise BusinessException(
                     ResultCode.SYSTEM_EXECUTION_ERROR, "微信支付私钥文件未配置或不存在"
                 )
             from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.primitives.asymmetric import rsa
 
-            with open(self.private_key_path, "rb") as f:
-                self._private_key = serialization.load_pem_private_key(f.read(), password=None)
-        return self._private_key
+            with Path(self.private_key_path).open("rb") as f:
+                key = serialization.load_pem_private_key(f.read(), password=None)
+            if not isinstance(key, rsa.RSAPrivateKey):
+                raise BusinessException(
+                    ResultCode.SYSTEM_EXECUTION_ERROR, "微信支付私钥必须为 RSA 私钥"
+                )
+            self._private_key = key
+        return key
 
     def _build_authorization(self, method: str, url: str, body: str) -> str:
         timestamp = str(int(time.time()))
@@ -237,8 +247,9 @@ class WechatPayService(BasePaymentChannel):
 
     def _verify_wechat_signature(self, message: str, signature_b64: str, serial_no: str) -> bool:
         try:
+            from cryptography.exceptions import InvalidSignature
             from cryptography.hazmat.primitives import hashes
-            from cryptography.hazmat.primitives.asymmetric import padding
+            from cryptography.hazmat.primitives.asymmetric import padding, rsa
             from cryptography.x509 import load_pem_x509_certificate
         except ImportError:
             raise BusinessException(
@@ -248,6 +259,8 @@ class WechatPayService(BasePaymentChannel):
         cert_text = self._get_platform_cert(serial_no)
         cert = load_pem_x509_certificate(cert_text.encode("utf-8"))
         pub_key = cert.public_key()
+        if not isinstance(pub_key, rsa.RSAPublicKey):
+            return False
         signature = base64.b64decode(signature_b64)
         try:
             pub_key.verify(
@@ -257,17 +270,18 @@ class WechatPayService(BasePaymentChannel):
                 hashes.SHA256(),
             )
             return True
-        except Exception:
+        except InvalidSignature:
+            # 验签不通过＝拒绝回调（返回 False 是契约）；但它是安全信号，
+            # 不能完全静默，须留痕以便发现伪造回调或平台证书不匹配
+            logger.warning("微信回调验签不通过 serial=%s", serial_no)
             return False
 
     def _get_platform_cert(self, serial_no: str) -> str:
-        import os
-
-        cert_cache_dir = os.path.join(settings.TEMP_DIR_RESOLVED, "wechat_certs")
-        os.makedirs(cert_cache_dir, exist_ok=True)
-        cert_path = os.path.join(cert_cache_dir, f"{serial_no}.pem")
-        if os.path.exists(cert_path):
-            with open(cert_path, encoding="utf-8") as f:
+        cert_cache_dir = Path(settings.TEMP_DIR_RESOLVED) / "wechat_certs"
+        cert_cache_dir.mkdir(parents=True, exist_ok=True)
+        cert_path = cert_cache_dir / f"{serial_no}.pem"
+        if cert_path.exists():
+            with cert_path.open(encoding="utf-8") as f:
                 return f.read()
         asyncio = __import__("asyncio")
         try:
@@ -292,7 +306,7 @@ class WechatPayService(BasePaymentChannel):
             if c.get("serial_no") == serial_no:
                 cert_b64 = c.get("encrypt_certificate", {}).get("ciphertext", "")
                 cert_text = base64.b64decode(cert_b64).decode("utf-8")
-                with open(cert_path, "w", encoding="utf-8") as f:
+                with cert_path.open("w", encoding="utf-8") as f:
                     f.write(cert_text)
                 return cert_text
         raise BusinessException(
@@ -382,11 +396,13 @@ class AlipayService(BasePaymentChannel):
         sorted_items = sorted([(k, v) for k, v in params.items() if v is not None and v != ""])
         sign_str = "&".join(f"{k}={v}" for k, v in sorted_items)
         from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
         private_key_obj = serialization.load_pem_private_key(
             self.private_key.encode("utf-8"), password=None
         )
+        if not isinstance(private_key_obj, rsa.RSAPrivateKey):
+            raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "支付宝私钥必须为 RSA 私钥")
         signature = private_key_obj.sign(
             sign_str.encode("utf-8"),
             padding.PKCS1v15(),
@@ -395,8 +411,9 @@ class AlipayService(BasePaymentChannel):
         return base64.b64encode(signature).decode("utf-8")
 
     def _verify(self, params: dict, sign: str) -> bool:
+        from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives import hashes, serialization
-        from cryptography.hazmat.primitives.asymmetric import padding
+        from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
         sorted_items = sorted(
             [
@@ -407,6 +424,8 @@ class AlipayService(BasePaymentChannel):
         )
         sign_str = "&".join(f"{k}={v}" for k, v in sorted_items)
         public_key_obj = serialization.load_pem_public_key(self.public_key.encode("utf-8"))
+        if not isinstance(public_key_obj, rsa.RSAPublicKey):
+            return False
         try:
             public_key_obj.verify(
                 base64.b64decode(sign),
@@ -415,7 +434,9 @@ class AlipayService(BasePaymentChannel):
                 hashes.SHA256(),
             )
             return True
-        except Exception:
+        except (InvalidSignature, binascii.Error) as e:
+            # 验签不通过/签名串非法＝拒绝回调（返回 False 是契约）；安全信号须留痕
+            logger.warning("支付宝回调验签不通过: %s", e)
             return False
 
     def _build_biz_content(self, biz: dict) -> str:
@@ -461,8 +482,10 @@ class AlipayService(BasePaymentChannel):
         from urllib.parse import parse_qs
 
         body_str = body.decode("utf-8") if isinstance(body, bytes) else body
-        params = dict(parse_qs(body_str, keep_blank_values=True))
-        params = {k: v[0] if isinstance(v, list) and v else v for k, v in params.items()}
+        params: dict[str, str] = {
+            k: (vals[0] if vals else "")
+            for k, vals in parse_qs(body_str, keep_blank_values=True).items()
+        }
         sign = params.pop("sign", "")
         params.pop("sign_type", None)
         if not self._verify(params, sign):

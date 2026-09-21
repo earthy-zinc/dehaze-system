@@ -20,7 +20,7 @@ def write_excel(
 ) -> None:
     visible_fields = [f for f in sorted(fields, key=lambda x: x.order) if not f.hidden]
     wb = Workbook()
-    ws = wb.active
+    ws = wb.worksheets[0]
     ws.title = "Sheet1"
     ws.append([f.label for f in visible_fields])
     for row in rows:

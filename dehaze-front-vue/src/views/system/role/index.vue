@@ -143,12 +143,17 @@
         label-width="100px"
       >
         <el-form-item label="角色名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入角色名称" />
+          <el-input
+            v-model="formData.name"
+            maxlength="64"
+            placeholder="请输入角色名称"
+          />
         </el-form-item>
 
         <el-form-item label="角色编码" prop="code">
           <el-input
             v-model="formData.code"
+            maxlength="32"
             :readonly="!!formData.id"
             placeholder="请输入角色编码"
           />
@@ -283,16 +288,9 @@ const formData = reactive<RoleForm>({
 
 const rules = reactive({
   name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
-  code: [
-    { required: true, message: "请输入角色编码", trigger: "blur" },
-    {
-      pattern: /^[A-Z_]+$/,
-      message: "角色编码只能包含大写字母和下划线",
-      trigger: "blur",
-    },
-  ],
-  dataScope: [{ required: true, message: "请选择数据权限", trigger: "blur" }],
-  status: [{ required: true, message: "请选择状态", trigger: "blur" }],
+  code: [{ required: true, message: "请输入角色编码", trigger: "blur" }],
+  dataScope: [{ required: true, message: "请选择数据权限", trigger: "change" }],
+  status: [{ required: true, message: "请选择状态", trigger: "change" }],
 });
 
 const menuDialogVisible = ref(false);
@@ -306,7 +304,7 @@ interface CheckedRole {
   id?: number;
   name?: string;
 }
-let checkedRole: CheckedRole = reactive({});
+const checkedRole = reactive<CheckedRole>({});
 
 /** 查询 */
 function handleQuery() {
@@ -433,30 +431,25 @@ function handleDelete(row?: RolePageVO) {
 /** 打开分配菜单弹窗 */
 async function openMenuDialog(row: RolePageVO) {
   const roleId = row.id;
-  if (roleId) {
-    checkedRole = {
-      id: roleId,
-      name: row.name,
-    };
-    menuDialogVisible.value = true;
-    loading.value = true;
-    isCheckAll.value = false;
-    isExpandAll.value = true;
+  if (!roleId) return;
 
+  Object.assign(checkedRole, { id: roleId, name: row.name });
+  menuDialogVisible.value = true;
+  loading.value = true;
+  isCheckAll.value = false;
+  isExpandAll.value = true;
+
+  try {
     // 获取所有的菜单
     menuList.value = await MenuAPI.getOptions();
 
     // 回显角色已拥有的菜单
-    RoleAPI.getRoleMenuIds(roleId)
-      .then((data) => {
-        const checkedMenuIds = data;
-        checkedMenuIds.forEach((menuId) =>
-          menuRef.value.setChecked(menuId, true, false)
-        );
-      })
-      .finally(() => {
-        loading.value = false;
-      });
+    const checkedMenuIds = await RoleAPI.getRoleMenuIds(roleId);
+    checkedMenuIds?.forEach((menuId) =>
+      menuRef.value.setChecked(menuId, true, false)
+    );
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -483,7 +476,7 @@ function handleToggleCheckAll() {
 function handleToggleExpandAll() {
   isExpandAll.value = !isExpandAll.value;
   const tree = menuRef.value as any;
-  tree.store.nodesAll.forEach((node: any) => {
+  Object.values(tree.store.nodesMap).forEach((node: any) => {
     node.expanded = isExpandAll.value;
   });
 }

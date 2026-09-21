@@ -124,10 +124,7 @@ class ImportExportService:
         handler = import_handler_registry.get_handler(module)
         fields_cfg = handler.get_field_configs()
         ext = _get_extension(file.filename or "")
-        if ext == ".csv":
-            rows = parse_csv(content, fields_cfg)
-        else:
-            rows = parse_excel(content, fields_cfg)
+        rows = parse_csv(content, fields_cfg) if ext == ".csv" else parse_excel(content, fields_cfg)
         if not rows:
             raise BusinessException(ResultCode.IMPORT_FILE_EMPTY)
         if len(rows) > MAX_ROWS:

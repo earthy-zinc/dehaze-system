@@ -94,16 +94,21 @@ public class MenuExportHandler implements ExportHandler {
     private MenuQuery buildQuery(Map<String, Object> params) {
         MenuQuery query = new MenuQuery();
         if (params != null) {
-            Object keywords = params.get("keywords");
-            if (keywords != null) {
-                query.setKeywords(String.valueOf(keywords));
-            }
-            Object status = params.get("status");
-            if (status != null && !"".equals(String.valueOf(status))) {
-                query.setStatus(Integer.valueOf(String.valueOf(status)));
-            }
+            query.setKeywords(asString(params.get("keywords")));
+            query.setPerm(asString(params.get("perm")));
+            query.setPath(asString(params.get("path")));
+            query.setType(asInt(params.get("type")));
+            query.setVisible(asInt(params.get("visible")));
         }
         return query;
+    }
+
+    private String asString(Object value) {
+        return value == null || "".equals(String.valueOf(value)) ? null : String.valueOf(value);
+    }
+
+    private Integer asInt(Object value) {
+        return value == null || "".equals(String.valueOf(value)) ? null : Integer.valueOf(String.valueOf(value));
     }
 
     private List<MenuVO> flatten(List<MenuVO> tree) {

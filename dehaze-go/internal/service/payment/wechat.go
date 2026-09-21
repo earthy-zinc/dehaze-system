@@ -65,10 +65,10 @@ func (a *WechatPayAdapter) CreateOrder(ctx context.Context, req *UnifiedOrderReq
 
 func (a *WechatPayAdapter) VerifyCallback(ctx context.Context, body []byte) (*CallbackResult, error) {
 	var cb struct {
-		OutTradeNo  string `json:"out_trade_no"`
+		OutTradeNo    string `json:"out_trade_no"`
 		TransactionID string `json:"transaction_id"`
-		TradeState   string `json:"trade_state"`
-		Amount struct {
+		TradeState    string `json:"trade_state"`
+		Amount        struct {
 			Total int64 `json:"total"`
 		} `json:"amount"`
 	}

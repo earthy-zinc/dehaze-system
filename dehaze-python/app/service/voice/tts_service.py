@@ -17,8 +17,9 @@ import logging
 import math
 import os
 import time
+from collections.abc import Awaitable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, cast
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from redis.asyncio import Redis
@@ -85,12 +86,13 @@ class TtsService:
 
     # ==================== 合成 ====================
 
-    async def synthesize(self, 
+    async def synthesize(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
         text: str,
-        voice: str,
+        voice: str | None,
         speed: float,
         format_: str,
         sample_rate: int,
@@ -120,9 +122,7 @@ class TtsService:
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"语音合成失败: {exc}") from exc
 
         # 加密存储 + 写缓存索引
-        audio_url = await self._store_and_cache(
-            db, redis, user_id, cache_key, audio, format_
-        )
+        audio_url = await self._store_and_cache(db, redis, user_id, cache_key, audio, format_)
         await self.voice_billing_service.charge_tts(db, user_id, len(text))
         return {"audioUrl": audio_url, "format": format_}
 
@@ -144,21 +144,33 @@ class TtsService:
 
     # ==================== 缓存 ====================
 
-    async def _get_cached(self, 
-        redis: Redis, user_id: int, cache_key: str
+    async def _get_cached(
+        self, redis: Redis, user_id: int, cache_key: str
     ) -> dict[str, str] | None:
         """命中缓存返回 audioUrl + format，否则 None。"""
-        entry = await redis.hget(_CACHE_HASH_PREFIX.format(user_id), cache_key)
+        # redis-py 同步/异步客户端共用 hget/hset/hdel 等命令签名（Union[Awaitable[T], T]）：
+        # 此处为异步客户端，运行时恒返回协程，await 正确，cast 仅收窄类型（非消音）。
+        entry = await cast(
+            Awaitable[str | None], redis.hget(_CACHE_HASH_PREFIX.format(user_id), cache_key)
+        )
         if not entry:
             return None
         try:
             meta = json.loads(entry)
         except json.JSONDecodeError:
+            # 缓存索引损坏：视为未命中回退重新合成（降级，命中不扣费语义不受影响），但需可见
+            logger.warning(
+                "TTS 缓存索引解析失败，视为未命中: user_id=%s, cache_key=%s",
+                user_id,
+                cache_key,
+                exc_info=True,
+            )
             return None
         audio_url = f"/api/v1/voice/tts/audio/{cache_key}"
         return {"audioUrl": audio_url, "format": meta.get("format", "mp3")}
 
-    async def _store_and_cache(self, 
+    async def _store_and_cache(
+        self,
         db: AsyncSession,
         redis: Redis,
         user_id: int,
@@ -178,7 +190,8 @@ class TtsService:
         lru_key = _CACHE_LRU_PREFIX.format(user_id)
         meta = json.dumps({"fileId": sys_file.id, "format": format_})
 
-        await redis.hset(hash_key, cache_key, meta)
+        # redis-py 同步/异步共用签名 → 异步客户端恒返回协程
+        await cast(Awaitable[int], redis.hset(hash_key, cache_key, meta))
         await redis.zadd(lru_key, {cache_key: time.time()})
         # 索引 TTL 与缓存过期时间一致（hash 与 LRU zset 同步过期，避免 zset 无限增长）
         await redis.expire(hash_key, settings.VOICE_TTS_CACHE_TTL)
@@ -190,26 +203,37 @@ class TtsService:
             overflow = count - settings.VOICE_TTS_MAX_CACHE_PER_USER
             oldest = await redis.zrange(lru_key, 0, overflow - 1)
             if oldest:
-                await redis.hdel(hash_key, *oldest)
+                # redis-py 同步/异步共用签名 → 异步客户端恒返回协程
+                await cast(Awaitable[int], redis.hdel(hash_key, *oldest))
                 await redis.zrem(lru_key, *oldest)
 
         return f"/api/v1/voice/tts/audio/{cache_key}"
 
     # ==================== 缓存音频下载 ====================
 
-    async def load_cached_audio(self, 
-        db: AsyncSession, redis: Redis, user_id: int, cache_key: str
+    async def load_cached_audio(
+        self, db: AsyncSession, redis: Redis, user_id: int, cache_key: str
     ) -> tuple[bytes, str] | None:
         """按 cacheKey 读取并解密缓存音频（校验归属：仅本人缓存可访问）。
 
         返回 (解密后音频字节, 音频格式)；缓存不存在或非本人返回 None。
         """
-        entry = await redis.hget(_CACHE_HASH_PREFIX.format(user_id), cache_key)
+        # redis-py 同步/异步共用签名 → 异步客户端恒返回协程
+        entry = await cast(
+            Awaitable[str | None], redis.hget(_CACHE_HASH_PREFIX.format(user_id), cache_key)
+        )
         if not entry:
             return None
         try:
             meta = json.loads(entry)
         except json.JSONDecodeError:
+            # 缓存索引损坏：无法定位文件，按不存在返回（降级），但需可见以暴露缓存被写坏
+            logger.warning(
+                "TTS 缓存索引解析失败，按不存在处理: user_id=%s, cache_key=%s",
+                user_id,
+                cache_key,
+                exc_info=True,
+            )
             return None
 
         file_info: SysFile | None = await self.file_service.get_file_by_id(db, meta.get("fileId"))
@@ -217,9 +241,7 @@ class TtsService:
             return None
 
         storage = get_storage_by_name(file_info.storage)
-        encrypted = await _read_object_bytes(
-            storage, settings.MINIO_BUCKET, file_info.object_name
-        )
+        encrypted = await _read_object_bytes(storage, settings.MINIO_BUCKET, file_info.object_name)
         try:
             audio = decrypt_audio(encrypted)
         except Exception:

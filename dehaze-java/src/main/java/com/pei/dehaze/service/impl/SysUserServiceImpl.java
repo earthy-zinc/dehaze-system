@@ -3,20 +3,26 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.annotation.AuditLog;
+import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.DateUtils;
 import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.UserConverter;
+import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.dto.UserAuthInfo;
+import com.pei.dehaze.model.entity.SysMember;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
@@ -32,13 +38,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 用户业务实现类
@@ -49,6 +64,11 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
+
+    /**
+     * 超级管理员用户名（受删除/禁用保护，对齐 python user_service）
+     */
+    private static final String ROOT_USERNAME = "root";
 
     private final PasswordEncoder passwordEncoder;
 
@@ -61,6 +81,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final SysRoleService roleService;
 
     private final PermissionService permissionService;
+
+    private final SysMemberMapper memberMapper;
+
+    private final StringRedisTemplate redisTemplate;
 
     /**
      * 新用户默认密码（由各 profile 的 system.default-password 注入，源为根 .env 的 DEFAULT_PASSWORD）
@@ -89,7 +113,37 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         Page<UserRead> userPage = this.baseMapper.listPagedUsers(page, queryParams);
 
         // 实体转换
-        return userConverter.read2PageVo(userPage);
+        Page<UserPageVO> voPage = userConverter.read2PageVo(userPage);
+
+        // 批量聚合会员信息（in userIds，避免 N+1）
+        List<Long> userIds = voPage.getRecords().stream().map(UserPageVO::getId).toList();
+        if (!userIds.isEmpty()) {
+            Map<Long, SysMember> memberMap = memberMapper.selectList(new LambdaQueryWrapper<SysMember>()
+                            .in(SysMember::getUserId, userIds))
+                    .stream()
+                    .collect(Collectors.toMap(SysMember::getUserId, Function.identity()));
+            voPage.getRecords().forEach(vo -> fillMemberFields(vo, memberMap.get(vo.getId())));
+        }
+        return voPage;
+    }
+
+    /**
+     * 填充分页 VO 的会员字段；quotaUsage 为 8 类任务本月 used/quota 求和（used/total）
+     */
+    private void fillMemberFields(UserPageVO vo, SysMember member) {
+        if (member == null) {
+            vo.setQuotaUsage("0/0");
+            return;
+        }
+        vo.setMemberLevel(member.getLevelCode());
+        vo.setMemberExpireTime(member.getExpireTime());
+        int total = member.getMonthlyDehazeQuota() + member.getMonthlyDerainQuota() + member.getMonthlyDesnowQuota()
+                + member.getMonthlyLowlightQuota() + member.getMonthlySuperResolutionQuota()
+                + member.getMonthlyDenoiseQuota() + member.getMonthlyInpaintQuota() + member.getMonthlyEvaluateQuota();
+        int used = member.getMonthlyDehazeUsed() + member.getMonthlyDerainUsed() + member.getMonthlyDesnowUsed()
+                + member.getMonthlyLowlightUsed() + member.getMonthlySuperResolutionUsed()
+                + member.getMonthlyDenoiseUsed() + member.getMonthlyInpaintUsed() + member.getMonthlyEvaluateUsed();
+        vo.setQuotaUsage(used + "/" + total);
     }
 
     /**
@@ -115,6 +169,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         String username = userForm.getUsername();
 
+        // 业务白名单：用户名查全表判重（含软删行），删除后永久不可复用，理由见 SysUserMapper#countByUsernameAllDeleted
         long count = this.baseMapper.countByUsernameAllDeleted(username);
         if (count > 0) {
             throw new BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用");
@@ -138,7 +193,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 更新用户 — 改名查重必须查全表（含软删行），命中报"该用户名不可用"。
+     * 更新用户 — 用户名查重走白名单逻辑（查全表含软删行，理由见 SysUserMapper#countByUsernameAllDeleted）。
      *
      * @param userId   用户ID
      * @param userForm 用户表单对象
@@ -149,11 +204,15 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @CacheEvict(value = "user:auth", allEntries = true)
     public boolean updateUser(Long userId, UserForm userForm) {
 
-        String username = userForm.getUsername();
+        SysUser existing = this.getById(userId);
+        if (existing == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在");
+        }
 
-        long count = this.baseMapper.countByUsernameAllDeleted(username);
-        if (count > 0 && !isCurrentUser(username, userId)) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "该用户名不可用");
+        // 用户名字段只读，不可修改（与角色编码创建后不可修改保持一致）
+        String username = userForm.getUsername();
+        if (username != null && !username.equals(existing.getUsername())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "用户名不可修改");
         }
 
         // form -> entity
@@ -179,14 +238,32 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     @AuditLog(module = "user", action = "delete", targetType = "user", targetIdSpel = "#idsStr")
+    @CacheEvict(value = "user:auth", allEntries = true)
     public boolean deleteUsers(String idsStr) {
         if (StrUtil.isBlank(idsStr)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除的用户数据为空");
         }
-        // 逻辑删除
         List<Long> ids = IdUtils.parseIdList(idsStr);
-        return this.removeByIds(ids);
 
+        // 不可删除自己
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId != null && ids.contains(currentUserId)) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "不可删除自己");
+        }
+
+        // 超级管理员受保护，不可删除
+        List<SysUser> users = this.listByIds(ids);
+        boolean hasRoot = users.stream().anyMatch(u -> ROOT_USERNAME.equals(u.getUsername()));
+        if (hasRoot) {
+            throw new BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可删除");
+        }
+
+        boolean result = this.removeByIds(ids);
+        if (result) {
+            // 删除后踢出目标用户全部在线会话（对齐 python user_service.delete_users）
+            kickUserSessions(ids);
+        }
+        return result;
     }
 
     /**
@@ -198,16 +275,109 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     @AuditLog(module = "user", action = "password_change", targetType = "user", targetIdSpel = "#userId")
+    @CacheEvict(value = "user:auth", allEntries = true)
     public boolean updatePassword(Long userId, String password) {
-        if (StrUtil.isBlank(password)) {
-            throw new BusinessException(ResultCode.PARAM_IS_NULL);
+        validatePasswordComplexity(password);
+        SysUser user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在");
         }
         Long currentUserId = SecurityUtils.getUserId();
-        return this.update(new LambdaUpdateWrapper<SysUser>()
+        boolean result = this.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, passwordEncoder.encode(password))
                 .set(SysUser::getUpdateBy, currentUserId)
         );
+        if (result) {
+            // 重置后踢出该用户全部在线会话，强制重新登录（对齐 python user_service.update_password）
+            kickUserSessions(List.of(userId));
+        }
+        return result;
+    }
+
+    /**
+     * 密码复杂度：8-20 位且必须同时包含字母与数字（对齐 python validate_password_complexity）
+     */
+    private void validatePasswordComplexity(String password) {
+        if (password == null || password.length() < 8 || password.length() > 20
+                || !password.matches(".*[a-zA-Z].*") || !password.matches(".*\\d.*")) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "密码必须包含字母和数字，8-20位");
+        }
+    }
+
+    /**
+     * 修改用户状态：用户不存在 A0401；禁用超级管理员 A0505（防自锁）；不可禁用自己 A0503
+     */
+    @Override
+    @CacheEvict(value = "user:auth", allEntries = true)
+    public boolean updateUserStatus(Long userId, Integer status) {
+        SysUser user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在");
+        }
+        if (ROOT_USERNAME.equals(user.getUsername()) && status == 0) {
+            throw new BusinessException(ResultCode.ROOT_USER_PROTECTED, "超级管理员不可禁用");
+        }
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId != null && currentUserId.equals(userId)) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "不可禁用自己");
+        }
+        boolean result = this.update(new LambdaUpdateWrapper<SysUser>()
+                .eq(SysUser::getId, userId)
+                .set(SysUser::getStatus, status)
+                .set(SysUser::getUpdateBy, currentUserId)
+        );
+        if (result && status == 0) {
+            // 禁用后实时踢出该用户全部在线会话，保证禁用立即生效（对齐 python user_service.update_user_status）
+            kickUserSessions(List.of(userId));
+        }
+        return result;
+    }
+
+    /**
+     * 踢出目标用户全部在线会话（对齐 python auth_service.kick_user_sessions_batch）。
+     * 超级管理员会话不可被踢出（与 kickSession 语义一致）。
+     */
+    private void kickUserSessions(Collection<Long> userIds) {
+        if (CollUtil.isEmpty(userIds)) {
+            return;
+        }
+        List<String> sessionKeys = new ArrayList<>();
+        Map<Long, List<String>> kickedByUser = new HashMap<>();
+        try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions()
+                .match(SecurityConstants.SESSION_PREFIX + "*").build())) {
+            while (cursor.hasNext()) {
+                String key = cursor.next();
+                if (key.startsWith(SecurityConstants.SESSION_USER_PREFIX)) {
+                    continue;
+                }
+                String raw = redisTemplate.opsForValue().get(key);
+                if (raw == null) {
+                    continue;
+                }
+                JSONObject data = JSONUtil.parseObj(raw);
+                Long userId = data.getLong("userId");
+                if (userId == null || !userIds.contains(userId)) {
+                    continue;
+                }
+                JSONArray authorities = data.getJSONArray("authorities");
+                if (authorities != null && authorities.contains(SecurityConstants.ROLE_PREFIX + "ROOT")) {
+                    continue;
+                }
+                sessionKeys.add(key);
+                kickedByUser.computeIfAbsent(userId, id -> new ArrayList<>())
+                        .add(key.substring(SecurityConstants.SESSION_PREFIX.length()));
+            }
+        }
+        if (sessionKeys.isEmpty()) {
+            return;
+        }
+        redisTemplate.delete(sessionKeys);
+        // 同步清理多点登录索引（session:user:{userId} ZSet 中移除被踢会话元素）
+        for (Map.Entry<Long, List<String>> entry : kickedByUser.entrySet()) {
+            redisTemplate.opsForZSet().remove(
+                    SecurityConstants.SESSION_USER_PREFIX + entry.getKey(), entry.getValue().toArray());
+        }
     }
 
     /**
@@ -278,17 +448,5 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         return userInfoVO;
     }
-
-    /**
-     * 判断指定 username 是否属于当前用户（允许本人保留原用户名）
-     */
-    private boolean isCurrentUser(String username, Long userId) {
-        SysUser currentUser = this.getOne(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getId, userId)
-                .select(SysUser::getUsername)
-        );
-        return currentUser != null && username.equals(currentUser.getUsername());
-    }
-
 
 }

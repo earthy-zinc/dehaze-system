@@ -75,11 +75,13 @@ export interface TaskVO {
   progress: number;
   /** 任务类型 */
   taskType?: TaskType;
+  /** 任务类别：import / export */
+  taskCategory?: TaskCategory;
   /** 总文件数 */
   totalFiles?: number;
   /** 已处理文件数 */
   processedFiles?: number;
-  /** 下载链接（任务完成时返回） */
+  /** 下载链接（任务完成时返回，指向存储后端 URL） */
   downloadUrl?: string;
   /** 过期时间 */
   expiresAt?: string;
@@ -91,4 +93,10 @@ export interface TaskVO {
   completedAt?: string;
   /** 错误信息（失败时返回） */
   error?: string;
+  /** 客户端幂等键 */
+  idempotencyKey?: string | null;
+  /** MQ 重试次数 */
+  retryCount?: number;
+  /** 执行 Worker 标识 */
+  workerId?: string | null;
 }

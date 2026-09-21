@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { nextTick } from "vue";
 import Pagination from "../index.vue";
 
 describe("Pagination Component", () => {
@@ -16,7 +17,8 @@ describe("Pagination Component", () => {
       });
 
       expect(wrapper.find(".pagination").exists()).toBe(true);
-      expect(wrapper.find("el-pagination").exists()).toBe(true);
+      // element-plus 渲染为 div.el-pagination，而非 <el-pagination> 标签
+      expect(wrapper.find(".el-pagination").exists()).toBe(true);
     });
 
     it("应该设置默认的props值", () => {
@@ -61,7 +63,7 @@ describe("Pagination Component", () => {
       expect(wrapper.props("hidden")).toBe(true);
     });
 
-    it("应该根据hidden属性显示/隐藏组件", () => {
+    it("应该根据hidden属性显示/隐藏组件", async () => {
       const wrapper = mount(Pagination, {
         props: {
           total: 100,
@@ -71,7 +73,7 @@ describe("Pagination Component", () => {
 
       expect(wrapper.find(".pagination.hidden").exists()).toBe(true);
 
-      wrapper.setProps({ hidden: false });
+      await wrapper.setProps({ hidden: false });
       expect(wrapper.find(".pagination.hidden").exists()).toBe(false);
     });
   });
@@ -114,10 +116,11 @@ describe("Pagination Component", () => {
       });
 
       const vm = wrapper.vm as any;
-      expect(vm.currentPage.value).toBe(1);
+      // setupState 经 proxyRefs 已解包，直接读值
+      expect(vm.currentPage).toBe(1);
 
       await wrapper.setProps({ page: 5 });
-      expect(vm.currentPage.value).toBe(5);
+      expect(vm.currentPage).toBe(5);
     });
   });
 
@@ -183,8 +186,10 @@ describe("Pagination Component", () => {
         },
       });
 
+      // update:limit 由 v-model:page-size 绑定产生：pageSize 变化即触发
       const vm = wrapper.vm as any;
-      await vm.handleSizeChange(50);
+      vm.pageSize = 50;
+      await nextTick();
 
       expect(wrapper.emitted("update:limit")).toBeTruthy();
       expect(wrapper.emitted("update:limit")?.[0]).toEqual([50]);
@@ -229,7 +234,7 @@ describe("Pagination Component", () => {
         },
       });
 
-      const elPagination = wrapper.find("el-pagination");
+      const elPagination = wrapper.find(".el-pagination");
 
       // 这些props应该传递给el-pagination
       expect(elPagination.exists()).toBe(true);
@@ -243,7 +248,7 @@ describe("Pagination Component", () => {
       });
 
       // 组件应该设置了size-change和current-change事件监听器
-      const elPagination = wrapper.find("el-pagination");
+      const elPagination = wrapper.find(".el-pagination");
       expect(elPagination.exists()).toBe(true);
     });
   });
@@ -319,10 +324,13 @@ describe("Pagination Component", () => {
 
   describe("Props 验证", () => {
     it("应该验证total是必需的", () => {
-      // 这个测试主要验证TypeScript类型定义
+      // Vue 运行时对缺失 required prop 仅告警不抛错
+      const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
       expect(() => {
         mount(Pagination); // 没有传入必需的total prop
-      }).toThrow();
+      }).not.toThrow();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it("应该接受正确的pageSizes类型", () => {
@@ -408,8 +416,8 @@ describe("Pagination Component", () => {
       expect(wrapper.props("total")).toBe(200);
       expect(wrapper.props("page")).toBe(3);
       expect(wrapper.props("limit")).toBe(30);
-      expect(vm.currentPage.value).toBe(3);
-      expect(vm.pageSize.value).toBe(30);
+      expect(vm.currentPage).toBe(3);
+      expect(vm.pageSize).toBe(30);
     });
 
     it("应该在hidden状态切换时正确显示/隐藏", async () => {

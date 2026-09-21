@@ -9,6 +9,7 @@ import (
 	pkgsaleservice "github.com/earthyzinc/dehaze-go/internal/service/pkgsale"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
+	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -75,24 +76,20 @@ func (api *PackageApi) CalculatePrice(c *gin.Context) {
 }
 
 func (api *PackageApi) GetPage(c *gin.Context) {
+	// python package.py:46-47 默认 pageSize 10（此处原为 20，属默认值偏离，一并对齐）
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.PackagePageQuery{
-		Name:      c.Query("name"),
-		LevelCode: c.Query("levelCode"),
-		Period:    c.Query("period"),
-		StartTime: c.Query("startTime"),
-		EndTime:   c.Query("endTime"),
-		PageNum:   1,
-		PageSize:  20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		Name:        c.Query("name"),
+		PackageType: c.Query("packageType"),
+		LevelCode:   c.Query("levelCode"),
+		Period:      c.Query("period"),
+		StartTime:   c.Query("startTime"),
+		EndTime:     c.Query("endTime"),
+		PageNum:     pageNum,
+		PageSize:    pageSize,
 	}
 	if v := c.Query("status"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -146,6 +143,12 @@ func (api *PackageApi) Update(c *gin.Context) {
 
 	var form bo.PackageForm
 	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 参数合法后再做权限校验（与 FastAPI body 校验先行顺序对齐）
+	if err := middleware.CheckPermission(c, "package:edit"); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -257,21 +260,16 @@ func (api *PackageApi) ReceiveCoupon(c *gin.Context) {
 }
 
 func (api *PackageApi) GetCouponPage(c *gin.Context) {
+	// python package.py:130-131 默认 pageSize 10（此处原为 20，属默认值偏离，一并对齐）
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
 	q := &query.CouponPageQuery{
 		Name:     c.Query("name"),
 		Type:     c.Query("type"),
-		PageNum:  1,
-		PageSize: 20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 	if v := c.Query("status"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {

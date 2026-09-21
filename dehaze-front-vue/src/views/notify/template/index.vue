@@ -257,6 +257,7 @@ import {
   MessageTemplateVO,
 } from "dehaze-sdk-js";
 import { Edit, Refresh, Search, View } from "@element-plus/icons-vue";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "NotifyTemplate" });
 
@@ -284,24 +285,19 @@ function getTypeLabel(type: string) {
   return typeOptions.find((t) => t.value === type)?.label ?? type;
 }
 
+const priorityOptions: { label: string; value: number; tag: TagType }[] = [
+  { label: "低", value: 1, tag: "info" },
+  { label: "中", value: 2, tag: "primary" },
+  { label: "高", value: 3, tag: "warning" },
+  { label: "紧急", value: 4, tag: "danger" },
+];
+
 function priorityLabel(p: number) {
-  const map: Record<number, string> = { 1: "低", 2: "中", 3: "高", 4: "紧急" };
-  return map[p] ?? String(p);
+  return priorityOptions.find((o) => o.value === p)?.label ?? String(p);
 }
 
-function priorityTagType(
-  p: number
-): "info" | "warning" | "primary" | "success" | "danger" {
-  const map: Record<
-    number,
-    "info" | "warning" | "primary" | "success" | "danger"
-  > = {
-    1: "info",
-    2: "primary",
-    3: "warning",
-    4: "danger",
-  };
-  return map[p] ?? "info";
+function priorityTagType(p: number): TagType {
+  return priorityOptions.find((o) => o.value === p)?.tag ?? "info";
 }
 
 function formatChannels(channels: Record<string, boolean>) {

@@ -21,6 +21,15 @@ type IPackageService interface {
 	GetSalesStats(ctx context.Context) (*vo.SalesStatsVO, error)
 }
 
+type IPromotionService interface {
+	GetPage(ctx context.Context, q *query.PromotionPageQuery) (*vo.PageResult[vo.PromotionVO], error)
+	Create(ctx context.Context, form *bo.PromotionForm) (*vo.PromotionVO, error)
+	Update(ctx context.Context, id int64, form *bo.PromotionForm) (*vo.PromotionVO, error)
+	UpdateStatus(ctx context.Context, id int64, status int) (*vo.PromotionVO, error)
+	Delete(ctx context.Context, id int64) error
+	BindPackages(ctx context.Context, id int64, form *bo.PromotionPackageForm) error
+}
+
 type ICouponService interface {
 	ListMy(ctx context.Context, userID int64, status *int) ([]vo.UserCouponVO, error)
 	Receive(ctx context.Context, userID, couponID int64) (*vo.CouponReceiveResult, error)

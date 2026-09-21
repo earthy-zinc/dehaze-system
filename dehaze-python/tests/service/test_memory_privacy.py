@@ -3,7 +3,6 @@ from app.utils.pii import contains_pii, mask_pii
 
 
 class TestPiiFilter:
-
     def test_id_card_detected(self):
         assert contains_pii("我的身份证是 11010519491231002X")
         assert "11010519491231002X" not in mask_pii("我的身份证是 11010519491231002X")
@@ -46,12 +45,12 @@ class TestPiiFilter:
 
 
 class TestFeedbackExtraction:
-
     def test_too_long_mapping(self):
         assert _build_preference_content(["too_long"], None) == "用户偏好简洁回复"
 
     def test_with_comment(self):
         content = _build_preference_content(["too_long"], "请精简到3点以内")
+        assert content is not None
         assert "用户偏好简洁回复" in content
         assert "请精简到3点以内" in content
 

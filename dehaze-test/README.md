@@ -1,21 +1,50 @@
 # dehaze-test
 
-跨多端（Java / Go / Python 后端 + 各前端）联调与集成测试工具集，对齐
-`dehaze-sdk-js/test` 的设计哲学：**模块化工具函数 + pytest 用例**。
+**开发工作台（Developer Workbench）**：面向"人的开发活动"的工具集——调试、数据操作、跨端对比、质量评估。
+不是产品代码的测试场所。
 
-## 设计目标
+## 定位与边界
 
-- 三端后端 API 对比与回归
-- 联调时的 ad-hoc 调试脚本（登录、查 DB、查 Redis、验证业务状态）
-- 直连 MySQL / Redis（不依赖本地 docker）
-- 多后端、多用户登录支持
+与三个邻居的职责边界（防止边界腐烂的核心约束）：
+
+| | 承载 | 触发 | 产物 | 判定 |
+|---|---|---|---|---|
+| `dehaze-python/tests` 等各端 tests | 产品代码回归（断言正确性） | 每次改动 / CI | pass/fail | **精确预期值** |
+| `dehaze-sdk-js/test` | SDK ↔ 后端契约集成 | 发版 / 契约变更 | pass/fail | 契约一致 |
+| **dehaze-test（本项目）** | 开发过程辅助 | **人工按需** | 数据 / 报告 / 环境状态 | **无预期值，供人决策** |
+
+四类任务：
+
+1. **联调调试**：登录态获取、DB/Redis 查询、键清理、业务状态验证（ad-hoc，scripts/）
+2. **环境与数据管理**：开发库重建、增量迁移、种子校验（危险操作集中管控，scripts/）
+3. **跨端对比**：三端同接口行为对比，暴露契约漂移（scripts/ + tests/）
+4. **质量评估**：度量型任务（如 kb_eval），产出指标报表与版本化基线——**评估发现的硬性不变量必须沉淀回各端 pytest**，不许留在这里当长期断言
+
+**不承载**：任何进 CI 的东西、产品代码的回归测试、SDK 契约测试。
+
+## 治理规则
+
+1. **危险操作白名单化**：`rebuild_mysql` / `cleanup` / 迁移类脚本必须显式指定目标（库名 / 键前缀），禁止无参默认全量
+2. **一次性脚本生命周期**：用完即删或移入 `archive/`，不长期滞留
+3. **评估产物归档**：`kb_eval/reports/` 版本化基线，报告可追溯
+4. **工具复用**：`utils/` 与 `dehaze-sdk-js/test/utils/` 保持设计对齐（config/redis/mysql/auth/api/cleanup）
+
+## 目录
+
+```
+dehaze-test/
+├── utils/         # 工具库（config/redis/mysql/auth/api/cleanup/sse）
+├── tests/         # 三端对比集成测试（pytest，人工触发，非 CI）
+├── scripts/       # 联调调试 + 环境数据操作脚本
+└── kb_eval/       # 知识库质量评估（分块质量 + 召回质量，报告归档 reports/）
+```
 
 ## 运行环境
 
 复用 `dehaze-python` 的 venv（已含 `redis 6.4` / `pymysql 1.4` / `httpx 0.28` / `pytest 8.4`）：
 
 ```bash
-PYTHON=/Users/earthywu/Projects/dehaze-system/dehaze-python/.venv/bin/python
+PYTHON=/data/workspace/dehaze-system/dehaze-python/.venv/bin/python
 ```
 
 ## 网络前提
@@ -30,18 +59,9 @@ ssh -L 6379:127.0.0.1:6379 -L 3306:127.0.0.1:3306 <user>@<MYSQL_HOST>
 
 转发完成后，dehaze-test 会通过 `MYSQL_HOST` / `REDIS_HOST`（被 ssh 转发到 127.0.0.1）直连 Redis/MySQL。
 
-## 目录
-
-```
-dehaze-test/
-├── utils/         # 工具库（config/redis/mysql/auth/api/cleanup）
-├── tests/         # pytest 集成测试
-└── scripts/       # ad-hoc 调试脚本
-```
-
 ## 使用
 
-### 跑 pytest 集成测试
+### 跑三端对比集成测试
 
 ```bash
 cd dehaze-test
@@ -63,26 +83,33 @@ cd dehaze-test
 # 交互式 SQL 查询
 ../dehaze-python/.venv/bin/python scripts/db_query.py "SELECT COUNT(*) FROM sys_message"
 
-# 重建数据库（迁移自 scripts/rebuild_mysql.sh，去 docker 依赖）
-../dehaze-python/.venv/bin/python scripts/rebuild_mysql.py
+# 重建数据库（危险操作：需显式 --only 指定库名；--only dehaze 会清空开发库全部数据）
+../dehaze-python/.venv/bin/python scripts/rebuild_mysql.py --only dehaze
 ```
+
+### 知识库质量评估
+
+```bash
+# 离线分块评估（纯算法，不起后端，秒级）
+../dehaze-python/.venv/bin/python -m kb_eval.offline_eval
+
+# 检索链路评估（需 8991 已启动，走真实链路）
+../dehaze-python/.venv/bin/python -m kb_eval.retrieval_eval
+```
+
+详见 `kb_eval/README.md`。
 
 ### 在自己的脚本中复用工具库
 
 ```python
 import sys
-sys.path.insert(0, "/Users/earthywu/Projects/dehaze-system/dehaze-test")
+sys.path.insert(0, "/data/workspace/dehaze-system/dehaze-test")
 
 from utils import auth, mysql, redis, api
 
 sid = auth.login("admin", backend="java")
 resp = api.get("/api/v1/messages/unread-count", backend="java")
 print("API 未读数:", resp["data"]["count"])
-
-print("DB 未读数:", mysql.query_one(
-    "SELECT COUNT(*) AS cnt FROM sys_message WHERE read_status = 0 AND create_by = %s",
-    (1,)
-)["cnt"])
 ```
 
 ## 配置

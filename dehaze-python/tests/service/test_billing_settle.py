@@ -1,9 +1,38 @@
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.repository.ai_billing_repository import AiBillingRepository
+from app.repository.ai_credit_log_repository import AiCreditLogRepository
 from app.service.billing import billing_service as m
 
 _BILLING = SimpleNamespace(id=1, pre_deduct=100, bill_type="chat", user_id=1)
+
+
+class _BillingRepoStub(AiBillingRepository):
+    """测试替身：仅实现 list_by_message / update（委托注入实现）。"""
+
+    def __init__(self, list_by_message, update):
+        self._list_by_message = list_by_message
+        self._update = update
+
+    async def list_by_message(self, *args, **kwargs):
+        return await self._list_by_message(*args, **kwargs)
+
+    async def update(self, *args, **kwargs):
+        return await self._update(*args, **kwargs)
+
+
+class _CreditLogRepoStub(AiCreditLogRepository):
+    """测试替身：仅实现 create_log（委托注入实现）。"""
+
+    def __init__(self, create_log):
+        self._create_log = create_log
+
+    async def create_log(self, *args, **kwargs):
+        return await self._create_log(*args, **kwargs)
 
 
 def _install_settle_stubs(monkeypatch, captured, rate=None):
@@ -46,10 +75,9 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
     async def _check_anomaly(db, uid, record, monthly_limit=0, daily_limit=0):
         captured["anomaly"] += 1
 
-    repo = SimpleNamespace(list_by_message=_list_by_message, update=_update)
     svc = m.BillingService(
-        ai_billing_repository=repo,
-        ai_credit_log_repository=SimpleNamespace(create_log=_create_log),
+        ai_billing_repository=_BillingRepoStub(_list_by_message, _update),
+        ai_credit_log_repository=_CreditLogRepoStub(_create_log),
     )
     # 服务引用仍为方法体内模块级查找，故 patch 模块对象 m
     monkeypatch.setattr(m, "rate_provider", SimpleNamespace(calculate=_calculate))
@@ -64,6 +92,12 @@ def _install_settle_stubs(monkeypatch, captured, rate=None):
         SimpleNamespace(refund=_refund_balance, deduct=_deduct_balance, get_balance=_get_balance),
     )
     monkeypatch.setattr(m, "billing_anomaly_service", SimpleNamespace(check=_check_anomaly))
+
+    # 成本核算回填与本组用例（归因字段/事件接线）无关，置为 no-op 保证结算路径确定性
+    async def _backfill_cost(db, billing_id):
+        return None
+
+    monkeypatch.setattr(m.cost_service, "backfill_cost", _backfill_cost)
     # 对话完成事件默认拦截（接线测试单独覆盖验证发布调用），避免后台任务污染
     monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: None)
     return svc
@@ -75,7 +109,7 @@ class TestSettleAttribution:
         svc = _install_settle_stubs(monkeypatch, captured)
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,
@@ -106,7 +140,7 @@ class TestSettleAttribution:
         svc = _install_settle_stubs(monkeypatch, captured)
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,
@@ -124,7 +158,7 @@ class TestSettleAttribution:
         svc = _install_settle_stubs(monkeypatch, captured)
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,
@@ -143,7 +177,7 @@ class TestSettleAttribution:
         svc = _install_settle_stubs(monkeypatch, captured, rate={"credits": 60, "credits_saved": 5})
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,
@@ -168,7 +202,7 @@ class TestSettleChatCompletedEvent:
         monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: published.append(uid))
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,
@@ -186,7 +220,7 @@ class TestSettleChatCompletedEvent:
         monkeypatch.setattr(m, "_publish_chat_completed", lambda uid: published.append(uid))
 
         await svc.settle(
-            None,
+            AsyncMock(spec=AsyncSession),
             user_id=1,
             conversation_id=2,
             message_id=3,

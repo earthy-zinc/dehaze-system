@@ -15,12 +15,17 @@ type RecommendationRepository interface {
 	CountUseful(ctx context.Context, startTime, endTime string) (int64, error)
 	CountFeedbackTotal(ctx context.Context, startTime, endTime string) (int64, error)
 	CountAdoptedAlgorithmDistinct(ctx context.Context, startTime, endTime string) (int64, error)
-	FindDailyAdoptionRate(ctx context.Context, startTime, endTime string) ([]DailyAdoptionRow, error)
+	// CountRecommended 统计带推荐来源（sys_pred_log.recommended_by 非空）的预测记录数
+	CountRecommended(ctx context.Context, startTime, endTime string) (int64, error)
+	// FindDailyTotal 按日统计推荐总数
+	FindDailyTotal(ctx context.Context, startTime, endTime string) ([]DailyCountRow, error)
+	// FindDailyRecommended 按日统计带推荐来源的预测记录数
+	FindDailyRecommended(ctx context.Context, startTime, endTime string) ([]DailyCountRow, error)
 }
 
-type DailyAdoptionRow struct {
-	Date         string  `gorm:"column:date" json:"date"`
-	AdoptionRate float64 `gorm:"column:adoptionRate" json:"adoptionRate"`
+type DailyCountRow struct {
+	Date  string `gorm:"column:date" json:"date"`
+	Count int64  `gorm:"column:cnt" json:"cnt"`
 }
 
 type RuleRepository interface {

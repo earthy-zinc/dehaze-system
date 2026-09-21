@@ -18,12 +18,14 @@ import mimetypes
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import Response
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
+from app.dependencies.redis import get_redis
 from app.models.schema.ai_skill import (
     SkillCreate,
     SkillListItem,
@@ -61,6 +63,7 @@ async def list_skills(
         page=query.pageNum,
         size=query.pageSize,
         keyword=query.keyword,
+        status=query.status,
     )
     return success(result)
 
@@ -82,7 +85,7 @@ async def upload_skill(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    """上传遵循 Agent Skills 规范的 SKILL 压缩包（zip），解析校验后入库。"""
+    """上传遵循 Agent Skills 规范的 SKILL 压缩包（zip），解析校验后以禁用态入库。"""
     content = await file.read()
     result = await skill_manage_service.create_skill_from_zip(db, content)
     return success(result)
@@ -94,7 +97,8 @@ async def get_skill(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await skill_manage_service.get_skill(db, skill_id)
+    """Skill 详情（普通用户仅可见启用项，与管理员全量口径区分）。"""
+    result = await skill_manage_service.get_skill(db, skill_id, enabled_only=not _is_manager(user))
     return success(result)
 
 
@@ -106,7 +110,9 @@ async def get_skill_file(
     user: UserContext = Depends(get_current_user),
 ):
     """按路径读取 SKILL 目录内资源文件内容（须命中该 Skill 的文件清单）。"""
-    data = await skill_manage_service.get_skill_file(db, skill_id, path)
+    data = await skill_manage_service.get_skill_file(
+        db, skill_id, path, enabled_only=not _is_manager(user)
+    )
     media_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
     return Response(content=data, media_type=media_type)
 
@@ -140,9 +146,11 @@ async def test_skill(
     skill_id: int,
     form: SkillTestForm,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await skill_manage_service.test_skill(db, skill_id, form)
+    """试运行 Skill：以指令为系统提示词跑一次真实推理，返回模型输出与用量。"""
+    result = await skill_manage_service.test_skill(db, redis, skill_id, form)
     return success(result)
 
 

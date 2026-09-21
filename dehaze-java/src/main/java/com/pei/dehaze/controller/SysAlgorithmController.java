@@ -24,6 +24,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +43,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/algorithms")
 @RequiredArgsConstructor
+@Validated
 public class SysAlgorithmController {
     private final SysAlgorithmService algorithmService;
     private final SysAlgorithmVersionService versionService;
@@ -167,7 +170,7 @@ public class SysAlgorithmController {
     @GetMapping("/{id}/monitor/stats")
     public Result<List<Map<String, Object>>> getMonitorStats(
             @Parameter(description = "算法ID") @PathVariable Long id,
-            @Parameter(description = "统计天数，默认7天") @RequestParam(defaultValue = "7") Integer days) {
+            @Parameter(description = "统计天数，默认7天") @RequestParam(defaultValue = "7") @Min(1) Integer days) {
         List<Map<String, Object>> stats = algorithmService.getMonitorStats(id, days);
         return Result.success(stats);
     }

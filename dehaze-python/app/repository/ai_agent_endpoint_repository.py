@@ -10,8 +10,12 @@ from app.repository.base import BaseRepository, escape_like
 class AiAgentEndpointRepository(BaseRepository[SysAiAgentEndpoint]):
     model = SysAiAgentEndpoint
 
-    async def get_by_base_url(self, db: AsyncSession, base_url: str) -> SysAiAgentEndpoint | None:
+    async def get_by_base_url(
+        self, db: AsyncSession, base_url: str, *, include_deleted: bool = False
+    ) -> SysAiAgentEndpoint | None:
         stmt = select(SysAiAgentEndpoint).where(SysAiAgentEndpoint.base_url == base_url)
+        if include_deleted:
+            stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 

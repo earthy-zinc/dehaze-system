@@ -26,20 +26,15 @@ func (api *MessageApi) GetPage(c *gin.Context) {
 		return
 	}
 
+	// python message.py:22-23 默认 pageSize 20
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 20)
+	if !ok {
+		return
+	}
 	q := &query.MessageQuery{
 		Type:     c.Query("type"),
-		PageNum:  1,
-		PageSize: 20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 	if v := c.Query("readStatus"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
@@ -154,20 +149,15 @@ func (api *MessageApi) Search(c *gin.Context) {
 		return
 	}
 
+	// python message.py:45-46 默认 pageSize 20
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 20)
+	if !ok {
+		return
+	}
 	q := &query.MessageSearchQuery{
 		Keyword:  c.Query("keyword"),
-		PageNum:  1,
-		PageSize: 20,
-	}
-	if v := c.Query("pageNum"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageNum = n
-		}
-	}
-	if v := c.Query("pageSize"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			q.PageSize = n
-		}
+		PageNum:  pageNum,
+		PageSize: pageSize,
 	}
 
 	result, err := api.msgService.Search(c.Request.Context(), userID, q)

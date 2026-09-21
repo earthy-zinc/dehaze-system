@@ -47,7 +47,9 @@ class ReconciliationService:
         for channel, channel_records in by_channel.items():
             bill_rows = await self.payment_channel_service.download_bill(channel, recon_date)
             if bill_rows is None:
-                logger.warning("渠道账单能力未对接，跳过对账 channel=%s date=%s", channel, recon_date)
+                logger.warning(
+                    "渠道账单能力未对接，跳过对账 channel=%s date=%s", channel, recon_date
+                )
                 continue
 
             bill_by_no = {row["paymentNo"]: row for row in bill_rows}
@@ -56,9 +58,13 @@ class ReconciliationService:
             for payment_no, record in sys_by_no.items():
                 bill = bill_by_no.get(payment_no)
                 if bill is None:
-                    diffs.append(self._build_diff(recon_date, channel, payment_no, record, DIFF_SYSTEM_ONLY))
+                    diffs.append(
+                        self._build_diff(recon_date, channel, payment_no, record, DIFF_SYSTEM_ONLY)
+                    )
                 elif int(bill["amount"]) != int(record.amount):
-                    diff = self._build_diff(recon_date, channel, payment_no, record, DIFF_AMOUNT_MISMATCH)
+                    diff = self._build_diff(
+                        recon_date, channel, payment_no, record, DIFF_AMOUNT_MISMATCH
+                    )
                     diff.channel_amount = int(bill["amount"])
                     diffs.append(diff)
 
@@ -86,7 +92,9 @@ class ReconciliationService:
         return len(diffs)
 
     @staticmethod
-    def _build_diff(recon_date, channel: str, payment_no: str, record, diff_type: str) -> SysReconciliation:
+    def _build_diff(
+        recon_date, channel: str, payment_no: str, record, diff_type: str
+    ) -> SysReconciliation:
         return SysReconciliation(
             recon_date=recon_date,
             channel=channel,

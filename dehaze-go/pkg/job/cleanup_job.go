@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -44,6 +45,7 @@ type CleanupJob struct {
 // StorageService 存储服务接口（仅声明 cleanup 所需方法）
 type StorageService interface {
 	Exists(ctx context.Context, objectName string) (bool, error)
+	Delete(ctx context.Context, objectName string) error
 }
 
 // NewCleanupJob 创建清理任务管理器
@@ -250,7 +252,8 @@ func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
 			return fmt.Errorf("删除7天前已完成/取消任务失败: %w", err)
 		}
 
-		// 删除 Redis 缓存
+		// 删除任务产物文件与 Redis 缓存
+		j.deleteTaskExportFiles(ctx, block1Tasks)
 		if len(cacheKeys) > 0 {
 			j.cacheClient.Delete(ctx, cacheKeys...)
 		}
@@ -282,6 +285,7 @@ func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
 			return fmt.Errorf("删除30天前已终止任务失败: %w", err)
 		}
 
+		j.deleteTaskExportFiles(ctx, block2Tasks)
 		if len(cacheKeys) > 0 {
 			j.cacheClient.Delete(ctx, cacheKeys...)
 		}
@@ -290,6 +294,36 @@ func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// deleteTaskExportFiles best-effort 删除任务产物文件
+// （exports/{taskID}/{module}_export.{xlsx|csv|zip} 与 {module}_import_errors.csv）。
+// 存储后端不支持删除（nginx-static）或对象不存在时仅记录日志，不阻塞清理。
+func (j *CleanupJob) deleteTaskExportFiles(ctx context.Context, tasks []model.SysTask) {
+	if j.storageService == nil || len(tasks) == 0 {
+		return
+	}
+	for _, t := range tasks {
+		if t.TaskID == "" {
+			continue
+		}
+		taskType := string(t.TaskType)
+		sep := strings.LastIndex(taskType, "_")
+		if sep <= 0 {
+			continue
+		}
+		base := "exports/" + t.TaskID + "/" + strings.ToLower(taskType[:sep]) + "_"
+		candidates := []string{
+			base + "export.xlsx", base + "export.csv",
+			base + "export.zip", base + "import_errors.csv",
+		}
+		for _, objectName := range candidates {
+			if err := j.storageService.Delete(ctx, objectName); err != nil {
+				logger.Debug("任务产物删除失败（不影响清理）",
+					zap.String("objectName", objectName), zap.Error(err))
+			}
+		}
+	}
 }
 
 // cleanupStuckTasks 回收僵死任务（对齐 Python cleanupStuckTasks）

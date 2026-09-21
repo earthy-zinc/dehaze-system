@@ -81,7 +81,7 @@ onMounted(async () => {
     <QuotaProgressCard />
 
     <div
-      class="search-container flex flex-wrap items-center justify-between gap-2"
+      class="search-container flex flex-wrap items-center justify-between gap-2 pb-5"
     >
       <KbGroupTabs v-model="userKbStore.activeGroup" />
       <div class="flex items-center gap-2">

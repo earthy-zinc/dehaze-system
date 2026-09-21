@@ -3,11 +3,16 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.annotation.AuditLog;
+import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
@@ -30,9 +35,13 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 角色业务实现类
@@ -50,12 +59,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     private final RoleConverter roleConverter;
     private final StringRedisTemplate stringRedisTemplate;
 
+    /** 内置角色编码集合（禁止删除与状态修改，python 同款口径） */
+    private static final Set<String> BUILTIN_ROLE_CODES = SystemConstants.BUILTIN_ROLE_CODES;
+
     /**
-     * 内置角色编码集合（禁止删除）
+     * 角色选项缓存 TTL（1h，Key 定义见 SystemConstants.ROLE_OPTIONS_CACHE_KEY）
      */
-    private static final Set<String> BUILTIN_ROLE_CODES = Set.of(
-            SystemConstants.ROOT_ROLE_CODE, "ADMIN"
-    );
+    private static final Duration ROLE_OPTIONS_CACHE_TTL = Duration.ofHours(1);
 
     /**
      * 角色分页列表
@@ -89,12 +99,38 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public List<Option<Long>> listRoleOptions() {
-        List<SysRole> roleList = this.list(excludeRootRoleForNonRoot(new LambdaQueryWrapper<SysRole>()
-                .select(SysRole::getId, SysRole::getName)
-                .orderByAsc(SysRole::getSort)
-        ));
-
+        List<SysRole> roleList = listEnabledRolesForOptions();
+        if (!SecurityUtils.isRoot()) {
+            // 非 root 隐藏内置角色（ROOT/ADMIN），与 Python 口径一致
+            roleList = roleList.stream()
+                    .filter(role -> !SystemConstants.ROOT_ROLE_CODE.equals(role.getCode())
+                            && !SystemConstants.ADMIN_ROLE_CODE.equals(role.getCode()))
+                    .collect(Collectors.toList());
+        }
         return roleConverter.entities2Options(roleList);
+    }
+
+    /**
+     * 查询启用角色并缓存（role:options，TTL 1h）。
+     * 缓存全量启用角色（含编码），可见性过滤由调用方按 is_root 处理，
+     * 避免首个调用者的视角污染缓存。
+     */
+    private List<SysRole> listEnabledRolesForOptions() {
+        String cached = stringRedisTemplate.opsForValue().get(SystemConstants.ROLE_OPTIONS_CACHE_KEY);
+        if (cached != null) {
+            return JSONUtil.toList(cached, SysRole.class);
+        }
+        List<SysRole> roleList = this.list(new LambdaQueryWrapper<SysRole>()
+                .select(SysRole::getId, SysRole::getName, SysRole::getCode)
+                .eq(SysRole::getStatus, StatusEnum.ENABLE.getValue())
+                .orderByAsc(SysRole::getSort)
+        );
+        stringRedisTemplate.opsForValue().set(SystemConstants.ROLE_OPTIONS_CACHE_KEY, JSONUtil.toJsonStr(roleList), ROLE_OPTIONS_CACHE_TTL);
+        return roleList;
+    }
+
+    private void evictRoleOptionsCache() {
+        stringRedisTemplate.delete(SystemConstants.ROLE_OPTIONS_CACHE_KEY);
     }
 
     /**
@@ -131,12 +167,14 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             throw new BusinessException(ResultCode.PARAM_ERROR, "数据权限不能为空");
         }
 
-        // 查重：绕过@TableLogic，查全表（含软删行）
-        // 命中名称或编码 → 报"已被历史记录占用"
-        long count = getBaseMapper().countByNameOrCodeAll(roleForm.getName(), roleCode, roleId);
+        // 查重：名称或编码唯一（仅活跃行；唯一键含 deleted，软删行不占键位）
+        long count = this.count(new LambdaQueryWrapper<SysRole>()
+                .and(w -> w.eq(SysRole::getName, roleForm.getName())
+                        .or()
+                        .eq(SysRole::getCode, roleCode))
+                .ne(roleId != null, SysRole::getId, roleId));
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS,
-                    "角色名称或角色编码已被历史记录占用，无法重复创建");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "角色名称或角色编码已存在");
         }
 
         SysRole role = roleConverter.form2Entity(roleForm);
@@ -147,6 +185,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                     || !ObjectUtil.equals(oldRole.getStatus(), roleForm.getStatus()))) {
                 roleMenuService.refreshRolePermsCache(oldRole.getCode(), roleCode);
             }
+            evictRoleOptionsCache();
         }
         return result;
     }
@@ -179,10 +218,21 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
         }
 
+        // 内置角色不可修改状态（T-DM-015 同源保护，python A0503 口径）
+        if (BUILTIN_ROLE_CODES.contains(role.getCode())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW,
+                    "内置角色 '" + role.getCode() + "' 不可修改状态");
+        }
+
         role.setStatus(status);
         boolean result = this.updateById(role);
         if (result) {
             roleMenuService.refreshRolePermsCache(role.getCode());
+            evictRoleOptionsCache();
+            // 禁用角色时踢出关联在线用户（权限传播）；启用不踢
+            if (StatusEnum.DISABLE.getValue().equals(status)) {
+                runAfterCommit(() -> kickRoleUserSessions(roleId));
+            }
         }
         return result;
     }
@@ -214,11 +264,11 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
         }
 
-        // 1) 内置角色禁止删除
+        // 1) 内置角色禁止删除（python A0503 口径：内置角色 '{code}' 不可删除）
         for (SysRole role : roles) {
             if (BUILTIN_ROLE_CODES.contains(role.getCode())) {
                 throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW,
-                        "内置角色【" + role.getName() + "】禁止删除");
+                        "内置角色 '" + role.getCode() + "' 不可删除");
             }
         }
 
@@ -239,9 +289,14 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         // 4) 软删角色本身
         boolean deleteResult = this.removeByIds(roleIds);
         if (deleteResult) {
-            for (SysRole role : roles) {
-                roleMenuService.refreshRolePermsCache(role.getCode());
-            }
+            // 事务提交后清理缓存，避免回滚后脏缓存
+            List<String> roleCodes = roles.stream().map(SysRole::getCode).collect(Collectors.toList());
+            runAfterCommit(() -> {
+                for (String roleCode : roleCodes) {
+                    roleMenuService.refreshRolePermsCache(roleCode);
+                }
+                evictRoleOptionsCache();
+            });
         }
         return deleteResult;
     }
@@ -281,6 +336,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             if (existCount != menuIds.size()) {
                 throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
             }
+
+            // 权限提升防护（A0301）：操作者不能授予自己未持有的权限标识；ROOT 忽略权限判断
+            if (!SecurityUtils.isRoot()) {
+                Set<String> operatorPerms = SecurityUtils.getPerms();
+                boolean escalating = menuMapper.selectList(
+                                new LambdaQueryWrapper<SysMenu>()
+                                        .in(SysMenu::getId, menuIds)
+                                        .isNotNull(SysMenu::getPerm)
+                                        .ne(SysMenu::getPerm, ""))
+                        .stream()
+                        .map(SysMenu::getPerm)
+                        .anyMatch(perm -> !operatorPerms.contains(perm));
+                if (escalating) {
+                    throw new BusinessException(ResultCode.ACCESS_UNAUTHORIZED,
+                            "无权分配超出自身权限范围的权限标识");
+                }
+            }
         }
         roleMenuService.remove(
                 new LambdaQueryWrapper<SysRoleMenu>()
@@ -294,10 +366,66 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             roleMenuService.saveBatch(roleMenus);
         }
 
-        stringRedisTemplate.delete("menu:routes");
-        roleMenuService.refreshRolePermsCache(role.getCode());
+        // 缓存刷新与在线用户权限传播（踢出会话）统一在事务提交后执行
+        String roleCode = role.getCode();
+        runAfterCommit(() -> {
+            stringRedisTemplate.delete("menu:routes");
+            roleMenuService.refreshRolePermsCache(roleCode);
+            kickRoleUserSessions(roleId);
+        });
 
         return true;
+    }
+
+    /**
+     * 事务提交后执行；无活跃事务同步（如单元测试）时立即执行
+     */
+    private void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    /**
+     * 踢出关联角色的在线用户（权限传播）。
+     * 不依赖多点登录索引（索引仅在 use-multi-point 开启时维护），扫描会话空间
+     * 按 username 匹配；超级管理员会话不可被踢出。
+     */
+    private void kickRoleUserSessions(Long roleId) {
+        List<String> usernames = userRoleService.listUsernamesByRoleIds(List.of(roleId));
+        if (CollectionUtil.isEmpty(usernames)) {
+            return;
+        }
+        Set<String> sessionKeys = stringRedisTemplate.keys(SecurityConstants.SESSION_PREFIX + "*");
+        if (CollectionUtil.isEmpty(sessionKeys)) {
+            return;
+        }
+        for (String sessionKey : sessionKeys) {
+            if (sessionKey.startsWith(SecurityConstants.SESSION_USER_PREFIX)) {
+                continue;
+            }
+            String sessionJson = stringRedisTemplate.opsForValue().get(sessionKey);
+            if (StrUtil.isBlank(sessionJson)) {
+                continue;
+            }
+            JSONObject session = JSONUtil.parseObj(sessionJson);
+            if (!usernames.contains(session.getStr("username"))) {
+                continue;
+            }
+            JSONArray authorities = session.getJSONArray("authorities");
+            if (authorities != null
+                    && authorities.contains(SecurityConstants.ROLE_PREFIX + SystemConstants.ROOT_ROLE_CODE)) {
+                continue;
+            }
+            stringRedisTemplate.delete(sessionKey);
+        }
     }
 
     /**

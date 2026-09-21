@@ -17,8 +17,8 @@ type WechatPayConfig struct {
 }
 
 type AlipayConfig struct {
-	Enabled   bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
-	AppID     string `mapstructure:"appId" json:"appId" yaml:"appId"`
+	Enabled    bool   `mapstructure:"enabled" json:"enabled" yaml:"enabled"`
+	AppID      string `mapstructure:"appId" json:"appId" yaml:"appId"`
 	PrivateKey string `mapstructure:"privateKey" json:"privateKey" yaml:"privateKey"`
 	PublicKey  string `mapstructure:"publicKey" json:"publicKey" yaml:"publicKey"`
 	NotifyURL  string `mapstructure:"notifyUrl" json:"notifyUrl" yaml:"notifyUrl"`

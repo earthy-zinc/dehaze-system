@@ -20,10 +20,10 @@
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
 | `/api/v1/prediction` | POST | 提交去雾预测任务（异步） | `dehaze:execute` | F-M04-001 |
-| `/api/v1/prediction/{taskId}` | GET | 轮询任务状态（1=处理中/2=已完成/3=失败/4=已取消） | - | F-M04-001 |
-| `/api/v1/prediction/{taskId}/cancel` | POST | 取消预测任务（幂等） | `dehaze:execute` | F-M04-001 |
-| `/api/v1/prediction/logs` | GET | 预测日志列表（分页，可按算法筛选） | - | F-M04-007 |
-| `/api/v1/prediction/batch` | POST | 批量处理（一次提交多张图片，上限按会员等级动态计算） | `dehaze:execute` | F-M04-002 |
+| `/api/v1/prediction/{taskId}` | GET | 轮询任务状态（1=处理中/2=已完成/3=失败/4=已取消），仅任务本人可查（他人任务返回 A0401） | - | F-M04-001 |
+| `/api/v1/prediction/{taskId}/cancel` | POST | 取消预测任务（幂等，仅任务本人可取消） | `dehaze:execute` | F-M04-001 |
+| `/api/v1/prediction/logs` | GET | 预测日志列表（分页，可按算法筛选，仅返回当前用户记录，含 recommendedBy 推荐来源透出） | - | F-M04-007 |
+| `/api/v1/prediction/batch` | POST | 批量处理（一次提交多张图片，上限按会员等级动态计算；recommendedBy 批量级透传落库） | `dehaze:execute` | F-M04-002 |
 | `/api/v1/prediction/quota` | GET | 查询用户剩余处理次数（见 §2.4） | - | F-M04-006 |
 
 ### 2.2 评估接口
@@ -68,7 +68,7 @@
 
 | 错误码 | 说明 | 触发场景 |
 |--------|------|---------|
-| `A0401` | 请求资源不存在 | 轮询的 taskId 不存在、预设不存在、算法不存在 |
+| `A0401` | 请求资源不存在 | 轮询的 taskId 不存在、访问/取消他人的预测任务、预设不存在、算法不存在 |
 | `A0410` | 请求必填参数为空 | 图片来源缺失（fileId 与 imageUrl 均未提供，单张/批量逐项） |
 | `A0500` | 业务异常 | 批量处理图片数量超过会员等级上限 |
 | `A0501` | 数据已存在 | 预设名称冲突（如系统预设同名） |

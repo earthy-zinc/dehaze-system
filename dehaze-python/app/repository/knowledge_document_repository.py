@@ -41,13 +41,15 @@ class KnowledgeDocumentRepository(BaseRepository[SysKnowledgeDocument]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def count_by_kb(
-        self, db: AsyncSession, knowledge_base_id: int
-    ) -> int:
+    async def count_by_kb(self, db: AsyncSession, knowledge_base_id: int) -> int:
         """统计知识库下未删除的文档数（单库文档数配额校验用）"""
-        stmt = select(func.count()).select_from(SysKnowledgeDocument).where(
-            SysKnowledgeDocument.knowledge_base_id == knowledge_base_id,
-            SysKnowledgeDocument.deleted == 0,
+        stmt = (
+            select(func.count())
+            .select_from(SysKnowledgeDocument)
+            .where(
+                SysKnowledgeDocument.knowledge_base_id == knowledge_base_id,
+                SysKnowledgeDocument.deleted == 0,
+            )
         )
         return (await db.execute(stmt)).scalar() or 0
 

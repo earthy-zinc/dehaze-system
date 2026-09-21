@@ -41,10 +41,15 @@ func (api *CompareApi) GenerateReport(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
-// GetOrDownloadReport 查询报告状态 / 下载报告
+// GetOrDownloadReport 查询报告状态 / 下载报告（仅报告归属用户可访问）
 // 当 download=true 时返回HTML文件流，否则返回JSON状态
 func (api *CompareApi) GetOrDownloadReport(c *gin.Context) {
 	ctx := c.Request.Context()
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	taskIDStr := c.Param("taskId")
 	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
@@ -55,7 +60,7 @@ func (api *CompareApi) GetOrDownloadReport(c *gin.Context) {
 	download := c.Query("download") == "true"
 
 	if !download {
-		result, err := api.service.GetReportTaskStatus(ctx, taskID)
+		result, err := api.service.GetReportTaskStatus(ctx, taskID, userID)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -64,7 +69,7 @@ func (api *CompareApi) GetOrDownloadReport(c *gin.Context) {
 		return
 	}
 
-	html, err := api.service.GetReportHTML(ctx, taskID)
+	html, err := api.service.GetReportHTML(ctx, taskID, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return

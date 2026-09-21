@@ -129,6 +129,15 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     @Override
     public Long addAlgorithm(AlgorithmForm algorithm) {
+        // 名称唯一性（A0501，仅活跃行；软删行不占键位可重建）
+        String name = algorithm.getName();
+        if (CharSequenceUtil.isNotBlank(name)) {
+            long count = this.count(new LambdaQueryWrapper<SysAlgorithm>()
+                    .eq(SysAlgorithm::getName, name));
+            if (count > 0) {
+                throw new BusinessException(ResultCode.DATA_EXISTS, "算法名称 '" + name + "' 已存在");
+            }
+        }
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         Long sizeBytes = checkModelExists(sysAlgorithm.getPath());
         if (sizeBytes != null) {
@@ -354,7 +363,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         if (algorithm == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
-        int rangeDays = days != null && days > 0 ? days : 7;
+        int rangeDays = days;
         LocalDateTime startTime = LocalDate.now().minusDays(rangeDays - 1).atStartOfDay();
 
         List<SysPredLog> logs = sysPredLogMapper.selectList(new LambdaQueryWrapper<SysPredLog>()

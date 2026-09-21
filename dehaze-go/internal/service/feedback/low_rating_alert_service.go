@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	lowRatingAlertQueue   = "feedback.low_rating"
-	alertUrgentThreshold  = int64(3)
-	alertSevereThreshold  = 0.2
-	alertWindow           = 24 * time.Hour
+	lowRatingAlertQueue  = "feedback.low_rating"
+	alertUrgentThreshold = int64(3)
+	alertSevereThreshold = 0.2
+	alertWindow          = 24 * time.Hour
 )
 
 type ratingEvent struct {
@@ -75,7 +75,7 @@ func (s *LowRatingAlertService) PublishRatingEvent(ctx context.Context, rating *
 		AlgorithmID: rating.AlgorithmID,
 		Rating:      rating.Rating,
 		Comment:     rating.Comment,
-		CreatedAt:    rating.CreatedAt,
+		CreatedAt:   rating.CreatedAt,
 	}
 	body, err := json.Marshal(event)
 	if err != nil {

@@ -2,13 +2,13 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.database import get_db
-
-pytestmark = pytest.mark.api
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
 from app.models.schema.ai_skill import SkillMarketVO, SkillResult
 from app.models.schema.common import PageResult
 from app.router import ai_skill
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -18,14 +18,14 @@ class _FakeUser:
 
 
 def _detail(**overrides) -> SkillResult:
-    base = dict(
-        id=1,
-        name="去雾工作流",
-        description="指导去雾",
-        instruction="# 步骤",
-        status=1,
-        source="admin",
-    )
+    base = {
+        "id": 1,
+        "name": "去雾工作流",
+        "description": "指导去雾",
+        "instruction": "# 步骤",
+        "status": 1,
+        "source": "admin",
+    }
     base.update(overrides)
     return SkillResult(**base)
 
@@ -71,7 +71,7 @@ async def test_list_admin_passes_enabled_only_false(ai_client, monkeypatch):
     state["user"] = _FakeUser(is_root=True)
     captured = {}
 
-    async def fake_list(db, *, enabled_only, page, size, keyword):
+    async def fake_list(db, *, enabled_only, page, size, keyword, status=None):
         captured["enabled_only"] = enabled_only
         return PageResult(list=[_detail()], total=1)
 
@@ -87,7 +87,7 @@ async def test_list_normal_user_passes_enabled_only_true(ai_client, monkeypatch)
     state["user"] = _FakeUser(is_root=False)
     captured = {}
 
-    async def fake_list(db, *, enabled_only, page, size, keyword):
+    async def fake_list(db, *, enabled_only, page, size, keyword, status=None):
         captured["enabled_only"] = enabled_only
         return PageResult(list=[], total=0)
 
@@ -186,7 +186,7 @@ async def test_get_skill_passes_id(ai_client, monkeypatch):
     state["user"] = _FakeUser(is_root=True)
     captured = {}
 
-    async def fake_get(db, skill_id):
+    async def fake_get(db, skill_id, *, enabled_only=False):
         captured["skill_id"] = skill_id
         return _detail(id=skill_id)
 
@@ -202,16 +202,42 @@ async def test_test_skill_passes_form(ai_client, monkeypatch):
     state["user"] = _FakeUser(is_root=True)
     captured = {}
 
-    async def fake_test(db, skill_id, form):
+    async def fake_test(db, redis, skill_id, form):
         captured["skill_id"] = skill_id
         captured["input"] = form.inputData
-        return {"skillId": skill_id}
+        return {"skillId": skill_id, "output": "去雾完成"}
 
     monkeypatch.setattr(ai_skill.skill_manage_service, "test_skill", fake_test)
     resp = await client.post("/api/v1/ai/skills/3/test", json={"inputData": {"q": "去雾"}})
     assert resp.status_code == 200
     assert captured["skill_id"] == 3
     assert captured["input"] == {"q": "去雾"}
+    assert resp.json()["data"]["output"] == "去雾完成"
+
+
+async def test_upload_returns_disabled_with_skipped_files(ai_client, monkeypatch):
+    """上传入库即禁用态，并透出被跳过文件的文件级清单（部分失败可见）。"""
+    client, state = ai_client
+    state["user"] = _FakeUser(is_root=True)
+    captured = {}
+
+    async def fake_upload(db, content):
+        captured["size"] = len(content)
+        return _detail(
+            status=0,
+            skippedFiles=[{"path": "other/a.md", "reason": "不在 SKILL 目录内"}],
+        )
+
+    monkeypatch.setattr(ai_skill.skill_manage_service, "create_skill_from_zip", fake_upload)
+    resp = await client.post(
+        "/api/v1/ai/skills/upload",
+        files={"file": ("skill.zip", b"PK\x03\x04", "application/zip")},
+    )
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert captured["size"] == 4
+    assert data["status"] == 0
+    assert data["skippedFiles"] == [{"path": "other/a.md", "reason": "不在 SKILL 目录内"}]
 
 
 async def test_test_skill_normal_user_forbidden(ai_client, monkeypatch):

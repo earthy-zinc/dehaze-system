@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "08.数据项接口")
@@ -50,12 +51,13 @@ public class SysDatasetItemController {
                     "适用于数据集详情页的图片列表展示、图片搜索等场景。"
     )
     @GetMapping
-    public PageResult<DatasetItemVO> listDatasetItems(@ParameterObject DatasetItemQuery query) {
+    public PageResult<DatasetItemVO> listDatasetItems(@Valid @ParameterObject DatasetItemQuery query) {
         Page<DatasetItemVO> result = sysDatasetItemService.pageSearchDatasetItems(query);
         return PageResult.success(result);
     }
 
     @PostMapping
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "创建空数据项",
             description = "创建一个空的数据项，仅包含基本信息（名称、所属数据集），不包含图片。" +
@@ -71,6 +73,7 @@ public class SysDatasetItemController {
     }
 
     @PostMapping("/upload")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "创建数据项并上传配对图片",
             description = "一步完成数据项创建和配对图片上传。支持上传一张清晰图（Ground Truth）和多张有雾图。" +
@@ -83,6 +86,7 @@ public class SysDatasetItemController {
     }
 
     @PostMapping("/batch")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "批量创建数据项并上传图片",
             description = "批量上传多个数据项的配对图片，系统根据文件名命名规则自动识别配对关系。" +
@@ -97,6 +101,7 @@ public class SysDatasetItemController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     @Operation(
             summary = "修改数据项信息",
             description = "更新数据项的基本信息，支持修改数据项名称和场景类型。" +
@@ -116,6 +121,7 @@ public class SysDatasetItemController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     @Operation(
             summary = "删除数据项",
             description = "删除指定的数据项，级联删除该数据项下的所有图片文件（清晰图和有雾图）、" +
@@ -132,6 +138,7 @@ public class SysDatasetItemController {
     }
 
     @DeleteMapping("/batch")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     @Operation(
             summary = "批量删除数据项",
             description = "批量删除多个数据项，级联删除所有关联的图片文件和缩略图。" +

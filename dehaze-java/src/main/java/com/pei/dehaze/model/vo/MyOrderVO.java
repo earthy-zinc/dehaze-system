@@ -21,8 +21,14 @@ public class MyOrderVO {
     @Schema(description = "套餐名称")
     private String packageName;
 
+    @Schema(description = "套餐类型(vip/credit)")
+    private String packageType;
+
     @Schema(description = "套餐等级")
     private String packageLevel;
+
+    @Schema(description = "积分卡额度")
+    private Long creditAmount;
 
     @Schema(description = "应付金额（分）")
     private Long payableAmount;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -151,9 +152,11 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "创建菜单失败", err)
 	}
 
-	// 新增菜单默认分配给超级管理员角色
-	if rootRole, err := s.roleRepo.FindByCode(ctx, "ROOT"); err == nil && rootRole != nil {
-		_ = s.menuRepo.SaveRoleMenu(ctx, rootRole.ID, menu.ID)
+	// 新增菜单默认分配给超级管理员（ROOT）与系统管理员（ADMIN），其他角色需手动分配
+	for _, roleCode := range []string{"ROOT", "ADMIN"} {
+		if role, err := s.roleRepo.FindByCode(ctx, roleCode); err == nil && role != nil {
+			_ = s.menuRepo.SaveRoleMenu(ctx, role.ID, menu.ID)
+		}
 	}
 
 	s.clearAllRolePermsCache(ctx)
@@ -172,6 +175,11 @@ func (s *MenuService) Update(ctx context.Context, id int64, form *bo.MenuForm) e
 	}
 	if existingMenu == nil {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "菜单不存在")
+	}
+
+	// 预置菜单保护：type 与 perm 分别是路由生成与接口鉴权的锚点，禁止修改
+	if existingMenu.IsPreset == 1 && (form.Type != bo.MenuType(existingMenu.Type) || form.Perm != existingMenu.Perm) {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "系统预置菜单不可修改类型/权限标识")
 	}
 
 	menuType := form.Type
@@ -225,6 +233,17 @@ func (s *MenuService) Delete(ctx context.Context, ids []int64) error {
 		return nil
 	}
 
+	// 去重：重复 ID 会使 count_by_ids 与 len 比对不一致而误报菜单不存在（T-MM-044）
+	dedup := make(map[int64]bool, len(ids))
+	uniqueIDs := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		if !dedup[id] {
+			dedup[id] = true
+			uniqueIDs = append(uniqueIDs, id)
+		}
+	}
+	ids = uniqueIDs
+
 	// 校验所有传入的菜单ID都存在
 	count, err := s.menuRepo.CountByIDs(ctx, ids)
 	if err != nil {
@@ -232,6 +251,16 @@ func (s *MenuService) Delete(ctx context.Context, ids []int64) error {
 	}
 	if count != int64(len(ids)) {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "菜单不存在")
+	}
+
+	// 预置菜单保护：预置菜单仅可能出现在预置菜单子树内（新增菜单恒为普通菜单），
+	// 校验传入 ID 即可覆盖级联范围
+	presetCount, err := s.menuRepo.CountPresetsByIDs(ctx, ids)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询菜单失败", err)
+	}
+	if presetCount > 0 {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "系统预置菜单不可删除")
 	}
 
 	// 使用事务包装删除操作，确保数据一致性
@@ -343,6 +372,7 @@ func buildMenuVO(menu model.SysMenu, childrenMap map[int64][]model.SysMenu) vo.M
 		Icon:      menu.Icon,
 		Redirect:  menu.Redirect,
 		Perm:      menu.Perm,
+		IsPreset:  int(menu.IsPreset),
 		Children:  []vo.MenuVO{},
 	}
 	for _, child := range childrenMap[menu.ID] {
@@ -384,10 +414,20 @@ func buildRoutesVO(routeList []read.MenuRouteRead) []vo.RouteVO {
 
 // buildRouteVO 递归构建路由 VO
 func buildRouteVO(route read.MenuRouteRead, childrenMap map[int64][]read.MenuRouteRead) vo.RouteVO {
-	// 处理角色列表：将逗号分隔的字符串解析为切片
+	// 处理角色列表：将逗号分隔的字符串解析为切片，去重并排序（python sorted(set) 同口径）
 	var roles []string
 	if route.Roles != "" {
-		roles = strings.Split(route.Roles, ",")
+		roleSet := make(map[string]bool)
+		for _, r := range strings.Split(route.Roles, ",") {
+			if r != "" {
+				roleSet[r] = true
+			}
+		}
+		roles = make([]string, 0, len(roleSet))
+		for r := range roleSet {
+			roles = append(roles, r)
+		}
+		sort.Strings(roles)
 	} else {
 		roles = []string{}
 	}
@@ -451,6 +491,11 @@ func (s *MenuService) UpdateMenuVisible(ctx context.Context, menuId int64, visib
 // validateMenuForm 校验菜单表单数据
 // excludeID: 排除的菜单ID（用于更新时排除自身）
 func (s *MenuService) validateMenuForm(ctx context.Context, form *bo.MenuForm, excludeID int64) error {
+	// T-MM-030：上级菜单不能是自己
+	if excludeID > 0 && form.ParentID == excludeID {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "上级菜单不能是自己")
+	}
+
 	// 1. 父菜单存在性校验
 	if form.ParentID > 0 {
 		parent, err := s.menuRepo.FindByID(ctx, form.ParentID)
@@ -461,93 +506,67 @@ func (s *MenuService) validateMenuForm(ctx context.Context, form *bo.MenuForm, e
 			return common.NewBizError(common.PARAM_ERROR, "父菜单不存在")
 		}
 
-		// 1.1 上级菜单类型校验：父菜单不能是按钮类型
+		// T-MM-017：上级菜单不能是按钮类型
 		if parent.Type == enum.MenuTypeButton {
-			return common.NewBizError(common.PARAM_ERROR, "父菜单不能是按钮类型")
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "上级菜单不能是按钮类型")
 		}
-
-		// 1.2 上级菜单类型校验：父菜单不能是外链类型
+		// T-MM-018：上级菜单不能是外链类型
 		if parent.Type == enum.MenuTypeExtlink {
-			return common.NewBizError(common.PARAM_ERROR, "父菜单不能是外链类型")
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "上级菜单不能是外链类型")
 		}
 
-		// 1.2 上级菜单类型校验：按钮只能挂在菜单类型下
-		if form.Type == enum.MenuTypeButton && parent.Type != enum.MenuTypeMenu {
-			return common.NewBizError(common.PARAM_ERROR, "按钮只能挂在菜单类型下")
-		}
-
-		// 1.3 层级限制校验：最多5层
-		depth, err := s.getMenuDepth(ctx, form.ParentID)
-		if err != nil {
-			return err
-		}
-		if depth >= 5 {
-			return common.NewBizError(common.PARAM_ERROR, "菜单层级不能超过5层")
-		}
-
-		// 1.4 循环引用校验：更新时不能将父菜单设置为自己或自己的子菜单
+		// T-MM-031：循环引用校验（不能将父菜单设置为自己或自己的子菜单）
 		if excludeID > 0 {
 			isDesc, err := s.isDescendant(ctx, excludeID, form.ParentID)
 			if err != nil {
 				return err
 			}
 			if isDesc {
-				return common.NewBizError(common.PARAM_ERROR, "不能将父菜单设置为自己或自己的子菜单")
+				return common.NewBizError(common.OPERATION_NOT_ALLOW, "不能设置自己的子菜单为父菜单")
 			}
+		}
+
+		// T-MM-022：层级限制校验（最多5级）
+		depth, err := s.getMenuDepth(ctx, form.ParentID)
+		if err != nil {
+			return err
+		}
+		if depth >= 5 {
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "菜单层级不能超过5级")
 		}
 	}
 
-	// 2. 同级菜单名称唯一性校验
+	// T-MM-015/027：同级菜单名称唯一（A0501）
 	exists, err := s.menuRepo.ExistsByName(ctx, form.ParentID, form.Name, excludeID)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "校验菜单名称失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.PARAM_ERROR, "同级菜单名称已存在")
+		return common.NewBizError(common.DATA_EXISTS, "菜单名称已存在")
 	}
 
-	// 3. 同级菜单路径唯一性校验（菜单和目录类型需要校验）
-	if form.Type != 4 && form.Path != "" {
-		exists, err = s.menuRepo.ExistsByPath(ctx, form.ParentID, form.Path, excludeID)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "校验菜单路径失败", err)
-		}
-		if exists {
-			return common.NewBizError(common.PARAM_ERROR, "同级菜单路径已存在")
-		}
-	}
-
-	// 4. 权限标识全局唯一性校验
+	// T-MM-016：权限标识全局唯一（A0501，含软删行）
 	if form.Perm != "" {
 		exists, err = s.menuRepo.ExistsByPerm(ctx, form.Perm, excludeID)
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "校验权限标识失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.PARAM_ERROR, "权限标识已存在")
+			return common.NewBizError(common.DATA_EXISTS, "权限标识已存在")
 		}
 	}
 
-	// 4. 菜单类型关联字段校验
-	// 4.1 目录类型必须有路径
-	if form.Type == enum.MenuTypeCatalog && form.Path == "" {
-		return common.NewBizError(common.PARAM_ERROR, "目录类型必须配置路由路径")
+	// T-MM-019：菜单/目录类型必须有路由地址
+	if (form.Type == enum.MenuTypeCatalog || form.Type == enum.MenuTypeMenu) && form.Path == "" {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "路由地址不能为空")
 	}
-	// 4.2 菜单类型必须有路径
-	if form.Type == enum.MenuTypeMenu && form.Path == "" {
-		return common.NewBizError(common.PARAM_ERROR, "菜单类型必须配置路由路径")
-	}
-	// 4.3 外链类型必须有路径（外链地址）
+	// 外链类型必须有外链地址
 	if form.Type == enum.MenuTypeExtlink && form.Path == "" {
-		return common.NewBizError(common.PARAM_ERROR, "外链类型必须配置外链地址")
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "外链地址不能为空")
 	}
-	// 4.4 目录类型必须有组件（通常是Layout）
-	if form.Type == enum.MenuTypeCatalog && form.Component == "" {
-		return common.NewBizError(common.PARAM_ERROR, "目录类型必须配置组件")
-	}
-	// 4.5 菜单类型必须有组件
-	if form.Type == enum.MenuTypeMenu && form.Component == "" {
-		return common.NewBizError(common.PARAM_ERROR, "菜单类型必须配置组件")
+	// T-MM-020：按钮类型必须有权限标识
+	if form.Type == enum.MenuTypeButton && form.Perm == "" {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "权限标识不能为空")
 	}
 
 	return nil

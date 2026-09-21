@@ -60,11 +60,12 @@ func (r *RoleRepository) FindByCode(ctx context.Context, code string) (*model.Sy
 	return &role, err
 }
 
-// ExistsByCode 检查角色编码是否存在（查全表含软删行）
+// ExistsByCode 检查角色编码是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysRole{}).
-		Where("code = ?", code)
+	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
+		// 仅活跃行参与唯一性（uk_code 含 deleted，软删行不占键位，python 全局软删过滤同口径）
+		Where("code = ? AND deleted = 0", code)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -72,11 +73,11 @@ func (r *RoleRepository) ExistsByCode(ctx context.Context, code string, excludeI
 	return count > 0, err
 }
 
-// ExistsByName 检查角色名称是否存在（查全表含软删行）
+// ExistsByName 检查角色名称是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *RoleRepository) ExistsByName(ctx context.Context, name string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysRole{}).
-		Where("name = ?", name)
+	query := r.db.WithContext(ctx).Model(&model.SysRole{}).
+		Where("name = ? AND deleted = 0", name)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])
 	}
@@ -90,7 +91,7 @@ func (r *RoleRepository) FindPage(ctx context.Context, q *query.RolePageQuery) (
 	var total int64
 
 	db := r.db.WithContext(ctx).Model(&model.SysRole{}).
-		Select("id, name, code, sort, status, data_scope, create_time")
+		Select("id, name, code, sort, status, data_scope, create_time, update_time")
 
 	// 构建查询条件
 	if q.Keywords != "" {
@@ -129,22 +130,31 @@ func (r *RoleRepository) FindPage(ctx context.Context, q *query.RolePageQuery) (
 	}, nil
 }
 
-// FindOptions 获取角色下拉选项（isRoot 为 false 时排除 ROOT 角色）
-func (r *RoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error) {
+// FindOptions 获取启用角色的下拉选项数据（含编码，可见性过滤由服务层按 isRoot 处理）
+func (r *RoleRepository) FindOptions(ctx context.Context) ([]read.Option, error) {
 	var options []read.Option
-	query := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).
 		Model(&model.SysRole{}).
-		Select("id as value, name as label").
+		Select("id as value, name as label, code").
 		Where("status = 1").
-		Order("sort ASC")
-
-	// 非超级管理员不显示超级管理员角色
-	if !isRoot {
-		query = query.Where("code != ?", ROOT_ROLE_CODE)
-	}
-
-	err := query.Scan(&options).Error
+		Order("sort ASC").
+		Scan(&options).Error
 	return options, err
+}
+
+// FindUsernamesByRoleIDs 批量查询角色关联的活跃用户名（软删用户不参与权限传播）
+func (r *RoleRepository) FindUsernamesByRoleIDs(ctx context.Context, roleIDs []int64) ([]string, error) {
+	if len(roleIDs) == 0 {
+		return nil, nil
+	}
+	var usernames []string
+	err := r.db.WithContext(ctx).
+		Table("sys_user_role").
+		Select("DISTINCT sys_user.username").
+		Joins("INNER JOIN sys_user ON sys_user_role.user_id = sys_user.id AND sys_user.deleted = 0").
+		Where("sys_user_role.role_id IN ?", roleIDs).
+		Pluck("sys_user.username", &usernames).Error
+	return usernames, err
 }
 
 // Create 创建角色
@@ -170,7 +180,7 @@ func (r *RoleRepository) UpdateStatus(ctx context.Context, id int64, status int8
 func (r *RoleRepository) Delete(ctx context.Context, ids []int64) error {
 	return r.db.WithContext(ctx).Model(&model.SysRole{}).
 		Where("id IN ?", ids).
-		Updates(map[string]interface{}{"deleted": 1}).Error
+		Updates(map[string]interface{}{"deleted": gorm.Expr("id")}).Error
 }
 
 // HasUsers 检查角色是否关联用户
@@ -183,7 +193,7 @@ func (r *RoleRepository) HasUsers(ctx context.Context, roleID int64) (bool, erro
 	return count > 0, err
 }
 
-// HasUsersInBatch 批量检查角色是否关联用户
+// HasUsersInBatch 批量检查角色是否关联活跃用户（排除软删用户，与 Java countUsersForRole / Python count_users_by_roles 口径一致）
 func (r *RoleRepository) HasUsersInBatch(ctx context.Context, roleIDs []int64) (map[int64]bool, error) {
 	result := make(map[int64]bool, len(roleIDs))
 	if len(roleIDs) == 0 {
@@ -197,9 +207,10 @@ func (r *RoleRepository) HasUsersInBatch(ctx context.Context, roleIDs []int64) (
 	var counts []roleCount
 	err := r.db.WithContext(ctx).
 		Model(&model.SysUserRole{}).
-		Select("role_id, COUNT(*) as cnt").
-		Where("role_id IN ?", roleIDs).
-		Group("role_id").
+		Select("sys_user_role.role_id, COUNT(*) as cnt").
+		Joins("INNER JOIN sys_user ON sys_user_role.user_id = sys_user.id AND sys_user.deleted = 0").
+		Where("sys_user_role.role_id IN ?", roleIDs).
+		Group("sys_user_role.role_id").
 		Scan(&counts).Error
 	if err != nil {
 		return nil, err
@@ -271,7 +282,7 @@ func (r *RoleRepository) DeleteWithMenus(ctx context.Context, roleIDs []int64) e
 		// 逻辑删除角色
 		if err := tx.Model(&model.SysRole{}).
 			Where("id IN ?", roleIDs).
-			Updates(map[string]interface{}{"deleted": 1}).Error; err != nil {
+			Updates(map[string]interface{}{"deleted": gorm.Expr("id")}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -283,7 +294,7 @@ func (r *RoleRepository) GetFormData(ctx context.Context, roleID int64) (*read.R
 	var form read.RoleForm
 	err := r.db.WithContext(ctx).
 		Model(&model.SysRole{}).
-		Select("id, name, code, sort, status, data_scope").
+		Select("id, name, code, sort, status, data_scope, create_time, update_time").
 		Where("id = ?", roleID).
 		Scan(&form).Error
 	if err != nil {

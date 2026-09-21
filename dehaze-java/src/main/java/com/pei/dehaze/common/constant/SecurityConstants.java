@@ -19,6 +19,9 @@ public interface SecurityConstants {
     /** Session Redis TTL: 7天（秒） */
     long SESSION_TTL = 604800L;
 
+    /** 管理员（ROOT/ADMIN）同时在线设备数上限，不受会员等级权益约束 */
+    int ADMIN_MAX_DEVICES = 10;
+
     /** Session 滑动续期阈值: 剩余不足 1 天时自动续期（秒） */
     long RENEW_THRESHOLD = 86400L;
 

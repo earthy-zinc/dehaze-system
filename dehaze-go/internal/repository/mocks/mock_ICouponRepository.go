@@ -414,49 +414,60 @@ func (_c *MockICouponRepository_FindPage_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// IncrementIssuedQty provides a mock function with given fields: ctx, id
-func (_m *MockICouponRepository) IncrementIssuedQty(ctx context.Context, id int64) error {
-	ret := _m.Called(ctx, id)
+// IncrementIssuedQtyWithLimit provides a mock function with given fields: ctx, id, n
+func (_m *MockICouponRepository) IncrementIssuedQtyWithLimit(ctx context.Context, id int64, n int64) (bool, error) {
+	ret := _m.Called(ctx, id, n)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IncrementIssuedQty")
+		panic("no return value specified for IncrementIssuedQtyWithLimit")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
-		r0 = rf(ctx, id)
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) (bool, error)); ok {
+		return rf(ctx, id, n)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64) bool); ok {
+		r0 = rf(ctx, id, n)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(bool)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64) error); ok {
+		r1 = rf(ctx, id, n)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// MockICouponRepository_IncrementIssuedQty_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementIssuedQty'
-type MockICouponRepository_IncrementIssuedQty_Call struct {
+// MockICouponRepository_IncrementIssuedQtyWithLimit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IncrementIssuedQtyWithLimit'
+type MockICouponRepository_IncrementIssuedQtyWithLimit_Call struct {
 	*mock.Call
 }
 
-// IncrementIssuedQty is a helper method to define mock.On call
+// IncrementIssuedQtyWithLimit is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id int64
-func (_e *MockICouponRepository_Expecter) IncrementIssuedQty(ctx interface{}, id interface{}) *MockICouponRepository_IncrementIssuedQty_Call {
-	return &MockICouponRepository_IncrementIssuedQty_Call{Call: _e.mock.On("IncrementIssuedQty", ctx, id)}
+//   - n int64
+func (_e *MockICouponRepository_Expecter) IncrementIssuedQtyWithLimit(ctx interface{}, id interface{}, n interface{}) *MockICouponRepository_IncrementIssuedQtyWithLimit_Call {
+	return &MockICouponRepository_IncrementIssuedQtyWithLimit_Call{Call: _e.mock.On("IncrementIssuedQtyWithLimit", ctx, id, n)}
 }
 
-func (_c *MockICouponRepository_IncrementIssuedQty_Call) Run(run func(ctx context.Context, id int64)) *MockICouponRepository_IncrementIssuedQty_Call {
+func (_c *MockICouponRepository_IncrementIssuedQtyWithLimit_Call) Run(run func(ctx context.Context, id int64, n int64)) *MockICouponRepository_IncrementIssuedQtyWithLimit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64))
 	})
 	return _c
 }
 
-func (_c *MockICouponRepository_IncrementIssuedQty_Call) Return(_a0 error) *MockICouponRepository_IncrementIssuedQty_Call {
-	_c.Call.Return(_a0)
+func (_c *MockICouponRepository_IncrementIssuedQtyWithLimit_Call) Return(_a0 bool, _a1 error) *MockICouponRepository_IncrementIssuedQtyWithLimit_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockICouponRepository_IncrementIssuedQty_Call) RunAndReturn(run func(context.Context, int64) error) *MockICouponRepository_IncrementIssuedQty_Call {
+func (_c *MockICouponRepository_IncrementIssuedQtyWithLimit_Call) RunAndReturn(run func(context.Context, int64, int64) (bool, error)) *MockICouponRepository_IncrementIssuedQtyWithLimit_Call {
 	_c.Call.Return(run)
 	return _c
 }

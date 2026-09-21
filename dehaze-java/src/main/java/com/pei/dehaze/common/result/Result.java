@@ -39,6 +39,15 @@ public class Result<T> implements Serializable {
         return result;
     }
 
+    public static <T> Result<T> success(T data, String msg) {
+        Result<T> result = new Result<>();
+        result.setCode(ResultCode.SUCCESS.getCode());
+        result.setMsg(msg);
+        result.setData(data);
+        result.setTraceId(MDC.get("trace_id"));
+        return result;
+    }
+
     public static <T> Result<T> failed() {
         return result(ResultCode.SYSTEM_EXECUTION_ERROR.getCode(), ResultCode.SYSTEM_EXECUTION_ERROR.getMsg(), null);
     }

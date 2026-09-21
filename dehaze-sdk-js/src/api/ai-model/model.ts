@@ -92,6 +92,18 @@ export interface AiModelVO {
   speedTier?: AiModelSpeedTier | null;
   /** 是否作为其他启用模型的降级目标 */
   isFallbackTarget?: boolean | null;
+  /** 最近可用性测试结果：0-未测试，1-可用，2-不可用 */
+  lastTestStatus: number;
+  /** 最近测试时间 */
+  lastTestAt?: string | null;
+  /** 最近测试失败原因 */
+  lastTestError?: string | null;
+  /** 近 24h 真实调用次数（null=未调用） */
+  calls24h?: number | null;
+  /** 近 24h 成功率（百分比） */
+  successRate24h?: number | null;
+  /** 最近一次真实调用时间 */
+  lastCallAt?: string | null;
   createTime?: string | null;
 }
 

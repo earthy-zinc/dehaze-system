@@ -23,7 +23,7 @@ CREATE TABLE `sys_ai_credit_log`
     `related_id`    bigint                                                          NULL DEFAULT NULL COMMENT '关联业务记录ID(如计费记录ID/积分卡订单ID)',
     `reason`        varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '变动原因',
     `operator_id`   bigint                                                          NULL DEFAULT NULL COMMENT '积分变动业务操作人ID(人工调整/客服补偿场景记录;系统自动为NULL)',
-    `deleted`       tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`       bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`   datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`   datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`     bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',

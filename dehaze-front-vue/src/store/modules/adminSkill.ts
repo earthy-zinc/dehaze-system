@@ -3,6 +3,7 @@ import {
   SkillForm,
   SkillMarketVO,
   SkillQuery,
+  SkillTestResult,
   SkillVO,
 } from "dehaze-sdk-js";
 
@@ -26,7 +27,7 @@ export const useAdminSkillStore = defineStore("adminSkill", () => {
     visible: false,
     skill: null,
   });
-  const testResult = ref<Record<string, unknown> | null>(null);
+  const testResult = ref<SkillTestResult | null>(null);
   const testLoading = ref(false);
 
   /** 市场启用/共享会同时影响市场目录与管理列表，两端一并刷新 */

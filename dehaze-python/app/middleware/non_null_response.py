@@ -14,7 +14,7 @@ def _remove_none(obj: Any) -> Any:
     """递归移除 dict/list 中的 None 值"""
     if isinstance(obj, dict):
         return {k: _remove_none(v) for k, v in obj.items() if v is not None}
-    elif isinstance(obj, list):
+    if isinstance(obj, list):
         return [_remove_none(item) for item in obj]
     return obj
 

@@ -39,8 +39,12 @@ def _patch_service(monkeypatch, *, conv, msg, gen_result):
         return it + ot
 
     monkeypatch.setattr(service, "_generate_questions", gen_result)
-    monkeypatch.setattr("app.service.ai.service.suggestion_service.ai_conversation_repository", _ConvRepo())
-    monkeypatch.setattr("app.service.ai.service.suggestion_service.ai_message_repository", _MsgRepo())
+    monkeypatch.setattr(
+        "app.service.ai.service.suggestion_service.ai_conversation_repository", _ConvRepo()
+    )
+    monkeypatch.setattr(
+        "app.service.ai.service.suggestion_service.ai_message_repository", _MsgRepo()
+    )
     monkeypatch.setattr(
         "app.service.ai.service.suggestion_service.billing_service",
         type("B", (), {"settle": staticmethod(_settle)})(),
@@ -67,9 +71,7 @@ async def test_generate_success_counts_token_and_pushes(monkeypatch):
         return ["追问一", "追问二"], {"input_tokens": 10, "output_tokens": 20}
 
     msg = _msg()
-    service, emitter = _patch_service(
-        monkeypatch, conv=_conv(), msg=msg, gen_result=_gen_success
-    )
+    service, emitter = _patch_service(monkeypatch, conv=_conv(), msg=msg, gen_result=_gen_success)
 
     result = await service.generate(1, 2, "回答", 7, "s1")
 
@@ -84,9 +86,7 @@ async def test_generate_failure_returns_none(monkeypatch):
     async def _gen_fail(db, model_id, reply, **kwargs):
         return None
 
-    service, emitter = _patch_service(
-        monkeypatch, conv=_conv(), msg=_msg(), gen_result=_gen_fail
-    )
+    service, emitter = _patch_service(monkeypatch, conv=_conv(), msg=_msg(), gen_result=_gen_fail)
     result = await service.generate(1, 2, "回答", 7, "s1")
     assert result is None
     assert emitter.events == []

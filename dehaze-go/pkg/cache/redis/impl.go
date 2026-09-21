@@ -36,6 +36,19 @@ func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	return val, nil
 }
 
+// GetDel 原子取走并删除（Redis GETDEL）。验证码等一次性凭证的并发消费依赖此原子性：
+// 读+删分成两步时，两个并发请求都能读到值（并发登录双双成功）。
+func (c *RedisCache) GetDel(ctx context.Context, key string) (string, error) {
+	val, err := c.client.GetDel(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", errs.ErrKeyNotFound
+		}
+		return "", err
+	}
+	return val, nil
+}
+
 func (c *RedisCache) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	return c.client.Set(ctx, key, value, expiration).Err()
 }

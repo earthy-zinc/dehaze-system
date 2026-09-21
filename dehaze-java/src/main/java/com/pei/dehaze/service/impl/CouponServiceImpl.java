@@ -135,7 +135,7 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             throw new BusinessException(ResultCode.COUPON_NOT_FOUND);
         }
         if (coupon.getStatus() != 1) {
-            throw new BusinessException(ResultCode.COUPON_NOT_FOUND, "优惠券已禁用");
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "优惠券已禁用");
         }
         List<Long> targetUserIds = resolveTargetUserIds(form.getTargetScope(), form.getLevelCodes(), form.getUserIds());
         int successCount = 0;
@@ -157,8 +157,20 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
     public CouponReceiveResult receive(Long couponId) {
         Long userId = SecurityUtils.getUserId();
         SysCoupon coupon = this.getById(couponId);
-        if (coupon == null || coupon.getStatus() != 1) {
+        if (coupon == null) {
             throw new BusinessException(ResultCode.COUPON_NOT_FOUND);
+        }
+        if (coupon.getStatus() != 1) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "优惠券已禁用");
+        }
+        // 体验券直接激活权益、不产生订单，每人仅可领取 1 次（优先于通用限领语义）
+        if ("trial".equals(coupon.getType())) {
+            Long trialCount = userCouponMapper.selectCount(new LambdaQueryWrapper<SysUserCoupon>()
+                    .eq(SysUserCoupon::getUserId, userId)
+                    .eq(SysUserCoupon::getCouponId, couponId));
+            if (trialCount > 0) {
+                throw new BusinessException(ResultCode.BUSINESS_ERROR, "体验券每人限领 1 次");
+            }
         }
         LocalDateTime now = LocalDateTime.now();
         if ("fixed".equals(coupon.getValidType()) && coupon.getValidEnd() != null && now.isAfter(coupon.getValidEnd())) {
@@ -299,11 +311,25 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         if ("full_reduction".equals(form.getType()) && (form.getThreshold() == null || form.getThreshold() < 0)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "满减券必须设置使用门槛");
         }
+        if ("discount".equals(form.getType()) && form.getFaceValue() != null && form.getFaceValue() > 100) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "折扣券面值不能超过100");
+        }
+        if (!"fixed".equals(form.getValidType()) && !"relative".equals(form.getValidType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "有效期类型非法");
+        }
         if ("fixed".equals(form.getValidType()) && (form.getValidStart() == null || form.getValidEnd() == null)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "固定有效期必须设置起止时间");
         }
         if ("relative".equals(form.getValidType()) && (form.getValidDays() == null || form.getValidDays() < 1)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "相对有效期必须设置有效天数");
+        }
+        if (form.getApplicableScope() != null) {
+            for (Object scope : form.getApplicableScope()) {
+                boolean valid = scope instanceof Number || List.of("vip", "credit").contains(String.valueOf(scope));
+                if (!valid) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）");
+                }
+            }
         }
     }
 
@@ -345,19 +371,19 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         return vo;
     }
 
-    private List<Long> parseJsonToList(String json) {
+    private List<Object> parseJsonToList(String json) {
         if (CharSequenceUtil.isBlank(json)) {
             return null;
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<List<Long>>() {});
+            return objectMapper.readValue(json, new TypeReference<List<Object>>() {});
         } catch (JsonProcessingException e) {
             log.warn("解析JSON List失败: {}", json, e);
             return null;
         }
     }
 
-    private String serializeListToJson(List<Long> list) {
+    private String serializeListToJson(List<?> list) {
         if (list == null || list.isEmpty()) {
             return null;
         }

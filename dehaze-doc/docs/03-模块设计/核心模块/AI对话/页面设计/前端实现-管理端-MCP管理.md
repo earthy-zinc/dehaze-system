@@ -30,7 +30,7 @@ flowchart TD
 |------|------|
 | McpManagePage | MCP 管理页容器与路由入口，`el-tabs` 编排市场/Server 管理/调用审计三区 |
 | MarketPresetList | 市场预设列表，一键接入（install 后转注册并拉取工具清单） |
-| ServerTable | Server 表格：名称/传输协议/端点/鉴权方式/启用状态/健康状态/工具数 |
+| ServerTable | Server 表格：名称/传输协议/端点/鉴权方式/启用状态/健康状态/最近探测时间/工具数 |
 | ServerFormDrawer | Server 注册/编辑抽屉，内分 配置 / 工具与命名空间 / 凭据 三 Tab；创建模式仅「配置」可用 |
 | CredentialPanel | 凭据配置（外部服务 API Key + 可选扩展字段，仅录入/更新不回显明文） |
 | ToolNamespacePanel | 工具与命名空间面板：查看 Server 工具清单，工具分组为命名空间供 Agent 关联 |
@@ -42,7 +42,8 @@ flowchart TD
 **组件拆分取舍**：
 
 - 三个 Section（McpMarketSection / McpServerSection / McpCallAuditSection）不单独建组件，由 `McpManagePage` 的 `el-tab-pane` 直接承载——分区仅为布局容器，无独立状态与复用场景
-- `ProtocolConfigForm` 不单独建组件：仅含传输协议与端点两个字段，内联在 `ServerFormDrawer` 的「配置」Tab 内（含端点 URL 校验：非 stdio 必填且必须为 http/https）
+- `ProtocolConfigForm` 不单独建组件：仅含传输协议与端点两个字段，内联在 `ServerFormDrawer` 的「配置」Tab 内（含端点 URL 校验：必填且必须为 http/https）
+- 存量 stdio 行（协议已退役）在列表中展示为红色「stdio（不受支持）」标签并提示改协议；抽屉打开时提示该 Server 协议已退役并预置为 streamable-http，由管理员补端点或改选 sse 后保存
 - 启用开关不放在表单内，而是置于 `ServerFormDrawer` 页脚并标注"预览工具清单后再启用"，与「接入即发现」流程衔接
 
 > 系统内部 MCP 能力网关（元工具）作为内置工具来源保留，不通过本页管理；命名空间预筛选机制见 [需求规格-能力扩展](../能力扩展/需求规格.md) §2.6.13 与 [后端实现-能力扩展](../能力扩展/后端实现.md) §5。
@@ -147,7 +148,7 @@ flowchart TD
 | 弹窗/抽屉（Drawer） | Server 注册/编辑抽屉（配置/工具与命名空间/凭据三 Tab） |
 | 标签页（Tabs） | 市场/Server 管理/调用审计切换；抽屉内三 Tab |
 | 状态标签 | Server 启用/禁用、健康状态（在线/异常/未探测）、市场已接入状态、凭据已配置 |
-| 表单校验组件 | 端点 URL 格式校验（非 stdio 必填且须 http/https）、名称必填、命名空间标识非空且不重复 |
+| 表单校验组件 | 端点 URL 格式校验（必填且须 http/https）、名称必填、命名空间标识非空且不重复（工具名须来自已拉取清单，由后端校验并回显可用工具） |
 
 **接口消费约定**：
 

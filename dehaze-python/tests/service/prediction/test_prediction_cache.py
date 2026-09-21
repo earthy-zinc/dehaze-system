@@ -27,6 +27,7 @@ async def test_invalidate_redis_failure_raises(monkeypatch):
 
     async def _force_fallback(operation, fallback=None, **kwargs):
         # 模拟 Redis 不可用时 wrapper 进入降级路径，直接执行 fallback
+        assert fallback is not None
         return await fallback()
 
     monkeypatch.setattr(cache_mod, "redis_operation_with_fallback", _force_fallback)

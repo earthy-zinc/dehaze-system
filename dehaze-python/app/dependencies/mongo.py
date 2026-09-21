@@ -8,9 +8,9 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "get_mongo_db",
-    "get_mongo_client",
     "close_mongo",
+    "get_mongo_client",
+    "get_mongo_db",
     "init_mongo_indexes",
 ]
 

@@ -6,7 +6,7 @@ from app.models.entity.sys_user import SysUser
 from app.repository.data_scope import apply_data_scope
 
 
-def _make_user(data_scope=None, roles=None, dept_id=10, user_id=100):
+def _make_user(data_scope=None, roles=None, dept_id: int | None = 10, user_id=100):
     return UserContext(
         id=user_id,
         username="tester",

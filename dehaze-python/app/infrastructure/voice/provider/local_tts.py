@@ -26,13 +26,10 @@ class LocalTtsProvider(TTSProvider):
             async with get_db_session() as db:
                 models = await voice_model_repository.list_enabled(db, "tts")
             voices = [m for m in models if m.model_type == "voice"]
-            # 注册表化：音色 onnx/大小/下载URL 由 sys_voice_model.params 决定，注入引擎替代硬编码 _VOICE_MODEL_FILES
-            piper_tts_engine.configure_voices(
-                {m.model_id: (m.params or {}) for m in voices}
-            )
-            self._default_voice = next(
-                (m.model_id for m in voices), settings.VOICE_TTS_VOICE_ID
-            )
+            # 注册表化：音色 onnx/大小/下载URL 由 sys_voice_model.params 决定，
+            # 注入引擎替代硬编码 _VOICE_MODEL_FILES
+            piper_tts_engine.configure_voices({m.model_id: (m.params or {}) for m in voices})
+            self._default_voice = next((m.model_id for m in voices), settings.VOICE_TTS_VOICE_ID)
         return self._default_voice
 
     async def synthesize(
@@ -40,7 +37,10 @@ class LocalTtsProvider(TTSProvider):
     ) -> bytes:
         from app.infrastructure.voice import piper_tts_engine
 
-        voice = voice_id or await self._resolve_default_voice()
+        # 先解析默认音色（注入引擎音色注册表），再回退到显式指定的音色——
+        # 若仅显式音色非空时跳过解析，注册表将保持为空导致合成必然失败
+        default_voice = await self._resolve_default_voice()
+        voice = voice_id or default_voice
         return await piper_tts_engine.run_in_executor(
             piper_tts_engine.synthesize, text, voice, speed, format_, sample_rate
         )

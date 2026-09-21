@@ -36,10 +36,10 @@ func (r *MemberBenefitRepository) FindByLevelCode(ctx context.Context, levelCode
 	return &b, err
 }
 
-// ExistsByLevelCode 检查等级编码是否存在（查全表含软删行）
+// ExistsByLevelCode 检查等级编码是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *MemberBenefitRepository) ExistsByLevelCode(ctx context.Context, levelCode string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysMemberBenefit{}).
+	query := r.db.WithContext(ctx).Model(&model.SysMemberBenefit{}).
 		Where("level_code = ?", levelCode)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])

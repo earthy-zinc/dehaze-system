@@ -125,9 +125,8 @@ def _set_user_fields(target, only_update: bool = False):
     if user_id is None:
         user_id = SYSTEM_USER_ID
 
-    if not only_update:
-        if target.create_by is None:
-            target.create_by = user_id
+    if not only_update and target.create_by is None:
+        target.create_by = user_id
 
     target.update_by = user_id
 

@@ -2,10 +2,10 @@
 
 端点前缀 /api/v1/ai/agents/{agent_id}/eval：
 - 评测集 CRUD、样本 CRUD、评测执行记录查询
-- 手动触发评测（trigger_type=manual）
+- 手动触发评测（异步任务：POST /runs 返回 task_id，GET /tasks/{task_id} 查进度与结果）
 
 端点前缀 /api/v1/ai/eval-center（评测中心，跨 Agent 聚合）：
-- 评测总览 / 历史趋势 / 两次 run 对比 / 判分状态 / 人工复核
+- 评测总览 / 历史趋势 / 两次 run 对比 / 判分状态 / 人工复核（含复核详情）
 
 权限：ai:agent:manage
 """
@@ -31,10 +31,12 @@ from app.models.schema.ai_agent import (
 )
 from app.models.schema.ai_eval_center import (
     EvalAgentOverviewItem,
+    EvalReviewDetailResult,
     EvalReviewQueueResult,
     EvalReviewSubmitForm,
     EvalRunCompareResult,
-    EvalRunGateResult,
+    EvalTaskAcceptedResult,
+    EvalTaskStatusResult,
     EvalTrendItem,
     JudgeStatusResult,
 )
@@ -83,7 +85,7 @@ async def update_dataset(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await eval_service.update_dataset(db, dataset_id, form)
+    result = await eval_service.update_dataset(db, agent_id, dataset_id, form)
     return success(EvalDatasetResult.model_validate(result))
 
 
@@ -95,7 +97,7 @@ async def delete_dataset(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await eval_service.delete_dataset(db, dataset_id)
+    await eval_service.delete_dataset(db, agent_id, dataset_id, user.id)
     return success(msg="一切ok")
 
 
@@ -115,7 +117,7 @@ async def create_sample(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await eval_service.create_sample(db, dataset_id, form)
+    result = await eval_service.create_sample(db, agent_id, dataset_id, form)
     return success(EvalSampleResult.model_validate(result))
 
 
@@ -131,7 +133,7 @@ async def list_samples(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await eval_service.list_samples(db, dataset_id)
+    result = await eval_service.list_samples(db, agent_id, dataset_id)
     return success([EvalSampleResult.model_validate(s) for s in result])
 
 
@@ -146,7 +148,7 @@ async def update_sample(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await eval_service.update_sample(db, sample_id, form)
+    result = await eval_service.update_sample(db, agent_id, sample_id, form)
     return success(EvalSampleResult.model_validate(result))
 
 
@@ -158,14 +160,18 @@ async def delete_sample(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    await eval_service.delete_sample(db, sample_id)
+    await eval_service.delete_sample(db, agent_id, sample_id, user.id)
     return success(msg="一切ok")
 
 
 # ── 评测执行 ────────────────────────────────────────────────────
 
 
-@router.post("/runs", response_model=Result[EvalRunGateResult], summary="手动触发评测（回归集）")
+@router.post(
+    "/runs",
+    response_model=Result[EvalTaskAcceptedResult],
+    summary="手动触发评测（异步任务，返回 task_id）",
+)
 @require_permission("ai:agent:manage")
 async def run_manual_eval(
     agent_id: int,
@@ -173,8 +179,28 @@ async def run_manual_eval(
     user: UserContext = Depends(get_current_user),
     redis=Depends(get_redis_client),
 ):
-    result = await eval_service.run_regression(db, redis, agent_id, trigger_type="manual")
-    return success(EvalRunGateResult.model_validate(result))
+    task_id = await eval_service.start_eval_task(
+        db, redis, agent_id, operator_id=user.id, trigger_type="manual"
+    )
+    return success(EvalTaskAcceptedResult(task_id=task_id))
+
+
+@router.get(
+    "/tasks/{task_id}",
+    response_model=Result[EvalTaskStatusResult],
+    summary="评测任务进度与结果",
+)
+@require_permission("ai:agent:manage")
+async def get_eval_task(
+    agent_id: int,
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+    redis=Depends(get_redis_client),
+):
+    return success(
+        EvalTaskStatusResult.model_validate(await eval_service.get_eval_task(redis, task_id))
+    )
 
 
 @router.get("/runs", response_model=Result[PageResult[EvalRunResult]], summary="评测执行记录")
@@ -206,7 +232,9 @@ async def eval_overview(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success([EvalAgentOverviewItem.model_validate(i) for i in await eval_center_service.overview(db)])
+    return success(
+        [EvalAgentOverviewItem.model_validate(i) for i in await eval_center_service.overview(db)]
+    )
 
 
 @center_router.get(
@@ -241,9 +269,11 @@ async def eval_run_compare(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success(EvalRunCompareResult.model_validate(
-        await eval_center_service.compare_runs(db, run_id, baseRunId)
-    ))
+    return success(
+        EvalRunCompareResult.model_validate(
+            await eval_center_service.compare_runs(db, run_id, baseRunId)
+        )
+    )
 
 
 @center_router.get(
@@ -266,12 +296,33 @@ async def eval_judge_status(
 )
 @require_permission("ai:agent:manage")
 async def eval_reviews(
-    status: int | None = Query(default=None, ge=1, le=2, description="复核状态过滤(1:待复核;2:已复核)"),
+    status: int | None = Query(
+        default=None, ge=1, le=2, description="复核状态过滤(1:待复核;2:已复核)"
+    ),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
     result = await eval_center_service.list_reviews(db, status)
     return success(EvalReviewQueueResult.model_validate(result))
+
+
+@center_router.get(
+    "/runs/{run_id}/samples/{sample_id}",
+    response_model=Result[EvalReviewDetailResult],
+    summary="复核详情（样本输入/期望 + 实际输出 + 四维得分）",
+)
+@require_permission("ai:agent:manage")
+async def eval_review_detail(
+    run_id: int,
+    sample_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    return success(
+        EvalReviewDetailResult.model_validate(
+            await eval_center_service.review_detail(db, run_id, sample_id)
+        )
+    )
 
 
 @center_router.post(

@@ -11,6 +11,7 @@ import (
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -64,7 +65,7 @@ func (api *SysDatasetItemApi) GetDatasetItemById(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param pageNum query int false "页码" default(1)
-// @Param pageSize query int false "每页数量" default(10)
+// @Param pageSize query int false "每页数量" default(20)
 // @Param datasetId query int false "数据集ID"
 // @Param sceneType query string false "场景类型"
 // @Param keyword query string false "关键字（搜索文件名/描述）"
@@ -72,7 +73,11 @@ func (api *SysDatasetItemApi) GetDatasetItemById(c *gin.Context) {
 // @Success 200 {object} common.Response{data=[]vo.ImageItemVO}
 // @Router /api/v1/dataset-items [get]
 func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
-	pageNum, pageSize := getPageParams(c)
+	// python dataset_item.py:40-41 默认 pageSize 20（该端点不吃 BasePageQuery 的 10）
+	pageNum, pageSize, ok := parsePaginationWithSize(c, 20)
+	if !ok {
+		return
+	}
 
 	datasetIdStr := c.Query("datasetId")
 	sceneType := c.Query("sceneType")
@@ -107,9 +112,9 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 
 // createDatasetItemRequest 创建空数据项请求
 type createDatasetItemRequest struct {
-	DatasetID  int64  `json:"datasetId" binding:"required"`
-	Name       string `json:"name"`
-	SceneType  string `json:"sceneType"`
+	DatasetID   int64  `json:"datasetId" binding:"required"`
+	Name        string `json:"name" binding:"omitempty,max=64"`
+	SceneType   string `json:"sceneType"`
 	Description string `json:"description"`
 }
 
@@ -190,7 +195,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 
 	// 上传清晰图（可选）
 	if clearHeaders := form.File["clearImage"]; len(clearHeaders) > 0 {
-		clearInfo, err := api.uploadFormFile(ctx, clearHeaders[0])
+		clearInfo, err := api.uploadFormFile(ctx, c, clearHeaders[0])
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -202,7 +207,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 	hazeLevels := c.PostFormArray("hazeLevels")
 	hazyHeaders := form.File["hazyImages"]
 	for i, hazyHeader := range hazyHeaders {
-		hazyInfo, err := api.uploadFormFile(ctx, hazyHeader)
+		hazyInfo, err := api.uploadFormFile(ctx, c, hazyHeader)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -224,7 +229,7 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 }
 
 // uploadFormFile 上传单个表单文件，返回 ImageUploadInfo
-func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, fileHeader *multipart.FileHeader) (datasetservice.ImageUploadInfo, error) {
+func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, c *gin.Context, fileHeader *multipart.FileHeader) (datasetservice.ImageUploadInfo, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return datasetservice.ImageUploadInfo{}, common.NewBizError(common.PARAM_ERROR, "无法读取文件")
@@ -236,7 +241,12 @@ func (api *SysDatasetItemApi) uploadFormFile(ctx context.Context, fileHeader *mu
 		return datasetservice.ImageUploadInfo{}, common.WrapBizError(common.SYSTEM_RESOURCE_ACCESS_ERR, "计算文件MD5失败", err)
 	}
 
-	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash)
+	// create_by 记录上传者（归属校验依据）
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		return datasetservice.ImageUploadInfo{}, err
+	}
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, userID)
 	if err != nil {
 		return datasetservice.ImageUploadInfo{}, err
 	}
@@ -309,7 +319,7 @@ func (api *SysDatasetItemApi) BatchCreateDatasetItemsWithImages(c *gin.Context) 
 		uploadedCount := 0
 
 		for _, fh := range files {
-			info, err := api.uploadFormFile(ctx, fh)
+			info, err := api.uploadFormFile(ctx, c, fh)
 			if err != nil {
 				failedItems = append(failedItems, batchUploadFailedItem{
 					FileName: fh.Filename,
@@ -506,10 +516,10 @@ func (api *SysDatasetItemApi) BatchDeleteDatasetItems(c *gin.Context) {
 	}
 
 	result := batchOperationResult{
-		SuccessCount:  successCount,
-		FailedCount:   failedCount,
-		Message:       "批量删除完成",
-		SuccessIds:    successIds,
+		SuccessCount:   successCount,
+		FailedCount:    failedCount,
+		Message:        "批量删除完成",
+		SuccessIds:     successIds,
 		FailureDetails: failureDetails,
 	}
 
@@ -518,10 +528,10 @@ func (api *SysDatasetItemApi) BatchDeleteDatasetItems(c *gin.Context) {
 
 // batchOperationResult 批量操作结果
 type batchOperationResult struct {
-	SuccessCount  int                 `json:"successCount"`
-	FailedCount   int                 `json:"failedCount"`
-	Message       string              `json:"message"`
-	SuccessIds    []int64             `json:"successIds,omitempty"`
+	SuccessCount   int                  `json:"successCount"`
+	FailedCount    int                  `json:"failedCount"`
+	Message        string               `json:"message"`
+	SuccessIds     []int64              `json:"successIds,omitempty"`
 	FailureDetails []batchFailureDetail `json:"failureDetails,omitempty"`
 }
 

@@ -17,6 +17,6 @@ type System struct {
 	// 登录/注册接口 IP 限流次数（每分钟），<=0 时使用安全默认值 10
 	LoginIPLimitCount int `mapstructure:"login-ip-limit-count" json:"login-ip-limit-count" yaml:"login-ip-limit-count"`
 	// 优惠券领取限流（每分钟）
-	CouponReceiveRateLimit   int `mapstructure:"coupon-receive-rate-limit" json:"coupon-receive-rate-limit" yaml:"coupon-receive-rate-limit"`
-	CouponReceiveRateWindow  int `mapstructure:"coupon-receive-rate-window" json:"coupon-receive-rate-window" yaml:"coupon-receive-rate-window"`
+	CouponReceiveRateLimit  int `mapstructure:"coupon-receive-rate-limit" json:"coupon-receive-rate-limit" yaml:"coupon-receive-rate-limit"`
+	CouponReceiveRateWindow int `mapstructure:"coupon-receive-rate-window" json:"coupon-receive-rate-window" yaml:"coupon-receive-rate-window"`
 }

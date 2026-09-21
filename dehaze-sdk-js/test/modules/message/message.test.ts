@@ -422,6 +422,13 @@ describe("消息通知模块接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("安全：普通用户调内部消息发送接口应失败（message:send 权限）", async () => {
+      await expectBizError(
+        MessageAPI.send(createMessageSendRequest({ recipientIds: [USERS.USER.id] })),
+        ["A0301", "A0400", "ERR_BAD_REQUEST"]
+      );
+    });
   });
 
   describe("公告管理接口", () => {
@@ -496,6 +503,22 @@ describe("消息通知模块接口测试", () => {
     test("正向测试：公告分页列表", async () => {
       const result = await AnnouncementAPI.getPage({ pageNum: 1, pageSize: 10 });
       expect(Array.isArray(result.list)).toBe(true);
+    });
+
+    test("正向测试：按会员等级 level_0 定向发送公告", async () => {
+      // level_0 是注册用户默认等级（sys_member 种子含 level_0 用户），应可完整选为发送范围
+      const form = createAnnouncementForm({
+        title: "test_公告_level0_" + Date.now(),
+        targetScope: "level",
+        targetParams: { level: 0 },
+      });
+      const { id } = await AnnouncementAPI.create(form);
+      try {
+        const result = await AnnouncementAPI.send(id);
+        expect(result.sentCount).toBeGreaterThanOrEqual(1);
+      } finally {
+        await AnnouncementAPI.deleteById(id);
+      }
     });
 
     test("正向测试：按标题搜索公告", async () => {
@@ -573,6 +596,154 @@ describe("消息通知模块接口测试", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
+    });
+  });
+
+  describe("模板发送链路 - templateCode + variables", () => {
+    test("正向测试：模板渲染并验证详情内容", async () => {
+      const marker = "tpl_render_" + Date.now();
+      const { messageIds } = await sendMessage({
+        templateCode: "feedback_reply",
+        variables: { title: marker },
+      });
+      createdMessageIds.push(...messageIds);
+
+      const detail = await MessageAPI.getDetail(messageIds[0]!);
+      expect(detail.title).toContain(marker);
+      expect(detail.title).not.toContain("{title}");
+
+      await deleteMessages(messageIds);
+    });
+
+    test("异常：模板变量缺失应报 A0556", async () => {
+      await expectBizError(
+        MessageAPI.send(
+          createMessageSendRequest({ templateCode: "feedback_reply", variables: {} })
+        ),
+        ["A0556"]
+      );
+    });
+
+    test("异常：不存在的模板编码应报 A0555", async () => {
+      await expectBizError(
+        MessageAPI.send(
+          createMessageSendRequest({
+            templateCode: "no_such_tpl_" + Date.now(),
+            variables: { x: "1" },
+          })
+        ),
+        ["A0555"]
+      );
+    });
+
+    test("异常：禁用模板发送应报 A0558（编辑临时禁用后恢复）", async () => {
+      const page = await MessageTemplateAPI.getPage({
+        name: "反馈回复通知",
+        pageNum: 1,
+        pageSize: 10,
+      });
+      const tpl = page.list.find((t) => t.code === "feedback_reply");
+      expect(tpl, "种子模板 feedback_reply 缺失").toBeDefined();
+      const originalStatus = tpl!.status;
+
+      try {
+        await MessageTemplateAPI.update(tpl!.id, { status: 0 });
+        await expectBizError(
+          MessageAPI.send(
+            createMessageSendRequest({
+              templateCode: "feedback_reply",
+              variables: { title: "x" },
+            })
+          ),
+          ["A0558"]
+        );
+      } finally {
+        await MessageTemplateAPI.update(tpl!.id, { status: originalStatus });
+      }
+    });
+
+    test("安全：变量值含 HTML/占位符对抗语料，不二次展开", async () => {
+      const hostile = "<img src=x onerror=alert(1)>${evil}{title}\u200b";
+      const { messageIds } = await sendMessage({
+        templateCode: "feedback_reply",
+        variables: { title: hostile },
+      });
+      createdMessageIds.push(...messageIds);
+
+      const detail = await MessageAPI.getDetail(messageIds[0]!);
+      // 模板渲染单遍替换：变量值中的 {title} 字面保留，不递归展开
+      expect(detail.title).toContain(hostile);
+      expect(detail.title.match(/\{title\}/g)!.length).toBe(1);
+
+      await deleteMessages(messageIds);
+    });
+  });
+
+  describe("对抗性脏语料与不变量", () => {
+    test("边界：标题/正文含 emoji/零宽/CRLF/全半角/超长文本往返一致", async () => {
+      const dirtyTitle = "🎉\u200b<b>全角ＡＢＣ</b>\r\n半角abc123 " + "长".repeat(120);
+      const dirtyContent = "BOM\ufeff\tCRLF\r\n<script>1</script>${process.env}%_%LIKE\\%";
+      const { messageIds } = await sendMessage({ title: dirtyTitle, content: dirtyContent });
+      createdMessageIds.push(...messageIds);
+
+      const detail = await MessageAPI.getDetail(messageIds[0]!);
+      expect(detail.title).toBe(dirtyTitle);
+      expect(detail.content).toBe(dirtyContent);
+      // 摘要按 50 字符截断
+      expect((detail.summary ?? "").length).toBeLessThanOrEqual(50);
+
+      await deleteMessages(messageIds);
+    });
+
+    test("边界：未读计数不变量（发送+3、已读-1、按类型全部已读清零）", async () => {
+      const before = (await MessageAPI.getUnreadCount()).count;
+      const bizPrefix = "invariant_" + Date.now();
+      const sent: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const r = await MessageAPI.send(
+          createMessageSendRequest({
+            type: "member",
+            bizModule: "test",
+            bizId: `${bizPrefix}_${i}`,
+          })
+        );
+        createdMessageIds.push(...r.messageIds);
+        sent.push(...r.messageIds);
+      }
+
+      const afterSend = (await MessageAPI.getUnreadCount()).count;
+      expect(afterSend - before).toBe(3);
+
+      await MessageAPI.markRead(sent[0]!);
+      const afterRead = (await MessageAPI.getUnreadCount()).count;
+      expect(afterRead - before).toBe(2);
+
+      // 未读+已读=总数（按类型）：member 类型全部已读后未读为 0
+      await MessageAPI.markAllRead("member");
+      const memberUnread = await MessageAPI.getPage({
+        type: "member",
+        readStatus: 0,
+        pageNum: 1,
+        pageSize: 100,
+      });
+      expect(memberUnread.total).toBe(0);
+    });
+
+    test("异常：删除非法ID列表应报参数错误", async () => {
+      await expectBizError(MessageAPI.deleteByIds("abc,def"), ["A0400", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界：标记他人消息已读静默成功（不暴露存在性）", async () => {
+      const { messageIds } = await sendMessage({ recipientIds: [USERS.USER.id] });
+      const msgId = messageIds[0]!;
+      try {
+        // 后端按 recipient_id + 未读条件更新，admin 标记 user 的消息影响 0 行，幂等静默成功（不抛业务错误）
+        await MessageAPI.markRead(msgId);
+      } finally {
+        await login(USERS.USER.username);
+        await MessageAPI.deleteByIds(String(msgId));
+        await login(USERS.ADMIN.username);
+      }
     });
   });
 });

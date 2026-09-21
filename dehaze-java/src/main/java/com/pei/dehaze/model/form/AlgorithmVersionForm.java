@@ -1,6 +1,7 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -16,6 +17,7 @@ public class AlgorithmVersionForm {
 
     @Schema(description = "版本号（语义化版本，如 1.0.1）")
     @NotBlank(message = "版本号不能为空")
+    @Pattern(regexp = "^v\\d+\\.\\d+\\.\\d+$", message = "版本号格式必须为 vX.Y.Z")
     private String version;
 
     @Schema(description = "变更日志")

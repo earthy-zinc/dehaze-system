@@ -352,12 +352,10 @@ describe("字典管理接口测试", () => {
     });
 
     test("边界：删除系统预置字典类型应失败", async () => {
-      // 预置类型 create_time 最早，取列表中的最小值作为预置类型
-      const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 100 }));
-      expect(pageResult.list.length).toBeGreaterThan(0);
-      const presetType = pageResult.list.reduce((earliest, d) =>
-        d.createTime && earliest.createTime && d.createTime < earliest.createTime ? d : earliest
-      );
+      // 预置类型以种子编码 gender 定位（create_time 最早法会被历史测试残留类型干扰，不可靠）
+      const presetPage = await DictAPI.getDictTypePage(createDictTypeQuery({ keywords: "gender" }));
+      const presetType = presetPage.list.find((d) => d.code === "gender");
+      expect(presetType).toBeDefined();
       const presetTypeId = presetType!.id!;
 
       await expectBizError(DictAPI.deleteDictTypes(presetTypeId.toString()), [
@@ -954,6 +952,310 @@ describe("字典管理接口测试", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
+    });
+  });
+
+  describe("权限测试 - 字典数据管理操作", () => {
+    beforeAll(async () => {
+      await login(USERS.USER.username);
+    });
+
+    afterAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("边界：普通用户新增字典应失败", async () => {
+      await expectBizError(DictAPI.addDict(createDictForm({ typeCode: "gender" })), "A0301");
+    });
+
+    test("边界：普通用户修改字典应失败", async () => {
+      await expectBizError(
+        DictAPI.updateDict(1, {
+          typeCode: "gender",
+          name: "越权修改",
+          value: "1",
+          status: 1,
+        }),
+        "A0301"
+      );
+    });
+
+    test("边界：普通用户删除字典应失败", async () => {
+      await expectBizError(DictAPI.deleteDictByIds("1"), "A0301");
+    });
+  });
+
+  describe("边界与参数校验强化", () => {
+    beforeAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    // 固定长度编码生成器：截断到指定长度，保证长度边界断言精确
+    function codeOfLength(len: number): string {
+      const base = `CB_${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+      return (base + "0".repeat(len)).slice(0, len);
+    }
+
+    test("边界：类型名称 50 字符可创建，51 字符拒绝", async () => {
+      const name50 = "测".repeat(50);
+      const created = await createDictType(createDictTypeForm({ name: name50 }));
+      expect(created?.name).toBe(name50);
+      if (created?.id) createdDictTypeIds.push(created.id);
+
+      await expectBizError(
+        DictAPI.addDictType(createDictTypeForm({ name: "测".repeat(51) })),
+        "A0400"
+      );
+    });
+
+    test("边界：类型编码 50 字符可创建，51 字符拒绝", async () => {
+      const code50 = codeOfLength(50);
+      const created = await createDictType(createDictTypeForm({ code: code50 }));
+      expect(created?.code).toBe(code50);
+      if (created?.id) createdDictTypeIds.push(created.id);
+
+      await expectBizError(
+        DictAPI.addDictType(createDictTypeForm({ code: codeOfLength(51) })),
+        "A0400"
+      );
+    });
+
+    test("边界：备注 255 字符可创建，256 字符拒绝（T-DM-011）", async () => {
+      const remark255 = "备".repeat(255);
+      const created = await createDictType(createDictTypeForm({ remark: remark255 }));
+      expect(created?.remark).toBe(remark255);
+      if (created?.id) createdDictTypeIds.push(created.id);
+
+      await expectBizError(
+        DictAPI.addDictType(createDictTypeForm({ remark: "备".repeat(256) })),
+        "A0400"
+      );
+    });
+
+    test("边界：字典标签/键值 50 字符可创建，51 字符拒绝", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      const name50 = "名".repeat(50);
+      const value50 = "V".repeat(43) + Date.now().toString().slice(-7);
+      const form = createDictForm({
+        typeCode: typeForm.code!,
+        name: name50,
+        value: value50,
+      });
+      const created = await createDict(form);
+      expect(created?.name).toBe(name50);
+      expect(created?.value).toBe(value50);
+      if (created?.id) createdDictIds.push(created.id);
+
+      await expectBizError(
+        DictAPI.addDict(
+          createDictForm({ typeCode: typeForm.code!, name: "名".repeat(51), value: "x" })
+        ),
+        "A0400"
+      );
+      await expectBizError(
+        DictAPI.addDict(
+          createDictForm({ typeCode: typeForm.code!, name: "名", value: "V".repeat(51) })
+        ),
+        "A0400"
+      );
+    });
+
+    test("参数校验：sort=0 与负数均拒绝（文档口径：正整数，默认 1）", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      await expectBizError(
+        DictAPI.addDict(createDictForm({ typeCode: typeForm.code!, sort: 0 })),
+        "A0400"
+      );
+      await expectBizError(
+        DictAPI.addDict(createDictForm({ typeCode: typeForm.code!, sort: -1 })),
+        "A0400"
+      );
+    });
+
+    test("参数校验：status=2 与 defaulted=2 拒绝", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      await expectBizError(
+        DictAPI.addDict(createDictForm({ typeCode: typeForm.code!, status: 2 })),
+        "A0400"
+      );
+      await expectBizError(
+        DictAPI.addDict(createDictForm({ typeCode: typeForm.code!, defaulted: 2 })),
+        "A0400"
+      );
+    });
+
+    test("边界：defaulted 不传默认 0，显式 1 持久化（T-DM-033/040）", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      const d0 = await createDict(createDictForm({ typeCode: typeForm.code! }));
+      expect(d0).toBeDefined();
+      if (d0?.id) {
+        createdDictIds.push(d0.id);
+        expect((await DictAPI.getDictFormData(d0.id)).defaulted).toBe(0);
+      }
+
+      const d1 = await createDict(createDictForm({ typeCode: typeForm.code!, defaulted: 1 }));
+      if (d1?.id) {
+        createdDictIds.push(d1.id);
+        expect((await DictAPI.getDictFormData(d1.id)).defaulted).toBe(1);
+      }
+    });
+
+    test("对抗性语料：全角/emoji/零宽/CRLF 类型名称可创建并原样回读", async () => {
+      const dirtyNames = ["全角＜ｔｅｓｔ＞字典", "emoji🚀字典", "零宽\u200b字典", "换行\r\n字典"];
+      for (const name of dirtyNames) {
+        const created = await createDictType(createDictTypeForm({ name }));
+        expect(created?.name).toBe(name);
+        if (created?.id) createdDictTypeIds.push(created.id);
+      }
+    });
+
+    test("对抗性语料：字典标签含 XSS 片段被拒绝", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      await expectBizError(
+        DictAPI.addDict(
+          createDictForm({ typeCode: typeForm.code!, name: "<script>alert(1)</script>" })
+        ),
+        "A0400"
+      );
+    });
+
+    test("对抗性语料：keywords 含 LIKE 通配符与 SQL 注入片段不引发异常", async () => {
+      for (const keywords of ["%", "_", "100%", "admin'--", "\\"]) {
+        const result = await DictAPI.getDictTypePage(createDictTypeQuery({ keywords }));
+        expect(Array.isArray(result.list)).toBe(true);
+      }
+    });
+
+    test("不变量：options 按 sort 升序且 label/value 与分页数据一致（T-DM-059）", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      const items = [
+        { name: uniqueName("丙项"), value: "inv_c", sort: 3 },
+        { name: uniqueName("甲项"), value: "inv_a", sort: 1 },
+        { name: uniqueName("乙项"), value: "inv_b", sort: 2 },
+      ];
+      for (const item of items) {
+        const d = await createDict(
+          createDictForm({
+            typeCode: typeForm.code!,
+            name: item.name,
+            value: item.value,
+            sort: item.sort,
+          })
+        );
+        if (d?.id) createdDictIds.push(d.id);
+      }
+
+      const options = await DictAPI.getDictOptions(typeForm.code!);
+      expect(options.map((o: any) => o.value)).toEqual(["inv_a", "inv_b", "inv_c"]);
+
+      const page = await DictAPI.getDictPage(
+        createDictQuery({ typeCode: typeForm.code!, pageSize: 100 })
+      );
+      for (const opt of options) {
+        const match = page.list.find((d) => d.value === opt.value);
+        expect(match).toBeDefined();
+        expect(match!.name).toBe(opt.label);
+      }
+    });
+
+    test("验证：删除字典后同类型同名/同值均可重建（唯一性校验仅活跃行，python 实际行为）", async () => {
+      const typeForm = createDictTypeForm();
+      const dictType = await createDictType(typeForm);
+      if (dictType?.id) createdDictTypeIds.push(dictType.id);
+      expect(dictType).toBeDefined();
+
+      const form = createDictForm({
+        typeCode: typeForm.code!,
+        name: uniqueName("软删占用"),
+      });
+      const created = await createDict(form);
+      expect(created).toBeDefined();
+      if (created?.id) createdDictIds.push(created.id);
+
+      await DictAPI.deleteDictByIds(created!.id!.toString());
+
+      // python 全局软删过滤（deleted=0）使唯一性查重仅覆盖活跃行，软删行不占用：
+      // 同 value 新 name 重建成功（value 口径）
+      const recreatedByValue = await createDict(
+        createDictForm({ typeCode: typeForm.code!, value: form.value!, remark: "同值重建" })
+      );
+      expect(recreatedByValue).toBeDefined();
+      if (recreatedByValue?.id) createdDictIds.push(recreatedByValue.id);
+
+      // 同类型同名重建成功（name 口径；value 已被上一行占用，换新 value 避免值冲突）
+      const recreated = await createDict({
+        ...form,
+        value: Date.now().toString().slice(-6) + "1",
+        remark: "重建尝试",
+      });
+      expect(recreated).toBeDefined();
+      if (recreated?.id) createdDictIds.push(recreated.id);
+    });
+
+    test("验证：删除类型后同编码可重建（编码唯一性仅活跃行，python 实际行为）", async () => {
+      const form = createDictTypeForm();
+      const created = await createDictType(form);
+      expect(created).toBeDefined();
+      if (created?.id) createdDictTypeIds.push(created.id);
+
+      await DictAPI.deleteDictTypes(created!.id!.toString());
+
+      // python 全局软删过滤（deleted=0）使编码查重仅覆盖活跃行：软删行不占用，同编码重建成功
+      // （remark 差异避开 A0002 同 body 防重复提交拦截）
+      const recreated = await createDictType({ ...form, remark: "重建尝试" });
+      expect(recreated).toBeDefined();
+      if (recreated?.id) createdDictTypeIds.push(recreated.id);
+    });
+
+    test("验证：类型表单返回 isPreset 标记（预置 true / 新建 false）", async () => {
+      const created = await createDictType(createDictTypeForm());
+      expect(created).toBeDefined();
+      const formData = await DictAPI.getDictTypeForm(created!.id!);
+      expect(formData.isPreset).toBe(false);
+
+      // 预置类型以种子编码 gender 定位（create_time 最早法在开发库会被
+      // 历史测试残留类型干扰，不可靠）
+      const presetPage = await DictAPI.getDictTypePage(createDictTypeQuery({ keywords: "gender" }));
+      const presetType = presetPage.list.find((d) => d.code === "gender");
+      expect(presetType).toBeDefined();
+      const presetForm = await DictAPI.getDictTypeForm(presetType!.id!);
+      expect(presetForm.isPreset).toBe(true);
+    });
+
+    test("性能烟测：下拉选项查询 < 2s（文档目标 200ms，含 CI 容差）", async () => {
+      const start = Date.now();
+      await DictAPI.getDictOptions("gender");
+      expect(Date.now() - start).toBeLessThan(2000);
+    });
+
+    test("性能烟测：类型分页查询 < 2s（文档目标 500ms，含 CI 容差）", async () => {
+      const start = Date.now();
+      await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 50 }));
+      expect(Date.now() - start).toBeLessThan(2000);
     });
   });
 });

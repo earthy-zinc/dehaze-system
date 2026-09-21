@@ -22,11 +22,11 @@ public class FeedbackStatsVO {
     @Schema(description = "状态分布")
     private Map<String, Long> statusDistribution;
 
-    @Schema(description = "平均响应时间（毫秒）")
-    private Long averageResponseTime;
+    @Schema(description = "平均响应时间（小时，保留2位小数）")
+    private Double averageResponseTime;
 
-    @Schema(description = "平均关闭时间（毫秒）")
-    private Long averageCloseTime;
+    @Schema(description = "平均关闭时间（小时，保留2位小数）")
+    private Double averageCloseTime;
 
     @Schema(description = "高频关键词")
     private List<KeywordCount> topKeywords;

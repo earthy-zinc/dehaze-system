@@ -57,7 +57,8 @@ class SysAlgorithmVersion(BaseModel, SoftDeleteMixin):
 
     __tablename__ = "sys_algorithm_version"
     __table_args__ = (
-        UniqueConstraint("algorithm_id", "version", name="uk_algo_version"),
+        # 与 config/sql/schema/sys_algorithm_version.sql 一致：软删行不占唯一键位，支持删后重建
+        UniqueConstraint("algorithm_id", "version", "deleted", name="uk_algo_version"),
         Index("idx_algo_version_algo_id", "algorithm_id"),
         {"comment": "算法版本历史表"},
     )

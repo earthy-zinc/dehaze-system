@@ -3,6 +3,7 @@ package vo
 type PackagePageVO struct {
 	ID            int64  `json:"id"`
 	Name          string `json:"name"`
+	PackageType   string `json:"packageType"`
 	LevelCode     string `json:"levelCode"`
 	LevelName     string `json:"levelName"`
 	Period        string `json:"period"`
@@ -16,19 +17,24 @@ type PackagePageVO struct {
 }
 
 type PackageDetailVO struct {
-	ID               int64             `json:"id"`
-	Name             string            `json:"name"`
-	LevelCode        string            `json:"levelCode"`
-	LevelName        string            `json:"levelName"`
-	Period           string            `json:"period"`
-	PeriodDays       int               `json:"periodDays"`
-	OriginalPrice    int64             `json:"originalPrice"`
-	SalePrice        int64             `json:"salePrice"`
-	DailyPrice       int64             `json:"dailyPrice"`
-	Description      string            `json:"description"`
-	Benefits         map[string]int    `json:"benefits"`
-	ActivePromotions []PromotionVO     `json:"activePromotions"`
-	SalesCount       int64             `json:"salesCount"`
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	PackageType   string `json:"packageType"`
+	LevelCode     string `json:"levelCode"`
+	LevelName     string `json:"levelName"`
+	Period        string `json:"period"`
+	PeriodDays    int    `json:"periodDays"`
+	OriginalPrice int64  `json:"originalPrice"`
+	SalePrice     int64  `json:"salePrice"`
+	DailyPrice    int64  `json:"dailyPrice"`
+	CreditAmount  *int64 `json:"creditAmount"`
+	// 积分卡单价 = salePrice / creditAmount（会员卡为 0）
+	CreditUnitPrice int64          `json:"creditUnitPrice"`
+	Description     string         `json:"description"`
+	Benefits        map[string]int `json:"benefits"`
+	SalesCount      int64          `json:"salesCount"`
+	// 进行中促销活动仅详情返回（python get_detail 同口径），在售列表必须省略该属性
+	ActivePromotions []PromotionVO `json:"activePromotions,omitempty"`
 }
 
 type PromotionVO struct {
@@ -41,6 +47,7 @@ type PromotionVO struct {
 	ActivityRules map[string]interface{} `json:"activityRules"`
 	NewUserOnly   int                    `json:"newUserOnly"`
 	Status        int                    `json:"status"`
+	CreateTime    string                 `json:"createTime,omitempty"`
 }
 
 type PriceResult struct {
@@ -51,12 +58,12 @@ type PriceResult struct {
 }
 
 type SalesStatsVO struct {
-	TotalSales   int64                    `json:"totalSales"`
-	TotalRevenue int64                    `json:"totalRevenue"`
-	PackageStats []PackageSalesStatItem   `json:"packageStats"`
-	LevelStats   []LevelSalesStatItem     `json:"levelStats"`
-	PeriodStats  []PeriodSalesStatItem    `json:"periodStats"`
-	CouponStats  CouponStatsVO            `json:"couponStats"`
+	TotalSales   int64                  `json:"totalSales"`
+	TotalRevenue int64                  `json:"totalRevenue"`
+	PackageStats []PackageSalesStatItem `json:"packageStats"`
+	LevelStats   []LevelSalesStatItem   `json:"levelStats"`
+	PeriodStats  []PeriodSalesStatItem  `json:"periodStats"`
+	CouponStats  CouponStatsVO          `json:"couponStats"`
 }
 
 type PackageSalesStatItem struct {

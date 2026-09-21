@@ -81,10 +81,10 @@ func (r *MessageTemplateRepository) Update(ctx context.Context, id int64, update
 		Updates(updates).Error
 }
 
-// ExistsByCode 检查消息模板编码是否存在（查全表含软删行）
+// ExistsByCode 检查消息模板编码是否存在（仅活跃行，软删行不占唯一键位可重建）
 func (r *MessageTemplateRepository) ExistsByCode(ctx context.Context, code string, excludeID ...int64) (bool, error) {
 	var count int64
-	query := r.db.Unscoped().WithContext(ctx).Model(&model.SysMessageTemplate{}).
+	query := r.db.WithContext(ctx).Model(&model.SysMessageTemplate{}).
 		Where("code = ?", code)
 	if len(excludeID) > 0 {
 		query = query.Where("id != ?", excludeID[0])

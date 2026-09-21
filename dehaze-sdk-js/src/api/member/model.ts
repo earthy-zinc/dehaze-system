@@ -64,10 +64,18 @@ export interface BenefitForm {
   growthMin?: number;
   growthMax?: number;
   monthlyDehazeQuota?: number;
+  monthlyDerainQuota?: number;
+  monthlyDesnowQuota?: number;
+  monthlyLowlightQuota?: number;
+  monthlySuperResolutionQuota?: number;
+  monthlyDenoiseQuota?: number;
+  monthlyInpaintQuota?: number;
   monthlyEvaluateQuota?: number;
   aiCreditsDaily?: number;
   aiCreditsMonthly?: number;
   multimodalLimit?: number;
+  /** 同时在线设备数上限（登录超限踢最早会话） */
+  maxDevices?: number;
   vipGiftCredits?: number;
   historyRetention?: number;
   batchLimit?: number;
@@ -87,10 +95,18 @@ export interface BenefitVO {
   growthMin: number;
   growthMax: number;
   monthlyDehazeQuota: number;
+  monthlyDerainQuota: number;
+  monthlyDesnowQuota: number;
+  monthlyLowlightQuota: number;
+  monthlySuperResolutionQuota: number;
+  monthlyDenoiseQuota: number;
+  monthlyInpaintQuota: number;
   monthlyEvaluateQuota: number;
   aiCreditsDaily: number;
   aiCreditsMonthly: number;
   multimodalLimit: number;
+  /** 同时在线设备数上限（登录超限踢最早会话） */
+  maxDevices: number;
   vipGiftCredits: number;
   historyRetention: number;
   batchLimit: number;
@@ -199,6 +215,21 @@ export interface BenefitSummaryVO {
     dailyLimit: number;
     monthlyLimit: number;
   };
+}
+
+/** 会员操作审计动作 */
+export type MemberAuditAction = "level_change" | "growth_change" | "status_change";
+
+/** 操作日志VO（管理端详情页签，Mongo 审计日志） */
+export interface MemberAuditLogVO {
+  id: string;
+  operatorId: number;
+  action: MemberAuditAction;
+  module: string;
+  beforeValue?: Record<string, unknown>;
+  afterValue?: Record<string, unknown>;
+  ip?: string;
+  createTime: string;
 }
 
 /** 试用开通状态VO */

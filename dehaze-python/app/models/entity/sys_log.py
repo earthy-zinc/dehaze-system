@@ -22,9 +22,7 @@ class SysPredLog(BaseModel):
         {"comment": "模型预测日志表"},
     )
 
-    id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True, comment="id"
-    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment="id")
     algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="算法id")
     origin_file_id: Mapped[int | None] = mapped_column(
         BigInteger, comment="原始图像文件id（有雾图像）"
@@ -34,6 +32,9 @@ class SysPredLog(BaseModel):
     pred_file_id: Mapped[int | None] = mapped_column(BigInteger, comment="预测图像文件id")
     pred_md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, comment="预测图像md5值")
     pred_url: Mapped[str] = mapped_column(Text, nullable=False, comment="预测图像url")
+    recommended_by: Mapped[int | None] = mapped_column(
+        BigInteger, comment="推荐来源：推荐记录ID（推荐管理模块，用于追踪推荐采纳率）"
+    )
     time: Mapped[int] = mapped_column(Integer, default=0, comment="推理时间（秒）")
     status: Mapped[int] = mapped_column(
         mysql_types.TINYINT,
@@ -54,9 +55,7 @@ class SysEvalLog(BaseModel):
         {"comment": "模型预测日志表"},
     )
 
-    id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True, comment="id"
-    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment="id")
     algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="算法id")
     pred_file_id: Mapped[int | None] = mapped_column(BigInteger, comment="预测图像文件id")
     pred_md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, comment="预测图像md5值")
@@ -72,4 +71,10 @@ class SysEvalLog(BaseModel):
         comment="任务状态(1:处理中;2:已完成;3:失败)",
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True, comment="失败错误信息")
+    task_type: Mapped[str] = mapped_column(
+        mysql_types.VARCHAR(20),
+        nullable=False,
+        default="evaluation",
+        comment="任务类型(evaluation:效果评估;report:对比报告)",
+    )
     result: Mapped[Any | None] = mapped_column(JSON, nullable=True, comment="预测结果")

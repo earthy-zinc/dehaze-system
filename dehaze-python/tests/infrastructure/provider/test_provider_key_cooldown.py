@@ -1,3 +1,5 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.infrastructure.provider.provider_key_selector import (
     KEY_DAILY_PREFIX,
     KEY_FAIL_STREAK_PREFIX,
@@ -6,19 +8,27 @@ from app.infrastructure.provider.provider_key_selector import (
     _cooldown_seconds,
     provider_key_selector,
 )
+from app.models.entity.sys_ai_provider_key import SysAiProviderKey
 
 
 def _make_key(
-    key_id: int, priority: int = 0, weight: int = 1, daily_quota=None, status: int = 1
-) -> object:
-    key = type("Key", (), {})()
-    key.id = key_id
-    key.priority = priority
-    key.weight = weight
-    key.daily_quota = daily_quota
-    key.status = status
-    key.key_cipher = f"cipher-{key_id}"
-    return key
+    key_id: int,
+    priority: int = 0,
+    weight: int = 1,
+    daily_quota=None,
+    status: int = 1,
+    rpm_limit=None,
+) -> SysAiProviderKey:
+    # 真实 ORM 实体（可脱离 session 实例化）：与 provider_key_selector 读取的字段一致
+    return SysAiProviderKey(
+        id=key_id,
+        priority=priority,
+        weight=weight,
+        daily_quota=daily_quota,
+        rpm_limit=rpm_limit,
+        status=status,
+        key_cipher=f"cipher-{key_id}",
+    )
 
 
 class TestCooldownEscalation:
@@ -68,8 +78,9 @@ class TestCooldownEscalation:
 
 class TestListUsableKeys:
     async def test_filter_and_sort(self, mock_redis, monkeypatch):
-        from app.repository.ai_provider_key_repository import ai_provider_key_repository
         from datetime import datetime
+
+        from app.repository.ai_provider_key_repository import ai_provider_key_repository
 
         keys = [
             _make_key(1, priority=2, weight=5),
@@ -93,9 +104,10 @@ class TestListUsableKeys:
         today = datetime.now().strftime("%Y%m%d")
         await mock_redis.set(KEY_DAILY_PREFIX.format(6, today), 5)
 
-        usable = await provider_key_selector.list_usable_keys(None, mock_redis, 1)
+        usable = await provider_key_selector.list_usable_keys(AsyncSession(), mock_redis, 1)
         ids = [k.id for k in usable]
-        assert 5 not in ids and 6 not in ids
+        assert 5 not in ids
+        assert 6 not in ids
         assert ids == [3, 2, 4, 1]
 
     async def test_select_key_uses_same_qualification(self, mock_redis, monkeypatch):
@@ -123,7 +135,7 @@ class TestListUsableKeys:
 
         picked = []
         for _ in range(30):
-            key = await provider_key_selector.select_key(None, mock_redis, 1)
+            key = await provider_key_selector.select_key(AsyncSession(), mock_redis, 1)
             assert key is not None
             picked.append(key)
         assert "cipher-1" not in picked

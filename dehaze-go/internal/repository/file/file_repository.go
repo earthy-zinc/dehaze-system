@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"errors"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"gorm.io/gorm"
@@ -21,7 +22,7 @@ var _ IFileRepository = (*fileRepository)(nil)
 
 func (r *fileRepository) FindByID(ctx context.Context, id int64) (*model.SysFile, error) {
 	var file model.SysFile
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&file).Error
+	err := r.db.WithContext(ctx).Where("id = ? AND deleted = 0", id).First(&file).Error
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func (r *fileRepository) FindByIDs(ctx context.Context, ids []int64) ([]model.Sy
 		return nil, nil
 	}
 	var files []model.SysFile
-	err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&files).Error
+	err := r.db.WithContext(ctx).Where("id IN ? AND deleted = 0", ids).Find(&files).Error
 	return files, err
 }
 
@@ -55,8 +56,12 @@ func (r *fileRepository) Upsert(ctx context.Context, f *model.SysFile) error {
 
 func (r *fileRepository) FindByObjectName(ctx context.Context, objectName string) (*model.SysFile, error) {
 	var file model.SysFile
-	err := r.db.WithContext(ctx).Where("object_name = ?", objectName).First(&file).Error
+	err := r.db.WithContext(ctx).Where("object_name = ? AND deleted = 0", objectName).First(&file).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// 不存在与已删除统一按未找到处理（下载安全用例 B0401 依赖）
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &file, nil
@@ -71,14 +76,18 @@ func (r *fileRepository) FindByPath(ctx context.Context, path string) (*model.Sy
 	return &file, nil
 }
 
-func (r *fileRepository) FindPage(ctx context.Context, pageNum, pageSize int, keywords string) ([]model.SysFile, int64, error) {
+func (r *fileRepository) FindPage(ctx context.Context, pageNum, pageSize int, keywords string, ownerID *int64) ([]model.SysFile, int64, error) {
 	var files []model.SysFile
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&model.SysFile{})
+	query := r.db.WithContext(ctx).Model(&model.SysFile{}).Where("deleted = 0")
+	if ownerID != nil {
+		query = query.Where("create_by = ?", *ownerID)
+	}
 	if keywords != "" {
+		// OR 条件必须括号包裹，防止逃逸逻辑删除过滤
 		like := "%" + keywords + "%"
-		query = query.Where("name LIKE ? OR type LIKE ?", like, like)
+		query = query.Where("(name LIKE ? OR type LIKE ?)", like, like)
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -111,5 +120,5 @@ func (r *fileRepository) Update(ctx context.Context, file *model.SysFile) error 
 }
 
 func (r *fileRepository) Delete(ctx context.Context, ids []int64) error {
-	return r.db.WithContext(ctx).Model(&model.SysFile{}).Where("id IN ?", ids).Update("deleted", 1).Error
+	return r.db.WithContext(ctx).Model(&model.SysFile{}).Where("id IN ?", ids).Update("deleted", gorm.Expr("id")).Error
 }

@@ -21,6 +21,8 @@ CREATE TABLE `sys_knowledge_chunk`
     `document_id`     bigint                                                         NOT NULL COMMENT '文档ID(关联sys_knowledge_document.id)',
     `knowledge_base_id` bigint                                                       NOT NULL COMMENT '知识库ID(冗余，便于跨文档检索)',
     `chunk_index`     int                                                            NOT NULL COMMENT '分块序号(从0开始)',
+    `section_index`   int                                                            NOT NULL DEFAULT 0 COMMENT '所属小节序号(文档内递增,0=无标题文档整篇)',
+    `section_path`    varchar(255)                                                   NULL COMMENT '小节标题路径(如 "4 核心设计 > 4.2 检索引擎",注入上下文作锚点)',
     `content`         TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci        NOT NULL COMMENT '分块后的文本片段',
     `token_count`     int                                                            NOT NULL DEFAULT 0 COMMENT '分块Token数',
     `metadata`        json                                                           NULL COMMENT '分块元数据(来源文档/页码/段落/表格行等，检索时用于引用展示)',

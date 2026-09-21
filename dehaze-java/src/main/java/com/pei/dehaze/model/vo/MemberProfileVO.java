@@ -30,6 +30,9 @@ public class MemberProfileVO {
     @Schema(description = "等级名称")
     private String levelName;
 
+    @Schema(description = "等级来源(growth:成长值达标;purchase:套餐购买;admin:管理员调整)")
+    private String levelSource;
+
     @Schema(description = "成长值")
     private Long growthValue;
 

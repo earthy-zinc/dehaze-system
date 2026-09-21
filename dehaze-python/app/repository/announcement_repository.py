@@ -39,12 +39,13 @@ class AnnouncementRepository(BaseRepository[SysAnnouncement]):
     async def get_by_id(
         self,
         db: AsyncSession,
-        announcement_id: int,
+        id: int,
+        *,
+        with_deleted: bool = False,
     ) -> SysAnnouncement | None:
-        stmt = select(SysAnnouncement).where(
-            SysAnnouncement.id == announcement_id,
-            SysAnnouncement.deleted == 0,
-        )
+        stmt = select(SysAnnouncement).where(SysAnnouncement.id == id)
+        if not with_deleted:
+            stmt = stmt.where(SysAnnouncement.deleted == 0)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -55,7 +56,7 @@ class AnnouncementRepository(BaseRepository[SysAnnouncement]):
                 SysAnnouncement.id == announcement_id,
                 SysAnnouncement.deleted == 0,
             )
-            .values(deleted=1)
+            .values(deleted=SysAnnouncement.id)
         )
         result = await db.execute(stmt)
         return result.rowcount > 0

@@ -40,5 +40,7 @@ class SysReconciliation(BaseModel, SoftDeleteMixin):
     handle_remark: Mapped[str | None] = mapped_column(
         String(256), nullable=True, comment="处理备注"
     )
-    handle_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="处理时间")
+    handle_time: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, comment="处理时间"
+    )
     handler_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, comment="处理人ID")

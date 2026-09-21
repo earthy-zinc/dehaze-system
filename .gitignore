@@ -467,3 +467,5 @@ dehaze-sdk-js/.session-cache.json
 
 .agent
 docker-compose-dev.yml
+.codebuddy/teams/
+dehaze-test/kb_eval/reports/

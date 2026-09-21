@@ -16,13 +16,13 @@ public class DictTypeForm {
 
     @Schema(description="类型名称")
     @NotBlank(message = "类型名称不能为空")
-    @Size(max = 64, message = "类型名称长度不能超过64")
-    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "类型名称不能包含特殊字符")
+    @Size(max = 50, message = "类型名称长度不能超过50")
+    @Pattern(regexp = "(?s)^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "类型名称不能包含特殊字符")
     private String name;
 
     @Schema(description="类型编码")
     @NotBlank(message = "类型编码不能为空")
-    @Size(max = 32, message = "类型编码长度不能超过32")
+    @Size(max = 50, message = "类型编码长度不能超过50")
     private String code;
 
     @Schema(description="类型状态(1:启用;0:禁用)")
@@ -32,4 +32,6 @@ public class DictTypeForm {
     @Size(max = 255, message = "备注长度不能超过255")
     private String remark;
 
+    @Schema(description="是否系统预置(预置 true / 新建 false)")
+    private Boolean isPreset;
 }

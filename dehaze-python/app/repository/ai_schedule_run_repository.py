@@ -5,6 +5,7 @@
 服务重启/多实例并发扫描/时钟漂移均不产生重复执行。
 """
 
+import logging
 from datetime import datetime
 
 from sqlalchemy import delete, func, select
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
 from app.repository.base import BaseRepository
+
+logger = logging.getLogger(__name__)
 
 
 class AiScheduleRunRepository(BaseRepository[SysAiScheduleRun]):
@@ -36,9 +39,16 @@ class AiScheduleRunRepository(BaseRepository[SysAiScheduleRun]):
                 db.add(entity)
                 await db.flush()
             return entity
-        except IntegrityError:
-            existing = await self.get_by_window(db, entity.schedule_id, entity.window_start)
-            return existing
+        except IntegrityError as exc:
+            # 唯一约束冲突 = 并发扫描/重启重入触发，属幂等契约（返回已存在记录或 None），
+            # 非故障故用 debug；但记 err 便于区分是 uk_schedule_window 还是其它约束被误吞
+            logger.debug(
+                "调度批次唯一约束冲突（幂等重入）: schedule_id=%s window_start=%s err=%s",
+                entity.schedule_id,
+                entity.window_start,
+                exc,
+            )
+            return await self.get_by_window(db, entity.schedule_id, entity.window_start)
 
     async def get_by_window(
         self,

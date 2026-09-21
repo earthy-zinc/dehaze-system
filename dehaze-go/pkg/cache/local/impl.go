@@ -39,6 +39,19 @@ func (c *LocalCache) Get(ctx context.Context, key string) (string, error) {
 	return fmt.Sprintf("%v", val), nil
 }
 
+// GetDel 取走并删除。本地缓存是进程内副本，不具备跨进程原子性；
+// 一次性凭证（验证码）的生产路径走 Redis（多级缓存的 GetDel 也刻意只作用于 L2），此类调用仅为接口完备性。
+func (c *LocalCache) GetDel(ctx context.Context, key string) (string, error) {
+	val, err := c.Get(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	if delErr := c.Delete(ctx, key); delErr != nil {
+		return "", delErr
+	}
+	return val, nil
+}
+
 func (c *LocalCache) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	if expiration > 0 {
 		c.cache.Set(key, value, expiration)

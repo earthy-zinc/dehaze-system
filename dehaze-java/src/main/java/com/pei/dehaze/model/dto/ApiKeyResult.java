@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,6 +21,14 @@ public class ApiKeyResult {
     private String keyPrefix;
 
     private Integer status;
+
+    private Long dailyQuota;
+
+    private Long monthlyQuota;
+
+    private Long rpmLimit;
+
+    private List<String> modelWhitelist;
 
     private LocalDateTime expiresAt;
 

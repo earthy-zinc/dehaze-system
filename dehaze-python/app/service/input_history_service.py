@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_input_history import SysInputHistory
 from app.repository.input_history_repository import input_history_repository
+from app.repository.member_benefit_repository import member_benefit_repository
+from app.repository.member_repository import member_repository
 from app.utils.datetime_utils import format_time
+
+# 无会员档案/权益缺失时的兜底保留条数（对齐 sys_member_benefit.level_0 种子值）
+DEFAULT_HISTORY_RETENTION = 100
 
 
 class InputHistoryService:
@@ -38,7 +43,9 @@ class InputHistoryService:
         list_vo = [self._to_vo(h) for h in histories]
         return list_vo, total
 
-    async def get_history(self, db: AsyncSession, history_id: int, user_id: int) -> dict[str, Any] | None:
+    async def get_history(
+        self, db: AsyncSession, history_id: int, user_id: int
+    ) -> dict[str, Any] | None:
         """查询历史记录详情（仅限本人）"""
         history = await input_history_repository.get_by_id(db, history_id)
         if not history:
@@ -49,6 +56,12 @@ class InputHistoryService:
 
     async def create_history(self, db: AsyncSession, data: dict[str, Any], user_id: int) -> int:
         """创建历史记录 (对齐 Java SysInputHistoryServiceImpl.createHistory)"""
+        # 配额检查：超过会员等级保留条数时自动清理最旧记录（文档 §4.3）
+        retention = await self._get_history_retention(db, user_id)
+        count = await input_history_repository.count_by_user(db, user_id)
+        if count >= retention:
+            await input_history_repository.delete_oldest(db, user_id)
+
         history = await input_history_repository.create_history(
             db=db,
             user_id=user_id,
@@ -70,14 +83,22 @@ class InputHistoryService:
         await input_history_repository.delete_by_user(db, user_id, history_id)
 
     async def batch_delete(self, db: AsyncSession, ids: list[int], user_id: int) -> int:
-        """批量删除历史记录（仅限本人）"""
-        result = await input_history_repository.batch_delete_by_user(db, user_id, ids)
-        return result
+        """批量删除历史记录（仅限本人），返回实际删除数量"""
+        return await input_history_repository.batch_delete_by_user(db, user_id, ids)
 
     async def clear_history(self, db: AsyncSession, user_id: int) -> int:
         """清空用户所有历史记录"""
-        result = await input_history_repository.clear_by_user(db, user_id)
-        return result
+        return await input_history_repository.clear_by_user(db, user_id)
+
+    async def _get_history_retention(self, db: AsyncSession, user_id: int) -> int:
+        """按会员等级取历史保留条数（sys_member_benefit.history_retention）"""
+        member = await member_repository.get_by_user_id(db, user_id)
+        if not member:
+            return DEFAULT_HISTORY_RETENTION
+        benefit = await member_benefit_repository.get_by_level_code(db, member.level_code)
+        if not benefit or not benefit.history_retention:
+            return DEFAULT_HISTORY_RETENTION
+        return benefit.history_retention
 
     def _to_vo(self, history: SysInputHistory) -> dict[str, Any]:
         """转换为 VO (对齐 Java InputHistoryVO 字段)"""

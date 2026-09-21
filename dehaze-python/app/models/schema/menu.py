@@ -67,6 +67,7 @@ class MenuVO(BaseModel):
     icon: str | None = Field(default=None, description="ICON")
     redirect: str | None = Field(default=None, description="跳转路径")
     perm: str | None = Field(default=None, description="按钮权限标识")
+    isPreset: int = Field(default=0, description="系统预置标识(1:预置;0:普通)")
     children: list["MenuVO"] | None = Field(default=None, description="子菜单")
 
 
@@ -75,6 +76,7 @@ class RouteMeta(BaseModel):
 
     title: str = Field(description="路由标题")
     icon: str | None = Field(default=None, description="图标")
+    roles: list[str] = Field(default_factory=list, description="可见角色编码集合")
     hidden: bool = Field(default=False, description="是否隐藏")
     keepAlive: bool | None = Field(default=None, description="是否开启页面缓存")
     alwaysShow: bool | None = Field(default=None, description="目录是否始终显示")
@@ -115,6 +117,7 @@ class MenuFormVO(BaseModel):
     redirect: str | None = Field(default=None, description="跳转路径")
     keepAlive: int | None = Field(default=None, description="是否开启页面缓存")
     alwaysShow: int | None = Field(default=None, description="只有一个子路由是否始终显示")
+    isPreset: int = Field(default=0, description="系统预置标识(1:预置;0:普通)")
 
 
 # 重建模型以处理自引用

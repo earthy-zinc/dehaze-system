@@ -2,6 +2,8 @@ from fastapi import APIRouter, Body, Depends, Path, Query
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
@@ -82,6 +84,10 @@ async def delete_depts(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    dept_ids = [int(i) for i in ids.split(",")]
+    dept_ids: list[int]
+    try:
+        dept_ids = [int(i) for i in ids.split(",") if i.strip()]
+    except ValueError:
+        raise BusinessException(ResultCode.PARAM_ERROR, "部门ID格式错误") from None
     await dept_service.delete_depts(db, redis, dept_ids)
     return success(msg="部门删除成功")

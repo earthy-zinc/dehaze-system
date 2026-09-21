@@ -25,13 +25,13 @@ CREATE TABLE `sys_ai_model_price_detail`
     `min_tokens`     bigint                                                          NOT NULL DEFAULT 0 COMMENT '上下文分段下界(按本次输入总token数,含缓存命中)',
     `max_tokens`     bigint                                                          NULL DEFAULT NULL COMMENT '上下文分段上界(NULL表示不限,区间为[min_tokens,max_tokens))',
     `unit_price`     decimal(12, 4)                                                  NOT NULL DEFAULT 0.0000 COMMENT '单价(积分/百万token)',
-    `deleted`        tinyint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`        bigint                                                          NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time`    datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`      bigint                                                          NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`      bigint                                                          NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_price_token_time_range` (`price_id`, `token_type`, `time_slot`, `min_tokens`, `max_tokens`) USING BTREE,
+    UNIQUE INDEX `uk_price_token_time_range` (`price_id`, `token_type`, `time_slot`, `min_tokens`, `max_tokens`, `deleted`) USING BTREE,
     INDEX `idx_price` (`price_id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

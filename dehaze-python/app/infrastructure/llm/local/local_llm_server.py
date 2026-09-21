@@ -4,6 +4,7 @@
 - 以子进程运行：CPU 密集的 llama.cpp 推理会阻塞 FastAPI 事件循环，必须进程隔离
 - OpenAI 兼容 /v1/chat/completions（含流式 SSE）：作为普通 provider 被 LlmClient 调用，
   Key 轮换/健康度/降级链/调用审计全链路保持真实
+- /v1/embeddings、/v1/rerank：知识库向量检索与重排直连端点（rerank_service 消费）
 - Qwen3 关闭思考模式：system 尾部注入 /no_think 软指令，输出层再剥离 <think> 残留，
   保证消息内容干净
 - 模型懒加载单例：进程启动后首次请求时加载 GGUF
@@ -17,20 +18,21 @@
 - 配置统一走 app.config（pydantic-settings 天然支持环境变量/.env 覆盖）
 
 启动方式：
-    python -m app.infrastructure.llm.local.local_llm_server  （由 local_llm_manager 在需要时自动拉起，
-    也可独立部署为共享推理服务）
+    python -m app.infrastructure.llm.local.local_llm_server
+    （由 local_llm_manager 在需要时自动拉起，也可独立部署为共享推理服务）
 """
 
 import asyncio
 import json
 import logging
-import os
+import math
 import threading
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -38,7 +40,10 @@ from app.config import settings
 from app.infrastructure.llm.local.local_llm_model import (
     MODEL_FILE,
     embedding_model_path,
+    ensure_rerank_model,
+    is_rerank_downloaded,
     model_path,
+    rerank_model_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,8 +63,13 @@ def _n_gpu_layers() -> int:
         from llama_cpp import llama_cpp
 
         return -1 if llama_cpp.llama_supports_gpu_offload() else 0
-    except Exception:  # noqa: BLE001 检测失败按纯 CPU 处理
+    except (ImportError, AttributeError, OSError) as exc:
+        # 只吞探测自身可能抛出的异常：延迟导入缺依赖 ImportError、缺符号 AttributeError、
+        # CUDA 动态库加载失败 OSError。静默吞掉会让 CUDA 构建因环境问题退化为纯 CPU
+        # （慢几十倍）而毫无痕迹，故留痕；未预期异常任其冒泡暴露，不再二次宽捕获兜回
+        logger.warning("GPU 卸载能力探测失败，按纯 CPU 运行: %s", exc, exc_info=True)
         return 0
+
 
 # 推理串行化锁：本地单模型 CPU 推理，llama.cpp create_completion 并发调用不稳定，
 # 对话与嵌入共用同一把锁，保证每次只有一个推理在执行，其余排队。
@@ -68,6 +78,9 @@ _infer_lock = asyncio.Lock()
 
 _embed_llm: Any = None
 _embed_lock = threading.Lock()
+
+_rerank_llm: Any = None
+_rerank_model_lock = threading.Lock()
 
 # 流式生成工作线程登记表：持有强引用防止 fire-and-forget 任务被 GC 中途回收
 _active_workers: set[asyncio.Task] = set()
@@ -86,7 +99,7 @@ def _get_llm() -> Any:
                 from llama_cpp import Llama
 
                 path = model_path()
-                if not os.path.exists(path):
+                if not Path(path).exists():
                     raise RuntimeError(
                         f"本地模型文件不存在: {path}，请检查 local_llm_manager 是否正确拉起本进程"
                     )
@@ -113,9 +126,10 @@ def _get_embed_llm() -> Any:
                 from llama_cpp import Llama
 
                 path = embedding_model_path()
-                if not os.path.exists(path):
+                if not Path(path).exists():
                     raise RuntimeError(
-                        f"本地向量模型文件不存在: {path}，请检查 local_llm_model.ensure_embedding_model"
+                        f"本地向量模型文件不存在: {path}，请检查 "
+                        f"local_llm_model.ensure_embedding_model"
                     )
                 n_gpu = _n_gpu_layers()
                 logger.info("加载本地向量模型: %s（GPU 卸载层数 %s）", path, n_gpu)
@@ -129,6 +143,38 @@ def _get_embed_llm() -> Any:
                 )
                 logger.info("向量模型加载完成，耗时 %.1fs", time.perf_counter() - started)
     return _embed_llm
+
+
+def _get_rerank_llm() -> Any:
+    """懒加载 GGUF 重排模型单例（Qwen3-Reranker-0.6B Q8_0，约 610MB），与对话/向量模型独立。
+
+    n_ctx 与对话模型一致取 LOCAL_LLM_CTX_SIZE：rerank 输入 = query + 文档节全文拼接，
+    节内容可达数千 token，小上下文会频繁截断文档导致相关信号丢失。
+    """
+    global _rerank_llm
+    if _rerank_llm is None:
+        with _rerank_model_lock:
+            if _rerank_llm is None:
+                from llama_cpp import Llama
+
+                path = rerank_model_path()
+                if not Path(path).exists():
+                    raise RuntimeError(
+                        f"本地重排模型文件不存在: {path}，请检查 "
+                        f"local_llm_model.ensure_rerank_model"
+                    )
+                n_gpu = _n_gpu_layers()
+                logger.info("加载本地重排模型: %s（GPU 卸载层数 %s）", path, n_gpu)
+                started = time.perf_counter()
+                _rerank_llm = Llama(
+                    model_path=path,
+                    n_ctx=settings.LOCAL_LLM_CTX_SIZE,
+                    n_threads=settings.LOCAL_LLM_THREADS or None,
+                    n_gpu_layers=n_gpu,
+                    verbose=False,
+                )
+                logger.info("重排模型加载完成，耗时 %.1fs", time.perf_counter() - started)
+    return _rerank_llm
 
 
 class ChatMessage(BaseModel):
@@ -189,7 +235,7 @@ def health() -> dict:
         try:
             _get_llm()
             loaded = True
-        except Exception as exc:  # noqa: BLE001 探测路径不抛，交由调用方按未就绪处理
+        except Exception as exc:
             logger.warning("健康探测触发模型加载失败: %s", exc)
             loaded = False
     return {"status": "ok", "model": "qwen3-0.6b", "loaded": loaded}
@@ -227,7 +273,9 @@ async def embeddings(req: EmbeddingRequest):
         # 逐条持锁：长文档批量嵌入不长时间独占推理锁，对话请求可公平穿插
         async with _infer_lock:
             result = await asyncio.to_thread(llm.create_embedding, text)
-        data.append({"object": "embedding", "index": i, "embedding": result["data"][0]["embedding"]})
+        data.append(
+            {"object": "embedding", "index": i, "embedding": result["data"][0]["embedding"]}
+        )
         prompt_tokens += result.get("usage", {}).get("prompt_tokens", 0)
     return {
         "object": "list",
@@ -235,6 +283,152 @@ async def embeddings(req: EmbeddingRequest):
         "model": req.model,
         "usage": {"prompt_tokens": prompt_tokens, "total_tokens": prompt_tokens},
     }
+
+
+# ===== Rerank（Qwen3-Reranker 官方用法：首 token yes/no logprob 打分）=====
+
+_RERANK_SYSTEM = (
+    "Judge whether the Document meets the requirements based on the Query and the "
+    'Instruct provided. Note that the answer can only be "yes" or "no".'
+)
+_RERANK_INSTRUCT = "Given a web search query, retrieve relevant passages that answer the query"
+
+
+def _build_rerank_prompt(query: str, doc: str) -> str:
+    """Qwen3-Reranker 官方 prompt 格式（ChatML，对齐官方 format_instruction）。
+
+    assistant 后缀的空思考块 <think>\\n\\n</think> 为官方要求：占住思考生成位，
+    使末位 logits 直接对应 yes/no 答案（缺它时模型实际想输出 <think>，分布失真）。
+    不复用 _build_prompt：那是对话模型模板（首条 system 注入 /no_think 软指令），
+    reranker 需官方原始格式打分。
+    """
+    user = f"<Instruct>: {_RERANK_INSTRUCT}\n\n<Query>: {query}\n\n<Document>: {doc}"
+    return (
+        f"<|im_start|>system\n{_RERANK_SYSTEM}<|im_end|>\n"
+        f"<|im_start|>user\n{user}<|im_end|>\n"
+        f"<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    )
+
+
+def _yes_no_score(yes_logprob: float, no_logprob: float) -> float:
+    """yes/no 二选一 softmax 后的 yes 概率。
+
+    两 token 共享全词表 softmax 分母，比值只由二者 logit 差决定；
+    减最大值再 exp 防 logit 较大时上溢。
+    """
+    if yes_logprob == -math.inf and no_logprob == -math.inf:
+        return 0.0
+    m = max(yes_logprob, no_logprob)
+    p_yes = math.exp(yes_logprob - m)
+    return p_yes / (p_yes + math.exp(no_logprob - m))
+
+
+def _last_token_logits(llm: Any) -> Any:
+    """eval 后末位 token 的全词表 logits（llama.cpp 总是输出末位 logits）。"""
+    import llama_cpp
+    import numpy as np
+
+    ptr = llama_cpp.llama_get_logits_ith(llm.ctx, -1)
+    return np.ctypeslib.as_array(ptr, shape=(llm.n_vocab(),))
+
+
+def _token_id(llm: Any, token: str) -> int:
+    ids = llm.tokenize(token.encode("utf-8"), add_bos=False, special=False)
+    if len(ids) != 1:
+        raise RuntimeError(f"rerank 打分依赖 {token!r} 为单 token，实际 ids={ids}")
+    return ids[0]
+
+
+def _score_pair(llm: Any, query: str, doc: str) -> float:
+    """单对 (query, doc) 相关性打分 ∈ [0, 1]（Qwen3-Reranker 官方 Transformers 用法）。
+
+    空思考块后取末位 logits 的 yes/no 二选一 softmax。不用
+    create_completion(logprobs=...)：该参数要求 logits_all=True（16k ctx × 15 万
+    词表的 logits 矩阵约 10GB 内存），低层 eval 仅输出末位 logits，零额外内存。
+    """
+    prompt = _build_rerank_prompt(query, doc)
+    tokens = llm.tokenize(prompt.encode("utf-8"), add_bos=True, special=True)
+    # 预留分词误差余量，避免越 n_ctx 报错
+    max_prompt_tokens = settings.LOCAL_LLM_CTX_SIZE - 4
+    if len(tokens) > max_prompt_tokens:
+        # 超长文档按 token 比例截断（0.9 吸收重新分词误差），保留头部（语义靠前）
+        doc = doc[: int(len(doc) * max_prompt_tokens / len(tokens) * 0.9)]
+        prompt = _build_rerank_prompt(query, doc)
+        tokens = llm.tokenize(prompt.encode("utf-8"), add_bos=True, special=True)
+        logger.warning("rerank 文档超长已截断至 %d 字符（片段: %.60s…）", len(doc), doc)
+    llm.reset()
+    # reset 后再 eval：eval 只裁剪超界 KV，不清理跨 prompt 的残留上下文
+    llm.eval(tokens)
+    logits = _last_token_logits(llm)
+    return _yes_no_score(logits[_token_id(llm, "yes")], logits[_token_id(llm, "no")])
+
+
+# 后台下载去重：首次 /v1/rerank 触发一次，失败后下次请求允许重试
+_rerank_download_thread: threading.Thread | None = None
+_rerank_download_lock = threading.Lock()
+
+
+def _trigger_rerank_download() -> None:
+    """后台触发 rerank 模型下载（幂等；进行中不重复拉线程）。
+
+    实际下载由 local_llm_model 的 fcntl 文件锁跨进程互斥；本函数只保证单进程内
+    不并发拉起多个下载线程。
+    """
+    global _rerank_download_thread
+    with _rerank_download_lock:
+        if _rerank_download_thread is not None and _rerank_download_thread.is_alive():
+            return
+
+        def _download():
+            try:
+                ensure_rerank_model()
+            except Exception as exc:
+                logger.warning("后台下载本地 rerank 模型失败（下次请求将重试）: %s", exc)
+
+        _rerank_download_thread = threading.Thread(
+            target=_download,
+            name="rerank-model-download",
+            daemon=True,
+        )
+        _rerank_download_thread.start()
+
+
+class RerankRequest(BaseModel):
+    """Jina/Cohere 兼容 rerank 请求（对齐 rerank_service 的请求字段）。"""
+
+    model: str = "qwen3-reranker-0.6b"
+    query: str
+    documents: list[str]
+    top_n: int | None = None
+
+
+@app.post("/v1/rerank")
+async def rerank(req: RerankRequest):
+    """OpenAI/Jina 兼容 rerank 端点，供 rerank_service 按 local provider 的
+    api_base_url（.../v1）+ /rerank 派生直连；响应 results 按分数降序。
+    """
+    if not req.documents:
+        return {"model": req.model, "results": []}
+    if not is_rerank_downloaded():
+        # 可选模型不随启动预下载：首次请求触发后台下载并立返 503，客户端稍后重试即可
+        _trigger_rerank_download()
+        raise HTTPException(
+            status_code=503,
+            detail="本地 rerank 模型未下载，已触发后台自动下载（约 610MB），请稍后重试；"
+            '也可手动预下载：python -c "from app.infrastructure.llm.local.local_llm_model '
+            'import ensure_rerank_model; ensure_rerank_model()"',
+        )
+    llm = await asyncio.to_thread(_get_rerank_llm)
+    scored = []
+    for i, doc in enumerate(req.documents):
+        # 逐对持锁：与对话/嵌入共用推理锁（llama.cpp 非线程安全），长文档不长时间独占
+        async with _infer_lock:
+            score = await asyncio.to_thread(_score_pair, llm, req.query, doc)
+        scored.append({"index": i, "relevance_score": score})
+    scored.sort(key=lambda r: r["relevance_score"], reverse=True)
+    if req.top_n:
+        scored = scored[: req.top_n]
+    return {"model": req.model, "results": scored}
 
 
 # 流式生成结束标记（区别于任何正常 token 文本与异常对象），携带最终 usage
@@ -292,7 +486,11 @@ async def chat_completions(req: ChatCompletionRequest):
             "created": created,
             "model": req.model,
             "choices": [
-                {"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": content},
+                    "finish_reason": "stop",
+                }
             ],
             "usage": {
                 "prompt_tokens": usage.get("prompt_tokens", 0),

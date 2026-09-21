@@ -20,6 +20,9 @@ export const useImageShowStore = defineStore("imageShow", () => {
 
   const modelId = ref();
 
+  // 最近一次去雾处理的预测记录ID（sys_pred_log.id），供对比页导出 HTML 报告使用
+  const predLogId = ref(0);
+
   const imageInfo = reactive({
     // 缩略图
     images: {
@@ -118,6 +121,7 @@ export const useImageShowStore = defineStore("imageShow", () => {
     scaleY,
     imageInfo,
     modelId,
+    predLogId,
     mouse,
     magnifierInfo,
     mask,

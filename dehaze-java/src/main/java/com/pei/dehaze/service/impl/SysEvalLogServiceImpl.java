@@ -60,6 +60,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         evalLog.setPredUrl(predUrl);
         evalLog.setGtUrl(gtUrl);
         evalLog.setStatus(LogStatusEnum.PROCESSING);
+        evalLog.setTaskType("evaluation");
         this.save(evalLog);
 
         asyncTask.execute(evalLog.getId(), form.getAlgorithmId(), predUrl, gtUrl);
@@ -71,9 +72,10 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
     }
 
     @Override
-    public Page<EvalLogVO> getEvalLogPage(EvalLogQuery query) {
+    public Page<EvalLogVO> getEvalLogPage(EvalLogQuery query, Long userId) {
         Page<SysEvalLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysEvalLog> wrapper = new LambdaQueryWrapper<SysEvalLog>()
+                .eq(SysEvalLog::getCreateBy, userId)
                 .eq(query.getAlgorithmId() != null, SysEvalLog::getAlgorithmId, query.getAlgorithmId())
                 .orderByDesc(SysEvalLog::getCreateTime);
 

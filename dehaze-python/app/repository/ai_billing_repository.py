@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -6,6 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.repository.base import BaseRepository
+
+# chat 类计费类型：token 相关统计仅基于 chat 类记录（asr/tts 的 input_tokens 存储
+# 秒数/字符数，与 token 计量口径不同）；chat_subagent（子 Agent 实报实销）与主图
+# chat 记录同口径聚合，保证消耗统计反映真实扣减。
+# KB embedding/rerank 的 input_tokens 虽为 token 口径，但消耗归属知识库动作而非
+# 对话消息（检索/文档向量化按 bill_type 区分），不纳入 chat token 统计
+CHAT_BILL_TYPES = ("chat", "chat_subagent")
+
+
+def _bill_type_filter(bill_type: str | Sequence[str] | None):
+    """构造 bill_type 过滤条件（单类型为等值，多类型为 IN）"""
+    if not bill_type:
+        return None
+    col = SysAiBilling.bill_type
+    return col == bill_type if isinstance(bill_type, str) else col.in_(bill_type)
 
 
 class AiBillingRepository(BaseRepository[SysAiBilling]):
@@ -152,6 +168,8 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
         user_id: int,
         start: datetime,
         end: datetime,
+        *,
+        bill_type: str | Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         stmt = (
             select(
@@ -170,6 +188,9 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
             )
             .group_by(SysAiBilling.model)
         )
+        cond = _bill_type_filter(bill_type)
+        if cond is not None:
+            stmt = stmt.where(cond)
         rows = (await db.execute(stmt)).all()
         return [
             {
@@ -191,6 +212,8 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
         start: datetime,
         end: datetime,
         period: str,
+        *,
+        bill_type: str | Sequence[str] | None = None,
     ) -> list[dict[str, Any]]:
         """按日/月聚合用户消耗趋势（summary 数据源）"""
         fmt = "%Y-%m-%d" if period == "day" else "%Y-%m"
@@ -212,6 +235,9 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
             .group_by(date_col)
             .order_by(date_col)
         )
+        cond = _bill_type_filter(bill_type)
+        if cond is not None:
+            stmt = stmt.where(cond)
         rows = (await db.execute(stmt)).all()
         return [
             {
@@ -236,7 +262,11 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[dict[str, Any]]:
-        """按维度聚合计费统计（管理员），group_by: user/model/billType/day"""
+        """按维度聚合计费统计（管理员），group_by: user/model/billType/day
+
+        token 相关列仅基于 chat 类记录（asr/tts 的 input_tokens 存储秒数/字符数，与 token
+        计量口径不同，混入会使 token 统计失真）。
+        """
         if group_by == "user":
             dim_col = SysAiBilling.user_id
         elif group_by == "model":
@@ -248,13 +278,14 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
         else:
             raise ValueError(f"不支持的统计维度: {group_by}")
 
+        _is_chat = SysAiBilling.bill_type.in_(CHAT_BILL_TYPES)
         stmt = (
             select(
                 dim_col,
                 func.sum(SysAiBilling.credits),
-                func.sum(SysAiBilling.input_tokens),
-                func.sum(SysAiBilling.output_tokens),
-                func.sum(SysAiBilling.cached_input_tokens),
+                func.sum(func.if_(_is_chat, SysAiBilling.input_tokens, 0)),
+                func.sum(func.if_(_is_chat, SysAiBilling.output_tokens, 0)),
+                func.sum(func.if_(_is_chat, SysAiBilling.cached_input_tokens, 0)),
                 func.sum(SysAiBilling.credits_saved),
                 func.sum(func.if_(SysAiBilling.actual_model.isnot(None), 1, 0)),
             )
@@ -279,7 +310,7 @@ class AiBillingRepository(BaseRepository[SysAiBilling]):
                 "total_credits": int(r[1] or 0),
                 "total_input_tokens": int(r[2] or 0),
                 "total_output_tokens": int(r[3] or 0),
-                "cached_input_tokens": int(r[4] or 0),
+                "chat_cached_tokens": int(r[4] or 0),
                 "credits_saved": int(r[5] or 0),
                 "degradation_count": int(r[6] or 0),
             }

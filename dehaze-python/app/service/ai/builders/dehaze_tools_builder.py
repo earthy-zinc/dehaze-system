@@ -13,7 +13,6 @@ import logging
 from langchain_core.tools import StructuredTool
 from langgraph.types import interrupt
 
-from app.config import settings
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.clients.mcp_gateway_client import mcp_gateway_client
@@ -25,9 +24,14 @@ from app.infrastructure.clients.web_search_client import (
 from app.infrastructure.sandbox.code_sandbox import code_sandbox
 from app.service.ai.builders.knowledge_base_tool import knowledge_base_client
 from app.service.ai.middleware.async_resume import submit_batch_task
-from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.middleware.interrupt_handler import ConfirmKind, interrupt_handler
+from app.service.ai.middleware.run_context import current_run_ctx
 from app.service.ai.service.algorithm_recommend_service import recommend_algorithm
-from app.service.ai.service.batch_process_service import process_batch
+from app.service.ai.service.batch_process_service import (
+    BATCH_ASYNC_THRESHOLD,
+    process_batch,
+    validate_owned_image_url,
+)
 from app.service.ai.service.skill_manager import skill_manager
 from app.service.ai_artifact_service import ai_artifact_service
 
@@ -91,13 +95,21 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
     """按 Agent 配置装载 dehaze 业务工具。
 
     Args:
-        ctx: 共享运行时上下文 dict，由 DeepAgentBuilder 创建并注入 middleware。
+        ctx: 静态配置模板 dict（由 DeepAgentBuilder 创建）。工具执行时经
+            current_run_ctx 取当次 run 的运行时上下文（图缓存复用下防跨 run 串扰），
+            无 run 上下文（单测直调）回退该模板。
 
     Returns:
         LangChain StructuredTool 列表。
     """
+    # 闭包内 ctx 会重新绑定，模板需以独立名字捕获
+    template = ctx
 
     async def _algorithm_recommend(image_url: str, query: str) -> str:
+        ctx = current_run_ctx(template)
+        # LLM 给出的地址必须为本系统本人产物，否则预测侧会去下载任意/他人 URL
+        async with get_db_session() as db:
+            await validate_owned_image_url(db, ctx["user_id"], image_url)
         summary, interrupt_data = await recommend_algorithm(
             ctx["conversation_id"],
             ctx["message_id"],
@@ -137,9 +149,10 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
     async def _async_batch_process(image_urls: list[str], algorithm_id: int) -> str:
         """大批量异步处理：提交后台任务 → 进入 async_wait 中断，任务完成回调自动 resume。
 
-        中断点保存 async_wait 数据（task_id/task_type/预计耗时）供断线恢复与回调反查；
+        中断点保存 async_wait 数据（taskId/taskType/预计耗时）供断线恢复与回调反查；
         resume 时 interrupt() 返回任务结果摘要，据此更新任务状态并返回给 LLM。
         """
+        ctx = current_run_ctx(template)
         thread_id = f"{ctx['conversation_id']}:{ctx['message_id']}"
         task_id = submit_batch_task(
             conv_id=ctx["conversation_id"],
@@ -163,10 +176,10 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
             "type": "async_wait",
             "stream_session_id": ctx["stream_session_id"],
             "data": {
-                "task_id": task_id,
-                "task_type": "batch_process",
-                "est_duration": f"约 {len(image_urls) * 5} 秒",  # 粗估，供前端进度展示
-                "image_count": len(image_urls),
+                "taskId": task_id,
+                "taskType": "batch_process",
+                "estDuration": f"约 {len(image_urls) * 5} 秒",  # 粗估，供前端进度展示
+                "imageCount": len(image_urls),
             },
         }
         await interrupt_handler.save_interrupt(thread_id, "async_wait", interrupt_data)
@@ -197,9 +210,14 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         return f"批量处理完成：共 {total} 张，成功 {success} 张，失败 {failed} 张"
 
     async def _batch_process(image_urls: list[str], query: str, algorithm_id: int = 0) -> str:
+        ctx = current_run_ctx(template)
+        # LLM 给出的地址必须为本系统本人产物，否则预测侧会去下载任意/他人 URL
+        async with get_db_session() as db:
+            for image_url in image_urls:
+                await validate_owned_image_url(db, ctx["user_id"], image_url)
         # 大批量（>异步阈值）采用异步提交 + interrupt(async_wait)：提交后台任务后暂停图，
         # 任务完成回调自动 resume；小批量保持同步直返，避免轻任务中断体验劣化。
-        if len(image_urls) > settings.AI_BATCH_ASYNC_THRESHOLD:
+        if len(image_urls) > BATCH_ASYNC_THRESHOLD:
             return await _async_batch_process(image_urls, algorithm_id)
         summary = await process_batch(
             ctx["conversation_id"],
@@ -231,9 +249,13 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
             f"成功 {summary['success']} 张，失败 {summary['failed']} 张"
         )
 
+    async def _get_task_status() -> str:
+        return _get_task_status_snapshot(current_run_ctx(template))
+
     def _skill_load(skill_name: str) -> str:
         instruction = skill_manager.load_skill(skill_name)
-        return instruction[:500] if instruction else "Skill 未找到"
+        # 渐进披露第二级：返回完整指令（§2 Skills 渐进式加载），截断会使指令失效
+        return instruction if instruction else "Skill 未找到"
 
     async def _mcp_lookup_tool(query: str) -> str:
         result = await mcp_gateway_client.lookup_tool(query)
@@ -246,6 +268,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
     async def _visual_read(artifact_id: int) -> str:
         # 多模态视觉读取：评估图片效果时使用（与用户主动要求记住的行为无关）。
         # 多模态调用的 input_tokens 归集到 ctx，随本次推理计入 Token 消耗。
+        ctx = current_run_ctx(template)
         redis = await get_redis_client()
         async with get_db_session() as db:
             text, input_tokens = await ai_artifact_service.visual_read(
@@ -256,6 +279,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
 
     async def _web_search(query: str, max_results: int = 8) -> str:
         """网络搜索：配额超限或服务不可用时自动降级为知识库检索（§5.1）。"""
+        ctx = current_run_ctx(template)
         max_results = max(5, min(int(max_results), 10))  # Top 5-10 上限
         redis = await get_redis_client()
         allowed = await check_search_quota(redis, ctx["user_id"])
@@ -272,32 +296,53 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
 
     async def _knowledge_base_search(query: str, top_k: int = 5) -> str:
         """知识库检索：返回带来源引用的结果，命中内容注入上下文供回答引用溯源。"""
-        results = await knowledge_base_client.retrieve(
-            query, top_k=top_k, user_id=ctx["user_id"]
-        )
+        ctx = current_run_ctx(template)
+        results = await knowledge_base_client.retrieve(query, top_k=top_k, user_id=ctx["user_id"])
         if not results:
             return "知识库暂无可检索内容"
         return knowledge_base_client.format_results(results)
 
     async def _execute_code(code: str, language: str = "python", timeout: int = 60) -> str:
-        """受限沙箱执行 Python 脚本或 Shell 命令；Shell 任意命令需用户确认（§2.2）。"""
+        """受限沙箱执行 Python 脚本或 Shell 命令；高风险能力需用户确认（§2.2）。
+
+        Shell 一律确认；Python 仅在命中网络访问/子进程/沙箱外文件读写时确认——
+        这两类能力与 Shell 同级，否则 python 模式可绕过确认访问宿主网络与文件。
+        """
         language = (language or "python").lower()
         if language == "shell":
-            rejection = code_sandbox.check_blacklist(code)
+            rejection = code_sandbox.check_command_policy(code)
             if rejection:
                 return rejection
-            resume = interrupt(
-                {
-                    "type": "confirm",
-                    "data": {
-                        "action": "execute_shell_command",
-                        "command": code,
-                        "impact": "将在受限沙箱中执行该 Shell 命令，请确认命令内容与影响范围。",
-                    },
-                }
-            )
-            if isinstance(resume, dict) and resume.get("confirmed") is False:
+            action = "execute_shell_command"
+            impact = "将在受限沙箱中执行该 Shell 命令，请确认命令内容与影响范围。"
+        else:
+            risk = code_sandbox.check_python_risk(code) if language == "python" else None
+            if risk is None:
+                result = await code_sandbox.execute_code(code, language, timeout)
+                return _format_sandbox_result(result)
+            action = "execute_python_code"
+            impact = f"该代码包含{risk}（与 Shell 同级的高风险操作），请确认影响范围。"
+
+        ctx = current_run_ctx(template)
+        interrupt_data = {
+            "type": "confirm",
+            "stream_session_id": ctx.get("stream_session_id"),
+            "data": {
+                "confirmKind": ConfirmKind.DANGEROUS_OP,
+                "action": action,
+                "command": code,
+                "impact": impact,
+            },
+        }
+        # 危险操作确认与算法推荐一致：持久化中断点，否则 resume 端点查不到中断、用户无法确认
+        await interrupt_handler.save_interrupt(
+            f"{ctx['conversation_id']}:{ctx['message_id']}", "confirm", interrupt_data
+        )
+        resume = interrupt(interrupt_data)
+        if isinstance(resume, dict) and resume.get("confirmed") is False:
+            if language == "shell":
                 return "用户拒绝了该 Shell 命令的执行"
+            return "用户拒绝了该代码的执行"
         result = await code_sandbox.execute_code(code, language, timeout)
         return _format_sandbox_result(result)
 
@@ -328,12 +373,12 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         StructuredTool.from_function(
             name="algorithm_recommend",
             description="为用户图片推荐去雾算法，并推送卡片等待用户确认",
-            func=_algorithm_recommend,
+            coroutine=_algorithm_recommend,
         ),
         StructuredTool.from_function(
             name="batch_process",
             description="批量处理多张图片（去雾/增强等）",
-            func=_batch_process,
+            coroutine=_batch_process,
         ),
         StructuredTool.from_function(
             name="skill_load",
@@ -345,17 +390,17 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         StructuredTool.from_function(
             name="mcp_lookup_tool",
             description="查找匹配用户需求的后端 API 工具",
-            func=_mcp_lookup_tool,
+            coroutine=_mcp_lookup_tool,
         ),
         StructuredTool.from_function(
             name="mcp_execute_tool",
             description="调用指定的 MCP 工具执行后端 API",
-            func=_mcp_execute_tool,
+            coroutine=_mcp_execute_tool,
         ),
         StructuredTool.from_function(
             name="get_task_status",
             description="查询当前任务状态（任务类型、算法、参数、进度、产物）",
-            func=lambda: _get_task_status_snapshot(ctx),
+            coroutine=_get_task_status,
         ),
         StructuredTool.from_function(
             name="visual_read",
@@ -364,6 +409,6 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
                 "产物引用行获得），读取对应图片并经多模态模型理解后返回评价。"
                 "受每日视觉读取次数限制。"
             ),
-            func=_visual_read,
+            coroutine=_visual_read,
         ),
     ]

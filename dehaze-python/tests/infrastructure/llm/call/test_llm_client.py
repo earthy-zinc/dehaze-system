@@ -2,7 +2,7 @@ import json
 import re
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -10,6 +10,8 @@ import respx
 
 from app.core.exceptions import BusinessException
 from app.infrastructure.llm.call.llm_client import LlmClient
+from app.repository.ai_llm_call_repository import ai_llm_call_repository
+from app.service.ai.service import trace_collector
 
 # 被测代码按 provider.api_base_url 动态拼接 URL：{base}/chat/completions（OpenAI 兼容）
 # 或 {base}/messages（Anthropic）。测试用正则路由匹配，屏蔽变量基址差异。
@@ -51,13 +53,14 @@ def _make_provider(
     )
 
 
-def _make_key(key_id, provider_id=1, priority=0, weight=1, daily_quota=None):
+def _make_key(key_id, provider_id=1, priority=0, weight=1, daily_quota=None, rpm_limit=None):
     return SimpleNamespace(
         id=key_id,
         provider_id=provider_id,
         priority=priority,
         weight=weight,
         daily_quota=daily_quota,
+        rpm_limit=rpm_limit,
         key_cipher=f"cipher-{key_id}",
     )
 
@@ -140,7 +143,9 @@ def _patch_cross_services(get_call_routes, usable_keys=None, redis_client=None):
             provider_key_selector, "mark_call_success", new=mocks["mark_call_success"]
         ),
         "get_status": patch.object(provider_health_service, "get_status", new=mocks["get_status"]),
-        "record_call": patch.object(provider_health_service, "record_call", new=mocks["record_call"]),
+        "record_call": patch.object(
+            provider_health_service, "record_call", new=mocks["record_call"]
+        ),
         "list_usable_keys": patch.object(
             provider_key_selector, "list_usable_keys", new=mocks["list_usable_keys"]
         ),
@@ -251,9 +256,7 @@ async def test_all_fail_raise_business_exception(mock_redis):
             router.post(CHAT_URL_RE).mock(return_value=httpx.Response(500, content=b""))
             client = _make_client()
             with pytest.raises(BusinessException) as exc:
-                async for _ in client.stream_chat(
-                    db=None, model_id="gpt-4o", messages=[]
-                ):
+                async for _ in client.stream_chat(db=None, model_id="gpt-4o", messages=[]):
                     pass
     finally:
         svc.stop()
@@ -344,6 +347,12 @@ async def test_anthropic_cache_control_injected(mock_redis):
     assert "cache_control" not in payload["tools"][0]
 
 
+async def _drain_stream(stream, sink):
+    """消费异步流到 sink；流中途抛错时已收到的分片保留在 sink 中（供异常前投递断言）"""
+    async for chunk in stream:
+        sink.append(chunk)
+
+
 async def test_stream_interrupt_raises_no_switch(mock_redis):
     route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
     svc = _patch_cross_services(
@@ -365,10 +374,9 @@ async def test_stream_interrupt_raises_no_switch(mock_redis):
             client = _make_client()
             seen = []
             with pytest.raises(BusinessException) as exc:
-                async for c in client.stream_chat(
-                    db=None, model_id="gpt-4o", messages=[]
-                ):
-                    seen.append(c)
+                await _drain_stream(
+                    client.stream_chat(db=None, model_id="gpt-4o", messages=[]), seen
+                )
     finally:
         svc.stop()
 
@@ -387,6 +395,7 @@ async def test_circuit_open_skips_provider_route(mock_redis):
     model = _make_model()
     provider_b = _make_provider(provider_id=2)
     try:
+
         async def _status(redis, provider_id):
             return "open" if provider_id == 1 else "healthy"
 
@@ -396,7 +405,9 @@ async def test_circuit_open_skips_provider_route(mock_redis):
             respx.mock(assert_all_mocked=True) as router,
         ):
             router.post(CHAT_URL_RE).mock(
-                return_value=httpx.Response(200, content=_sse(_ok_lines("ok")), headers=_sse_headers())
+                return_value=httpx.Response(
+                    200, content=_sse(_ok_lines("ok")), headers=_sse_headers()
+                )
             )
             client = _make_client()
             meta = {}
@@ -420,3 +431,88 @@ async def test_circuit_open_skips_provider_route(mock_redis):
 
 def _sse_headers():
     return {"content-type": "text/event-stream"}
+
+
+# ── wire 级原始报文采集（审计级重构 P0：llm_client → 协议客户端上报链路）──
+
+
+def _start_collector(model_id="gpt-4o"):
+    return trace_collector.start(
+        conversation_id=1, message_id=None, user_id=None, agent_code=None, model_id=model_id
+    )
+
+
+@pytest.mark.requires_db
+async def test_wire_capture_persisted_on_success(mock_redis, db):
+    route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
+    model = _make_model()
+    provider = _make_provider()
+    captured = {}
+
+    def _handler(request):
+        captured["payload"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(200, content=_sse(_ok_lines("hi")), headers=_sse_headers())
+
+    try:
+        with (
+            _patch_route_io(model, provider),
+            respx.mock(assert_all_mocked=True) as router,
+        ):
+            router.post(CHAT_URL_RE).mock(side_effect=_handler)
+            client = _make_client()
+            collector = _start_collector()
+            _ = [
+                c
+                async for c in client.stream_chat(
+                    db=None,
+                    model_id="gpt-4o",
+                    messages=[{"role": "user", "content": "hi"}],
+                )
+            ]
+    finally:
+        svc.stop()
+        trace_collector._current_collector.set(None)
+
+    await trace_collector.drain()  # 观测落盘后台化，断言前等待在途写入
+    calls = await ai_llm_call_repository.list_by_trace(db, collector.trace_id)
+    row = calls[0]
+    assert row.raw_request == captured["payload"]
+    assert row.raw_response is not None
+    assert row.raw_response["choices"][0]["message"]["content"] == "hi"
+    assert row.start_time is not None
+
+
+@pytest.mark.requires_db
+async def test_wire_error_recorded_when_all_attempts_fail(mock_redis, db):
+    route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
+    model = _make_model()
+    provider = _make_provider()
+    captured = {}
+
+    def _handler(request):
+        captured["payload"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(500, content=b"")
+
+    try:
+        with (
+            _patch_route_io(model, provider),
+            respx.mock(assert_all_mocked=True) as router,
+        ):
+            router.post(CHAT_URL_RE).mock(side_effect=_handler)
+            client = _make_client()
+            collector = _start_collector()
+            with pytest.raises(BusinessException):
+                async for _ in client.stream_chat(db=None, model_id="gpt-4o", messages=[]):
+                    pass
+    finally:
+        svc.stop()
+        trace_collector._current_collector.set(None)
+
+    await trace_collector.drain()  # 观测落盘后台化，断言前等待在途写入
+    calls = await ai_llm_call_repository.list_by_trace(db, collector.trace_id)
+    row = calls[0]
+    assert row.status == 2
+    assert row.raw_request == captured["payload"]  # 失败调用 raw_request 照存
+    assert row.raw_response == {"error": {"code": "5xx", "message": "供应商服务端错误: HTTP 500"}}

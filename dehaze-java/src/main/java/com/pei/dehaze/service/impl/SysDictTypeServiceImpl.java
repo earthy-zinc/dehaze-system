@@ -20,6 +20,7 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysDictService;
 import com.pei.dehaze.service.SysDictTypeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,10 +36,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDictType> implements SysDictTypeService {
 
+    /** 系统预置字典类型编码（种子内置，对齐 python SYSTEM_PRESET_DICT_TYPE_CODES），不可删除 */
+    private static final List<String> SYSTEM_PRESET_DICT_TYPE_CODES = List.of(
+            "gender", "ai_guardrail_defaults", "ai_provider_health", "ai_embedding",
+            "member_growth_rules", "favorite_capacity", "ai_eval");
+
+    private static final String DICT_OPTIONS_CACHE_KEY_PREFIX = "dict:data:";
+
 
     private final SysDictService dictItemService;
     private final DictTypeConverter dictTypeConverter;
     private final SysDictTypeMapper dictTypeMapper;
+    private final StringRedisTemplate stringRedisTemplate;
 
     /**
      * 字典分页列表
@@ -97,7 +106,10 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
 
         // 实体转换
-        return dictTypeConverter.entity2Form(entity);
+        DictTypeForm form = dictTypeConverter.entity2Form(entity);
+        // isPreset：系统预置类型标记（python 契约：预置 true / 新建 false）
+        form.setIsPreset(SYSTEM_PRESET_DICT_TYPE_CODES.contains(entity.getCode()));
+        return form;
     }
 
     /**
@@ -129,46 +141,35 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
 
-        // 检查编码唯一性（排除自身ID）
-        validateCodeUnique(dictTypeForm.getCode(), id);
+        // code 只读：修改编码直接拒绝（T-DM-015，python A0503 口径）
+        if (CharSequenceUtil.isNotBlank(dictTypeForm.getCode())
+                && !CharSequenceUtil.equals(dictTypeForm.getCode(), sysDictType.getCode())) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "字典类型编码不可修改");
+        }
 
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
-        entity.setId(id);  // 设置ID，确保更新正确执行
+        entity.setId(id);
+        entity.setCode(sysDictType.getCode());
         boolean result = this.updateById(entity);
         if (result) {
-            // 字典类型code变化，同步修改字典项的类型code
-            String oldCode = sysDictType.getCode();
-            String newCode = dictTypeForm.getCode();
-            if (!CharSequenceUtil.equals(oldCode, newCode)) {
-                Long currentUserId = SecurityUtils.getUserId();
-                dictItemService.update(new LambdaUpdateWrapper<SysDict>()
-                        .eq(SysDict::getTypeCode, oldCode)
-                        .set(SysDict::getTypeCode, newCode)
-                        .set(SysDict::getUpdateBy, currentUserId)
-                );
-            }
+            // 类型禁用/启用影响下拉可见性，失效下拉缓存
+            stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + sysDictType.getCode());
         }
         return result;
     }
 
     /**
-     * 校验字典类型编码唯一性（含软删行参与查重，命中即报占用）。
+     * 校验字典类型编码唯一性（仅活跃行；唯一键含 deleted，软删行不占键位）。
      *
      * @param code      字典类型编码
      * @param excludeId 排除的字典类型ID（更新时传自身ID，新增时传 null）
      */
     private void validateCodeUnique(String code, Long excludeId) {
-        long count = dictTypeMapper.countByCodeAll(code);
-        if (count == 0) {
-            return;
-        }
-        // 有匹配记录，排除自身ID后再判断
-        if (excludeId != null) {
-            count = dictTypeMapper.countByCodeAllExcluding(code, excludeId);
-        }
+        long count = dictTypeMapper.selectCount(new LambdaQueryWrapper<SysDictType>()
+                .eq(SysDictType::getCode, code)
+                .ne(excludeId != null, SysDictType::getId, excludeId));
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS,
-                    "字典类型编码已被历史记录占用，无法重复创建");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在");
         }
     }
 
@@ -196,12 +197,15 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
 
         // 获取字典类型编码列表
-        List<String> dictTypeCodes = this.list(new LambdaQueryWrapper<SysDictType>()
-                        .in(SysDictType::getId, ids)
-                        .select(SysDictType::getCode))
-                .stream()
-                .map(SysDictType::getCode)
-                .toList();
+        List<SysDictType> dictTypes = this.list(new LambdaQueryWrapper<SysDictType>()
+                .in(SysDictType::getId, ids)
+                .select(SysDictType::getCode));
+        List<String> dictTypeCodes = dictTypes.stream().map(SysDictType::getCode).toList();
+
+        // T-DM-025：系统预置字典类型不可删除
+        if (dictTypes.stream().map(SysDictType::getCode).anyMatch(SYSTEM_PRESET_DICT_TYPE_CODES::contains)) {
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "系统预置字典类型不可删除");
+        }
 
         if (CollUtil.isNotEmpty(dictTypeCodes)) {
             if (force) {
@@ -214,8 +218,16 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                 }
             }
         }
-        // 删除字典类型
-        return this.removeByIds(ids);
+        // 删除字典类型并失效相关下拉缓存
+        boolean result = this.removeByIds(ids);
+        if (result) {
+            for (String code : dictTypeCodes) {
+                if (CharSequenceUtil.isNotBlank(code)) {
+                    stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + code);
+                }
+            }
+        }
+        return result;
     }
 
 }

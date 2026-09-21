@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_billing_anomaly import SysAiBillingAnomaly
 from app.models.entity.sys_ai_conversation import SysAiConversation
-from app.repository.base import BaseRepository
+from app.repository.base import BaseRepository, escape_like
 
 
 class AiConversationRepository(BaseRepository[SysAiConversation]):
@@ -64,7 +64,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         """管理端审计视角：全量会话按标题关键词过滤（DB like，审计范围不引 ES 全量检索）"""
         stmt = select(SysAiConversation).where(
             SysAiConversation.deleted == 0,
-            SysAiConversation.title.like(f"%{keyword}%"),
+            SysAiConversation.title.like(f"%{escape_like(keyword)}%", escape="\\"),
         )
         if status is not None:
             stmt = stmt.where(SysAiConversation.status == status)
@@ -87,7 +87,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         """回收站列表：已软删且未超过 30 天恢复窗口，按 delete_time 倒序"""
         stmt = select(SysAiConversation).where(
             SysAiConversation.user_id == user_id,
-            SysAiConversation.deleted == 1,
+            SysAiConversation.deleted != 0,
             SysAiConversation.delete_time >= before_date,
         )
         stmt = stmt.order_by(
@@ -109,7 +109,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         stmt = select(SysAiConversation).where(
             SysAiConversation.id == conv_id,
             SysAiConversation.user_id == user_id,
-            SysAiConversation.deleted == 1,
+            SysAiConversation.deleted != 0,
             SysAiConversation.delete_time >= before_date,
         )
         # 恢复路径需查已软删记录，用 include_deleted 绕过全局 deleted=0 过滤
@@ -163,7 +163,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         stmt = (
             update(SysAiConversation)
             .where(SysAiConversation.id.in_(ids))
-            .values(deleted=1, delete_time=datetime.now())
+            .values(deleted=SysAiConversation.id, delete_time=datetime.now())
         )
         result = await db.execute(stmt)
         return result.rowcount
@@ -187,7 +187,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
     ) -> list[int]:
         """查询软删超过 30 天的会话 ID（供物理清理）"""
         stmt = select(SysAiConversation.id).where(
-            SysAiConversation.deleted == 1,
+            SysAiConversation.deleted != 0,
             SysAiConversation.delete_time < before_date,
         )
         # 物理清理需查已软删记录，用 include_deleted 绕过全局 deleted=0 过滤
@@ -195,13 +195,13 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_ids(
+    async def get_by_ids_and_user(
         self,
         db: AsyncSession,
-        user_id: int,
         ids: list[int],
+        user_id: int,
     ) -> list[SysAiConversation]:
-        """按 ID 列表查询会话（保持传入顺序），用于 ES 检索结果回查"""
+        """按 ID 列表查询本人会话（保持传入顺序），用于 ES 检索结果回查"""
         if not ids:
             return []
         stmt = select(SysAiConversation).where(
@@ -297,8 +297,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
     ) -> dict[int, dict[str, int]]:
         """按会话聚合计费消耗：{conv_id: {"token": 输入+输出Token, "credits": 积分}}
 
-        只读消费 sys_ai_billing（跨模块只读查询，不改动计费模块）：与计费明细同源，
-        覆盖 tool_llm/kb_inject 等无消息对应的计费项。
+        只读消费 sys_ai_billing（跨模块只读查询，不改动计费模块）：与计费明细同源。
         """
         if not conv_ids:
             return {}
@@ -312,9 +311,7 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
             .group_by(SysAiBilling.conversation_id)
         )
         rows = (await db.execute(stmt)).all()
-        return {
-            row[0]: {"token": int(row[1]), "credits": int(row[2])} for row in rows if row[0]
-        }
+        return {row[0]: {"token": int(row[1]), "credits": int(row[2])} for row in rows if row[0]}
 
     async def list_quota_anomaly_conversation_ids(
         self,

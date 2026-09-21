@@ -5,7 +5,8 @@
 -- 设计思路:
 -- SKILL 目录文件清单表（Agent Skills 规范）：SKILL 是一个目录，除 SKILL.md
 -- 正文（存 sys_ai_skill.instruction）外，可选 reference/ script/ assets/
--- README.md 等文件。文件内容存入对象存储（MinIO，对象 key = skills/{name}/{path}），
+-- README.md 等文件。文件内容存入对象存储（MinIO，对象 key = skills/{skill_id}/{path}，
+-- 用 skill_id 而非 name：name 可改，按 name 定位会让改名后的资源脱钩），
 -- 本表仅存文件清单（path/大小/类型），支持渐进披露第三级（资源按需加载）
 -- 与列表/详情展示，避免大文件内容撑爆 DB 与 SkillManager 内存缓存。
 -- path 为相对 SKILL 根目录的路径（如 "reference/REFERENCE.md"、"script/run.py"）。

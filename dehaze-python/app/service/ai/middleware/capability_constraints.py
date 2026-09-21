@@ -14,6 +14,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from deepagents.backends.protocol import FileData
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain_core.messages import ToolMessage
 
@@ -25,16 +26,11 @@ _WRITE_FILE_TOOL = "write_file"
 _WRITE_TODOS_TOOL = "write_todos"
 
 
-def _vfssize(files: dict[str, Any] | None) -> int:
-    """统计虚拟文件系统已有内容总字节数。"""
+def _vfssize(files: dict[str, FileData] | None) -> int:
+    """统计虚拟文件系统已有内容总字节数（deepagents files 状态值为 FileData）。"""
     total = 0
     for data in (files or {}).values():
-        if isinstance(data, dict):
-            content = data.get("content")
-        else:
-            content = getattr(data, "content", None)
-        if isinstance(content, str):
-            total += len(content.encode("utf-8"))
+        total += len(data["content"].encode("utf-8"))
     return total
 
 

@@ -43,7 +43,9 @@ _LOCAL_MODELS = [
         "model_type": "offline",
         "display_name": "Paraformer离线",
         "params": {
-            "model_id": "iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+            "model_id": (
+                "iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+            )
         },
     },
     {

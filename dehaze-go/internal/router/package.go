@@ -14,7 +14,8 @@ func RegisterPackageRoutes(rg *gin.RouterGroup, packageApi *api.PackageApi) {
 		pkgRouter.GET("/sales/stats", middleware.Permission("package:sales"), packageApi.GetSalesStats)
 		pkgRouter.GET("/calculate-price", packageApi.CalculatePrice)
 		pkgRouter.POST("", middleware.Permission("package:add"), packageApi.Add)
-		pkgRouter.PUT("/:id", middleware.Permission("package:edit"), packageApi.Update)
+		// 修改套餐：参数绑定后做权限校验（与 FastAPI body 校验先行顺序对齐，见 middleware.CheckPermission）
+		pkgRouter.PUT("/:id", packageApi.Update)
 		pkgRouter.PUT("/:id/status", middleware.Permission("package:edit"), packageApi.UpdateStatus)
 		pkgRouter.GET("/:id", packageApi.GetDetail)
 		pkgRouter.GET("/:id/form", packageApi.GetForm)

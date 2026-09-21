@@ -20,9 +20,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Tag(name = "08.数据集接口")
 @RestController
@@ -40,7 +42,7 @@ public class SysDatasetController {
                     "子节点通过懒加载接口获取。包含统计信息（图片数量等）。适用于数据集管理页面。"
     )
     @GetMapping
-    public PageResult<DatasetVO> listDatasets(@ParameterObject DatasetQuery queryParams) {
+    public PageResult<DatasetVO> listDatasets(@Valid @ParameterObject DatasetQuery queryParams) {
         IPage<DatasetVO> page = datasetService.listPagedDatasets(queryParams);
         return PageResult.success(page);
     }
@@ -70,6 +72,13 @@ public class SysDatasetController {
         return Result.success(options);
     }
 
+    @GetMapping("/evaluation-options")
+    @Operation(summary = "测试集选项查询（评估接入）", description = "按 taskType 过滤，仅返回含清晰图 GT 且启用的数据集")
+    public Result<List<Map<String, Object>>> getEvaluationOptions(
+            @Parameter(description = "任务类型") @RequestParam(required = false) String taskType) {
+        return Result.success(datasetService.getEvaluationOptions(taskType));
+    }
+
     @Operation(
             summary = "根据ID获取数据集详细信息",
             description = "根据数据集ID获取完整的数据集信息，包括基本信息、统计数据（图片数量、使用次数）、" +
@@ -91,6 +100,7 @@ public class SysDatasetController {
                     "并验证父数据集存在性和名称唯一性。创建成功后可立即使用。"
     )
     @PostMapping
+    @PreAuthorize("@ss.hasPerm('sys:dataset:add')")
     public Result<Long> add(@RequestBody @Valid DatasetAddForm dataset) {
         DatasetVO result = datasetService.addDataset(dataset);
         return Result.success(result.getId());
@@ -102,6 +112,7 @@ public class SysDatasetController {
                     "修改名称时会验证唯一性，禁用数据集后将不可用。系统自动更新修改时间。"
     )
     @PutMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:edit')")
     public Result<DatasetVO> update(
             @Parameter(description = "数据集ID", required = true, example = "1")
             @PathVariable
@@ -118,6 +129,7 @@ public class SysDatasetController {
                     "关联的图片文件、缩略图文件和统计缓存。删除操作不可逆，请谨慎使用。"
     )
     @DeleteMapping("/{id}")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     public Result<Void> deleteDataset(
             @Parameter(description = "数据集ID", required = true, example = "1")
             @PathVariable
@@ -136,6 +148,7 @@ public class SysDatasetController {
                     "关联的图片文件、缩略图文件和统计缓存。返回每个数据集的删除结果。"
     )
     @DeleteMapping("/batch")
+    @PreAuthorize("@ss.hasPerm('sys:dataset:delete')")
     public Result<BatchDeleteResult> batchDeleteDatasets(
             @Valid @RequestBody BatchDeleteRequest request
     ) {

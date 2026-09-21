@@ -87,7 +87,7 @@ export { service } from "./src/utils/request";
 
 // SSE 流式工具导出（供 AI 对话 SSE 流式消息使用）
 export { fetchSSE } from "./src/utils/sse";
-export type { SSEEvent, SSERequestConfig, SSEHandlers } from "./src/utils/sse";
+export type { SSEEvent, SSERequestConfig, SSEHandlers, SSEStreamOptions } from "./src/utils/sse";
 export type { MessageStreamHandlers } from "./src/api/ai-conversation";
 
 // WebSocket 工具导出（供语音交互流式 ASR 等场景使用）

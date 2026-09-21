@@ -37,9 +37,7 @@ class SysAiTrace(AppendOnlyModel):
             "suggestion类似问题推荐; step_summary步骤摘要)"
         ),
     )
-    model: Mapped[str | None] = mapped_column(
-        String(64), nullable=True, comment="实际使用模型标识"
-    )
+    model: Mapped[str | None] = mapped_column(String(64), nullable=True, comment="实际使用模型标识")
     status: Mapped[int] = mapped_column(
         SmallInteger,
         nullable=False,

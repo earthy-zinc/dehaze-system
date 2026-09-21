@@ -14,14 +14,18 @@ class SysPackage(BaseModel, SoftDeleteMixin):
     )
     name: Mapped[str] = mapped_column(String(32), nullable=False, comment="套餐名称")
     package_type: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="vip",
-        comment="商品类型(vip:会员卡;credit:积分卡;创建后不可修改)"
+        String(16),
+        nullable=False,
+        default="vip",
+        comment="商品类型(vip:会员卡;credit:积分卡;创建后不可修改)",
     )
     level_code: Mapped[str | None] = mapped_column(
         String(16), nullable=True, comment="关联会员等级(level_1/level_2/level_3;积分卡为NULL)"
     )
     period: Mapped[str | None] = mapped_column(
-        String(16), nullable=True, comment="计费周期(monthly:月;quarterly:季;yearly:年;积分卡为NULL)"
+        String(16),
+        nullable=True,
+        comment="计费周期(monthly:月;quarterly:季;yearly:年;积分卡为NULL)",
     )
     period_days: Mapped[int | None] = mapped_column(
         Integer, nullable=True, comment="有效期天数(积分卡为NULL)"

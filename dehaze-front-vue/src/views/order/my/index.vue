@@ -42,9 +42,13 @@
               <div class="info-content">
                 <div class="package-name">
                   {{ order.packageName }}
-                  <el-tag size="small" type="info" effect="plain">{{
-                    order.packageLevel
-                  }}</el-tag>
+                  <el-tag
+                    v-if="order.packageLevel"
+                    size="small"
+                    type="info"
+                    effect="plain"
+                    >{{ order.packageLevel }}</el-tag
+                  >
                 </div>
                 <div v-if="order.packageExpireTime" class="package-expire">
                   <el-icon><Clock /></el-icon>
@@ -57,14 +61,7 @@
           <div class="card-footer">
             <div class="amount-area">
               <span class="payable-amount"
-                >¥{{ order.payableAmount.toFixed(2) }}</span
-              >
-              <span
-                v-if="
-                  order.payableAmount < order.paidAmount || hasDiscount(order)
-                "
-                class="original-amount"
-                >¥{{ order.paidAmount.toFixed(2) }}</span
+                >¥{{ yuan(order.payableAmount) }}</span
               >
               <span v-if="order.payMethod" class="pay-method-text">
                 {{ payMethodLabel(order.payMethod) }}
@@ -131,7 +128,7 @@
         <div class="refund-info-row">
           <span class="label">退款金额：</span>
           <span class="refund-amount"
-            >¥{{ refundDialog.row.paidAmount.toFixed(2) }}</span
+            >¥{{ yuan(refundDialog.row.paidAmount) }}</span
           >
         </div>
       </div>
@@ -157,30 +154,26 @@
         :rules="refundRules"
         label-width="100px"
       >
-        <el-form-item label="退款原因" prop="reason">
+        <el-form-item label="退款原因" prop="reasonType">
           <el-select
-            v-model="refundForm.reason"
-            placeholder="请选择退款原因"
+            v-model="refundForm.reasonType"
+            placeholder="请选择退款原因类型"
             style="width: 100%"
           >
             <el-option
               v-for="opt in refundReasonOptions"
-              :key="opt"
-              :label="opt"
-              :value="opt"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
             />
           </el-select>
         </el-form-item>
-        <el-form-item
-          v-if="refundForm.reason === '其他原因'"
-          label="具体原因"
-          prop="customReason"
-        >
+        <el-form-item label="具体原因" prop="customReason">
           <el-input
             v-model="refundForm.customReason"
             type="textarea"
             :rows="3"
-            placeholder="请描述具体退款原因"
+            placeholder="请描述具体退款原因（选填）"
           />
         </el-form-item>
       </el-form>
@@ -207,6 +200,12 @@ import {
   RefundApplyForm,
 } from "dehaze-sdk-js";
 import { CreditCard, Clock, RefreshLeft } from "@element-plus/icons-vue";
+import {
+  orderStatusOptions,
+  payMethodOptions,
+  refundReasonOptions,
+} from "../constants";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "OrderMy" });
 
@@ -224,63 +223,24 @@ const queryParams = reactive<MyOrderQuery>({
 
 const statusTabs: { label: string; value: OrderStatus | undefined }[] = [
   { label: "全部", value: undefined },
-  { label: "待支付", value: "pending" },
-  { label: "已支付", value: "paid" },
-  { label: "已完成", value: "completed" },
-  { label: "已取消", value: "cancelled" },
-  { label: "退款中", value: "refunding" },
-  { label: "已退款", value: "refunded" },
-];
-
-const refundReasonOptions = [
-  "功能不满足需求",
-  "使用体验不佳",
-  "重复购买",
-  "暂不需要",
-  "其他原因",
+  ...orderStatusOptions.map(({ label, value }) => ({ label, value })),
 ];
 
 function statusLabel(status: OrderStatus): string {
-  const map: Record<OrderStatus, string> = {
-    pending: "待支付",
-    paid: "已支付",
-    completed: "已完成",
-    cancelled: "已取消",
-    refunding: "退款中",
-    refunded: "已退款",
-  };
-  return map[status] || status;
+  return orderStatusOptions.find((o) => o.value === status)?.label ?? status;
 }
 
-function statusTagType(
-  status: OrderStatus
-): "success" | "warning" | "info" | "primary" | "danger" {
-  const map: Record<
-    OrderStatus,
-    "success" | "warning" | "info" | "primary" | "danger"
-  > = {
-    pending: "warning",
-    paid: "primary",
-    completed: "info",
-    cancelled: "info",
-    refunding: "warning",
-    refunded: "info",
-  };
-  return map[status];
+function statusTagType(status: OrderStatus): TagType {
+  return orderStatusOptions.find((o) => o.value === status)!.tag;
 }
 
 function payMethodLabel(method: PayMethod): string {
-  const map: Record<PayMethod, string> = {
-    wechat: "微信支付",
-    alipay: "支付宝",
-    balance: "余额支付",
-    combined: "组合支付",
-  };
-  return map[method] || method;
+  return payMethodOptions.find((o) => o.value === method)?.label ?? method;
 }
 
-function hasDiscount(order: MyOrderVO): boolean {
-  return order.paidAmount > order.payableAmount && order.payableAmount > 0;
+/** 后端金额单位为分，前端展示用元 */
+function yuan(cents?: number) {
+  return ((cents ?? 0) / 100).toFixed(2);
 }
 
 function handleTabChange(value: OrderStatus | undefined) {
@@ -339,29 +299,19 @@ const refundDialog = reactive<{
 });
 
 const refundForm = reactive<RefundApplyForm>({
-  reason: "",
+  reasonType: "after_sale",
   customReason: "",
 });
 
 const refundRules = {
-  reason: [{ required: true, message: "请选择退款原因", trigger: "change" }],
-  customReason: [
-    {
-      validator: (_rule: any, value: string, callback: any) => {
-        if (refundForm.reason === "其他原因" && !value?.trim()) {
-          callback(new Error("请描述具体退款原因"));
-        } else {
-          callback();
-        }
-      },
-      trigger: "blur",
-    },
+  reasonType: [
+    { required: true, message: "请选择退款原因类型", trigger: "change" },
   ],
 };
 
 function openRefundDialog(order: MyOrderVO) {
   refundDialog.row = order;
-  refundForm.reason = "";
+  refundForm.reasonType = "after_sale";
   refundForm.customReason = "";
   refundDialog.visible = true;
 }
@@ -369,7 +319,7 @@ function openRefundDialog(order: MyOrderVO) {
 function closeRefundDialog() {
   refundDialog.visible = false;
   refundDialog.row = null;
-  refundForm.reason = "";
+  refundForm.reasonType = "after_sale";
   refundForm.customReason = "";
   refundFormRef.value?.resetFields();
 }
@@ -381,9 +331,8 @@ function handleRefundSubmit() {
     if (!valid) return;
     refundDialog.loading = true;
     const payload: RefundApplyForm = {
-      reason: refundForm.reason,
-      customReason:
-        refundForm.reason === "其他原因" ? refundForm.customReason : undefined,
+      reasonType: refundForm.reasonType,
+      customReason: refundForm.customReason?.trim() || undefined,
     };
     OrderAPI.applyRefund(row.orderNo, payload)
       .then(() => {
@@ -578,12 +527,6 @@ onActivated(() => {
         font-size: 18px;
         font-weight: 600;
         color: var(--el-color-danger);
-      }
-
-      .original-amount {
-        font-size: 13px;
-        color: var(--el-text-color-secondary);
-        text-decoration: line-through;
       }
 
       .pay-method-text {

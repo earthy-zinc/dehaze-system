@@ -8,7 +8,7 @@ SKILL 目录内的其余文件（reference/ script/ assets/ README.md）存 sys_
 配置类表使用逻辑删除（SoftDeleteMixin），删除前须校验被 Agent 关联。
 """
 
-from sqlalchemy import BigInteger, Index, JSON, SmallInteger, String, Text
+from sqlalchemy import JSON, BigInteger, Index, SmallInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, SoftDeleteMixin
@@ -45,7 +45,10 @@ class SysAiSkill(BaseModel, SoftDeleteMixin):
     )
     # 列名 metadata（frontmatter 键），Python 属性名 skill_metadata 避开 Declarative 保留字
     skill_metadata: Mapped[dict | None] = mapped_column(
-        "metadata", JSON, nullable=True, comment="SKILL.md frontmatter metadata(任意键值,如版本/作者)"
+        "metadata",
+        JSON,
+        nullable=True,
+        comment="SKILL.md frontmatter metadata(任意键值,如版本/作者)",
     )
     allowed_tools: Mapped[str | None] = mapped_column(
         String(500),

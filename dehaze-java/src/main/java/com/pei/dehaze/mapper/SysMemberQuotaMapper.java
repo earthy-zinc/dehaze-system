@@ -10,12 +10,12 @@ import org.apache.ibatis.annotations.Param;
 public interface SysMemberQuotaMapper extends BaseMapper<SysMemberQuota> {
 
     /**
-     * upsert 会员额度：user_id + quota_month 唯一键冲突时复活软删行。
+     * upsert 会员额度：唯一键含 deleted（软删行不占键位），冲突只可能命中活跃行；
      * UPDATE 分支通过 LAST_INSERT_ID(id) 拿回原行 id。
      */
     @Insert("INSERT INTO sys_member_quota (user_id, quota_month, dehaze_quota, dehaze_used, evaluate_quota, evaluate_used, deleted, update_time) " +
             "VALUES (#{userId}, #{quotaMonth}, #{dehazeQuota}, #{dehazeUsed}, #{evaluateQuota}, #{evaluateUsed}, 0, NOW()) " +
-            "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), deleted = 0, dehaze_quota = VALUES(dehaze_quota), dehaze_used = VALUES(dehaze_used), " +
+            "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), dehaze_quota = VALUES(dehaze_quota), dehaze_used = VALUES(dehaze_used), " +
             "evaluate_quota = VALUES(evaluate_quota), evaluate_used = VALUES(evaluate_used), update_time = NOW()")
     int upsertByUserAndMonth(@Param("userId") Long userId,
                              @Param("quotaMonth") Integer quotaMonth,

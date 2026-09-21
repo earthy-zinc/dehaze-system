@@ -1,8 +1,14 @@
+from unittest.mock import AsyncMock
+
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.service.ai.strategies import agent_config_resolver as resolver
 
 
-def _stub_db_redis():
-    return object(), object()
+def _stub_db_redis() -> tuple[AsyncSession, Redis]:
+    # 测试替身：resolve/load_guardrail_defaults 的 DB/Redis 访问均被 patch，仅传参占位
+    return AsyncMock(spec=AsyncSession), AsyncMock(spec=Redis)
 
 
 async def _fake_load_guardrail_defaults(_db, _redis):
@@ -61,7 +67,7 @@ class TestMergeGuardrails:
         assert merged["prompt_injection"] == {"enabled": False}
 
     def test_non_dict_layer_skipped(self):
-        merged = resolver._merge_guardrails({"pii_mask": {"enabled": True}}, "not-a-dict")
+        merged = resolver._merge_guardrails({"pii_mask": {"enabled": True}}, "not-a-dict")  # pyright: ignore[reportArgumentType]  # 负向用例：故意构造非法值
         assert merged["pii_mask"]["enabled"] is True
 
 

@@ -3,6 +3,7 @@ import request from "@/utils/request";
 import {
   AutoRenewConfigForm,
   AutoRenewConfigVO,
+  BalanceAccountVO,
   BalanceRefundAuditForm,
   BalanceRefundForm,
   MyOrderQuery,
@@ -73,6 +74,14 @@ class OrderAPI {
       url: `/api/v1/orders/${orderNo}/refund`,
       method: "post",
       data,
+    });
+  }
+
+  /** 用户端：查询余额账户（可用/冻结余额） */
+  static getBalance() {
+    return request<BalanceAccountVO>({
+      url: "/api/v1/orders/balance",
+      method: "get",
     });
   }
 

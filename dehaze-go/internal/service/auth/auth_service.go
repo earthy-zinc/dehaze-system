@@ -10,9 +10,11 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/dto"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	loginlogservice "github.com/earthyzinc/dehaze-go/internal/service/login_log"
 	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
+	"github.com/earthyzinc/dehaze-go/internal/service/session"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -20,8 +22,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
-	"github.com/mojocn/base64Captcha"
 	"github.com/google/uuid"
+	"github.com/mojocn/base64Captcha"
 	"go.uber.org/zap"
 
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
@@ -43,7 +45,7 @@ func NewAuthService(cacheClient types.ICache, userService userservice.IUserServi
 	}
 }
 
-func (s *AuthService) recordLogin(ctx context.Context, userID *int64, username, ip, userAgent string, status int, message string) {
+func (s *AuthService) recordLogin(ctx context.Context, userID *int64, username, ip, userAgent string, status int, message, deviceType string) {
 	if s.loginLogService == nil {
 		return
 	}
@@ -56,7 +58,7 @@ func (s *AuthService) recordLogin(ctx context.Context, userID *int64, username, 
 		}()
 		writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		_ = s.loginLogService.RecordLogin(writeCtx, userID, username, ip, status, message, browser, osName, "")
+		_ = s.loginLogService.RecordLogin(writeCtx, userID, username, ip, status, message, browser, osName, deviceType)
 	}()
 }
 
@@ -93,16 +95,23 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP,
 
 	username := strings.ToLower(strings.TrimSpace(req.Username))
 	password := req.Password
+	deviceType := normalizeDeviceType(req.DeviceType)
 
 	if err := s.checkLoginFailCount(ctx, clientIP, username); err != nil {
-		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error())
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error(), deviceType)
 		return nil, err
 	}
 
-	if !s.VerifyCaptcha(ctx, req.CaptchaKey, req.CaptchaCode) {
+	captchaOK, captchaExpired := s.VerifyCaptchaStatus(ctx, req.CaptchaKey, req.CaptchaCode)
+	if !captchaOK {
 		s.incrementLoginFailCount(ctx, clientIP, username)
-		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, "验证码错误")
-		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
+		// 与 Python 端一致：Key 不存在/已消费/超时 → A0213，比对失败 → A0214
+		code, msg := common.VERIFY_CODE_ERROR, "验证码错误"
+		if captchaExpired {
+			code, msg = common.VERIFY_CODE_TIMEOUT, "验证码已过期"
+		}
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, msg, deviceType)
+		return nil, common.NewBizError(code, msg)
 	}
 
 	u := &model.SysUser{Username: username, Password: password}
@@ -113,13 +122,19 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP,
 			zap.String("username", username),
 			zap.String("clientIP", clientIP),
 			zap.Error(err))
-		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error())
+		s.recordLogin(ctx, nil, username, clientIP, userAgent, 0, err.Error(), deviceType)
 		return nil, err
 	}
 
 	if user.Status != 1 {
-		s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 0, "用户已被禁用")
+		s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 0, "用户已被禁用", deviceType)
 		return nil, common.NewBizError(common.USER_ACCOUNT_LOCKED, "用户已被禁用")
+	}
+
+	// 会员档案兜底：种子账号与后台创建的用户不走注册流程，登录时确保
+	// sys_member 行存在（否则计费配额校验 fail-closed 误报"配额不足"）
+	if err := s.memberService.EnsureMemberProfile(ctx, user.UserId); err != nil {
+		return nil, err
 	}
 
 	sessionID := uuid.New().String()
@@ -131,12 +146,16 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP,
 	authorities = append(authorities, user.Perms...)
 
 	sessionData := middleware.SessionData{
-		UserID:      user.UserId,
-		Username:    user.Username,
-		DeptID:      user.DeptId,
-		DataScope:   user.DataScope,
-		Authorities: authorities,
-		Nickname:    user.Nickname,
+		UserID:         user.UserId,
+		Username:       user.Username,
+		DeptID:         user.DeptId,
+		DataScope:      user.DataScope,
+		Authorities:    authorities,
+		Nickname:       user.Nickname,
+		DeviceType:     deviceType,
+		LoginIP:        clientIP,
+		LoginTime:      time.Now().Format("2006-01-02 15:04:05"),
+		LastAccessTime: time.Now().Format("2006-01-02 15:04:05"),
 	}
 
 	sessionJSON, err := json.Marshal(sessionData)
@@ -152,7 +171,23 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP,
 
 	cfg := config.GetConfig()
 	if cfg.System.UseMultiPoint {
-		if err := s.handleMultiPointSession(ctx, sessionID, user.Username); err != nil {
+		// 管理员（ROOT/ADMIN）不受等级权益约束，固定 10 台；普通用户取等级权益 max_devices
+		maxDevices := session.AdminMaxDevices
+		adminSession := false
+		for _, role := range user.Roles {
+			if role == "ROOT" || role == "ADMIN" {
+				adminSession = true
+				break
+			}
+		}
+		if !adminSession {
+			md, mdErr := s.memberService.GetMaxDevices(ctx, user.UserId)
+			if mdErr != nil {
+				return nil, mdErr
+			}
+			maxDevices = md
+		}
+		if err := session.RegisterSession(ctx, user.UserId, sessionID, maxDevices); err != nil {
 			return nil, err
 		}
 	}
@@ -163,7 +198,7 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP,
 		zap.String("username", username),
 		zap.String("clientIP", clientIP))
 
-	s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 1, "登录成功")
+	s.recordLogin(ctx, &user.UserId, username, clientIP, userAgent, 1, "登录成功", deviceType)
 
 	return &dto.LoginResult{
 		SessionID: sessionID,
@@ -183,8 +218,13 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 	username := strings.ToLower(strings.TrimSpace(req.Username))
 	nickname := strings.TrimSpace(req.Nickname)
 
-	if !s.VerifyCaptcha(ctx, req.CaptchaKey, req.CaptchaCode) {
-		return nil, common.NewBizError(common.VERIFY_CODE_ERROR, "验证码错误")
+	captchaOK, captchaExpired := s.VerifyCaptchaStatus(ctx, req.CaptchaKey, req.CaptchaCode)
+	if !captchaOK {
+		code, msg := common.VERIFY_CODE_ERROR, "验证码错误"
+		if captchaExpired {
+			code, msg = common.VERIFY_CODE_TIMEOUT, "验证码已过期"
+		}
+		return nil, common.NewBizError(code, msg)
 	}
 
 	// 通过 UserService 完成用户创建 + GUEST 角色分配，不在 auth 层直接操作用户表
@@ -221,6 +261,17 @@ func (s *AuthService) Register(ctx context.Context, req *bo.RegisterRequest, cli
 		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "创建Session失败", err)
 	}
 
+	// 注册签发的会话同样登记进设备数索引，否则该会话不占额度（与登录路径一致）
+	if config.GetConfig().System.UseMultiPoint {
+		maxDevices, mdErr := s.memberService.GetMaxDevices(ctx, user.ID)
+		if mdErr != nil {
+			return nil, mdErr
+		}
+		if err := session.RegisterSession(ctx, user.ID, sessionID, maxDevices); err != nil {
+			return nil, err
+		}
+	}
+
 	logger.Info("用户注册成功", zap.String("username", username))
 
 	return &dto.LoginResult{
@@ -239,13 +290,10 @@ func (s *AuthService) Logout(c *gin.Context) error {
 		if err := s.cacheClient.Delete(c.Request.Context(), common.SessionPrefix+sessionID); err != nil {
 			logger.Error("注销失败：删除Session失败", zap.Error(err))
 		}
-	}
-
-	if claims, err := security.GetClaims(c); err == nil && claims != nil {
-		username := claims.Subject
-		if username != "" {
-			if err := s.cacheClient.Delete(c.Request.Context(), common.SessionUserPrefix+username); err != nil {
-				logger.Warn("清理用户登录状态缓存失败", zap.String("username", username), zap.Error(err))
+		// 会话索引（session:user:{userId} ZSet）剔除本会话元素，其他端在线会话不受影响
+		if userID, err := security.RequireUserID(c); err == nil {
+			if rmErr := session.RemoveFromIndex(c.Request.Context(), userID, sessionID); rmErr != nil {
+				logger.Warn("注销清理会话索引失败", zap.Error(rmErr))
 			}
 		}
 	}
@@ -291,35 +339,23 @@ func (s *AuthService) GetCaptcha(ctx context.Context, clientIP string) (*dto.Cap
 	}, nil
 }
 
-func (s *AuthService) VerifyCaptcha(ctx context.Context, captchaKey, captchaCode string) bool {
-	if captchaKey == "" || captchaCode == "" {
-		return false
+// VerifyCaptchaStatus 校验验证码并消费（GETDEL 语义，杜绝并发重放）。
+// 返回 (是否通过, Key 是否不存在/已过期)：与 Python 端 verify_captcha_status 一致，
+// 用于区分 A0214（验证码错误）与 A0213（验证码已过期）。
+func (s *AuthService) VerifyCaptchaStatus(ctx context.Context, captchaKey, captchaCode string) (ok bool, expired bool) {
+	if captchaKey == "" {
+		return false, true
 	}
 
-	store := security.GetCaptchaStore()
-	return store.Verify(captchaKey, captchaCode, true)
+	stored := security.GetCaptchaStore().Get(captchaKey, true)
+	if stored == "" {
+		return false, true
+	}
+	return strings.EqualFold(stored, captchaCode), false
 }
 
 func (s *AuthService) GetAuthInfo(ctx context.Context, userID int64) (*vo.UserInfoVO, error) {
 	return s.userService.GetCurrentUserInfo(ctx, userID)
-}
-
-func (s *AuthService) handleMultiPointSession(ctx context.Context, newSessionID, username string) error {
-	oldSessionID, err := s.cacheClient.Get(ctx, common.SessionUserPrefix+username)
-	if err == nil && oldSessionID != "" {
-		if err := s.cacheClient.Delete(ctx, common.SessionPrefix+oldSessionID); err != nil {
-			logger.Warn("多端登录：删除旧Session失败", zap.String("username", username), zap.Error(err))
-		} else {
-			logger.Debug("多端登录：已删除旧Session", zap.String("username", username))
-		}
-	}
-
-	if err := s.cacheClient.Set(ctx, common.SessionUserPrefix+username, newSessionID, middleware.SessionTTL); err != nil {
-		logger.Error("存储用户登录状态失败", zap.Error(err))
-		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "设置登录状态失败", err)
-	}
-
-	return nil
 }
 
 func getLoginSecurityConfig() (failLimit int, lockTime time.Duration) {
@@ -398,4 +434,54 @@ func (s *AuthService) resetLoginFailCount(ctx context.Context, clientIP, usernam
 			logger.Warn("重置用户名登录失败次数失败", zap.String("username", username), zap.Error(err))
 		}
 	}
+}
+
+// normalizeDeviceType 设备类型归一化，与 Python 端 DEVICE_TYPES 对齐
+func normalizeDeviceType(deviceType string) string {
+	switch deviceType {
+	case "web", "android", "flutter", "miniprogram":
+		return deviceType
+	default:
+		return "web"
+	}
+}
+
+// ListLoginLogs 登录日志分页查询（q.UserIDs 非空时限定可见用户范围：普通用户仅本人）
+func (s *AuthService) ListLoginLogs(ctx context.Context, q *query.LoginLogQuery) (*vo.PageResult[vo.LoginLogVO], error) {
+	if s.loginLogService == nil {
+		return nil, common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "登录日志服务不可用")
+	}
+
+	logs, total, err := s.loginLogService.PageLogs(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]vo.LoginLogVO, 0, len(logs))
+	for _, item := range logs {
+		list = append(list, vo.LoginLogVO{
+			ID:         item.ID.Hex(),
+			UserID:     item.UserID,
+			Username:   item.Username,
+			IP:         item.IP,
+			Location:   item.Location,
+			Browser:    item.Browser,
+			OS:         item.OS,
+			DeviceType: item.DeviceType,
+			Status:     item.Status,
+			Message:    item.Message,
+			LoginTime:  item.CreateTime.Format("2006-01-02 15:04:05"),
+		})
+	}
+	return &vo.PageResult[vo.LoginLogVO]{List: list, Total: total}, nil
+}
+
+// ListSessions 在线会话列表（按用户名精确过滤）
+func (s *AuthService) ListSessions(ctx context.Context, username string) ([]session.SessionInfo, error) {
+	return session.ListByUsername(ctx, username)
+}
+
+// KickSession 踢出指定在线会话
+func (s *AuthService) KickSession(ctx context.Context, sessionID string) error {
+	return session.KickByID(ctx, sessionID)
 }

@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import re
 from urllib.parse import quote
 
@@ -11,7 +12,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import UserContext, get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
 from app.service.file_service import file_service
 from app.service.storage.factory import get_storage_by_name
@@ -26,8 +27,16 @@ router = APIRouter(
 )
 
 
-def _validate_file(file: UploadFile) -> None:
-    """校验上传文件，不合法时抛出 BusinessException"""
+def _ensure_file_access(file_info, user: UserContext) -> None:
+    """归属校验：管理员全量可见，普通用户仅可访问自己上传的文件（越权 B0407）"""
+    if user.is_admin:
+        return
+    if file_info.create_by != user.id:
+        raise BusinessException(ResultCode.FILE_ACCESS_DENIED, "无权访问该文件")
+
+
+def _validate_file(file: UploadFile) -> str:
+    """校验上传文件，不合法时抛出 BusinessException；返回校验通过的非空文件名"""
     if not file.filename:
         raise BusinessException(ResultCode.PARAM_ERROR, "请选择文件")
 
@@ -35,6 +44,7 @@ def _validate_file(file: UploadFile) -> None:
     if file.size and file.size > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
         raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
+    return file.filename
 
 
 def _build_file_url(file_info) -> str | None:
@@ -56,7 +66,7 @@ async def upload_file(
     modelId: int | None = Form(default=None, description="模型ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileUploadResultVO]:
-    _validate_file(file)
+    filename = _validate_file(file)
 
     content = await file.read()
 
@@ -66,7 +76,7 @@ async def upload_file(
 
     file_info = await file_service.upload_file(
         db=db,
-        filename=file.filename,
+        filename=filename,
         content=content,
         content_type=file.content_type or "application/octet-stream",
     )
@@ -131,8 +141,12 @@ async def get_file_page(
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     keywords: str | None = Query(default=None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ) -> Result[FilePageVO]:
-    items, total = await file_service.get_file_page(db, pageNum, pageSize, keywords)
+    # 普通用户仅可见自己上传的文件，管理员全量
+    items, total = await file_service.get_file_page(
+        db, pageNum, pageSize, keywords, owner_id=None if user.is_admin else user.id
+    )
 
     file_list = [
         FileVO(
@@ -161,6 +175,7 @@ async def get_file_page(
 async def download_file(
     object_name: str,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ):
     # 防止路径遍历攻击
     if ".." in object_name or object_name.startswith(("/", "\\")):
@@ -171,8 +186,10 @@ async def download_file(
     if not file_info:
         raise HTTPException(status_code=404, detail=ResultCode.FILE_NOT_FOUND.msg)
 
+    _ensure_file_access(file_info, user)
+
     # 按 storage 选后端流式读取（统一无分支，不再前缀判断 / 302 跳转）
-    # 构造 Content-Disposition（RFC 5987 编码中文文件名）
+    # 构造 Content-Disposition（RFC 5987 编码中文文件名），按扩展名推断 Content-Type（对齐 Java 端）
     filename = file_info.name
     ascii_filename = filename.encode("ascii", "ignore").decode("ascii") or "download"
     encoded_filename = quote(filename)
@@ -181,10 +198,11 @@ async def download_file(
     )
 
     headers = {"Content-Disposition": content_disposition}
+    media_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
     return StreamingResponse(
         file_service.download_file_stream(object_name, storage=file_info.storage),
-        media_type="application/octet-stream",
+        media_type=media_type,
         headers=headers,
     )
 
@@ -198,7 +216,13 @@ async def download_file(
 async def delete_file(
     fileId: int = Query(..., description="文件ID"),
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ) -> Result[None]:
+    file_info = await file_service.get_file_by_id(db, fileId)
+    if not file_info:
+        raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在")
+    _ensure_file_access(file_info, user)
+
     await file_service.delete_file_with_storage(db, fileId)
     return success(msg="文件删除成功")
 
@@ -212,12 +236,15 @@ async def delete_file(
 async def get_file_info(
     file_id: int,
     db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
 ) -> Result[FileVO]:
     file_info = await file_service.get_file_by_id(db, file_id)
 
     if not file_info:
         # T-FM-044：文件不存在返回 B0401"文件不存在"（对齐文档与 Java 端行为）
         raise BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在")
+
+    _ensure_file_access(file_info, user)
 
     return success(
         data=FileVO(

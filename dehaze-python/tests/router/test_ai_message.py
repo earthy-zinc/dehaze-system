@@ -6,14 +6,13 @@
 - 业务错误码透传（A0401/A0502）
 - 消息详情可观测性扩展字段（traceId/contextSnapshot/llmCalls）
 """
+
 import json
 from datetime import datetime
 
 import pytest
 from fastapi.responses import StreamingResponse
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -22,12 +21,14 @@ from app.dependencies.auth import get_current_user
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.main import app as fastapi_app
 from app.models.schema.ai_conversation import (
-    AiLlmCallResult,
     ConversationResult,
     MessageResult,
 )
 from app.service.ai_conversation_service import ai_conversation_service
 from app.service.ai_message_service import ai_message_service
+
+pytestmark = pytest.mark.api
+
 
 _IDEMPOTENT_PREFIX = "ai:msg:idempotent:"
 
@@ -132,7 +133,9 @@ class TestSendStream:
             return _sse_stream(
                 [
                     "event: message\ndata: " + json.dumps({"type": "start"}) + "\n\n",
-                    "event: message\ndata: " + json.dumps({"type": "text", "content": "你"}) + "\n\n",
+                    "event: message\ndata: "
+                    + json.dumps({"type": "text", "content": "你"})
+                    + "\n\n",
                     "event: message\ndata: " + json.dumps({"type": "done"}) + "\n\n",
                 ]
             )
@@ -218,14 +221,10 @@ class TestIdempotency:
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0002"
 
-    async def test_completed_key_reuses_original_message(
-        self, msg_client, monkeypatch, mock_redis
-    ):
+    async def test_completed_key_reuses_original_message(self, msg_client, monkeypatch, mock_redis):
         client, state = msg_client
         state["user"] = _FakeUser(id=8)
-        await mock_redis.set(
-            f"{_IDEMPOTENT_PREFIX}8:key-done", json.dumps({"messageId": 55})
-        )
+        await mock_redis.set(f"{_IDEMPOTENT_PREFIX}8:key-done", json.dumps({"messageId": 55}))
 
         async def _fake_conv(db, conv_id, user_id):
             return _FakeConv()
@@ -256,9 +255,7 @@ class TestIdempotency:
         """缓存消息的 create_time 为 datetime：重放须序列化为 ISO 串返回，不得吞掉 data"""
         client, state = msg_client
         state["user"] = _FakeUser(id=8)
-        await mock_redis.set(
-            f"{_IDEMPOTENT_PREFIX}8:key-done-time", json.dumps({"messageId": 56})
-        )
+        await mock_redis.set(f"{_IDEMPOTENT_PREFIX}8:key-done-time", json.dumps({"messageId": 56}))
 
         async def _fake_conv(db, conv_id, user_id):
             return _FakeConv()
@@ -326,7 +323,7 @@ class TestResumeAndStop:
 
         async def _fake_resume(db, msg_id, user_id, form):
             captured.update(msg_id=msg_id, user_id=user_id, confirm=form.confirm)
-            return _sse_stream(["event: message\ndata: {\"type\": \"done\"}\n\n"])
+            return _sse_stream(['event: message\ndata: {"type": "done"}\n\n'])
 
         monkeypatch.setattr(ai_conversation_service, "resume_message", _fake_resume)
         resp = await client.post("/api/v1/ai/messages/55/resume", json={"confirm": True})
@@ -380,7 +377,7 @@ class TestRegenerateAndEdit:
 
         async def _fake_regen(db, msg_id, user_id):
             captured.update(msg_id=msg_id, user_id=user_id)
-            return _sse_stream(["event: message\ndata: {\"type\": \"text\", \"content\": \"hi\"}\n\n"])
+            return _sse_stream(['event: message\ndata: {"type": "text", "content": "hi"}\n\n'])
 
         monkeypatch.setattr(ai_conversation_service, "regenerate_message", _fake_regen)
         resp = await client.post("/api/v1/ai/messages/55/regenerate")
@@ -406,7 +403,7 @@ class TestRegenerateAndEdit:
 
         async def _fake_edit(db, user_id, msg_id, form):
             captured.update(user_id=user_id, msg_id=msg_id, content=form.content)
-            return _sse_stream(["event: message\ndata: {\"type\": \"done\"}\n\n"])
+            return _sse_stream(['event: message\ndata: {"type": "done"}\n\n'])
 
         monkeypatch.setattr(ai_message_service, "edit_message", _fake_edit)
         resp = await client.put("/api/v1/ai/messages/54", json={"content": "改后的提问"})
@@ -481,35 +478,24 @@ class TestBranches:
 
 
 class TestMessageDetail:
-    async def test_detail_includes_observability_fields(self, msg_client, monkeypatch):
+    async def test_detail_includes_thoughts(self, msg_client, monkeypatch):
         client, state = msg_client
         state["user"] = _FakeUser(id=8)
         captured: dict = {}
-        call = AiLlmCallResult.model_validate(
-            {
-                "id": 1,
-                "trace_id": "tr-1",
-                "seq": 1,
-                "step_position": 2,
-                "model": "qwen3-0.6b",
-                "status": 1,
-                "duration_ms": 120,
-                "first_token_ms": 30,
-                "prompt_tokens": 10,
-                "completion_tokens": 20,
-                "cached_tokens": 5,
-            }
-        )
 
         async def _fake_detail(db, msg_id, user_id, admin=False):
             captured.update(msg_id=msg_id, user_id=user_id, admin=admin)
             payload = _message(id=msg_id).model_dump(by_alias=True)
             payload["thoughts"] = [
-                {"id": 7, "messageId": msg_id, "conversationId": 3, "position": 1, "status": 2, "latencyMs": 15}
+                {
+                    "id": 7,
+                    "messageId": msg_id,
+                    "conversationId": 3,
+                    "position": 1,
+                    "status": 2,
+                    "latencyMs": 15,
+                }
             ]
-            payload["traceId"] = "tr-1"
-            payload["contextSnapshot"] = {"steps": 2}
-            payload["llmCalls"] = [call.model_dump(by_alias=True)]
             return payload
 
         monkeypatch.setattr(ai_conversation_service, "get_message", _fake_detail)
@@ -517,26 +503,24 @@ class TestMessageDetail:
         assert resp.status_code == 200
         assert captured == {"msg_id": 55, "user_id": 8, "admin": False}
         data = resp.json()["data"]
-        assert data["traceId"] == "tr-1"
-        assert data["contextSnapshot"] == {"steps": 2}
-        assert data["llmCalls"][0]["traceId"] == "tr-1"
-        assert data["llmCalls"][0]["firstTokenMs"] == 30
         assert data["thoughts"][0]["position"] == 1
+        # 消息详情不再附带过程链扩展（可观测下钻走 /traces/{traceId} 与会话时间线）
+        assert "traceId" not in data
+        assert "contextSnapshot" not in data
+        assert "llmCalls" not in data
 
-    async def test_detail_without_trace_returns_empty_observability(self, msg_client, monkeypatch):
+    async def test_detail_without_thoughts(self, msg_client, monkeypatch):
         client, _ = msg_client
 
         async def _fake_detail(db, msg_id, user_id, admin=False):
             payload = _message(id=msg_id).model_dump(by_alias=True)
-            payload.update(thoughts=[], traceId=None, contextSnapshot=None, llmCalls=[])
+            payload["thoughts"] = []
             return payload
 
         monkeypatch.setattr(ai_conversation_service, "get_message", _fake_detail)
         resp = await client.get("/api/v1/ai/messages/55")
         assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data.get("traceId") is None
-        assert data.get("llmCalls") == []
+        assert resp.json()["data"]["thoughts"] == []
 
     async def test_detail_not_found_maps_a0401(self, msg_client, monkeypatch):
         client, _ = msg_client
@@ -592,7 +576,7 @@ class TestReconnect:
             captured.update(stream_session_id=stream_session_id, last_event_id=last_event_id)
 
             async def _gen():
-                yield "event: message\ndata: {\"type\": \"done\"}\n\n"
+                yield 'event: message\ndata: {"type": "done"}\n\n'
 
             return _gen()
 
@@ -624,43 +608,74 @@ class TestReconnect:
 
 
 class TestMessageList:
-    async def test_list_messages_forwards_paging(self, msg_client, monkeypatch):
+    async def test_list_messages_forwards_cursor(self, msg_client, monkeypatch):
         client, state = msg_client
         state["user"] = _FakeUser(id=8)
         captured: dict = {}
 
-        async def _fake_list(db, conv_id, user_id, page, size, admin=False):
-            captured.update(conv_id=conv_id, user_id=user_id, page=page, size=size, admin=admin)
-            from app.models.schema.common import PageResult
+        async def _fake_list(db, conv_id, user_id, before, limit, admin=False):
+            captured.update(
+                conv_id=conv_id, user_id=user_id, before=before, limit=limit, admin=admin
+            )
+            from app.models.schema.ai_conversation import MessageListResult
 
-            return PageResult(list=[_message()], total=1)
+            return MessageListResult(list=[_message()], total=1, hasMore=True)
 
         monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)
         resp = await client.get(
-            "/api/v1/ai/conversations/3/messages", params={"pageNum": 2, "pageSize": 5}
+            "/api/v1/ai/conversations/3/messages", params={"before": 42, "limit": 5}
         )
         assert resp.status_code == 200
-        assert captured == {"conv_id": 3, "user_id": 8, "page": 2, "size": 5, "admin": False}
-        assert resp.json()["data"]["list"][0]["id"] == 55
+        assert captured == {"conv_id": 3, "user_id": 8, "before": 42, "limit": 5, "admin": False}
+        body = resp.json()["data"]
+        assert body["list"][0]["id"] == 55
+        assert body["total"] == 1
+        assert body["hasMore"] is True
+
+    async def test_list_messages_default_limit(self, msg_client, monkeypatch):
+        client, state = msg_client
+        state["user"] = _FakeUser(id=8)
+        captured: dict = {}
+
+        async def _fake_list(db, conv_id, user_id, before, limit, admin=False):
+            captured.update(before=before, limit=limit)
+            from app.models.schema.ai_conversation import MessageListResult
+
+            return MessageListResult(list=[], total=0, hasMore=False)
+
+        monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)
+        resp = await client.get("/api/v1/ai/conversations/3/messages")
+        assert resp.status_code == 200
+        assert captured == {"before": None, "limit": 50}
+
+    @pytest.mark.parametrize("limit", [0, 101])
+    async def test_list_messages_limit_out_of_range_maps_a0400(self, msg_client, limit):
+        client, state = msg_client
+        state["user"] = _FakeUser(id=8)
+        resp = await client.get("/api/v1/ai/conversations/3/messages", params={"limit": limit})
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0400"
 
     async def test_list_messages_view_admin_forwards_admin_flag(self, msg_client, monkeypatch):
         client, state = msg_client
         state["user"] = _FakeUser(id=8, permissions=["ai:conversation:audit"])
         captured: dict = {}
 
-        async def _fake_list(db, conv_id, user_id, page, size, admin=False):
-            captured.update(conv_id=conv_id, user_id=user_id, page=page, size=size, admin=admin)
-            from app.models.schema.common import PageResult
+        async def _fake_list(db, conv_id, user_id, before, limit, admin=False):
+            captured.update(
+                conv_id=conv_id, user_id=user_id, before=before, limit=limit, admin=admin
+            )
+            from app.models.schema.ai_conversation import MessageListResult
 
-            return PageResult(list=[_message()], total=1)
+            return MessageListResult(list=[_message()], total=1, hasMore=False)
 
         monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)
         resp = await client.get(
             "/api/v1/ai/conversations/3/messages",
-            params={"pageNum": 1, "pageSize": 10, "view": "admin"},
+            params={"before": 10, "limit": 10, "view": "admin"},
         )
         assert resp.status_code == 200
-        assert captured == {"conv_id": 3, "user_id": 8, "page": 1, "size": 10, "admin": True}
+        assert captured == {"conv_id": 3, "user_id": 8, "before": 10, "limit": 10, "admin": True}
 
     async def test_list_messages_view_admin_requires_permission(self, msg_client, monkeypatch):
         client, state = msg_client
@@ -668,7 +683,7 @@ class TestMessageList:
 
         resp = await client.get(
             "/api/v1/ai/conversations/3/messages",
-            params={"pageNum": 1, "pageSize": 10, "view": "admin"},
+            params={"view": "admin"},
         )
         assert resp.status_code == 403
         assert resp.json()["code"] == "A0301"

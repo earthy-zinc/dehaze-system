@@ -6,12 +6,9 @@ from pydantic import BaseModel, Field
 
 
 class CompareReportForm(BaseModel):
-    """对比报告生成请求"""
+    """对比报告生成请求（格式固定为 HTML，无其他可选项）"""
 
     logId: int = Field(description="处理日志ID（sys_pred_log.id）")
-    format: str = Field(description="报告格式：pdf 或 image")
-    includeMetrics: bool | None = Field(default=None, description="是否包含评估指标")
-    includeFilters: bool | None = Field(default=None, description="是否包含滤镜参数")
 
 
 class CompareReportResultVO(BaseModel):

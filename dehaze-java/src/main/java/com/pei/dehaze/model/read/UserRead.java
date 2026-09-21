@@ -55,6 +55,11 @@ public class UserRead {
     private Integer status;
 
     /**
+     * 用户类型(personal:个人;enterprise:企业)
+     */
+    private String userType;
+
+    /**
      * 部门名称
      */
     private String deptName;

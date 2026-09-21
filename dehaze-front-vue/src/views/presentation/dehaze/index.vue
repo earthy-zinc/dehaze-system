@@ -9,7 +9,7 @@ import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useAlgorithmStore } from "@/store";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import examples from "@/views/presentation/dehaze/exampleImages";
-import { FileAPI, ModelAPI, PredictionQuota } from "dehaze-sdk-js";
+import { FileAPI, ImageInputHistoryAPI, ModelAPI } from "dehaze-sdk-js";
 import { UploadFile, UploadUserFile } from "element-plus";
 
 const algorithmStore = useAlgorithmStore();
@@ -29,6 +29,10 @@ const selectedModel = ref<number>();
 type PageName =
   "camera" | "singleImage" | "example" | "overlap" | "loading" | "batch";
 const activePage = ref<PageName>("example");
+
+// 最近一次图像来源（处理成功后回写云端历史用）
+type InputSource = "upload" | "camera" | "sample";
+let lastInputSource: InputSource | undefined;
 
 const disableMore = computed(() => activePage.value !== "overlap");
 
@@ -87,14 +91,15 @@ function stopProgressSimulation() {
 
 function handleCameraSave(file: File) {
   // 上传文件
-  handleImageUpload(file);
+  handleImageUpload(file, "camera");
 }
 
 function handleSelectModel(id: number) {
   imageShowStore.modelId = id;
 }
 
-function handleImageUpload(file: File) {
+function handleImageUpload(file: File, source: InputSource = "upload") {
+  lastInputSource = source;
   imageShowStore.loading = true;
   // 上传文件
   FileAPI.upload(file, imageShowStore.modelId)
@@ -103,9 +108,7 @@ function handleImageUpload(file: File) {
       imageShowStore.setImageUrl(res.url, ImageTypeEnum.HAZE);
       activePage.value = "singleImage";
     })
-    .catch((err) => {
-      ElMessage.error(err.message || "图片上传失败");
-    })
+    .catch(() => {})
     .finally(() => {
       imageShowStore.loading = false;
     });
@@ -220,13 +223,25 @@ async function handleGenerateImage() {
       stopProgressSimulation();
       imageShowStore.setImageUrl(imgUrl, ImageTypeEnum.HAZE);
       imageShowStore.setImageUrl(res.resultUrl || "", ImageTypeEnum.PRED);
+      imageShowStore.predLogId = res.logId || 0;
+      // 回写云端历史（F-M04-007），失败不阻断处理主流程
+      ImageInputHistoryAPI.create({
+        originalImageUrl: imgUrl,
+        resultImageUrl: res.resultUrl,
+        algorithmId: modelId,
+        algorithmName: modelName,
+        algorithmParams: dehazeParams.value
+          ? JSON.stringify(dehazeParams.value)
+          : undefined,
+        processingTime: res.time,
+        status: 1,
+        inputSource: lastInputSource,
+      }).catch(() => {});
       if (cleanUrl.value) {
         try {
           const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
           cleanUrl.value = cleanRes;
-        } catch (e: any) {
-          ElMessage.error("清晰图上传失败：" + (e.message || "未知错误"));
-        }
+        } catch {}
       }
       progress.value = 100;
       activePage.value = "overlap";
@@ -236,7 +251,6 @@ async function handleGenerateImage() {
       showRetryPanel.value = true;
       retryCountdown.value = 3;
       startRetryCountdown();
-      ElMessage.error(err.message || "去雾处理失败，请在下方重试");
       activePage.value = "singleImage";
     })
     .finally(() => {
@@ -303,7 +317,10 @@ async function handleSaveResult() {
     await FileAPI.upload(file, selectedModel.value);
     ElMessage.success("结果保存成功");
   } catch (e: any) {
-    ElMessage.error("保存失败：" + (e.message || "未知错误"));
+    // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底原生 fetch 抛出的本地错误
+    if (!e.isAxiosError) {
+      ElMessage.error("保存失败：" + (e.message || "未知错误"));
+    }
   } finally {
     saving.value = false;
   }
@@ -318,6 +335,7 @@ interface BatchTask {
   progress: number;
   hazeUrl: string;
   resultUrl: string;
+  logId: number;
   errorMsg: string;
 }
 const batchTasks = ref<BatchTask[]>([]);
@@ -354,6 +372,7 @@ function handleConfirmBatchAdd() {
       progress: 0,
       hazeUrl: "",
       resultUrl: "",
+      logId: 0,
       errorMsg: "",
     });
   });
@@ -397,6 +416,7 @@ async function handleStartBatch() {
         throw new Error(predRes.errorMessage || "处理失败");
       }
       task.resultUrl = predRes.resultUrl || "";
+      task.logId = predRes.logId || 0;
       task.progress = 100;
       task.status = "success";
     } catch (e: any) {
@@ -460,31 +480,26 @@ function handleClearBatch() {
   batchTasks.value = [];
 }
 
+const statusOptions: { label: string; value: string; color: string }[] = [
+  { label: "等待中", value: "pending", color: "#1890ff" },
+  { label: "处理中", value: "processing", color: "#1890ff" },
+  { label: "已完成", value: "success", color: "#52c41a" },
+  { label: "已失败", value: "failed", color: "#ff4d4f" },
+  { label: "已取消", value: "cancelled", color: "#8c8c8c" },
+];
+
 function statusTagColor(status: string): string {
-  const map: Record<string, string> = {
-    pending: "#1890ff",
-    processing: "#1890ff",
-    success: "#52c41a",
-    failed: "#ff4d4f",
-    cancelled: "#8c8c8c",
-  };
-  return map[status];
+  return statusOptions.find((o) => o.value === status)!.color;
 }
 
 function statusText(status: string) {
-  const map: Record<string, string> = {
-    pending: "等待中",
-    processing: "处理中",
-    success: "已完成",
-    failed: "已失败",
-    cancelled: "已取消",
-  };
-  return map[status];
+  return statusOptions.find((o) => o.value === status)!.label;
 }
 
 function handleExampleImageClick(url: string) {
   const matched = examples.find((item) => item.haze === url);
   if (!matched) return;
+  lastInputSource = "sample";
   imageShowStore.setImageUrl(url, ImageTypeEnum.HAZE);
   cleanUrl.value = matched.clean;
   activePage.value = "singleImage";
@@ -496,6 +511,7 @@ async function getAlgorithmList() {
 }
 
 function handleDatasetImageSelect(haze: string, clear: string) {
+  lastInputSource = undefined;
   imageShowStore.setImageUrl(haze, ImageTypeEnum.HAZE);
   cleanUrl.value = clear;
   dialogVisible.value = false;

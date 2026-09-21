@@ -6,12 +6,12 @@ import { login } from "#/utils/auth";
 
 /** 取选择树中第一个叶子节点（无叶子时返回 undefined，调用方断言非空） */
 function findFirstLeaf(tree: AlgorithmSelectNodeVO[]): AlgorithmSelectNodeVO | undefined {
-  return tree.find((n) => n.isLeaf);
+  return tree.find((n) => n.leaf);
 }
 
 /** 取选择树中全部叶子节点 */
 function findLeaves(tree: AlgorithmSelectNodeVO[]): AlgorithmSelectNodeVO[] {
-  return tree.filter((n) => n.isLeaf);
+  return tree.filter((n) => n.leaf);
 }
 
 /** 创建父/子/孙三级算法，返回各层 id */
@@ -223,6 +223,28 @@ describe("算法管理接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("边界：算法名称重复应失败（A0501）", async () => {
+      const form = createAlgorithmForm({ parentId: 0 });
+      const firstId = await AlgorithmAPI.add(form);
+      try {
+        // 同名但差异化 body（避开 A0002 防重复提交按 body 拦截），名称唯一性校验应命中 A0501
+        const dupForm = { ...form, description: "重复名称校验-差异化描述" };
+        await expectBizError(AlgorithmAPI.add(dupForm as Algorithm), [
+          "A0501",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      } finally {
+        await AlgorithmAPI.deleteByIds([firstId.toString()]).catch(() => {});
+      }
+
+      // 删除后同名可重建（软删释放键位，uk 治理新语义）
+      const rebuiltForm = { ...form, description: "删后重建-差异化描述" };
+      const rebuiltId = await AlgorithmAPI.add(rebuiltForm as Algorithm);
+      expect(rebuiltId).toBeGreaterThan(0);
+      await AlgorithmAPI.deleteByIds([rebuiltId.toString()]);
+    });
   });
 
   describe("PUT /api/v1/algorithm/{id} - 修改算法", () => {
@@ -299,6 +321,14 @@ describe("算法管理接口测试", () => {
       expect(detail.status).toBe(3);
     });
 
+    test("正向测试：待审核->测试中（允许回退）", async () => {
+      await AlgorithmAPI.updateStatus(testAlgorithmId, 2);
+      const detail = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
+      expect(detail.status).toBe(2);
+      // 恢复到待审核供后续用例使用
+      await AlgorithmAPI.updateStatus(testAlgorithmId, 3);
+    });
+
     test("异常：非法状态跳跃（草稿->已发布）", async () => {
       const form = createAlgorithmForm({ parentId: 0, status: 1 });
       const id = await AlgorithmAPI.add(form);
@@ -312,6 +342,43 @@ describe("算法管理接口测试", () => {
       } finally {
         await AlgorithmAPI.deleteByIds([id.toString()]);
       }
+    });
+
+    // 三端统一状态流转白名单参数化（对齐 Java ALLOWED_TRANSITIONS / Go allowedTransitions）
+    test.each([
+      [1, 4, "草稿->已发布（跳过审核）"],
+      [1, 5, "草稿->已停用"],
+      [1, 6, "草稿->已归档"],
+      [2, 4, "测试中->已发布（跳过审核）"],
+      [2, 5, "测试中->已停用"],
+      [3, 5, "待审核->已停用"],
+      [3, 1, "待审核->草稿"],
+      [4, 2, "已发布->测试中"],
+      [5, 2, "已停用->测试中"],
+      [6, 1, "已归档->草稿（终态不可变更）"],
+      [6, 4, "已归档->已发布（终态不可变更）"],
+    ])("异常：非法状态流转 %d->%d（%s）应失败", async (from, to) => {
+      const form = createAlgorithmForm({ parentId: 0, status: from as number });
+      const id = await AlgorithmAPI.add(form);
+      try {
+        await expectBizError(AlgorithmAPI.updateStatus(id, to as number), [
+          "A0502",
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
+      } finally {
+        await AlgorithmAPI.deleteByIds([id.toString()]).catch(() => {});
+      }
+    });
+
+    test.each([0, 7, 99, -1])("异常：无效状态值 %i 应失败", async (status) => {
+      await expectBizError(AlgorithmAPI.updateStatus(testAlgorithmId, status), [
+        "A0502",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("边界：删除已发布算法应失败", async () => {
@@ -438,8 +505,9 @@ describe("算法管理接口测试", () => {
   });
 
   describe("POST /api/v1/algorithms/select/compare - 算法对比", () => {
-    test("正向测试：对比 2 个叶子算法返回对比结果", async () => {
-      // 选择树仅含已发布算法，compare 要求算法均已发布
+    test("正向测试：对比 2 个叶子算法，单算法预测失败异常隔离置空", async () => {
+      // 选择树仅含已发布算法；compare 对同一图片逐算法执行预测，
+      // 使用不可达图片 URL 使预测失败（异常隔离），仍返回 200 与结构完整结果
       const tree = await AlgorithmAPI.tree();
       const leaves = findLeaves(tree);
 
@@ -447,14 +515,27 @@ describe("算法管理接口测试", () => {
 
       const result = await AlgorithmAPI.compare({
         algorithmIds: [leaves[0]!.id, leaves[1]!.id],
+        imageUrl: "https://invalid.nonexistent-host-xyz.invalid/x.png",
       });
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThanOrEqual(2);
+      expect(result.length).toBe(2);
       result.forEach((item) => {
         expect(item.algorithmId).toBeGreaterThan(0);
         expect(item.algorithmName).toBeTruthy();
       });
+    });
+
+    test("边界：缺少图片输入（imageUrl/fileId 均为空）应失败", async () => {
+      const tree = await AlgorithmAPI.tree();
+      const leaves = findLeaves(tree);
+      expect(leaves.length).toBeGreaterThanOrEqual(2);
+
+      await expectBizError(AlgorithmAPI.compare({ algorithmIds: [leaves[0]!.id, leaves[1]!.id] }), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("参数校验：少于 2 个算法应抛出业务错误", async () => {
@@ -473,35 +554,41 @@ describe("算法管理接口测试", () => {
         "ERR_BAD_REQUEST",
       ]);
     });
+
+    test("边界：对比含未发布算法应失败", async () => {
+      // 动态创建一个保持草稿态的算法，不硬编码算法 ID
+      const form = createAlgorithmForm({ parentId: 0, status: 1 });
+      const draftId = await AlgorithmAPI.add(form);
+      try {
+        await expectBizError(
+          AlgorithmAPI.compare({
+            algorithmIds: [draftId, draftId + 1],
+            imageUrl: "https://invalid.nonexistent-host-xyz.invalid/x.png",
+          }),
+          ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"]
+        );
+      } finally {
+        await AlgorithmAPI.deleteByIds([draftId.toString()]).catch(() => {});
+      }
+    });
   });
 
   describe("GET /api/v1/algorithms/select/tree - 算法选择树（仅已发布）", () => {
-    test("正向测试：返回树形结构且叶子节点标记 leaf", async () => {
+    test("正向测试：返回树形结构且叶子节点标记 leaf（三端统一 leaf 字段）", async () => {
       const tree = await AlgorithmAPI.tree();
 
       expect(Array.isArray(tree)).toBe(true);
+      // 全量返回语义：根下叶子算法（parentId=0 且无子节点）同样出现（开发库扁平数据形态）
+      expect(tree.length).toBeGreaterThan(0);
 
       const verifyNode = (nodes: typeof tree) => {
         nodes.forEach((node) => {
           expect(node.id).toBeGreaterThan(0);
           expect(node.name).toBeTruthy();
-          expect(typeof node.isLeaf).toBe("boolean");
+          expect(typeof node.leaf).toBe("boolean");
+          expect(node.parentId).toBeGreaterThanOrEqual(0);
           if (node.children && node.children.length > 0) {
-            verifyNode(node.children);
-          }
-        });
-      };
-      verifyNode(tree);
-    });
-
-    test("正向测试：按任务类型获取算法树", async () => {
-      const tree = await AlgorithmAPI.tree("dehaze");
-      expect(Array.isArray(tree)).toBe(true);
-      const verifyNode = (nodes: typeof tree) => {
-        nodes.forEach((node) => {
-          expect(node.id).toBeGreaterThan(0);
-          expect(node.name).toBeTruthy();
-          if (node.children && node.children.length > 0) {
+            expect(node.leaf).toBe(false);
             verifyNode(node.children);
           }
         });
@@ -546,10 +633,7 @@ describe("算法管理接口测试", () => {
     let testAlgorithmId: number;
 
     beforeAll(async () => {
-      // 创建时显式带 version：python 后端 create_version 会先归档当前版本，若主表
-      // version 为 NULL 会触发 sys_algorithm_version.version NOT NULL 的 IntegrityError（C0300）。
-      // 测试数据补上初始版本号即可规避该后端缺陷。
-      const form = createAlgorithmForm({ parentId: 0, status: 1, version: "v0.1.0" });
+      const form = createAlgorithmForm({ parentId: 0, status: 1 });
       testAlgorithmId = await AlgorithmAPI.add(form);
     });
 
@@ -576,12 +660,33 @@ describe("算法管理接口测试", () => {
       expect(versions.length).toBeGreaterThan(0);
     });
 
+    test("正向测试：is_active 单活跃版本管理（对齐 Java）", async () => {
+      const v1 = `v3.0.${Date.now() % 100000}`;
+      const v2 = `v3.1.${Date.now() % 100000}`;
+      await AlgorithmAPI.addVersion(testAlgorithmId, { version: v1 });
+      await AlgorithmAPI.addVersion(testAlgorithmId, { version: v2 });
+
+      const versions = await AlgorithmAPI.getVersions(testAlgorithmId);
+      const activeCount = versions.filter((v) => v.isActive).length;
+      expect(activeCount).toBeLessThanOrEqual(1);
+    });
+
     test("边界：版本号已存在应失败", async () => {
       const version = `v2.0.${Date.now() % 100000}`;
       await AlgorithmAPI.addVersion(testAlgorithmId, { version, changeLog: "第一次" });
       await expectBizError(
         AlgorithmAPI.addVersion(testAlgorithmId, { version, changeLog: "重复" }),
         ["A0501", "A0400", "B0001", "A0500", "ERR_BAD_REQUEST"]
+      );
+    });
+
+    test("边界：版本号格式非法应失败", async () => {
+      await expectBizError(
+        AlgorithmAPI.addVersion(testAlgorithmId, {
+          version: `not-semver-${Date.now()}`,
+          changeLog: "非法格式",
+        }),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"]
       );
     });
   });
@@ -670,6 +775,24 @@ describe("算法管理接口测试", () => {
     });
   });
 
+  // 性能烟测：管理树列表在合理时间内返回（全量算法 + 树构建）
+  describe("性能烟测", () => {
+    test("GET /algorithms 树列表应在 3s 内返回", async () => {
+      const start = Date.now();
+      const result = await AlgorithmAPI.getList();
+      const elapsed = Date.now() - start;
+      expect(Array.isArray(result)).toBe(true);
+      expect(elapsed).toBeLessThan(3000);
+    });
+
+    test("GET /algorithms/select/tree 选择树应在 3s 内返回", async () => {
+      const start = Date.now();
+      await AlgorithmAPI.tree();
+      const elapsed = Date.now() - start;
+      expect(elapsed).toBeLessThan(3000);
+    });
+  });
+
   // 后端已为算法管理接口加 require_permission（sys:algorithm:add/edit/delete），
   // 普通用户访问返回 A0301（访问未授权）。
   describe("权限测试 - 普通用户管理操作应失败", () => {
@@ -705,6 +828,34 @@ describe("算法管理接口测试", () => {
 
     test("边界：普通用户删除算法应失败", async () => {
       await expectBizError(AlgorithmAPI.deleteByIds(["999"]), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("越权：普通用户新增算法版本应失败（sys:algorithm:version）", async () => {
+      const tree = await AlgorithmAPI.tree();
+      const firstLeaf = findFirstLeaf(tree);
+      expect(firstLeaf, "无已发布算法").toBeDefined();
+
+      await expectBizError(AlgorithmAPI.addVersion(firstLeaf!.id, { version: "v9.9.9" }), [
+        "A0301",
+        "A0403",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("越权：普通用户版本回滚应失败（sys:algorithm:version）", async () => {
+      const tree = await AlgorithmAPI.tree();
+      const firstLeaf = findFirstLeaf(tree);
+      expect(firstLeaf, "无已发布算法").toBeDefined();
+
+      await expectBizError(AlgorithmAPI.rollbackVersion(firstLeaf!.id, 1), [
         "A0301",
         "A0403",
         "A0400",

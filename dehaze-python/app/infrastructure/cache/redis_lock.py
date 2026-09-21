@@ -4,6 +4,7 @@
 Redis 不可用时通过 redis_operation_with_fallback 降级（不阻塞业务主流程）。
 """
 
+import inspect
 import logging
 import secrets
 from collections.abc import AsyncGenerator
@@ -48,7 +49,10 @@ async def release_lock(key: str, token: str) -> bool:
 
     async def _release():
         redis = await get_redis_client()
-        result = await redis.eval(_RELEASE_LUA, 1, key, token)
+        # redis-py 同步/异步共用签名把 eval 标注为 Union[Awaitable[str], str]，
+        # 异步客户端实际返回 awaitable，故按返回值是否为 awaitable 决定是否 await
+        eval_result = redis.eval(_RELEASE_LUA, 1, key, token)
+        result = await eval_result if inspect.isawaitable(eval_result) else eval_result
         return bool(result)
 
     result = await redis_operation_with_fallback(

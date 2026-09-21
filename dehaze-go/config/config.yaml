@@ -220,7 +220,7 @@ algorithm:
   serviceUrl: "http://127.0.0.1:8991" # Python 算法服务地址
   timeout: 120 # 请求超时（秒）
   connectTimeout: 5 # 连接超时（秒）
-  apiKey: "dhak_m2m_internal_python_service_key_2024" # 服务间调用 API Key（M2M 认证）
+  apiKey: "${M2M_API_KEY}" # 服务间调用 API Key（M2M 认证，由根 .env 注入）
   # 重试配置（指数退避）
   maxRetry: 3 # 最大重试次数（0 表示不重试）
   retryBackoffMs: 1000 # 重试初始退避（毫秒），指数增长
@@ -230,6 +230,13 @@ algorithm:
     failureThreshold: 5 # 失败次数阈值，达到后熔断
     timeout: 30 # 熔断超时（秒），超时后进入半开状态
     maxRequests: 3 # 半开状态下允许的最大请求数
+
+# AI 域转发配置（B 类端点：强依赖 deepagents/LLM/ES，行为唯一实现在 dehaze-python）
+ai:
+  serviceUrl: "http://127.0.0.1:8991" # Python 服务地址
+  timeout: 120 # JSON 转发总超时（秒）
+  streamTimeout: 300 # 流式转发空闲读超时（秒）
+  connectTimeout: 5 # 连接超时（秒）
 
 rabbitmq:
   enabled: true
@@ -241,6 +248,12 @@ rabbitmq:
 mongo:
   uri: "mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze?authSource=admin"
   database: "dehaze"
+
+# Elasticsearch（记忆向量文档清理，与 python/java 共用根 .env 的 ES_* 变量）
+es:
+  url: "${ES_URL}"
+  username: "${ES_USERNAME}"
+  password: "${ES_PASSWORD}"
 
 file:
   type: minio # 默认存储后端：minio/local/nginx-static

@@ -50,7 +50,10 @@ class SysKnowledgeBase(BaseModel, SoftDeleteMixin):
         comment="检索策略(vector:纯向量;keyword:纯关键词BM25;hybrid:混合检索)",
     )
     hybrid_weight: Mapped[float] = mapped_column(
-        Numeric(3, 2), nullable=False, default=0.70, comment="混合检索中向量权重(0-1，剩余为关键词权重)"
+        Numeric(3, 2),
+        nullable=False,
+        default=0.70,
+        comment="混合检索中向量权重(0-1，剩余为关键词权重)",
     )
     top_k: Mapped[int] = mapped_column(
         Integer, nullable=False, default=5, comment="默认检索Top-K数"
@@ -59,7 +62,10 @@ class SysKnowledgeBase(BaseModel, SoftDeleteMixin):
         Numeric(4, 3), nullable=False, default=0.500, comment="相似度阈值(低于此分数的结果不返回)"
     )
     enable_rerank: Mapped[int] = mapped_column(
-        SmallInteger, nullable=False, default=0, comment="是否启用重排序(0:否;1:是,需额外Rerank模型)"
+        SmallInteger,
+        nullable=False,
+        default=0,
+        comment="是否启用重排序(0:否;1:是,需额外Rerank模型)",
     )
     rerank_model: Mapped[str | None] = mapped_column(
         String(64), nullable=True, comment="重排序模型标识(bge-reranker-v2-m3等)"

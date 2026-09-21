@@ -11,6 +11,7 @@ offline / register_hotwords），内部切换为本地引擎调用：
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 
 from app.config import settings
 from app.infrastructure.voice import funasr_engine
@@ -59,7 +60,7 @@ class FunASRStreamSession:
             self._text_parts.append(text)
         await self._queue.put({"text": "".join(self._text_parts), "is_final": final})
 
-    async def recv_messages(self) -> "asyncio.AsyncIterator[str]":
+    async def recv_messages(self) -> "AsyncIterator[str]":
         """迭代接收识别结果 JSON（收到最终结果后结束）"""
         while True:
             msg = await self._queue.get()

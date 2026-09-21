@@ -67,7 +67,7 @@ class LocalStorageService(StorageService):
         file_path = self._resolve_path(bucket, object_name)
         if not file_path.exists():
             raise FileNotFoundError(f"文件不存在: {object_name}")
-        with open(file_path, "rb") as f:
+        with file_path.open("rb") as f:
             while True:
                 chunk = f.read(chunk_size)
                 if not chunk:
@@ -93,7 +93,7 @@ class LocalStorageService(StorageService):
         bucket_path = self._base_path / bucket
         bucket_path.mkdir(parents=True, exist_ok=True)
 
-    def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
+    def list_objects(self, bucket: str, prefix: str = "") -> list[tuple[str, float]]:
         bucket_path = self._base_path / bucket
         if not bucket_path.exists():
             return []
@@ -107,5 +107,5 @@ class LocalStorageService(StorageService):
             for f in files:
                 full = Path(root) / f
                 relative = full.relative_to(bucket_path)
-                results.append(str(relative))
+                results.append((str(relative), full.stat().st_mtime))
         return results

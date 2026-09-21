@@ -17,8 +17,8 @@ from typing import Any
 
 import httpx
 
-from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.infrastructure.a2a.a2a_protocol import JsonRpcRequest, Task
+from app.models.entity.sys_ai_agent_endpoint import SysAiAgentEndpoint
 from app.utils.ssrf import is_safe_url
 
 logger = logging.getLogger(__name__)

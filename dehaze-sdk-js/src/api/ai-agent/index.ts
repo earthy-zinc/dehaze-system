@@ -1,6 +1,7 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 import type {
+  AgentConfigDefaults,
   AgentCopyForm,
   AgentCreateForm,
   AgentDetail,
@@ -23,8 +24,11 @@ import type {
   EvalDatasetCreateForm,
   EvalDatasetResult,
   EvalDatasetUpdateForm,
+  EvalRunGateResult,
   EvalRunQuery,
   EvalRunResult,
+  EvalRunTaskAck,
+  EvalRunTaskResult,
   EvalSampleCreateForm,
   EvalSampleResult,
   EvalSampleUpdateForm,
@@ -62,6 +66,14 @@ class AiAgentAPI {
   static listEnabled() {
     return request<AgentListItem[]>({
       url: "/api/v1/ai/agents/enabled",
+      method: "get",
+    });
+  }
+
+  /** 推理参数系统默认值（登录即可读，供 Agent 配置表单提示"空值继承的系统默认"） */
+  static getConfigDefaults() {
+    return request<AgentConfigDefaults>({
+      url: "/api/v1/ai/agents/config-defaults",
       method: "get",
     });
   }
@@ -176,8 +188,8 @@ class AiAgentAPI {
     return request<VersionResult>({
       url: `/api/v1/ai/agents/${id}/publish`,
       method: "post",
-      // 后端 AgentPublishForm 为纯 BaseModel，wire 字段为 change_note
-      data: { change_note: data.changeNote ?? "" },
+      // 后端 AgentPublishForm 为纯 BaseModel，wire 字段为 change_note/force
+      data: { change_note: data.changeNote ?? "", force: data.force ?? false },
     });
   }
 
@@ -309,11 +321,19 @@ class AiAgentAPI {
     });
   }
 
-  /** 手动触发评测（回归集，管理端） */
-  static runEval(agentId: number) {
-    return request<Record<string, unknown>>({
+  /** 手动触发评测（回归集，管理端，异步执行，立即返回任务 ID，进度查 getEvalTask） */
+  static runEvalAsync(agentId: number) {
+    return request<EvalRunTaskAck>({
       url: `/api/v1/ai/agents/${agentId}/eval/runs`,
       method: "post",
+    });
+  }
+
+  /** 查询评测任务进度（管理端，完成后返回门禁判定结果） */
+  static getEvalTask(agentId: number, taskId: string) {
+    return request<EvalRunTaskResult>({
+      url: `/api/v1/ai/agents/${agentId}/eval/tasks/${taskId}`,
+      method: "get",
     });
   }
 

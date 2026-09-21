@@ -4,9 +4,9 @@ package options
 // file.type 为默认存储后端标识（上传时使用）；各后端 baseUrl 必须是完整 URL（带 scheme+host），
 // URL 运行时拼接为 storage.baseUrl + "/" + object_name，不落库。
 type File struct {
-	Type    string             `mapstructure:"type" json:"type" yaml:"type"` // 默认存储后端：minio/local/nginx-static
-	MaxSize int64              `mapstructure:"maxSize" json:"maxSize" yaml:"maxSize"`
-	Storage FileStorageConfig  `mapstructure:"storage" json:"storage" yaml:"storage"`
+	Type    string            `mapstructure:"type" json:"type" yaml:"type"` // 默认存储后端：minio/local/nginx-static
+	MaxSize int64             `mapstructure:"maxSize" json:"maxSize" yaml:"maxSize"`
+	Storage FileStorageConfig `mapstructure:"storage" json:"storage" yaml:"storage"`
 }
 
 // FileStorageConfig 各存储后端配置

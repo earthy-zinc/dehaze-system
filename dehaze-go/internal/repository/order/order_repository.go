@@ -127,6 +127,9 @@ func (r *OrderRepository) FindPage(ctx context.Context, q *query.OrderPageQuery)
 	if q.Status != "" {
 		db = db.Where("o.status = ?", orderStatusToInt(q.Status))
 	}
+	if q.PackageType != "" {
+		db = db.Where("o.package_type = ?", q.PackageType)
+	}
 	if q.PayMethod != "" {
 		db = db.Where("o.pay_method = ?", q.PayMethod)
 	}

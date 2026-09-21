@@ -1,5 +1,9 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from pydantic import ValidationError
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
@@ -7,9 +11,12 @@ from app.models.schema.algorithm_select import CompareRequest
 from app.models.schema.dict import DictForm
 from app.service.dict_service import (
     SYSTEM_PRESET_DICT_TYPE_CODES,
-    dict_service,
     dict_type_service,
 )
+
+# 测试替身：仓储已替换为 FakeRepo，且用例在缓存失效前抛错，db/redis 仅传参占位
+_DB: AsyncSession = AsyncMock(spec=AsyncSession)
+_REDIS: Redis = AsyncMock(spec=Redis)
 
 
 class TestCompareRequestMin:
@@ -49,7 +56,7 @@ class TestDictTypeCodeReadonly:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                await dict_type_service.update_dict_type(None, None, 1, {"code": "new_code"})
+                await dict_type_service.update_dict_type(_DB, _REDIS, 1, {"code": "new_code"})
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig
@@ -79,7 +86,7 @@ class TestDictPresetProtection:
         m.dict_type_repository = FakeRepo()
         try:
             with pytest.raises(BusinessException) as ei:
-                await dict_type_service.delete_dict_types(None, None, [1], force=True)
+                await dict_type_service.delete_dict_types(_DB, _REDIS, [1], force=True)
             assert ei.value.code == ResultCode.OPERATION_NOT_ALLOW
         finally:
             m.dict_type_repository = orig

@@ -41,8 +41,8 @@ public class SysRating extends BaseEntity {
 
     private LocalDateTime replyTime;
 
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @Serial
     private static final long serialVersionUID = 1L;

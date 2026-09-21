@@ -4,7 +4,7 @@
 权限（§8.1）互补，构成"授权 + 拦截"双层防护。
 
 拦截点：
-- abefore_model：Prompt 注入防护、敏感话题过滤（输入）
+- abefore_model：Prompt 注入防护（用户输入 + 工具结果 + 记忆注入通道）、敏感话题过滤
 - awrap_tool_call：越权查询检测（阻止访问未授权的 MCP 命名空间）
 - aafter_agent：敏感信息脱敏（身份证/手机号/密钥等 PII 与凭据）
 
@@ -17,8 +17,10 @@ from typing import Any
 
 from langchain.agents.middleware.types import (
     AgentMiddleware,
+    ToolCallRequest,
 )
 from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.types import Command
 
 from app.service.ai.middleware.dehaze_hooks_middleware import DehazeAgentState
 from app.service.ai.service import trace_collector
@@ -42,6 +44,54 @@ _SENSITIVE_TOPIC_KEYWORDS = (
     "制造炸弹",
     "获取他人隐私",
 )
+# 历史工具结果折叠进 assistant 消息时的标记（上下文组装层写入）
+_TOOL_RESULT_MARKER = "[工具调用结果]"
+# 元工具中可执行任意网关工具的入口：授权判定必须落到其目标工具名
+_MCP_EXECUTE_TOOL = "mcp_execute_tool"
+
+
+def _first_keyword(keywords: tuple[str, ...], texts: list[str]) -> str | None:
+    """返回首个命中的关键词，无命中返回 None。"""
+    for text in texts:
+        lowered = text.lower()
+        for kw in keywords:
+            if kw.lower() in lowered:
+                return kw
+    return None
+
+
+def _last_user_text(messages: list[Any]) -> str:
+    for m in reversed(messages):
+        if getattr(m, "type", "") == "human" and getattr(m, "content", None):
+            return str(m.content)
+    return ""
+
+
+def _injected_channel_texts(messages: list[Any]) -> list[str]:
+    """非用户直输通道的文本：工具结果与记忆注入块。
+
+    工具结果（web 检索/MCP 返回）与长期记忆都由外部内容填充，是不受用户控制的
+    注入面，必须与用户输入同等检测，否则关键词黑名单只对直输通道生效。
+    """
+    texts: list[str] = []
+    for m in messages:
+        mtype = getattr(m, "type", "")
+        content = getattr(m, "content", None)
+        if not content:
+            continue
+        text = str(content)
+        is_tool_result = mtype == "tool" or (mtype == "ai" and _TOOL_RESULT_MARKER in text)
+        if is_tool_result or mtype == "system":
+            texts.append(text)
+    return texts
+
+
+def _blocked(content: str) -> dict[str, Any]:
+    return {
+        "messages": [
+            AIMessage(content=content, response_metadata={"stop_reason": "guardrail_blocked"})
+        ]
+    }
 
 
 class GuardrailMiddleware(AgentMiddleware):
@@ -68,76 +118,88 @@ class GuardrailMiddleware(AgentMiddleware):
         if collector is not None:
             collector.record_event(event="guardrail", rule=rule, detail=detail)
 
+    def _authorized(self, tool_name: str) -> bool:
+        """工具是否落在授权命名空间内（命名空间可为多段，按 <namespace>_ 前缀判定）。"""
+        return any(tool_name.startswith(ns + "_") for ns in self.allowed_mcp_namespaces)
+
     async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
         messages = state.get("messages") or []
-        last_user = ""
-        for m in reversed(messages):
-            if getattr(m, "type", "") == "human" and getattr(m, "content", None):
-                last_user = str(m.content)
-                break
-        if not last_user:
-            return None
+        last_user = _last_user_text(messages)
 
         if self._enabled("prompt_injection"):
-            for kw in _INJECTION_KEYWORDS:
-                if kw.lower() in last_user.lower():
-                    self._log_hit("prompt_injection", kw)
-                    return {
-                        "messages": [
-                            AIMessage(
-                                content="检测到疑似 Prompt 注入指令，已拒绝处理。",
-                                response_metadata={"stop_reason": "guardrail_blocked"},
-                            )
-                        ]
-                    }
+            texts = [last_user, *_injected_channel_texts(messages)]
+            kw = _first_keyword(_INJECTION_KEYWORDS, texts)
+            if kw:
+                self._log_hit("prompt_injection", kw)
+                return _blocked("检测到疑似 Prompt 注入指令，已拒绝处理。")
+            self._warn_conversation_prompt(state)
         if self._enabled("sensitive_topic"):
-            for kw in _SENSITIVE_TOPIC_KEYWORDS:
-                if kw in last_user:
-                    self._log_hit("sensitive_topic", kw)
-                    return {
-                        "messages": [
-                            AIMessage(
-                                content="该话题不在服务范围内，无法处理。",
-                                response_metadata={"stop_reason": "guardrail_blocked"},
-                            )
-                        ]
-                    }
+            kw = _first_keyword(_SENSITIVE_TOPIC_KEYWORDS, [last_user])
+            if kw:
+                self._log_hit("sensitive_topic", kw)
+                return _blocked("该话题不在服务范围内，无法处理。")
         return None
+
+    def _warn_conversation_prompt(self, state: Any) -> None:
+        """会话提示词拼接通道：命中注入关键词仅告警，不拦截。
+
+        会话提示词由会话配置方提供，命中只说明配置内容可疑（拦截会直接让会话不可用），
+        故留痕供审计而非阻断。
+        """
+        prompt = state.get("conversation_prompt") if isinstance(state, dict) else None
+        if not prompt:
+            return
+        kw = _first_keyword(_INJECTION_KEYWORDS, [str(prompt)])
+        if kw:
+            self._log_hit("prompt_injection_warn", kw)
 
     async def awrap_tool_call(
         self,
-        request: Any,
-        handler: Callable[[Any], Awaitable[ToolMessage]],
-    ) -> ToolMessage:
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], Awaitable[ToolMessage | Command[Any]]],
+    ) -> ToolMessage | Command[Any]:
         # 越权查询检测：命名空间 MCP 工具（langchain-mcp-adapters 装载，命名
-        # <namespace>_<tool>）仅在授权命名空间内放行。内建网关工具
-        # （mcp_lookup_tool / mcp_execute_tool）是普通业务工具，不参与此校验。
-        if self._enabled("unauthorized_access") and self.allowed_mcp_namespaces:
-            tool_call = request.tool_call or {}
-            tool_name = tool_call.get("name", "")
-            if tool_name and not tool_name.startswith("mcp_"):
-                namespace = tool_name.split("_", 1)[0]
-                if namespace and namespace not in self.allowed_mcp_namespaces:
-                    self._log_hit("unauthorized_access", f"tool={tool_name}")
-                    return ToolMessage(
-                        content="工具调用被拦截：当前 Agent 无权访问该 MCP 命名空间",
-                        tool_call_id=tool_call.get("id", ""),
-                    )
+        # <namespace>_<tool>）仅在授权命名空间内放行。网关元工具 mcp_lookup_tool
+        # 只做检索，不参与校验；mcp_execute_tool 以 M2M 密钥可调用网关任意工具，
+        # 必须按其目标工具名校验，否则 Agent 的命名空间授权形同虚设。
+        if not (self._enabled("unauthorized_access") and self.allowed_mcp_namespaces):
+            return await handler(request)
+
+        tool_call = request.tool_call or {}
+        tool_name = tool_call.get("name", "")
+        tool_call_id = tool_call.get("id", "")
+        if tool_name == _MCP_EXECUTE_TOOL:
+            target = (tool_call.get("args") or {}).get("tool_name") or ""
+            if not target:
+                self._log_hit("unauthorized_access", "tool=mcp_execute_tool target=<missing>")
+                return ToolMessage(
+                    content="工具调用被拦截：mcp_execute_tool 缺少目标工具名",
+                    tool_call_id=tool_call_id,
+                )
+        elif tool_name.startswith("mcp_"):
+            return await handler(request)
+        else:
+            target = tool_name
+
+        if target and not self._authorized(target):
+            self._log_hit("unauthorized_access", f"tool={target}")
+            return ToolMessage(
+                content="工具调用被拦截：当前 Agent 无权访问该 MCP 命名空间",
+                tool_call_id=tool_call_id,
+            )
         return await handler(request)
 
     async def aafter_agent(self, state: Any, runtime: Any) -> dict[str, Any] | None:
         if not self._enabled("pii_mask"):
             return None
-        messages = state.get("messages") or []
         masked = False
-        for m in reversed(messages):
+        # 落库通道脱敏：全部 AI 消息都要处理（流式出口另由 SseEventConverter 脱敏）
+        for m in state.get("messages") or []:
             if isinstance(m, AIMessage) and getattr(m, "content", None):
                 new_content = mask_pii(str(m.content))
                 if new_content != m.content:
                     m.content = new_content
                     masked = True
-            if masked:
-                break
         if masked:
             collector = trace_collector.current()
             if collector is not None:

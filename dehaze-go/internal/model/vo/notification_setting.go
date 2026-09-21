@@ -2,10 +2,10 @@ package vo
 
 // NotificationSettingsVO 通知偏好设置
 type NotificationSettingsVO struct {
-	PushEnabled bool                   `json:"pushEnabled"`
-	DndEnabled  bool                   `json:"dndEnabled"`
-	DndStart    string                 `json:"dndStart"`
-	DndEnd      string                 `json:"dndEnd"`
+	PushEnabled bool                    `json:"pushEnabled"`
+	DndEnabled  bool                    `json:"dndEnabled"`
+	DndStart    string                  `json:"dndStart"`
+	DndEnd      string                  `json:"dndEnd"`
 	Preferences NotificationPreferences `json:"preferences"`
 }
 

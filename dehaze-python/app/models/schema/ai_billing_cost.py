@@ -66,12 +66,18 @@ class ModelCostQuery(OrmResult):
 
 
 class CostStatResult(OrmResult):
-    dimension: str | None = Field(default=None, description="统计维度值")
-    revenue: float = Field(description="收入(元)")
+    dimension: str | None = Field(
+        default=None, description="统计维度值(groupBy=model/provider 时返回)"
+    )
+    revenue: float | None = Field(
+        default=None, description="收入(元,订单实收；分组维度不可归因不返回)"
+    )
     cost: float = Field(description="成本(元,Σ sys_ai_billing.cost)")
-    profit: float = Field(description="毛利(收入-成本)")
-    profit_rate: float = Field(description="毛利率")
-    metric: str = Field(description="口径(overall:整体毛利官方口径;ai:AI参考口径)")
+    profit: float | None = Field(default=None, description="毛利(收入-成本；分组维度不返回)")
+    profit_rate: float | None = Field(default=None, description="毛利率(分组维度不返回)")
+    metric: str | None = Field(
+        default=None, description="口径(overall:整体毛利官方口径;ai:AI参考口径；分组维度不返回)"
+    )
 
 
 class ReconcileImportRequest(OrmResult):

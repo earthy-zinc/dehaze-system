@@ -14,13 +14,11 @@ class VoiceModelRepository(BaseRepository[SysVoiceModel]):
         model_id: str,
         provider_id: int,
     ) -> SysVoiceModel | None:
-        """按 model_id + provider_id 联合查询（含已删除，供唯一性校验使用）"""
+        """按 model_id + provider_id 联合查询（活跃行，供唯一性校验与播种判重）"""
         stmt = select(SysVoiceModel).where(
             SysVoiceModel.model_id == model_id,
             SysVoiceModel.provider_id == provider_id,
         )
-        # 绕过软删过滤查全表，避免软删后同组合查重漏检而依赖 DB 唯一索引报错
-        stmt = stmt.execution_options(include_deleted=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 

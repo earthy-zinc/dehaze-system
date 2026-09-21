@@ -1,14 +1,14 @@
 """评测中心路由测试：路径注册 / 权限校验 / 参数校验 / 响应 camelCase 序列化。"""
+
 import pytest
 from httpx import ASGITransport, AsyncClient
-
-pytestmark = pytest.mark.api
 
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
-from app.router import ai_agent_eval as eval_module
 from app.service.ai_eval_center_service import eval_center_service
+
+pytestmark = pytest.mark.api
 
 
 class _FakeUser:
@@ -62,9 +62,7 @@ class TestPermissions:
     async def test_reviews_submit_forbidden_without_permission(self, eval_center_client):
         client, state = eval_center_client
         state["user"] = _FakeUser(permissions=[])
-        resp = await client.post(
-            "/api/v1/ai/eval-center/reviews/1", json={"agree": True}
-        )
+        resp = await client.post("/api/v1/ai/eval-center/reviews/1", json={"agree": True})
         assert resp.status_code == 403
         assert resp.json()["code"] == "A0301"
 
@@ -183,9 +181,7 @@ class TestEndpoints:
             }
 
         monkeypatch.setattr(eval_center_service, "compare_runs", _fake_compare)
-        resp = await client.get(
-            "/api/v1/ai/eval-center/runs/2/compare", params={"baseRunId": 1}
-        )
+        resp = await client.get("/api/v1/ai/eval-center/runs/2/compare", params={"baseRunId": 1})
         assert resp.status_code == 200
         assert captured == {"run_id": 2, "base_run_id": 1}
         data = resp.json()["data"]
@@ -224,6 +220,45 @@ class TestEndpoints:
         assert data["pending"] == 1
         assert data["items"][0]["judgePassed"] is False
         assert data["items"][0]["agentName"] == "A5"
+
+    async def test_review_detail_wire(self, eval_center_client, monkeypatch):
+        client, _ = eval_center_client
+        captured: dict = {}
+
+        async def _fake_detail(db, run_id, sample_id):
+            captured.update(run_id=run_id, sample_id=sample_id)
+            return {
+                "run_id": run_id,
+                "agent_id": 5,
+                "agent_name": "A5",
+                "sample_id": sample_id,
+                "task_goal": "为雾图推荐去雾算法",
+                "allowed_input": "一张雾图",
+                "expected_result": "给出算法建议",
+                "expected_process": None,
+                "forbidden_behavior": None,
+                "tools": ["algorithm_recommend"],
+                "risk_level": "high",
+                "judge_passed": False,
+                "actual_output": "建议使用 DCP",
+                "error": None,
+                "scores": {"result_quality": 30.0},
+                "notes": {"result_quality": "期望结果关键词未命中"},
+            }
+
+        monkeypatch.setattr(eval_center_service, "review_detail", _fake_detail)
+        resp = await client.get("/api/v1/ai/eval-center/runs/2/samples/20")
+        assert resp.status_code == 200
+        assert captured == {"run_id": 2, "sample_id": 20}
+        data = resp.json()["data"]
+        assert data["agentName"] == "A5"
+        assert data["taskGoal"] == "为雾图推荐去雾算法"
+        assert data["allowedInput"] == "一张雾图"
+        assert data["expectedResult"] == "给出算法建议"
+        assert data["actualOutput"] == "建议使用 DCP"
+        assert data["judgePassed"] is False
+        assert data["scores"]["result_quality"] == 30.0
+        assert data["notes"]["result_quality"] == "期望结果关键词未命中"
 
     async def test_review_submit_wire(self, eval_center_client, monkeypatch):
         client, _ = eval_center_client

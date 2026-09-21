@@ -18,13 +18,13 @@ CREATE TABLE `sys_favorite`
     `target_type` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '收藏对象类型(algorithm:算法;result:处理结果;dataset:数据集;image:图片;preset:参数方案)',
     `target_id`   bigint                                                         NOT NULL COMMENT '收藏对象ID',
     `is_invalid`  tinyint                                                        NOT NULL DEFAULT 0 COMMENT '收藏对象是否已失效(0:正常;1:已失效)',
-    `deleted`     tinyint                                                        NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
+    `deleted`     bigint                                                         NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)',
     `create_time` datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
     `update_time` datetime                                                       NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `create_by`   bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`   bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_user_target` (`user_id`, `target_type`, `target_id`) USING BTREE,
+    UNIQUE INDEX `uk_user_target` (`user_id`, `target_type`, `target_id`, `deleted`) USING BTREE,
     INDEX `idx_user_type_time` (`user_id`, `target_type`, `create_time` DESC) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

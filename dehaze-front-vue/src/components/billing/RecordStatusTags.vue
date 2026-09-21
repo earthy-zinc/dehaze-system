@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 import type { BillingRecordVO } from "dehaze-sdk-js";
 import { computed } from "vue";
+import type { TagType } from "@/enums/TagType";
 
 defineOptions({ name: "RecordStatusTags" });
 
@@ -9,10 +10,7 @@ const props = defineProps<{
   record: BillingRecordVO;
 }>();
 
-const REFUND_STATUS_TAGS: Record<
-  number,
-  { label: string; type: "info" | "warning" | "success" | "danger" }
-> = {
+const REFUND_STATUS_TAGS: Record<number, { label: string; type: TagType }> = {
   1: { label: "待审核", type: "warning" },
   2: { label: "已通过", type: "success" },
   3: { label: "已驳回", type: "danger" },
@@ -29,7 +27,7 @@ const refundTag = computed(() =>
   <div class="flex flex-wrap gap-1">
     <el-tooltip
       v-if="record.actualModel"
-      :content="`已降级为 ${record.actualModel}`"
+      :content="`已降级为 ${record.model}`"
       placement="top"
     >
       <el-tag type="warning" size="small">降级</el-tag>

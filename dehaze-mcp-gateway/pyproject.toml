@@ -4,7 +4,10 @@ version = "1.0.0"
 description = "MCP 工具：读取后端 OpenAPI，自动注册为 MCP tool，供大模型调用后端 API"
 requires-python = ">=3.11"
 dependencies = [
-    "mcp>=1.0.0",
+    # 与 dehaze-python 保持同一条 mcp 版本线：网关只是 dehaze-python 的客户端
+    # （MCP_GATEWAY_URL）对端，客户端侧 langchain-mcp-adapters 把 mcp 限制在 <2.0.0，
+    # 两端同版本可避免协议/类型分裂（2.0 已把 mcp.server.fastmcp 改名为 mcpserver）。
+    "mcp>=1.24.0,<1.25.0",
     "httpx>=0.27.0",
 ]
 

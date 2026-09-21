@@ -13,11 +13,12 @@
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, TypeVar
+from typing import Any
 
 from redis.asyncio import Redis
 
@@ -33,8 +34,6 @@ from app.infrastructure.metrics.cache_metrics import record_hit, record_loader, 
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar("T")
-
 CACHE_TTL_HOUR = 3600
 
 # 进程级单例：L1 本地缓存和 SingleFlight 跨请求共享，否则防热 key 失效
@@ -47,25 +46,26 @@ _INSTANCE_ID = str(uuid.uuid4())
 # Pub/Sub 监听任务
 _pubsub_task: asyncio.Task | None = None
 
+# 推理图缓存失效消息类型：与 L1 失效共用频道，载荷无 key（原生端改 MCP 后广播）
+GRAPH_INVALIDATION_TYPE = "ai_graph_invalidate"
+
 
 def _get_shared_l1() -> TTLCache | None:
     """获取进程级共享 L1 缓存单例"""
     global _shared_l1
-    if _shared_l1 is None:
-        if settings.CACHE_L1_ENABLED:
-            _shared_l1 = TTLCache(
-                maxsize=settings.CACHE_L1_MAXSIZE,
-                default_ttl=settings.CACHE_L1_TTL,
-            )
+    if _shared_l1 is None and settings.CACHE_L1_ENABLED:
+        _shared_l1 = TTLCache(
+            maxsize=settings.CACHE_L1_MAXSIZE,
+            default_ttl=settings.CACHE_L1_TTL,
+        )
     return _shared_l1
 
 
 def _get_shared_singleflight() -> SingleFlight | None:
     """获取进程级共享 SingleFlight 单例"""
     global _shared_singleflight
-    if _shared_singleflight is None:
-        if settings.CACHE_SINGLEFLIGHT_ENABLED:
-            _shared_singleflight = SingleFlight()
+    if _shared_singleflight is None and settings.CACHE_SINGLEFLIGHT_ENABLED:
+        _shared_singleflight = SingleFlight()
     return _shared_singleflight
 
 
@@ -101,12 +101,12 @@ class CacheService:
             default=-1,
             operation_name=f"cache_ttl:{key}",
         )
-        return ttl if ttl > 0 else settings.CACHE_L1_TTL
+        return ttl if ttl is not None and ttl > 0 else settings.CACHE_L1_TTL
 
     async def get(
         self,
         key: str,
-        default: T | None = None,
+        default: object | None = None,
     ) -> Any | None:
         """多级缓存读取：L1 -> L2
 
@@ -152,7 +152,7 @@ class CacheService:
         key: str,
         loader: Callable[[], Awaitable[Any | None]],
         ttl: int = CACHE_TTL_HOUR,
-        default: T | None = None,
+        default: object | None = None,
     ) -> Any | None:
         """带数据加载器的多级缓存读取
 
@@ -268,9 +268,7 @@ class CacheService:
         """
 
         async def _delete_by_pattern() -> int:
-            keys = []
-            async for key in self.redis.scan_iter(match=pattern):
-                keys.append(key)
+            keys = [key async for key in self.redis.scan_iter(match=pattern)]
             if keys:
                 return await self.redis.delete(*keys)
             return 0
@@ -288,12 +286,12 @@ class CacheService:
         # 广播失效消息，通知其他实例清除 L1
         await _publish_invalidation("pattern", pattern)
 
-        return count
+        return count if count is not None else 0
 
     async def get_json(
         self,
         key: str,
-        default: T | None = None,
+        default: object | None = None,
     ) -> Any | None:
         """获取 JSON 格式的缓存值"""
         value = await self.get(key)
@@ -301,7 +299,10 @@ class CacheService:
             return default
         try:
             return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            # 缓存体损坏（非合法 JSON）：按未命中回退默认值，但必须留痕，
+            # 否则脏数据会被静默当作"无缓存"，排查时无从定位
+            logger.warning("缓存体损坏，按未命中返回默认值 [key=%s]: %s", key, e, exc_info=True)
             return default
 
     async def set_json(
@@ -318,7 +319,7 @@ class CacheService:
         key: str,
         loader: Callable[[], Awaitable[Any | None]],
         ttl: int = CACHE_TTL_HOUR,
-        default: T | None = None,
+        default: object | None = None,
     ) -> Any | None:
         """带加载器的 JSON 缓存读取
 
@@ -334,8 +335,12 @@ class CacheService:
                 try:
                     record_hit("L1")
                     return json.loads(val)
-                except (json.JSONDecodeError, TypeError):
+                except (json.JSONDecodeError, TypeError) as e:
+                    # 与真实未命中同计 record_miss（重载契约），但损坏必须区别于"没有缓存"
                     record_miss("L1")
+                    logger.warning(
+                        "L1 缓存体损坏，按未命中处理 [key=%s]: %s", key, e, exc_info=True
+                    )
             else:
                 record_miss("L1")
 
@@ -356,8 +361,10 @@ class CacheService:
                 if self._l1 is not None:
                     self._l1.set(key, redis_val, ttl=await self._l1_backfill_ttl(key))
                 return result
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
+                # 与真实未命中同计 record_miss（重载契约），但损坏必须区别于"没有缓存"
                 record_miss("L2")
+                logger.warning("L2 缓存体损坏，按未命中处理 [key=%s]: %s", key, e, exc_info=True)
         else:
             record_miss("L2")
 
@@ -392,20 +399,17 @@ class DeptCacheKeys:
         return ["dept:tree*", "dept:options*"]
 
 
-async def _publish_invalidation(msg_type: str, key: str) -> None:
-    """发布缓存失效消息到 Pub/Sub 频道，通知其他实例清除 L1 缓存。
+async def _publish_invalidation(msg_type: str, key: str | None = None) -> None:
+    """发布缓存失效消息到 Pub/Sub 频道，通知其他实例清除本地缓存。
 
     Args:
-        msg_type: 消息类型，"key"（单个 key）或 "pattern"（通配符）
-        key: 缓存 key 或 pattern
+        msg_type: 消息类型，"key"（单个 key）/ "pattern"（通配符）/ "ai_graph_invalidate"
+        key: 缓存 key 或 pattern；图缓存失效消息无 key（接收方按 type 分支处理）
     """
-    payload = json.dumps(
-        {
-            "type": msg_type,
-            "key": key,
-            "senderId": _INSTANCE_ID,
-        }
-    )
+    payload_dict: dict[str, str] = {"type": msg_type, "senderId": _INSTANCE_ID}
+    if key is not None:
+        payload_dict["key"] = key
+    payload = json.dumps(payload_dict)
 
     async def _publish():
         from app.dependencies.redis import get_redis_client
@@ -420,19 +424,24 @@ async def _publish_invalidation(msg_type: str, key: str) -> None:
     )
 
 
+async def publish_graph_invalidation() -> None:
+    """广播推理图缓存失效。
+
+    推理图构建时装载 MCP 外部工具；java/go 原生端改 MCP（共享库）后本端已构图仍持
+    旧工具集。本进程直接失效后经频道通知其余实例各自失效自己的图缓存。
+    """
+    await _publish_invalidation(GRAPH_INVALIDATION_TYPE)
+
+
 async def start_cache_invalidation_listener() -> None:
     """启动缓存失效广播订阅。
 
     在应用启动时调用（lifespan），订阅 CACHE_INVALIDATION_CHANNEL 频道，
-    收到其他实例发布的失效消息时清除本地 L1 缓存。
+    收到其他实例发布的消息时清除本地 L1 缓存或失效推理图缓存。
     忽略自己发送的消息（通过 senderId 判断）。
     """
     global _pubsub_task
     if _pubsub_task is not None:
-        return
-
-    if not settings.CACHE_L1_ENABLED:
-        logger.debug("L1 缓存未启用，跳过缓存失效广播订阅")
         return
 
     _pubsub_task = asyncio.create_task(_subscription_loop())
@@ -472,7 +481,7 @@ async def _subscription_loop() -> None:
 
 
 async def _handle_invalidation_message(data: str) -> None:
-    """处理收到的缓存失效消息，清除本地 L1 缓存。
+    """处理收到的缓存失效消息：图缓存失效或清除本地 L1 缓存。
 
     忽略自己发送的消息（通过 senderId 判断）。
     """
@@ -487,6 +496,14 @@ async def _handle_invalidation_message(data: str) -> None:
         return
 
     msg_type = msg.get("type")
+    if msg_type == GRAPH_INVALIDATION_TYPE:
+        # 图缓存非 L1 缓存：java/go 原生端改 MCP 后本端已构图仍持旧工具集
+        from app.service.ai.service.reasoning_service import reasoning_service
+
+        reasoning_service.invalidate_graph_cache()
+        logger.debug("收到推理图缓存失效消息: from=%s", sender_id)
+        return
+
     key = msg.get("key")
     if not key:
         return
@@ -521,9 +538,7 @@ async def stop_cache_invalidation_listener() -> None:
         return
 
     _pubsub_task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await _pubsub_task
-    except asyncio.CancelledError:
-        pass
     _pubsub_task = None
     logger.debug("缓存失效广播订阅已停止")

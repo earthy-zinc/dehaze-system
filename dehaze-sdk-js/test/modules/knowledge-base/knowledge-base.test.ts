@@ -23,13 +23,10 @@ import {
 //   初始化（ensure_kb_index，见《测试用例.md》T-KB-008）；ES 未就绪时本模块用例
 //   直接失败（无降级、无 skip），属环境问题需修复部署而非跳过。
 // - 向量化使用本地 embedding 服务（8992 /v1/embeddings），createKbForm 默认
-//   embeddingProvider=local + embeddingModel=bge-m3（1024 维，与本地模型同维度）。
+//   embeddingModel=bge-m3（1024 维，与本地模型同维度，注册在 local 供应商下）。
 // - 文档上传/批量/分块预览需要真实 fileId，顶层 beforeAll 先上传 txt 测试文件。
 // - 知识库私有库配额（admin level_1=10）限制同时存在的私有库数量，各 describe 在
 //   afterAll 及时删除自己创建的库，避免运行中累计超过配额导致创建失败。
-//
-// 管理端接口（view=admin / index-stats / retrieve/test-sets / chunks/low-quality）：
-// 后端尚未实现，按测试先行策略以 API接口.md 为契约保留完整用例，待后端落地后统一验证。
 // ============================================================================
 
 const testFileIds: number[] = [];
@@ -146,6 +143,12 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
+    });
+
+    test("参数校验：embedding 模型不在注册表应失败", async () => {
+      // 后端按 sys_ai_model 注册表校验（model_type=embedding 且启用），注册表外模型拒绝
+      const form = createKbForm({ embeddingModel: "not-in-registry-model" });
+      await expectBizError(AiKnowledgeBaseAPI.create(form), ["A0400"]);
     });
 
     test("边界：创建公共知识库需管理员权限", async () => {
@@ -1109,5 +1112,102 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
         }
       }
     }, 45000);
+  });
+
+  // ===== 安全与对抗性用例 =====
+
+  describe("安全与对抗性用例", () => {
+    const localKbIds: number[] = [];
+
+    afterAll(() => deleteKbs(localKbIds));
+
+    test("对抗语料：emoji/零宽/全半角知识库名可创建且原样返回", async () => {
+      const name = "🌫️去雾\u200b知识库Ｖ２．０";
+      const created = await AiKnowledgeBaseAPI.create(createKbForm({ name }));
+      createdKbIds.push(created.id);
+      localKbIds.push(created.id);
+      const detail = await AiKnowledgeBaseAPI.getDetail(created.id);
+      expect(detail.name).toBe(name);
+    });
+
+    test("对抗语料：emoji/零宽/BOM/CRLF 文档标题可创建且原样返回", async () => {
+      const kbId = await createKb(localKbIds);
+      const title = "手册\ufeff须知🌟\u200bＶ２\r\n";
+      const doc = await AiKnowledgeBaseAPI.createTextDocument(kbId, {
+        title,
+        content: "对抗性标题正文：去雾平台使用说明",
+      });
+      createdDocIds.push(doc.id);
+      const detail = await AiKnowledgeBaseAPI.getDocumentDetail(doc.id);
+      expect(detail.title).toBe(title);
+    });
+
+    test("边界：知识库名称超过 255 字符应参数校验失败", async () => {
+      const form = createKbForm({ name: "长".repeat(256) });
+      await expectBizError(AiKnowledgeBaseAPI.create(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界：topK=0 应参数校验失败", async () => {
+      await expectBizError(AiKnowledgeBaseAPI.search(createSearchForm({ topK: 0 })), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界：topK 超过上限 50 应参数校验失败", async () => {
+      await expectBizError(AiKnowledgeBaseAPI.search(createSearchForm({ topK: 51 })), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("安全：普通用户不得引用他人上传的文件入库（B0407）", async () => {
+      // 顶层 testFileIds 由 admin 上传，归属 admin；普通用户挂入自己私有库应被拒绝
+      await asUser(async () => {
+        const created = await AiKnowledgeBaseAPI.create(createKbForm());
+        localKbIds.push(created.id);
+        try {
+          await expectBizError(
+            AiKnowledgeBaseAPI.uploadDocument(
+              created.id,
+              createDocUploadForm({ fileId: testFileIds[0]! })
+            ),
+            ["B0407"]
+          );
+        } finally {
+          // 以建库用户身份及时删除，释放私有库配额（他人私有库 admin 无法删除）
+          await AiKnowledgeBaseAPI.delete(created.id).catch(() => {});
+        }
+      });
+    });
+
+    test("不变量：文档删除后检索不再命中", async () => {
+      const kbId = await createKb(localKbIds);
+      const token = `uniq_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const doc = await AiKnowledgeBaseAPI.createTextDocument(kbId, {
+        title: "删除检索验证",
+        content: `${token} 是唯一标记内容，用于验证删除后向量同步清理`,
+      });
+      createdDocIds.push(doc.id);
+
+      const status = await waitForDocSettled(doc.id, 30000);
+      expect(status).toBe("completed");
+
+      // 删除前命中（hybrid 检索，唯一 token 由 BM25 保证召回）
+      const before = await AiKnowledgeBaseAPI.search(
+        createSearchForm({ knowledgeBaseIds: [kbId], query: token, topK: 5 })
+      );
+      expect(before.results.some((r) => r.documentId === doc.id)).toBe(true);
+
+      await AiKnowledgeBaseAPI.deleteDocument(doc.id);
+
+      // 删除后不命中：换 enableMMR 参数变体绕开 5 分钟检索缓存，验证 ES 分块已同步清理
+      const after = await AiKnowledgeBaseAPI.search(
+        createSearchForm({ knowledgeBaseIds: [kbId], query: token, topK: 5, enableMMR: true })
+      );
+      expect(after.results.some((r) => r.documentId === doc.id)).toBe(false);
+    }, 60000);
   });
 });

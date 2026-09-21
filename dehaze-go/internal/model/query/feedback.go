@@ -14,14 +14,14 @@ type RatingPageQuery struct {
 }
 
 type FeedbackPageQuery struct {
-	PageNum        int    `json:"pageNum"`
-	PageSize       int    `json:"pageSize"`
-	Keywords       string `json:"keywords"`
-	FeedbackType   string `json:"feedbackType"`
-	Status         string `json:"status"`
-	RelatedModule  string `json:"relatedModule"`
-	Priority       *int   `json:"priority"`
-	AssigneeID     *int64 `json:"assigneeId"`
-	StartTime      string `json:"startTime"`
-	EndTime        string `json:"endTime"`
+	PageNum       int    `json:"pageNum"`
+	PageSize      int    `json:"pageSize"`
+	Keywords      string `json:"keywords"`
+	FeedbackType  string `json:"feedbackType"`
+	Status        string `json:"status"`
+	RelatedModule string `json:"relatedModule"`
+	Priority      *int   `json:"priority"`
+	AssigneeID    *int64 `json:"assigneeId"`
+	StartTime     string `json:"startTime"`
+	EndTime       string `json:"endTime"`
 }

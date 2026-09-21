@@ -64,15 +64,39 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="120" align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            v-hasPerm="['ai:agent:manage']"
+            link
+            type="primary"
+            size="small"
+            @click="openImportDialog(row as EvalSampleItem)"
+          >
+            纳入数据集
+          </el-button>
+        </template>
+      </el-table-column>
       <template #empty>
         <el-empty description="暂无样本明细" :image-size="60" />
       </template>
     </el-table>
+
+    <!-- 失败/回归样本回流：以本次任务目标与风险等级预填，由用户选择目标评测集 -->
+    <EvalSampleFormDialog
+      v-model="importVisible"
+      :agent-id="props.run.agentId"
+      :dataset-id="null"
+      :preset="importPreset"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { EvalRunResult } from "dehaze-sdk-js";
+import { useAdminAgentStore } from "@/store/modules/adminAgent";
+import EvalSampleFormDialog from "./EvalSampleFormDialog.vue";
+import type { EvalSampleItem } from "../eval-meta";
 import {
   EVAL_DIMENSIONS,
   RISK_LEVEL_META,
@@ -85,7 +109,20 @@ defineOptions({ name: "SampleResultList" });
 
 const props = defineProps<{ run: EvalRunResult }>();
 
+const agentStore = useAdminAgentStore();
+
 const onlyFailed = ref(false);
+
+const importVisible = ref(false);
+const importPreset = ref<{ taskGoal?: string; riskLevel?: string } | null>(
+  null
+);
+
+async function openImportDialog(row: EvalSampleItem) {
+  await agentStore.fetchEvalDatasets(props.run.agentId);
+  importPreset.value = { taskGoal: row.taskGoal, riskLevel: row.riskLevel };
+  importVisible.value = true;
+}
 
 const samples = computed(() => parseSamples(props.run.results));
 const failedCount = computed(

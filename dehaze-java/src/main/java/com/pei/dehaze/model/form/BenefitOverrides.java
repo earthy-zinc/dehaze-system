@@ -12,8 +12,32 @@ public class BenefitOverrides {
     @Schema(description = "月度去雾配额")
     private Integer monthlyDehazeQuota;
 
+    @Schema(description = "月度去雨配额")
+    private Integer monthlyDerainQuota;
+
+    @Schema(description = "月度去雪配额")
+    private Integer monthlyDesnowQuota;
+
+    @Schema(description = "月度低光增强配额")
+    private Integer monthlyLowlightQuota;
+
+    @Schema(description = "月度超分辨率配额")
+    private Integer monthlySuperResolutionQuota;
+
+    @Schema(description = "月度去噪配额")
+    private Integer monthlyDenoiseQuota;
+
+    @Schema(description = "月度图像修复配额")
+    private Integer monthlyInpaintQuota;
+
     @Schema(description = "月度评价配额")
     private Integer monthlyEvaluateQuota;
+
+    @Schema(description = "AI对话日限额(积分/天)")
+    private Long aiCreditsDaily;
+
+    @Schema(description = "AI对话月限额(积分/月)")
+    private Long aiCreditsMonthly;
 
     @Schema(description = "历史保留天数")
     private Integer historyRetention;

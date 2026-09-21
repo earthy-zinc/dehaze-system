@@ -33,6 +33,7 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
+from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,7 +125,7 @@ class ScheduleExecutor:
                         summary["skipped"] += 1
                     else:
                         summary["triggered"] += 1
-                except Exception as exc:  # noqa: BLE001 单任务失败不影响整体扫描
+                except Exception as exc:
                     summary["failed"] += 1
                     logger.warning("定时任务触发失败 schedule_id=%s: %s", task.id, exc)
 
@@ -153,7 +154,7 @@ class ScheduleExecutor:
             if schedule is not None:
                 try:
                     await notify_run_result(db, schedule, run)
-                except Exception:  # noqa: BLE001 回收通知失败不阻断
+                except Exception:
                     logger.warning("僵尸回收通知失败 run_id=%s", run.id)
         return len(stale)
 
@@ -197,17 +198,21 @@ class ScheduleExecutor:
                 await db.commit()
             return self._summary(skipped=True, skip_reason="idempotent", msg="同窗口已执行过")
 
+        run_mark_acquired = False
         try:
             # 单任务重叠防重入（Redis SET NX EX 运行标记）
             if not await self._acquire_run_mark(redis, schedule.id):
                 # 本窗口批次已由 _begin_window 预留，直接标记为 overlap 跳过
                 return await self._finalize_skip(db, schedule, run, "overlap", manual)
+            run_mark_acquired = True
 
             # 平台级全局并发限流
             async with self._semaphore:
                 return await self._run_with_guards(db, redis, schedule, run, manual)
         finally:
-            await self._release_run_mark(redis, schedule.id)
+            # 仅释放本次获取的标记：overlap 路径未获标记，误删会破坏在途执行的防重入
+            if run_mark_acquired:
+                await self._release_run_mark(redis, schedule.id)
 
     # ==================== 执行主流程（配额校验/重试/熔断/推进） ====================
 
@@ -231,7 +236,7 @@ class ScheduleExecutor:
         try:
             conversation_id, credits = await self._execute_inference(db, schedule)
             success = True
-        except Exception as exc:  # noqa: BLE001 推理失败统一按失败处理
+        except Exception as exc:
             last_error = str(exc) or type(exc).__name__
             logger.warning("定时任务执行失败 schedule_id=%s: %s", schedule.id, last_error)
 
@@ -262,7 +267,7 @@ class ScheduleExecutor:
             skipped=False,
             ok=success,
             run_id=run.id,
-            credits=float(run.credits) if run.credits is not None else None,
+            credits=float(credits) if credits is not None else None,
             duration_ms=run.duration_ms,
             error=last_error or None,
             conversation_id=run.conversation_id,
@@ -316,6 +321,9 @@ class ScheduleExecutor:
         try:
             return ZoneInfo(timezone)
         except ZoneInfoNotFoundError:
+            # 非法时区（名字拼写错误/时区数据缺失）：回退上海时区保证调度可用，
+            # 但必须告警——静默回退会让任务在错误的窗口时间执行而无人察觉
+            logger.warning("计划任务时区无效，回退 Asia/Shanghai: timezone=%s", timezone)
             return ZoneInfo("Asia/Shanghai")
 
     async def _acquire_run_mark(self, redis: Redis, schedule_id: int) -> bool:
@@ -329,8 +337,12 @@ class ScheduleExecutor:
     # ==================== 配额校验 ====================
 
     async def _quota_ok(self, db: AsyncSession, user_id: int) -> bool:
-        daily_limit, monthly_limit = await quota_service.get_limits(db, user_id)
-        # limits 均为 0 视为无限额（对齐 get_limits 语义），跳过配额预检
+        limits = await quota_service.get_limits(db, user_id)
+        # fail-closed：权益数据缺失/停用拒绝执行定时推理
+        if limits is None:
+            return False
+        daily_limit, monthly_limit = limits
+        # 已配置等级的限额为 0 视为无限额（对齐 get_limits 语义），跳过配额预检
         if daily_limit <= 0 and monthly_limit <= 0:
             return True
         daily_used, monthly_used = await quota_service.get_used(user_id)
@@ -353,11 +365,12 @@ class ScheduleExecutor:
             (执行产生的会话 ID, 本次执行消耗积分)
         """
         content = self._build_input_text(schedule)
-        conversation_id = await self._ensure_conversation(db, schedule, content)
 
         last_exc: Exception | None = None
         for attempt in range(RETRY_MAX + 1):
             try:
+                # 每次尝试独立会话：临时失败重试不向上个会话重复注入 user 消息
+                conversation_id = await self._ensure_conversation(db, schedule, content)
                 return await self._send_and_wait(db, conversation_id, schedule.user_id, content)
             except BusinessException as exc:
                 # LLM 上游临时故障（AI_LLM_CALL_FAILED：llm_client 已穷尽 Key 轮换
@@ -426,11 +439,13 @@ class ScheduleExecutor:
                 f"sched-{conversation_id}-{uuid.uuid4().hex}",
             )
             # 消费 SSE body_iterator：驱动推理执行至 message.end
-            async for _ in response.body_iterator:  # noqa: B007 仅驱动完成
-                pass
+            # send_message 返回 StreamingResponse | JSONResponse（幂等重放），仅前者可流式驱动
+            if isinstance(response, StreamingResponse):
+                async for _ in response.body_iterator:
+                    pass
         except BusinessException:
             raise
-        except Exception as exc:  # noqa: BLE001 网络/超时/连接类临时错误
+        except Exception as exc:
             if isinstance(exc, _RETRYABLE_EXC):
                 raise _RetryableError(str(exc)) from exc
             raise
@@ -458,8 +473,7 @@ class ScheduleExecutor:
             parts: list[str] = []
             if cfg.get("content"):
                 parts.append(str(cfg["content"]))
-            for img in cfg.get("images") or []:
-                parts.append(f"![图片]({img})")
+            parts.extend(f"![图片]({img})" for img in cfg.get("images") or [])
             if parts:
                 return "\n".join(parts)
             return f"请执行定时任务「{schedule.name}」的固定输入处理。"

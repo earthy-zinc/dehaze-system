@@ -13,7 +13,7 @@ type SysPaymentRecord struct {
 	CallbackTime    *time.Time `gorm:"column:callback_time;type:datetime;comment:回调到达时间" json:"callbackTime"`
 	CallbackContent string     `gorm:"column:callback_content;type:text;comment:渠道回调原始报文" json:"callbackContent"`
 	ErrorMessage    string     `gorm:"column:error_message;type:varchar(512);comment:错误信息" json:"errorMessage"`
-	Deleted         int8       `gorm:"column:deleted;type:tinyint;not null;default:0;comment:逻辑删除标识" json:"-"`
+	Deleted         int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"-"`
 	CreateTime      time.Time  `gorm:"column:create_time;type:datetime;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createTime"`
 	UpdateTime      time.Time  `gorm:"column:update_time;type:datetime;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updateTime"`
 	CreateBy        *int64     `gorm:"column:create_by;comment:创建人ID" json:"createBy"`

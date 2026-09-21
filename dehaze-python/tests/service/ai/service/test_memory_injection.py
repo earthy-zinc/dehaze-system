@@ -1,7 +1,13 @@
 from datetime import datetime, timedelta
 
-from app.service.ai.service import memory_extraction as extraction, memory_injection as injection
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.service.ai.service import memory_extraction as extraction
+from app.service.ai.service import memory_injection as injection
 from tests.stubs.factories import make_orm_mem
+
+# 测试替身：inject_memories 的 db 只透传给被 monkeypatch 的仓储，用真实会话实例占位
+_DB = AsyncSession()
 
 
 def _mem(
@@ -64,7 +70,6 @@ def _install_injection_mocks(
 
 
 class TestComputeImportance:
-
     def test_weighted_sum(self):
         factors = {
             "emotion": 100,
@@ -91,7 +96,6 @@ class TestComputeImportance:
 
 
 class TestRecencyScore:
-
     def test_recent_is_near_1(self):
         score = injection._recency_score(datetime.now(), datetime.now())
         assert 0.99 < score <= 1.0
@@ -106,7 +110,6 @@ class TestRecencyScore:
 
 
 class TestSortRetrieved:
-
     def test_higher_relevance_ranks_first(self):
         now = datetime.now()
         mems = [
@@ -130,19 +133,64 @@ class TestSortRetrieved:
 
 
 class TestInjectMemories:
+    async def test_short_query_keeps_preferences_skips_retrieval(self, monkeypatch):
+        """常驻偏好每轮生效不受查询长度限制；过短查询仅跳过检索注入层"""
+        prefs = [
+            make_orm_mem(
+                1,
+                "semantic",
+                "用户偏好简洁回复",
+                80,
+                metadata={"category": "preference", "is_preference": 1},
+            )
+        ]
+        retrieval_called = []
 
-    async def test_no_injection_when_query_short(self):
-        system_text, injected = await injection.inject_memories(object(), 1, "a")
-        assert system_text is None and injected == []
+        async def _list_preferences(db, user_id, limit=None):
+            return prefs
+
+        async def _list_skills(db, user_id):
+            return []
+
+        async def _touch(db, memory_id):
+            pass
+
+        async def _search_memories(user_id, query, top_n=5):
+            retrieval_called.append(query)
+            return []
+
+        monkeypatch.setattr(injection.ai_memory_repository, "list_preferences", _list_preferences)
+        monkeypatch.setattr(injection.ai_memory_repository, "list_skills", _list_skills)
+        monkeypatch.setattr(injection.ai_memory_repository, "touch", _touch)
+        monkeypatch.setattr(injection, "search_memories", _search_memories)
+
+        system_text, injected = await injection.inject_memories(_DB, 1, "a")
+
+        assert retrieval_called == []  # 过短查询不触发检索（含 MySQL 降级）
+        assert [i["source"] for i in injected] == ["preference"]
+        assert system_text
+        assert "用户画像" in system_text
 
     async def test_three_layers_and_sections(self, monkeypatch):
-        prefs = [make_orm_mem(1, "semantic", "用户偏好简洁回复", 80, metadata={"category": "preference", "is_preference": 1})]
-        skills = [make_orm_mem(2, "procedural", "先去雾再评估", 70, metadata={"skill": "dehaze", "steps": "..."})]
+        prefs = [
+            make_orm_mem(
+                1,
+                "semantic",
+                "用户偏好简洁回复",
+                80,
+                metadata={"category": "preference", "is_preference": 1},
+            )
+        ]
+        skills = [
+            make_orm_mem(
+                2, "procedural", "先去雾再评估", 70, metadata={"skill": "dehaze", "steps": "..."}
+            )
+        ]
         retrievals = [_mem(3, "episodic", "上周处理雾图结果满意", 60, relevance=0.8)]
         _install_injection_mocks(monkeypatch, prefs=prefs, skills=skills, es_retrievals=retrievals)
 
         system_text, injected = await injection.inject_memories(
-            object(), 1, "帮我处理雾图", task_type="dehaze"
+            _DB, 1, "帮我处理雾图", task_type="dehaze"
         )
 
         assert injected == [
@@ -165,6 +213,7 @@ class TestInjectMemories:
                 "source": "retrieval",
             },
         ]
+        assert system_text is not None
         assert "【用户画像】" in system_text
         assert "【工作流提示】" in system_text
         assert "【相关记忆】" in system_text
@@ -173,25 +222,25 @@ class TestInjectMemories:
         prefs = [make_orm_mem(1, "semantic", "偏好简洁回复", metadata={"is_preference": 1})]
         _install_injection_mocks(monkeypatch, prefs=prefs, user_skills=["dehaze"])
 
-        _, injected = await injection.inject_memories(object(), 1, "帮我处理雾图")
+        _, injected = await injection.inject_memories(_DB, 1, "帮我处理雾图")
         assert [i["source"] for i in injected] == ["preference"]
 
     async def test_scene_trigger_fallback_by_keyword(self, monkeypatch):
         prefs = [make_orm_mem(1, "semantic", "偏好简洁回复", metadata={"is_preference": 1})]
         skills = [make_orm_mem(2, "procedural", "先去雾再评估", metadata={"skill": "dehaze"})]
-        _install_injection_mocks(
-            monkeypatch, prefs=prefs, skills=skills, user_skills=["dehaze"]
-        )
+        _install_injection_mocks(monkeypatch, prefs=prefs, skills=skills, user_skills=["dehaze"])
 
-        _, injected = await injection.inject_memories(object(), 1, "请执行 dehaze 任务")
+        _, injected = await injection.inject_memories(_DB, 1, "请执行 dehaze 任务")
         assert [i["source"] for i in injected] == ["preference", "skill"]
 
     async def test_retrieval_touch_called(self, monkeypatch):
         touch_recorder = []
         retrievals = [_mem(3, "episodic", "历史处理雾图记录", 60, relevance=0.8)]
-        _install_injection_mocks(monkeypatch, es_retrievals=retrievals, touch_recorder=touch_recorder)
+        _install_injection_mocks(
+            monkeypatch, es_retrievals=retrievals, touch_recorder=touch_recorder
+        )
 
-        await injection.inject_memories(object(), 1, "当前对话", task_type="evaluate")
+        await injection.inject_memories(_DB, 1, "当前对话", task_type="evaluate")
         assert touch_recorder == [3]
 
     async def test_retrieval_fallback_to_keyword_when_es_empty(self, monkeypatch):
@@ -201,7 +250,7 @@ class TestInjectMemories:
             monkeypatch, keyword_hits=keyword_hits, touch_recorder=touch_recorder
         )
 
-        _, injected = await injection.inject_memories(object(), 1, "夜间去雾")
+        _, injected = await injection.inject_memories(_DB, 1, "夜间去雾")
         assert [i["source"] for i in injected] == ["retrieval"]
         assert injected[0]["memory_id"] == 4
         assert touch_recorder == [4]
@@ -221,7 +270,7 @@ class TestInjectMemories:
             monkeypatch, es_retrievals=retrievals, touch_recorder=touch_recorder
         )
 
-        _, injected = await injection.inject_memories(object(), 1, "处理雾图", limit=3)
+        _, injected = await injection.inject_memories(_DB, 1, "处理雾图", limit=3)
         retrieval_ids = [i["memory_id"] for i in injected if i["source"] == "retrieval"]
         assert retrieval_ids == [1, 2, 3]
         assert touch_recorder == [1, 2, 3]

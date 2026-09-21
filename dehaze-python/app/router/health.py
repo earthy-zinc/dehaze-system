@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import httpx
 from fastapi import APIRouter
@@ -13,6 +14,8 @@ from app.infrastructure.es.es_client import es_client
 from app.infrastructure.mq.connection import get_consumer, get_publisher
 from app.infrastructure.storage.minio_client import get_minio_client
 from app.service.storage.executor import storage_executor
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/health", tags=["健康检查"])
 ready_router = APIRouter(tags=["健康检查"])
@@ -41,10 +44,15 @@ async def _minio_ready() -> bool:
 
 
 async def _probe(name: str, checker) -> bool:
-    """带超时地探测某个基础设施，失败返回 False（不抛出，避免拖垮探针）"""
+    """带超时地探测某个基础设施，失败返回 False（不抛出，避免拖垮探针）。
+
+    探针本身不因单个依赖故障而中断，但失败原因必须留痕——否则就绪探针只报
+    DOWN 而无从定位是哪个依赖、因何失败。
+    """
     try:
         return bool(await asyncio.wait_for(checker(), timeout=5))
-    except Exception:
+    except Exception as exc:
+        logger.warning("就绪探针 %s 失败: %s", name, exc, exc_info=True)
         return False
 
 
@@ -55,7 +63,8 @@ def _llm_http_healthy() -> bool:
             f"http://{settings.LOCAL_LLM_HOST}:{settings.LOCAL_LLM_PORT}/health", timeout=3
         )
         return resp.status_code == 200 and resp.json().get("loaded") is True
-    except Exception:
+    except Exception as exc:
+        logger.warning("本地 LLM /health 探测失败: %s", exc, exc_info=True)
         return False
 
 
@@ -68,7 +77,8 @@ async def _local_llm_ready() -> bool:
 
         # ensure_running 为同步阻塞（可能拉起子进程/等模型加载），放线程池并限时
         await asyncio.wait_for(asyncio.to_thread(ensure_running), timeout=4)
-    except Exception:
+    except Exception as exc:
+        logger.warning("本地 LLM 拉起失败: %s", exc, exc_info=True)
         return False
     return _llm_http_healthy()
 
@@ -116,7 +126,8 @@ async def readiness_check():
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         components["db"] = "UP"
-    except Exception:
+    except Exception as exc:
+        logger.warning("就绪检查：数据库不可用: %s", exc, exc_info=True)
         components["db"] = "DOWN"
         all_healthy = False
 
@@ -127,7 +138,8 @@ async def readiness_check():
         else:
             components["redis"] = "DOWN"
             all_healthy = False
-    except Exception:
+    except Exception as exc:
+        logger.warning("就绪检查：Redis 健康检查异常: %s", exc, exc_info=True)
         components["redis"] = "DOWN"
         all_healthy = False
 
@@ -165,8 +177,7 @@ async def readiness_check():
             all_healthy = False
 
     # ASR/TTS 引擎（进程内、懒加载）：附带只读状态，不阻断整体就绪
-    for name, status_val in _voice_engine_status().items():
-        components[name] = status_val
+    components = {**components, **_voice_engine_status()}
 
     status = "UP" if all_healthy else "DOWN"
     status_code = 200 if all_healthy else 503

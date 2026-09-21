@@ -583,9 +583,9 @@ func (_c *MockIRoleRepository_FindByIDs_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// FindOptions provides a mock function with given fields: ctx, isRoot
-func (_m *MockIRoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error) {
-	ret := _m.Called(ctx, isRoot)
+// FindOptions provides a mock function with given fields: ctx
+func (_m *MockIRoleRepository) FindOptions(ctx context.Context) ([]read.Option, error) {
+	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindOptions")
@@ -593,19 +593,19 @@ func (_m *MockIRoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]
 
 	var r0 []read.Option
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, bool) ([]read.Option, error)); ok {
-		return rf(ctx, isRoot)
+	if rf, ok := ret.Get(0).(func(context.Context) ([]read.Option, error)); ok {
+		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, bool) []read.Option); ok {
-		r0 = rf(ctx, isRoot)
+	if rf, ok := ret.Get(0).(func(context.Context) []read.Option); ok {
+		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]read.Option)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, bool) error); ok {
-		r1 = rf(ctx, isRoot)
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -620,14 +620,13 @@ type MockIRoleRepository_FindOptions_Call struct {
 
 // FindOptions is a helper method to define mock.On call
 //   - ctx context.Context
-//   - isRoot bool
-func (_e *MockIRoleRepository_Expecter) FindOptions(ctx interface{}, isRoot interface{}) *MockIRoleRepository_FindOptions_Call {
-	return &MockIRoleRepository_FindOptions_Call{Call: _e.mock.On("FindOptions", ctx, isRoot)}
+func (_e *MockIRoleRepository_Expecter) FindOptions(ctx interface{}) *MockIRoleRepository_FindOptions_Call {
+	return &MockIRoleRepository_FindOptions_Call{Call: _e.mock.On("FindOptions", ctx)}
 }
 
-func (_c *MockIRoleRepository_FindOptions_Call) Run(run func(ctx context.Context, isRoot bool)) *MockIRoleRepository_FindOptions_Call {
+func (_c *MockIRoleRepository_FindOptions_Call) Run(run func(ctx context.Context)) *MockIRoleRepository_FindOptions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(bool))
+		run(args[0].(context.Context))
 	})
 	return _c
 }
@@ -637,7 +636,7 @@ func (_c *MockIRoleRepository_FindOptions_Call) Return(_a0 []read.Option, _a1 er
 	return _c
 }
 
-func (_c *MockIRoleRepository_FindOptions_Call) RunAndReturn(run func(context.Context, bool) ([]read.Option, error)) *MockIRoleRepository_FindOptions_Call {
+func (_c *MockIRoleRepository_FindOptions_Call) RunAndReturn(run func(context.Context) ([]read.Option, error)) *MockIRoleRepository_FindOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -697,6 +696,65 @@ func (_c *MockIRoleRepository_FindPage_Call) Return(_a0 *read.PageResult[read.Ro
 }
 
 func (_c *MockIRoleRepository_FindPage_Call) RunAndReturn(run func(context.Context, *query.RolePageQuery) (*read.PageResult[read.RolePage], error)) *MockIRoleRepository_FindPage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindUsernamesByRoleIDs provides a mock function with given fields: ctx, roleIDs
+func (_m *MockIRoleRepository) FindUsernamesByRoleIDs(ctx context.Context, roleIDs []int64) ([]string, error) {
+	ret := _m.Called(ctx, roleIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindUsernamesByRoleIDs")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) ([]string, error)); ok {
+		return rf(ctx, roleIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) []string); ok {
+		r0 = rf(ctx, roleIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
+		r1 = rf(ctx, roleIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIRoleRepository_FindUsernamesByRoleIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindUsernamesByRoleIDs'
+type MockIRoleRepository_FindUsernamesByRoleIDs_Call struct {
+	*mock.Call
+}
+
+// FindUsernamesByRoleIDs is a helper method to define mock.On call
+//   - ctx context.Context
+//   - roleIDs []int64
+func (_e *MockIRoleRepository_Expecter) FindUsernamesByRoleIDs(ctx interface{}, roleIDs interface{}) *MockIRoleRepository_FindUsernamesByRoleIDs_Call {
+	return &MockIRoleRepository_FindUsernamesByRoleIDs_Call{Call: _e.mock.On("FindUsernamesByRoleIDs", ctx, roleIDs)}
+}
+
+func (_c *MockIRoleRepository_FindUsernamesByRoleIDs_Call) Run(run func(ctx context.Context, roleIDs []int64)) *MockIRoleRepository_FindUsernamesByRoleIDs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int64))
+	})
+	return _c
+}
+
+func (_c *MockIRoleRepository_FindUsernamesByRoleIDs_Call) Return(_a0 []string, _a1 error) *MockIRoleRepository_FindUsernamesByRoleIDs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIRoleRepository_FindUsernamesByRoleIDs_Call) RunAndReturn(run func(context.Context, []int64) ([]string, error)) *MockIRoleRepository_FindUsernamesByRoleIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -63,6 +63,12 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           // 接口地址
           target: env.VITE_API_URL,
         },
+        /** 流式 ASR WebSocket：后端返回相对路径，浏览器按页面 origin 同源连接，由代理转发（需显式开启 ws） */
+        "/ws": {
+          target: env.VITE_API_URL,
+          ws: true,
+          changeOrigin: true,
+        },
       },
     },
     plugins: [

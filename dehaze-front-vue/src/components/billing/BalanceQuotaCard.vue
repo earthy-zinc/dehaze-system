@@ -1,6 +1,6 @@
 <!-- 余额与配额卡：用户端(scope=self)与管理端(scope=userId)共用 -->
 <script lang="ts" setup>
-import { computed, watch } from "vue";
+import { computed, shallowRef, watch } from "vue";
 import type { BillingDataScope } from "@/store/modules/billingData";
 import { useBillingDataStore } from "@/store/modules/billingData";
 
@@ -13,9 +13,9 @@ const props = withDefaults(
   { scope: "self" }
 );
 
-const store = useBillingDataStore();
+const store = shallowRef(useBillingDataStore(props.scope));
 
-const balance = computed(() => store.balance);
+const balance = computed(() => store.value.balance);
 
 /** 限额仅作防滥用阈值不计余额，达限标红、≥80% 黄色预警 */
 function quotaColor(used: number, limit: number) {
@@ -33,8 +33,8 @@ function quotaPercent(used: number, limit: number) {
 watch(
   () => props.scope,
   (next) => {
-    store.initScope(next);
-    store.fetchBalance();
+    store.value = useBillingDataStore(next);
+    store.value.fetchBalance();
   },
   { immediate: true }
 );

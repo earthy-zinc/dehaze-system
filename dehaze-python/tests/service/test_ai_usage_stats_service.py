@@ -12,40 +12,38 @@ pytestmark = pytest.mark.requires_db
 
 
 async def _seed_provider(db, **overrides) -> SysAiProvider:
-    data = dict(
-        provider_code="openai",
-        display_name="OpenAI",
-        api_base_url="https://api.openai.com/v1",
-        protocol_type="openai_compat",
-        auth_type="bearer",
-        sort_order=0,
-        health_check_enabled=1,
-        status=1,
-    )
+    data = {
+        "provider_code": "openai",
+        "display_name": "OpenAI",
+        "api_base_url": "https://api.openai.com/v1",
+        "protocol_type": "openai_compat",
+        "auth_type": "bearer",
+        "sort_order": 0,
+        "health_check_enabled": 1,
+        "status": 1,
+    }
     data.update(overrides)
     return await ai_provider_repository.create(db, SysAiProvider(**data))
 
 
 async def _seed_billing(db, **overrides):
-    data = dict(
-        user_id=1,
-        model="gpt-4o",
-        bill_type="chat",
-        input_tokens=100,
-        output_tokens=50,
-        credits=30,
-        latency_ms=500,
-        actual_model=None,
-    )
+    data = {
+        "user_id": 1,
+        "model": "gpt-4o",
+        "bill_type": "chat",
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "credits": 30,
+        "latency_ms": 500,
+        "actual_model": None,
+    }
     data.update(overrides)
     return await ai_billing_repository.create_billing(db, **data)
 
 
 async def test_provider_health_aggregation(db, mock_redis):
     await _seed_provider(db, provider_code="prov_health", display_name="健康供应商")
-    result = await ai_usage_stats_service.get_usage_stats(
-        db, mock_redis, UsageStatsQuery()
-    )
+    result = await ai_usage_stats_service.get_usage_stats(db, mock_redis, UsageStatsQuery())
     prov = next(p for p in result.provider_health if p.provider_name == "健康供应商")
     assert prov.provider_id > 0
     assert prov.health in ("healthy", "suspicious", "open")

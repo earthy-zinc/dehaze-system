@@ -28,6 +28,8 @@ public class SysPredLog extends BaseEntity {
 
     private String predUrl;
 
+    private Long recommendedBy;
+
     private Integer time;
 
     private LogStatusEnum status;

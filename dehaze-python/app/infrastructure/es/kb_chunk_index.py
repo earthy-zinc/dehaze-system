@@ -2,9 +2,9 @@
 
 索引名：kb_chunks_{knowledgeBaseId}（按知识库分索引隔离）
 字段：content_vector(dense_vector/cosine)、content(text 全文)、doc_title(text)、
-doc_id/chunk_id/chunk_index/version、create_time(date)、metadata(object 动态+显式过滤子字段)、
-tags(keyword)。metadata 显式定义过滤用子字段（type/algorithm_id/entities.name/relations.type），
-其余 metadata 内容保持动态映射。
+doc_id/chunk_id/chunk_index/section_index/version、create_time(date)、
+metadata(object 动态+显式过滤子字段)、tags(keyword)。metadata 显式定义过滤用子字段
+（type/algorithm_id/entities.name/relations.type），其余 metadata 内容保持动态映射。
 
 只承载索引定义、ensure/delete、批量写入/删除、向量/关键词/RRF 混合检索原语；
 Embedding 计算、配置读取、API Key 选择等业务编排见 service 层 kb 服务，勿在此引入 httpx/repository。
@@ -42,6 +42,8 @@ def _kb_mappings(dims: int) -> dict:
             "doc_id": {"type": "long"},
             "chunk_id": {"type": "long"},
             "chunk_index": {"type": "integer"},
+            # 父子分块：child→parent(小节) 的分组键，检索后按 (doc_id, section_index) 分组去重
+            "section_index": {"type": "integer"},
             "version": {"type": "integer"},
             "create_time": {"type": "date"},
             # 过滤用子字段显式声明为 keyword/long，保证 term/terms 查询精确匹配；
@@ -82,7 +84,7 @@ async def delete_kb_index(kb_id: int) -> bool:
         if await client.indices.exists(index=index):
             await client.indices.delete(index=index)
         return True
-    except Exception as e:  # noqa: BLE001 - 索引清理失败仅告警，不影响主流程
+    except Exception as e:
         logger.warning("ES 删除索引 %s 失败: %s", index, e)
         return False
 
@@ -105,13 +107,11 @@ async def bulk_index_chunks(kb_id: int, docs: list[dict]) -> bool:
             for item in resp.get("items") or []:
                 index_result = item.get("index") or {}
                 if index_result.get("status", 200) >= 300 or index_result.get("error"):
-                    failed_ids.append(
-                        f"{index_result.get('_id')}:{index_result.get('error')}"
-                    )
+                    failed_ids.append(f"{index_result.get('_id')}:{index_result.get('error')}")
             logger.warning("ES 批量写入 %s 存在失败项: %s", index, failed_ids)
             return False
         return True
-    except Exception as e:  # noqa: BLE001 - 批量写失败由上层补偿重试
+    except Exception as e:
         logger.warning("ES 批量写入 %s 失败: %s", index, e)
         return False
 
@@ -131,7 +131,7 @@ async def delete_doc_chunks(kb_id: int, document_id: int) -> bool:
             conflicts="proceed",
         )
         return True
-    except Exception as e:  # noqa: BLE001 - 删除失败由对账任务补偿
+    except Exception as e:
         logger.warning("ES 删除文档 %s 分块失败: %s", document_id, e)
         return False
 
@@ -155,7 +155,7 @@ async def get_index_stats(kb_id: int) -> dict:
             "index_size": int(store.get("store", {}).get("size_in_bytes", 0) or 0),
             "index_doc_count": int(docs.get("docs", {}).get("count", 0) or 0),
         }
-    except Exception as e:  # noqa: BLE001 - 索引不存在或查询失败按空索引处理
+    except Exception as e:
         logger.warning("ES 索引统计 %s 失败: %s", index, e)
         return {"index_size": 0, "index_doc_count": 0}
 
@@ -315,6 +315,6 @@ async def _search(index: str, body: dict) -> list[dict]:
             doc["relevance"] = hit.get("_score", 0.0)
             hits.append(doc)
         return hits
-    except Exception as e:  # noqa: BLE001 - 检索失败由调用方降级（无知识回复）
+    except Exception as e:
         logger.warning("ES 检索 %s 失败: %s", index, e)
         return []

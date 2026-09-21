@@ -111,7 +111,7 @@ func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (
 			ExpiresAt:      t.ExpiresAt,
 			CreatedAt:      t.CreatedAt,
 			StartedAt:      t.StartedAt,
-			CompletedAt:   t.CompletedAt,
+			CompletedAt:    t.CompletedAt,
 			Error:          t.ErrorMessage,
 		}
 		if t.Status == model.TaskStatusCompleted && t.Result != "" && t.Result != "null" {
@@ -148,6 +148,16 @@ func (r *taskRepository) UpdateFields(ctx context.Context, id int64, fields map[
 func (r *taskRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
 	return r.db.WithContext(ctx).Model(&model.SysTask{}).Where("id = ?", id).
 		Updates(map[string]interface{}{"status": status}).Error
+}
+
+func (r *taskRepository) CancelIfActive(ctx context.Context, id int64) (int64, error) {
+	result := r.db.WithContext(ctx).Model(&model.SysTask{}).
+		Where("id = ? AND status IN ?", id, []model.TaskStatus{model.TaskStatusPending, model.TaskStatusProcessing}).
+		Updates(map[string]interface{}{
+			"status":       model.TaskStatusCancelled,
+			"completed_at": time.Now(),
+		})
+	return result.RowsAffected, result.Error
 }
 
 func (r *taskRepository) Delete(ctx context.Context, ids []int64) error {

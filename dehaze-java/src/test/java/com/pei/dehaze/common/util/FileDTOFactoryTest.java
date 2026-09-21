@@ -25,6 +25,14 @@ import static org.mockito.Mockito.*;
 @DisplayName("FileDTOFactory 单元测试")
 class FileDTOFactoryTest {
 
+    /**
+     * 最小合法 JPEG 文件头（FF D8 FF）：图片扩展名走文件头魔数校验，
+     * 测试夹具必须携带真实魔数而非任意文本内容
+     */
+    private static final byte[] JPEG_CONTENT = {
+            (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10
+    };
+
     @Mock
     private ImageProcessingService imageProcessingService;
 
@@ -45,7 +53,7 @@ class FileDTOFactoryTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test content".getBytes()
+                JPEG_CONTENT
         );
 
         FileDTO result = fileDTOFactory.createFileDTO(file, "upload/20250120");
@@ -82,7 +90,7 @@ class FileDTOFactoryTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test content".getBytes()
+                JPEG_CONTENT
         );
 
         when(imageProcessingService.getImageDimensions(any(File.class)))
@@ -109,7 +117,7 @@ class FileDTOFactoryTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test content".getBytes()
+                JPEG_CONTENT
         );
 
         when(imageProcessingService.getImageDimensions(any(File.class)))

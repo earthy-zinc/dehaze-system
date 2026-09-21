@@ -12,8 +12,10 @@ import (
 type IEvalLogRepository interface {
 	Create(ctx context.Context, log *model.SysEvalLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysEvalLog, error)
-	FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+
 	FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+	// FindLogPageByUser 评估日志列表分页（**当前用户全部状态**的评估日志，python `list_logs` 口径）
+	FindLogPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
 	UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
@@ -38,23 +40,6 @@ func (r *evalLogRepository) FindByID(ctx context.Context, id int64) (*model.SysE
 		return nil, err
 	}
 	return &log, nil
-}
-
-func (r *evalLogRepository) FindPage(ctx context.Context, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
-	var list []model.SysEvalLog
-	var total int64
-	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{})
-	if algorithmID > 0 {
-		query = query.Where("algorithm_id = ?", algorithmID)
-	}
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	offset := (pageNum - 1) * pageSize
-	if err := query.Order("create_time DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
-		return nil, 0, err
-	}
-	return list, total, nil
 }
 
 func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error {
@@ -83,8 +68,9 @@ func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status m
 func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
 	var list []model.SysEvalLog
 	var total int64
+	// 指标历史仅含效果评估任务，排除同表存储的对比报告行
 	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
-		Where("create_by = ? AND status = ?", userID, model.LogStatusCompleted)
+		Where("create_by = ? AND status = ? AND task_type = ?", userID, model.LogStatusCompleted, "evaluation")
 	if algorithmID > 0 {
 		query = query.Where("algorithm_id = ?", algorithmID)
 	}
@@ -92,7 +78,27 @@ func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, al
 		return nil, 0, err
 	}
 	offset := (pageNum - 1) * pageSize
-	if err := query.Order("create_time DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+	if err := query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+// FindLogPageByUser 评估日志列表（`GET /evaluation/logs`）分页。
+// 对齐 python `eval_log_repository.get_paginated`：**仅按 create_by 隔离**（不限状态、不限 task_type）、按 id 倒序；
+// 而"指标历史"（`GET /evaluation/metrics`）另有 completed + task_type='evaluation' 的口径，见 FindPageByUser。
+func (r *evalLogRepository) FindLogPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
+	var list []model.SysEvalLog
+	var total int64
+	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).Where("create_by = ?", userID)
+	if algorithmID > 0 {
+		query = query.Where("algorithm_id = ?", algorithmID)
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	offset := (pageNum - 1) * pageSize
+	if err := query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&list).Error; err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil

@@ -58,8 +58,8 @@ public class CouponForm {
     @Min(value = 1, message = "每人限领数量必须大于0")
     private Integer perUserLimit;
 
-    @Schema(description = "适用套餐ID列表")
-    private List<Long> applicableScope;
+    @Schema(description = "适用商品（套餐ID或商品类型 vip/credit）")
+    private List<Object> applicableScope;
 
     @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;

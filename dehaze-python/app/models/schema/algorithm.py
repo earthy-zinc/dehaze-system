@@ -12,13 +12,14 @@ class AlgorithmForm(BaseModel):
 
     id: int | None = Field(default=None, description="算法ID")
     parentId: int = Field(default=0, ge=0, alias="parentId", description="父级ID")
-    type: str = Field(..., min_length=1, description="算法类型")
-    name: str = Field(..., min_length=1, max_length=100, description="算法名称")
-    path: str | None = Field(default="", description="模型路径")
-    importPath: str | None = Field(default="", alias="importPath", description="导入路径")
-    description: str | None = Field(default="", description="算法描述")
+    type: str = Field(..., min_length=1, max_length=100, description="算法类型")
+    name: str = Field(..., min_length=1, max_length=64, description="算法名称")
+    path: str | None = Field(default="", max_length=255, description="模型路径")
+    importPath: str | None = Field(
+        default="", max_length=255, alias="importPath", description="导入路径"
+    )
+    description: str | None = Field(default="", max_length=2048, description="算法描述")
     status: int | None = Field(default=None, description="算法状态")
-    version: str | None = Field(default=None, description="算法版本号")
 
     model_config = {"populate_by_name": True}
 
@@ -35,14 +36,10 @@ class AlgorithmVersionForm(BaseModel):
 
     version: str = Field(..., description="版本号 vX.Y.Z")
     changeLog: str | None = Field(default=None, alias="changeLog", description="变更日志")
-    status: int | None = Field(default=None, description="该版本时的状态")
     configJson: str | None = Field(
         default=None, alias="configJson", description="该版本时的配置JSON"
     )
     modelFileId: int | None = Field(default=None, alias="modelFileId", description="模型文件ID")
-    isActive: int | None = Field(
-        default=0, ge=0, le=1, alias="isActive", description="是否当前活跃版本"
-    )
 
     model_config = {"populate_by_name": True}
 

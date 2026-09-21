@@ -1,9 +1,10 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { AiAgentAPI, AiConversationAPI, service } from "../../../index";
+import { AiAgentAPI, AiConversationAPI, AiMCPAPI, service } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { USERS } from "#/factories/constants";
 import { uniqueCode } from "#/factories/common";
+import { createMcpServerForm } from "#/factories/ai-mcp";
 import {
   createAgentCopyForm,
   createAgentForm,
@@ -18,11 +19,24 @@ import {
   createEvalSampleForm,
 } from "#/factories/ai-agent";
 
+/** 轮询异步评测任务至终态：超时抛错而非跳过（任务不进入终态即环境故障，必须暴露） */
+async function pollEvalTask(agentId: number, taskId: string) {
+  for (let round = 0; round < 40; round++) {
+    const task = await AiAgentAPI.getEvalTask(agentId, taskId);
+    if (task.status === "succeeded" || task.status === "failed") return task;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`评测任务未在 10s 内进入终态：${taskId}`);
+}
+
 /**
  * AI 智能体管理（T-MF-090~101、142~146 + 评测域）
  *
  * 管理端接口（创建/更新/删除/启停/复制/发布/回滚/评测）需 ai:agent:manage，
  * 普通用户仅可查看启用列表。数据前缀 test_agent_ / test_eval_，afterAll 清理。
+ *
+ * 异步评测任务（POST /runs → task_id；GET /tasks/{taskId}）的 taskId 由后端生成，
+ * 无法在离线单测中覆盖，归此处集成用例。
  */
 describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
   let agentId: number;
@@ -173,9 +187,23 @@ describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
 
     test("T-MF-101 正向：设置 MCP 命名空间并断言关联", async () => {
       await login(USERS.ADMIN.username);
-      await AiAgentAPI.setMcps(agentId, createAgentMcpForm({ mcpNamespaces: ["test_ns"] }));
-      const detail = await AiAgentAPI.detail(agentId);
-      expect(detail.mcpNamespaces).toContain("test_ns");
+      // 命名空间必须已在注册 MCP Server 下声明（后端引用完整性校验），故先注册 Server 再声明命名空间
+      const server = await AiMCPAPI.createServer(createMcpServerForm());
+      const namespace = uniqueCode("test_ns");
+      let bound = false;
+      try {
+        await AiMCPAPI.updateNamespaces(server.id, [{ name: namespace, toolNames: [] }]);
+        await AiAgentAPI.setMcps(agentId, createAgentMcpForm({ mcpNamespaces: [namespace] }));
+        bound = true;
+        const detail = await AiAgentAPI.detail(agentId);
+        expect(detail.mcpNamespaces).toContain(namespace);
+      } finally {
+        // 先解绑再删 Server，否则 Server 删除会因命名空间被 Agent 引用而拒绝
+        if (bound) {
+          await AiAgentAPI.setMcps(agentId, { mcpNamespaces: [] }).catch(() => {});
+        }
+        await AiMCPAPI.deleteServer(server.id).catch(() => {});
+      }
     });
 
     test("T-MF-111 正向：设置子 Agent 并断言关联", async () => {
@@ -222,7 +250,7 @@ describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
     test("T-MF-121 发布返回新版本号", async () => {
       await login(USERS.ADMIN.username);
       const result = await AiAgentAPI.publish(agentId, createAgentPublishForm());
-      // 后端返回 snake_case version_no，与 SDK 类型契约不一致，按实际返回断言并上报主 agent
+      // VersionResult 契约为 snake_case version_no（与后端一致）
       expect((result as any).version_no).toBeGreaterThan(0);
     });
 
@@ -235,11 +263,20 @@ describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
 
     test("T-MF-123 回滚到历史版本", async () => {
       await login(USERS.ADMIN.username);
+      // 更新 Agent 即写入草稿版本（status=1），用于下方草稿不可回滚的负向断言
+      await AiAgentAPI.update(agentId, createAgentUpdateForm());
       const versions = await AiAgentAPI.versions(agentId, { pageNum: 1, pageSize: 20 });
       expect(versions.list.length).toBeGreaterThan(0);
-      const targetVersion = versions.list[versions.list.length - 1]!.versionNo;
-      const result = await AiAgentAPI.rollback(agentId, targetVersion);
-      // 同 T-MF-121：后端返回 snake_case version_no，SDK 契约不一致，按实际返回断言并上报主 agent
+
+      // 草稿是发布链路的评测中间态，不可作为回滚目标
+      const draft = versions.list.find((v) => v.status === 1);
+      expect(draft).toBeDefined();
+      await expectBizError(AiAgentAPI.rollback(agentId, draft!.versionNo), ["A0502"]);
+
+      const published = versions.list.find((v) => v.status === 2);
+      expect(published).toBeDefined();
+      const result = await AiAgentAPI.rollback(agentId, published!.versionNo);
+      // VersionResult 契约为 snake_case version_no（与后端一致）
       expect((result as any).version_no).toBeGreaterThan(0);
     });
   });
@@ -316,6 +353,36 @@ describe("AI 智能体管理 - AiAgentAPI (T-MF-090~101,142~146)", () => {
       expect(Array.isArray(samples)).toBe(true);
       const found = samples.find((s) => s.id === sampleId);
       expect(found).toBeDefined();
+    });
+
+    test("T-MF-127 正向：异步触发评测返回 taskId 并轮询到终态", async () => {
+      await login(USERS.ADMIN.username);
+      // 专用 Agent：无回归集时评测平凡放行，不进入样本执行（不依赖模型可用性）
+      const evalAgent = await AiAgentAPI.create(createAgentForm());
+      cleanupAgents.push(evalAgent.id);
+
+      const ack = await AiAgentAPI.runEvalAsync(evalAgent.id);
+      expect(typeof ack.taskId).toBe("string");
+      expect(ack.taskId.length).toBeGreaterThan(0);
+
+      const task = await pollEvalTask(evalAgent.id, ack.taskId);
+      expect(task.taskId).toBe(ack.taskId);
+      expect(task.status).toBe("succeeded");
+      expect(task.progress.total).toBeGreaterThanOrEqual(0);
+      expect(task.progress.done).toBeLessThanOrEqual(task.progress.total);
+      // 无回归集：平凡放行且不产生评测执行记录
+      expect(task.error).toBeFalsy();
+      expect(task.result?.passed).toBe(true);
+      expect(task.result?.degraded).toBe(false);
+      expect(task.result?.insufficientEval).toBe(false);
+      expect(task.result?.failedSamples).toEqual([]);
+      // 无回归集未产生评测记录：runId 字段缺失（后端空字段不下发），非显式 null
+      expect(task.result?.runId).toBeUndefined();
+    });
+
+    test("T-MF-127 负向：任务 ID 不存在 → A0401", async () => {
+      await login(USERS.ADMIN.username);
+      await expectBizError(AiAgentAPI.getEvalTask(agentId, "not-exist-task-id"), ["A0401"]);
     });
 
     test("T-MF-126 清理：删除样本与评测集", async () => {

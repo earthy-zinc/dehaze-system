@@ -13,7 +13,7 @@ class AiMcpServerRepository(BaseRepository[SysAiMcpServer]):
     async def get_by_name(
         self, db: AsyncSession, name: str, include_deleted: bool = False
     ) -> SysAiMcpServer | None:
-        """按业务唯一键 name 查询（查重时 include_deleted=True 绕过软删过滤）"""
+        """按业务唯一键 name 查询（include_deleted=True 仅供预设 Server 软删行复活）"""
         stmt = select(SysAiMcpServer).where(SysAiMcpServer.name == name)
         if include_deleted:
             stmt = stmt.execution_options(include_deleted=True)

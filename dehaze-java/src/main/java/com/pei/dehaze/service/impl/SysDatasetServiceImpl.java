@@ -352,13 +352,17 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     }
 
     @Override
+    public java.util.List<java.util.Map<String, Object>> getEvaluationOptions(String taskType) {
+        return baseMapper.selectEvaluationOptions(taskType);
+    }
+
     public DatasetVO addDataset(DatasetAddForm dataset) {
         Long parentId = dataset.getParentId() != null ? dataset.getParentId() : SystemConstants.ROOT_NODE_ID;
         boolean exists = this.count(new LambdaQueryWrapper<SysDataset>()
                 .eq(SysDataset::getName, dataset.getName())
                 .eq(SysDataset::getParentId, parentId)) > 0;
         if (exists) {
-            throw new BusinessException("同父节点下已存在相同名称的数据集");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "同父节点下已存在相同名称的数据集");
         }
 
         SysDataset sysDataset = datasetConverter.form2Entity(dataset);
@@ -387,7 +391,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                     .eq(SysDataset::getParentId, currentDataset.getParentId())
                     .ne(SysDataset::getId, id)) > 0;
             if (exists) {
-                throw new BusinessException("同父节点下已存在相同名称的数据集");
+                throw new BusinessException(ResultCode.DATA_EXISTS, "同父节点下已存在相同名称的数据集");
             }
         }
 

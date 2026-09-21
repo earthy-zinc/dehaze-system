@@ -11,6 +11,17 @@
             placeholder="字典名称"
           />
         </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select
+            v-model="queryParams.status"
+            clearable
+            placeholder="全部"
+            style="width: 120px"
+          >
+            <el-option :value="1" label="启用" />
+            <el-option :value="0" label="禁用" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery"
             ><el-icon><Search /></el-icon>搜索</el-button
@@ -147,6 +158,7 @@ defineOptions({
 });
 
 import { DictAPI, DictForm, DictPageVO, DictQuery } from "dehaze-sdk-js";
+import { useDictStoreHook } from "@/store";
 import { Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-vue";
 
 const props = defineProps({
@@ -184,6 +196,7 @@ const queryParams = reactive<DictQuery>({
   pageNum: 1,
   pageSize: 10,
   typeCode: props.typeCode,
+  status: undefined,
 });
 
 const dictList = ref<DictPageVO[]>();
@@ -258,24 +271,21 @@ function openDialog(dictId?: number) {
 function handleSubmit() {
   dataFormRef.value.validate((isValid: boolean) => {
     if (isValid) {
-      loading.value = false;
       const dictId = formData.id;
       if (dictId) {
-        DictAPI.updateDict(dictId, formData)
-          .then(() => {
-            ElMessage.success("修改成功");
-            closeDialog();
-            resetQuery();
-          })
-          .finally(() => (loading.value = false));
+        DictAPI.updateDict(dictId, formData).then(() => {
+          ElMessage.success("修改成功");
+          useDictStoreHook().invalidate(formData.typeCode);
+          closeDialog();
+          resetQuery();
+        });
       } else {
-        DictAPI.addDict(formData)
-          .then(() => {
-            ElMessage.success("新增成功");
-            closeDialog();
-            resetQuery();
-          })
-          .finally(() => (loading.value = false));
+        DictAPI.addDict(formData).then(() => {
+          ElMessage.success("新增成功");
+          useDictStoreHook().invalidate(formData.typeCode);
+          closeDialog();
+          resetQuery();
+        });
       }
     }
   });
@@ -308,8 +318,8 @@ function handleDelete(row?: any) {
   }
 
   const confirmMsg = row
-    ? `确认删除字典数据「${row.name}」吗？删除后不可恢复。`
-    : "确认删除选中的字典数据吗？删除后不可恢复。";
+    ? `确认删除字典数据「${row.name}」吗？删除后其下拉选项将不可用。`
+    : "确认删除选中的字典数据吗？删除后其下拉选项将不可用。";
   ElMessageBox.confirm(confirmMsg, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
@@ -317,6 +327,7 @@ function handleDelete(row?: any) {
   }).then(() => {
     DictAPI.deleteDictByIds(dictIds).then(() => {
       ElMessage.success("删除成功");
+      useDictStoreHook().invalidate(queryParams.typeCode);
       resetQuery();
     });
   });

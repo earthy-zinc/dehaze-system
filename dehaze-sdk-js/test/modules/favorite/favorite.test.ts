@@ -147,28 +147,28 @@ describe("收藏管理接口测试", () => {
       favoriteIds.push(favoriteId);
     });
 
-    test("边界测试：重复收藏同一对象走 upsert 复活，返回原行 id", async () => {
+    test("边界测试：重复收藏同一对象幂等，返回原行 id", async () => {
       const targetId = await createAlgorithmTarget();
       const form = createFavoriteForm({ targetType: "algorithm", targetId });
 
       const firstId = await FavoriteAPI.add(form);
       favoriteIds.push(firstId as number);
 
-      // upsert 改造后：重复收藏走 ON DUPLICATE KEY UPDATE 复活软删行，返回原行 id（非新增）
+      // 已收藏（未取消）时重复 add：命中唯一键 uk_user_target(deleted=0) 复活原行，重查返回原 id
       const secondId = await FavoriteAPI.add(form);
       expect(secondId).toBe(firstId);
     });
 
-    test("边界测试：取消后重新收藏（原记录复活）", async () => {
+    test("边界测试：取消后重新收藏生成新行", async () => {
       const targetId = await createAlgorithmTarget();
       const form = createFavoriteForm({ targetType: "algorithm", targetId });
 
       const firstId = await FavoriteAPI.add(form);
       await FavoriteAPI.deleteByIds([firstId as number]);
 
-      // 取消后重新收藏，应返回原记录 ID（复活）
+      // 取消后原行 deleted=原行id（uk 含 deleted 不再冲突），重新收藏插入新行返回新 id
       const secondId = await FavoriteAPI.add(form);
-      expect(secondId).toBe(firstId);
+      expect(secondId).toBeGreaterThan(firstId as number);
 
       const status = await FavoriteAPI.getStatus("algorithm", targetId);
       expect(status.favorited).toBe(true);
@@ -454,6 +454,103 @@ describe("收藏管理接口测试", () => {
       const algorithmCount = result.find((item) => item.targetType === "algorithm");
       expect(algorithmCount).toBeDefined();
       expect(algorithmCount!.count).toBeGreaterThan(0);
+    });
+  });
+
+  describe("目标类型校验", () => {
+    test("参数校验：非法 targetType 应返回业务错误 A0400", async () => {
+      const form = createFavoriteForm({
+        targetType: "hacker" as unknown as FavoriteTargetType,
+        targetId: 1,
+      });
+      await expectBizError(FavoriteAPI.add(form), ["A0400"]);
+    });
+  });
+
+  describe("失效联动（对象删除 → is_invalid）", () => {
+    test("完整联动：算法删除后收藏标记 isInvalid=true，且该对象不可再次收藏", async () => {
+      const targetId = await createAlgorithmTarget();
+      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      const favoriteId = (await FavoriteAPI.add(form)) as number;
+      favoriteIds.push(favoriteId);
+
+      await AlgorithmAPI.deleteByIds([targetId.toString()]);
+
+      const page = await FavoriteAPI.getPage(
+        createFavoriteQuery({ targetType: "algorithm", pageSize: 100 })
+      );
+      const found = page.list.find((item) => item.id === favoriteId);
+      expect(found).toBeDefined();
+      expect(found!.isInvalid).toBe(true);
+
+      // 已删除对象再次收藏应返回 A0401
+      await expectBizError(FavoriteAPI.add(form), ["A0401"]);
+
+      // 失效收藏仍可正常取消
+      await FavoriteAPI.deleteByIds([favoriteId]);
+      removeFavoriteIds([favoriteId]);
+      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      expect(status.favorited).toBe(false);
+    });
+
+    test("完整联动：数据集删除后收藏标记 isInvalid=true 且名称不再回显", async () => {
+      const datasetName = `favorite_invalidation_${Date.now()}`;
+      const targetId = await DatasetAPI.add({
+        parentId: 0,
+        name: datasetName,
+        type: "用户数据集",
+        description: "收藏失效联动测试",
+        status: 1,
+      });
+      const form = createFavoriteForm({ targetType: "dataset", targetId });
+      const favoriteId = (await FavoriteAPI.add(form)) as number;
+      favoriteIds.push(favoriteId);
+
+      await DatasetAPI.deleteById(targetId);
+
+      const page = await FavoriteAPI.getPage(
+        createFavoriteQuery({ targetType: "dataset", pageSize: 100 })
+      );
+      const found = page.list.find((item) => item.id === favoriteId);
+      expect(found).toBeDefined();
+      expect(found!.isInvalid).toBe(true);
+      expect(found!.targetName).toBeFalsy();
+
+      await FavoriteAPI.deleteByIds([favoriteId]);
+      removeFavoriteIds([favoriteId]);
+    });
+  });
+
+  describe("对抗性脏语料（关键词搜索）", () => {
+    test("LIKE 通配符按字面匹配（% 和 _ 不做模式展开）", async () => {
+      const datasetName = `fav_wild_a%b_${Date.now()}`;
+      const targetId = await DatasetAPI.add({
+        parentId: 0,
+        name: datasetName,
+        type: "用户数据集",
+        description: "关键词转义测试",
+        status: 1,
+      });
+      const form = createFavoriteForm({ targetType: "dataset", targetId });
+      const favoriteId = (await FavoriteAPI.add(form)) as number;
+      favoriteIds.push(favoriteId);
+
+      // % 作为字面字符匹配
+      const page = await FavoriteAPI.getPage(
+        createFavoriteQuery({ keywords: "a%b", pageSize: 100 })
+      );
+      expect(page.list.some((item) => item.id === favoriteId)).toBe(true);
+
+      // 不存在的脏关键词不应报错且不匹配
+      const dirtyPage = await FavoriteAPI.getPage(
+        createFavoriteQuery({ keywords: "🌫️\u200b\r\n", pageSize: 100 })
+      );
+      expect(Array.isArray(dirtyPage.list)).toBe(true);
+      expect(dirtyPage.list.some((item) => item.id === favoriteId)).toBe(false);
+
+      removeFavoriteIds([favoriteId]);
+      await FavoriteAPI.deleteByIds([favoriteId]);
+      await DatasetAPI.deleteById(targetId);
     });
   });
 

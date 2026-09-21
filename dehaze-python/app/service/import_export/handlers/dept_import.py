@@ -7,7 +7,9 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_dept import SysDept
+from app.models.schema.common import validate_no_xss
 from app.repository.dept_repository import dept_repository
+from app.service.dept_service import MAX_DEPT_LEVEL
 from app.service.import_export.models import (
     ImportError,
     ImportFieldConfig,
@@ -59,10 +61,13 @@ class DeptImportHandler(ImportHandler):
                 name = _get_str(row, "name")
                 if not name:
                     raise ValueError("部门名称为空")
+                validate_no_xss(name)
                 parent_id = _parse_int(row, "parent_id", 0) or 0
                 if await dept_repository.check_name_exists(db, name, parent_id=parent_id):
                     raise ValueError(f"同层级下部门名称已存在: {name}")
                 tree_path = await dept_repository.generate_tree_path(db, parent_id)
+                if len(tree_path.split(",")) > MAX_DEPT_LEVEL:
+                    raise ValueError("部门层级不能超过5级")
 
                 dept = SysDept(
                     name=name,

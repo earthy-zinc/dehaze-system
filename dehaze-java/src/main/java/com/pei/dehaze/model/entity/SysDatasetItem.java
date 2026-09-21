@@ -19,10 +19,10 @@ public class SysDatasetItem {
     private String name;
 
     /**
-     * 逻辑删除标识(0:未删除;1:已删除)
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
      */
-    @TableLogic
-    private Integer deleted;
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

@@ -5,8 +5,6 @@ from decimal import Decimal
 
 import pytest
 
-pytestmark = pytest.mark.requires_db
-
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_order import SysOrder
 from app.models.schema.ai_billing_cost import (
@@ -19,6 +17,9 @@ from app.repository.ai_model_cost_repository import ai_model_cost_repository
 from app.service.billing.cost_service import CostService
 from app.service.billing.cost_stat_service import CostStatService
 
+pytestmark = pytest.mark.requires_db
+
+
 # 2026-08-17 周一（高峰）、2026-08-22 周六（空闲）
 _PEAK_TIME = datetime(2026, 8, 17, 10, 0, 0)
 _IDLE_TIME = datetime(2026, 8, 22, 10, 0, 0)
@@ -28,7 +29,10 @@ _EFFECTIVE_FROM = datetime(2026, 1, 1)
 
 def _create_request(model_id, details):
     return ModelCostCreateRequest(
-        model_id=model_id, provider_id=1, effective_from=_EFFECTIVE_FROM, details=details,
+        model_id=model_id,
+        provider_id=1,
+        effective_from=_EFFECTIVE_FROM,
+        details=details,
     )
 
 
@@ -62,12 +66,10 @@ class TestCostVersioning:
         assert updated.status == 0
 
         await svc.delete_cost(db, created.id)
-        # service 测试环境未注册全局软删过滤事件，显式查含软删行校验 deleted=1
-        soft_deleted = await ai_model_cost_repository.get_by_id(
-            db, created.id, with_deleted=True
-        )
+        # service 测试环境未注册全局软删过滤事件，显式查含软删行校验 deleted 已标记（写为行 id）
+        soft_deleted = await ai_model_cost_repository.get_by_id(db, created.id, with_deleted=True)
         assert soft_deleted is not None
-        assert soft_deleted.deleted == 1
+        assert soft_deleted.deleted != 0
 
     async def test_list_costs_filters_by_model(self, db):
         svc = CostService(ai_model_cost_repository=ai_model_cost_repository)
@@ -89,12 +91,15 @@ class TestCalculateCost:
         svc = CostService(ai_model_cost_repository=ai_model_cost_repository)
         await svc.create_cost(
             db,
-            _create_request("m", [
-                _detail("input", "2", min_tokens=0, max_tokens=100),
-                _detail("input", "3", min_tokens=100),
-                _detail("cached", "0.5"),
-                _detail("output", "6"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "2", min_tokens=0, max_tokens=100),
+                    _detail("input", "3", min_tokens=100),
+                    _detail("cached", "0.5"),
+                    _detail("output", "6"),
+                ],
+            ),
         )
         # input_tokens 含缓存命中部分：未命中 900-100=800；total_input=1000 → 命中第二段 3
         # cost = 800×3 + 100×0.5 + 500×6 = 5450 → 0.00545 → ROUND_HALF_EVEN → 0.0054
@@ -105,10 +110,13 @@ class TestCalculateCost:
         svc = CostService(ai_model_cost_repository=ai_model_cost_repository)
         await svc.create_cost(
             db,
-            _create_request("m", [
-                _detail("input", "2", time_slot="idle"),
-                _detail("input", "4", time_slot="peak"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "2", time_slot="idle"),
+                    _detail("input", "4", time_slot="peak"),
+                ],
+            ),
         )
         idle_cost = await svc.calculate_cost(db, "m", 1, _IDLE_TIME, 1000, 0, 0)
         peak_cost = await svc.calculate_cost(db, "m", 1, _PEAK_TIME, 1000, 0, 0)
@@ -123,17 +131,27 @@ class TestCalculateCost:
         # 同时配置 peak/idle 档位：billing.create_time 为当前时刻，时段判定不确定
         await svc.create_cost(
             db,
-            _create_request("m", [
-                _detail("input", "2", time_slot="idle"),
-                _detail("input", "2", time_slot="peak"),
-                _detail("output", "6", time_slot="idle"),
-                _detail("output", "6", time_slot="peak"),
-            ]),
+            _create_request(
+                "m",
+                [
+                    _detail("input", "2", time_slot="idle"),
+                    _detail("input", "2", time_slot="peak"),
+                    _detail("output", "6", time_slot="idle"),
+                    _detail("output", "6", time_slot="peak"),
+                ],
+            ),
         )
         billing = SysAiBilling(
-            user_id=1, model="m", provider_id=1, bill_type="chat",
-            input_tokens=1000, cached_input_tokens=0, output_tokens=500,
-            credits=100, quota_consumed=100, pre_deduct=100,
+            user_id=1,
+            model="m",
+            provider_id=1,
+            bill_type="chat",
+            input_tokens=1000,
+            cached_input_tokens=0,
+            output_tokens=500,
+            credits=100,
+            quota_consumed=100,
+            pre_deduct=100,
         )
         db.add(billing)
         await db.flush()
@@ -146,21 +164,51 @@ class TestCalculateCost:
 class TestCostStats:
     async def test_dual_metric_gross_profit(self, db):
         now = datetime.now()
-        db.add(SysAiBilling(
-            user_id=1, model="m", bill_type="chat",
-            input_tokens=10, output_tokens=0, credits=100, quota_consumed=100, pre_deduct=100,
-            cost=Decimal("0.5000"),
-        ))
-        db.add(SysOrder(
-            order_no="T-CREDIT-1", user_id=1, package_id=1, package_name="积分卡",
-            package_type="credit", package_level=None, original_price=100,
-            payable_amount=100, paid_amount=100, status=3, expire_time=now, paid_time=now,
-        ))
-        db.add(SysOrder(
-            order_no="T-VIP-1", user_id=1, package_id=2, package_name="会员卡",
-            package_type="vip", package_level="level_1", original_price=200,
-            payable_amount=200, paid_amount=200, status=2, expire_time=now, paid_time=now,
-        ))
+        db.add(
+            SysAiBilling(
+                user_id=1,
+                model="m",
+                bill_type="chat",
+                input_tokens=10,
+                output_tokens=0,
+                credits=100,
+                quota_consumed=100,
+                pre_deduct=100,
+                cost=Decimal("0.5000"),
+            )
+        )
+        db.add(
+            SysOrder(
+                order_no="T-CREDIT-1",
+                user_id=1,
+                package_id=1,
+                package_name="积分卡",
+                package_type="credit",
+                package_level=None,
+                original_price=100,
+                payable_amount=100,
+                paid_amount=100,
+                status=3,
+                expire_time=now,
+                paid_time=now,
+            )
+        )
+        db.add(
+            SysOrder(
+                order_no="T-VIP-1",
+                user_id=1,
+                package_id=2,
+                package_name="会员卡",
+                package_type="vip",
+                package_level="level_1",
+                original_price=200,
+                payable_amount=200,
+                paid_amount=200,
+                status=2,
+                expire_time=now,
+                paid_time=now,
+            )
+        )
         await db.flush()
 
         svc = CostStatService()
@@ -176,6 +224,54 @@ class TestCostStats:
         ai = by_metric["ai"]
         assert ai.revenue == 1.6  # 1 + 2×0.3
         assert ai.profit == 1.1
+
+    async def test_grouped_by_provider_cost_only(self, db):
+        """分组维度仅输出成本分解：订单实收无法按模型/供应商归因，不返回收入/毛利"""
+        db.add_all(
+            [
+                SysAiBilling(
+                    user_id=1,
+                    model="m-a",
+                    provider_id=1,
+                    bill_type="chat",
+                    input_tokens=10,
+                    output_tokens=0,
+                    credits=100,
+                    quota_consumed=100,
+                    pre_deduct=100,
+                    cost=Decimal("0.3000"),
+                ),
+                SysAiBilling(
+                    user_id=1,
+                    model="m-b",
+                    provider_id=2,
+                    bill_type="chat",
+                    input_tokens=10,
+                    output_tokens=0,
+                    credits=100,
+                    quota_consumed=100,
+                    pre_deduct=100,
+                    cost=Decimal("0.2000"),
+                ),
+            ]
+        )
+        await db.flush()
+
+        svc = CostStatService()
+        by_provider = await svc.cost_stats(db, group_by="provider")
+        assert {(r.dimension, r.cost) for r in by_provider} == {("1", 0.3), ("2", 0.2)}
+        assert all(r.revenue is None and r.profit is None and r.metric is None for r in by_provider)
+
+        by_model = await svc.cost_stats(db, group_by="model", provider_id=1)
+        assert [(r.dimension, r.cost) for r in by_model] == [("m-a", 0.3)]
+
+    async def test_grouped_invalid_dimension_rejected(self, db):
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
+        with pytest.raises(BusinessException) as exc:
+            await CostStatService().cost_stats(db, group_by="user")
+        assert exc.value.code == ResultCode.PARAM_ERROR
 
 
 class TestImportReconcile:

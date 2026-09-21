@@ -32,6 +32,8 @@ COUPON_VALID_TYPES = {"fixed", "relative"}
 def _validate_coupon_form(form: dict) -> None:
     if form["type"] == "full_reduction" and form.get("threshold") is None:
         raise BusinessException(ResultCode.PARAM_ERROR, "满减券必须设置使用门槛")
+    if form["type"] == "discount" and form["faceValue"] > 100:
+        raise BusinessException(ResultCode.PARAM_ERROR, "折扣券面值不能超过100")
     valid_type = form["validType"]
     if valid_type not in COUPON_VALID_TYPES:
         raise BusinessException(ResultCode.PARAM_ERROR, "有效期类型非法")
@@ -41,7 +43,9 @@ def _validate_coupon_form(form: dict) -> None:
         raise BusinessException(ResultCode.PARAM_ERROR, "相对有效期必须设置有效天数")
     for scope in form.get("applicableScope") or []:
         if not isinstance(scope, int) and scope not in VALID_PACKAGE_TYPES:
-            raise BusinessException(ResultCode.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）")
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）"
+            )
 
 
 def _calc_expire_time(coupon: SysCoupon, receive_time: datetime) -> datetime | None:
@@ -211,6 +215,9 @@ class CouponService:
             )
             if trial_count > 0:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, "体验券每人限领 1 次")
+
+        if coupon.valid_type == "fixed" and coupon.valid_end and coupon.valid_end < datetime.now():
+            raise BusinessException(ResultCode.COUPON_EXPIRED)
 
         if coupon.total_qty != -1 and coupon.issued_qty >= coupon.total_qty:
             raise BusinessException(ResultCode.COUPON_STOCK_EMPTY)

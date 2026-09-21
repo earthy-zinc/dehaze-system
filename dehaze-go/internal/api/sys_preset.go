@@ -35,22 +35,9 @@ func (api *SysPresetApi) ListPresets(c *gin.Context) {
 		}
 	}
 
-	pageNum := 1
-	if v := c.Query("pageNum"); v != "" {
-		pageNum, err = strconv.Atoi(v)
-		if err != nil || pageNum < 1 {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "pageNum格式不正确"))
-			return
-		}
-	}
-
-	pageSize := 10
-	if v := c.Query("pageSize"); v != "" {
-		pageSize, err = strconv.Atoi(v)
-		if err != nil || pageSize < 1 || pageSize > 100 {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "pageSize格式不正确"))
-			return
-		}
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
 	}
 
 	var isSystem *bool

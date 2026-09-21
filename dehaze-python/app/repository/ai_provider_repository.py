@@ -51,15 +51,14 @@ class AiProviderRepository(BaseRepository[SysAiProvider]):
         stmt = stmt.order_by(SysAiProvider.sort_order, SysAiProvider.id)
         return await self.paginate(db, stmt, page, size)
 
-    async def count_enabled_models(self, db: AsyncSession, provider_id: int) -> int:
-        """统计该供应商下启用的模型数量（用于删除前校验）"""
+    async def count_models(self, db: AsyncSession, provider_id: int) -> int:
+        """统计该供应商下的模型数量（含禁用，用于删除前校验，防悬挂引用）"""
         stmt = (
             select(func.count())
             .select_from(SysAiModel)
             .where(
                 SysAiModel.provider_id == provider_id,
                 SysAiModel.deleted == 0,
-                SysAiModel.status == 1,
             )
         )
         return (await db.execute(stmt)).scalar() or 0

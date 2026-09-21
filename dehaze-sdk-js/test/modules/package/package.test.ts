@@ -1,23 +1,27 @@
 // 测试先行契约：package_type/credit_amount/type_stats 等字段后端尚未落地，
 // 用例按 dehaze-doc 套餐管理 API 接口文档编写，断言以文档为准；
 // 后端落地后条件断言自动生效，无需修改用例。
-import { CouponAPI, OrderAPI, PackageAPI } from "../../../index";
-import { CouponForm, PackageForm, PackagePageVO } from "@/api/package/model";
+import { CouponAPI, OrderAPI, PackageAPI, PromotionAPI } from "../../../index";
+import { CouponForm, PackageForm, PackagePageVO, PromotionForm } from "@/api/package/model";
 import { expectBizError } from "#/utils/assertion";
-import { login } from "#/utils/auth";
+import { forceLogin, login, logout } from "#/utils/auth";
 import {
   createCouponForm,
   createCouponQuery,
   createPackageForm,
   createPackageQuery,
+  createPromotionQuery,
+  uniqueName,
+  yuan,
 } from "#/factories/package";
-import { TestCleanupRegistry } from "#/utils/cleanup";
+import { TestCleanupRegistry, deletePackageOrOffline } from "#/utils/cleanup";
 import { USERS } from "#/factories/constants";
 
 describe("套餐管理模块接口测试", () => {
   const cleanup = new TestCleanupRegistry();
   const createdPackageIds: number[] = [];
   const createdCouponIds: number[] = [];
+  const createdPromotionIds: number[] = [];
   // 用户端测试账号（有会员记录的普通用户）
   const userAccount = USERS.USER.username;
 
@@ -44,14 +48,16 @@ describe("套餐管理模块接口测试", () => {
   }
 
   afterAll(async () => {
-    // executeAll 按 LIFO 执行：coupon 先于 package 删除（coupon.applicableScope 引用 package）
-    cleanup.registerIds(
-      () => createdPackageIds,
-      (id) => PackageAPI.deleteByIds(id)
-    );
+    // executeAll 按 LIFO 执行：promotion/coupon 先于 package 删除
+    // （coupon.applicableScope / promotion 关联引用 package）
+    cleanup.registerIds(() => createdPackageIds, deletePackageOrOffline);
     cleanup.registerIds(
       () => createdCouponIds,
       (id) => CouponAPI.deleteByIds(id)
+    );
+    cleanup.registerIds(
+      () => createdPromotionIds,
+      (id) => PromotionAPI.delete(id)
     );
     await cleanup.executeAll();
     // 切回 admin，避免影响后续测试文件
@@ -868,6 +874,440 @@ describe("套餐管理模块接口测试", () => {
           expect(c.status).toBe(1);
         }
       });
+    });
+  });
+
+  // ============ 促销活动管理 ============
+
+  // 时间格式 yyyy-MM-dd HH:mm:ss（全局口径）
+  function formatLocal(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, "0");
+    return (
+      `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ` +
+      `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    );
+  }
+
+  function createPromotionForm(overrides: Partial<PromotionForm> = {}): PromotionForm {
+    const now = Date.now();
+    return {
+      name: uniqueName("测试促销"),
+      type: "full_reduction",
+      startTime: formatLocal(new Date(now - 24 * 3600_000)),
+      endTime: formatLocal(new Date(now + 24 * 3600_000)),
+      activityRules: { tiers: [{ threshold: 1000, faceValue: 1000 }] },
+      newUserOnly: 0,
+      status: 0,
+      ...overrides,
+    };
+  }
+
+  async function findPromotion(name: string): Promise<any | undefined> {
+    const page = await PromotionAPI.getPage(createPromotionQuery({ name }));
+    return page.list.find((p) => p.name === name);
+  }
+
+  describe("PromotionAPI - 促销活动管理（admin）", () => {
+    beforeAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("正向测试：创建促销活动默认下架", async () => {
+      const form = createPromotionForm();
+      const result = await PromotionAPI.add(form);
+      expect(result.id).toBeGreaterThan(0);
+      createdPromotionIds.push(result.id);
+
+      const created = await findPromotion(form.name);
+      expect(created).toBeDefined();
+      expect(created.status).toBe(0);
+      expect(created.activityRules).toEqual(form.activityRules);
+    });
+
+    test("正向测试：修改促销活动", async () => {
+      const form = createPromotionForm();
+      const { id } = await PromotionAPI.add(form);
+      createdPromotionIds.push(id);
+
+      // 状态修改走独立 /status 端点（update 忽略 status 字段，且 status 变更需联动清套餐缓存）
+      const updated = { ...form, description: "修改后的活动描述" };
+      await PromotionAPI.update(id, updated);
+      await PromotionAPI.updateStatus(id, 1);
+
+      const found = await findPromotion(form.name);
+      expect(found?.description).toBe("修改后的活动描述");
+      expect(found?.status).toBe(1);
+      // 恢复下架，避免影响价格计算相关用例
+      await PromotionAPI.updateStatus(id, 0);
+    });
+
+    test("正向测试：促销活动上下架", async () => {
+      const form = createPromotionForm();
+      const { id } = await PromotionAPI.add(form);
+      createdPromotionIds.push(id);
+
+      await PromotionAPI.updateStatus(id, 1);
+      expect((await findPromotion(form.name))?.status).toBe(1);
+
+      await PromotionAPI.updateStatus(id, 0);
+      expect((await findPromotion(form.name))?.status).toBe(0);
+    });
+
+    test("异常：促销活动不存在", async () => {
+      await expectBizError(PromotionAPI.updateStatus(99999999, 1), ["A0401"]);
+    });
+
+    test("边界：普通用户创建促销活动应失败", async () => {
+      await login(userAccount);
+      await expectBizError(PromotionAPI.add(createPromotionForm()), ["A0301"]);
+      await login(USERS.ADMIN.username);
+    });
+  });
+
+  describe("促销活动联动 - 价格计算与下架保护", () => {
+    // vip 套餐 salePrice=990（未达满减门槛）；credit 套餐 salePrice=4000（达标减 1000）
+    let vipId: number;
+    let creditId: number;
+    let promotionId: number;
+    const threshold = 1000;
+    const faceValue = 1000;
+
+    beforeAll(async () => {
+      await login(USERS.ADMIN.username);
+
+      const vip = await createPackage({
+        name: uniqueName("促销联动VIP"),
+        salePrice: yuan(9.9),
+        status: 1,
+      });
+      vipId = vip.created!.id;
+
+      const credit = await createPackage({
+        name: uniqueName("促销联动积分卡"),
+        packageType: "credit",
+        creditAmount: 1000,
+        // salePrice 不得高于 originalPrice（后端校验），默认 originalPrice=1990 不够
+        originalPrice: yuan(50),
+        salePrice: yuan(40),
+        status: 1,
+      });
+      creditId = credit.created!.id;
+
+      const form = createPromotionForm({
+        activityRules: { tiers: [{ threshold, faceValue }] },
+        status: 1,
+      });
+      promotionId = (await PromotionAPI.add(form)).id;
+      createdPromotionIds.push(promotionId);
+      await PromotionAPI.bindPackages(promotionId, { packageIds: [vipId, creditId] });
+
+      await login(userAccount);
+    });
+
+    // T-PM-081/082：积分卡参与满减活动，价格计算对积分卡生效
+    test("正向测试：积分卡参与满减活动价格计算", async () => {
+      const result = await PackageAPI.calculatePrice(creditId);
+      expect(result.discountAmount).toBe(faceValue);
+      expect(result.payableAmount).toBe(yuan(40) - faceValue);
+    });
+
+    // T-PM-083：订单金额未达满减门槛 → 不生效
+    test("边界：满减未达门槛不生效", async () => {
+      const result = await PackageAPI.calculatePrice(vipId);
+      expect(result.discountAmount).toBe(0);
+      expect(result.payableAmount).toBe(yuan(9.9));
+    });
+
+    // T-PM-011：套餐详情含进行中促销活动
+    test("正向测试：详情返回进行中促销活动", async () => {
+      const detail = await PackageAPI.getDetail(vipId);
+      expect(Array.isArray(detail.activePromotions)).toBe(true);
+      const matched = detail.activePromotions.find((p: any) => p.id === promotionId);
+      expect(matched).toBeDefined();
+      // 时间格式 yyyy-MM-dd HH:mm:ss
+      expect(matched.startTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    });
+
+    // T-PM-039：促销进行中不允许下架
+    test("边界：促销期间套餐下架应失败", async () => {
+      await login(USERS.ADMIN.username);
+      await expectBizError(PackageAPI.updateStatus(vipId, 0), ["A052B"], "促销");
+      await login(userAccount);
+    });
+
+    // T-PM-079 下架侧：活动下架后不参与价格计算；T-PM-041：非进行中活动可下架套餐
+    test("正向测试：活动下架后套餐可下架且价格不参与计算", async () => {
+      await login(USERS.ADMIN.username);
+      await PromotionAPI.updateStatus(promotionId, 0);
+
+      const result = await PackageAPI.calculatePrice(creditId);
+      expect(result.discountAmount).toBe(0);
+      expect(result.payableAmount).toBe(yuan(40));
+
+      // 活动已下架（非进行中），套餐下架不再被拦截
+      await PackageAPI.updateStatus(vipId, 0);
+      const form = await PackageAPI.getForm(vipId);
+      expect(form.status).toBe(0);
+      await login(userAccount);
+    });
+  });
+
+  // ============ 套餐模块强化 ============
+
+  describe("上下架状态流转与商城可见性不变量", () => {
+    test("验证：上架后用户端可见、下架后不可见", async () => {
+      await login(USERS.ADMIN.username);
+      const { created } = await createPackage({ status: 0 });
+      const packageId = created!.id;
+
+      await login(userAccount);
+      let list = await PackageAPI.listOnSale();
+      expect(list.find((p) => p.id === packageId)).toBeUndefined();
+
+      await login(USERS.ADMIN.username);
+      await PackageAPI.updateStatus(packageId, 1);
+
+      await login(userAccount);
+      list = await PackageAPI.listOnSale();
+      expect(list.find((p) => p.id === packageId)).toBeDefined();
+      // 上架后详情可正常访问
+      const detail = await PackageAPI.getDetail(packageId);
+      expect(detail.id).toBe(packageId);
+
+      await login(USERS.ADMIN.username);
+      await PackageAPI.updateStatus(packageId, 0);
+
+      await login(userAccount);
+      list = await PackageAPI.listOnSale();
+      expect(list.find((p) => p.id === packageId)).toBeUndefined();
+      await expectBizError(PackageAPI.getDetail(packageId), ["A0521"], "已下架");
+    });
+  });
+
+  describe("删除后名称复用（软删口径）", () => {
+    // uk 治理方案 A：唯一键含 deleted（deleted 存行 id），软删行不占键位，同名可重建。
+    // python 基准实测允许同名重建（00000），用户确认方案 a：断言按 python 实际行为修正。
+    test("正向测试：删除后同名创建成功（软删行不占唯一键位）", async () => {
+      await login(USERS.ADMIN.username);
+      const { form, created } = await createPackage({ status: 0 }, { track: false });
+      await PackageAPI.deleteByIds(created!.id.toString());
+
+      await PackageAPI.add(form);
+      const page = await PackageAPI.getPage(createPackageQuery({ name: form.name }));
+      expect(page.list.length).toBeGreaterThan(0);
+      // 重建行同样登记清理，避免跨次运行残留
+      for (const pkg of page.list) createdPackageIds.push(pkg.id);
+    });
+  });
+
+  describe("组合条件筛选", () => {
+    // T-PM-101：名称模糊 + 状态 + 周期精确过滤
+    test("正向测试：按名称+状态+周期组合筛选", async () => {
+      await login(USERS.ADMIN.username);
+      const fragment = uniqueName("组合筛选");
+      const { created } = await createPackage({
+        name: fragment,
+        status: 0,
+        period: "monthly",
+      });
+
+      const page = await PackageAPI.getPage(
+        createPackageQuery({ name: fragment, status: 0, period: "monthly" })
+      );
+      expect(page.list.length).toBeGreaterThan(0);
+      for (const pkg of page.list) {
+        expect(pkg.name).toContain(fragment);
+        expect(pkg.status).toBe(0);
+        expect(pkg.period).toBe("monthly");
+      }
+      expect(page.list.find((p) => p.id === created!.id)).toBeDefined();
+    });
+  });
+
+  describe("积分卡价格计算与不变量", () => {
+    test("正向测试：积分卡价格计算（无促销）", async () => {
+      await login(USERS.ADMIN.username);
+      const { created } = await createPackage({
+        packageType: "credit",
+        creditAmount: 1000,
+        salePrice: yuan(9.9),
+        status: 1,
+      });
+
+      await login(userAccount);
+      const result = await PackageAPI.calculatePrice(created!.id);
+      expect(result.discountAmount).toBe(0);
+      expect(result.couponAmount).toBe(0);
+      // 无促销/优惠券时应付 = salePrice（990），而非 originalPrice（1990）
+      expect(result.payableAmount).toBe(yuan(9.9));
+      expect(result.payableAmount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("对抗性脏语料与边界", () => {
+    beforeAll(async () => {
+      await login(USERS.ADMIN.username);
+    });
+
+    test("正向测试：名称含 emoji 与全角字符可创建", async () => {
+      // 名称必须唯一生成：uk 唯一索引含软删行，固定名称跨次运行会被历史记录占用（A0501）
+      const name = uniqueName("🎮游戏礼包ＦＵＬＬ版");
+      const { created } = await createPackage({
+        name,
+        status: 0,
+      });
+      expect(created).toBeDefined();
+      expect(created?.name).toBe(name);
+    });
+
+    test("正向测试：描述含 CRLF/零宽字符/BOM 可创建", async () => {
+      const { created } = await createPackage({
+        description: "第一行\r\n第二行\u200b\uFEFF尾",
+        status: 0,
+      });
+      expect(created).toBeDefined();
+    });
+
+    test("边界：名称 33 字符应失败", async () => {
+      const form = createPackageForm({ name: "名".repeat(33) });
+      await expectBizError(PackageAPI.add(form), ["A0400"]);
+    });
+
+    test("边界：名称 1 字符应失败", async () => {
+      const form = createPackageForm({ name: "名" });
+      await expectBizError(PackageAPI.add(form), ["A0400"]);
+    });
+
+    test("验证：价格以分（整数）存储", async () => {
+      const { created } = await createPackage({
+        originalPrice: yuan(19.9),
+        salePrice: yuan(9.9),
+        status: 0,
+      });
+      expect(Number.isInteger(created?.originalPrice)).toBe(true);
+      expect(Number.isInteger(created?.salePrice)).toBe(true);
+      // createTime 时间格式 yyyy-MM-dd HH:mm:ss
+      expect(created?.createTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    });
+  });
+
+  describe("CouponAPI 边界强化", () => {
+    test("边界：库存领完后领取应失败", async () => {
+      // T-PM-067：totalQty=1，user 领取后 admin（第二个用户）领取应失败
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(createCouponForm({ totalQty: 1, perUserLimit: 5 }));
+
+      await login(userAccount);
+      await CouponAPI.receive(couponId);
+
+      await login(USERS.ADMIN.username);
+      await expectBizError(CouponAPI.receive(couponId), ["A0526"], "领完");
+    });
+
+    test("边界：体验券每人限领 1 次", async () => {
+      // T-PM-057
+      await login(USERS.ADMIN.username);
+      // 实现口径 totalQty ge=0，"-1 不限量"未实现（决策项），用大库存值模拟不限量
+      const couponId = await createCoupon(
+        createCouponForm({ type: "trial", faceValue: 0, totalQty: 100000, perUserLimit: 1 })
+      );
+
+      await login(userAccount);
+      await CouponAPI.receive(couponId);
+      await expectBizError(CouponAPI.receive(couponId), ["A0500"], "体验券每人限领 1 次");
+    });
+
+    test("边界：领取禁用优惠券应失败", async () => {
+      // T-PM-076（实现口径：A0500"优惠券已禁用"；文档表述"优惠券不存在"，矛盾已上报）
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(createCouponForm({ status: 0 }));
+
+      await login(userAccount);
+      await expectBizError(CouponAPI.receive(couponId), ["A0500"], "禁用");
+    });
+
+    test("正向测试：批量发放全部用户", async () => {
+      // T-PM-072
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(createCouponForm({ totalQty: 100000, perUserLimit: 5 }));
+      const result = await CouponAPI.batchDistribute({
+        couponId,
+        targetScope: "all",
+      });
+      expect(result.successCount + result.failCount).toBeGreaterThan(0);
+    });
+
+    test("并发：同一用户并发领取库存 1 的券不超发", async () => {
+      // §5.2 缩比场景：两个请求同时到达，库存扣减走条件 UPDATE，恰好 0/1 张成功
+      await login(USERS.ADMIN.username);
+      const couponId = await createCoupon(createCouponForm({ totalQty: 1, perUserLimit: 10 }));
+
+      await login(userAccount);
+      const results = await Promise.allSettled([
+        CouponAPI.receive(couponId),
+        CouponAPI.receive(couponId),
+      ]);
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      // 不变量：成功数不得超过库存
+      expect(successCount).toBeLessThanOrEqual(1);
+
+      await login(USERS.ADMIN.username);
+      const page = await CouponAPI.getPage(createCouponQuery({ name: "" }));
+      const coupon = page.list.find((c) => c.id === couponId);
+      expect(coupon?.issuedQty).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe("安全 - 未登录访问", () => {
+    test("边界：未登录调用套餐列表应返回 A0230", async () => {
+      await login(userAccount);
+      await logout(userAccount);
+      try {
+        await expectBizError(PackageAPI.listOnSale(), ["A0230"]);
+      } finally {
+        await forceLogin(USERS.ADMIN.username);
+      }
+    });
+  });
+
+  describe("性能烟测", () => {
+    // §5.1：缓存命中后核心查询应在秒级内返回；上限取宽松 5s 防环境抖动
+    const LIMIT_MS = 5000;
+
+    async function timed<T>(fn: () => Promise<T>): Promise<number> {
+      const start = performance.now();
+      await fn();
+      return performance.now() - start;
+    }
+
+    test("在售套餐列表响应计时", async () => {
+      await login(userAccount);
+      const elapsed = await timed(() => PackageAPI.listOnSale());
+      expect(elapsed).toBeLessThan(LIMIT_MS);
+    });
+
+    test("套餐详情响应计时", async () => {
+      await login(USERS.ADMIN.username);
+      const { created } = await createPackage({ status: 1 });
+      await login(userAccount);
+      const elapsed = await timed(() => PackageAPI.getDetail(created!.id));
+      expect(elapsed).toBeLessThan(LIMIT_MS);
+    });
+
+    test("后台套餐分页响应计时", async () => {
+      await login(USERS.ADMIN.username);
+      const elapsed = await timed(() =>
+        PackageAPI.getPage(createPackageQuery({ pageNum: 1, pageSize: 10 }))
+      );
+      expect(elapsed).toBeLessThan(LIMIT_MS);
+    });
+
+    test("价格计算响应计时", async () => {
+      await login(USERS.ADMIN.username);
+      const { created } = await createPackage({ status: 1 });
+      await login(userAccount);
+      const elapsed = await timed(() => PackageAPI.calculatePrice(created!.id));
+      expect(elapsed).toBeLessThan(LIMIT_MS);
     });
   });
 });

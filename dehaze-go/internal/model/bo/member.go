@@ -7,8 +7,9 @@ type MemberLevelAdjustForm struct {
 }
 
 type MemberGrowthAdjustForm struct {
-	ChangeValue int    `json:"changeValue"`
-	Reason      string `json:"reason"`
+	ChangeValue int `json:"changeValue"`
+	// 调整原因上限 256，与 DB varchar(256) 及 Python 端 max_length 对齐，防超长触发 500
+	Reason string `json:"reason" binding:"max=256"`
 }
 
 type MemberStatusForm struct {
@@ -24,6 +25,7 @@ type BenefitForm struct {
 	MonthlyEvaluateQuota *int    `json:"monthlyEvaluateQuota" binding:"omitempty,min=0"`
 	HistoryRetention     *int    `json:"historyRetention" binding:"omitempty,min=0"`
 	BatchLimit           *int    `json:"batchLimit" binding:"omitempty,min=0"`
+	MaxDevices           *int    `json:"maxDevices" binding:"omitempty,min=1"`
 	Priority             *int    `json:"priority" binding:"omitempty,min=1,max=4"`
 	AdvancedParams       *int    `json:"advancedParams" binding:"omitempty,oneof=0 1"`
 	HdExport             *int    `json:"hdExport" binding:"omitempty,oneof=0 1"`

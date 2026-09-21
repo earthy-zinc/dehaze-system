@@ -1,6 +1,12 @@
 <script lang="ts" setup>
 import { ExportModule, TaskVO } from "dehaze-sdk-js";
+import type { TagType } from "@/enums/TagType";
 import { useTaskStore } from "@/store";
+import {
+  TASK_POLLING_STATUSES,
+  TASK_STATUS_OPTIONS,
+  TASK_TYPE_LABELS,
+} from "@/views/task/constants";
 import { downloadByUrl } from "@/utils";
 
 defineOptions({
@@ -26,43 +32,6 @@ const taskStore = useTaskStore();
 const statusFilter = ref<number | "">("");
 const categoryFilter = ref<"import" | "export" | "">("");
 
-const POLLING_STATUSES = [1, 2];
-
-const statusLabel: Record<number, string> = {
-  1: "待执行",
-  2: "执行中",
-  3: "已完成",
-  4: "失败",
-  5: "已取消",
-};
-
-const statusTagType: Record<
-  number,
-  "info" | "primary" | "success" | "danger" | "warning"
-> = {
-  1: "info",
-  2: "primary",
-  3: "success",
-  4: "danger",
-  5: "warning",
-};
-
-const taskTypeLabel: Record<string, string> = {
-  dataset_export: "数据集导出",
-  user_export: "用户导出",
-  role_export: "角色导出",
-  dept_export: "部门导出",
-  menu_export: "菜单导出",
-  dict_export: "字典导出",
-  algorithm_export: "算法导出",
-  user_import: "用户导入",
-  role_import: "角色导入",
-  dept_import: "部门导入",
-  menu_import: "菜单导入",
-  dict_import: "字典导入",
-  algorithm_import: "算法导入",
-};
-
 const queryParams = reactive({
   pageNum: 1,
   pageSize: 10,
@@ -70,6 +39,14 @@ const queryParams = reactive({
 
 const downloadLoadingId = ref<string | null>(null);
 const cancelLoadingId = ref<string | null>(null);
+
+function statusLabel(status: number): string | number {
+  return TASK_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status;
+}
+
+function statusTagType(status: number): TagType {
+  return TASK_STATUS_OPTIONS.find((o) => o.value === status)?.tag ?? "info";
+}
 
 function buildTaskTypeFilter(): string | undefined {
   if (props.module) {
@@ -87,12 +64,11 @@ async function loadTaskList() {
   };
   try {
     await taskStore.getTaskList(query);
-  } catch (e: any) {
-    ElMessage.error(e.message || "加载任务列表失败");
+  } catch {
     return;
   }
   const hasActiveTasks = taskStore.taskList.some((t) =>
-    POLLING_STATUSES.includes(t.status)
+    TASK_POLLING_STATUSES.includes(t.status)
   );
   if (hasActiveTasks) {
     taskStore.startPolling();
@@ -107,7 +83,7 @@ function handleFilterChange() {
 }
 
 function canCancel(status: number): boolean {
-  return POLLING_STATUSES.includes(status);
+  return TASK_POLLING_STATUSES.includes(status);
 }
 
 function progressStatus(
@@ -139,8 +115,7 @@ async function handleCancel(task: TaskVO) {
     await taskStore.cancelTask(task.taskId);
     ElMessage.success("任务已取消");
     await loadTaskList();
-  } catch (e: any) {
-    ElMessage.error(e.message || "取消任务失败");
+  } catch {
   } finally {
     cancelLoadingId.value = null;
   }
@@ -152,8 +127,7 @@ async function handleDownload(task: TaskVO) {
     const url = await taskStore.downloadResult(task.taskId);
     downloadByUrl(url);
     ElMessage.success("开始下载");
-  } catch (e: any) {
-    ElMessage.error(e.message || "下载失败");
+  } catch {
   } finally {
     downloadLoadingId.value = null;
   }
@@ -164,7 +138,7 @@ function handleVisibilityChange() {
     taskStore.stopPolling();
   } else {
     const hasActiveTasks = taskStore.taskList.some((t) =>
-      POLLING_STATUSES.includes(t.status)
+      TASK_POLLING_STATUSES.includes(t.status)
     );
     if (hasActiveTasks) {
       taskStore.startPolling();
@@ -193,7 +167,7 @@ onUnmounted(() => {
     v-model="visible"
     :title="
       module
-        ? `${taskTypeLabel[module + '_export']?.replace('导出', '')}任务列表`
+        ? `${TASK_TYPE_LABELS[module + '_export']?.replace('导出', '')}任务列表`
         : '任务列表'
     "
     size="900px"
@@ -236,13 +210,13 @@ onUnmounted(() => {
         />
         <el-table-column label="类型" width="120" align="center">
           <template #default="{ row }">
-            {{ taskTypeLabel[row.taskType] ?? row.taskType }}
+            {{ TASK_TYPE_LABELS[row.taskType] ?? row.taskType }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType[row.status] || 'info'">
-              {{ statusLabel[row.status] ?? row.status }}
+            <el-tag :type="statusTagType(row.status)">
+              {{ statusLabel(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -273,7 +247,7 @@ onUnmounted(() => {
               取消
             </el-button>
             <el-button
-              v-if="row.status === 3"
+              v-if="row.status === 3 && row.taskCategory === 'export'"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"

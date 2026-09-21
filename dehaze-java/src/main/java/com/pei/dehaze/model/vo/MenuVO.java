@@ -44,6 +44,9 @@ public class MenuVO {
     @Schema(description="按钮权限标识")
     private String perm;
 
+    @Schema(description = "系统预置标识(1:预置;0:普通)")
+    private Integer isPreset;
+
     @Schema(description = "子菜单")
     @JsonInclude(value = JsonInclude.Include.NON_NULL)
     private List<MenuVO> children;

@@ -365,9 +365,9 @@ func (_c *MockIPredLogRepository_FindByID_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// FindPage provides a mock function with given fields: ctx, algorithmID, pageNum, pageSize
-func (_m *MockIPredLogRepository) FindPage(ctx context.Context, algorithmID int64, pageNum int, pageSize int) ([]model.SysPredLog, int64, error) {
-	ret := _m.Called(ctx, algorithmID, pageNum, pageSize)
+// FindPage provides a mock function with given fields: ctx, algorithmID, userID, pageNum, pageSize
+func (_m *MockIPredLogRepository) FindPage(ctx context.Context, algorithmID int64, userID int64, pageNum int, pageSize int) ([]model.SysPredLog, int64, error) {
+	ret := _m.Called(ctx, algorithmID, userID, pageNum, pageSize)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindPage")
@@ -376,25 +376,25 @@ func (_m *MockIPredLogRepository) FindPage(ctx context.Context, algorithmID int6
 	var r0 []model.SysPredLog
 	var r1 int64
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]model.SysPredLog, int64, error)); ok {
-		return rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int, int) ([]model.SysPredLog, int64, error)); ok {
+		return rf(ctx, algorithmID, userID, pageNum, pageSize)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []model.SysPredLog); ok {
-		r0 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int, int) []model.SysPredLog); ok {
+		r0 = rf(ctx, algorithmID, userID, pageNum, pageSize)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]model.SysPredLog)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int64); ok {
-		r1 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64, int, int) int64); ok {
+		r1 = rf(ctx, algorithmID, userID, pageNum, pageSize)
 	} else {
 		r1 = ret.Get(1).(int64)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
-		r2 = rf(ctx, algorithmID, pageNum, pageSize)
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int64, int, int) error); ok {
+		r2 = rf(ctx, algorithmID, userID, pageNum, pageSize)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -410,15 +410,16 @@ type MockIPredLogRepository_FindPage_Call struct {
 // FindPage is a helper method to define mock.On call
 //   - ctx context.Context
 //   - algorithmID int64
+//   - userID int64
 //   - pageNum int
 //   - pageSize int
-func (_e *MockIPredLogRepository_Expecter) FindPage(ctx interface{}, algorithmID interface{}, pageNum interface{}, pageSize interface{}) *MockIPredLogRepository_FindPage_Call {
-	return &MockIPredLogRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, algorithmID, pageNum, pageSize)}
+func (_e *MockIPredLogRepository_Expecter) FindPage(ctx interface{}, algorithmID interface{}, userID interface{}, pageNum interface{}, pageSize interface{}) *MockIPredLogRepository_FindPage_Call {
+	return &MockIPredLogRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, algorithmID, userID, pageNum, pageSize)}
 }
 
-func (_c *MockIPredLogRepository_FindPage_Call) Run(run func(ctx context.Context, algorithmID int64, pageNum int, pageSize int)) *MockIPredLogRepository_FindPage_Call {
+func (_c *MockIPredLogRepository_FindPage_Call) Run(run func(ctx context.Context, algorithmID int64, userID int64, pageNum int, pageSize int)) *MockIPredLogRepository_FindPage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64), args[3].(int), args[4].(int))
 	})
 	return _c
 }
@@ -428,7 +429,7 @@ func (_c *MockIPredLogRepository_FindPage_Call) Return(_a0 []model.SysPredLog, _
 	return _c
 }
 
-func (_c *MockIPredLogRepository_FindPage_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]model.SysPredLog, int64, error)) *MockIPredLogRepository_FindPage_Call {
+func (_c *MockIPredLogRepository_FindPage_Call) RunAndReturn(run func(context.Context, int64, int64, int, int) ([]model.SysPredLog, int64, error)) *MockIPredLogRepository_FindPage_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -679,6 +680,63 @@ func (_c *MockIPredLogRepository_GetMonitorStats_Call) Return(_a0 *pred_log.Moni
 }
 
 func (_c *MockIPredLogRepository_GetMonitorStats_Call) RunAndReturn(run func(context.Context, int64) (*pred_log.MonitorStats, error)) *MockIPredLogRepository_GetMonitorStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkCancelled provides a mock function with given fields: ctx, id
+func (_m *MockIPredLogRepository) MarkCancelled(ctx context.Context, id int64) (bool, error) {
+	ret := _m.Called(ctx, id)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkCancelled")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (bool, error)); ok {
+		return rf(ctx, id)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) bool); ok {
+		r0 = rf(ctx, id)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
+		r1 = rf(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIPredLogRepository_MarkCancelled_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkCancelled'
+type MockIPredLogRepository_MarkCancelled_Call struct {
+	*mock.Call
+}
+
+// MarkCancelled is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id int64
+func (_e *MockIPredLogRepository_Expecter) MarkCancelled(ctx interface{}, id interface{}) *MockIPredLogRepository_MarkCancelled_Call {
+	return &MockIPredLogRepository_MarkCancelled_Call{Call: _e.mock.On("MarkCancelled", ctx, id)}
+}
+
+func (_c *MockIPredLogRepository_MarkCancelled_Call) Run(run func(ctx context.Context, id int64)) *MockIPredLogRepository_MarkCancelled_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIPredLogRepository_MarkCancelled_Call) Return(_a0 bool, _a1 error) *MockIPredLogRepository_MarkCancelled_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIPredLogRepository_MarkCancelled_Call) RunAndReturn(run func(context.Context, int64) (bool, error)) *MockIPredLogRepository_MarkCancelled_Call {
 	_c.Call.Return(run)
 	return _c
 }
