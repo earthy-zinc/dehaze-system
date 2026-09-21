@@ -2,27 +2,24 @@
   // ============================================================
   // Java (Spring Boot / Android)
   // java.jdt.ls.java.home 与 java.configuration.runtimes 的 scope 是
-  // machine-overridable，写在工作区设置即可生效，无需放 Remote 级。
+  // machine-overridable，但这两项的值都是本机 JDK 绝对路径 —— 工作区设置会
+  // 覆盖各人的用户设置，Windows（C:\Program Files\Java\jdk-21*）与 Linux
+  // （/usr/local/java/jdk21）又不通用，故一律不在此处配置，只放各自机器的用户
+  // 设置里；缺失时 JDT LS 会自动探测，可能选中过新版本（如 JDK 25）导致 Gradle
+  // 同步失败，故每台机器都需显式配置。取值理由：
   //   java.jdt.ls.java.home —— 语言服务器自身运行 JDK，要求 >= 21；它同时
   //     是 Gradle daemon 的默认 JDK，故必须取本仓库最旧的 Gradle 也支持的
   //     版本（dehaze-android 8.7 / dehaze_flutter 8.12 / dehaze-react-native
   //     8.14.3）→ 21。java.import.gradle.java.home 因此不必单独配置。
   //   java.configuration.runtimes —— dehaze-java 字节码目标是 17（pom.xml 的
   //     maven.compiler.release=17），需注册 JavaSE-17 供其解析 JRE 容器；
-  //     默认运行时取主项目的 17。
+  //     默认运行时取主项目的 17。参考取值：
+  //       Windows：C:\Program Files\Java\jdk-21* / jdk-17
+  //       Linux  ：/usr/local/java/jdk21 / jdk17
+  //   java.jdt.ls.vmargs —— 同为 machine-overridable；扩展默认 -Xmx2G 对本仓库
+  //     多模块并行编译偏紧，各机按自身内存自行设置（本机 31G 内存取
+  //     -Xmx4G -Xms512m），与上面两项一样放各自机器的设置里。
   // ============================================================
-  "java.jdt.ls.java.home": "/usr/local/java/jdk21",
-  "java.configuration.runtimes": [
-    {
-      "name": "JavaSE-17",
-      "path": "/usr/local/java/jdk17",
-      "default": true
-    },
-    {
-      "name": "JavaSE-21",
-      "path": "/usr/local/java/jdk21"
-    }
-  ],
   "java.compile.nullAnalysis.mode": "automatic",
   "java.autobuild.enabled": false,
   "java.configuration.updateBuildConfiguration": "disabled",
@@ -32,9 +29,9 @@
   "java.search.scope": "main",
   "java.server.launchMode": "Standard",
 
-  // Flutter / React Native 的 android/ 是 Kotlin DSL 的 Gradle 工程而非
-  // Java 工程，导入只会失败并产生噪音，这里排除；默认 4 项必须一并带上，
-  // 因为该设置是整体替换默认值而非追加。
+  // dehaze_flutter/android 与 dehaze-react-native/android 都是 Gradle 工程
+  // （前者 Kotlin DSL，后者 Groovy DSL）而非 Java 工程，导入只会失败并产生
+  // 噪音，这里排除；默认 4 项必须一并带上，因为该设置是整体替换默认值而非追加。
   "java.import.exclusions": [
     "**/node_modules/**",
     "**/.metadata/**",
