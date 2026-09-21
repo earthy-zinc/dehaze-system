@@ -5,7 +5,7 @@
 源文件由 nginx 静态服务直服，登记为 nginx-static 存储后端，不上传 MinIO。
 
 依赖：pymysql、Pillow（dehaze-python/.venv 已安装）。
-运行：E:\\DehazeSystem\\dehaze-python\\.venv\\Scripts\\python.exe scripts/init_dataset.py --help
+运行：dehaze-python/.venv/bin/python scripts/init_dataset.py --help
 
 配对规则（对齐需求规格 2.8.3）：按文件名前导数字分组，同组 clear/hazy/trans 归为一个数据项。
 haze_level 自动解析规则：
@@ -109,11 +109,12 @@ def read_size(path: Path) -> tuple[int, int]:
 
 
 def human_size(n: int) -> str:
+    size = float(n)
     for unit in ("B", "KB", "MB", "GB", "TB"):
-        if n < 1024:
-            return f"{n:.2f}{unit}"
-        n /= 1024
-    return f"{n:.2f}PB"
+        if size < 1024:
+            return f"{size:.2f}{unit}"
+        size /= 1024
+    return f"{size:.2f}PB"
 
 
 def get_leaf_dataset_ids(cur) -> list[tuple[int, str, str]]:
@@ -254,7 +255,7 @@ def main():
     parser.add_argument("--db-user", default="root")
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
-    parser.add_argument("--dataset-path", required=True, help="数据集根目录（对应 file.datasetPath）")
+    parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
     parser.add_argument("--nginx-base-url", required=True,
                         help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径")
     parser.add_argument("--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）")

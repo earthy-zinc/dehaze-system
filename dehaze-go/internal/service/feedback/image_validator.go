@@ -7,6 +7,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
+	"github.com/earthyzinc/dehaze-go/pkg/storage"
 )
 
 var allowedImageExts = map[string]bool{
@@ -16,7 +17,7 @@ var allowedImageExts = map[string]bool{
 	".webp": true,
 }
 
-// validateImageUrls 校验图片 URL：数量、格式、扩展名、host 必须为已配置的存储后端 baseUrl host
+// validateImageUrls 校验图片 URL：数量、格式、扩展名、host 必须为已配置存储后端的对外访问 host
 func validateImageUrls(urls []string, maxCount int) error {
 	if len(urls) > maxCount {
 		return common.NewBizError(common.PARAM_ERROR, "图片校验失败：数量超过上限")
@@ -41,7 +42,8 @@ func validateImageUrls(urls []string, maxCount int) error {
 	return nil
 }
 
-// collectAllowedStorageHosts 收集所有已配置存储后端 baseUrl 的 host
+// collectAllowedStorageHosts 收集各存储后端对外访问地址的 host：
+// MinIO 直连地址由 endpoint + bucket 拼出（无独立 baseUrl 配置），local/nginx-static 取配置的 baseUrl
 func collectAllowedStorageHosts() map[string]bool {
 	hosts := make(map[string]bool)
 	cfg := config.GetConfig()
@@ -49,7 +51,7 @@ func collectAllowedStorageHosts() map[string]bool {
 		return hosts
 	}
 	for _, baseURL := range []string{
-		cfg.File.Storage.MinIO.BaseURL,
+		storage.MinioBaseURL(cfg.File.Storage.MinIO.Endpoint, cfg.File.Storage.MinIO.BucketName),
 		cfg.File.Storage.Local.BaseURL,
 		cfg.File.Storage.NginxStatic.BaseURL,
 	} {

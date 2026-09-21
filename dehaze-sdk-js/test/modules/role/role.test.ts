@@ -4,7 +4,7 @@ import { createRoleForm, createRoleQuery } from "#/factories/role";
 import { uniqueCode, uniqueName } from "#/factories/common";
 import { ROLES } from "#/factories/constants";
 import { createUserForm } from "#/factories/user";
-import { ADMIN_PASSWORD } from "#/config/constant";
+import { SEED_PASSWORD } from "#/config/constant";
 import { login, forceLogin } from "#/utils/auth";
 
 describe("角色管理接口测试", () => {
@@ -765,7 +765,7 @@ describe("角色管理接口测试", () => {
       const createdUser = pageResult.list.find((u) => u.username === testUsername);
       expect(createdUser).toBeDefined();
       testUserId = createdUser!.id!;
-      await UserAPI.updatePassword(testUserId, ADMIN_PASSWORD);
+      await UserAPI.updatePassword(testUserId, SEED_PASSWORD);
     });
 
     test("授权后新登录用户拥有角色接口权限（可新增角色）", async () => {

@@ -298,6 +298,8 @@ cp .env.example .env
 
 > 新 `.env` 已按基础设施分区组织（MySQL / Redis / MongoDB / Elasticsearch / MinIO / RabbitMQ / XXL-Job / Nginx 静态服务 / 监控栈 / 应用），各服务的 HOST、端口与密码均为独立变量（如 `MYSQL_HOST`、`ES_PASSWORD`、`MINIO_SECRET_KEY`、`GRAFANA_ADMIN_PASSWORD` 等），不再使用统一的 `DEHAZE_HOST` / `DEHAZE_PASSWORD`。
 
+> 路径约定：仓库内的路径配置一律使用相对路径，以**包含 `.env.example` 的仓库根**为基准（上传文件 `data/upload`、静态数据集 `datasets/`、模型 `models/`、各服务日志 `dehaze-{java,go,python}/logs/`），无需在 `.env` 中设置，换机器克隆后开箱可用。HOST、端口、口令类变量需指向其他机器时改 `.env` 即可，业务配置中不再出现机器相关路径。
+
 #### 2. 启动基础设施
 
 ```bash
@@ -604,75 +606,3 @@ tlmgr install <package_name>
 - **前端段 5173-5186**：前端开发服务器统一使用 Vite 默认段，避免与 Grafana(3001) 等冲突（5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro）
 - **基础设施段**：保持各组件官方默认端口，仅对冲突端口调整
 - **CORS 白名单**：三端后端（Java/Go/Python）的 CORS 配置需同步包含所有前端端口
-
----
-
-## 📁 项目结构
-
-```
-dehaze-system/
-├── dehaze-algorithm/          # 核心去雾算法实现
-│   ├── basicsr/              # BasicSR框架
-│   ├── options/              # 训练配置
-│   └── inference_ridcp.py    # RIDCP算法推理脚本
-│
-├── dehaze-front-vue/          # Vue3前端实现
-│   ├── src/
-│   │   ├── views/            # 页面组件
-│   │   ├── components/       # 复用组件
-│   │   ├── api/              # API接口管理
-│   │   ├── store/            # Pinia状态管理
-│   │   └── router/           # 路由配置
-│   └── package.json          # Vue 3.4 + Vite 5
-│
-├── dehaze-front-react/        # React前端实现
-│   ├── src/
-│   │   ├── pages/            # 页面组件
-│   │   ├── components/       # 组件库
-│   │   └── store/            # Redux状态
-│   └── desktop/              # Electron桌面端
-│
-├── dehaze-java/               # Java后端
-│   ├── src/main/java/com/pei/dehaze/
-│   │   ├── controller/       # 控制器层
-│   │   ├── service/          # 服务层
-│   │   ├── mapper/           # 数据访问层
-│   │   ├── model/            # 实体类
-│   │   └── config/           # 配置类
-│   ├── pom.xml               # Spring Boot 3.3
-│
-├── dehaze-go/                 # Go后端
-│   ├── cmd/                  # 应用入口
-│   ├── internal/             # 内部业务逻辑（app/model/router/service/middleware）
-│   ├── pkg/                  # 可复用公共包（database/redis/response等）
-│   └── config/               # 配置
-│
-├── dehaze-python/             # Python后端
-│   ├── algorithm/            # 30+种去雾算法
-│   │   ├── RIDCP/
-│   │   ├── WPXNet/
-│   │   ├── Dehamer/
-│   │   └── ...
-│   ├── app/                  # FastAPI应用
-│   ├── pyproject.toml        # 项目配置与依赖
-│   └── start.sh              # 一键启动脚本
-│
-├── dehaze-android/            # Android客户端
-├── dehaze-react-native/       # RN跨平台应用
-├── dehaze-taro/               # Taro小程序
-│
-├── dehaze-paper/              # 学术论文
-│   ├── CMFD-Net.tex          # 论文LaTeX源码
-│   └── references.bib         # 参考文献
-│
-└── dehaze-doc/                # 项目文档
-    └── docs/                 # VuePress文档站点
-```
-
----
-
-## 📚 文档与资源
-
-- **详细文档**: 位于 `dehaze-doc/` 目录（需求分析、系统设计、用户手册）
-- **API 文档**: Java 后端启动后访问 `http://localhost:8989/doc.html`（Knife4j）
-- **学术论文**: 位于 `dehaze-paper/` 目录，包含 LaTeX 源码

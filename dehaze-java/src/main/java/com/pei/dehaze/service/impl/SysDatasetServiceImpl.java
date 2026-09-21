@@ -23,7 +23,6 @@ import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
@@ -56,9 +55,6 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
      */
     @Lazy
     private final SysDatasetService self;
-
-    @Value("${file.datasetPath}")
-    private String datasetPath;
 
     @Override
     @Cacheable(value = "dataset:all", key = "'all'")

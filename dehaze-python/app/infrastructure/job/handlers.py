@@ -155,7 +155,7 @@ async def cleanup_stuck_tasks() -> str:
     将超过 24 小时仍处于 pending 状态的任务标记为 failed。
     这些任务可能由于进程崩溃、网络中断等原因未正常完成。
 
-    CRON 建议: 0 0 * * * ? （每小时）
+    CRON 建议: 0 */30 * * * ? （每 30 分钟）
     """
     set_current_user_id(SYSTEM_USER_ID)
     try:
@@ -569,7 +569,7 @@ async def expire_orders() -> str:
     释放已锁定优惠券，更新状态为 cancelled，cancel_reason 标记为超时。
     与 Java OrderExpireJob、Go expireOrders 对齐。
 
-    CRON 建议: 0 0/5 * * * ? （每 5 分钟）
+    CRON 建议: 0 */5 * * * ? （每 5 分钟）
     """
     from app.service.order.order_service import order_service
 
@@ -598,7 +598,7 @@ async def complete_expired_orders() -> str:
     更新状态为 completed（归档）。
     与 Java OrderCompleteJob、Go completeExpiredOrders 对齐。
 
-    CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
+    CRON 建议: 0 0 * * * ? （每小时）
     """
     from app.service.order.order_service import order_service
 
@@ -627,7 +627,7 @@ async def expire_user_coupons() -> str:
     批量更新 status=3(已过期)。
     与 Java CouponExpireJob、Go expireUserCoupons 对齐。
 
-    CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
+    CRON 建议: 0 0 * * * ? （每小时）
     """
     from app.service.coupon_service import coupon_service
 
@@ -659,7 +659,7 @@ async def auto_renew_task() -> str:
     成功后更新 next_renew_time，失败累计 retry_count，超过 AUTO_RENEW_RETRY_MAX 后停用。
     与 Java AutoRenewJob、Go autoRenew 对齐。
 
-    CRON 建议: 0 0 8 * * ? （每天凌晨 8 点）
+    CRON 建议: 0 0 * * * ? （每小时）
     """
     from app.service.order.auto_renew_service import auto_renew_service
 
@@ -689,7 +689,7 @@ async def reset_monthly_quota() -> str:
     并将 used 字段清零，quota_reset_month 更新为当前月份。
     与 Java MemberMonthlyQuotaResetJob、Go resetMonthlyQuota 对齐。
 
-    CRON 建议: 0 0 0 1 * ? （每月 1 日凌晨 0 点）
+    CRON 建议: 0 0 0 * * ? （每日凌晨 0 点）
     """
     from app.service.member.quota_service import member_quota_service
 
@@ -747,7 +747,7 @@ async def retry_failed_refunds() -> str:
     重新调用渠道退款接口，重试次数达上限则标记为最终失败。
     与 Java RefundRetryJob、Go retryFailedRefunds 对齐。
 
-    CRON 建议: 0 0/30 * * * ? （每 30 分钟）
+    CRON 建议: 0 */30 * * * ? （每 30 分钟）
     """
     from app.service.order.refund_service import refund_service
 

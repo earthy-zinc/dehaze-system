@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -24,16 +23,14 @@ var (
 
 // LoadTestConfig 加载 config/config.test.yaml 到全局 config.Config 并返回。
 //
-// 为什么不用 pkg/config 的 viper.Init()：其 AddConfigPath(".")/godotenv.Load("../.env")
-// 均基于进程 CWD，而 go test 的 CWD 是各包目录，配置永远找不到（死配置根因）。
-// 这里用 runtime.Caller 定位 dehaze-go 根、显式绝对路径加载，config.test.yaml 中的
+// 不走 pkg/config 的 viper.Init()：测试不需要 WatchConfig 与系统事件重载，且要求加载失败
+// 直接暴露在 t.Fatalf 上。路径经 config.GoRoot() 锚定，config.test.yaml 中的
 // ${MYSQL_HOST}/${MYSQL_PASSWORD} 等按基础设施分区的变量经 os.ExpandEnv 展开（凭证来自仓库根 .env），
-// 与 CWD 完全解耦。不做 WatchConfig：测试进程生命周期短，不需要热重载。
-// 任何一步失败 fail-fast，错误信息带具体原因。
+// 与进程 CWD 完全解耦。任何一步失败 fail-fast，错误信息带具体原因。
 func LoadTestConfig(t *testing.T) *config.AppConfig {
 	t.Helper()
 	loadConfigOnce.Do(func() {
-		goRoot := goRepoRoot()
+		goRoot := config.GoRoot()
 		envPath := filepath.Join(goRoot, "..", ".env")
 		if err := godotenv.Load(envPath); err != nil {
 			loadConfigErr = fmt.Errorf("加载仓库根 .env (%s) 失败: %w", envPath, err)
@@ -69,19 +66,3 @@ func LoadTestConfig(t *testing.T) *config.AppConfig {
 	return testConfig
 }
 
-// goRepoRoot 定位 dehaze-go 根目录：以 go.mod 为标记向上查找（go.mod 随 Go 模块必然
-// 存在），不依赖文件在树中的相对层数，目录重构也不会漂移。
-func goRepoRoot() string {
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			panic(fmt.Sprintf("testutil: 从 %s 向上未找到 go.mod，无法定位 dehaze-go 根", dir))
-		}
-		dir = parent
-	}
-}

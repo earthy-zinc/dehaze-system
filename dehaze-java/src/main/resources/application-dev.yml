@@ -160,11 +160,9 @@ file:
   type: minio
   # 文件访问 baseUrl（用户主动上传的文件走 MinIO + Java 下载接口）
   baseUrl: http://127.0.0.1:8989/api/v1/files/download
-  # 数据集根目录（nginx-dataset 容器挂载的宿主机路径）
-  datasetPath: D:/DeepLearning/dataset
-  # 本地存储
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths；未配置时落到 <仓库根>/data/upload）
   local:
-    uploadPath: /data/workspace/dehaze-system/upload
+    uploadPath: ${UPLOAD_DIR:./data/upload}
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -214,9 +212,12 @@ xxl:
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:
-      ip:
+      # 由 scripts/run.py 按部署拓扑注入：admin 跑在 Docker 时注入 host.docker.internal
+      # （后端在宿主，注册地址须是容器可回调的域名；留空则 xxl-tool 在 WSL 镜像网络下探测返回 null）
+      ip: ${XXLJOB_EXECUTOR_IP:}
       port: 9999
-      logpath: /mnt/e/ProgramProject/new-dehaze/dehaze-java/logs/xxl-job
+      # 相对服务根（<仓库根>/dehaze-java），由 run.py 保证 cwd，日志位置与 filebeat 挂载一致
+      logpath: logs/xxl-job
       logretentiondays: 30
       timeout: 10
 

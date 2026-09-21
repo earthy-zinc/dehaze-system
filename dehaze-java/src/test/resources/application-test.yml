@@ -74,11 +74,9 @@ file:
   init: false
   # 上传文件基于url
   baseUrl: http://127.0.0.1:8989/api/v1/files/download
-  # 初始化数据集所在文件夹
-  datasetPath: D:/DeepLearning/dataset
-  # 本地存储
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths）
   local:
-    uploadPath: ./upload
+    uploadPath: ${UPLOAD_DIR:./data/upload}
   minio:
     enabled: false
 

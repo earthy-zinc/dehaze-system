@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -27,8 +28,9 @@ func getConfigName() (config string) {
 }
 
 func Init() (*AppConfig, error) {
-	if err := godotenv.Load("../.env"); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("加载.env失败: %w", err)
+	envFile := filepath.Join(RepoRoot(), ".env")
+	if err := godotenv.Load(envFile); err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("加载.env(%s)失败: %w", envFile, err)
 	}
 
 	v := viper.New()
@@ -36,8 +38,8 @@ func Init() (*AppConfig, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.SetConfigName(getConfigName())
 	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
-	v.AddConfigPath("./config")
+	v.AddConfigPath(GoRoot())
+	v.AddConfigPath(filepath.Join(GoRoot(), "config"))
 
 	// 先查找配置文件路径
 	if err := v.ReadInConfig(); err != nil {
@@ -62,6 +64,7 @@ func Init() (*AppConfig, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("反序列化配置时发生了错误: %w", err)
 	}
+	normalizePaths(&cfg)
 
 	validate := validator.New()
 	if err := validate.Struct(cfg); err != nil {
@@ -93,6 +96,7 @@ func Init() (*AppConfig, error) {
 			zap.S().Errorf("重新加载配置失败: %v", err)
 			return
 		}
+		normalizePaths(&newCfg)
 
 		if err := validate.Struct(newCfg); err != nil {
 			zap.S().Errorf("新配置校验失败: %v", err)

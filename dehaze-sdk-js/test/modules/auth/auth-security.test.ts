@@ -18,7 +18,7 @@ import { getRedis, disconnectRedis } from "#/utils/redis";
 import { disconnectMysql } from "#/utils/mysql";
 import { uniqueName, uniqueUsername } from "#/factories/common";
 import { USERS, ROLES } from "#/factories/constants";
-import { ADMIN_PASSWORD } from "#/config/constant";
+import { SEED_PASSWORD } from "#/config/constant";
 
 async function captchaPair(): Promise<{ key: string; code: string }> {
   const captcha = await AuthAPI.getCaptcha();
@@ -89,7 +89,7 @@ describe("登录错误信息脱敏（T-AM-004/005）", () => {
     await expectBizError(
       AuthAPI.login({
         username: "ghost_user_not_exist",
-        password: ADMIN_PASSWORD,
+        password: SEED_PASSWORD,
         captchaKey: key,
         captchaCode: code,
       }),
@@ -130,7 +130,7 @@ describe("对抗性脏语料（登录/验证码字段）", () => {
     await expectBizError(
       AuthAPI.login({
         username: USERS.ADMIN.username,
-        password: ADMIN_PASSWORD,
+        password: SEED_PASSWORD,
         captchaKey: captcha.captchaKey,
         captchaCode: dirty,
       }),
@@ -143,7 +143,7 @@ describe("对抗性脏语料（登录/验证码字段）", () => {
       await expectBizError(
         AuthAPI.login({
           username: USERS.ADMIN.username,
-          password: ADMIN_PASSWORD,
+          password: SEED_PASSWORD,
           captchaKey: dirtyKey,
           captchaCode: "0000",
         }),
@@ -158,7 +158,7 @@ describe("并发安全（T-AM-100/101）", () => {
     const { key, code } = await captchaPair();
     const payload = {
       username: USERS.ADMIN.username,
-      password: ADMIN_PASSWORD,
+      password: SEED_PASSWORD,
       captchaKey: key,
       captchaCode: code,
     };
@@ -189,14 +189,14 @@ describe("并发安全（T-AM-100/101）", () => {
     const settled = await Promise.allSettled([
       AuthAPI.register({
         username,
-        password: ADMIN_PASSWORD,
+        password: SEED_PASSWORD,
         nickname: "并发A",
         captchaKey: key1,
         captchaCode: code1,
       }),
       AuthAPI.register({
         username,
-        password: ADMIN_PASSWORD,
+        password: SEED_PASSWORD,
         nickname: "并发B",
         captchaKey: key2,
         captchaCode: code2,
@@ -282,7 +282,7 @@ describe("性能烟测（测试用例.md §6.1）", () => {
     const { key, code } = await captchaPair();
     const result = await AuthAPI.login({
       username: USERS.ADMIN.username,
-      password: ADMIN_PASSWORD,
+      password: SEED_PASSWORD,
       captchaKey: key,
       captchaCode: code,
     });
@@ -301,7 +301,7 @@ describe("rememberMe Cookie 行为（T-AM-012a/012b）", () => {
     const { key, code } = await captchaPair();
     const response = await rawHttp.post("/api/v1/auth/login", {
       username: USERS.ADMIN.username,
-      password: ADMIN_PASSWORD,
+      password: SEED_PASSWORD,
       captchaKey: key,
       captchaCode: code,
       rememberMe: true,
@@ -316,7 +316,7 @@ describe("rememberMe Cookie 行为（T-AM-012a/012b）", () => {
     const { key, code } = await captchaPair();
     const response = await rawHttp.post("/api/v1/auth/login", {
       username: USERS.ADMIN.username,
-      password: ADMIN_PASSWORD,
+      password: SEED_PASSWORD,
       captchaKey: key,
       captchaCode: code,
       rememberMe: false,

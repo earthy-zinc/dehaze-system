@@ -1,7 +1,7 @@
 """调试工具库：三端后端、Redis、MySQL 连接配置。
 
 对齐 dehaze-sdk-js/test/config/constant.ts，统一从项目根 .env 读取
-按基础设施分区变量（MYSQL_*/REDIS_*/NGINX_STATIC_*/ADMIN_PASSWORD），避免硬编码。
+按基础设施分区变量（MYSQL_*/REDIS_*/NGINX_STATIC_*），避免硬编码。
 
 - BACKENDS：三端后端 base_url（debug 用本机映射端口，与 sdk-js/test 一致）
 - REDIS / MYSQL：直连远程基础设施（不依赖本地 docker）
@@ -24,7 +24,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
 
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Dehaze2026")
+# 种子账号（admin/root/test 等）口令明文，对应 config/sql/data/sys_user.sql 的 bcrypt；
+# 非运行时配置：改 .env 不会改变种子口令，只能改 sql 里的哈希
+SEED_PASSWORD = "Dehaze2026"
 
 # SQL 资源目录（rebuild_mysql 用）
 SQL_SCHEMA_DIR = PROJECT_ROOT / "config" / "sql" / "schema"
@@ -46,8 +48,8 @@ BACKENDS: dict[str, BackendConfig] = {
 
 DEFAULT_BACKEND = "java"
 DEFAULT_USERNAME = "admin"
-# 与项目根 .env 的 ADMIN_PASSWORD 一致（登录种子账号 admin 的凭证声明）
-DEFAULT_PASSWORD = ADMIN_PASSWORD
+# 新用户默认口令（三端后端由根 .env 的 DEFAULT_PASSWORD 注入并用于建号）
+DEFAULT_PASSWORD = os.environ.get("DEFAULT_PASSWORD", "Dehaze2026")
 
 # 三端统一使用 "00000" 作为成功码（对齐 dehaze-sdk-js/src/enums/ResultEnum.ts）
 SUCCESS_CODE = "00000"
@@ -65,7 +67,7 @@ def get_backend(name: str | None = None) -> BackendConfig:
 REDIS_HOST = os.environ.get("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "Dehaze2026")
-REDIS_DB = int(os.environ.get("REDIS_DATABASE", "0"))
+REDIS_DATABASE = int(os.environ.get("REDIS_DATABASE", "0"))
 
 MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))

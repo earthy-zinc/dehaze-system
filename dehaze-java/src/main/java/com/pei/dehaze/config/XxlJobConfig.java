@@ -1,5 +1,6 @@
 package com.pei.dehaze.config;
 
+import com.pei.dehaze.common.util.AppPaths;
 import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -55,7 +56,7 @@ public class XxlJobConfig {
         xxlJobSpringExecutor.setIp(ip);
         xxlJobSpringExecutor.setPort(port);
         xxlJobSpringExecutor.setAccessToken(accessToken);
-        xxlJobSpringExecutor.setLogPath(logPath);
+        xxlJobSpringExecutor.setLogPath(AppPaths.resolveServiceRelative(logPath).toString());
         xxlJobSpringExecutor.setLogRetentionDays(logRetentionDays);
         xxlJobSpringExecutor.setTimeout(timeout);
 

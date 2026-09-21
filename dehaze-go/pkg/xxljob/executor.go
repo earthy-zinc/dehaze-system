@@ -15,12 +15,17 @@ func Init(cfg *config.AppConfig) xxl.Executor {
 		return nil
 	}
 
-	executor = xxl.NewExecutor(
+	opts := []xxl.Option{
 		xxl.ServerAddr(cfg.XxlJob.ServerAddr),
 		xxl.AccessToken(cfg.XxlJob.AccessToken),
 		xxl.ExecutorPort(cfg.XxlJob.ExecutorPort),
 		xxl.RegistryKey(cfg.XxlJob.RegistryKey),
-	)
+	}
+	// 留空则交给执行器库探测本机 IP：显式传空串会把注册地址变成 ":9997"
+	if cfg.XxlJob.ExecutorIp != "" {
+		opts = append(opts, xxl.ExecutorIp(cfg.XxlJob.ExecutorIp))
+	}
+	executor = xxl.NewExecutor(opts...)
 	executor.Init()
 
 	logger.Info("XXL-Job 执行器初始化完成",

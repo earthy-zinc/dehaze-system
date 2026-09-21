@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -73,7 +74,7 @@ class Settings(BaseSettings):
     REDIS_HOST: str = Field(default="127.0.0.1")
     REDIS_PASSWORD: str = Field(default="")
     REDIS_PORT: int = Field(default=6379, gt=0, le=65535)
-    REDIS_DB: int = Field(default=0, ge=0)
+    REDIS_DATABASE: int = Field(default=0, ge=0)
     REDIS_MAX_CONNECTIONS: int = Field(default=100, gt=0)
     REDIS_SOCKET_TIMEOUT: float = Field(default=5.0, gt=0)
     REDIS_SOCKET_CONNECT_TIMEOUT: float = Field(default=5.0, gt=0)
@@ -82,7 +83,7 @@ class Settings(BaseSettings):
 
     @property
     def REDIS_URL(self) -> str:
-        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DATABASE}"
 
     # ===== MongoDB（审计日志） =====
     MONGODB_HOST: str = Field(default="127.0.0.1")
@@ -105,7 +106,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = Field(default=100 * 1024 * 1024, gt=0)
     # 上传/删除文件使用的默认存储后端（minio/local/nginx-static）
     FILE_STORAGE_TYPE: Literal["minio", "local", "nginx-static"] = "minio"
-    LOCAL_STORAGE_PATH: str = "/data/files"
+    LOCAL_STORAGE_PATH: str = str(PROJECT_ROOT / "data" / "upload")
     FILE_TEMP_CLEANUP_HOURS: int = Field(default=24, gt=0)
     # 孤儿文件保留阈值（小时）：物理文件存在但无元数据引用且超过该时长才清理
     ORPHAN_FILE_RETENTION_HOURS: int = Field(default=48, gt=0)
@@ -174,10 +175,11 @@ class Settings(BaseSettings):
     XXLJOB_PORT: int = Field(default=14980, gt=0, le=65535)
     XXLJOB_ACCESS_TOKEN: str = Field(default="")
     XXLJOB_EXECUTOR_APP_NAME: str = "xxl-job-executor-dehaze-python"
-    XXLJOB_EXECUTOR_HOST: str = "0.0.0.0"
     XXLJOB_EXECUTOR_PORT: int = Field(default=9998, gt=0, le=65535)
-    XXLJOB_TASK_LOG_DIR: str = "logs/xxljob-tasks"
-    XXLJOB_PID_FILE: str = "logs/pyxxl.pid"
+    # 执行器注册地址（admin 回调用），留空由 pyxxl 取首个网卡 IP；admin 在容器时由 run.py 注入 host.docker.internal
+    XXLJOB_EXECUTOR_IP: str = ""
+    XXLJOB_TASK_LOG_DIR: str = str(PYTHON_PROJECT_ROOT / "logs" / "xxljob-tasks")
+    XXLJOB_PID_FILE: str = str(PYTHON_PROJECT_ROOT / "logs" / "pyxxl.pid")
 
     @property
     def XXLJOB_ADMIN_URL(self) -> str:
@@ -189,7 +191,7 @@ class Settings(BaseSettings):
         "%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s"
     )
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
-    LOG_DIR: str = "logs"
+    LOG_DIR: str = str(PYTHON_PROJECT_ROOT / "logs")
     LOG_RETENTION_DAYS: int = Field(default=30, gt=0)
     # 单个日志文件大小上限（字节），超限归档为 {级别}.{n}.log 并开新活动文件，0 表示不按大小切割
     LOG_MAX_BYTES: int = Field(default=100 * 1024 * 1024, ge=0)
@@ -494,7 +496,6 @@ class DevelopmentSettings(Settings):
     """开发环境配置"""
 
     DEBUG: bool = True
-    REDIS_DB: int = 0
     # HTTP + Vite 代理前缀 /py-api，需关闭 Secure 并用 /
     SESSION_COOKIE_SECURE: bool = False
     SESSION_COOKIE_PATH: str = "/"
@@ -529,7 +530,7 @@ class ProductionSettings(Settings):
     RABBITMQ_USERNAME: str = "root"
     SQL_LOG_LEVEL: Literal["INFO", "WARNING", "ERROR"] = "WARNING"
     LOG_FORMAT_JSON: bool = True
-    PROMETHEUS_MULTIPROC_DIR: str = "/tmp/prometheus_multiproc"
+    PROMETHEUS_MULTIPROC_DIR: str = str(Path(tempfile.gettempdir()) / "prometheus_multiproc")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

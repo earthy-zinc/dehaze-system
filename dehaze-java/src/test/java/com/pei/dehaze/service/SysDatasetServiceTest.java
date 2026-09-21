@@ -67,7 +67,6 @@ class SysDatasetServiceTest {
         ReflectionTestUtils.setField(datasetService, "self", datasetService);
 
         // 注入依赖
-        ReflectionTestUtils.setField(datasetService, "datasetPath", "/data/datasets");
         ReflectionTestUtils.setField(datasetService, "baseMapper", datasetMapper);
 
         // 准备测试数据

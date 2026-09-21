@@ -511,6 +511,8 @@ Redis 弹性机制：
 
 通过 pyxxl (XXL-Job Python 执行器) 与 Java/Go 端共享调度中心，handler 命名与 Java/Go 端对齐（`autoRenew`/`resetMonthlyQuota` 等三端统一）：
 
+执行器配置（`app/infrastructure/job/executor.py`）与 Java/Go 同口径：注册名 `xxl-job-executor-dehaze-python`、端口 `9998`（同机与 Java 9999、Go 9997 互异）；注册地址取 `XXLJOB_EXECUTOR_IP`（`scripts/run.py` 注入 `host.docker.internal`，admin 在容器时才能回调到宿主）；显式声明注册地址时同时绑 `0.0.0.0`，未声明时由 pyxxl 以首个网卡 IP 绑定并注册。
+
 | 任务名 | 功能 | 三端共有 |
 |--------|------|:--------:|
 | `cleanupExpiredTasks` | 删除过期任务，清理 Redis 缓存 | ✅ |

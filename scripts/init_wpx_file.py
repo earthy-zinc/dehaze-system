@@ -14,7 +14,7 @@
 前置条件：先执行 init_dataset.py，确保原始数据集图已写入 sys_file。
 
 依赖：pymysql（dehaze-python/.venv 已安装）。
-运行：E:\\DehazeSystem\\dehaze-python\\.venv\\Scripts\\python.exe scripts/init_wpx_file.py --help
+运行：dehaze-python/.venv/bin/python scripts/init_wpx_file.py --help
 
 存储约定：sys_file 写 object_name + storage='nginx-static'，URL 永不落库。
 WPX 图在 datasets/WPX/... 下，object_name 含 datasets/ 资源前缀。
@@ -45,11 +45,12 @@ def md5_file(path: Path) -> str:
 
 
 def human_size(n: int) -> str:
+    size = float(n)
     for unit in ("B", "KB", "MB", "GB", "TB"):
-        if n < 1024:
-            return f"{n:.2f}{unit}"
-        n /= 1024
-    return f"{n:.2f}PB"
+        if size < 1024:
+            return f"{size:.2f}{unit}"
+        size /= 1024
+    return f"{size:.2f}PB"
 
 
 def leading_digits(filename: str) -> Optional[str]:
@@ -192,7 +193,7 @@ def main():
     parser.add_argument("--db-user", default="root")
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
-    parser.add_argument("--dataset-path", required=True, help="数据集根目录（对应 file.datasetPath）")
+    parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
     parser.add_argument("--nginx-base-url", required=True,
                         help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径；WPX 图由此直服")
     parser.add_argument("--regenerate", action="store_true", help="强制重建（先删后建）")
@@ -219,7 +220,7 @@ def main():
             if args.regenerate:
                 origin_md5_set = {md5_file(p["origin_file"]) for p in pairs}
                 new_md5_set = {md5_file(p["wpx_file"]) for p in pairs}
-                print(f"  [--regenerate] 清理已存在的 sys_wpx_file 记录...")
+                print("  [--regenerate] 清理已存在的 sys_wpx_file 记录...")
                 delete_existing_wpx_records(cur, conn,
                                             origin_md5_set=origin_md5_set,
                                             new_md5_set=new_md5_set)

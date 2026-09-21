@@ -17,7 +17,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { AuthAPI, service } from "../../index";
 import { USERS } from "#/factories/constants";
-import { ADMIN_PASSWORD } from "#/config/constant";
+import { SEED_PASSWORD } from "#/config/constant";
 import { clearLoginFailCounters } from "#/utils/auth";
 import { getRedis, disconnectRedis } from "#/utils/redis";
 
@@ -31,7 +31,7 @@ async function rawLogin(username: string): Promise<string> {
   if (!code) throw new Error(`验证码已过期或不存在: ${captcha.captchaKey}`);
   const result = await AuthAPI.login({
     username,
-    password: ADMIN_PASSWORD,
+    password: SEED_PASSWORD,
     captchaKey: captcha.captchaKey,
     captchaCode: code,
   });

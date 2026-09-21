@@ -111,5 +111,6 @@ xxljob:
   enabled: false
   server-addr: ""
   access-token: ""
+  executor-ip: ""
   executor-port: "9997"
   registry-key: "xxl-job-executor-dehaze-go"

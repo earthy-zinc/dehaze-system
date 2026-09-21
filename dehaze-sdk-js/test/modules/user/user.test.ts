@@ -906,7 +906,7 @@ describe("用户管理接口测试", () => {
     const P1 = "TumPwd_2026a";
     const P2 = "TumPwd_2026b";
 
-    /** 使用自定义密码登录（不走 utils/auth 的 ADMIN_PASSWORD 缓存通道） */
+    /** 使用自定义密码登录（不走 utils/auth 的 SEED_PASSWORD 缓存通道） */
     async function loginWithPassword(name: string, password: string): Promise<string> {
       const captcha = await AuthAPI.getCaptcha();
       const code = await getRedis().get(`captcha_code:${captcha.captchaKey}`);

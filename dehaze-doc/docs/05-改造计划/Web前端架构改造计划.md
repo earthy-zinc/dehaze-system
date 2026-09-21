@@ -33,8 +33,8 @@
 **现状**：`favoriteSlice.toggleFavorite` async thunk 内部不调用任何 `FavoriteAPI`，直接返回硬编码 `{ isFavorited: false }`。且返回字段名 `isFavorited` 与 `useFavorite` 读取的 `result?.favorited` 不匹配，导致条件恒为 false。
 
 **证据**：
-- [favoriteSlice.ts](file:///e:/DehazeSystem/dehaze-front-react/src/store/modules/favoriteSlice.ts) 第 45-57 行：thunk 体仅 `return { targetType, targetId, isFavorited: false }`
-- [useFavorite.ts](file:///e:/DehazeSystem/dehaze-front-react/src/hooks/useFavorite.ts) 第 28 行：检查 `result?.favorited`（字段名不一致）
+- [favoriteSlice.ts](../../../dehaze-front-react/src/store/modules/favoriteSlice.ts) 第 45-57 行：thunk 体仅 `return { targetType, targetId, isFavorited: false }`
+- [useFavorite.ts](../../../dehaze-front-react/src/hooks/useFavorite.ts) 第 28 行：检查 `result?.favorited`（字段名不一致）
 - `extraReducers` 中 `toggleFavorite.fulfilled` 执行 `!isFavorited`，由于恒为 false，每次 toggle 只会把状态设为 true，**无法取消收藏**
 
 **影响**：收藏功能核心交互完全失效——用户无法取消收藏，收藏状态不持久化到后端。
@@ -48,8 +48,8 @@
 | 项目 | 死代码 | 证据 |
 |------|--------|------|
 | Vue | 5 个 composable 零引用：`useAsyncTask`、`useDebounce`、`useDebouncedRef`、`useTableSelection`、`useConfirm`/`useDeleteConfirm` | 全局搜索仅命中自身定义；项目实际用 vueuse `useDebounceFn` |
-| Vue | `Magnifier/index.vue`（206 行）无生产引用，实际用 `newIndex.vue` | [AlgorithmToolBar/index.vue:2](file:///e:/DehazeSystem/dehaze-front-vue/src/components/AlgorithmToolBar/index.vue) 仅导入 newIndex |
-| React | `datasetSlice.ts` 定义完整 CRUD thunk 但零调用 | [dataset/list/index.tsx:65](file:///e:/DehazeSystem/dehaze-front-react/src/pages/dataset/list/index.tsx) 直接调用 `DatasetAPI.getList` 绕过 store |
+| Vue | `Magnifier/index.vue`（206 行）无生产引用，实际用 `newIndex.vue` | [AlgorithmToolBar/index.vue:2](../../../dehaze-front-vue/src/components/AlgorithmToolBar/index.vue) 仅导入 newIndex |
+| React | `datasetSlice.ts` 定义完整 CRUD thunk 但零调用 | [dataset/list/index.tsx:65](../../../dehaze-front-react/src/pages/dataset/list/index.tsx) 直接调用 `DatasetAPI.getList` 绕过 store |
 | React | `components/Settings/index.tsx` 内容仅 `export {};` | 实际 Settings 组件在 `layout/components/NavBar/Settings.tsx` |
 
 **影响**：死代码增加心智负担，`datasetSlice` 持久化的 `datasetList` 还会占用 localStorage 却不被消费。
@@ -65,9 +65,9 @@
 **现状**：去雾算法参数 `dehazeParams`（dehazeStrength/colorSaturation/contrast/sharpen）在 store 和两个组件中各定义一份，默认值相同但互不同步。
 
 **证据**：
-- [imageShow.ts:78-83](file:///e:/DehazeSystem/dehaze-front-vue/src/store/modules/imageShow.ts) store 内 reactive 定义
-- [presentation/dehaze/index.vue:36-41](file:///e:/DehazeSystem/dehaze-front-vue/src/views/presentation/dehaze/index.vue) 组件本地 ref 定义
-- [AlgorithmToolBar/index.vue:43](file:///e:/DehazeSystem/dehaze-front-vue/src/components/AlgorithmToolBar/index.vue) 组件本地 reactive 定义
+- [imageShow.ts:78-83](../../../dehaze-front-vue/src/store/modules/imageShow.ts) store 内 reactive 定义
+- [presentation/dehaze/index.vue:36-41](../../../dehaze-front-vue/src/views/presentation/dehaze/index.vue) 组件本地 ref 定义
+- [AlgorithmToolBar/index.vue:43](../../../dehaze-front-vue/src/components/AlgorithmToolBar/index.vue) 组件本地 reactive 定义
 
 store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真正的去雾页面毫无作用，store 字段形同虚设。
 
@@ -79,7 +79,7 @@ store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真�
 
 **现状**：`imageShow` store 暴露 20+ 个仅 1 行的纯赋值 setter，违反项目规则"禁止无意义的过度封装：仅 1-2 行且缺乏复用场景的代码不应抽取为独立函数"。Pinia 允许直接修改 state，这些 setter 没有任何附加逻辑。
 
-**证据**：[imageShow.ts](file:///e:/DehazeSystem/dehaze-front-vue/src/store/modules/imageShow.ts) 第 89-186 行共 13 个纯赋值 setter（`setBrightness`/`setContrast`/`setMagnifierShow`/`setMagnifierShape` 等），return 块暴露 21 个方法。
+**证据**：[imageShow.ts](../../../dehaze-front-vue/src/store/modules/imageShow.ts) 第 89-186 行共 13 个纯赋值 setter（`setBrightness`/`setContrast`/`setMagnifierShow`/`setMagnifierShape` 等），return 块暴露 21 个方法。
 
 **影响**：store 文件膨胀，调用方需记忆大量无意义方法名。
 
@@ -107,8 +107,8 @@ store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真�
 **现状**：全局 axios 拦截器 `onResponseError` 已调用 `message.error()`，组件 catch 块又调用 `message.error()`，用户每次遇到 API 错误看到两次错误提示。
 
 **证据**：
-- [request.ts:11](file:///e:/DehazeSystem/dehaze-front-react/src/utils/request.ts) 全局拦截器 `message.error(msg || "系统出错")`
-- [RefundAuditDialog.tsx:69](file:///e:/DehazeSystem/dehaze-front-react/src/pages/order/refund/components/RefundAuditDialog.tsx) `message.error(error?.message || "操作失败")`
+- [request.ts:11](../../../dehaze-front-react/src/utils/request.ts) 全局拦截器 `message.error(msg || "系统出错")`
+- [RefundAuditDialog.tsx:69](../../../dehaze-front-react/src/pages/order/refund/components/RefundAuditDialog.tsx) `message.error(error?.message || "操作失败")`
 - 全项目 66 个文件包含 `message.error` 调用
 
 **改造方向**：组件 catch 块不再调用 `message.error`，仅处理业务逻辑（如重置 loading 状态）。全局拦截器负责统一错误提示。
@@ -119,7 +119,7 @@ store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真�
 
 **现状**：Vue 端有完整 i18n（`lang/package/en.ts`、`zh-cn.ts`、`plugins/i18n.ts`），React 端完全没有。Settings 面板有语言切换选项但仅切换 antd 的 locale，应用文本全部硬编码中文。
 
-**证据**：React 端搜索 `i18n|useTranslation` 零匹配；[Settings.tsx:44-54](file:///e:/DehazeSystem/dehaze-front-react/src/layout/components/NavBar/Settings.tsx) 语言切换仅作用于 antd。
+**证据**：React 端搜索 `i18n|useTranslation` 零匹配；[Settings.tsx:44-54](../../../dehaze-front-react/src/layout/components/NavBar/Settings.tsx) 语言切换仅作用于 antd。
 
 **影响**：英文用户看到中文界面 + 英文 antd 组件的混合状态。
 
@@ -135,8 +135,8 @@ store 中的 `dehazeParams` 实际只被 `evaluation/index.vue` 读取，对真�
 
 | 项目 | 文件 | 行数 |
 |------|------|------|
-| Vue | [dataset/list/detail.vue](file:///e:/DehazeSystem/dehaze-front-vue/src/views/dataset/list/detail.vue) | 1612 |
-| React | [dataset/list/detail/index.tsx](file:///e:/DehazeSystem/dehaze-front-react/src/pages/dataset/list/detail/index.tsx) | 1700 |
+| Vue | [dataset/list/detail.vue](../../../dehaze-front-vue/src/views/dataset/list/detail.vue) | 1612 |
+| React | [dataset/list/detail/index.tsx](../../../dehaze-front-react/src/pages/dataset/list/detail/index.tsx) | 1700 |
 
 Vue 端另有 4 个超 1000 行的 view：`member/list`(1037)、`package/list`(1033)、`presentation/dehaze`(1015)、`feedback/list`(877，内联 5 个弹窗)。
 
@@ -187,7 +187,7 @@ Vue 端 `feedback/list`、`member/list` 的内联弹窗参照 React 端已拆分
 
 **现状**：`imageShowSlice` 的 `whitelist` 包含 `loading`、`mouse`（鼠标坐标）、`mask`（遮罩坐标）、`width`/`height` 等纯临时状态。`loading` 持久化尤其危险——刷新时若处于 loading 状态，刷新后永远 loading。
 
-**证据**：[imageShowSlice.ts:203-215](file:///e:/DehazeSystem/dehaze-front-react/src/store/modules/imageShowSlice.ts)
+**证据**：[imageShowSlice.ts:203-215](../../../dehaze-front-react/src/store/modules/imageShowSlice.ts)
 
 **改造方向**：whitelist 仅保留 `modelId`、`magnifier`、`divider`，移除 `loading`/`mouse`/`mask`/`width`/`height`/`naturalWidth`/`naturalHeight`/`urls`。
 
@@ -195,9 +195,9 @@ Vue 端 `feedback/list`、`member/list` 的内联弹窗参照 React 端已拆分
 
 **现状**：
 - `settingsSlice` 有 `tagsView` 开关，Settings 面板有"开启页面标签"选项，但无实际 TagsView 组件；其中"固定页面标签"Switch 仅为空壳（`{/* TODO */}`，无 `onChange`），属误导性死 UI
-- [NavBar/index.tsx:70](file:///e:/DehazeSystem/dehaze-front-react/src/layout/components/NavBar/index.tsx) Breadcrumb 硬编码 `items={[{ title: "首页" }]}`，Vue 端有动态 Breadcrumb
+- [NavBar/index.tsx:70](../../../dehaze-front-react/src/layout/components/NavBar/index.tsx) Breadcrumb 硬编码 `items={[{ title: "首页" }]}`，Vue 端有动态 Breadcrumb
 
-**证据**：[Settings.tsx:129-131](file:///e:/DehazeSystem/dehaze-front-react/src/layout/components/NavBar/Settings.tsx)
+**证据**：[Settings.tsx:129-131](../../../dehaze-front-react/src/layout/components/NavBar/Settings.tsx)
 
 **改造方向**：若启用 TagsView 则补组件 + slice；Breadcrumb 改为根据当前路由动态生成；一并移除"固定页面标签"空壳 Switch。若产品层面确认不需要 TagsView，则移除 Settings 面板的开关选项避免误导。
 
@@ -205,7 +205,7 @@ Vue 端 `feedback/list`、`member/list` 的内联弹窗参照 React 端已拆分
 
 **现状**：`task` store 的 `downloadResult` 方法内含 `document.createElement('a')` 等 DOM 操作。
 
-**证据**：[task.ts:49-56](file:///e:/DehazeSystem/dehaze-front-vue/src/store/modules/task.ts)
+**证据**：[task.ts:49-56](../../../dehaze-front-vue/src/store/modules/task.ts)
 
 **改造方向**：将下载逻辑移至组件或独立工具函数（`useImportExport.ts` 已有 `downloadBlob` 可复用），store 仅返回下载 URL 与状态校验。
 
@@ -213,7 +213,7 @@ Vue 端 `feedback/list`、`member/list` 的内联弹窗参照 React 端已拆分
 
 **现状**：`setupPermission` 中"生成动态路由 + addRoute + 追加 404 兜底 + 置标志位 + next(replace)"的逻辑在两个分支中完全重复。
 
-**证据**：[permission.ts](file:///e:/DehazeSystem/dehaze-front-vue/src/plugins/permission.ts) 第 33-56 行与第 60-78 行
+**证据**：[permission.ts](../../../dehaze-front-vue/src/plugins/permission.ts) 第 33-56 行与第 60-78 行
 
 **改造方向**：抽取 `addDynamicRoutes(roles)` 函数统一调用，消除分支差异。
 

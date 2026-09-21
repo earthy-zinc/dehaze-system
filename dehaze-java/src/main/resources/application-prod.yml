@@ -115,12 +115,10 @@ file:
   # 上传类型 (minio OSS / local 本地存储 / nginx-static 外部 nginx 静态托管)
   type: minio
   # 上传文件基于url
-  baseUrl: http://10.16.12.65:8989/api/v1/files/download
-  # 数据集根目录
-  datasetPath: /app/dataset
-  # 本地存储
+  baseUrl: http://127.0.0.1:8989/api/v1/files/download
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths；未配置时落到 <仓库根>/data/upload）
   local:
-    uploadPath: /app/upload
+    uploadPath: ${UPLOAD_DIR:./data/upload}
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -188,9 +186,10 @@ xxl:
     executor:
       appname: xxl-job-executor-${spring.application.name}
       address:
-      ip:
+      ip: ${XXLJOB_EXECUTOR_IP:}
       port: 9999
-      logpath: /data/applogs/xxl-job/jobhandler
+      # 相对服务根（<仓库根>/dehaze-java），由 run.py 保证 cwd，日志位置与 filebeat 挂载一致
+      logpath: logs/xxl-job
       logretentiondays: 30
       timeout: 10
 

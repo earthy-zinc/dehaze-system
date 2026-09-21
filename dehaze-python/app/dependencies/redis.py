@@ -58,7 +58,7 @@ async def _get_redis_pool() -> ConnectionPool:
         kwargs = _get_connection_pool_kwargs()
         logger.info(
             f"创建 Redis 连接池: host={settings.REDIS_HOST}, "
-            f"port={settings.REDIS_PORT}, db={settings.REDIS_DB}, "
+            f"port={settings.REDIS_PORT}, db={settings.REDIS_DATABASE}, "
             f"max_connections={kwargs['max_connections']}"
         )
         _redis_pool = ConnectionPool.from_url(

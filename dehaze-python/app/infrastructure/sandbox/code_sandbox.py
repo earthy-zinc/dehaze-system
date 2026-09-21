@@ -7,7 +7,9 @@
   MinIO/MCP 等凭据一律不传入——python 模式可 exec 任意代码，继承环境等于交出凭据。
 - 超时：默认 60s 上限（参数可传更小），超时 kill 进程组并返回"执行超时"。
 - 资源：POSIX 下用 resource.setrlimit 限制内存(RLIMIT_AS)/进程数(RLIMIT_NPROC)/CPU
-  (RLIMIT_CPU)；Windows 无 resource 模块时 try/except 跳过资源限制。
+  (RLIMIT_CPU)；RLIMIT_NPROC 由内核按整个 UID 的任务数校验而非按进程树，限制值须大于
+  宿主机现有任务数，否则沙箱连 fork 都会 EAGAIN，故以全系统任务数为基准再加允许新增数；
+  Windows 无 resource 模块时 try/except 跳过资源限制。
 - 弱隔离：子进程 cwd 置于临时目录（tempfile.TemporaryDirectory），不访问真实磁盘工作区。
 - 输出：stdout/stderr 各截断 10KB（附总长度提示）；stderr 中临时目录路径替换为
   /workspace，不泄露宿主路径（错误信息结构化，不暴露内部堆栈）。
@@ -31,7 +33,8 @@ logger = logging.getLogger(__name__)
 CODE_SANDBOX_DEFAULT_TIMEOUT = int(os.getenv("CODE_SANDBOX_TIMEOUT", "60"))
 CODE_SANDBOX_MAX_TIMEOUT = int(os.getenv("CODE_SANDBOX_MAX_TIMEOUT", "60"))
 CODE_SANDBOX_MEM_MB = int(os.getenv("CODE_SANDBOX_MEM_MB", "512"))
-CODE_SANDBOX_NPROC = int(os.getenv("CODE_SANDBOX_NPROC", "64"))
+CODE_SANDBOX_NPROC = int(os.getenv("CODE_SANDBOX_NPROC", "64"))  # 允许沙箱新增的任务数
+
 CODE_SANDBOX_OUTPUT_LIMIT = int(os.getenv("CODE_SANDBOX_OUTPUT_LIMIT", str(10 * 1024)))
 
 # POSIX 资源限制（Windows 无 resource 模块则跳过）
@@ -259,12 +262,21 @@ class CodeSandbox:
             cpu = max(1, self._timeout)
             # 各平台对个别 limit 支持不一（macOS 的 RLIMIT_AS 会抛 ValueError），
             # 逐个 try 防御，不支持的平台跳过该限制，保留超时终止与临时目录弱隔离兜底
+            #
+            # RLIMIT_NPROC 由内核对整个 UID 的任务数校验（非本次进程树），且宿主其它 PID
+            # 命名空间的任务在 /proc 里不可见，逐进程统计会偏小并让沙箱 fork 直接 EAGAIN；
+            # 故基准取 /proc/loadavg 的全系统任务数（UID 任务数的上界）再加允许新增数，
+            # 基准读不到（非 Linux）时跳过该限制。
             rl = (
                 "def _rl(n,a,b):\n"
                 "  try: resource.setrlimit(n,(a,b))\n"
                 "  except (ValueError,OSError): pass\n"
+                "def _tasks():\n"
+                "  try: return int(open('/proc/loadavg').read().split()[3].split('/')[1])\n"
+                "  except (OSError,IndexError,ValueError): return -1\n"
                 f"_rl(resource.RLIMIT_AS,{mem_bytes},{mem_bytes});"
-                f"_rl(resource.RLIMIT_NPROC,{self._nproc},{self._nproc});"
+                "__n=_tasks();\n"
+                f"if __n>=0: _rl(resource.RLIMIT_NPROC,__n+{self._nproc},__n+{self._nproc});"
                 f"_rl(resource.RLIMIT_CPU,{cpu},{cpu});"
             )
             if language == "shell":

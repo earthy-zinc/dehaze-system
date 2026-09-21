@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.38.0
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-contrib/timeout v1.1.0
 	github.com/go-playground/locales v0.14.1

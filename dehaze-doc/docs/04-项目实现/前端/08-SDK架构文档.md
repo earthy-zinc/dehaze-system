@@ -58,7 +58,7 @@ SDK 自上而下分为四层：
 
 | 层 | 职责 | 关键文件 |
 |----|------|---------|
-| 出口层 | 统一导出 API 类、Logger、类型、配置函数、Axios 实例 | [index.ts](file:///e:/DehazeSystem/dehaze-sdk-js/index.ts) |
+| 出口层 | 统一导出 API 类、Logger、类型、配置函数、Axios 实例 | [index.ts](../../../../dehaze-sdk-js/index.ts) |
 | API 层 | 21 个业务模块，每个模块封装一组 RESTful 接口 | `src/api/[模块]/index.ts`、`model.ts` |
 | 基础设施层 | Axios 实例与请求/响应拦截器、trace_id 透传、慢请求/错误自动上报 | `src/utils/request.ts`、`src/config/index.ts` |
 | 监控层 | 多 transport 日志、全局错误捕获、Web Vitals 采集 | `src/logger/*` |

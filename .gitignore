@@ -12,7 +12,7 @@
 /node_modules/
 /logs/
 /.pytest_cache/
-/upload/
+/data/
 derby.log
 
 # 通用系统文件（全局匹配）
@@ -283,7 +283,7 @@ go.work
 # vendor/
 
 # Go 项目特定（所有层级）
-**/upload/
+/dehaze-go/data/
 __debug*
 
 # =============================================================================

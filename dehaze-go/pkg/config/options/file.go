@@ -1,8 +1,8 @@
 package options
 
 // File 文件存储配置
-// file.type 为默认存储后端标识（上传时使用）；各后端 baseUrl 必须是完整 URL（带 scheme+host），
-// URL 运行时拼接为 storage.baseUrl + "/" + object_name，不落库。
+// file.type 为默认存储后端标识（上传时使用）；local/nginx-static 后端的 baseUrl 必须是完整 URL
+// （带 scheme+host），URL 运行时拼接为 storage.baseUrl + "/" + object_name，不落库。
 type File struct {
 	Type    string            `mapstructure:"type" json:"type" yaml:"type"` // 默认存储后端：minio/local/nginx-static
 	MaxSize int64             `mapstructure:"maxSize" json:"maxSize" yaml:"maxSize"`
@@ -23,7 +23,6 @@ type FileMinIO struct {
 	AccessKey  string `mapstructure:"accessKey" json:"accessKey" yaml:"accessKey"`
 	SecretKey  string `mapstructure:"secretKey" json:"secretKey" yaml:"secretKey"`
 	BucketName string `mapstructure:"bucketName" json:"bucketName" yaml:"bucketName"`
-	BaseURL    string `mapstructure:"baseUrl" json:"baseUrl" yaml:"baseUrl"` // 已废弃，GetURL 不再使用
 }
 
 // FileLocal 本地存储配置

@@ -25,7 +25,7 @@ def get_redis() -> redis.Redis:
             host=config.REDIS_HOST,
             port=config.REDIS_PORT,
             password=config.REDIS_PASSWORD,
-            db=config.REDIS_DB,
+            db=config.REDIS_DATABASE,
             decode_responses=True,
             socket_connect_timeout=5,
             socket_timeout=5,

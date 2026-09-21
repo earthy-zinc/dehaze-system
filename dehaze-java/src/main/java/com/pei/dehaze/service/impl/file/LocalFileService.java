@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.AppPaths;
 import com.pei.dehaze.common.util.PathSecurityUtil;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
@@ -35,6 +36,13 @@ public class LocalFileService implements FileService {
     private String baseUrl;
 
     private String uploadPath;
+
+    /**
+     * 相对路径锚定仓库根（三端共用 &lt;仓库根&gt;/data/upload），不依赖进程工作目录
+     */
+    public void setUploadPath(String uploadPath) {
+        this.uploadPath = AppPaths.resolveRepoRelative(uploadPath).toString();
+    }
 
     @Override
     public String getStorageType() {

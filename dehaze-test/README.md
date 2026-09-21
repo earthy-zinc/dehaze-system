@@ -44,7 +44,7 @@ dehaze-test/
 复用 `dehaze-python` 的 venv（已含 `redis 6.4` / `pymysql 1.4` / `httpx 0.28` / `pytest 8.4`）：
 
 ```bash
-PYTHON=/data/workspace/dehaze-system/dehaze-python/.venv/bin/python
+PYTHON=../dehaze-python/.venv/bin/python   # 在仓库根的 dehaze-test/ 目录下执行
 ```
 
 ## 网络前提
@@ -103,7 +103,7 @@ cd dehaze-test
 
 ```python
 import sys
-sys.path.insert(0, "/data/workspace/dehaze-system/dehaze-test")
+sys.path.insert(0, "<仓库根>/dehaze-test")
 
 from utils import auth, mysql, redis, api
 
@@ -118,7 +118,6 @@ print("API 未读数:", resp["data"]["count"])
 
 - `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USERNAME` / `MYSQL_PASSWORD` / `MYSQL_DATABASE`：MySQL 直连配置
 - `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` / `REDIS_DATABASE`：Redis 直连配置
-- `ADMIN_PASSWORD`：登录种子账号 admin 的密码（基础设施密码统一）
 
 三端后端固定映射到本机端口（与 `dehaze-sdk-js/test/config/constant.ts` 一致）：
 

@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 IS_WIN = sys.platform == "win32"
+# CREATE_NO_WINDOW 仅 Windows 有（typeshed 按平台条件声明），跨平台直接取属性会触发静态检查告警；非 Windows 下为 0 即默认行为
+CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 VENV_PY = str(ROOT / "dehaze-python" / ".venv" /
               ("Scripts" if IS_WIN else "bin") /
               ("python.exe" if IS_WIN else "python"))
@@ -60,6 +62,16 @@ def _console_log_path(cwd: Path) -> Path:
     return cwd / "logs" / today / "console.log"
 
 
+def _start_env(svc: str) -> dict[str, str]:
+    """按部署拓扑补齐启动环境：xxl-job-admin 跑在 Docker 容器内、三端后端跑在宿主，
+    执行器的注册地址必须是容器可回调的 host.docker.internal，否则容器无法回调、任务执行失败。
+    该值属拓扑信息而非业务配置，故由脚本注入而不写进各端配置；外部已设置时以外部为准。"""
+    env = os.environ.copy()
+    if svc in ("java", "go", "python"):
+        env.setdefault("XXLJOB_EXECUTOR_IP", "host.docker.internal")
+    return env
+
+
 def start(svc: str):
     cwd, cmd, port = SERVICES[svc]
     pid_file = cwd / f".{svc}.pid"
@@ -76,7 +88,8 @@ def start(svc: str):
     log = open(log_path, "a")
     proc = subprocess.Popen(
         cmd, cwd=cwd, stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW if IS_WIN else 0,
+        env=_start_env(svc),
+        creationflags=CREATE_NO_WINDOW,
         start_new_session=not IS_WIN,
     )
     pid_file.write_text(str(proc.pid))

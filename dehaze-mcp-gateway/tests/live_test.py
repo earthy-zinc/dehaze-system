@@ -2,7 +2,7 @@
 
 前置：java(8989) + mcp(8082) 已启动（网关需 MCP_GATEWAY_KEY 已配置）。
 运行（仓库根目录）：
-    /data/workspace/dehaze-system/dehaze-python/.venv/bin/python dehaze-mcp-gateway/tests/live_test.py
+    dehaze-python/.venv/bin/python dehaze-mcp-gateway/tests/live_test.py
 """
 import asyncio
 import json

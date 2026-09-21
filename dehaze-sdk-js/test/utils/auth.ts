@@ -14,7 +14,7 @@ import { AuthAPI, configAxios } from "../../index";
 import type { InternalAxiosRequestConfig } from "axios";
 import FormData from "form-data";
 import { getRedis } from "./redis";
-import { ADMIN_PASSWORD } from "#/config/constant";
+import { SEED_PASSWORD } from "#/config/constant";
 
 let currentSessionId: string = "";
 let activeUser: string = "";
@@ -87,7 +87,7 @@ async function doLogin(username: string) {
   const captchaCode = await getCaptchaCode(captcha.captchaKey);
   return await AuthAPI.login({
     username,
-    password: ADMIN_PASSWORD,
+    password: SEED_PASSWORD,
     captchaKey: captcha.captchaKey,
     captchaCode,
   });

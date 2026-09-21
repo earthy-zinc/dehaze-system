@@ -7,8 +7,9 @@ dotenv.config({
   quiet: true,
 });
 
-// 登录种子账号 admin 的密码（bcrypt 固化在种子 SQL，此变量仅作登录凭证声明）
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Dehaze2026";
+// 种子账号（admin/root/test 等）口令明文，对应 config/sql/data/sys_user.sql 的 bcrypt；
+// 非运行时配置：改 .env 不会改变种子口令，只能改 sql 里的哈希
+export const SEED_PASSWORD = "Dehaze2026";
 
 export const MYSQL_HOST = process.env.MYSQL_HOST || "127.0.0.1";
 export const MYSQL_PORT = Number(process.env.MYSQL_PORT || "3306");

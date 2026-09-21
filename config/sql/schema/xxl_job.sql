@@ -6,7 +6,7 @@
 -- 设计思路:
 -- xxl_job 库独立于业务库 dehaze，由 xxl-job-admin 容器独立访问。
 -- 预置 3 个执行器分组（dehaze-java/python/go）和项目中实际存在的定时任务，
--- 任务初始为停止状态（trigger_status=0），admin 启动后在控制台手动启用。
+-- 任务初始即为运行状态（trigger_status=1），admin 启动后按 CRON 自动调度。
 -- admin 控制台账号 admin/Dehaze2026（与项目其他服务密码一致）。
 -- ------------------------------------------------------------
 
@@ -164,10 +164,10 @@ INSERT INTO `xxl_job_user`(`id`, `username`, `password`, `role`, `permission`)
 VALUES (1, 'admin', '8c91a1a8e7ef50a8b8349e1d78332a04421ec0d163d0f0fd5c7d2b475ca890c1', 1, NULL);
 
 -- ------------------------------------------------------------
--- 定时任务（三端对齐后的完整清单）
--- schedule_type=CRON, glue_type=BEAN, trigger_status=0(停止)
--- 路由策略: SHARDING_BROADCAST 用于可分片任务, FIRST 用于单机任务
--- 阻塞策略: SERIAL_EXECUTION 串行执行
+-- 定时任务：与三端执行器注册的 handler 一一对应，初始即为运行状态
+-- schedule_type=CRON, glue_type=BEAN, executor_route_strategy=FIRST, 阻塞策略=SERIAL_EXECUTION
+-- 三端同名任务 CRON 完全一致，取值依据 dehaze-doc 各模块「后端实现.md」的定时任务表
+-- 数量：Java 15（含 processDelayedPush）/ Go 14 / Python 30（含 16 个 Python 专属任务）
 -- ------------------------------------------------------------
 
 -- === Java 执行器（job_group=1）任务 ===
@@ -179,37 +179,49 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
 VALUES
     -- 任务清理-过期任务物理删除
     (1, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (1, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (1, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
     (1, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
     (1, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
-     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (1, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
-     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
-    -- 订单-自动续费
-    (1, '订单-自动续费', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
-     'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (1, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-自动续费扣款
+    (1, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-退款失败重试
+    (1, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (1, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (1, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-过期降级
     (1, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
-     'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-月度配额重置
-    (1, '会员-月度配额重置', now(), now(), 'dehaze', '', 'CRON', '0 0 0 1 * ?',
-     'DO_NOTHING', 'FIRST', 'resetMonthlyQuota', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (1, '会员-月度配额重置', now(), now(), 'dehaze', '', 'CRON', '0 0 0 * * ?',
+     'DO_NOTHING', 'FIRST', 'resetMonthlyQuota', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-到期预警提醒
+    (1, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+     'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
     (1, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
     (1, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0);
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 消息-未读数缓存刷新
+    (1, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 消息-免打扰延迟推送补发（Java 专属）
+    (1, '消息-免打扰延迟推送补发', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+     'DO_NOTHING', 'FIRST', 'processDelayedPush', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 -- === Python 执行器（job_group=2）任务 ===
 INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `author`, `alarm_email`,
@@ -220,37 +232,94 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
 VALUES
     -- 任务清理-过期任务物理删除
     (2, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (2, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (2, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
     (2, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
     (2, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
-     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (2, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
-     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (2, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-自动续费扣款
+    (2, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-退款失败重试
+    (2, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-渠道对账（Python 专属）
+    (2, '订单-渠道对账', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+     'DO_NOTHING', 'FIRST', 'reconciliation', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (2, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (2, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-过期降级
+    (2, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+     'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-月度配额重置
+    (2, '会员-月度配额重置', now(), now(), 'dehaze', '', 'CRON', '0 0 0 * * ?',
+     'DO_NOTHING', 'FIRST', 'resetMonthlyQuota', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-到期预警提醒
+    (2, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+     'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
     (2, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
     (2, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
-    -- 文件清理-孤儿文件清理（Python特有，算法端产生孤儿文件）
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 消息-未读数缓存刷新
+    (2, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 文件清理-孤儿文件清理（Python 专属，算法端产生孤儿文件）
     (2, '文件清理-孤儿文件清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupOrphanFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
-    -- 文件清理-临时文件清理（Python特有，算法端产生临时文件）
+     'DO_NOTHING', 'FIRST', 'cleanupOrphanFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 文件清理-临时文件清理（Python 专属，算法端产生临时文件）
     (2, '文件清理-临时文件清理', now(), now(), 'dehaze', '', 'CRON', '0 0 */6 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupTempFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
-    -- 模型健康检查（Python特有，GPU/DB/Redis健康监控）
+     'DO_NOTHING', 'FIRST', 'cleanupTempFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 模型健康检查（Python 专属，GPU/DB/Redis健康监控）
     (2, '模型健康检查', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
-     'DO_NOTHING', 'FIRST', 'modelHealthCheck', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0);
+     'DO_NOTHING', 'FIRST', 'modelHealthCheck', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI记忆-遗忘（Python 专属）
+    (2, 'AI记忆-遗忘', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
+     'DO_NOTHING', 'FIRST', 'aiMemoryForget', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI记忆-反思（Python 专属）
+    (2, 'AI记忆-反思', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+     'DO_NOTHING', 'FIRST', 'aiMemoryReflection', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI记忆-合并（Python 专属）
+    (2, 'AI记忆-合并', now(), now(), 'dehaze', '', 'CRON', '0 0 5 * * ?',
+     'DO_NOTHING', 'FIRST', 'aiMemoryMerge', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI记忆-已删除记忆清除（Python 专属）
+    (2, 'AI记忆-已删除记忆清除', now(), now(), 'dehaze', '', 'CRON', '0 0 6 * * ?',
+     'DO_NOTHING', 'FIRST', 'purgeDeletedMemories', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 对话-不活跃会话归档（Python 专属）
+    (2, '对话-不活跃会话归档', now(), now(), 'dehaze', '', 'CRON', '0 0 0 * * ?',
+     'DO_NOTHING', 'FIRST', 'archiveInactiveConversations', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 对话-已删除会话清除（Python 专属）
+    (2, '对话-已删除会话清除', now(), now(), 'dehaze', '', 'CRON', '0 30 1 * * ?',
+     'DO_NOTHING', 'FIRST', 'purgeDeletedConversations', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 模型渠道-last_used落库（Python 专属）
+    (2, '模型渠道-last_used落库', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+     'DO_NOTHING', 'FIRST', 'flushProviderKeyLastUsed', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 账单-月度账单生成（Python 专属）
+    (2, '账单-月度账单生成', now(), now(), 'dehaze', '', 'CRON', '0 30 0 1 * ?',
+     'DO_NOTHING', 'FIRST', 'generateMonthlyBill', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI智能调度-触发（Python 专属）
+    (2, 'AI智能调度-触发', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+     'DO_NOTHING', 'FIRST', 'aiScheduleTrigger', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- AI智能调度-过期运行清理（Python 专属）
+    (2, 'AI智能调度-过期运行清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+     'DO_NOTHING', 'FIRST', 'aiScheduleRunCleanup', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员礼包-过期清理（Python 专属）
+    (2, '会员礼包-过期清理', now(), now(), 'dehaze', '', 'CRON', '0 59 23 L * ?',
+     'DO_NOTHING', 'FIRST', 'clearVipGiftExpire', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员礼包-每月赠送发放（Python 专属）
+    (2, '会员礼包-每月赠送发放', now(), now(), 'dehaze', '', 'CRON', '0 0 0 1 * ?',
+     'DO_NOTHING', 'FIRST', 'grantVipMonthlyGift', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 -- === Go 执行器（job_group=3）任务 ===
 INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `author`, `alarm_email`,
@@ -261,30 +330,45 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
 VALUES
     -- 任务清理-过期任务物理删除
     (3, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (3, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (3, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
     (3, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
     (3, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
-     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (3, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
-     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
-    -- 订单-自动续费
-    (3, '订单-自动续费', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
-     'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (3, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-自动续费扣款
+    (3, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 订单-退款失败重试
+    (3, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+     'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (3, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+    (3, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-过期降级
+    (3, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+     'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-月度配额重置
+    (3, '会员-月度配额重置', now(), now(), 'dehaze', '', 'CRON', '0 0 0 * * ?',
+     'DO_NOTHING', 'FIRST', 'resetMonthlyQuota', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 会员-到期预警提醒
+    (3, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+     'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
     (3, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
-     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0),
+     'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
     (3, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
-     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 0);
+     'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
+    -- 消息-未读数缓存刷新
+    (3, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+     'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 COMMIT;

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // 注册 database/sql 的 mysql driver
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -190,7 +191,7 @@ func rebuildSchema(ctx context.Context, conn *sql.Conn, hash string) error {
 	if err := exec("USE `" + TestDBName + "`"); err != nil {
 		return err
 	}
-	root := repoRoot()
+	root := config.RepoRoot()
 	for _, dir := range []string{"schema", "data"} {
 		path := filepath.Join(root, "config", "sql", dir)
 		entries, err := os.ReadDir(path) // 按文件名排序，保证依赖顺序（schema 先于 data）
@@ -295,7 +296,7 @@ func splitStatements(content string) []string {
 // 作为 schema/种子脚本是否变更的依据。
 func sqlFingerprint() (string, error) {
 	h := sha256.New()
-	root := repoRoot()
+	root := config.RepoRoot()
 	for _, dir := range []string{"schema", "data"} {
 		path := filepath.Join(root, "config", "sql", dir)
 		entries, err := os.ReadDir(path)
@@ -352,7 +353,7 @@ func openTestDB() (*gorm.DB, error) {
 func loadMySQLConfig() mySQLConfig {
 	envOnce.Do(func() {
 		// 凭证与 CWD 解耦：测试进程 CWD 是各包目录，必须显式加载仓库根 .env
-		_ = godotenv.Load(filepath.Join(repoRoot(), ".env"))
+		_ = godotenv.Load(filepath.Join(config.RepoRoot(), ".env"))
 	})
 	host := os.Getenv("MYSQL_HOST")
 	if host == "" {
@@ -379,9 +380,4 @@ func serverDSN(cfg mySQLConfig) string {
 func testDBDSN(cfg mySQLConfig) string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		cfg.user, cfg.password, cfg.host, cfg.port, cfg.database)
-}
-
-// repoRoot 定位仓库根（dehaze-system）：dehaze-go 的上级（config/sql、.env 位于仓库根）。
-func repoRoot() string {
-	return filepath.Dir(goRepoRoot())
 }

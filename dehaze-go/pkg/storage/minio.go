@@ -15,7 +15,17 @@ import (
 type MinioStorageService struct {
 	client     *minio.Client
 	bucketName string
-	endpoint   string
+	baseURL    string
+}
+
+// MinioBaseURL MinIO 直连访问基址：endpoint（无 scheme 时补 http）+ "/" + bucketName。
+// bucket 已设为 public read，三端可直接 HTTP 访问。
+func MinioBaseURL(endpoint, bucketName string) string {
+	endpoint = strings.TrimRight(endpoint, "/")
+	if !strings.HasPrefix(endpoint, "http") {
+		endpoint = "http://" + endpoint
+	}
+	return endpoint + "/" + bucketName
 }
 
 // NewMinioStorage 创建 MinIO 存储服务实例
@@ -31,7 +41,7 @@ func NewMinioStorage(cfg options.FileMinIO) (*MinioStorageService, error) {
 	svc := &MinioStorageService{
 		client:     client,
 		bucketName: cfg.BucketName,
-		endpoint:   cfg.Endpoint,
+		baseURL:    MinioBaseURL(cfg.Endpoint, cfg.BucketName),
 	}
 
 	// 确保存储桶存在
@@ -128,13 +138,7 @@ func (s *MinioStorageService) Exists(ctx context.Context, objectName string) (bo
 	return true, nil
 }
 
-// GetURL 运行时拼接 MinIO 文件访问地址：baseURL + "/" + objectName
-// 不再返回 endpoint/bucket 拼接，统一走配置的 baseUrl（完整 URL）
+// GetURL 拼接 MinIO 直连地址：baseURL + "/" + objectName
 func (s *MinioStorageService) GetURL(ctx context.Context, objectName string) (string, error) {
-	// 返回 MinIO 直连 URL（bucket 已设为 public read），三端可直接 HTTP 访问
-	endpoint := strings.TrimRight(s.endpoint, "/")
-	if !strings.HasPrefix(endpoint, "http") {
-		endpoint = "http://" + endpoint
-	}
-	return endpoint + "/" + s.bucketName + "/" + objectName, nil
+	return s.baseURL + "/" + objectName, nil
 }
