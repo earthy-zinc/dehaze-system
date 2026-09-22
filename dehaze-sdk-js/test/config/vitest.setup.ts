@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, onTestFinished } from "vitest";
 import { service } from "@/utils/request";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import type { CapturedRequest, CapturedResponse } from "#/config/compact-reporter";
-import { clearLoginRateLimit, login } from "#/utils/auth";
+import { clearAuthRateLimit, login } from "#/utils/auth";
 import { disconnectRedis } from "#/utils/redis";
 import { LocalStorageMock } from "#/utils/localstorage";
 import { BACKEND_URL } from "#/config/constant";
@@ -111,7 +111,7 @@ service.defaults.transformResponse = (rawData: any) => {
 };
 
 beforeAll(async () => {
-  await clearLoginRateLimit();
+  await clearAuthRateLimit();
   await login();
 });
 

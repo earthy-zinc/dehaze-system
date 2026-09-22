@@ -295,7 +295,9 @@ class AuthService:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "注册功能未开启")
 
         # 注册 IP 限流：60 秒内最多 10 次（用户注册设计.md §4.5）
-        register_limit_key = f"rate:limit:register:{client_ip}"
+        # 键须带 auth 段：Java 端 Redisson 限流器占用 rate:limit:register:{ip} 且结构为 hash，
+        # 三端共用同一 Redis，同名 INCR 会报 WRONGTYPE
+        register_limit_key = f"rate:limit:auth:register:{client_ip}"
         count = await redis.incr(register_limit_key)
         if count == 1:
             await redis.expire(register_limit_key, 60)

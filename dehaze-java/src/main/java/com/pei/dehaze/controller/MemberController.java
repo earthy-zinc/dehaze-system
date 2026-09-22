@@ -76,7 +76,7 @@ public class MemberController {
 
     @Operation(summary = "当前用户试用引导状态")
     @GetMapping("/trial-status")
-    public Result<Map<String, Object>> getTrialStatus() {
+    public Result<MemberTrialStatusVO> getTrialStatus() {
         return Result.success(memberService.getTrialStatus(SecurityUtils.getUserId()));
     }
 

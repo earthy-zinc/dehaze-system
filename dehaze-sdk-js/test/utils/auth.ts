@@ -56,12 +56,22 @@ function applySession(sessionId: string, username: string) {
   setupAxiosInterceptor();
 }
 
-export async function clearLoginRateLimit(): Promise<void> {
+/** 清理登录/注册限流计数：三端键名与结构不同，需逐族清理，否则重复运行会命中 10 次/分钟阈值 */
+export async function clearAuthRateLimit(): Promise<void> {
   const redis = getRedis();
-  // 只删计数子 key，不删 Redisson 配置 key（rate:limit:login:{ip} 本身）
+  // 只删计数子 key，不删 Redisson 配置 key（rate:limit:{scope}:{ip} 本身）
   // Redisson 计数: {rate:limit:login:{ip}}:value / :permits
-  // Python 计数: rate:limit:/api/v1/auth/login:{ip}
-  for (const pattern of ["{rate:limit:login:*", "rate:limit:/api/v1/auth/login:*"]) {
+  // Python 计数: rate:limit:/api/v1/auth/login:{ip}、rate:limit:auth:register:{ip}
+  // Go 计数: rate:limit:ip:register:{ip}
+  const patterns = [
+    "{rate:limit:login:*",
+    "rate:limit:/api/v1/auth/login:*",
+    "{rate:limit:register:*",
+    "rate:limit:/api/v1/auth/register:*",
+    "rate:limit:auth:register:*",
+    "rate:limit:ip:register:*",
+  ];
+  for (const pattern of patterns) {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(keys);
@@ -115,7 +125,7 @@ export async function login(username: string = "admin"): Promise<string> {
     if (status === 429 || bizCode === "B0211") {
       // 测试中切换多用户累积触发后端登录限流（Java @RateLimit 10次/60秒）
       // 清理限流计数后重试一次
-      await clearLoginRateLimit();
+      await clearAuthRateLimit();
       result = await doLogin(username);
     } else {
       throw err;

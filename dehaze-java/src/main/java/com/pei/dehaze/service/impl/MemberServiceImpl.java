@@ -544,7 +544,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     @Override
-    public Map<String, Object> getTrialStatus(Long userId) {
+    public MemberTrialStatusVO getTrialStatus(Long userId) {
         SysMember member = getMemberOrCreate(userId);
 
         // 体验券激活状态：持有未使用且未过期的 trial 券即视为已激活
@@ -572,16 +572,16 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
         boolean showTrialEntry = !voucherActivated || newUserExclusiveAvailable;
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("showTrialEntry", showTrialEntry);
-        result.put("trialDays", 3);
-        result.put("trialCredits", 100);
-        result.put("voucherActivated", voucherActivated);
-        result.put("voucherExpireTime", activeTrial != null && activeTrial.getExpireTime() != null
+        MemberTrialStatusVO result = new MemberTrialStatusVO();
+        result.setShowTrialEntry(showTrialEntry);
+        result.setTrialDays(3);
+        result.setTrialCredits(100);
+        result.setVoucherActivated(voucherActivated);
+        result.setVoucherExpireTime(activeTrial != null && activeTrial.getExpireTime() != null
                 ? activeTrial.getExpireTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null);
-        result.put("aiTrialCreditsBalance", 0L);
-        result.put("newUserExclusiveAvailable", newUserExclusiveAvailable);
-        result.put("paidMembership", "purchase".equals(member.getLevelSource()) || member.getExpireTime() != null);
+        result.setAiTrialCreditsBalance(0L);
+        result.setNewUserExclusiveAvailable(newUserExclusiveAvailable);
+        result.setPaidMembership("purchase".equals(member.getLevelSource()) || member.getExpireTime() != null);
         return result;
     }
 

@@ -59,6 +59,11 @@ describe("会员管理模块接口测试", () => {
 
   describe("GET /api/v1/members/growth-logs - 成长值变动明细", () => {
     beforeAll(async () => {
+      // 文件级自愈只在成长值偏离预置值时才产生流水，干净库下目标用户可能一条流水都没有；
+      // 此处以 +1/-1 抵消式调整强制产生流水且不改动净成长值，消除对前序运行残留的依赖
+      await login(USERS.ADMIN.username);
+      await MemberAPI.adjustGrowth(targetUser.id, createGrowthAdjustForm({ changeValue: 1 }));
+      await MemberAPI.adjustGrowth(targetUser.id, createGrowthAdjustForm({ changeValue: -1 }));
       await login(targetUser.username);
     });
 

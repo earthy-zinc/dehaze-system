@@ -39,7 +39,7 @@ function makeTxtFile(prefix: string): File {
   });
 }
 
-async function waitForDocSettled(docId: number, timeoutMs = 30000): Promise<string> {
+async function waitForDocSettled(docId: number, timeoutMs = 60000): Promise<string> {
   const deadline = Date.now() + timeoutMs;
   let status = "pending";
   while (Date.now() < deadline) {
@@ -580,7 +580,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
-    }, 45000);
+    }, 90000);
 
     test("边界：删除不存在的文档应失败", async () => {
       await expectBizError(AiKnowledgeBaseAPI.deleteDocument(99999999), [
@@ -1072,13 +1072,13 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
 
       expect(doc.processingStatus).toBe("pending");
 
-      const finalStatus = await waitForDocSettled(doc.id, 30000);
+      const finalStatus = await waitForDocSettled(doc.id, 60000);
 
       // waitForDocSettled 仅在到达终态（completed/failed）时提前返回；本地小文本由本地
-      // embedding 服务处理，30s 内必然结束于终态。非终态（processing/pending）仅当 30s
-      // 超时才返回，属异常，故断言收敛为终态集合。
+      // embedding 服务处理，60s 内必然结束于终态（并行全量跑时 embedding 排队会拉长耗时）。
+      // 非终态（processing/pending）仅当超时才返回，属异常，故断言收敛为终态集合。
       expect(["completed", "failed"]).toContain(finalStatus);
-    }, 45000);
+    }, 90000);
 
     test("正向测试：重新处理文档后状态回到 pending", async () => {
       const doc = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
@@ -1100,7 +1100,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       const doc = await AiKnowledgeBaseAPI.createTextDocument(testKbId, createTextDocForm());
       createdDocIds.push(doc.id);
 
-      const status = await waitForDocSettled(doc.id, 30000);
+      const status = await waitForDocSettled(doc.id, 60000);
 
       if (status === "completed") {
         const result = await AiKnowledgeBaseAPI.getChunks(doc.id);
@@ -1111,7 +1111,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
           expect(typeof chunk.tokenCount).toBe("number");
         }
       }
-    }, 45000);
+    }, 90000);
   });
 
   // ===== 安全与对抗性用例 =====
@@ -1192,7 +1192,7 @@ describe("AI 知识库模块接口测试 - AiKnowledgeBaseAPI", () => {
       });
       createdDocIds.push(doc.id);
 
-      const status = await waitForDocSettled(doc.id, 30000);
+      const status = await waitForDocSettled(doc.id, 60000);
       expect(status).toBe("completed");
 
       // 删除前命中（hybrid 检索，唯一 token 由 BM25 保证召回）

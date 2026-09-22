@@ -53,10 +53,12 @@ export const createBatchUploadForm = (fileIds?: number[]): DocumentBatchUploadFo
   fileIds: fileIds || [1, 2],
 });
 
+// 正文抽取要求页面含静态正文：example.com 为 IANA 维护的极简稳定页面（无 JS 渲染），
+// 而门户站首页正文由脚本渲染，抽取结果为空会返回 A0500「网页无有效正文内容」
 export const createImportUrlForm = (
   overrides?: Partial<DocumentImportUrlForm>
 ): DocumentImportUrlForm => ({
-  url: "https://www.baidu.com/",
+  url: "https://example.com/",
   title: uniqueName("imported_doc"),
   ...overrides,
 });

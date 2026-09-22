@@ -33,7 +33,7 @@ public interface MemberService extends IService<SysMember> {
 
     Map<String, Object> getBenefitSummary(Long userId);
 
-    Map<String, Object> getTrialStatus(Long userId);
+    MemberTrialStatusVO getTrialStatus(Long userId);
 
     Map<String, Object> listMemberAuditLogs(Long userId, int pageNum, int pageSize);
 
