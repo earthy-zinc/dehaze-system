@@ -1,0 +1,107 @@
+{
+  "_comment": "dehaze 开发环境统一管理配置。setup-toolchain.ps1(Windows) 与 setup-toolchain-linux.sh(WSL/Linux) 共用。install 段通用可反复跑；legacy 段仅迁移旧环境用，全新机器留空。",
+
+  "runtimes": {
+    "node": "24",
+    "go": "1.25",
+    "java": "temurin-21"
+  },
+
+  "python": {
+    "default": "3.13"
+  },
+
+  "mirrors": {
+    "scoopRepo": "https://gitee.com/scoop-installer/scoop",
+    "bucketBase": "https://gitee.com/scoop-installer",
+    "proxyBucket": "https://gitee.com/wlzwme/scoop-proxy-cn",
+    "npmRegistry": "https://registry.npmmirror.com",
+    "pipIndex": "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "goProxy": "https://goproxy.cn,direct",
+    "goSumDb": "sum.golang.google.cn",
+    "miseNodeMirror": "https://npmmirror.com/mirrors/node/",
+    "uvPythonMirror": "",
+    "mavenMirror": "https://maven.aliyun.com/repository/public",
+    "aptMirror": "https://mirrors.tuna.tsinghua.edu.cn/ubuntu"
+  },
+
+  "windows": {
+    "buckets": ["main", "extras", "versions", "java"],
+    "useProxyBucket": true,
+    "userApps": ["aria2", "pwsh"],
+    "pnpmGlobals": ["yarn", "@ant-design/pro-cli", "node-stdio"],
+    "globalApps": [
+      "maven", "gradle", "protobuf", "pandoc", "make", "helm", "uv",
+      "jq", "yq", "ripgrep", "fd", "fzf", "bat", "delta", "zoxide",
+      "hyperfine", "tree", "7zip", "wget", "just", "gh"
+    ]
+  },
+
+  "linux": {
+    "aptSourceFile": "/etc/apt/sources.list.d/ubuntu.sources",
+    "aptPackages": [
+      "build-essential", "curl", "wget", "git", "unzip", "jq", "aria2",
+      "ripgrep", "fd-find", "bat", "fzf", "tree", "htop", "ca-certificates"
+    ]
+  },
+
+  "legacy": {
+    "_comment": "迁移前旧环境专用，Cleanup 步使用。全新机器把下面各项留空即可。",
+    "windows": {
+      "choco": ["kubernetes-helm", "python", "python3", "python313"],
+      "machinePathFragments": [
+        "Oracle\\Java\\javapath",
+        "Python313",
+        "Java\\jdk-17\\bin",
+        "Program Files\\Go\\bin",
+        "apache-maven",
+        "Gradle\\gradle",
+        "protobuf-31.1",
+        "Pandoc",
+        "GnuWin32\\bin",
+        "Programs\\nodejs"
+      ],
+      "userPathFragments": [
+        "Programs\\nodejs",
+        "AppData\\Local\\nvm"
+      ],
+      "envVars": ["JAVA_HOME", "GOROOT", "NVM_HOME", "NVM_SYMLINK"],
+      "dirs": [
+        "C:\\Program Files\\Go",
+        "C:\\Program Files\\Java",
+        "C:\\Python313",
+        "C:\\Programs\\apache-maven-3.9.5",
+        "C:\\Program Files\\Gradle\\gradle-8.8",
+        "C:\\Programs\\protobuf-31.1",
+        "C:\\Program Files\\Pandoc",
+        "C:\\Program Files (x86)\\GnuWin32",
+        "C:\\Users\\earthyzinc\\AppData\\Local\\nvm",
+        "C:\\Users\\earthyzinc\\AppData\\Roaming\\npm",
+        "C:\\Users\\earthyzinc\\miniconda3"
+      ],
+      "links": [
+        "C:\\Programs\\nodejs"
+      ],
+      "msiProductCodes": [
+        "{61C3B7D2-33F9-5107-9F20-AB1A7C8B5C2A}",
+        "{64A3A4F4-B792-11D6-A78A-00B0D0180341}",
+        "{71324AE4-039E-4CA4-87B4-2F64180391F0}",
+        "{4A03706F-666A-4037-7777-5F2748764D10}",
+        "{CB1669C4-DF67-577C-8DC1-B1C5628FEC98}",
+        "{EAAE4648-306F-5360-8CAA-C93D6F5C2298}",
+        "{BF44F985-A720-4EB9-8B4B-6C2F76A30CDB}",
+        "{366AC84A-6A67-4F5B-8B30-8948359615D8}"
+      ],
+      "registryKeys": [
+        "HKLM:\\SOFTWARE\\JavaSoft",
+        "HKLM:\\SOFTWARE\\WOW6432Node\\JavaSoft"
+      ]
+    },
+    "linux": {
+      "_comment": "勿在此移除 openjdk/default-jre：CUDA 的 cuda-visual-tools 依赖 JRE，会级联卸载整条 CUDA 工具链（已踩过）。",
+      "aptRemove": ["nodejs", "npm"],
+      "manualDirs": ["/usr/local/go", "/home/earthyzinc/.nvm"],
+      "shellStripPatterns": ["/usr/local/go/bin", "NVM_DIR", "nvm.sh"]
+    }
+  }
+}
