@@ -19,16 +19,18 @@ class ApiClient {
     required TokenStorage tokenStorage,
     void Function()? onAuthError,
   }) {
-    final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.apiBaseUrl,
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      sendTimeout: ApiConfig.sendTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.apiBaseUrl,
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        sendTimeout: ApiConfig.sendTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     dio.interceptors.addAll([
       TraceInterceptor(),
@@ -38,14 +40,16 @@ class ApiClient {
     ]);
 
     if (kDebugMode) {
-      dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        requestHeader: false,
-        responseHeader: false,
-        error: true,
-        logPrint: (obj) => developer.log('[DIO] $obj', name: 'dio'),
-      ));
+      dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          requestHeader: false,
+          responseHeader: false,
+          error: true,
+          logPrint: (obj) => developer.log('[DIO] $obj', name: 'dio'),
+        ),
+      );
     }
 
     return ApiClient._internal(dio);

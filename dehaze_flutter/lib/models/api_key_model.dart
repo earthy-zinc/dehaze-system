@@ -2,165 +2,83 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'api_key_model.g.dart';
 
-/// API 密钥状态枚举
-///
-/// 对应后端 ApiKey status 字段。
-enum ApiKeyStatus {
-  /// 活跃（正常可用）
-  @JsonValue(1)
-  active,
-
-  /// 禁用
-  @JsonValue(0)
-  inactive,
-
-  /// 已过期
-  @JsonValue(2)
-  expired,
-
-  /// 已吊销
-  @JsonValue(3)
-  revoked;
-
-  int get value => switch (this) {
-        ApiKeyStatus.active => 1,
-        ApiKeyStatus.inactive => 0,
-        ApiKeyStatus.expired => 2,
-        ApiKeyStatus.revoked => 3,
-      };
-
-  static ApiKeyStatus fromValue(int? value) {
-    switch (value) {
-      case 0:
-        return ApiKeyStatus.inactive;
-      case 2:
-        return ApiKeyStatus.expired;
-      case 3:
-        return ApiKeyStatus.revoked;
-      default:
-        return ApiKeyStatus.active;
-    }
-  }
-}
-
 /// API 密钥视图对象
 ///
-/// 对应 JS SDK ApiKeyVO 及后端 ApiKeyResult。
+/// 对应 JS SDK ApiKeyVO 与后端 ApiKeyResult。
 @JsonSerializable()
 class ApiKeyVO {
   const ApiKeyVO({
     required this.id,
-    this.userId,
-    this.name,
-    this.keyPrefix,
-    this.apiKey,
-    this.permissions = const [],
+    required this.name,
+    required this.keyPrefix,
     required this.status,
-    this.statusName,
-    this.lastUsedTime,
-    this.expireTime,
+    this.apiKey,
+    this.expiresAt,
+    this.lastUsedAt,
     this.createTime,
+    this.dailyQuota,
+    this.monthlyQuota,
+    this.rpmLimit,
+    this.modelWhitelist,
   });
 
   factory ApiKeyVO.fromJson(Map<String, dynamic> json) =>
       _$ApiKeyVOFromJson(json);
 
   final int id;
-  final int? userId;
-  final String? name;
+  final String name;
 
-  @JsonKey(name: 'keyPrefix')
-  final String? keyPrefix;
-
-  @JsonKey(name: 'apiKey')
+  /// 完整密钥，仅创建时返回一次，后续查询不再返回
   final String? apiKey;
 
-  @JsonKey(defaultValue: [])
-  final List<String> permissions;
+  /// 密钥前缀（用于列表展示识别）
+  final String keyPrefix;
 
+  /// 状态（1 启用 / 0 禁用）
   final int status;
-  final String? statusName;
 
-  @JsonKey(name: 'lastUsedAt')
-  final String? lastUsedTime;
-
-  @JsonKey(name: 'expiresAt')
-  final String? expireTime;
-
+  final String? expiresAt;
+  final String? lastUsedAt;
   final String? createTime;
+
+  /// 日调用配额（NULL 或 0 表示不限制）
+  final int? dailyQuota;
+
+  /// 月调用配额（NULL 或 0 表示不限制）
+  final int? monthlyQuota;
+
+  /// 每分钟请求数上限（NULL 或 0 表示不限制）
+  final int? rpmLimit;
+
+  /// 模型白名单（NULL 或空数组 = 继承用户可见模型）
+  final List<String>? modelWhitelist;
 
   Map<String, dynamic> toJson() => _$ApiKeyVOToJson(this);
 }
 
-/// API 密钥查询参数
-@JsonSerializable()
-class ApiKeyQuery {
-  const ApiKeyQuery({
-    this.pageNum = 1,
-    this.pageSize = 10,
-    this.status,
-    this.keyword,
-  });
-
-  factory ApiKeyQuery.fromJson(Map<String, dynamic> json) =>
-      _$ApiKeyQueryFromJson(json);
-
-  final int pageNum;
-  final int pageSize;
-  final int? status;
-  final String? keyword;
-
-  Map<String, dynamic> toJson() => _$ApiKeyQueryToJson(this);
-
-  /// 转为 queryParameters 格式
-  Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (status != null) 'status': status,
-        if (keyword != null) 'keyword': keyword,
-      };
-}
-
 /// API 密钥创建表单
 ///
-/// 对应 JS SDK ApiKeyCreateForm 及后端 ApiKeyForm。
+/// 对应 JS SDK ApiKeyCreateForm 与后端 ApiKeyForm。
 @JsonSerializable()
 class ApiKeyCreateForm {
   const ApiKeyCreateForm({
     required this.name,
-    this.permissions = const [],
-    this.expireTime,
+    this.expiresAt,
+    this.dailyQuota,
+    this.monthlyQuota,
+    this.rpmLimit,
+    this.modelWhitelist,
   });
 
   factory ApiKeyCreateForm.fromJson(Map<String, dynamic> json) =>
       _$ApiKeyCreateFormFromJson(json);
 
   final String name;
-
-  @JsonKey(defaultValue: [])
-  final List<String> permissions;
-
-  @JsonKey(name: 'expiresAt')
-  final String? expireTime;
+  final String? expiresAt;
+  final int? dailyQuota;
+  final int? monthlyQuota;
+  final int? rpmLimit;
+  final List<String>? modelWhitelist;
 
   Map<String, dynamic> toJson() => _$ApiKeyCreateFormToJson(this);
-}
-
-/// API 密钥更新表单
-@JsonSerializable()
-class ApiKeyUpdateForm {
-  const ApiKeyUpdateForm({
-    this.name,
-    this.permissions,
-    this.status,
-  });
-
-  factory ApiKeyUpdateForm.fromJson(Map<String, dynamic> json) =>
-      _$ApiKeyUpdateFormFromJson(json);
-
-  final String? name;
-  final List<String>? permissions;
-  final int? status;
-
-  Map<String, dynamic> toJson() => _$ApiKeyUpdateFormToJson(this);
 }

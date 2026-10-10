@@ -10,7 +10,7 @@ public class RefundRecordVO {
     private String orderNo;
     private Long userId;
     private String username;
-    private Double refundAmount;
+    private Long refundAmount;
     private String reason;
     private Integer usedQuota;
     private String status;

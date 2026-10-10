@@ -18,7 +18,7 @@ import com.bumptech.glide.request.transition.Transition;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentMagnifierBinding;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
 
@@ -71,7 +71,7 @@ public class MagnifierFragment extends Fragment {
                 });
     }
 
-    private void loadDehazedBitmap(PredResult result) {
+    private void loadDehazedBitmap(ImageTaskResponse result) {
         if (result == null || result.getResultUrl() == null) return;
         statePlaceholder.hide();
         Glide.with(this).asBitmap().load(result.getResultUrl())

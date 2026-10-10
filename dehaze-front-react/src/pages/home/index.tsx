@@ -58,14 +58,6 @@ const QUICK_ENTRIES = [
     path: "/dataset",
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   },
-  {
-    key: "algorithm",
-    title: "模型管理",
-    description: "查看和管理可用的去雾算法模型",
-    icon: <ExperimentOutlined />,
-    path: "/algorithm",
-    gradient: "linear-gradient(135deg, #13c2c2 0%, #08979c 100%)",
-  },
 ] as const;
 
 /** 功能特性 */

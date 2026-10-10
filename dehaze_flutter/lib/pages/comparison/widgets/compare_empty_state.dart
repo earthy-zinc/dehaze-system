@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// 对比页统一空状态组件
 ///
-/// 用于对比页在缺少前置数据（如未完成去雾处理、无可用算法）时展示占位 UI，
+/// 用于对比页在缺少前置数据（如未完成去雾处理、无可用模型）时展示占位 UI，
 /// 替代各对比页内重复的 `_buildNoData` 实现。
 class CompareEmptyState extends StatelessWidget {
   const CompareEmptyState({
@@ -40,10 +40,7 @@ class CompareEmptyState extends StatelessWidget {
           const SizedBox(height: 16),
           Text(message, style: theme.textTheme.titleMedium),
           const SizedBox(height: 16),
-          FilledButton(
-            onPressed: onAction,
-            child: Text(actionLabel),
-          ),
+          FilledButton(onPressed: onAction, child: Text(actionLabel)),
         ],
       ),
     );

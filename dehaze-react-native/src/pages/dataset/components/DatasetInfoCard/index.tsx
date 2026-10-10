@@ -1,19 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Easing,
-} from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
-import { Dataset } from '../../types/dataset';
+import { DatasetVO } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
 
 interface DatasetInfoCardProps {
-  dataset: Dataset;
+  dataset: DatasetVO;
 }
 
 const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
@@ -75,25 +69,33 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
           {/* 统计信息 */}
           <View style={[styles.statsGrid, isMobile && styles.statsGridCompact]}>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
-              <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
+              <Text
+                style={[styles.statValue, isMobile && styles.statValueCompact]}
+              >
                 {itemCount}
               </Text>
               <Text style={styles.statLabel}>数据项</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
-              <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
+              <Text
+                style={[styles.statValue, isMobile && styles.statValueCompact]}
+              >
                 {fileCount}
               </Text>
               <Text style={styles.statLabel}>文件</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
-              <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
+              <Text
+                style={[styles.statValue, isMobile && styles.statValueCompact]}
+              >
                 {annotatedCount}
               </Text>
               <Text style={styles.statLabel}>已标注</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
-              <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
+              <Text
+                style={[styles.statValue, isMobile && styles.statValueCompact]}
+              >
                 {unannotatedCount}
               </Text>
               <Text style={styles.statLabel}>未标注</Text>

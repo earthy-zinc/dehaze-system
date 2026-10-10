@@ -257,7 +257,12 @@ function openDatasetDialog(dataset?: EvalDatasetResult) {
 }
 
 async function handleDatasetSubmit() {
-  await datasetFormRef.value.validate();
+  try {
+    await datasetFormRef.value.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   datasetSubmitting.value = true;
   try {
     if (editingDataset.value) {

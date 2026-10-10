@@ -107,6 +107,32 @@ describe("AssistantMessage", () => {
     expect(wrapper.emitted("copy")).toHaveLength(1);
   });
 
+  it("操作栏默认只露复制，其余操作收进「···」菜单", async () => {
+    const wrapper = mountAssistant({
+      message: assistant({ id: 4, status: "completed", text: "内容" }),
+    });
+
+    const bar = wrapper.find(".message-action-bar");
+    // 平铺按钮只剩「复制」，次要操作不再与它同级
+    expect(bar.findAll(":scope > button").map((b) => b.text())).toEqual([
+      "复制",
+    ]);
+    expect(findButton(wrapper, "···")).toBeTruthy();
+    // 次要操作收进「···」菜单容器
+    const menuText = bar.find(".el-dropdown-menu-stub").text();
+    expect(menuText).toContain("重新生成");
+    expect(menuText).toContain("删除");
+  });
+
+  it("「···」菜单项上抛对应事件", async () => {
+    const wrapper = mountAssistant({
+      message: assistant({ id: 5, status: "completed", text: "内容" }),
+    });
+
+    await findButton(wrapper, "重新生成")!.trigger("click");
+    expect(wrapper.emitted("regenerate")).toHaveLength(1);
+  });
+
   it("推荐追问上抛 apply-suggestion", async () => {
     const wrapper = mountAssistant({
       message: assistant({ id: 3, status: "completed", text: "答" }),

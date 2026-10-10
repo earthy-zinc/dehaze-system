@@ -46,11 +46,9 @@
               <view
                 v-for="r in compareRecords"
                 :key="r.id"
-                class="table-cell algo-cell"
+                class="table-cell model-cell"
               >
-                <text class="cell-text">{{
-                  r.algorithmName || `算法${r.algorithmId}`
-                }}</text>
+                <text class="cell-text">{{ r.modelName || r.modelId }}</text>
               </view>
             </view>
             <view v-for="key in metricKeys" :key="key" class="table-row">
@@ -103,8 +101,8 @@
           @click="!compareMode && toggleSelect(record.id)"
         >
           <view class="card-header">
-            <text class="card-algo">
-              {{ record.algorithmName || `算法${record.algorithmId}` }}
+            <text class="card-model">
+              {{ record.modelName || record.modelId }}
             </text>
             <view class="card-meta">
               <view
@@ -138,7 +136,7 @@
 
           <view class="card-footer">
             <text v-if="record.time != null" class="card-time">
-              耗时 {{ (record.time / 1000).toFixed(1) }}s
+              耗时 {{ record.time }}s
             </text>
             <text v-if="record.createTime" class="card-date">{{
               record.createTime
@@ -348,7 +346,7 @@ onMounted(() => {
   background: rgba(0, 0, 0, 0.01);
 }
 
-.algo-cell {
+.model-cell {
   min-width: 200rpx;
 }
 
@@ -455,7 +453,7 @@ onMounted(() => {
   margin-bottom: 16rpx;
 }
 
-.card-algo {
+.card-model {
   font-size: $font-md;
   font-weight: 600;
   color: $color-text-primary;

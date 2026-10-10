@@ -52,7 +52,7 @@ public class FeedbackAPI {
     public static void listRatings(RatingQuery query, ApiCallback<PageResult<RatingPageVO>> callback) {
         Call<Result<PageResult<RatingPageVO>>> call = DehazeSDK.getInstance().getFeedbackApiService().listRatings(
                 query.getPageNum(), query.getPageSize(),
-                query.getKeywords(), query.getAlgorithmId(),
+                query.getKeywords(), query.getModelId(),
                 query.getRatingMin(), query.getRatingMax(),
                 query.getHasComment(), query.getStartTime(), query.getEndTime());
         call.enqueue(callback);

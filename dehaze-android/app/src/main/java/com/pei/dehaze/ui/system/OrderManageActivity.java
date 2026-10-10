@@ -189,7 +189,7 @@ public class OrderManageActivity extends BaseActivity {
             holder.tvPackage.setText(StringUtils.safe(item.getPackageName(), "--"));
 
             if (item.getPaidAmount() != null) {
-                holder.tvAmount.setText("¥" + String.format("%.2f", item.getPaidAmount()));
+                holder.tvAmount.setText("¥" + String.format("%.2f", item.getPaidAmount() / 100.0));
             } else {
                 holder.tvAmount.setText("--");
             }

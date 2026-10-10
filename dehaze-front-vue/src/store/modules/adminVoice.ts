@@ -2,7 +2,7 @@ import { HotwordVO, ServiceStatusVO, VoiceAPI } from "dehaze-sdk-js";
 
 // 管理端语音面板 Store：全局热词管理 + 语音服务状态监控（30s 轮询）
 export const useAdminVoiceStore = defineStore("adminVoice", () => {
-  const monitorTab = ref<"hotword" | "service" | "engine">("hotword");
+  const monitorTab = ref<"hotword" | "service">("hotword");
 
   const globalHotwords = ref<HotwordVO[]>([]);
   const hotwordLoading = ref(false);

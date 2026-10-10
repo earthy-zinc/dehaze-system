@@ -11,9 +11,10 @@ import '../../services/dataset_service.dart';
 import '../../theme/app_theme.dart';
 
 final datasetManageProvider =
-    StateNotifierProvider<DatasetManageNotifier, AsyncValue<PagedList<Dataset>>>(
-  (ref) => DatasetManageNotifier(ref.watch(datasetServiceProvider)),
-);
+    StateNotifierProvider<
+      DatasetManageNotifier,
+      AsyncValue<PagedList<Dataset>>
+    >((ref) => DatasetManageNotifier(ref.watch(datasetServiceProvider)));
 
 class DatasetManageNotifier extends PagedListNotifier<Dataset> {
   DatasetManageNotifier(this._service) : super();
@@ -49,28 +50,31 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
   Future<void> _delete(int id) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (c) => AlertDialog(
-            title: const Text('确认删除'),
-            content: const Text('确定要删除该数据集吗？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(c, false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(c, true),
-                child: const Text('确定'),
-              ),
-            ],
+      builder: (c) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除该数据集吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('取消'),
           ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
     );
     if (confirmed != true) {
       return;
     }
     try {
       await ref.read(datasetServiceProvider).deleteById(id);
-      _showSnack('删除成功');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除成功')));
+      }
       ref.read(datasetManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
@@ -89,14 +93,13 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder:
-          (c) => _DatasetFormSheet(
-            datasetId: datasetId,
-            onSaved: () {
-              ref.read(datasetManageProvider.notifier).refresh();
-              Navigator.pop(c);
-            },
-          ),
+      builder: (c) => _DatasetFormSheet(
+        datasetId: datasetId,
+        onSaved: () {
+          ref.read(datasetManageProvider.notifier).refresh();
+          Navigator.pop(c);
+        },
+      ),
     );
   }
 
@@ -135,7 +138,8 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
                   },
                 ),
               ),
-              onSubmitted: (v) => ref.read(datasetManageProvider.notifier).search(v),
+              onSubmitted: (v) =>
+                  ref.read(datasetManageProvider.notifier).search(v),
             ),
           ),
           Expanded(child: _buildBody(theme, state)),
@@ -151,10 +155,14 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+            Text(
+              extractErrorMessage(e),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
             SizedBox(height: AppTheme.spacingM),
             FilledButton(
-              onPressed: () => ref.read(datasetManageProvider.notifier).refresh(),
+              onPressed: () =>
+                  ref.read(datasetManageProvider.notifier).refresh(),
               child: const Text('重试'),
             ),
           ],
@@ -167,7 +175,8 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
         return RefreshIndicator(
           onRefresh: () => ref.read(datasetManageProvider.notifier).refresh(),
           child: LoadMoreListener(
-            onLoadMore: () => ref.read(datasetManageProvider.notifier).loadMore(),
+            onLoadMore: () =>
+                ref.read(datasetManageProvider.notifier).loadMore(),
             child: ListView.builder(
               itemCount: page.items.length,
               itemBuilder: (context, index) {
@@ -176,9 +185,7 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
                   child: ListTile(
                     leading: const Icon(Icons.storage),
                     title: Text(item.name),
-                    subtitle: Text(
-                      '${item.statistics?.itemCount ?? 0} 张图片',
-                    ),
+                    subtitle: Text('${item.statistics?.itemCount ?? 0} 张图片'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -187,7 +194,11 @@ class _DatasetManagePageState extends ConsumerState<DatasetManagePage> {
                           onPressed: () => _showForm(datasetId: item.id),
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
+                          icon: Icon(
+                            Icons.delete,
+                            size: 20,
+                            color: AppTheme.errorColor,
+                          ),
                           onPressed: () => _delete(item.id),
                         ),
                       ],
@@ -245,7 +256,13 @@ class _DatasetFormSheetState extends ConsumerState<_DatasetFormSheet> {
           _type = int.tryParse(data.type) ?? 1;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('数据集信息加载失败')));
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -261,8 +278,9 @@ class _DatasetFormSheetState extends ConsumerState<_DatasetFormSheet> {
           DatasetUpdateForm(
             name: _nameCtrl.text.trim(),
             type: _type.toString(),
-            description:
-                _descCtrl.text.isNotEmpty ? _descCtrl.text.trim() : null,
+            description: _descCtrl.text.isNotEmpty
+                ? _descCtrl.text.trim()
+                : null,
           ),
         );
       } else {
@@ -271,17 +289,18 @@ class _DatasetFormSheetState extends ConsumerState<_DatasetFormSheet> {
             parentId: 0,
             name: _nameCtrl.text.trim(),
             type: _type.toString(),
-            description:
-                _descCtrl.text.isNotEmpty ? _descCtrl.text.trim() : null,
+            description: _descCtrl.text.isNotEmpty
+                ? _descCtrl.text.trim()
+                : null,
           ),
         );
       }
       widget.onSaved();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     } finally {
       if (mounted) {
@@ -294,7 +313,9 @@ class _DatasetFormSheetState extends ConsumerState<_DatasetFormSheet> {
   Widget build(BuildContext context) {
     final isNew = widget.datasetId == null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(AppTheme.spacingL),
         child: Form(
@@ -311,8 +332,7 @@ class _DatasetFormSheetState extends ConsumerState<_DatasetFormSheet> {
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: '数据集名称'),
-                validator:
-                    (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
               ),
               SizedBox(height: AppTheme.spacingM),
               TextFormField(

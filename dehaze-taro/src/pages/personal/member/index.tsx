@@ -12,7 +12,10 @@ import type {
 import PageLayout from "@/layout";
 import "./index.less";
 
-const LEVEL_CONFIG: Record<string, { name: string; color: string; icon: string }> = {
+const LEVEL_CONFIG: Record<
+  string,
+  { name: string; color: string; icon: string }
+> = {
   level_0: { name: "游客", color: "#9ca3af", icon: "👤" },
   level_1: { name: "普通用户", color: "#6b7280", icon: "👤" },
   level_2: { name: "白银会员", color: "#c0c0c0", icon: "🥈" },
@@ -46,7 +49,10 @@ const MemberPage: React.FC = () => {
         // 静默
       }
       try {
-        const logsRes = await MemberAPI.getGrowthLogs({ pageNum: 1, pageSize: 10 });
+        const logsRes = await MemberAPI.getGrowthLogs({
+          pageNum: 1,
+          pageSize: 10,
+        });
         setGrowthLogs(logsRes.list || []);
       } catch {
         // 静默
@@ -60,7 +66,8 @@ const MemberPage: React.FC = () => {
     loadMemberInfo();
   }, [loadMemberInfo]);
 
-  const levelCfg = LEVEL_CONFIG[member?.levelCode || "level_1"] || LEVEL_CONFIG.level_1;
+  const levelCfg =
+    LEVEL_CONFIG[member?.levelCode || "level_1"] || LEVEL_CONFIG.level_1;
   const growthValue = member?.growthValue || 0;
   const progressPercent = member?.progressPercent || 0;
   const nextLevelGrowth = member?.nextLevelGrowth;
@@ -83,7 +90,12 @@ const MemberPage: React.FC = () => {
   return (
     <PageLayout level="L2" title="我的会员">
       <View className="personal-member-page">
-        <ScrollView scrollY className="member-scroll" enhanced showScrollbar={false}>
+        <ScrollView
+          scrollY
+          className="member-scroll"
+          enhanced
+          showScrollbar={false}
+        >
           {/* 会员头部卡片 */}
           <View className="member-header-card">
             <View className="member-avatar-section">
@@ -106,10 +118,15 @@ const MemberPage: React.FC = () => {
                 <Text className="growth-value">{growthValue}</Text>
               </View>
               <View className="growth-bar-bg">
-                <View className="growth-bar-fill" style={{ width: `${progressPercent}%` }} />
+                <View
+                  className="growth-bar-fill"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </View>
               {nextLevelGrowth !== undefined && nextLevelGrowth > 0 && (
-                <Text className="growth-tip">距下一级还需 {nextLevelGrowth} 成长值</Text>
+                <Text className="growth-tip">
+                  距下一级还需 {nextLevelGrowth} 成长值
+                </Text>
               )}
             </View>
           </View>
@@ -122,11 +139,15 @@ const MemberPage: React.FC = () => {
             </View>
             <View className="usage-row">
               <View className="usage-item">
-                <Text className="usage-num">{summary?.imageCategory?.remaining ?? 0}</Text>
+                <Text className="usage-num">
+                  {summary?.imageCategory?.remaining ?? 0}
+                </Text>
                 <Text className="usage-label">图像处理剩余</Text>
               </View>
               <View className="usage-item">
-                <Text className="usage-num">{summary?.evaluateCategory?.remaining ?? 0}</Text>
+                <Text className="usage-num">
+                  {summary?.evaluateCategory?.remaining ?? 0}
+                </Text>
                 <Text className="usage-label">评估剩余</Text>
               </View>
             </View>
@@ -173,11 +194,18 @@ const MemberPage: React.FC = () => {
                       <Star size="12" color="#f59e0b" />
                     </View>
                     <View className="log-content">
-                      <Text className="log-desc">{log.reason || "获得成长值"}</Text>
-                      <Text className="log-time">{new Date(log.createTime).toLocaleString()}</Text>
+                      <Text className="log-desc">
+                        {log.reason || "获得成长值"}
+                      </Text>
+                      <Text className="log-time">
+                        {new Date(log.createTime).toLocaleString()}
+                      </Text>
                     </View>
-                    <Text className={`log-value ${log.changeValue > 0 ? "positive" : "negative"}`}>
-                      {log.changeValue > 0 ? "+" : ""}{log.changeValue}
+                    <Text
+                      className={`log-value ${log.changeValue > 0 ? "positive" : "negative"}`}
+                    >
+                      {log.changeValue > 0 ? "+" : ""}
+                      {log.changeValue}
                     </Text>
                   </View>
                 ))}

@@ -129,7 +129,9 @@ const MagnifierPage: React.FC = () => {
     }
     setReportLoading(true);
     try {
-      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const res = await ModelAPI.generateReport({
+        logId: result?.taskId ?? 0,
+      });
       const taskId = res.taskId;
       if (!taskId) throw new Error("未返回任务ID");
       while (true) {
@@ -140,21 +142,37 @@ const MagnifierPage: React.FC = () => {
             setReportLoading(false);
             setReportDownloading(true);
             try {
-              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              const filePath = await Taro.downloadFile({
+                url: statusRes.downloadUrl,
+              });
               if (filePath.tempFilePath) {
-                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+                await Taro.openDocument({
+                  filePath: filePath.tempFilePath,
+                  showMenu: true,
+                });
               }
-            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
-            finally { setReportDownloading(false); }
-          } else { throw new Error("报告生成但无下载链接"); }
+            } catch {
+              Taro.showToast({ title: "打开报告失败", icon: "none" });
+            } finally {
+              setReportDownloading(false);
+            }
+          } else {
+            throw new Error("报告生成但无下载链接");
+          }
           break;
         }
-        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        if (status === 3)
+          throw new Error(statusRes.errorMessage || "报告生成失败");
         await new Promise((r) => setTimeout(r, 2000));
       }
     } catch (err: unknown) {
-      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
-    } finally { setReportLoading(false); }
+      Taro.showToast({
+        title: err instanceof Error ? err.message : "报告生成失败",
+        icon: "none",
+      });
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   // 点击切换显示模式（原图 → 处理后 → 对比 → 原图）
@@ -192,7 +210,11 @@ const MagnifierPage: React.FC = () => {
     <ImmersiveLayout
       title="放大镜对比"
       toolbar={
-        <CompareToolbar currentMode="magnifier" resultUrl={result?.resultUrl} resultId={result?.logId} />
+        <CompareToolbar
+          currentMode="magnifier"
+          resultUrl={result?.resultUrl}
+          resultId={result?.taskId}
+        />
       }
     >
       {/* 对比区域 */}

@@ -27,28 +27,25 @@ class ToolsPage extends StatelessWidget {
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingL)),
-          SliverToBoxAdapter(
-            child: _QuickEntries(isWide: isWide),
-          ),
+          SliverToBoxAdapter(child: _QuickEntries(isWide: isWide)),
           SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingL)),
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
               child: Text(
                 '全部功能',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingS)),
-          SliverToBoxAdapter(
-            child: _ToolGrid(isWide: isWide),
-          ),
+          SliverToBoxAdapter(child: _ToolGrid(isWide: isWide)),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: AppTheme.spacingXXL + MediaQuery.of(context).padding.bottom,
+              height:
+                  AppTheme.spacingXXL + MediaQuery.of(context).padding.bottom,
             ),
           ),
         ],
@@ -76,12 +73,16 @@ class _SearchBar extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
       child: Row(
         children: [
-          Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant, size: 22),
+          Icon(
+            Icons.search,
+            color: theme.colorScheme.onSurfaceVariant,
+            size: 22,
+          ),
           SizedBox(width: AppTheme.spacingS),
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                hintText: '搜索算法、功能、文档...',
+                hintText: '搜索模型、功能、文档...',
                 hintStyle: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 14,
@@ -118,14 +119,14 @@ class _QuickEntries extends StatelessWidget {
         route: AppRouterConfig.profile,
       ),
       _QuickEntryData(
-        icon: Icons.dashboard,
-        label: '批量处理',
-        route: AppRouterConfig.imageInput,
+        icon: Icons.auto_fix_high,
+        label: '去雾处理',
+        route: AppRouterConfig.processing,
       ),
       _QuickEntryData(
-        icon: Icons.psychology,
-        label: '算法选择',
-        route: AppRouterConfig.algorithmSelect,
+        icon: Icons.batch_prediction_outlined,
+        label: '批量处理',
+        route: AppRouterConfig.batch,
       ),
       _QuickEntryData(
         icon: Icons.image,
@@ -170,9 +171,7 @@ class _QuickEntries extends StatelessWidget {
                   SizedBox(height: AppTheme.spacingXS),
                   Text(
                     entry.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontSize: 11,
-                    ),
+                    style: theme.textTheme.labelSmall?.copyWith(fontSize: 11),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -214,11 +213,18 @@ class _ToolGrid extends StatelessWidget {
         color: AppTheme.brandBlue,
       ),
       _ToolItem(
-        icon: Icons.psychology_outlined,
-        title: '算法库',
-        subtitle: '浏览和选择去雾算法',
-        route: AppRouterConfig.algorithmSelect,
+        icon: Icons.auto_fix_high_outlined,
+        title: '去雾处理',
+        subtitle: '选择模型并处理图像',
+        route: AppRouterConfig.processing,
         color: AppTheme.techGreen,
+      ),
+      _ToolItem(
+        icon: Icons.batch_prediction_outlined,
+        title: '批量处理',
+        subtitle: '批量上传并执行',
+        route: AppRouterConfig.batch,
+        color: AppTheme.warningColor,
       ),
       _ToolItem(
         icon: Icons.storage_outlined,
@@ -226,13 +232,6 @@ class _ToolGrid extends StatelessWidget {
         subtitle: '管理去雾数据集',
         route: AppRouterConfig.dataset,
         color: AppTheme.indigo,
-      ),
-      _ToolItem(
-        icon: Icons.dashboard_outlined,
-        title: '批量处理',
-        subtitle: '批量上传和执行',
-        route: AppRouterConfig.imageInput,
-        color: AppTheme.warningColor,
       ),
       _ToolItem(
         icon: Icons.bar_chart_outlined,

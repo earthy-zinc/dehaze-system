@@ -1,9 +1,4 @@
-import {
-  AlgorithmAPI,
-  FileAPI,
-  ModelAPI,
-  type OptionType,
-} from "dehaze-sdk-js";
+import { AiImageAPI, AiModelAPI, FileAPI, type AiModelVO } from "dehaze-sdk-js";
 
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import SingleImageShow from "@/components/SingleImageShow";
@@ -23,18 +18,14 @@ const Segmentation: React.FC = () => {
   const dispatch = useDispatch();
 
   const [stage, setStage] = useState<SegStage>("upload");
-  const [selectedModel, setSelectedModel] = useState<number>();
-  const [algorithmOptions, setAlgorithmOptions] = useState<OptionType[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>();
+  const [models, setModels] = useState<AiModelVO[]>([]);
   const [originUrl, setOriginUrl] = useState("");
   const [resultUrl, setResultUrl] = useState("");
 
-  // 获取算法可选项
+  // 模型下拉数据源：当前用户可用的图像模型
   useEffect(() => {
-    const fetchData = async () => {
-      const options = await AlgorithmAPI.getOption();
-      setAlgorithmOptions(options);
-    };
-    fetchData().then();
+    AiModelAPI.listEnabledModels("image_edit").then(setModels);
   }, []);
 
   /** 上传图片 */
@@ -57,8 +48,8 @@ const Segmentation: React.FC = () => {
 
     dispatch(setLoading(true));
     try {
-      const response = await ModelAPI.predictAndWait({
-        algorithmId: selectedModel,
+      const response = await AiImageAPI.submitAndWait({
+        model: selectedModel,
         imageUrl: originUrl,
       });
       if (response.status === 3) {
@@ -81,8 +72,8 @@ const Segmentation: React.FC = () => {
     setStage("upload");
   };
 
-  const handleSelectModel = (id: number) => {
-    setSelectedModel(id);
+  const handleSelectModel = (slug: string) => {
+    setSelectedModel(slug);
   };
 
   return (
@@ -99,13 +90,16 @@ const Segmentation: React.FC = () => {
         onSelectFromDataset={() => message.info("暂不支持从数据集选择")}
       >
         <div className={styles["select-wrap"]}>
-          <span>选择分割算法</span>
+          <span>选择分割模型</span>
           <Select
             value={selectedModel}
-            options={algorithmOptions}
+            options={models.map((m) => ({
+              value: m.modelId,
+              label: m.displayName,
+            }))}
             onChange={handleSelectModel}
             style={{ width: 240 }}
-            placeholder="请选择算法"
+            placeholder="请选择模型"
           />
         </div>
       </AlgorithmToolBar>

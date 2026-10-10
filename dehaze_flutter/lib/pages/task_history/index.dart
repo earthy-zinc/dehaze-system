@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
-import '../../models/prediction_model.dart';
+import '../../models/image_task_model.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
@@ -18,7 +18,7 @@ class TaskHistoryPage extends ConsumerStatefulWidget {
 }
 
 class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
-  List<PredictionLog> _logs = [];
+  List<ImageTaskVO> _logs = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _errorMessage;
@@ -32,7 +32,9 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadLogs(refresh: true));
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _loadLogs(refresh: true),
+    );
   }
 
   Future<void> _loadLogs({bool refresh = false}) async {
@@ -51,8 +53,8 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
     }
 
     try {
-      final service = ref.read(predictionServiceProvider);
-      final result = await service.getPredictionLogs(
+      final service = ref.read(imageTaskServiceProvider);
+      final result = await service.getImageTasks(
         pageNum: _currentPage,
         pageSize: _pageSize,
       );
@@ -104,8 +106,8 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
   Future<void> _refresh() async {
     _currentPage = 1;
     try {
-      final service = ref.read(predictionServiceProvider);
-      final result = await service.getPredictionLogs(
+      final service = ref.read(imageTaskServiceProvider);
+      final result = await service.getImageTasks(
         pageNum: _currentPage,
         pageSize: _pageSize,
       );
@@ -138,7 +140,8 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
                 SliverToBoxAdapter(child: _buildHeader(theme)),
                 if (_isLoading && _logs.isEmpty)
                   const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()))
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 else if (_errorMessage != null)
                   SliverFillRemaining(child: _buildError(theme))
                 else if (_logs.isEmpty)
@@ -186,56 +189,75 @@ class _TaskHistoryPageState extends ConsumerState<TaskHistoryPage> {
   }
 
   Widget _buildHeader(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.surface,
+      border: Border(bottom: BorderSide(color: theme.dividerColor)),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.history, color: AppTheme.brandBlue),
+        const SizedBox(width: 8),
+        Text(
+          '处理历史',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        child: Row(
-          children: [
-            Icon(Icons.history, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text('处理历史', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-            const Spacer(),
-            if (_total > 0)
-              Text('共 $_total 条', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      );
+        const Spacer(),
+        if (_total > 0)
+          Text(
+            '共 $_total 条',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.inbox_outlined, size: 64, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('暂无处理记录', style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.inbox_outlined,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无处理记录',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
-            const SizedBox(height: 16),
-            Text(_errorMessage!, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => _loadLogs(refresh: true),
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+        const SizedBox(height: 16),
+        Text(_errorMessage!, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () => _loadLogs(refresh: true),
+          icon: const Icon(Icons.refresh),
+          label: const Text('重试'),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// 日志卡片
 class _LogCard extends StatelessWidget {
   const _LogCard({required this.log});
-  final PredictionLog log;
+  final ImageTaskVO log;
 
   @override
   Widget build(BuildContext context) {
@@ -264,21 +286,37 @@ class _LogCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(log.algorithmName,
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      log.model,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 4),
-                    Text(log.createTime,
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    Text(
+                      log.createTime ?? '',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     if (log.time != null) ...[
                       const SizedBox(height: 4),
-                      Text('耗时 ${(log.time! / 1000).toStringAsFixed(1)}s',
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      Text(
+                        '耗时 ${log.time}s',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),
@@ -296,7 +334,7 @@ class _LogCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               AppBar(
-                title: Text(log.algorithmName),
+                title: Text(log.model),
                 leading: IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.of(ctx).pop(),
@@ -318,17 +356,14 @@ class _LogCard extends StatelessWidget {
   }
 
   Widget _imageBlock(String label, String? url) => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-          ),
-          Expanded(
-            child: DehazeImage(
-              url: url,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ],
-      );
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ),
+      Expanded(
+        child: DehazeImage(url: url, fit: BoxFit.contain),
+      ),
+    ],
+  );
 }

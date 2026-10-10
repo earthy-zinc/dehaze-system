@@ -26,7 +26,7 @@ import Icon from '@/components/Icon';
 import Card from '@/components/Card';
 import EmptyState from '@/components/EmptyState';
 import { DatasetAPI } from 'dehaze-sdk-js';
-import type { Dataset } from 'dehaze-sdk-js';
+import type { DatasetVO } from 'dehaze-sdk-js';
 
 // 复用现有组件
 import SearchBar from '@/pages/dataset/components/SearchBar';
@@ -35,35 +35,38 @@ type Props = NativeStackScreenProps<ToolsStackParamList, 'DatasetBrowse'>;
 
 const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
   // 列表状态
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasets, setDatasets] = useState<DatasetVO[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState('');
 
   /** 加载数据集列表 */
-  const loadDatasets = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
-      setError(null);
+  const loadDatasets = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (isRefresh) setRefreshing(true);
+        else setLoading(true);
+        setError(null);
 
-      const result = await DatasetAPI.getList({
-        keyword: searchValue.trim() || undefined,
-        pageNum: 1,
-        pageSize: 50,
-        status: '1',
-      });
+        const result = await DatasetAPI.getList({
+          keyword: searchValue.trim() || undefined,
+          pageNum: 1,
+          pageSize: 50,
+          status: 1,
+        });
 
-      setDatasets((result?.list || []) as Dataset[]);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : '加载数据集失败';
-      setError(msg);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [searchValue]);
+        setDatasets((result?.list || []) as DatasetVO[]);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : '加载数据集失败';
+        setError(msg);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [searchValue],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -72,21 +75,21 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const handleDatasetPress = useCallback(
-    (dataset: Dataset) => {
+    (dataset: DatasetVO) => {
       navigation.navigate('DatasetDetail', { datasetId: dataset.id });
     },
     [navigation],
   );
 
   const handleUseDataset = useCallback(
-    (_dataset: Dataset) => {
+    (_dataset: DatasetVO) => {
       navigation.navigate('ImageInput');
     },
     [navigation],
   );
 
   const renderDatasetCard = useCallback(
-    ({ item }: { item: Dataset }) => {
+    ({ item }: { item: DatasetVO }) => {
       const stats = item.statistics;
       return (
         <Card style={styles.card}>
@@ -96,7 +99,11 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
           >
             <View style={styles.cardHeader}>
               <View style={styles.cardIcon}>
-                <Icon name="database" size={20} color={theme.colors.secondary} />
+                <Icon
+                  name="database"
+                  size={20}
+                  color={theme.colors.secondary}
+                />
               </View>
               <View style={styles.cardTitleWrap}>
                 <Text style={styles.cardTitle} numberOfLines={1}>
@@ -127,7 +134,9 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{stats.annotatedCount ?? '—'}</Text>
+                  <Text style={styles.statValue}>
+                    {stats.annotatedCount ?? '—'}
+                  </Text>
                   <Text style={styles.statLabel}>已标注</Text>
                 </View>
               </View>
@@ -157,7 +166,7 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
     [handleDatasetPress, handleUseDataset],
   );
 
-  const keyExtractor = useCallback((item: Dataset) => item.id.toString(), []);
+  const keyExtractor = useCallback((item: DatasetVO) => item.id.toString(), []);
 
   const renderListEmpty = () => {
     if (loading) {
@@ -169,7 +178,9 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
       );
     }
     if (error) {
-      return <EmptyState icon="cloud-offline" title="加载失败" description={error} />;
+      return (
+        <EmptyState icon="cloud-offline" title="加载失败" description={error} />
+      );
     }
     return (
       <EmptyState
@@ -182,7 +193,11 @@ const DatasetBrowseScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="数据集" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="数据集"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.searchContainer}>
         <SearchBar
           value={searchValue}

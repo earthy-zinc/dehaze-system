@@ -204,7 +204,12 @@ function handleTabChange(tab: string | number) {
 }
 
 async function handleSubmit() {
-  await formRef.value?.validate();
+  try {
+    await formRef.value?.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   submitting.value = true;
   try {
     await mcpStore.registerServer({ ...form });

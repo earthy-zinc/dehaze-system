@@ -313,16 +313,14 @@ const DictPage: React.FC = () => {
           dictTypes.map((dictType) => (
             <SwipeCell key={dictType.id} className="dict-swipe-cell">
               <SwipeCell.Actions side="right">
-                {hasPermission("sys:dict:data:list") && (
-                  <Button
-                    className="action-btn data-btn"
-                    size="small"
-                    onClick={() => handleManageItems(dictType)}
-                  >
-                    <SettingOutlined />
-                    数据
-                  </Button>
-                )}
+                <Button
+                  className="action-btn data-btn"
+                  size="small"
+                  onClick={() => handleManageItems(dictType)}
+                >
+                  <SettingOutlined />
+                  数据
+                </Button>
                 {hasPermission("sys:dict:type:edit") && (
                   <Button
                     className="action-btn edit-btn"

@@ -21,9 +21,10 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
   onPress,
   width = 280,
 }) => {
-  const cardStyle = width < 200 
-    ? { ...styles.stepCard, ...styles.stepCardMinWidth, width } 
-    : { ...styles.stepCard, width };
+  const cardStyle =
+    width < 200
+      ? { ...styles.stepCard, ...styles.stepCardMinWidth, width }
+      : { ...styles.stepCard, width };
 
   return (
     <Card

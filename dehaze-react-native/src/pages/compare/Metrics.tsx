@@ -4,7 +4,7 @@
  * 调用 SDK ModelAPI.evaluate 计算 PSNR/SSIM/LPIPS 等指标，
  * 提供柱状图与雷达图可视化。
  *
- * 评估调用条件：需 algorithmId，否则仅展示预先传入的 metrics 或提示无法评估。
+ * 评估调用条件：需 modelId，否则仅展示预先传入的 metrics 或提示无法评估。
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -41,7 +41,13 @@ interface MetricItem {
 }
 
 const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, cleanUrl, metrics: presetMetrics, algorithmId } = route.params ?? {
+  const {
+    originalUrl,
+    processedUrl,
+    cleanUrl,
+    metrics: presetMetrics,
+    modelId,
+  } = route.params ?? {
     originalUrl: '',
     processedUrl: '',
   };
@@ -50,8 +56,8 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
   const [error, setError] = useState<string | null>(null);
 
   const handleEvaluate = useCallback(async () => {
-    if (!algorithmId) {
-      setError('缺少算法 ID，无法调用评估接口');
+    if (!modelId) {
+      setError('缺少模型信息，无法调用评估接口');
       return;
     }
     if (!cleanUrl) {
@@ -62,7 +68,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
     setError(null);
     try {
       const res = await ModelAPI.evaluate({
-        algorithmId,
+        modelId,
         predUrl: processedUrl,
         // GT 必须是清晰图（cleanUrl），禁止使用 hazy 原图或结果图本身
         gtUrl: cleanUrl,
@@ -75,11 +81,11 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [algorithmId, cleanUrl, processedUrl]);
+  }, [modelId, cleanUrl, processedUrl]);
 
-  // 自动评估一次（需同时具备 algorithmId 与 GT 参考图，且未预传入 metrics）
+  // 自动评估一次（需同时具备 modelId 与 GT 参考图，且未预传入 metrics）
   useEffect(() => {
-    if (!presetMetrics && algorithmId && cleanUrl) {
+    if (!presetMetrics && modelId && cleanUrl) {
       handleEvaluate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,7 +113,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="CompareMetrics"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, modelId }}
       />
 
       <ScrollView style={styles.scrollView}>
@@ -118,11 +124,11 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.statusTitle}>效果评估</Text>
           </View>
           <Text style={styles.statusDesc}>
-            {!algorithmId
-              ? '当前未携带算法信息，仅展示预传入指标'
+            {!modelId
+              ? '当前未携带模型信息，仅展示预传入指标'
               : !cleanUrl
-                ? '该图片无GT参考，无法评估'
-                : '点击下方按钮重新评估，获取最新量化指标'}
+              ? '该图片无GT参考，无法评估'
+              : '点击下方按钮重新评估，获取最新量化指标'}
           </Text>
 
           {loading && (
@@ -139,7 +145,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
           )}
 
-          {algorithmId && (
+          {modelId && (
             <TouchableOpacity
               style={[
                 styles.evaluateButton,
@@ -165,11 +171,15 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View style={styles.metricLabelRow}>
                   <Text style={styles.metricLabel}>{item.label}</Text>
                   {item.idealRange && (
-                    <Text style={styles.metricIdeal}>理想：{item.idealRange}</Text>
+                    <Text style={styles.metricIdeal}>
+                      理想：{item.idealRange}
+                    </Text>
                   )}
                 </View>
                 <Text style={styles.metricValue}>
-                  {item.value !== undefined ? formatMetricValue(item.value, item.unit) : '—'}
+                  {item.value !== undefined
+                    ? formatMetricValue(item.value, item.unit)
+                    : '—'}
                 </Text>
               </View>
               {item.value !== undefined && (
@@ -198,7 +208,9 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={styles.previewRow}>
             <View style={styles.previewItem}>
               <View style={styles.previewBadgeRow}>
-                <View style={[styles.previewBadge, styles.previewBadgeOriginal]}>
+                <View
+                  style={[styles.previewBadge, styles.previewBadgeOriginal]}
+                >
                   <Text style={styles.previewBadgeText}>原图</Text>
                 </View>
               </View>

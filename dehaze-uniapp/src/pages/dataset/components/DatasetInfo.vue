@@ -21,10 +21,10 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { Dataset } from "dehaze-sdk-js";
+import type { DatasetVO } from "dehaze-sdk-js";
 
 interface Props {
-  dataset: Dataset;
+  dataset: DatasetVO;
 }
 
 const props = defineProps<Props>();

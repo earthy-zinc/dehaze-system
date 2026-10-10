@@ -35,7 +35,36 @@ import {
 import {
   appendAssistantPlaceholder as appendAssistantPlaceholderIn,
   findMessage as findMessageIn,
+  markConversationRead,
 } from "./messages";
+
+/**
+ * 单条消息长度不再由固定字符数约束：后端按所选模型上下文预算校验，超限返回 A0500
+ * 「单条消息超出模型上下文预算（N 字符，模型 X）」，前端直接透出该文案。
+ */
+
+/** 流式 HTTP 业务错误（SDK SSEHttpError 的形状）：按结构判定，避免跨包 instanceof 失效 */
+interface StreamHttpError extends Error {
+  status?: number;
+  code?: string;
+  msg?: string;
+}
+
+function isStreamHttpError(error: unknown): error is StreamHttpError {
+  return typeof (error as StreamHttpError | null)?.status === "number";
+}
+
+/**
+ * 把流式失败的 HTTP 业务错误映射为用户可读文案；返回 null 表示非 HTTP 业务错误（走网络异常分支）。
+ *
+ * 后端失败响应带业务码/文案时按真实原因提示：一律报「网络连接中断」会误导用户反复重试，
+ * 且与实际原因（如消息超长 A0400）不符。
+ */
+function mapStreamHttpError(error: unknown): string | null {
+  if (!isStreamHttpError(error)) return null;
+  if (error.msg) return error.msg;
+  return `请求失败（HTTP ${error.status}），请稍后重试`;
+}
 
 export function createStreamSlice(ctx: ChatCtx) {
   const {
@@ -105,11 +134,20 @@ export function createStreamSlice(ctx: ChatCtx) {
   }
 
   function finishSession(s: StreamSession) {
+    if (s.finished) return;
     finalizeThinking(s);
     s.finished = true;
     if (s.reconnectTimer !== null) window.clearTimeout(s.reconnectTimer);
     if (s.timeoutTimer !== null) window.clearInterval(s.timeoutTimer);
     if (ctx.session === s) ctx.session = null;
+    // 当前正在查看的会话在流终态清零未读：后端按 last_read_message_id 计未读，
+    // 仅在进入会话时标记已读会让"边看边回"的会话持续累积红点
+    if (
+      scope.value === "self" &&
+      currentConversationId.value === s.conversationId
+    ) {
+      void markConversationRead(ctx, s.conversationId);
+    }
   }
 
   function failMessage(s: StreamSession, reason: string) {
@@ -309,7 +347,13 @@ export function createStreamSlice(ctx: ChatCtx) {
       onEnd(data) {
         dispatch(s, { kind: "end", data }, Date.now());
       },
-      onNetworkError() {
+      onNetworkError(error) {
+        // HTTP 业务错误（非 2xx 且响应体为业务信封）：按真实原因提示，不重连（重试同样会失败）
+        const reason = mapStreamHttpError(error);
+        if (reason) {
+          if (!s.finished) failMessage(s, reason);
+          return;
+        }
         handleStreamDisconnect(s);
       },
       onClose() {
@@ -463,7 +507,7 @@ export function createStreamSlice(ctx: ChatCtx) {
   /**
    * 按中断子类型把调用方意图归一为 resume 载荷：
    * - plan_approve：透传计划干预 planEdit（wire 与 VM 同形，无需翻译）
-   * - confirm(algorithm_recommend)：{confirm, params:{algorithmId}}（algorithmId 取调用方选择，缺省回退推荐值）
+   * - confirm(algorithm_recommend)：{confirm, params:{modelId}}（modelId 取调用方选择，缺省回退推荐值）
    * - confirm(tool_permission/dangerous_op/write_conflict)：{confirm}
    * - 其余（quota/async_wait）与无待处理中断：透传调用方载荷
    * 未知 confirmKind 由 resolveConfirmKind 抛错（不静默兜底）。
@@ -480,14 +524,14 @@ export function createStreamSlice(ctx: ChatCtx) {
     const kind = resolveConfirmKind(pending);
     const confirm = input.confirm ?? true;
     if (kind === "algorithm_recommend") {
-      const selected = input.params?.algorithmId;
-      const algorithmId =
-        typeof selected === "number"
+      const selected = input.params?.modelId;
+      const modelId =
+        typeof selected === "string"
           ? selected
-          : pending.data.recommendation?.algorithmId;
+          : pending.data.recommendation?.modelId;
       return {
         confirm,
-        ...(algorithmId !== undefined ? { params: { algorithmId } } : {}),
+        ...(modelId !== undefined ? { params: { modelId } } : {}),
       };
     }
     return { confirm };

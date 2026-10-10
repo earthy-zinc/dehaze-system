@@ -12,9 +12,10 @@ import '../../services/user_service.dart';
 import '../../theme/app_theme.dart';
 
 final userManageProvider =
-    StateNotifierProvider<UserManageNotifier, AsyncValue<PagedList<UserPageVO>>>(
-  (ref) => UserManageNotifier(ref.watch(userServiceProvider)),
-);
+    StateNotifierProvider<
+      UserManageNotifier,
+      AsyncValue<PagedList<UserPageVO>>
+    >((ref) => UserManageNotifier(ref.watch(userServiceProvider)));
 
 class UserManageNotifier extends PagedListNotifier<UserPageVO> {
   UserManageNotifier(this._service) : super();
@@ -70,7 +71,11 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
     }
     try {
       await ref.read(userServiceProvider).deleteByIds([userId]);
-      _showSnack('删除成功');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除成功')));
+      }
       ref.read(userManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
@@ -100,7 +105,11 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
     }
     try {
       await ref.read(userServiceProvider).updatePassword(userId, '123456');
-      _showSnack('密码已重置');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('密码已重置')));
+      }
     } catch (e) {
       _showSnack(extractErrorMessage(e));
     }
@@ -111,7 +120,11 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
       await ref
           .read(userServiceProvider)
           .updateStatus(userId, currentStatus == 1 ? 0 : 1);
-      _showSnack('状态已更新');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('状态已更新')));
+      }
       ref.read(userManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
@@ -122,8 +135,7 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -161,7 +173,8 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
                   },
                 ),
               ),
-              onSubmitted: (v) => ref.read(userManageProvider.notifier).search(v),
+              onSubmitted: (v) =>
+                  ref.read(userManageProvider.notifier).search(v),
             ),
           ),
           Expanded(
@@ -173,8 +186,9 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
                   children: [
                     Text(
                       extractErrorMessage(e),
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.error),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
                     ),
                     SizedBox(height: AppTheme.spacingM),
                     FilledButton(
@@ -202,20 +216,23 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
                               child: ListTile(
                                 leading: CircleAvatar(
                                   child: Text(
-                                    ((item.nickname ??
-                                                item.username ??
-                                                '?')[0])
+                                    ((item.nickname ?? item.username ?? '?')[0])
                                         .toUpperCase(),
                                   ),
                                 ),
-                                title: Text(item.nickname ?? item.username ?? ''),
+                                title: Text(
+                                  item.nickname ?? item.username ?? '',
+                                ),
                                 subtitle: Text(item.username ?? ''),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: Icon(Icons.lock_reset,
-                                          size: 20, color: AppTheme.warningColor),
+                                      icon: Icon(
+                                        Icons.lock_reset,
+                                        size: 20,
+                                        color: AppTheme.warningColor,
+                                      ),
                                       tooltip: '重置密码',
                                       onPressed: () => _resetPassword(item.id),
                                     ),
@@ -236,11 +253,15 @@ class _UserManagePageState extends ConsumerState<UserManagePage> {
                                     IconButton(
                                       icon: const Icon(Icons.edit, size: 20),
                                       tooltip: '编辑',
-                                      onPressed: () => _showForm(userId: item.id),
+                                      onPressed: () =>
+                                          _showForm(userId: item.id),
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.delete,
-                                          size: 20, color: AppTheme.errorColor),
+                                      icon: Icon(
+                                        Icons.delete,
+                                        size: 20,
+                                        color: AppTheme.errorColor,
+                                      ),
                                       tooltip: '删除',
                                       onPressed: () => _deleteUser(item.id),
                                     ),
@@ -325,7 +346,13 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
           _deptOptions = depts;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('部门列表加载失败')));
+      }
+    }
   }
 
   Future<void> _loadFormData() async {
@@ -342,7 +369,13 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
           _status = data.status ?? 1;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('用户信息加载失败')));
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -370,9 +403,9 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
       widget.onSaved();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     } finally {
       if (mounted) {
@@ -385,7 +418,9 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
   Widget build(BuildContext context) {
     final isNew = widget.userId == null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(AppTheme.spacingL),
         child: Form(
@@ -394,8 +429,10 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(isNew ? '新增用户' : '编辑用户',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                isNew ? '新增用户' : '编辑用户',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               SizedBox(height: AppTheme.spacingL),
               TextFormField(
                 controller: _usernameCtrl,
@@ -434,13 +471,9 @@ class _UserFormSheetState extends ConsumerState<_UserFormSheet> {
                 initialValue: _deptId,
                 decoration: const InputDecoration(labelText: '部门'),
                 items: [
-                  const DropdownMenuItem(
-                      value: null, child: Text('请选择部门')),
+                  const DropdownMenuItem(value: null, child: Text('请选择部门')),
                   ..._deptOptions.map(
-                    (d) => DropdownMenuItem(
-                      value: d.id,
-                      child: Text(d.name),
-                    ),
+                    (d) => DropdownMenuItem(value: d.id, child: Text(d.name)),
                   ),
                 ],
                 onChanged: (v) => _deptId = v,

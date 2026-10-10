@@ -5,7 +5,7 @@ import { Button } from "@taroify/core";
 import { ModelAPI } from "dehaze-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
-import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
+import ModelInfoCard from "@/components/compare/ModelInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
 import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
@@ -18,7 +18,7 @@ const SideBySidePage: React.FC = () => {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportDownloading, setReportDownloading] = useState(false);
 
-  const { originImage, result, algorithm } = ctx;
+  const { originImage, result, model } = ctx;
   const hasResult = originImage && result?.resultUrl;
 
   // 生成并下载报告
@@ -31,8 +31,7 @@ const SideBySidePage: React.FC = () => {
     setReportLoading(true);
     try {
       const res = await ModelAPI.generateReport({
-        logId: 0,
-        format: "pdf",
+        logId: result?.taskId ?? 0,
       });
       const taskId = res.taskId;
       if (!taskId) {
@@ -92,7 +91,7 @@ const SideBySidePage: React.FC = () => {
         <CompareToolbar
           currentMode="side-by-side"
           resultUrl={result?.resultUrl}
-          resultId={result?.logId}
+          resultId={result?.taskId}
         />
       }
     >
@@ -131,7 +130,7 @@ const SideBySidePage: React.FC = () => {
                   <Text>处理后</Text>
                 </View>
                 <Text className="image-name">
-                  {algorithm?.name || "去雾结果"}
+                  {model?.displayName || "去雾结果"}
                 </Text>
               </View>
               <View className="image-wrapper">
@@ -144,8 +143,8 @@ const SideBySidePage: React.FC = () => {
               </View>
             </View>
 
-            {/* 算法信息 */}
-            <AlgorithmInfoCard algorithm={algorithm} result={result} />
+            {/* 模型信息 */}
+            <ModelInfoCard model={model} result={result} />
 
             {/* 导出报告按钮 */}
             <View className="export-report-section">

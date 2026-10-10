@@ -9,8 +9,8 @@ public class PackageForm {
     private String levelCode;
     private String period;
     private Integer periodDays;
-    private Double originalPrice;
-    private Double salePrice;
+    private Long originalPrice;
+    private Long salePrice;
     private String description;
     private BenefitOverrides benefitOverrides;
     private Integer sort;

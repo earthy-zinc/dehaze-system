@@ -5,22 +5,27 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
+import com.pei.dehaze.sdk.api.AiImageAPI;
+import com.pei.dehaze.sdk.api.AiModelAPI;
 import com.pei.dehaze.sdk.api.FavoriteAPI;
-import com.pei.dehaze.sdk.api.ModelAPI;
-import com.pei.dehaze.sdk.model.PageResult;
-import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
-import com.pei.dehaze.sdk.model.user.UserInfo;
 import com.pei.dehaze.sdk.api.UserAPI;
+import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
+import com.pei.dehaze.sdk.model.favorite.FavoriteCountVO;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskQuery;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskVO;
+import com.pei.dehaze.sdk.model.user.UserInfo;
 import com.pei.dehaze.ui.common.BaseViewModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class HomeViewModel extends BaseViewModel {
 
     private final MutableLiveData<UserInfo> userInfo = new MutableLiveData<>();
     private final MutableLiveData<HomeStats> stats = new MutableLiveData<>();
-    private final MutableLiveData<List<PredictionLogVO>> recentActivities = new MutableLiveData<>();
+    private final MutableLiveData<List<ImageTaskVO>> recentActivities = new MutableLiveData<>();
 
     public void refresh() {
         loadUserInfo();
@@ -32,44 +37,75 @@ public class HomeViewModel extends BaseViewModel {
         UserAPI.getInfo(RepositoryAdapters.wrap(withLoading(userInfo::postValue)));
     }
 
+    /**
+     * 首页统计概览：去雾任务数 / 收藏数 / 可用图像模型数，任一指标失败按 0 计，不阻断其余展示。
+     */
     private void loadStats() {
-        ModelAPI.listPredictionLogs(null, 1, 1,
-                RepositoryAdapters.wrap(new RepositoryCallback<PageResult<PredictionLogVO>>() {
-                    @Override
-                    public void onSuccess(PageResult<PredictionLogVO> data) {
-                        long processCount = data != null ? data.getTotal() : 0;
-                        FavoriteAPI.getCount(null,
-                                RepositoryAdapters.wrap(new RepositoryCallback<List<com.pei.dehaze.sdk.model.favorite.FavoriteCountVO>>() {
-                                    @Override
-                                    public void onSuccess(List<com.pei.dehaze.sdk.model.favorite.FavoriteCountVO> favList) {
-                                        long favCount = 0;
-                                        if (favList != null) {
-                                            for (com.pei.dehaze.sdk.model.favorite.FavoriteCountVO f : favList) {
-                                                favCount += f.getCount() != null ? f.getCount() : 0;
-                                            }
-                                        }
-                                        stats.postValue(new HomeStats(processCount, favCount));
-                                    }
+        long[] counts = new long[3];
+        AtomicInteger pending = new AtomicInteger(3);
+        Runnable finish = () -> {
+            if (pending.decrementAndGet() == 0) {
+                stats.postValue(new HomeStats(counts[0], counts[1], counts[2]));
+            }
+        };
 
-                                    @Override
-                                    public void onError(String errorMessage) {
-                                        stats.postValue(new HomeStats(processCount, 0));
-                                    }
-                                }));
+        ImageTaskQuery countQuery = new ImageTaskQuery();
+        countQuery.setPageNum(1);
+        countQuery.setPageSize(1);
+        AiImageAPI.listImageTasks(countQuery,
+                RepositoryAdapters.wrap(new RepositoryCallback<PageResult<ImageTaskVO>>() {
+                    @Override
+                    public void onSuccess(PageResult<ImageTaskVO> data) {
+                        counts[0] = data == null ? 0 : data.getTotal();
+                        finish.run();
                     }
 
                     @Override
                     public void onError(String errorMessage) {
-                        error.postValue(errorMessage);
+                        finish.run();
+                    }
+                }));
+
+        FavoriteAPI.getCount(null, RepositoryAdapters.wrap(new RepositoryCallback<List<FavoriteCountVO>>() {
+            @Override
+            public void onSuccess(List<FavoriteCountVO> list) {
+                if (list != null) {
+                    for (FavoriteCountVO item : list) {
+                        counts[1] += item.getCount() != null ? item.getCount() : 0;
+                    }
+                }
+                finish.run();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                finish.run();
+            }
+        }));
+
+        AiModelAPI.listEnabledModels("image_edit", null,
+                RepositoryAdapters.wrap(new RepositoryCallback<List<AiModelVO>>() {
+                    @Override
+                    public void onSuccess(List<AiModelVO> list) {
+                        counts[2] = list == null ? 0 : list.size();
+                        finish.run();
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        finish.run();
                     }
                 }));
     }
 
     private void loadRecentActivities() {
-        ModelAPI.listPredictionLogs(null, 1, 5,
-                RepositoryAdapters.wrapPage(new RepositoryCallback<List<PredictionLogVO>>() {
+        ImageTaskQuery query = new ImageTaskQuery();
+        query.setPageNum(1);
+        query.setPageSize(5);
+        AiImageAPI.listImageTasks(query,
+                RepositoryAdapters.wrapPage(new RepositoryCallback<List<ImageTaskVO>>() {
                     @Override
-                    public void onSuccess(List<PredictionLogVO> data) {
+                    public void onSuccess(List<ImageTaskVO> data) {
                         recentActivities.postValue(data != null ? data : new ArrayList<>());
                     }
 
@@ -88,17 +124,19 @@ public class HomeViewModel extends BaseViewModel {
         return stats;
     }
 
-    public LiveData<List<PredictionLogVO>> getRecentActivities() {
+    public LiveData<List<ImageTaskVO>> getRecentActivities() {
         return recentActivities;
     }
 
     public static class HomeStats {
         private final long processCount;
         private final long favoriteCount;
+        private final long modelCount;
 
-        public HomeStats(long processCount, long favoriteCount) {
+        public HomeStats(long processCount, long favoriteCount, long modelCount) {
             this.processCount = processCount;
             this.favoriteCount = favoriteCount;
+            this.modelCount = modelCount;
         }
 
         public long getProcessCount() {
@@ -107,6 +145,10 @@ public class HomeViewModel extends BaseViewModel {
 
         public long getFavoriteCount() {
             return favoriteCount;
+        }
+
+        public long getModelCount() {
+            return modelCount;
         }
     }
 }

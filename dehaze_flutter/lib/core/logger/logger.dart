@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show kDebugMode, kReleaseMode, visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show kDebugMode, kReleaseMode, visibleForTesting;
 import 'package:go_router/go_router.dart';
 
 import 'log_entry.dart';
@@ -58,7 +59,8 @@ class Logger {
     _instance ??= Logger._()
       .._app = app
       .._appVersion = appVersion
-      .._transports = transports ??
+      .._transports =
+          transports ??
           [
             ConsoleTransport(),
             if (kDebugMode) FileTransport(retentionDays: 7),
@@ -133,7 +135,9 @@ class Logger {
   }
 
   /// 日志写入入口。
-  void log(LogLevel level, String message, {
+  void log(
+    LogLevel level,
+    String message, {
     String? url,
     String? traceId,
     String? errorType,
@@ -156,7 +160,9 @@ class Logger {
       traceId: traceId ?? Trace.currentTraceId,
       errorType: errorType,
       errorSource: errorSource,
-      errorStack: errorStack != null ? _truncate(errorStack, _maxStackLength) : null,
+      errorStack: errorStack != null
+          ? _truncate(errorStack, _maxStackLength)
+          : null,
       method: method,
       path: path,
       status: status,
@@ -193,7 +199,8 @@ class Logger {
   bool _shouldDedupError(LogEntry entry) {
     final fingerprint = '${entry.message}|${entry.errorStack ?? ''}'.hashCode;
     final now = DateTime.now();
-    final inWindow = _lastErrorTime != null &&
+    final inWindow =
+        _lastErrorTime != null &&
         now.difference(_lastErrorTime!) < _dedupeWindow;
 
     if (fingerprint == _lastErrorFingerprint && inWindow) {
@@ -225,23 +232,25 @@ class Logger {
     // 单次命中无重复时不补发，避免噪声
     if (count <= 1 || original == null) return;
 
-    _emit(LogEntry(
-      timestamp: DateTime.now().toUtc().toIso8601String(),
-      level: LogLevel.error,
-      message: _truncate(
-        '${original.message} (10s 内重复 ${count - 1} 次)',
-        _maxMessageLength,
+    _emit(
+      LogEntry(
+        timestamp: DateTime.now().toUtc().toIso8601String(),
+        level: LogLevel.error,
+        message: _truncate(
+          '${original.message} (10s 内重复 ${count - 1} 次)',
+          _maxMessageLength,
+        ),
+        app: _app,
+        appVersion: _appVersion,
+        url: _currentRoutePath(),
+        userAgent: 'Flutter/${Platform.operatingSystem}',
+        traceId: Trace.currentTraceId,
+        errorType: original.errorType,
+        errorSource: original.errorSource,
+        errorStack: original.errorStack,
+        dedupCount: count,
       ),
-      app: _app,
-      appVersion: _appVersion,
-      url: _currentRoutePath(),
-      userAgent: 'Flutter/${Platform.operatingSystem}',
-      traceId: Trace.currentTraceId,
-      errorType: original.errorType,
-      errorSource: original.errorSource,
-      errorStack: original.errorStack,
-      dedupCount: count,
-    ));
+    );
   }
 
   void _scheduleDedupSummary() {
@@ -270,20 +279,62 @@ class Logger {
     _instance = null;
   }
 
-  void error(String message, {String? url, String? traceId, String? errorType,
-    String? errorSource, String? errorStack, String? method, String? path,
-    int? status, double? duration, String? code}) {
-    log(LogLevel.error, message, url: url, traceId: traceId, errorType: errorType,
-        errorSource: errorSource, errorStack: errorStack, method: method, path: path,
-        status: status, duration: duration, code: code);
+  void error(
+    String message, {
+    String? url,
+    String? traceId,
+    String? errorType,
+    String? errorSource,
+    String? errorStack,
+    String? method,
+    String? path,
+    int? status,
+    double? duration,
+    String? code,
+  }) {
+    log(
+      LogLevel.error,
+      message,
+      url: url,
+      traceId: traceId,
+      errorType: errorType,
+      errorSource: errorSource,
+      errorStack: errorStack,
+      method: method,
+      path: path,
+      status: status,
+      duration: duration,
+      code: code,
+    );
   }
 
-  void warn(String message, {String? url, String? traceId, String? errorType,
-    String? errorSource, String? errorStack, String? method, String? path,
-    int? status, double? duration, String? code}) {
-    log(LogLevel.warn, message, url: url, traceId: traceId, errorType: errorType,
-        errorSource: errorSource, errorStack: errorStack, method: method, path: path,
-        status: status, duration: duration, code: code);
+  void warn(
+    String message, {
+    String? url,
+    String? traceId,
+    String? errorType,
+    String? errorSource,
+    String? errorStack,
+    String? method,
+    String? path,
+    int? status,
+    double? duration,
+    String? code,
+  }) {
+    log(
+      LogLevel.warn,
+      message,
+      url: url,
+      traceId: traceId,
+      errorType: errorType,
+      errorSource: errorSource,
+      errorStack: errorStack,
+      method: method,
+      path: path,
+      status: status,
+      duration: duration,
+      code: code,
+    );
   }
 
   void info(String message, {String? url, String? traceId}) {
@@ -292,7 +343,8 @@ class Logger {
 
   bool _allowReport() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    while (_sentTimestamps.isNotEmpty && _sentTimestamps.first <= now - _rateLimitWindowMs) {
+    while (_sentTimestamps.isNotEmpty &&
+        _sentTimestamps.first <= now - _rateLimitWindowMs) {
       _sentTimestamps.removeAt(0);
     }
     if (_sentTimestamps.length >= _rateLimitMax) return false;

@@ -13,11 +13,20 @@ export function formatFileSize(bytes?: number): string {
 }
 
 /**
- * 格式化耗时（毫秒 → ms/s）
+ * 格式化本地计时（毫秒 → ms/s）
  */
 export function formatDuration(ms: number): string {
   if (ms < 1000) return ms + " ms";
   return (ms / 1000).toFixed(2) + " s";
+}
+
+/**
+ * 格式化接口返回的耗时（秒，来自图像任务/评估的 time 字段）
+ */
+export function formatSeconds(seconds: number): string {
+  if (seconds < 60) return seconds.toFixed(2) + " s";
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes} 分 ${Math.round(seconds % 60)} s`;
 }
 
 /**
@@ -86,4 +95,18 @@ export function truncateText(
 ): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + suffix;
+}
+
+/**
+ * 金额分转元：接口金额单位统一为分，页面以元展示
+ */
+export function fenToYuan(fen?: number): string {
+  return ((fen ?? 0) / 100).toFixed(2);
+}
+
+/**
+ * 金额元转分：表单以元录入，接口金额单位统一为分
+ */
+export function yuanToFen(yuan: number | string): number {
+  return Math.round(Number(yuan) * 100);
 }

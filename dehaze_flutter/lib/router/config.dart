@@ -2,19 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/package_model.dart';
 import '../providers/auth_provider.dart';
 import '../layout/main_layout.dart';
-import '../pages/algorithm/index.dart';
-import '../pages/algorithm_select/index.dart';
-import '../pages/batch/index.dart';
-import '../pages/comparison/algorithm_info.dart';
 import '../pages/comparison/filter.dart';
 import '../pages/comparison/magnifier.dart';
 import '../pages/comparison/metrics.dart';
+import '../pages/comparison/model_info.dart';
 import '../pages/comparison/overlay.dart';
 import '../pages/comparison/side_by_side.dart';
+import '../pages/batch/index.dart';
 import '../pages/dataset/index.dart';
-import '../pages/dehaze/index.dart';
 import '../pages/home/index.dart';
 import '../pages/image_input/index.dart';
 import '../pages/login/index.dart';
@@ -28,9 +26,11 @@ import '../pages/personal/feedback_page.dart';
 import '../pages/personal/files_page.dart';
 import '../pages/personal/help_page.dart';
 import '../pages/personal/member_page.dart';
+import '../pages/personal/order_create_page.dart';
 import '../pages/personal/orders_page.dart';
+import '../pages/personal/package_detail_page.dart';
 import '../pages/personal/package_page.dart';
-import '../pages/personal/quota_page.dart';
+import '../pages/personal/credits_page.dart';
 import '../pages/personal/settings_page.dart';
 import '../pages/processing/index.dart';
 import '../pages/profile/index.dart';
@@ -43,7 +43,6 @@ import '../pages/system/role_page.dart';
 import '../pages/system/menu_page.dart';
 import '../pages/system/dept_page.dart';
 import '../pages/system/dict_page.dart';
-import '../pages/system/algorithm_manage_page.dart';
 import '../pages/system/dataset_manage_page.dart';
 import '../pages/system/task_manage_page.dart';
 import '../pages/system/member_manage_page.dart';
@@ -72,20 +71,21 @@ class AppRouterConfig {
 
   // L2 子页面（完整路径，用于 context.go()）
   static const String imageInput = '/tools/image-input';
-  static const String algorithmBrowse = '/tools/algorithm-browse';
-  static const String algorithmSelect = '/dehaze/algorithm-select';
+  static const String batch = '/tools/batch';
   static const String dataset = '/tools/dataset';
   static const String processing = '/dehaze/processing';
   static const String taskHistory = '/profile/task-history';
-  static const String batch = '/tools/batch';
   static const String metricsManage = '/tools/metrics-manage';
 
   // Profile L2 子页面
   static const String files = '/profile/files';
   static const String orders = '/profile/orders';
-  static const String quota = '/profile/quota';
+  static const String credits = '/profile/credits';
   static const String member = '/profile/member';
   static const String package = '/profile/package';
+  // 购买流程：详情完整路径需拼接套餐 id（如 '/profile/package/1'）
+  static const String packageDetail = '/profile/package/:id';
+  static const String orderCreate = '/profile/order/create';
   static const String feedback = '/profile/feedback';
   static const String favorites = '/profile/favorites';
   static const String settings = '/profile/settings';
@@ -99,37 +99,45 @@ class AppRouterConfig {
   static const String magnifier = '/compare/magnifier';
   static const String filter = '/compare/filter';
   static const String compareMetrics = '/compare/metrics';
-  static const String algorithm = '/algorithm';
+  static const String modelInfo = '/model-info';
 
   /// 登录态白名单
   static const List<String> publicRoutes = [login, register, home];
 
-  /// 管理页路由 → 所需权限标识映射（用于 redirect 统一权限拦截）
-  static const Map<String, String> adminRoutePermissions = {
-    '/profile/admin/user-manage': 'sys:user:*',
-    '/profile/admin/role-manage': 'sys:role:*',
-    '/profile/admin/menu-manage': 'sys:menu:*',
-    '/profile/admin/dept-manage': 'sys:dept:*',
-    '/profile/admin/dict-manage': 'sys:dict:*',
-    '/profile/admin/algorithm-manage': 'sys:algorithm:*',
-    '/profile/admin/dataset-manage': 'sys:dataset:*',
-    '/profile/admin/task-manage': 'sys:task:*',
-    '/profile/admin/member-manage': 'sys:member:*',
-    '/profile/admin/package-manage': 'sys:package:*',
-    '/profile/admin/order-manage': 'sys:order:*',
-    '/profile/admin/feedback-manage': 'sys:feedback:*',
-    '/profile/admin/message-manage': 'sys:notify:*',
-    '/profile/admin/recommend-manage': 'sys:recommendation:*',
+  /// 管理页路由 → 所需权限的**模块前缀**映射（用于 redirect 统一权限拦截）
+  ///
+  /// 值为模块前缀（如 `sys:user`、`order`）；命中该模块任一具体权限即可进入。
+  /// 任务管理不进此表：任务域后端无接口级权限校验，仅需登录态。
+  static const Map<String, String> adminRouteModulePerms = {
+    '/profile/admin/user-manage': 'sys:user',
+    '/profile/admin/role-manage': 'sys:role',
+    '/profile/admin/menu-manage': 'sys:menu',
+    '/profile/admin/dept-manage': 'sys:dept',
+    '/profile/admin/dict-manage': 'sys:dict',
+    '/profile/admin/dataset-manage': 'sys:dataset',
+    '/profile/admin/member-manage': 'member',
+    '/profile/admin/package-manage': 'package',
+    '/profile/admin/order-manage': 'order',
+    '/profile/admin/feedback-manage': 'feedback',
+    '/profile/admin/message-manage': 'notify',
+    '/profile/admin/recommend-manage': 'sys:recommendation',
   };
 }
 
 /// GoRouter Provider
+///
+/// 只创建一次实例，登录态变化通过 [refreshListenable] 触发 redirect 重跑；
+/// 若改为 watch authProvider 重建 router，则每次登录态变化都会让 router 回到
+/// initialLocation（首页），导致直接访问的深链在认证恢复后被丢弃。
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
+  ref.listen<AuthState>(authProvider, (_, next) => authNotifier.value = next);
+  ref.onDispose(authNotifier.dispose);
 
   return GoRouter(
     initialLocation: AppRouterConfig.home,
     debugLogDiagnostics: true,
+    refreshListenable: authNotifier,
     routes: [
       // ==================== L0 认证页（ShellRoute 外） ====================
       GoRoute(
@@ -170,9 +178,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MetricsPage(),
       ),
       GoRoute(
-        path: '/algorithm',
-        name: 'algorithm-info',
-        builder: (context, state) => const AlgorithmInfoPage(),
+        path: AppRouterConfig.modelInfo,
+        name: 'model-info',
+        builder: (context, state) => const ModelInfoPage(),
       ),
 
       // ==================== StatefulShellRoute (5 Tab) ====================
@@ -204,9 +212,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const ImageInputPage(),
                   ),
                   GoRoute(
-                    path: 'algorithm-browse',
-                    name: 'algorithm-browse',
-                    builder: (context, state) => const AlgorithmBrowsePage(),
+                    path: 'batch',
+                    name: 'batch',
+                    builder: (context, state) => const BatchPage(),
                   ),
                   GoRoute(
                     path: 'dataset',
@@ -219,15 +227,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                         builder: (context, state) {
                           final id = state.pathParameters['id'];
                           return DatasetPage(
-                              initialDatasetId: int.tryParse(id ?? ''));
+                            initialDatasetId: int.tryParse(id ?? ''),
+                          );
                         },
                       ),
                     ],
-                  ),
-                  GoRoute(
-                    path: 'batch',
-                    name: 'batch',
-                    builder: (context, state) => const BatchPage(),
                   ),
                   GoRoute(
                     path: 'metrics-manage',
@@ -244,13 +248,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AppRouterConfig.dehaze,
                 name: 'dehaze',
-                builder: (context, state) => const DehazePage(),
+                builder: (context, state) => const ProcessingPage(),
                 routes: [
-                  GoRoute(
-                    path: 'algorithm-select',
-                    name: 'dehaze-algorithm-select',
-                    builder: (context, state) => const AlgorithmSelectPage(),
-                  ),
                   GoRoute(
                     path: 'processing',
                     name: 'dehaze-processing',
@@ -272,14 +271,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     path: ':id',
                     name: 'message-detail',
                     builder: (context, state) {
-                      final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+                      final id =
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
                       return MessageDetailPage(messageId: id);
                     },
-                  ),
-                  GoRoute(
-                    path: 'notify',
-                    name: 'message-notify',
-                    builder: (context, state) => const SizedBox(),
                   ),
                 ],
               ),
@@ -309,9 +304,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const OrdersPage(),
                   ),
                   GoRoute(
-                    path: 'quota',
-                    name: 'quota',
-                    builder: (context, state) => const QuotaPage(),
+                    path: 'credits',
+                    name: 'credits',
+                    builder: (context, state) => const CreditsPage(),
                   ),
                   GoRoute(
                     path: 'member',
@@ -322,6 +317,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     path: 'package',
                     name: 'package',
                     builder: (context, state) => const PackagePage(),
+                  ),
+                  GoRoute(
+                    path: 'package/:id',
+                    name: 'package-detail',
+                    builder: (context, state) {
+                      final id =
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+                      return PackageDetailPage(packageId: id);
+                    },
+                  ),
+                  GoRoute(
+                    path: 'order/create',
+                    name: 'order-create',
+                    // 直接访问下单页缺少套餐上下文时兜底跳回套餐列表
+                    redirect: (context, state) => state.extra is PackageDetailVO
+                        ? null
+                        : AppRouterConfig.package,
+                    builder: (context, state) => OrderCreatePage(
+                      package: state.extra as PackageDetailVO,
+                    ),
                   ),
                   GoRoute(
                     path: 'feedback',
@@ -385,11 +400,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                     builder: (context, state) => const DictManagePage(),
                   ),
                   GoRoute(
-                    path: 'admin/algorithm-manage',
-                    name: 'algorithm-manage',
-                    builder: (context, state) => const AlgorithmManagePage(),
-                  ),
-                  GoRoute(
                     path: 'admin/dataset-manage',
                     name: 'dataset-manage',
                     builder: (context, state) => const DatasetManagePage(),
@@ -447,10 +457,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
-            Text(
-              '页面未找到',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
+            Text('页面未找到', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
               '路径: ${state.uri}',
@@ -467,11 +474,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
     ),
     redirect: (context, state) {
+      final authState = authNotifier.value;
+      // 冷启动时登录态尚在恢复（initial / loading）：先放行，等恢复完成再判定，
+      // 否则直接访问受保护路由（深链）会被误判为未登录而弹回首页。
+      if (authState.status == AuthStatus.initial ||
+          authState.status == AuthStatus.loading) {
+        return null;
+      }
+
       final isLoggedIn = authState.isAuthenticated;
-      final isGoingToAuthPage = state.matchedLocation == AppRouterConfig.login ||
+      final isGoingToAuthPage =
+          state.matchedLocation == AppRouterConfig.login ||
           state.matchedLocation == AppRouterConfig.register;
-      final isPublicRoute =
-          AppRouterConfig.publicRoutes.contains(state.matchedLocation);
+      final isPublicRoute = AppRouterConfig.publicRoutes.contains(
+        state.matchedLocation,
+      );
 
       if (!isLoggedIn && !isPublicRoute && !isGoingToAuthPage) {
         return AppRouterConfig.login;
@@ -481,11 +498,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return AppRouterConfig.home;
       }
 
-      // 权限守卫：对管理页统一做权限拦截，无权限重定向到首页
+      // 权限守卫：对管理页统一做模块级权限拦截，无权限重定向到首页
       if (isLoggedIn) {
-        final requiredPerm =
-            AppRouterConfig.adminRoutePermissions[state.matchedLocation];
-        if (requiredPerm != null && !authState.hasPerm(requiredPerm)) {
+        final requiredModule =
+            AppRouterConfig.adminRouteModulePerms[state.matchedLocation];
+        if (requiredModule != null &&
+            !authState.hasModulePerm(requiredModule)) {
           return AppRouterConfig.home;
         }
       }

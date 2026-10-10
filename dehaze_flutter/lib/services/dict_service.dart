@@ -69,9 +69,7 @@ class DictService {
 
   /// 删除字典类型
   Future<void> deleteType(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.dictTypes}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.dictTypes}/$id');
   }
 
   // ==================== 字典项 ====================
@@ -93,9 +91,7 @@ class DictService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.dict}/$id/form',
     );
-    return DictForm.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return DictForm.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 获取字典类型的选项（下拉框数据）
@@ -128,8 +124,6 @@ class DictService {
 
   /// 删除字典项
   Future<void> deleteDict(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.dict}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.dict}/$id');
   }
 }

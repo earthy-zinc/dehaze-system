@@ -255,7 +255,7 @@ const editMenu = (menu: MenuVO | null) => {
 const handleSave = async () => {
   saving.value = true;
   try {
-    if (form.value.id) await MenuAPI.update(String(form.value.id), form.value);
+    if (form.value.id) await MenuAPI.update(Number(form.value.id), form.value);
     else await MenuAPI.add(form.value);
     showForm.value = false;
     fetchTree();

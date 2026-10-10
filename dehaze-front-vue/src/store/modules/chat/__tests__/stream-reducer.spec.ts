@@ -136,6 +136,47 @@ describe("reduceStreamState（纯归约）", () => {
     expect(result.state.toolBlocks.size).toBe(0);
   });
 
+  it("并行工具块：不同 index 各自组装，全部产出 toolCalls", () => {
+    let result = reduce(baseState(), {
+      kind: "block-start",
+      data: { index: 2, type: "tool_use" },
+    });
+    result = reduce(result.state, {
+      kind: "block-start",
+      data: { index: 3, type: "tool_use" },
+    });
+    result = reduce(result.state, {
+      kind: "delta",
+      data: {
+        index: 2,
+        delta: {
+          type: "input_json_delta",
+          name: "read_file",
+          partialJson: '{"file_path":"/a"}',
+        },
+      },
+    });
+    result = reduce(result.state, {
+      kind: "delta",
+      data: {
+        index: 3,
+        delta: {
+          type: "input_json_delta",
+          name: "glob",
+          partialJson: '{"pattern":"**/*.md"}',
+        },
+      },
+    });
+    result = reduce(result.state, { kind: "block-stop", data: { index: 2 } });
+    result = reduce(result.state, { kind: "block-stop", data: { index: 3 } });
+
+    expect(result.state.toolCalls).toEqual([
+      { name: "read_file", arguments: { file_path: "/a" } },
+      { name: "glob", arguments: { pattern: "**/*.md" } },
+    ]);
+    expect(result.state.toolBlocks.size).toBe(0);
+  });
+
   it("thought：按 position 升序、同位覆盖", () => {
     let state = baseState();
     state = reduce(state, {

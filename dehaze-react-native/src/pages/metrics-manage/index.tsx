@@ -69,7 +69,10 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
     try {
       if (isRefresh) setMetricsRefreshing(true);
       else setMetricsLoading(true);
-      const result = await ModelAPI.getEvalMetrics({ pageNum: 1, pageSize: 100 });
+      const result = await ModelAPI.getEvalMetrics({
+        pageNum: 1,
+        pageSize: 100,
+      });
       setMetricsList(result?.list || []);
     } catch {
       /* 静默失败 */
@@ -101,21 +104,27 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
   const filteredMetrics = useMemo(() => {
     const kw = searchKeyword.trim().toLowerCase();
     if (!kw) return metricsList;
-    return metricsList.filter(m => (m.algorithmName || '').toLowerCase().includes(kw));
+    return metricsList.filter(m =>
+      (m.modelName || '').toLowerCase().includes(kw),
+    );
   }, [metricsList, searchKeyword]);
 
   const filteredLogs = useMemo(() => {
     const kw = searchKeyword.trim().toLowerCase();
     if (!kw) return logsList;
-    return logsList.filter(l => (l.algorithmName || '').toLowerCase().includes(kw));
+    return logsList.filter(l => (l.modelName || '').toLowerCase().includes(kw));
   }, [logsList, searchKeyword]);
 
   const handleToggleCompare = useCallback((id: number) => {
     setCompareIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); }
-      else {
-        if (next.size >= 4) { Alert.alert('提示', '最多选择 4 条记录进行对比'); return prev; }
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (next.size >= 4) {
+          Alert.alert('提示', '最多选择 4 条记录进行对比');
+          return prev;
+        }
         next.add(id);
       }
       return next;
@@ -142,7 +151,7 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.listItemHeader}>
             <View style={styles.listItemInfo}>
               <Text style={styles.listItemTitle} numberOfLines={1}>
-                {item.algorithmName || `算法 #${item.algorithmId}`}
+                {item.modelName || `模型 ${item.modelId}`}
               </Text>
               <Text style={styles.listItemTime}>{item.createTime || '—'}</Text>
             </View>
@@ -156,42 +165,54 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
               return (
                 <View key={field.key} style={styles.metricMini}>
                   <Text style={styles.metricMiniLabel}>{field.label}</Text>
-                  <Text style={[styles.metricMiniValue, typeof val === 'number' && getMetricStyle(field, val)]}>
+                  <Text
+                    style={[
+                      styles.metricMiniValue,
+                      typeof val === 'number' && getMetricStyle(field, val),
+                    ]}
+                  >
                     {formatMetric(val, field.unit)}
                   </Text>
                 </View>
               );
             })}
           </View>
-          {item.time != null && <Text style={styles.listItemTime}>耗时：{item.time}ms</Text>}
+          {item.time != null && (
+            <Text style={styles.listItemTime}>耗时：{item.time}s</Text>
+          )}
         </TouchableOpacity>
       );
     },
     [compareIds, handleToggleCompare],
   );
 
-  const renderLogsItem = useCallback(
-    ({ item }: { item: EvalLogVO }) => {
-      const statusLabel = item.status === 2 ? '已完成' : item.status === 3 ? '失败' : '处理中';
-      const statusVariant = item.status === 2 ? 'success' as const : 'secondary' as const;
-      return (
-        <View style={styles.listItem}>
-          <View style={styles.listItemHeader}>
-            <View style={styles.listItemInfo}>
-              <Text style={styles.listItemTitle} numberOfLines={1}>
-                {item.algorithmName || `算法 #${item.algorithmId}`}
-              </Text>
-              <Text style={styles.listItemTime}>{item.createTime || '—'}</Text>
-            </View>
-            <Badge text={statusLabel} variant={statusVariant} size="small" />
+  const renderLogsItem = useCallback(({ item }: { item: EvalLogVO }) => {
+    const statusLabel =
+      item.status === 2 ? '已完成' : item.status === 3 ? '失败' : '处理中';
+    const statusVariant =
+      item.status === 2 ? ('success' as const) : ('secondary' as const);
+    return (
+      <View style={styles.listItem}>
+        <View style={styles.listItemHeader}>
+          <View style={styles.listItemInfo}>
+            <Text style={styles.listItemTitle} numberOfLines={1}>
+              {item.modelName || `模型 ${item.modelId}`}
+            </Text>
+            <Text style={styles.listItemTime}>{item.createTime || '—'}</Text>
           </View>
-          {item.errorMessage && <Text style={styles.errorText} numberOfLines={1}>{item.errorMessage}</Text>}
-          {item.time != null && <Text style={styles.listItemTime}>耗时：{item.time}ms</Text>}
+          <Badge text={statusLabel} variant={statusVariant} size="small" />
         </View>
-      );
-    },
-    [],
-  );
+        {item.errorMessage && (
+          <Text style={styles.errorText} numberOfLines={1}>
+            {item.errorMessage}
+          </Text>
+        )}
+        {item.time != null && (
+          <Text style={styles.listItemTime}>耗时：{item.time}s</Text>
+        )}
+      </View>
+    );
+  }, []);
 
   const selectedMetrics = metricsList.filter(m => compareIds.has(m.id));
 
@@ -202,7 +223,11 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="指标管理" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="指标管理"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       {/* Tab */}
       <View style={styles.tabContainer}>
         {tabs.map(tab => {
@@ -214,7 +239,9 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
               onPress={() => setActiveTab(tab.key)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -225,7 +252,7 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
         <Icon name="search" size={18} color={theme.colors.text.tertiary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="搜索算法名称..."
+          placeholder="搜索模型名称..."
           placeholderTextColor={theme.colors.text.tertiary}
           value={searchKeyword}
           onChangeText={setSearchKeyword}
@@ -243,7 +270,9 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
       {activeTab === 'metrics' && selectedMetrics.length >= 2 && (
         <Card style={styles.compareCard}>
           <View style={styles.compareHeader}>
-            <Text style={styles.compareTitle}>指标对比（{selectedMetrics.length} 条）</Text>
+            <Text style={styles.compareTitle}>
+              指标对比（{selectedMetrics.length} 条）
+            </Text>
             <TouchableOpacity onPress={() => setCompareIds(new Set())}>
               <Text style={styles.clearCompareText}>清空</Text>
             </TouchableOpacity>
@@ -252,12 +281,12 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
             <View>
               <View style={styles.compareRow}>
                 <View style={styles.compareLabelCell}>
-                  <Text style={styles.compareLabelText}>算法</Text>
+                  <Text style={styles.compareLabelText}>模型</Text>
                 </View>
                 {selectedMetrics.map(m => (
                   <View key={m.id} style={styles.compareValueCell}>
                     <Text style={styles.compareHeaderText} numberOfLines={1}>
-                      {m.algorithmName || `#${m.algorithmId}`}
+                      {m.modelName || m.modelId}
                     </Text>
                   </View>
                 ))}
@@ -269,14 +298,30 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
                   </View>
                   {selectedMetrics.map(m => {
                     const val = m.metrics?.[field.key];
-                    const isBest = field.better && selectedMetrics.length > 1
-                      ? field.better === 'higher'
-                        ? val === Math.max(...selectedMetrics.map(x => x.metrics?.[field.key] ?? -Infinity))
-                        : val === Math.min(...selectedMetrics.map(x => x.metrics?.[field.key] ?? Infinity))
-                      : false;
+                    const isBest =
+                      field.better && selectedMetrics.length > 1
+                        ? field.better === 'higher'
+                          ? val ===
+                            Math.max(
+                              ...selectedMetrics.map(
+                                x => x.metrics?.[field.key] ?? -Infinity,
+                              ),
+                            )
+                          : val ===
+                            Math.min(
+                              ...selectedMetrics.map(
+                                x => x.metrics?.[field.key] ?? Infinity,
+                              ),
+                            )
+                        : false;
                     return (
                       <View key={m.id} style={styles.compareValueCell}>
-                        <Text style={[styles.compareValueText, isBest && styles.compareValueBest]}>
+                        <Text
+                          style={[
+                            styles.compareValueText,
+                            isBest && styles.compareValueBest,
+                          ]}
+                        >
                           {formatMetric(val, field.unit)}
                         </Text>
                       </View>
@@ -298,7 +343,12 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={metricsRefreshing} onRefresh={() => loadMetrics(true)} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />
+            <RefreshControl
+              refreshing={metricsRefreshing}
+              onRefresh={() => loadMetrics(true)}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
           }
           ListEmptyComponent={
             metricsLoading ? (
@@ -307,7 +357,11 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.loadingText}>加载指标历史...</Text>
               </View>
             ) : (
-              <EmptyState icon="chart-line" title="暂无指标记录" description="完成去雾处理后，评估结果将出现在这里" />
+              <EmptyState
+                icon="chart-line"
+                title="暂无指标记录"
+                description="完成去雾处理后，评估结果将出现在这里"
+              />
             )
           }
         />
@@ -319,7 +373,12 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={logsRefreshing} onRefresh={() => loadLogs(true)} tintColor={theme.colors.primary} colors={[theme.colors.primary]} />
+            <RefreshControl
+              refreshing={logsRefreshing}
+              onRefresh={() => loadLogs(true)}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
           }
           ListEmptyComponent={
             logsLoading ? (
@@ -328,7 +387,11 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.loadingText}>加载评估日志...</Text>
               </View>
             ) : (
-              <EmptyState icon="clipboard" title="暂无评估日志" description="评估任务记录将出现在这里" />
+              <EmptyState
+                icon="clipboard"
+                title="暂无评估日志"
+                description="评估任务记录将出现在这里"
+              />
             )
           }
         />
@@ -340,8 +403,10 @@ const MetricsManageScreen: React.FC<Props> = ({ navigation }) => {
 function getMetricStyle(field: MetricFieldDef, val: number) {
   if (!field.better) return null;
   if (field.better === 'higher') {
-    if (field.key === 'psnr') return val > 25 ? styles.metricGood : styles.metricBad;
-    if (field.key === 'ssim') return val > 0.85 ? styles.metricGood : styles.metricBad;
+    if (field.key === 'psnr')
+      return val > 25 ? styles.metricGood : styles.metricBad;
+    if (field.key === 'ssim')
+      return val > 0.85 ? styles.metricGood : styles.metricBad;
   }
   if (field.better === 'lower') {
     return val < 100 ? styles.metricGood : styles.metricBad;
@@ -352,48 +417,166 @@ function getMetricStyle(field: MetricFieldDef, val: number) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background.secondary },
   tabContainer: {
-    flexDirection: 'row', backgroundColor: theme.colors.background.primary,
-    paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.sm,
-    gap: theme.spacing.xs, borderBottomWidth: 1, borderBottomColor: theme.colors.border.light,
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background.primary,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
   },
-  tab: { flex: 1, paddingVertical: theme.spacing.sm, borderRadius: theme.layout.borderRadius.md, alignItems: 'center', backgroundColor: theme.colors.background.tertiary },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.layout.borderRadius.md,
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.tertiary,
+  },
   tabActive: { backgroundColor: theme.colors.primary },
-  tabText: { fontSize: theme.typography.sizes.medium, fontWeight: theme.typography.weights.medium, color: theme.colors.text.secondary },
-  tabTextActive: { color: '#fff', fontWeight: theme.typography.weights.semibold },
-  searchContainer: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.background.primary,
-    marginHorizontal: theme.spacing.md, marginTop: theme.spacing.sm, marginBottom: theme.spacing.sm,
-    borderRadius: theme.layout.borderRadius.md, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm,
-    gap: theme.spacing.sm, ...theme.layout.shadows.sm,
+  tabText: {
+    fontSize: theme.typography.sizes.medium,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.secondary,
   },
-  searchInput: { flex: 1, fontSize: theme.typography.sizes.medium, color: theme.colors.text.primary, padding: 0 },
-  listContent: { paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.xxxl },
-  loadingContainer: { alignItems: 'center', paddingVertical: theme.spacing.xxxl, gap: theme.spacing.sm },
-  loadingText: { fontSize: theme.typography.sizes.medium, color: theme.colors.text.secondary },
-  listItem: { backgroundColor: theme.colors.background.primary, borderRadius: theme.layout.borderRadius.md, padding: theme.spacing.md, marginBottom: theme.spacing.sm, ...theme.layout.shadows.sm },
+  tabTextActive: {
+    color: '#fff',
+    fontWeight: theme.typography.weights.semibold,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background.primary,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    borderRadius: theme.layout.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    gap: theme.spacing.sm,
+    ...theme.layout.shadows.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: theme.typography.sizes.medium,
+    color: theme.colors.text.primary,
+    padding: 0,
+  },
+  listContent: {
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.xxxl,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxxl,
+    gap: theme.spacing.sm,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.medium,
+    color: theme.colors.text.secondary,
+  },
+  listItem: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.layout.borderRadius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    ...theme.layout.shadows.sm,
+  },
   listItemSelected: { borderWidth: 2, borderColor: theme.colors.primary },
-  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  listItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
   listItemInfo: { flex: 1, gap: 2 },
-  listItemTitle: { fontSize: theme.typography.sizes.medium, fontWeight: theme.typography.weights.semibold, color: theme.colors.text.primary },
-  listItemTime: { fontSize: theme.typography.sizes.small, color: theme.colors.text.tertiary },
-  metricsRow: { flexDirection: 'row', marginTop: theme.spacing.sm, paddingTop: theme.spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.colors.border.light, gap: 4 },
+  listItemTitle: {
+    fontSize: theme.typography.sizes.medium,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  listItemTime: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.text.tertiary,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.border.light,
+    gap: 4,
+  },
   metricMini: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
-  metricMiniLabel: { fontSize: 9, color: theme.colors.text.tertiary, marginBottom: 2 },
-  metricMiniValue: { fontSize: 12, fontWeight: theme.typography.weights.bold, color: theme.colors.text.primary },
+  metricMiniLabel: {
+    fontSize: 9,
+    color: theme.colors.text.tertiary,
+    marginBottom: 2,
+  },
+  metricMiniValue: {
+    fontSize: 12,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+  },
   metricGood: { color: theme.colors.status.success },
   metricBad: { color: theme.colors.status.error },
-  errorText: { fontSize: theme.typography.sizes.small, color: theme.colors.status.error, marginTop: 4 },
-  compareCard: { marginHorizontal: theme.spacing.md, marginBottom: theme.spacing.sm },
-  compareHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md },
-  compareTitle: { fontSize: theme.typography.sizes.medium, fontWeight: theme.typography.weights.semibold, color: theme.colors.text.primary },
-  clearCompareText: { fontSize: theme.typography.sizes.small, color: theme.colors.primary },
-  compareRow: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border.light },
-  compareLabelCell: { width: 70, paddingVertical: theme.spacing.sm, paddingRight: theme.spacing.sm },
-  compareLabelText: { fontSize: theme.typography.sizes.small, fontWeight: theme.typography.weights.medium, color: theme.colors.text.secondary },
-  compareValueCell: { width: 90, paddingVertical: theme.spacing.sm, alignItems: 'center' },
-  compareHeaderText: { fontSize: theme.typography.sizes.small, fontWeight: theme.typography.weights.semibold, color: theme.colors.text.primary },
-  compareValueText: { fontSize: theme.typography.sizes.small, color: theme.colors.text.primary, fontWeight: theme.typography.weights.medium },
-  compareValueBest: { color: theme.colors.status.success, fontWeight: theme.typography.weights.bold },
+  errorText: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.status.error,
+    marginTop: 4,
+  },
+  compareCard: {
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  compareHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  compareTitle: {
+    fontSize: theme.typography.sizes.medium,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  clearCompareText: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.primary,
+  },
+  compareRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.light,
+  },
+  compareLabelCell: {
+    width: 70,
+    paddingVertical: theme.spacing.sm,
+    paddingRight: theme.spacing.sm,
+  },
+  compareLabelText: {
+    fontSize: theme.typography.sizes.small,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.secondary,
+  },
+  compareValueCell: {
+    width: 90,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  compareHeaderText: {
+    fontSize: theme.typography.sizes.small,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  compareValueText: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.weights.medium,
+  },
+  compareValueBest: {
+    color: theme.colors.status.success,
+    fontWeight: theme.typography.weights.bold,
+  },
 });
 
 export default MetricsManageScreen;

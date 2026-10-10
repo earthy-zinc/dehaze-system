@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import type { Dataset } from "dehaze-sdk-js";
+import type { DatasetVO } from "dehaze-sdk-js";
 
 const typeLabels: Record<string, string> = {
   training: "训练集",
@@ -97,10 +97,10 @@ const typeLabels: Record<string, string> = {
 };
 
 interface Props {
-  dataset: Dataset;
+  dataset: DatasetVO;
   depth: number;
   expandedIds: number[];
-  childrenMap: Record<number, Dataset[]>;
+  childrenMap: Record<number, DatasetVO[]>;
   childrenLoading: Record<number, boolean>;
 }
 
@@ -108,10 +108,10 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "toggleExpand", id: number): void;
-  (e: "click", dataset: Dataset): void;
-  (e: "addChild", dataset: Dataset): void;
-  (e: "edit", dataset: Dataset): void;
-  (e: "delete", dataset: Dataset): void;
+  (e: "click", dataset: DatasetVO): void;
+  (e: "addChild", dataset: DatasetVO): void;
+  (e: "edit", dataset: DatasetVO): void;
+  (e: "delete", dataset: DatasetVO): void;
 }>();
 
 const hasChildren = computed(() => props.dataset.hasChildren === true);

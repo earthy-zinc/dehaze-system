@@ -59,41 +59,44 @@ const PersonalHelpScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="帮助中心" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="帮助中心"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.header}>常见问题</Text>
+        <Text style={styles.header}>常见问题</Text>
 
-      {FAQ_LIST.map((faq, idx) => {
-        const isExpanded = expandedIdx === idx;
-        return (
-          <TouchableOpacity
-            key={idx}
-            style={[styles.faqCard, isExpanded && styles.faqCardExpanded]}
-            onPress={() => toggleExpand(idx)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.faqHeader}>
-              <Text style={styles.faqQuestion}>{faq.q}</Text>
-              <Ionicons
-                name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={theme.colors.text.tertiary}
-              />
-            </View>
-            {isExpanded && (
-              <Text style={styles.faqAnswer}>{faq.a}</Text>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+        {FAQ_LIST.map((faq, idx) => {
+          const isExpanded = expandedIdx === idx;
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[styles.faqCard, isExpanded && styles.faqCardExpanded]}
+              onPress={() => toggleExpand(idx)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.faqHeader}>
+                <Text style={styles.faqQuestion}>{faq.q}</Text>
+                <Ionicons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={theme.colors.text.tertiary}
+                />
+              </View>
+              {isExpanded && <Text style={styles.faqAnswer}>{faq.a}</Text>}
+            </TouchableOpacity>
+          );
+        })}
 
-      <View style={styles.contactSection}>
-        <Text style={styles.contactTitle}>联系我们</Text>
-        <Text style={styles.contactText}>
-          如有其他问题，请通过「我的」→「反馈评价」提交反馈，或发送邮件至 support@dehaze.example.com
-        </Text>
-      </View>
-    </ScrollView>
+        <View style={styles.contactSection}>
+          <Text style={styles.contactTitle}>联系我们</Text>
+          <Text style={styles.contactText}>
+            如有其他问题，请通过「我的」→「反馈评价」提交反馈，或发送邮件至
+            support@dehaze.example.com
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 };

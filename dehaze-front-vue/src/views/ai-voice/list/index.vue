@@ -1,10 +1,9 @@
-<!-- 管理端语音面板：全局热词配置 + 服务监控 + 引擎配置，按权限控制各 tab 显示 -->
+<!-- 管理端语音面板：全局热词配置 + 服务监控，按权限控制各 tab 显示 -->
 <script lang="ts" setup>
 import { useAdminVoiceStore } from "@/store/modules/adminVoice";
 import { useUserStore } from "@/store/modules/user";
 import GlobalHotwordPanel from "../components/GlobalHotwordPanel.vue";
 import VoiceServiceMonitor from "../components/VoiceServiceMonitor.vue";
-import VoiceEnginePanel from "../components/VoiceEnginePanel.vue";
 
 defineOptions({ name: "AiVoiceList" });
 
@@ -33,13 +32,6 @@ const hasPerm = (perm: string) => {
         name="service"
       >
         <VoiceServiceMonitor />
-      </el-tab-pane>
-      <el-tab-pane
-        v-if="hasPerm('voice:engine:manage')"
-        label="引擎配置"
-        name="engine"
-      >
-        <VoiceEnginePanel />
       </el-tab-pane>
     </el-tabs>
   </div>

@@ -30,7 +30,10 @@ type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareSideBySide'>;
 type DisplayMode = 'both' | 'original' | 'processed';
 
 const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, modelId } = route.params ?? {
+    originalUrl: '',
+    processedUrl: '',
+  };
   const { isPortrait, isTablet, isDesktop, containerPadding } = useResponsive();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [displayMode, setDisplayMode] = useState<DisplayMode>('both');
@@ -53,15 +56,21 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
     ? { flexDirection: 'row' as const }
     : { flexDirection: 'column' as const };
 
-  const imageVerticalStyle = useMemo(() => ({
-    width: '100%' as const,
-    height: screenHeight * 0.35,
-  }), [screenHeight]);
+  const imageVerticalStyle = useMemo(
+    () => ({
+      width: '100%' as const,
+      height: screenHeight * 0.35,
+    }),
+    [screenHeight],
+  );
 
-  const imageHorizontalStyle = useMemo(() => ({
-    width: (screenWidth - 60) / 2,
-    height: screenHeight * 0.5,
-  }), [screenWidth, screenHeight]);
+  const imageHorizontalStyle = useMemo(
+    () => ({
+      width: (screenWidth - 60) / 2,
+      height: screenHeight * 0.5,
+    }),
+    [screenWidth, screenHeight],
+  );
 
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
   if (!originalUrl || !processedUrl) {
@@ -79,7 +88,7 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="CompareSideBySide"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, modelId }}
       />
 
       {/* 模式切换标签 */}
@@ -106,7 +115,13 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={{ padding: containerPadding }}
       >
-        <Animated.View style={[styles.imageContainer, containerStyle, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View
+          style={[
+            styles.imageContainer,
+            containerStyle,
+            { transform: [{ scale: scaleAnim }] },
+          ]}
+        >
           {(displayMode === 'both' || displayMode === 'original') && (
             <View style={styles.imageItem}>
               <View style={styles.imageLabelRow}>
@@ -117,7 +132,9 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity onPress={toggleZoom} activeOpacity={1}>
                 <ImageLoader
                   source={{ uri: originalUrl }}
-                  style={isHorizontal ? imageHorizontalStyle : imageVerticalStyle}
+                  style={
+                    isHorizontal ? imageHorizontalStyle : imageVerticalStyle
+                  }
                   resizeMode="contain"
                 />
               </TouchableOpacity>
@@ -134,7 +151,9 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
               <TouchableOpacity onPress={toggleZoom} activeOpacity={1}>
                 <ImageLoader
                   source={{ uri: processedUrl }}
-                  style={isHorizontal ? imageHorizontalStyle : imageVerticalStyle}
+                  style={
+                    isHorizontal ? imageHorizontalStyle : imageVerticalStyle
+                  }
                   resizeMode="contain"
                 />
               </TouchableOpacity>

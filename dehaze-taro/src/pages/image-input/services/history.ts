@@ -38,8 +38,7 @@ export const deleteHistoryRecord = (id: number) =>
   ImageInputHistoryAPI.deleteById(id);
 
 /** 清空所有历史记录 */
-export const clearAllHistory = (confirm: boolean) =>
-  ImageInputHistoryAPI.clearAll(confirm);
+export const clearAllHistory = () => ImageInputHistoryAPI.clearAll();
 
 /**
  * 将历史记录按时间分组

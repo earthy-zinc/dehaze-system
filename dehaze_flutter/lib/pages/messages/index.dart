@@ -46,9 +46,11 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
         pageNum: 1,
         pageSize: 50,
       );
-      final list = (pageData['data']?['list'] as List<dynamic>?)
-          ?.map((e) => MessageVO.fromJson(e as Map<String, dynamic>))
-          .toList() ?? [];
+      final list =
+          (pageData['data']?['list'] as List<dynamic>?)
+              ?.map((e) => MessageVO.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
 
       if (mounted) {
         setState(() {
@@ -141,9 +143,7 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ),
       child: Row(
         children: _typeTabs.map((tab) {
@@ -195,7 +195,11 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.mail_outline, size: 64, color: theme.colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.mail_outline,
+              size: 64,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             SizedBox(height: AppTheme.spacingM),
             Text(
               '暂无消息',
@@ -213,7 +217,8 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
       child: ListView.separated(
         padding: EdgeInsets.symmetric(vertical: AppTheme.spacingS),
         itemCount: _messages.length + 1,
-        separatorBuilder: (_, _) => Divider(height: 1, indent: AppTheme.spacingXL),
+        separatorBuilder: (_, _) =>
+            Divider(height: 1, indent: AppTheme.spacingXL),
         itemBuilder: (ctx, index) {
           if (index == _messages.length) {
             return SizedBox(height: 80);

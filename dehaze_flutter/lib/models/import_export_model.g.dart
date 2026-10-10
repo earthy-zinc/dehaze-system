@@ -29,16 +29,16 @@ Map<String, dynamic> _$ImportRecordVOToJson(ImportRecordVO instance) =>
     <String, dynamic>{
       'id': instance.id,
       'type': instance.type,
-      if (instance.fileName case final value?) 'fileName': value,
-      if (instance.fileSize case final value?) 'fileSize': value,
+      'fileName': ?instance.fileName,
+      'fileSize': ?instance.fileSize,
       'status': instance.status,
-      if (instance.statusName case final value?) 'statusName': value,
-      if (instance.total case final value?) 'total': value,
-      if (instance.success case final value?) 'success': value,
-      if (instance.failed case final value?) 'failed': value,
-      if (instance.errorMessage case final value?) 'errorMessage': value,
-      if (instance.createTime case final value?) 'createTime': value,
-      if (instance.completeTime case final value?) 'completeTime': value,
+      'statusName': ?instance.statusName,
+      'total': ?instance.total,
+      'success': ?instance.success,
+      'failed': ?instance.failed,
+      'errorMessage': ?instance.errorMessage,
+      'createTime': ?instance.createTime,
+      'completeTime': ?instance.completeTime,
     };
 
 ImportRecordQuery _$ImportRecordQueryFromJson(Map<String, dynamic> json) =>
@@ -61,10 +61,10 @@ Map<String, dynamic> _$ImportRecordQueryToJson(ImportRecordQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.type case final value?) 'type': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.startDate case final value?) 'startDate': value,
-      if (instance.endDate case final value?) 'endDate': value,
+      'type': ?instance.type,
+      'status': ?instance.status,
+      'startDate': ?instance.startDate,
+      'endDate': ?instance.endDate,
     };
 
 ExportRecordVO _$ExportRecordVOFromJson(Map<String, dynamic> json) =>
@@ -89,15 +89,15 @@ Map<String, dynamic> _$ExportRecordVOToJson(ExportRecordVO instance) =>
     <String, dynamic>{
       'id': instance.id,
       'type': instance.type,
-      if (instance.fileName case final value?) 'fileName': value,
-      if (instance.fileSize case final value?) 'fileSize': value,
+      'fileName': ?instance.fileName,
+      'fileSize': ?instance.fileSize,
       'status': instance.status,
-      if (instance.statusName case final value?) 'statusName': value,
-      if (instance.total case final value?) 'total': value,
-      if (instance.downloadUrl case final value?) 'downloadUrl': value,
-      if (instance.errorMessage case final value?) 'errorMessage': value,
-      if (instance.createTime case final value?) 'createTime': value,
-      if (instance.completeTime case final value?) 'completeTime': value,
+      'statusName': ?instance.statusName,
+      'total': ?instance.total,
+      'downloadUrl': ?instance.downloadUrl,
+      'errorMessage': ?instance.errorMessage,
+      'createTime': ?instance.createTime,
+      'completeTime': ?instance.completeTime,
     };
 
 ExportRecordQuery _$ExportRecordQueryFromJson(Map<String, dynamic> json) =>
@@ -120,10 +120,10 @@ Map<String, dynamic> _$ExportRecordQueryToJson(ExportRecordQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.type case final value?) 'type': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.startDate case final value?) 'startDate': value,
-      if (instance.endDate case final value?) 'endDate': value,
+      'type': ?instance.type,
+      'status': ?instance.status,
+      'startDate': ?instance.startDate,
+      'endDate': ?instance.endDate,
     };
 
 ImportTemplateVO _$ImportTemplateVOFromJson(Map<String, dynamic> json) =>
@@ -145,7 +145,7 @@ Map<String, dynamic> _$ImportTemplateVOToJson(ImportTemplateVO instance) =>
     <String, dynamic>{
       'type': instance.type,
       'name': instance.name,
-      if (instance.description case final value?) 'description': value,
-      if (instance.url case final value?) 'url': value,
+      'description': ?instance.description,
+      'url': ?instance.url,
       'columns': instance.columns,
     };

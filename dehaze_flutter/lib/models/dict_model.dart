@@ -36,11 +36,7 @@ class DictType {
 /// 字典类型查询参数
 @JsonSerializable()
 class DictTypeQuery {
-  const DictTypeQuery({
-    this.pageNum,
-    this.pageSize,
-    this.keywords,
-  });
+  const DictTypeQuery({this.pageNum, this.pageSize, this.keywords});
 
   factory DictTypeQuery.fromJson(Map<String, dynamic> json) =>
       _$DictTypeQueryFromJson(json);
@@ -52,10 +48,10 @@ class DictTypeQuery {
   Map<String, dynamic> toJson() => _$DictTypeQueryToJson(this);
 
   Map<String, dynamic> toQuery() => {
-        if (pageNum != null) 'pageNum': pageNum,
-        if (pageSize != null) 'pageSize': pageSize,
-        if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
-      };
+    if (pageNum != null) 'pageNum': pageNum,
+    if (pageSize != null) 'pageSize': pageSize,
+    if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
+  };
 }
 
 // ==================== DictTypeForm ====================
@@ -140,12 +136,7 @@ class Dict {
 /// 字典项查询参数
 @JsonSerializable()
 class DictQuery {
-  const DictQuery({
-    this.pageNum,
-    this.pageSize,
-    this.typeCode,
-    this.keywords,
-  });
+  const DictQuery({this.pageNum, this.pageSize, this.typeCode, this.keywords});
 
   factory DictQuery.fromJson(Map<String, dynamic> json) =>
       _$DictQueryFromJson(json);
@@ -161,11 +152,11 @@ class DictQuery {
   Map<String, dynamic> toJson() => _$DictQueryToJson(this);
 
   Map<String, dynamic> toQuery() => {
-        if (pageNum != null) 'pageNum': pageNum,
-        if (pageSize != null) 'pageSize': pageSize,
-        if (typeCode != null && typeCode!.isNotEmpty) 'typeCode': typeCode,
-        if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
-      };
+    if (pageNum != null) 'pageNum': pageNum,
+    if (pageSize != null) 'pageSize': pageSize,
+    if (typeCode != null && typeCode!.isNotEmpty) 'typeCode': typeCode,
+    if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
+  };
 }
 
 // ==================== DictForm ====================
@@ -221,11 +212,7 @@ class DictForm {
 /// 字典选项（下拉框用）
 @JsonSerializable()
 class DictOption {
-  const DictOption({
-    required this.value,
-    required this.label,
-    this.children,
-  });
+  const DictOption({required this.value, required this.label, this.children});
 
   factory DictOption.fromJson(Map<String, dynamic> json) =>
       _$DictOptionFromJson(json);

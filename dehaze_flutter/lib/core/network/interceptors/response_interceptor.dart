@@ -10,7 +10,10 @@ import '../api_result.dart';
 /// - HTTP 401 → 由 error_interceptor 处理
 class ResponseInterceptor extends Interceptor {
   @override
-  void onResponse(Response<dynamic> response, ResponseInterceptorHandler handler) {
+  void onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
+  ) {
     final data = response.data;
 
     // 非 JSON 响应（如文件下载），直接放行
@@ -31,11 +34,13 @@ class ResponseInterceptor extends Interceptor {
     // 业务失败 → 抛出 ApiException
     final errorsJson = data['errors'] as List<dynamic>?;
     final errors = errorsJson
-        ?.map((e) => ApiFieldError(
-              field: e['field']?.toString(),
-              message: e['message']?.toString(),
-              code: e['code']?.toString(),
-            ))
+        ?.map(
+          (e) => ApiFieldError(
+            field: e['field']?.toString(),
+            message: e['message']?.toString(),
+            code: e['code']?.toString(),
+          ),
+        )
         .toList();
 
     handler.reject(
@@ -43,11 +48,7 @@ class ResponseInterceptor extends Interceptor {
         requestOptions: response.requestOptions,
         response: response,
         type: DioExceptionType.badResponse,
-        error: ApiException(
-          code: code,
-          message: msg,
-          errors: errors,
-        ),
+        error: ApiException(code: code, message: msg, errors: errors),
       ),
     );
   }

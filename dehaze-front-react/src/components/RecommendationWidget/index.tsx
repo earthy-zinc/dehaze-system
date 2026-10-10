@@ -26,7 +26,7 @@ import { RecommendationAPI } from "dehaze-sdk-js";
 import type {
   AnalyzeRequest,
   ImageFeatureAnalysis,
-  RecommendedAlgorithm,
+  RecommendedModelVO,
   RecommendationFeedback,
 } from "dehaze-sdk-js";
 import "./index.module.scss";
@@ -36,7 +36,7 @@ const { Text, Title } = Typography;
 interface RecommendationWidgetProps {
   imageId?: number;
   imageUrl?: string;
-  onSelect?: (algorithm: RecommendedAlgorithm) => void;
+  onSelect?: (model: RecommendedModelVO) => void;
   className?: string;
 }
 
@@ -49,9 +49,9 @@ export default function RecommendationWidget({
   const [imageUrl, setImageUrl] = useState(propImageUrl || "");
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<ImageFeatureAnalysis | null>(null);
-  const [recommendations, setRecommendations] = useState<
-    RecommendedAlgorithm[]
-  >([]);
+  const [recommendations, setRecommendations] = useState<RecommendedModelVO[]>(
+    []
+  );
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
@@ -71,7 +71,7 @@ export default function RecommendationWidget({
       setAnalysis(result);
 
       if (result.imageMd5) {
-        const recs = await RecommendationAPI.getAlgorithmRecommendations({
+        const recs = await RecommendationAPI.getModelRecommendations({
           imageMd5: result.imageMd5,
         });
         setRecommendations(recs);
@@ -84,7 +84,7 @@ export default function RecommendationWidget({
     }
   };
 
-  const handleFeedback = async (rec: RecommendedAlgorithm, useful: boolean) => {
+  const handleFeedback = async (rec: RecommendedModelVO, useful: boolean) => {
     if (!rec.recommendationId) return;
     try {
       await RecommendationAPI.submitFeedback({
@@ -109,12 +109,12 @@ export default function RecommendationWidget({
     return (
       <Card
         className={`recommendation-widget ${className}`}
-        title="智能算法推荐"
+        title="智能模型推荐"
       >
         <div className="rec-upload-section">
           <PictureOutlined style={{ fontSize: 40, color: "#1677ff" }} />
           <Text type="secondary" style={{ display: "block", marginBottom: 16 }}>
-            上传图片以获取智能算法推荐
+            上传图片以获取智能模型推荐
           </Text>
           <Input
             placeholder="输入图片 URL（可选）"
@@ -142,7 +142,7 @@ export default function RecommendationWidget({
     return (
       <Card
         className={`recommendation-widget ${className}`}
-        title="智能算法推荐"
+        title="智能模型推荐"
       >
         <Spin tip="正在分析图像特征..." indicator={<LoadingOutlined spin />} />
       </Card>
@@ -154,7 +154,7 @@ export default function RecommendationWidget({
     return (
       <Card
         className={`recommendation-widget ${className}`}
-        title="智能算法推荐"
+        title="智能模型推荐"
       >
         <Alert
           message={error}
@@ -172,7 +172,7 @@ export default function RecommendationWidget({
   return (
     <Card
       className={`recommendation-widget loaded ${className}`}
-      title="智能算法推荐"
+      title="智能模型推荐"
     >
       {/* 图像特征分析 */}
       <div className="feature-analysis">
@@ -230,21 +230,21 @@ export default function RecommendationWidget({
         </Row>
       </div>
 
-      {/* Top 3 推荐算法 */}
-      <div className="algorithm-recommendations">
-        <Title level={5}>推荐算法</Title>
+      {/* Top 3 推荐模型 */}
+      <div className="model-recommendations">
+        <Title level={5}>推荐模型</Title>
         {recommendations.length === 0 ? (
           <Empty
-            description="暂无推荐算法"
+            description="暂无推荐模型"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
         ) : (
           <div className="rec-list">
             {recommendations.slice(0, 3).map((rec, idx) => (
-              <div key={rec.algorithmId} className="rec-item">
+              <div key={rec.modelId} className="rec-item">
                 <div className="rec-header">
                   <Text strong>
-                    {idx + 1}. {rec.algorithmName}
+                    {idx + 1}. {rec.modelName}
                   </Text>
                   <Rate value={rec.rating} disabled style={{ marginLeft: 8 }} />
                 </div>

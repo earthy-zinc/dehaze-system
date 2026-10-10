@@ -14,7 +14,7 @@
     <string name="entry_member">我的会员</string>
     <string name="entry_package">我的套餐</string>
     <string name="entry_orders">我的订单</string>
-    <string name="entry_quota">我的额度</string>
+    <string name="entry_credits">我的积分余额</string>
     <string name="entry_feedback">反馈评价</string>
     <string name="entry_settings">系统设置</string>
     <string name="entry_help">帮助中心</string>
@@ -23,7 +23,6 @@
 
     <!-- 管理入口 -->
     <string name="entry_dashboard">工作台</string>
-    <string name="entry_admin_algorithm">算法管理</string>
     <string name="entry_admin_dataset">数据集管理</string>
     <string name="entry_admin_user">用户管理</string>
     <string name="entry_admin_role">角色管理</string>

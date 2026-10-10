@@ -12,9 +12,10 @@ import '../../services/role_service.dart';
 import '../../theme/app_theme.dart';
 
 final roleManageProvider =
-    StateNotifierProvider<RoleManageNotifier, AsyncValue<PagedList<RolePageVO>>>(
-  (ref) => RoleManageNotifier(ref.watch(roleServiceProvider)),
-);
+    StateNotifierProvider<
+      RoleManageNotifier,
+      AsyncValue<PagedList<RolePageVO>>
+    >((ref) => RoleManageNotifier(ref.watch(roleServiceProvider)));
 
 class RoleManageNotifier extends PagedListNotifier<RolePageVO> {
   RoleManageNotifier(this._service) : super();
@@ -70,7 +71,11 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
     }
     try {
       await ref.read(roleServiceProvider).deleteByIds([roleId]);
-      _showSnack('删除成功');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除成功')));
+      }
       ref.read(roleManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
@@ -81,8 +86,7 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _showPermissionDialog(int roleId, String roleName) {
@@ -151,7 +155,8 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
                   },
                 ),
               ),
-              onSubmitted: (v) => ref.read(roleManageProvider.notifier).search(v),
+              onSubmitted: (v) =>
+                  ref.read(roleManageProvider.notifier).search(v),
             ),
           ),
           Expanded(
@@ -199,19 +204,28 @@ class _RoleManagePageState extends ConsumerState<RoleManagePage> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.security, size: 20),
+                                      icon: const Icon(
+                                        Icons.security,
+                                        size: 20,
+                                      ),
                                       tooltip: '权限分配',
                                       onPressed: () => _showPermissionDialog(
-                                          item.id, item.name ?? ''),
+                                        item.id,
+                                        item.name ?? '',
+                                      ),
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.edit, size: 20),
                                       tooltip: '编辑',
-                                      onPressed: () => _showForm(roleId: item.id),
+                                      onPressed: () =>
+                                          _showForm(roleId: item.id),
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.delete,
-                                          size: 20, color: AppTheme.errorColor),
+                                      icon: Icon(
+                                        Icons.delete,
+                                        size: 20,
+                                        color: AppTheme.errorColor,
+                                      ),
                                       tooltip: '删除',
                                       onPressed: () => _deleteRole(item.id),
                                     ),
@@ -274,7 +288,13 @@ class _RoleFormSheetState extends ConsumerState<_RoleFormSheet> {
           _status = data.status ?? 1;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('角色信息加载失败')));
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -298,9 +318,9 @@ class _RoleFormSheetState extends ConsumerState<_RoleFormSheet> {
       widget.onSaved();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     } finally {
       if (mounted) {
@@ -313,7 +333,9 @@ class _RoleFormSheetState extends ConsumerState<_RoleFormSheet> {
   Widget build(BuildContext context) {
     final isNew = widget.roleId == null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(AppTheme.spacingL),
         child: Form(
@@ -322,21 +344,21 @@ class _RoleFormSheetState extends ConsumerState<_RoleFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(isNew ? '新增角色' : '编辑角色',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                isNew ? '新增角色' : '编辑角色',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               SizedBox(height: AppTheme.spacingL),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: '角色名称'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '必填' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
               ),
               SizedBox(height: AppTheme.spacingM),
               TextFormField(
                 controller: _codeCtrl,
                 decoration: const InputDecoration(labelText: '角色编码'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '必填' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
               ),
               SizedBox(height: AppTheme.spacingM),
               TextFormField(
@@ -388,8 +410,9 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
   Future<void> _loadData() async {
     try {
       final menus = await ref.read(menuServiceProvider).getList();
-      final menuIds =
-          await ref.read(roleServiceProvider).getRoleMenuIds(widget.roleId);
+      final menuIds = await ref
+          .read(roleServiceProvider)
+          .getRoleMenuIds(widget.roleId);
       if (mounted) {
         setState(() {
           _menus = menus;
@@ -398,6 +421,11 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
         });
       }
     } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('菜单权限加载失败')));
+      }
       if (mounted) {
         setState(() => _loading = false);
       }
@@ -413,9 +441,9 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
       widget.onSaved();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     } finally {
       if (mounted) {
@@ -440,7 +468,9 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
   Widget build(BuildContext context) {
     final flat = _flattenTree(_menus);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -448,8 +478,10 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
             padding: EdgeInsets.all(AppTheme.spacingM),
             child: Row(
               children: [
-                Text('分配权限 - ${widget.roleName}',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  '分配权限 - ${widget.roleName}',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const Spacer(),
                 TextButton(
                   onPressed: _loading ? null : _save,
@@ -465,12 +497,12 @@ class _RolePermissionSheetState extends ConsumerState<_RolePermissionSheet> {
                 ? const Center(child: CircularProgressIndicator())
                 : ListView(
                     children: flat.map((menu) {
-                      final depth =
-                          menu.parentId != 0 ? 1 : 0;
+                      final depth = menu.parentId != 0 ? 1 : 0;
                       return CheckboxListTile(
                         title: Text(menu.name),
-                        contentPadding:
-                            EdgeInsets.only(left: 16.0 + depth * 24.0),
+                        contentPadding: EdgeInsets.only(
+                          left: 16.0 + depth * 24.0,
+                        ),
                         value: _checkedIds.contains(menu.id),
                         onChanged: (checked) {
                           setState(() {

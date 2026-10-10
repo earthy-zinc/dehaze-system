@@ -2,21 +2,92 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/network/page_result.dart';
+import '../../models/ai_model_model.dart';
+import '../../models/dataset_model.dart';
+import '../../models/task_model.dart';
+import '../../providers/processing_provider.dart';
+import '../../providers/providers.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
-import 'algorithm_section.dart';
 import 'cta_section.dart';
 import 'hero_section.dart';
+import 'model_section.dart';
 import 'showcase_section.dart';
 import 'tools_grid_section.dart';
 import 'workflow_section.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  int? _datasetTotal;
+  int? _modelCount;
+  int? _taskTotal;
+  int? _taskCompleted;
+  bool _statsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStats());
+  }
+
+  Future<void> _loadStats() async {
+    if (_statsLoaded) return;
+    _statsLoaded = true;
+    // 后端无统一 Dashboard 聚合接口，四项统计只能并发调用各自列表接口后聚合：
+    // 数据集/任务设 pageSize=1 仅为取 total；已完成数由 status 服务端筛选得出
+    final results = await Future.wait([
+      _guard(
+        ref
+            .read(datasetServiceProvider)
+            .getList(const DatasetQuery(pageNum: 1, pageSize: 1)),
+      ),
+      _guard(
+        ref
+            .read(aiModelServiceProvider)
+            .listEnabledModels(modelType: imageEditModelType),
+      ),
+      _guard(ref.read(taskServiceProvider).getMyTasks(pageNum: 1, pageSize: 1)),
+      _guard(
+        ref
+            .read(taskServiceProvider)
+            .getMyTasks(
+              pageNum: 1,
+              pageSize: 1,
+              status: TaskStatusType.completed,
+            ),
+      ),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _datasetTotal = (results[0] as PageResult<Dataset>?)?.total;
+      // 可用模型口径：与处理页模型选择器一致，取启用模型列表
+      _modelCount = (results[1] as List<AiModelVO>?)?.length;
+      _taskTotal = (results[2] as PageResult<TaskVO>?)?.total;
+      _taskCompleted = (results[3] as PageResult<TaskVO>?)?.total;
+    });
+  }
+
+  /// 单项统计接口失败时返回 null，保证其余统计项不受影响（失败项显示 '--'）。
+  Future<T?> _guard<T>(Future<T> request) async {
+    try {
+      return await request;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _displayStat(int? value) => value?.toString() ?? '--';
+
+  @override
+  Widget build(BuildContext context) {
     final isWide = ResponsiveUtils.isWideScreen(context);
     final sectionSpacing = AppTheme.spacingXL * 1.5;
 
@@ -35,12 +106,13 @@ class HomePage extends ConsumerWidget {
           SliverToBoxAdapter(child: SizedBox(height: AppTheme.spacingXL)),
           const SliverToBoxAdapter(child: ToolsGridSection()),
           SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
-          const SliverToBoxAdapter(child: AlgorithmSection()),
+          const SliverToBoxAdapter(child: ModelSection()),
           SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
           const SliverToBoxAdapter(child: CTASection()),
           SliverToBoxAdapter(
             child: SizedBox(
-              height: MediaQuery.of(context).padding.bottom + AppTheme.spacingXL,
+              height:
+                  MediaQuery.of(context).padding.bottom + AppTheme.spacingXL,
             ),
           ),
         ],
@@ -94,7 +166,7 @@ class HomePage extends ConsumerWidget {
                 ),
                 SizedBox(height: AppTheme.spacingS),
                 Text(
-                  '采用先进的深度学习算法，一键还原清晰视界',
+                  '采用先进的深度学习模型，一键还原清晰视界',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.white.withValues(alpha: 0.85),
                   ),
@@ -124,34 +196,29 @@ class HomePage extends ConsumerWidget {
   Widget _buildDesktopStats(BuildContext context) {
     final theme = Theme.of(context);
 
-    // TODO: 接入真实 API 获取统计数据
-    // - 数据集总数: DatasetService.getPage() 聚合
-    // - 可用算法: AlgorithmService.getPublicList() 聚合
-    // - 任务总数/已完成: PredictionService.getPredictionLogs() 聚合
-    // 当前后端暂无统一 Dashboard 聚合接口，暂时保留占位数据。
     final stats = [
       _StatItem(
         icon: Icons.storage_outlined,
         label: '数据集总数',
-        value: '--',
+        value: _displayStat(_datasetTotal),
         color: AppTheme.brandBlue,
       ),
       _StatItem(
         icon: Icons.psychology_outlined,
-        label: '可用算法',
-        value: '--',
+        label: '可用模型',
+        value: _displayStat(_modelCount),
         color: AppTheme.techGreen,
       ),
       _StatItem(
         icon: Icons.task_outlined,
         label: '任务总数',
-        value: '--',
+        value: _displayStat(_taskTotal),
         color: AppTheme.indigo,
       ),
       _StatItem(
         icon: Icons.check_circle_outlined,
         label: '已完成',
-        value: '--',
+        value: _displayStat(_taskCompleted),
         color: AppTheme.successColor,
       ),
     ];
@@ -226,10 +293,10 @@ class HomePage extends ConsumerWidget {
         route: AppRouterConfig.imageInput,
       ),
       _QuickAction(
-        icon: Icons.psychology_outlined,
-        label: '算法选择',
+        icon: Icons.auto_fix_high_outlined,
+        label: '去雾处理',
         color: AppTheme.techGreen,
-        route: AppRouterConfig.algorithmSelect,
+        route: AppRouterConfig.processing,
       ),
       _QuickAction(
         icon: Icons.storage_outlined,
@@ -277,7 +344,11 @@ class HomePage extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          Icon(entry.value.icon, color: entry.value.color, size: 32),
+                          Icon(
+                            entry.value.icon,
+                            color: entry.value.color,
+                            size: 32,
+                          ),
                           SizedBox(height: AppTheme.spacingS),
                           Text(
                             entry.value.label,

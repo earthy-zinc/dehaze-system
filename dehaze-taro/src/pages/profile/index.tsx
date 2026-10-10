@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
-import { MemberAPI, ModelAPI, FavoriteAPI, TaskAPI } from "dehaze-sdk-js";
+import { AiBillingAPI, MemberAPI, FavoriteAPI, TaskAPI } from "dehaze-sdk-js";
 import type { MemberProfileVO } from "dehaze-sdk-js";
 import { confirmDialog } from "@/utils/dialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,7 +45,7 @@ const BUSINESS_ENTRIES: EntryItem[] = [
   { icon: "👑", title: "我的会员", route: "/pages/personal/member/index" },
   { icon: "📦", title: "我的套餐", route: "/pages/personal/package/index" },
   { icon: "🛒", title: "我的订单", route: "/pages/personal/orders/index" },
-  { icon: "💰", title: "我的额度", route: "/pages/personal/quota/index" },
+  { icon: "💰", title: "积分余额", route: "/pages/personal/quota/index" },
   { icon: "💬", title: "反馈评价", route: "/pages/personal/feedback/index" },
 ];
 
@@ -105,14 +105,8 @@ const ADMIN_GROUPS: EntryGroup[] = [
     ],
   },
   {
-    title: "算法与数据",
+    title: "数据",
     entries: [
-      {
-        icon: "🧠",
-        title: "算法管理",
-        route: "/pages/system/algorithm/index",
-        permission: "sys:algorithm:*",
-      },
       {
         icon: "📊",
         title: "数据集管理",
@@ -134,19 +128,19 @@ const ADMIN_GROUPS: EntryGroup[] = [
         icon: "👑",
         title: "会员管理",
         route: "/pages/system/member/index",
-        permission: "sys:member:*",
+        permission: "member:*",
       },
       {
         icon: "📦",
         title: "套餐管理",
         route: "/pages/system/package/index",
-        permission: "sys:package:*",
+        permission: "package:*",
       },
       {
         icon: "🛒",
         title: "订单管理",
         route: "/pages/system/order/index",
-        permission: "sys:order:*",
+        permission: "order:*",
       },
     ],
   },
@@ -157,19 +151,19 @@ const ADMIN_GROUPS: EntryGroup[] = [
         icon: "⏱️",
         title: "任务管理",
         route: "/pages/system/task/index",
-        permission: "sys:task:*",
+        // 任务域后端无接口级权限校验（仅登录态 + create_by 归属校验），不按权限控制
       },
       {
         icon: "💬",
         title: "反馈评价管理",
         route: "/pages/system/feedback/index",
-        permission: "sys:feedback:*",
+        permission: "feedback:*",
       },
       {
         icon: "🔔",
         title: "消息管理",
         route: "/pages/system/message/index",
-        permission: "sys:message:*",
+        permission: "notify:*",
       },
     ],
   },
@@ -184,7 +178,7 @@ const ProfilePage: React.FC = () => {
   // 会员信息
   const [member, setMember] = useState<MemberProfileVO | null>(null);
   // 数据统计
-  const [quotaCount, setQuotaCount] = useState<number | null>(null);
+  const [creditsBalance, setCreditsBalance] = useState<string | null>(null);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
   const [taskTotal, setTaskTotal] = useState<number | null>(null);
 
@@ -201,10 +195,10 @@ const ProfilePage: React.FC = () => {
   // 加载数据统计
   const loadStats = useCallback(async () => {
     try {
-      const quota = await ModelAPI.getQuota();
-      setQuotaCount(quota.remaining ?? quota.total ?? null);
+      const balance = await AiBillingAPI.getBalance();
+      setCreditsBalance(balance.creditsBalance ?? null);
     } catch {
-      setQuotaCount(null);
+      setCreditsBalance(null);
     }
     try {
       const fav = await FavoriteAPI.getCount();
@@ -232,8 +226,8 @@ const ProfilePage: React.FC = () => {
   const stats: StatItem[] = useMemo(() => {
     const items: StatItem[] = [
       {
-        label: "剩余额度",
-        value: quotaCount !== null ? `${quotaCount} 次` : "-",
+        label: "积分余额",
+        value: creditsBalance !== null ? `${creditsBalance}` : "-",
         route: "/pages/personal/quota/index",
       },
       {
@@ -248,7 +242,7 @@ const ProfilePage: React.FC = () => {
       },
     ];
     return items;
-  }, [quotaCount, taskTotal, favoriteCount]);
+  }, [creditsBalance, taskTotal, favoriteCount]);
 
   // 权限过滤后的管理入口分组
   const visibleAdminGroups = useMemo(

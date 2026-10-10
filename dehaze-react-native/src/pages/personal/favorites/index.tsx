@@ -24,7 +24,7 @@ import { AppHeader } from '@/layout';
 const PAGE_SIZE = 20;
 
 const TYPE_LABELS: Record<string, string> = {
-  algorithm: '算法',
+  model: '模型',
   result: '结果',
   dataset: '数据集',
   image: '图片',
@@ -43,7 +43,10 @@ const PersonalFavoritesScreen: React.FC = () => {
     try {
       if (isRefresh) setRefreshing(true);
       else if (pageNum === 1) setLoading(true);
-      const result = await FavoriteAPI.getPage({ pageNum, pageSize: PAGE_SIZE });
+      const result = await FavoriteAPI.getPage({
+        pageNum,
+        pageSize: PAGE_SIZE,
+      });
       const list = result.list || [];
       if (pageNum === 1) setFavorites(list);
       else setFavorites(prev => [...prev, ...list]);
@@ -63,31 +66,31 @@ const PersonalFavoritesScreen: React.FC = () => {
     }, [loadFavorites]),
   );
 
-  const handleRefresh = useCallback(() => loadFavorites(1, true), [loadFavorites]);
+  const handleRefresh = useCallback(
+    () => loadFavorites(1, true),
+    [loadFavorites],
+  );
   const handleLoadMore = useCallback(() => {
     if (hasMore && !refreshing) loadFavorites(page + 1);
   }, [hasMore, refreshing, page, loadFavorites]);
 
-  const handleRemove = useCallback(
-    (id: number) => {
-      Alert.alert('取消收藏', '确认取消收藏此项？', [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '确认',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await FavoriteAPI.deleteByIds([id]);
-              setFavorites(prev => prev.filter(f => f.id !== id));
-            } catch {
-              Alert.alert('操作失败', '请稍后重试');
-            }
-          },
+  const handleRemove = useCallback((id: number) => {
+    Alert.alert('取消收藏', '确认取消收藏此项？', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '确认',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await FavoriteAPI.deleteByIds([id]);
+            setFavorites(prev => prev.filter(f => f.id !== id));
+          } catch {
+            Alert.alert('操作失败', '请稍后重试');
+          }
         },
-      ]);
-    },
-    [],
-  );
+      },
+    ]);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: FavoriteVO }) => {
@@ -100,11 +103,18 @@ const PersonalFavoritesScreen: React.FC = () => {
               <Ionicons
                 name="heart"
                 size={20}
-                color={item.isInvalid ? theme.colors.text.tertiary : theme.colors.status.error}
+                color={
+                  item.isInvalid
+                    ? theme.colors.text.tertiary
+                    : theme.colors.status.error
+                }
               />
             </View>
             <View style={styles.info}>
-              <Text style={[styles.name, item.isInvalid && styles.invalidText]} numberOfLines={1}>
+              <Text
+                style={[styles.name, item.isInvalid && styles.invalidText]}
+                numberOfLines={1}
+              >
                 {item.targetName || '未命名'}
               </Text>
               <View style={styles.metaRow}>
@@ -115,7 +125,9 @@ const PersonalFavoritesScreen: React.FC = () => {
                   <Text style={styles.invalidBadge}>已失效</Text>
                 )}
                 <Text style={styles.time}>
-                  {item.createTime ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''}
+                  {item.createTime
+                    ? new Date(item.createTime).toLocaleDateString('zh-CN')
+                    : ''}
                 </Text>
               </View>
             </View>
@@ -123,7 +135,11 @@ const PersonalFavoritesScreen: React.FC = () => {
               onPress={() => handleRemove(item.id)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="trash-outline" size={18} color={theme.colors.text.tertiary} />
+              <Ionicons
+                name="trash-outline"
+                size={18}
+                color={theme.colors.text.tertiary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -135,21 +151,34 @@ const PersonalFavoritesScreen: React.FC = () => {
   const renderEmpty = () =>
     !loading ? (
       <View style={styles.empty}>
-        <Ionicons name="heart-outline" size={48} color={theme.colors.text.tertiary} />
+        <Ionicons
+          name="heart-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
         <Text style={styles.emptyText}>暂无收藏</Text>
       </View>
     ) : null;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="我的收藏" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="我的收藏"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <FlatList
         data={favorites}
         renderItem={renderItem}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -217,7 +246,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   empty: { alignItems: 'center', paddingVertical: theme.spacing.xxxl },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
 });
 
 export default PersonalFavoritesScreen;

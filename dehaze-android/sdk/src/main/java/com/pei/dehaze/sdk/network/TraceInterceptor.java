@@ -15,7 +15,7 @@ import okhttp3.Response;
  * OkHttp 拦截器：
  * - 请求拦截：生成/复用 trace_id 注入 X-Trace-Id 头
  * - 响应拦截：读取响应头 X-Trace-Id 与本地对齐
- * - 失败请求交 Logger 上报（关联 method/path/status/duration/code）
+ * - 失败请求交 Logger 上报（关联 method/path/status/duration/code）；401 属鉴权结果，按 INFO 记录不上报
  */
 public class TraceInterceptor implements Interceptor {
 
@@ -62,15 +62,24 @@ public class TraceInterceptor implements Interceptor {
             return;
         }
 
-        LogEntry entry = new LogEntry(LogLevel.ERROR, "API_ERROR", "", "")
+        // 401 是鉴权结果（未登录/会话失效），不是服务端故障：按 INFO 记录（本地可见、不上报远端），
+        // 计成 ERROR 会把预期结果混进真实故障
+        boolean unauthenticated = status != null && status == 401;
+        LogEntry entry = new LogEntry(
+                        unauthenticated ? LogLevel.INFO : LogLevel.ERROR,
+                        unauthenticated ? "API_UNAUTHORIZED" : "API_ERROR", "", "")
                 .setTraceId(TraceManager.getCurrentTraceId())
                 .setMethod(request.method().toUpperCase())
                 .setPath(path)
                 .setStatus(status)
-                .setDuration((double) durationMs)
-                .setErrorType("api")
+                .setDuration((double) durationMs);
+        if (unauthenticated) {
+            Logger.getInstance().info(entry.getMessage(), entry);
+            return;
+        }
+        entry.setErrorType("api")
                 .setErrorSource("api_interceptor")
                 .setErrorStack(error != null ? error.toString() : null);
-        Logger.getInstance().error("API_ERROR", entry);
+        Logger.getInstance().error(entry.getMessage(), entry);
     }
 }

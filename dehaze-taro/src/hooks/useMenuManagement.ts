@@ -81,7 +81,7 @@ export const useMenuManagement = () => {
     async (id: string, data: MenuForm) => {
       try {
         const { MenuAPI } = await import("dehaze-sdk-js");
-        await MenuAPI.update(id, data);
+        await MenuAPI.update(Number(id), data);
         await fetchMenus();
         Taro.showToast({ title: "修改菜单成功", icon: "none" });
         return true;

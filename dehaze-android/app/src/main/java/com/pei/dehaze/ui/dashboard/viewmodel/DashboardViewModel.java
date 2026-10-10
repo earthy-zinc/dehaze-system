@@ -6,10 +6,11 @@ import androidx.lifecycle.MutableLiveData;
 import com.pei.dehaze.repository.DashboardRepository;
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
-import com.pei.dehaze.sdk.api.ModelAPI;
+import com.pei.dehaze.sdk.api.AiImageAPI;
 import com.pei.dehaze.sdk.api.UserAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskQuery;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskVO;
 import com.pei.dehaze.sdk.model.user.UserInfo;
 
 import java.util.ArrayList;
@@ -21,7 +22,7 @@ public class DashboardViewModel extends BaseViewModel {
 
     private final MutableLiveData<UserInfo> userInfo = new MutableLiveData<>();
     private final MutableLiveData<DashboardRepository.StatsData> stats = new MutableLiveData<>();
-    private final MutableLiveData<List<PredictionLogVO>> recentActivities = new MutableLiveData<>();
+    private final MutableLiveData<List<ImageTaskVO>> recentActivities = new MutableLiveData<>();
     private final MutableLiveData<DashboardRepository.StatusDistributionData> statusDistribution = new MutableLiveData<>();
     private final MutableLiveData<List<DashboardRepository.TrendItem>> taskTrend = new MutableLiveData<>();
 
@@ -34,9 +35,12 @@ public class DashboardViewModel extends BaseViewModel {
     }
 
     public void loadRecentActivities() {
-        ModelAPI.listPredictionLogs(null, 1, 10, RepositoryAdapters.wrapPage(new RepositoryCallback<List<PredictionLogVO>>() {
+        ImageTaskQuery query = new ImageTaskQuery();
+        query.setPageNum(1);
+        query.setPageSize(10);
+        AiImageAPI.listImageTasks(query, RepositoryAdapters.wrapPage(new RepositoryCallback<List<ImageTaskVO>>() {
             @Override
-            public void onSuccess(List<PredictionLogVO> activities) {
+            public void onSuccess(List<ImageTaskVO> activities) {
                 recentActivities.postValue(activities != null ? activities : new ArrayList<>());
             }
 
@@ -91,7 +95,7 @@ public class DashboardViewModel extends BaseViewModel {
         return stats;
     }
 
-    public LiveData<List<PredictionLogVO>> getRecentActivities() {
+    public LiveData<List<ImageTaskVO>> getRecentActivities() {
         return recentActivities;
     }
 

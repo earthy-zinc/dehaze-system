@@ -64,8 +64,8 @@ public interface OrderApiService {
             @Query("keywords") String keywords,
             @Query("status") String status,
             @Query("payMethod") String payMethod,
-            @Query("amountMin") Double amountMin,
-            @Query("amountMax") Double amountMax,
+            @Query("amountMin") Long amountMin,
+            @Query("amountMax") Long amountMax,
             @Query("paidTimeStart") String paidTimeStart,
             @Query("paidTimeEnd") String paidTimeEnd);
 

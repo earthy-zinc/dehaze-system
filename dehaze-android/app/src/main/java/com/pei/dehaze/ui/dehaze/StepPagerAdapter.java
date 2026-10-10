@@ -3,7 +3,6 @@ package com.pei.dehaze.ui.dehaze;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
@@ -12,12 +11,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.ui.common.adapter.ModelSelectAdapter;
 
 public class StepPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -37,8 +37,8 @@ public class StepPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
                 view = inflater.inflate(R.layout.step_upload, parent, false);
                 return new UploadViewHolder(view);
             case 1:
-                view = inflater.inflate(R.layout.step_algorithm, parent, false);
-                return new AlgorithmViewHolder(view);
+                view = inflater.inflate(R.layout.step_model, parent, false);
+                return new ModelViewHolder(view);
             case 2:
                 view = inflater.inflate(R.layout.step_params, parent, false);
                 return new ParamsViewHolder(view);
@@ -69,16 +69,27 @@ public class StepPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
                     vh.tvStatus.setText("已上传");
                 }
             });
-        } else if (holder instanceof AlgorithmViewHolder) {
-            AlgorithmViewHolder vh = (AlgorithmViewHolder) holder;
-            vm.getSelectedAlgorithmName().observe(fragment.getViewLifecycleOwner(), name -> {
+        } else if (holder instanceof ModelViewHolder) {
+            ModelViewHolder vh = (ModelViewHolder) holder;
+            ModelSelectAdapter modelAdapter = new ModelSelectAdapter(vm::setSelectedModel);
+            vh.rvModels.setLayoutManager(new LinearLayoutManager(vh.itemView.getContext()));
+            vh.rvModels.setAdapter(modelAdapter);
+
+            vm.getModels().observe(fragment.getViewLifecycleOwner(), models -> {
+                boolean empty = models == null || models.isEmpty();
+                vh.tvModelEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+                modelAdapter.submitList(models);
+            });
+            vm.getLoading().observe(fragment.getViewLifecycleOwner(), loading -> {
+                vh.tvModelEmpty.setText(Boolean.TRUE.equals(loading) ? "正在加载可用模型..." : "暂无可用模型");
+            });
+            vm.getSelectedModelId().observe(fragment.getViewLifecycleOwner(),
+                    modelAdapter::setSelectedModelId);
+            vm.getSelectedModelName().observe(fragment.getViewLifecycleOwner(), name -> {
                 if (name != null) {
-                    vh.tvSelectedAlgo.setText("已选择：" + name);
-                    vh.btnSelectAlgo.setText("重新选择");
+                    vh.tvSelectedModel.setText("已选择：" + name);
                 }
             });
-            // 绑定算法选择按钮
-            vh.btnSelectAlgo.setOnClickListener(v -> fragment.launchAlgorithmSelect());
         } else if (holder instanceof ParamsViewHolder) {
             ParamsViewHolder vh = (ParamsViewHolder) holder;
             // 初始化滑块值
@@ -170,14 +181,16 @@ public class StepPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHold
         }
     }
 
-    static class AlgorithmViewHolder extends RecyclerView.ViewHolder {
-        final TextView tvSelectedAlgo;
-        final Button btnSelectAlgo;
+    static class ModelViewHolder extends RecyclerView.ViewHolder {
+        final TextView tvSelectedModel;
+        final TextView tvModelEmpty;
+        final RecyclerView rvModels;
 
-        AlgorithmViewHolder(View itemView) {
+        ModelViewHolder(View itemView) {
             super(itemView);
-            tvSelectedAlgo = itemView.findViewById(R.id.tvSelectedAlgo);
-            btnSelectAlgo = itemView.findViewById(R.id.btnSelectAlgo);
+            tvSelectedModel = itemView.findViewById(R.id.tvSelectedModel);
+            tvModelEmpty = itemView.findViewById(R.id.tvModelEmpty);
+            rvModels = itemView.findViewById(R.id.rvModels);
         }
     }
 

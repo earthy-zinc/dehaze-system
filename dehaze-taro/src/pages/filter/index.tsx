@@ -332,7 +332,9 @@ const FilterPage: React.FC = () => {
     }
     setReportLoading(true);
     try {
-      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const res = await ModelAPI.generateReport({
+        logId: result?.taskId ?? 0,
+      });
       const taskId = res.taskId;
       if (!taskId) throw new Error("未返回任务ID");
       while (true) {
@@ -390,7 +392,7 @@ const FilterPage: React.FC = () => {
         <CompareToolbar
           currentMode="filter"
           resultUrl={result?.resultUrl}
-          resultId={result?.logId}
+          resultId={result?.taskId}
         />
       }
     >

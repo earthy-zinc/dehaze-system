@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 public class OrderPageVO extends MyOrderVO {
     private Long userId;
     private String username;
-    private Double originalPrice;
-    private Double discountAmount;
-    private Double couponAmount;
+    private Long originalPrice;
+    private Long discountAmount;
+    private Long couponAmount;
 }

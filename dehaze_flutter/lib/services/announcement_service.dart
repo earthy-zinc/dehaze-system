@@ -4,12 +4,11 @@ import '../core/constants/api_constants.dart';
 import '../core/network/page_result.dart';
 import '../models/announcement_model.dart';
 
+/// 公告管理服务（对齐后端 /announcements 端点）
 class AnnouncementService {
   const AnnouncementService(this._dio);
 
   final Dio _dio;
-
-  // ==================== 管理端 ====================
 
   /// 分页查询公告
   Future<PageResult<AnnouncementVO>> getPage(AnnouncementQuery query) async {
@@ -60,30 +59,17 @@ class AnnouncementService {
   /// 发送公告
   Future<AnnouncementSendResult> send(int id) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.announcements}/$id/send',
+      '${ApiConstants.announcements}/$id/_send',
     );
     return AnnouncementSendResult.fromJson(
       response.data!['data'] as Map<String, dynamic>,
     );
   }
 
-  // ==================== 用户端 ====================
-
-  /// 获取当前生效的公告列表
-  Future<List<AnnouncementVO>> getActiveAnnouncements() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      ApiConstants.announcements,
-    );
-    final data = response.data!['data'] as List<dynamic>;
-    return data
-        .map((e) => AnnouncementVO.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// 标记公告已读
-  Future<void> markAsRead(int id) async {
-    await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.announcements}/$id/read',
+  /// 取消公告
+  Future<void> cancel(int id) async {
+    await _dio.patch<Map<String, dynamic>>(
+      '${ApiConstants.announcements}/$id/_cancel',
     );
   }
 }

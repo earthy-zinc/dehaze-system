@@ -1,7 +1,4 @@
-import {
-  PackageAPI,
-  type PackageForm,
-} from "dehaze-sdk-js";
+import { PackageAPI, type PackageForm } from "dehaze-sdk-js";
 import {
   Divider,
   Form,
@@ -170,9 +167,7 @@ const PackageFormDialog = forwardRef<
       onSuccess?.();
     } catch (error: unknown) {
       if (error && typeof error === "object" && "errorFields" in error) return;
-      message.error(
-        error instanceof Error ? error.message : "操作失败"
-      );
+      message.error(error instanceof Error ? error.message : "操作失败");
     } finally {
       setConfirmLoading(false);
     }
@@ -339,10 +334,7 @@ const PackageFormDialog = forwardRef<
             >
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item
-              name={["benefitOverrides", "priority"]}
-              label="优先级"
-            >
+            <Form.Item name={["benefitOverrides", "priority"]} label="优先级">
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
             <Form.Item
@@ -351,10 +343,7 @@ const PackageFormDialog = forwardRef<
             >
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
-            <Form.Item
-              name={["benefitOverrides", "hdExport"]}
-              label="高清导出"
-            >
+            <Form.Item name={["benefitOverrides", "hdExport"]} label="高清导出">
               <InputNumber min={0} style={{ width: "100%" }} />
             </Form.Item>
             <Form.Item

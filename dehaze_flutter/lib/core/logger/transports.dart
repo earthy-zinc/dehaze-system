@@ -147,26 +147,28 @@ class FileTransport extends LogTransport {
         final level = json['level'] == 'ERROR'
             ? LogLevel.error
             : json['level'] == 'WARN'
-                ? LogLevel.warn
-                : LogLevel.info;
-        entries.add(LogEntry(
-          timestamp: json['timestamp']?.toString() ?? '',
-          level: level,
-          message: json['message']?.toString() ?? '',
-          app: json['app']?.toString() ?? '',
-          appVersion: json['app_version']?.toString() ?? '',
-          url: json['url']?.toString(),
-          userAgent: json['user_agent']?.toString(),
-          traceId: json['trace_id']?.toString(),
-          errorType: json['error_type']?.toString(),
-          errorSource: json['error_source']?.toString(),
-          errorStack: json['error_stack']?.toString(),
-          method: json['method']?.toString(),
-          path: json['path']?.toString(),
-          status: json['status'] as int?,
-          duration: (json['duration'] as num?)?.toDouble(),
-          code: json['code']?.toString(),
-        ));
+            ? LogLevel.warn
+            : LogLevel.info;
+        entries.add(
+          LogEntry(
+            timestamp: json['timestamp']?.toString() ?? '',
+            level: level,
+            message: json['message']?.toString() ?? '',
+            app: json['app']?.toString() ?? '',
+            appVersion: json['app_version']?.toString() ?? '',
+            url: json['url']?.toString(),
+            userAgent: json['user_agent']?.toString(),
+            traceId: json['trace_id']?.toString(),
+            errorType: json['error_type']?.toString(),
+            errorSource: json['error_source']?.toString(),
+            errorStack: json['error_stack']?.toString(),
+            method: json['method']?.toString(),
+            path: json['path']?.toString(),
+            status: json['status'] as int?,
+            duration: (json['duration'] as num?)?.toDouble(),
+            code: json['code']?.toString(),
+          ),
+        );
       } catch (_) {
         // 单行解析失败跳过
       }
@@ -192,17 +194,19 @@ class RemoteTransport implements LogTransport {
   @override
   Future<void> send(List<LogEntry> logs) async {
     if (logs.isEmpty) return;
-    final dio = _dio ?? Dio(BaseOptions(
-      baseUrl: ApiConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-    ));
+    final dio =
+        _dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: ApiConfig.apiBaseUrl,
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 15),
+          ),
+        );
     final batch = logs.take(_maxBatch).toList();
     await dio.post<Map<String, dynamic>>(
       _endpoint,
-      data: {
-        'logs': batch.map((e) => e.toJson()).toList(),
-      },
+      data: {'logs': batch.map((e) => e.toJson()).toList()},
       options: Options(
         headers: {'Content-Type': 'application/json;charset=utf-8'},
       ),

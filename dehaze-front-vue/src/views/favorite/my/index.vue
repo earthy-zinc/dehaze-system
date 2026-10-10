@@ -10,7 +10,7 @@
             @change="handleTabChange"
           >
             <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="algorithm">算法</el-radio-button>
+            <el-radio-button label="model">模型</el-radio-button>
             <el-radio-button label="result">处理结果</el-radio-button>
             <el-radio-button label="dataset">数据集</el-radio-button>
             <el-radio-button label="image">图片</el-radio-button>
@@ -148,7 +148,7 @@ const targetTypeOptions: {
   value: FavoriteTargetType;
   tag: TagType;
 }[] = [
-  { label: "算法", value: "algorithm", tag: "primary" },
+  { label: "模型", value: "model", tag: "primary" },
   { label: "处理结果", value: "result", tag: "success" },
   { label: "数据集", value: "dataset", tag: "warning" },
   { label: "图片", value: "image", tag: "danger" },
@@ -194,7 +194,8 @@ function handleQuery() {
 function handleCardClick(item: FavoriteVO) {
   if (item.isInvalid) return;
   const routeMap: Record<FavoriteTargetType, string> = {
-    algorithm: "/algorithm/detail",
+    // 模型无独立详情页，跳模型管理列表
+    model: "/admin/ai-models/models",
     result: "/compare/result",
     dataset: "/dataset/detail",
     image: "/image-detail",

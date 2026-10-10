@@ -42,10 +42,12 @@
           placeholder="如 纯文本 / 图片URL"
         />
       </el-form-item>
-      <el-form-item label="可用工具">
+      <el-form-item label="期望工具调用">
         <el-input
           v-model="form.tools"
-          placeholder="逗号分隔，如 file_read,web_search"
+          type="textarea"
+          :rows="3"
+          placeholder='JSON 数组，如 [{"name":"dehaze_image","args":{"modelId":"Qwen/Qwen3-8B"}},{"name":"get_task_status"}]；留空表示不校验工具过程。args 为期望参数子集'
         />
       </el-form-item>
       <el-form-item label="期望结果">
@@ -94,7 +96,11 @@
 </template>
 
 <script lang="ts" setup>
-import type { EvalRiskLevel, EvalSampleResult } from "dehaze-sdk-js";
+import type {
+  EvalRiskLevel,
+  EvalSampleResult,
+  EvalToolCall,
+} from "dehaze-sdk-js";
 import { useAdminAgentStore } from "@/store/modules/adminAgent";
 import { RISK_LEVEL_OPTIONS } from "../eval-meta";
 
@@ -152,7 +158,9 @@ watch(
         datasetId: props.sample.datasetId,
         taskGoal: props.sample.taskGoal,
         allowedInput: props.sample.allowedInput ?? "",
-        tools: (props.sample.tools ?? []).join(","),
+        tools: props.sample.tools?.length
+          ? JSON.stringify(props.sample.tools)
+          : "",
         expectedResult: props.sample.expectedResult ?? "",
         expectedProcess: props.sample.expectedProcess ?? "",
         forbiddenBehavior: props.sample.forbiddenBehavior ?? "",
@@ -165,12 +173,25 @@ watch(
 );
 
 async function handleSubmit() {
-  await formRef.value.validate();
+  try {
+    await formRef.value.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   const datasetId = (props.datasetId ?? form.datasetId)!;
-  const tools = form.tools
-    .split(/[,，]/)
-    .map((tool) => tool.trim())
-    .filter(Boolean);
+  let tools: EvalToolCall[] | null = null;
+  const rawTools = form.tools.trim();
+  if (rawTools) {
+    try {
+      const parsed = JSON.parse(rawTools);
+      if (!Array.isArray(parsed)) throw new Error("tools 不是数组");
+      tools = parsed as EvalToolCall[];
+    } catch {
+      ElMessage.error("期望工具调用需为 JSON 数组");
+      return;
+    }
+  }
 
   submitting.value = true;
   try {

@@ -1,15 +1,15 @@
 package com.pei.dehaze.repository;
 
-import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.AiImageAPI;
+import com.pei.dehaze.sdk.api.AiModelAPI;
 import com.pei.dehaze.sdk.api.DatasetAPI;
-import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.sdk.api.TaskAPI;
 import com.pei.dehaze.sdk.model.PageResult;
-import com.pei.dehaze.sdk.model.algorithm.Algorithm;
-import com.pei.dehaze.sdk.model.algorithm.AlgorithmQuery;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
-import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskQuery;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskVO;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskVO;
@@ -28,31 +28,31 @@ public class DashboardRepository {
 
     public static class StatsData {
         private final long datasetCount;
-        private final long algorithmCount;
+        private final long modelCount;
         private final long taskCount;
-        private final long historyCount;
+        private final long imageTaskCount;
 
-        public StatsData(long datasetCount, long algorithmCount, long taskCount, long historyCount) {
+        public StatsData(long datasetCount, long modelCount, long taskCount, long imageTaskCount) {
             this.datasetCount = datasetCount;
-            this.algorithmCount = algorithmCount;
+            this.modelCount = modelCount;
             this.taskCount = taskCount;
-            this.historyCount = historyCount;
+            this.imageTaskCount = imageTaskCount;
         }
 
         public long getDatasetCount() {
             return datasetCount;
         }
 
-        public long getAlgorithmCount() {
-            return algorithmCount;
+        public long getModelCount() {
+            return modelCount;
         }
 
         public long getTaskCount() {
             return taskCount;
         }
 
-        public long getHistoryCount() {
-            return historyCount;
+        public long getImageTaskCount() {
+            return imageTaskCount;
         }
     }
 
@@ -89,19 +89,20 @@ public class DashboardRepository {
             }
         }));
 
-        AlgorithmAPI.getList(new AlgorithmQuery(), RepositoryAdapters.wrap(new RepositoryCallback<List<Algorithm>>() {
-            @Override
-            public void onSuccess(List<Algorithm> data) {
-                counts[1] = countAlgorithms(data);
-                onComplete.run();
-            }
+        AiModelAPI.listEnabledModels("image_edit", null,
+                RepositoryAdapters.wrap(new RepositoryCallback<List<AiModelVO>>() {
+                    @Override
+                    public void onSuccess(List<AiModelVO> data) {
+                        counts[1] = data == null ? 0 : data.size();
+                        onComplete.run();
+                    }
 
-            @Override
-            public void onError(String errorMessage) {
-                firstError.compareAndSet(null, errorMessage);
-                onComplete.run();
-            }
-        }));
+                    @Override
+                    public void onError(String errorMessage) {
+                        firstError.compareAndSet(null, errorMessage);
+                        onComplete.run();
+                    }
+                }));
 
         TaskQuery taskQuery = new TaskQuery();
         taskQuery.setPageNum(1);
@@ -120,29 +121,23 @@ public class DashboardRepository {
             }
         }));
 
-        ModelAPI.listPredictionLogs(null, 1, 1, RepositoryAdapters.wrap(new RepositoryCallback<PageResult<PredictionLogVO>>() {
-            @Override
-            public void onSuccess(PageResult<PredictionLogVO> data) {
-                counts[3] = data.getTotal();
-                onComplete.run();
-            }
+        ImageTaskQuery imageTaskQuery = new ImageTaskQuery();
+        imageTaskQuery.setPageNum(1);
+        imageTaskQuery.setPageSize(1);
+        AiImageAPI.listImageTasks(imageTaskQuery,
+                RepositoryAdapters.wrap(new RepositoryCallback<PageResult<ImageTaskVO>>() {
+                    @Override
+                    public void onSuccess(PageResult<ImageTaskVO> data) {
+                        counts[3] = data.getTotal();
+                        onComplete.run();
+                    }
 
-            @Override
-            public void onError(String errorMessage) {
-                firstError.compareAndSet(null, errorMessage);
-                onComplete.run();
-            }
-        }));
-    }
-
-    /**
-     * 递归统计算法树中所有节点数量（含子节点）
-     */
-    private long countAlgorithms(List<Algorithm> tree) {
-        if (tree == null) return 0;
-        return tree.stream().mapToLong(a ->
-                (a.getChildren() != null ? countAlgorithms(a.getChildren()) : 0) + 1
-        ).sum();
+                    @Override
+                    public void onError(String errorMessage) {
+                        firstError.compareAndSet(null, errorMessage);
+                        onComplete.run();
+                    }
+                }));
     }
 
     /**

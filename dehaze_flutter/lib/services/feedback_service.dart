@@ -33,10 +33,7 @@ class FeedbackService {
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.feedbackRatingsMy,
-      queryParameters: {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-      },
+      queryParameters: {'pageNum': pageNum, 'pageSize': pageSize},
     );
     final data = response.data!['data'] as Map<String, dynamic>;
     final list = (data['list'] as List<dynamic>? ?? [])
@@ -74,12 +71,12 @@ class FeedbackService {
     );
   }
 
-  /// 按预测日志查询评分
+  /// 按图像任务查询评分
   ///
-  /// GET /api/v1/feedback/ratings/by-prediction/{predictionLogId}
-  Future<MyRatingVO?> getRatingByPrediction(int predictionLogId) async {
+  /// GET /api/v1/feedback/ratings/by-prediction/{taskId}
+  Future<MyRatingVO?> getRatingByTask(int taskId) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.feedbackRatingsByPrediction}/$predictionLogId',
+      '${ApiConstants.feedbackRatingsByPrediction}/$taskId',
     );
     final data = response.data!['data'];
     if (data == null) return null;
@@ -88,10 +85,10 @@ class FeedbackService {
 
   /// 获取评分统计
   ///
-  /// GET /api/v1/feedback/ratings/stats/{algorithmId}
-  Future<RatingStatsVO> getRatingStats(int algorithmId) async {
+  /// GET /api/v1/feedback/ratings/stats
+  Future<RatingStatsVO> getRatingStats() async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.feedbackRatingsStats}/$algorithmId',
+      ApiConstants.feedbackRatingsStats,
     );
     return RatingStatsVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
@@ -119,15 +116,10 @@ class FeedbackService {
   Future<PageResult<FeedbackPageVO>> getMyFeedbacks({
     int pageNum = 1,
     int pageSize = 10,
-    FeedbackType? type,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.feedbackMy,
-      queryParameters: {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (type != null) 'type': type.value,
-      },
+      queryParameters: {'pageNum': pageNum, 'pageSize': pageSize},
     );
     final data = response.data!['data'] as Map<String, dynamic>;
     final list = (data['list'] as List<dynamic>? ?? [])
@@ -151,10 +143,10 @@ class FeedbackService {
 
   /// 补充反馈
   ///
-  /// POST /api/v1/feedback/supplement
-  Future<void> supplementFeedback(FeedbackSupplementForm data) async {
+  /// POST /api/v1/feedback/{id}/supplement
+  Future<void> supplementFeedback(int id, FeedbackSupplementForm data) async {
     await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.feedback}/supplement',
+      '${ApiConstants.feedback}/$id/supplement',
       data: data.toJson(),
     );
   }
@@ -162,7 +154,9 @@ class FeedbackService {
   /// 获取反馈分页列表（后台）
   ///
   /// GET /api/v1/feedback/page
-  Future<PageResult<FeedbackPageVO>> getFeedbackPage(FeedbackQuery query) async {
+  Future<PageResult<FeedbackPageVO>> getFeedbackPage(
+    FeedbackQuery query,
+  ) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.feedbackPage,
       queryParameters: query.toQuery(),
@@ -189,30 +183,30 @@ class FeedbackService {
 
   /// 回复反馈
   ///
-  /// POST /api/v1/feedback/reply
-  Future<void> replyFeedback(FeedbackReplyForm data) async {
+  /// POST /api/v1/feedback/{id}/reply
+  Future<void> replyFeedback(int id, FeedbackReplyForm data) async {
     await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.feedback}/reply',
+      '${ApiConstants.feedback}/$id/reply',
       data: data.toJson(),
     );
   }
 
   /// 分配反馈
   ///
-  /// PUT /api/v1/feedback/assign
-  Future<void> assignFeedback(FeedbackAssignForm data) async {
+  /// PUT /api/v1/feedback/{id}/assign
+  Future<void> assignFeedback(int id, FeedbackAssignForm data) async {
     await _dio.put<Map<String, dynamic>>(
-      '${ApiConstants.feedback}/assign',
+      '${ApiConstants.feedback}/$id/assign',
       data: data.toJson(),
     );
   }
 
   /// 关闭反馈
   ///
-  /// PUT /api/v1/feedback/close
-  Future<void> closeFeedback(FeedbackCloseForm data) async {
+  /// PUT /api/v1/feedback/{id}/close
+  Future<void> closeFeedback(int id, FeedbackCloseForm data) async {
     await _dio.put<Map<String, dynamic>>(
-      '${ApiConstants.feedback}/close',
+      '${ApiConstants.feedback}/$id/close',
       data: data.toJson(),
     );
   }

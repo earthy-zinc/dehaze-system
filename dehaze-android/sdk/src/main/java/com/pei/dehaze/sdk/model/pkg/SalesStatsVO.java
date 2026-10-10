@@ -8,7 +8,7 @@ import java.util.Map;
 @Data
 public class SalesStatsVO {
     private Integer totalSales;
-    private Double totalRevenue;
+    private Long totalRevenue;
     private List<StatItem> packageStats;
     private List<StatItem> levelStats;
     private List<StatItem> periodStats;
@@ -24,7 +24,7 @@ public class SalesStatsVO {
         private String periodName;
         private Integer salesCount;
         private Integer count;
-        private Double revenue;
+        private Long revenue;
     }
 
     @Data

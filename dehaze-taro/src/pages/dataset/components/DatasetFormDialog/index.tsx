@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, Input, Textarea } from "@tarojs/components";
 import { Popup, Button, Switch, Cell } from "@taroify/core";
 import { Arrow } from "@taroify/icons";
-import type { Dataset, OptionType } from "dehaze-sdk-js";
+import type { DatasetVO, OptionType } from "dehaze-sdk-js";
 import "./index.less";
 
 export interface DatasetFormData {
   parentId: number;
-  type?: string;
-  name?: string;
+  type: string;
+  name: string;
   description?: string;
   status?: string;
 }
@@ -16,7 +16,7 @@ export interface DatasetFormData {
 interface DatasetFormDialogProps {
   visible: boolean;
   mode: "create" | "edit";
-  dataset?: Dataset | null;
+  dataset?: DatasetVO | null;
   options: OptionType[];
   defaultParentId?: number;
   onSubmit: (data: DatasetFormData) => Promise<boolean>;

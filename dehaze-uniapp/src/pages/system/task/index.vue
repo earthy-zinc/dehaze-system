@@ -85,8 +85,6 @@ const taskTypeLabel = (type?: string) => {
     menu_import: "菜单导入",
     dict_export: "字典导出",
     dict_import: "字典导入",
-    algorithm_export: "算法导出",
-    algorithm_import: "算法导入",
   };
   return map[type || ""] || type || "未知类型";
 };

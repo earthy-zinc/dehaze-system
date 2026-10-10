@@ -22,15 +22,13 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityPresentationBinding;
-import com.pei.dehaze.sdk.model.Option;
-import com.pei.dehaze.sdk.model.algorithm.Algorithm;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
-import com.pei.dehaze.ui.common.adapter.PredictionLogAdapter;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
+import com.pei.dehaze.ui.common.adapter.ImageTaskAdapter;
 import com.pei.dehaze.ui.presentation.viewmodel.PresentationViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
-import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
 import com.pei.dehaze.utils.ViewUtils;
@@ -48,9 +46,8 @@ public class PresentationActivity extends BaseActivity {
     private ActivityPresentationBinding binding;
     private StatePlaceholder statePlaceholder;
 
-    private final List<Option> algorithmOptions = new ArrayList<>();
-    private long presetAlgorithmId = 0L;
-    private PredictionLogAdapter historyAdapter;
+    private final List<AiModelVO> modelOptions = new ArrayList<>();
+    private ImageTaskAdapter historyAdapter;
     private ResultPagerAdapter pagerAdapter;
 
     private final ActivityResultLauncher<String> pickImageLauncher =
@@ -64,7 +61,6 @@ public class PresentationActivity extends BaseActivity {
         binding = ActivityPresentationBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        presetAlgorithmId = getIntent().getLongExtra("algorithm_id", 0L);
         initViews();
         initViewModel();
         setupObservers();
@@ -103,15 +99,15 @@ public class PresentationActivity extends BaseActivity {
         statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
         statePlaceholder.showEmpty("请上传图片并点击\"开始去雾处理\"", R.drawable.ic_image);
 
-        historyAdapter = new PredictionLogAdapter();
+        historyAdapter = new ImageTaskAdapter();
         binding.rvHistory.setLayoutManager(new LinearLayoutManager(this));
         binding.rvHistory.setAdapter(historyAdapter);
     }
 
     private void onPredictClick() {
-        Long algorithmId = getCurrentAlgorithmId();
-        if (algorithmId == null) {
-            ToastUtils.showShort(this, "请先选择算法");
+        String modelId = getCurrentModelId();
+        if (modelId == null) {
+            ToastUtils.showShort(this, "请先选择模型");
             return;
         }
         int strength = binding.seekBarStrength.getProgress();
@@ -120,16 +116,22 @@ public class PresentationActivity extends BaseActivity {
                 .setTitle("确认处理")
                 .setMessage("确认开始去雾处理？")
                 .setPositiveButton("确定", (d, w) ->
-                        presentationViewModel.predict(algorithmId, params))
+                        presentationViewModel.predict(modelId, params))
                 .setNegativeButton("取消", null)
                 .show();
     }
 
-    private Long getCurrentAlgorithmId() {
-        int pos = binding.spinnerAlgorithm.getSelectedItemPosition();
-        if (pos < 0 || pos >= algorithmOptions.size()) return null;
-        Option option = algorithmOptions.get(pos);
-        return option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
+    private String getCurrentModelId() {
+        int pos = binding.spinnerModel.getSelectedItemPosition();
+        if (pos < 0 || pos >= modelOptions.size()) return null;
+        return modelOptions.get(pos).getModelId();
+    }
+
+    private String getCurrentModelName() {
+        int pos = binding.spinnerModel.getSelectedItemPosition();
+        if (pos < 0 || pos >= modelOptions.size()) return null;
+        AiModelVO model = modelOptions.get(pos);
+        return model.getDisplayName() != null ? model.getDisplayName() : model.getModelId();
     }
 
     private void initViewModel() {
@@ -138,8 +140,7 @@ public class PresentationActivity extends BaseActivity {
 
     private void setupObservers() {
         presentationViewModel.getUploadedFile().observe(this, this::showOriginalImage);
-        presentationViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
-        presentationViewModel.getAlgorithmDetail().observe(this, this::showAlgorithmInfo);
+        presentationViewModel.getModels().observe(this, this::updateModelSpinner);
         presentationViewModel.getPredictionResult().observe(this, this::onPredictionResult);
         presentationViewModel.getHistoryList().observe(this, logs -> {
             historyAdapter.submitList(logs);
@@ -178,44 +179,26 @@ public class PresentationActivity extends BaseActivity {
         statePlaceholder.hide();
     }
 
-    private void updateAlgorithmSpinner(List<Option> options) {
-        algorithmOptions.clear();
-        if (options != null) {
-            algorithmOptions.addAll(options);
+    private void updateModelSpinner(List<AiModelVO> models) {
+        modelOptions.clear();
+        if (models != null) {
+            modelOptions.addAll(models);
         }
-        ViewUtils.updateAlgorithmSpinner(binding.spinnerAlgorithm, algorithmOptions);
+        ViewUtils.updateModelSpinner(binding.spinnerModel, modelOptions);
     }
 
-    private void showAlgorithmInfo(Algorithm algorithm) {
-        if (algorithm == null) return;
-        StringBuilder sb = new StringBuilder();
-        sb.append("算法：").append(algorithm.getName() == null ? "-" : algorithm.getName());
-        if (algorithm.getDescription() != null && !algorithm.getDescription().isEmpty()) {
-            sb.append("（").append(algorithm.getDescription()).append("）");
-        }
-        if (algorithm.getFlops() != null && !algorithm.getFlops().isEmpty()) {
-            sb.append("\nFLOPs：").append(algorithm.getFlops());
-        }
-        if (algorithm.getSize() != null && !algorithm.getSize().isEmpty()) {
-            sb.append("\n模型大小：").append(algorithm.getSize());
-        }
-        binding.tvAlgorithmInfo.setText(sb.toString());
-    }
-
-    private void onPredictionResult(PredResult result) {
+    private void onPredictionResult(ImageTaskResponse result) {
         if (result == null) return;
         statePlaceholder.hide();
         pagerAdapter.setResultUrl(result.getResultUrl());
-        Long algorithmId = getCurrentAlgorithmId();
-        if (algorithmId != null) {
-            presentationViewModel.getAlgorithmDetail(algorithmId);
-        }
-        String info = "耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms");
-        binding.tvAlgorithmInfo.setText(info);
+        String modelName = getCurrentModelName();
+        String info = (modelName == null ? "" : "模型：" + modelName + "\n")
+                + "耗时：" + (result.getTime() == null ? "-" : result.getTime() + "s");
+        binding.tvModelInfo.setText(info);
     }
 
     private void loadData() {
-        presentationViewModel.loadAlgorithmOptions();
+        presentationViewModel.loadModels();
         presentationViewModel.loadHistory();
     }
 

@@ -101,14 +101,6 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
                   </Text>
                 </View>
               )}
-              {imageData.sampleInfo.recommendAlgorithm && (
-                <View className="sample-row">
-                  <Text className="sample-label">推荐算法</Text>
-                  <Text className="sample-value recommend">
-                    {imageData.sampleInfo.recommendAlgorithm}
-                  </Text>
-                </View>
-              )}
             </View>
           )}
         </View>
@@ -127,7 +119,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
             color="primary"
             onClick={onConfirm}
           >
-            下一步：选择算法
+            下一步：去雾处理
           </Button>
         </View>
       </View>

@@ -204,10 +204,7 @@ class DatasetItemCreateForm {
 
 @JsonSerializable()
 class DatasetItemUpdateForm {
-  const DatasetItemUpdateForm({
-    this.name,
-    this.sceneType,
-  });
+  const DatasetItemUpdateForm({this.name, this.sceneType});
 
   factory DatasetItemUpdateForm.fromJson(Map<String, dynamic> json) =>
       _$DatasetItemUpdateFormFromJson(json);
@@ -348,7 +345,6 @@ class ImageUrlVO {
     this.datasetItem,
     required this.type,
     required this.url,
-    this.originUrl,
     this.thumbnailUrl,
     this.description,
     this.width,
@@ -377,7 +373,6 @@ class ImageUrlVO {
   final DatasetItemSimpleVO? datasetItem;
   final String type;
   final String url;
-  final String? originUrl;
   final String? thumbnailUrl;
   final String? description;
   final int? width;
@@ -402,9 +397,7 @@ class ImageUrlVO {
 
 @JsonSerializable()
 class BatchDeleteForm {
-  const BatchDeleteForm({
-    required this.ids,
-  });
+  const BatchDeleteForm({required this.ids});
 
   factory BatchDeleteForm.fromJson(Map<String, dynamic> json) =>
       _$BatchDeleteFormFromJson(json);
@@ -416,10 +409,7 @@ class BatchDeleteForm {
 
 @JsonSerializable()
 class FailedItem {
-  const FailedItem({
-    this.id,
-    required this.reason,
-  });
+  const FailedItem({this.id, required this.reason});
 
   factory FailedItem.fromJson(Map<String, dynamic> json) =>
       _$FailedItemFromJson(json);
@@ -470,10 +460,7 @@ class BatchUploadSuccessItemVO {
 
 @JsonSerializable()
 class BatchUploadFailedItemVO {
-  const BatchUploadFailedItemVO({
-    required this.fileName,
-    required this.reason,
-  });
+  const BatchUploadFailedItemVO({required this.fileName, required this.reason});
 
   factory BatchUploadFailedItemVO.fromJson(Map<String, dynamic> json) =>
       _$BatchUploadFailedItemVOFromJson(json);
@@ -508,10 +495,7 @@ class BatchUploadResultVO {
 
 @JsonSerializable()
 class BatchActionFailureDetailVO {
-  const BatchActionFailureDetailVO({
-    this.identifier,
-    required this.reason,
-  });
+  const BatchActionFailureDetailVO({this.identifier, required this.reason});
 
   factory BatchActionFailureDetailVO.fromJson(Map<String, dynamic> json) =>
       _$BatchActionFailureDetailVOFromJson(json);

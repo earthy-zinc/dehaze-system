@@ -20,6 +20,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { theme } from '@/theme';
 import { AppHeader } from '@/layout';
+import { fenToYuan } from '@/utils/money';
 
 const PersonalPackageScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -55,10 +56,15 @@ const PersonalPackageScreen: React.FC = () => {
         text: '确认',
         onPress: async () => {
           try {
-            const result = await OrderAPI.create({ packageId: pkg.id, payMethod: 'balance' });
-            Alert.alert('下单成功', `订单号：${result.orderNo}\n请前往「我的订单」查看并完成支付`, [
-              { text: '确定' },
-            ]);
+            const result = await OrderAPI.create({
+              packageId: pkg.id,
+              payMethod: 'balance',
+            });
+            Alert.alert(
+              '下单成功',
+              `订单号：${result.orderNo}\n请前往「我的订单」查看并完成支付`,
+              [{ text: '确定' }],
+            );
           } catch {
             Alert.alert('下单失败', '创建订单失败，请稍后重试');
           }
@@ -81,12 +87,16 @@ const PersonalPackageScreen: React.FC = () => {
           <Text style={styles.pkgName}>{item.name}</Text>
           <Text style={styles.pkgLevel}>{item.levelName}</Text>
           {item.description ? (
-            <Text style={styles.pkgDesc} numberOfLines={2}>{item.description}</Text>
+            <Text style={styles.pkgDesc} numberOfLines={2}>
+              {item.description}
+            </Text>
           ) : null}
           <View style={styles.priceRow}>
-            <Text style={styles.price}>¥{item.salePrice?.toFixed(2) ?? '0.00'}</Text>
+            <Text style={styles.price}>¥{fenToYuan(item.salePrice)}</Text>
             {item.originalPrice > item.salePrice ? (
-              <Text style={styles.originalPrice}>¥{item.originalPrice.toFixed(2)}</Text>
+              <Text style={styles.originalPrice}>
+                ¥{fenToYuan(item.originalPrice)}
+              </Text>
             ) : null}
             {item.periodDays ? (
               <Text style={styles.duration}>/ {item.periodDays}天</Text>
@@ -108,14 +118,22 @@ const PersonalPackageScreen: React.FC = () => {
   const renderEmpty = () =>
     !loading ? (
       <View style={styles.empty}>
-        <Ionicons name="cube-outline" size={48} color={theme.colors.text.tertiary} />
+        <Ionicons
+          name="cube-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
         <Text style={styles.emptyText}>暂无可购套餐</Text>
       </View>
     ) : null;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="套餐购买" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="套餐购买"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <FlatList
         data={packages}
         renderItem={renderItem}
@@ -123,7 +141,12 @@ const PersonalPackageScreen: React.FC = () => {
         numColumns={1}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
         ListEmptyComponent={renderEmpty}
       />
@@ -210,7 +233,11 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   empty: { alignItems: 'center', paddingVertical: theme.spacing.xxxl },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
 });
 
 export default PersonalPackageScreen;

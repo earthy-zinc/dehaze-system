@@ -34,7 +34,9 @@ const SCROLL_OFFSET = 140;
 /** 滚动激活判断时相对视口顶部的偏移 */
 const ACTIVATE_OFFSET = 160;
 
-export function useSectionScroll(sections: readonly SectionDef[]): SectionScrollResult {
+export function useSectionScroll(
+  sections: readonly SectionDef[],
+): SectionScrollResult {
   const scrollRef = useRef<ScrollView>(null);
   const sectionLayouts = useRef<Record<string, number>>({});
   const [activeSection, setActiveSection] = useState(sections[0]?.key ?? '');

@@ -47,9 +47,9 @@ const quickEntries: QuickEntry[] = [
     target: "/pages/task/index",
   },
   {
-    label: "算法选择",
-    icon: <BarChartOutlined size="20" color="#3b82f6" />,
-    target: "/pages/algorithm-select/index",
+    label: "去雾处理",
+    icon: <Arrow size="20" color="#3b82f6" />,
+    target: "/pages/processing/index",
   },
 ];
 
@@ -58,11 +58,6 @@ const gridEntries: GridEntry[] = [
     label: "图像输入",
     icon: <PhotoOutlined size="24" color="#3b82f6" />,
     target: "/pages/image-input/index",
-  },
-  {
-    label: "算法库",
-    icon: <BarChartOutlined size="24" color="#3b82f6" />,
-    target: "/pages/algorithm/index",
   },
   {
     label: "数据集",
@@ -113,10 +108,7 @@ const ToolsPage: React.FC = () => {
       <View className="tools-page">
         {/* 全局搜索栏 */}
         <View className="tools-search">
-          <SearchBar
-            placeholder="搜索算法、功能、文档..."
-            onSearch={handleSearch}
-          />
+          <SearchBar placeholder="搜索功能..." onSearch={handleSearch} />
         </View>
 
         {/* 快捷入口横滑区 */}

@@ -89,7 +89,9 @@ class LogEntry {
       'app_version': appVersion,
     };
     if (url != null && url!.isNotEmpty) map['url'] = url;
-    if (userAgent != null && userAgent!.isNotEmpty) map['user_agent'] = userAgent;
+    if (userAgent != null && userAgent!.isNotEmpty) {
+      map['user_agent'] = userAgent;
+    }
     if (traceId != null && traceId!.isNotEmpty) map['trace_id'] = traceId;
     if (errorType != null) map['error_type'] = errorType;
     if (errorSource != null) map['error_source'] = errorSource;

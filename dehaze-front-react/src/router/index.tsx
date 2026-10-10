@@ -1,4 +1,3 @@
-import AlgorithmIcon from "@/assets/icons/algorithm.svg";
 import CompareIcon from "@/assets/icons/compare.svg";
 import DatasetIcon from "@/assets/icons/dataset.svg";
 import DictIcon from "@/assets/icons/dict.svg";
@@ -39,7 +38,6 @@ import { createBrowserRouter, Navigate, RouteObject } from "react-router-dom";
 import { RouteVO } from "dehaze-sdk-js";
 
 const iconMap: Record<string, React.ReactNode> = {
-  algorithm: <AlgorithmIcon />,
   announcement: <BellOutlined />,
   compare: <CompareIcon />,
   coupon: <GiftOutlined />,

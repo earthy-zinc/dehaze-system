@@ -47,7 +47,6 @@ const convertItemToSample = (item: DatasetItemVO): SampleImage | null => {
         : hazyImage?.hazeLevel === "medium"
           ? "中等"
           : "简单",
-    recommendAlgorithm: undefined,
   };
 };
 

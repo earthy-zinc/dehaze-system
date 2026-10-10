@@ -2,6 +2,7 @@
 import { h, inject, provide } from "vue";
 
 const RADIO_GROUP_KEY = Symbol("radioGroupSet");
+const DROPDOWN_KEY = Symbol("dropdownCommand");
 
 export const elStubs = {
   "el-button": {
@@ -61,6 +62,38 @@ export const elStubs = {
     emits: ["update:modelValue"],
     template:
       '<input class="el-input-stub" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+  },
+  "el-dropdown": {
+    props: ["trigger"],
+    emits: ["command"],
+    setup(_props: unknown, { slots, emit }: any) {
+      // 模拟 Element Plus：菜单项点击后向 el-dropdown 上抛 command
+      provide(DROPDOWN_KEY, (command: unknown) => emit("command", command));
+      return () =>
+        h("div", { class: "el-dropdown-stub" }, [
+          slots.default?.(),
+          h("div", { class: "el-dropdown-menu-stub" }, slots.dropdown?.()),
+        ]);
+    },
+  },
+  "el-dropdown-menu": {
+    template: '<div class="el-dropdown-menu-stub"><slot /></div>',
+  },
+  "el-dropdown-item": {
+    props: ["command", "divided"],
+    setup(props: { command?: unknown }, { slots }: any) {
+      const select = inject(DROPDOWN_KEY, null) as
+        ((command: unknown) => void) | null;
+      return () =>
+        h(
+          "button",
+          {
+            class: "el-dropdown-item-stub",
+            onClick: () => select?.(props.command),
+          },
+          slots.default?.()
+        );
+    },
   },
 };
 

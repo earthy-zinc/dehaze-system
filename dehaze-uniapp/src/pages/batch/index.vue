@@ -56,30 +56,30 @@
         </view>
       </view>
 
-      <!-- 算法选择 -->
+      <!-- 模型选择 -->
       <view class="section">
         <view class="section-header">
-          <text class="section-title">选择算法</text>
+          <text class="section-title">选择模型</text>
         </view>
 
-        <view v-if="algoLoading" class="algo-loading">
+        <view v-if="modelLoading" class="model-loading">
           <view class="loading-spinner" />
-          <text class="algo-loading-text">加载算法中...</text>
+          <text class="model-loading-text">加载模型中...</text>
         </view>
 
-        <view v-else class="algo-list">
+        <view v-else class="model-list">
           <view
-            v-for="algo in availableAlgos"
-            :key="algo.id"
-            class="algo-card"
-            :class="{ selected: selectedAlgoId === algo.id }"
-            @click="selectedAlgoId = algo.id"
+            v-for="model in availableModels"
+            :key="model.modelId"
+            class="model-card"
+            :class="{ selected: selectedModelId === model.modelId }"
+            @click="handleSelectModel(model)"
           >
-            <text class="algo-name">{{ algo.name }}</text>
-            <text v-if="algo.description" class="algo-desc">{{
-              algo.description
-            }}</text>
-            <view v-if="selectedAlgoId === algo.id" class="algo-check">✓</view>
+            <text class="model-name">{{ model.displayName }}</text>
+            <text class="model-desc">{{ model.modelId }}</text>
+            <view v-if="selectedModelId === model.modelId" class="model-check">
+              ✓
+            </view>
           </view>
         </view>
       </view>
@@ -142,7 +142,7 @@
               <template v-if="img.status === 'completed'">
                 <text class="result-status success">处理完成</text>
                 <text v-if="img.time != null" class="result-time"
-                  >耗时 {{ img.time }}ms</text
+                  >耗时 {{ img.time }}s</text
                 >
                 <view class="result-actions">
                   <button
@@ -173,7 +173,7 @@
       <button
         class="process-btn"
         :loading="processing"
-        :disabled="images.length === 0 || !selectedAlgoId || processing"
+        :disabled="images.length === 0 || !selectedModelId || processing"
         @click="handleStartBatch"
       >
         {{ processing ? "处理中..." : "开始批量处理" }}
@@ -187,8 +187,7 @@ import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
-import { AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
+import type { ImageModelOption } from "@/store/processing";
 import { useProcessingStore } from "@/store/processing";
 
 // ==================== 类型 ====================
@@ -200,7 +199,6 @@ interface BatchItem {
   resultUrl?: string;
   errorMessage?: string;
   time?: number;
-  logId?: number;
 }
 
 // ==================== 常量 ====================
@@ -211,43 +209,37 @@ const MAX_IMAGES = 20;
 
 const store = useProcessingStore();
 const images = ref<BatchItem[]>([]);
-const algorithms = ref<Algorithm[]>([]);
-const algoLoading = ref(false);
-const selectedAlgoId = ref<number | null>(null);
+const models = computed(() => store.imageModels);
+const modelLoading = ref(false);
+const selectedModelId = computed(() => store.selectedModel?.modelId ?? "");
 const params = ref("");
 const processing = ref(false);
 
-/** 配额耗尽弹窗（去充值） */
-function showQuotaExhaustedModal({
-  used,
-  total,
-}: {
-  used: number;
-  total: number;
-}) {
-  uni.showModal({
-    title: "预测次数不足",
-    content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
-    confirmText: "去充值",
-    cancelText: "取消",
-    success: (r) => {
-      if (r.confirm) {
-        uni.navigateTo({ url: "/pages/personal/quota/index" });
-      }
-    },
-  });
+/** 加载图像编辑模型 */
+async function loadModels() {
+  modelLoading.value = true;
+  try {
+    await store.loadImageModels();
+  } catch {
+    uni.showToast({ title: "加载模型失败", icon: "none" });
+  } finally {
+    modelLoading.value = false;
+  }
+}
+
+/** 选择模型 */
+function handleSelectModel(model: ImageModelOption) {
+  store.setModel(model);
 }
 
 // ==================== 计算属性 ====================
 
 const subtitleText = computed(() => {
   if (processing.value) return "批量处理进行中...";
-  return "批量上传图片，选择算法一键处理";
+  return "批量上传图片，选择模型一键处理";
 });
 
-const availableAlgos = computed(() =>
-  algorithms.value.filter((a) => a.status === 4)
-);
+const availableModels = computed(() => store.imageModels);
 
 const completedCount = computed(
   () => images.value.filter((i) => i.status === "completed").length
@@ -299,10 +291,10 @@ function removeImage(id: string) {
   images.value = images.value.filter((img) => img.id !== id);
 }
 
-/** 开始批量处理：逐张调用 store.runPrediction，复用配额校验/重试/计时 */
+/** 开始批量处理：逐张调用 store.runImageTask，复用重试与计时 */
 async function handleStartBatch() {
-  if (!selectedAlgoId.value) {
-    uni.showToast({ title: "请先选择算法", icon: "none" });
+  if (!selectedModelId.value) {
+    uni.showToast({ title: "请先选择模型", icon: "none" });
     return;
   }
   if (images.value.length === 0) {
@@ -321,11 +313,9 @@ async function handleStartBatch() {
       item.id === img.id ? { ...item, status: "processing" as const } : item
     );
 
-    const res = await store.runPrediction({
-      algorithmId: selectedAlgoId.value,
+    const res = await store.runImageTask({
       imageUrl: img.localPath,
       params: params.value || undefined,
-      onQuotaExhausted: showQuotaExhaustedModal,
     });
 
     if (res.ok && res.result) {
@@ -346,7 +336,7 @@ async function handleStartBatch() {
           : item
       );
     } else {
-      // 配额耗尽或已取消，停止批量处理
+      // 已取消，停止批量处理
       images.value = images.value.map((item) =>
         item.id === img.id
           ? { ...item, status: "failed" as const, errorMessage: "已取消" }
@@ -361,16 +351,14 @@ async function handleStartBatch() {
 
 /** 重试单张图片 */
 async function handleRetryImage(img: BatchItem) {
-  if (!selectedAlgoId.value) return;
+  if (!selectedModelId.value) return;
   images.value = images.value.map((item) =>
     item.id === img.id ? { ...item, status: "processing" as const } : item
   );
 
-  const res = await store.runPrediction({
-    algorithmId: selectedAlgoId.value,
+  const res = await store.runImageTask({
     imageUrl: img.localPath,
     params: params.value || undefined,
-    onQuotaExhausted: showQuotaExhaustedModal,
   });
 
   if (res.ok && res.result) {
@@ -402,21 +390,8 @@ function handlePreview(url: string) {
   uni.previewImage({ urls: [url], current: url });
 }
 
-/** 加载算法 */
-async function loadAlgorithms() {
-  algoLoading.value = true;
-  try {
-    const data = await AlgorithmAPI.getList();
-    algorithms.value = data || [];
-  } catch {
-    uni.showToast({ title: "加载算法失败", icon: "none" });
-  } finally {
-    algoLoading.value = false;
-  }
-}
-
 onMounted(() => {
-  loadAlgorithms();
+  loadModels();
 });
 </script>
 
@@ -537,8 +512,8 @@ onMounted(() => {
   color: $color-primary;
 }
 
-/* 算法选择 */
-.algo-loading {
+/* 模型选择 */
+.model-loading {
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -546,7 +521,7 @@ onMounted(() => {
   justify-content: center;
 }
 
-.algo-loading-text {
+.model-loading-text {
   font-size: $font-sm;
   color: $color-text-placeholder;
 }
@@ -560,13 +535,13 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
-.algo-list {
+.model-list {
   display: flex;
   flex-direction: column;
   gap: 16rpx;
 }
 
-.algo-card {
+.model-card {
   display: flex;
   flex-direction: column;
   background: $color-bg-secondary;
@@ -585,14 +560,14 @@ onMounted(() => {
   }
 }
 
-.algo-name {
+.model-name {
   font-size: $font-md;
   font-weight: 600;
   color: $color-text-primary;
   margin-bottom: 8rpx;
 }
 
-.algo-desc {
+.model-desc {
   font-size: 24rpx;
   color: $color-text-secondary;
   line-height: 1.5;
@@ -602,7 +577,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.algo-check {
+.model-check {
   position: absolute;
   top: 16rpx;
   right: 16rpx;

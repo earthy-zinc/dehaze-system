@@ -1,22 +1,22 @@
 /**
  * 去雾处理服务
  *
- * 封装 dehaze-sdk-js 的 ModelAPI.predictAndWait：
- * - POST /prediction 立即返回 logId + status=processing
- * - 内部自动轮询 GET /prediction/{taskId} 直到 completed/failed
+ * 封装 dehaze-sdk-js 的 AiImageAPI.submitAndWait：
+ * - POST /images/edits 立即返回 taskId + status=processing
+ * - 内部自动轮询 GET /images/tasks/{taskId} 直到 completed/failed/canceled
  *
  * 不模拟进度百分比，仅推进真实状态与已用时间。
  */
-import { ModelAPI } from 'dehaze-sdk-js';
-import type { PredictionResultVO } from 'dehaze-sdk-js';
+import { AiImageAPI } from 'dehaze-sdk-js';
+import type { ImageTaskResponse } from 'dehaze-sdk-js';
 import type {
-  CommonAlgorithmParams,
+  ImageEditParams,
   ProcessingResult,
   TaskProgress,
 } from '@/types/processing';
 
 /** 默认参数（推荐配置） */
-export const DEFAULT_PARAMS: CommonAlgorithmParams = {
+export const DEFAULT_PARAMS: ImageEditParams = {
   strength: 50,
   saturation: 100,
   contrast: 100,
@@ -95,10 +95,10 @@ const POLL_INTERVAL = 1500;
 const MAX_POLL_DURATION = 5 * 60 * 1000;
 
 /** 将参数对象序列化为后端可识别的 JSON 字符串 */
-function serializeParams(params?: CommonAlgorithmParams): string | undefined {
+function serializeParams(params?: ImageEditParams): string | undefined {
   if (!params) return undefined;
   const filtered: Record<string, number> = {};
-  (Object.keys(params) as (keyof CommonAlgorithmParams)[]).forEach(k => {
+  (Object.keys(params) as (keyof ImageEditParams)[]).forEach(k => {
     const v = params[k];
     if (v !== undefined && v !== null) {
       filtered[k] = v;
@@ -107,20 +107,21 @@ function serializeParams(params?: CommonAlgorithmParams): string | undefined {
   return Object.keys(filtered).length ? JSON.stringify(filtered) : undefined;
 }
 
-function toProcessingResult(vo: PredictionResultVO): ProcessingResult {
+function toProcessingResult(vo: ImageTaskResponse): ProcessingResult {
   return {
-    logId: vo.logId,
+    taskId: vo.taskId,
     resultUrl: vo.resultUrl ?? '',
     resultThumbnailUrl: vo.resultThumbnailUrl ?? undefined,
     time: vo.time ?? 0,
-    fromCache: vo.fromCache,
+    estimatedCredits: vo.estimatedCredits,
   };
 }
 
 export interface PredictOptions {
-  algorithmId: number;
+  /** 图像模型标识（统一模型规范 slug） */
+  model: string;
   imageUrl: string;
-  params?: CommonAlgorithmParams;
+  params?: ImageEditParams;
   /** 进度回调（用于真实状态更新 + 轮询状态） */
   onProgress?: (progress: TaskProgress) => void;
   /** 取消信号 */
@@ -130,11 +131,13 @@ export interface PredictOptions {
 /**
  * 单张去雾处理
  *
- * 调用 SDK predictAndWait（POST + 自动轮询），失败时通过 status=failed 抛出错误。
+ * 调用 SDK submitAndWait（POST + 自动轮询），失败时通过 status=failed 抛出错误。
  * 取消信号触发时立即抛出错误。
  */
-export async function predictSingle(opts: PredictOptions): Promise<ProcessingResult> {
-  const { algorithmId, imageUrl, params, onProgress, cancelSignal } = opts;
+export async function predictSingle(
+  opts: PredictOptions,
+): Promise<ProcessingResult> {
+  const { model, imageUrl, params, onProgress, cancelSignal } = opts;
   const startTime = Date.now();
 
   const emit = (status: TaskProgress['status'], error?: string) => {
@@ -148,9 +151,9 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
   emit(1);
 
   try {
-    const result = await ModelAPI.predictAndWait(
+    const result = await AiImageAPI.submitAndWait(
       {
-        algorithmId,
+        model,
         imageUrl,
         params: serializeParams(params),
       },
@@ -171,6 +174,9 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
     if (result.status === 3) {
       throw new Error(result.errorMessage || '处理失败');
     }
+    if (result.status === 4) {
+      throw new Error('用户已取消处理');
+    }
 
     emit(2);
     return toProcessingResult(result);
@@ -179,4 +185,3 @@ export async function predictSingle(opts: PredictOptions): Promise<ProcessingRes
     throw err;
   }
 }
-

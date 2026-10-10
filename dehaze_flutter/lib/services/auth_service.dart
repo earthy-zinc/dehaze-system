@@ -13,11 +13,11 @@ class AuthService {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.authLogin,
       data: request.toJson(),
-      options: Options(
-        headers: {'Content-Type': 'application/json'},
-      ),
+      options: Options(headers: {'Content-Type': 'application/json'}),
     );
-    return LoginResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
+    return LoginResponse.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 
   Future<void> logout() async {
@@ -41,20 +41,22 @@ class AuthService {
         'captchaCode': captchaCode,
       },
     );
-    return LoginResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
+    return LoginResponse.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 
   Future<CaptchaResponse> getCaptcha() async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.authCaptcha,
     );
-    return CaptchaResponse.fromJson(response.data!['data'] as Map<String, dynamic>);
+    return CaptchaResponse.fromJson(
+      response.data!['data'] as Map<String, dynamic>,
+    );
   }
 
   Future<UserModel> getCurrentUser() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      ApiConstants.authMe,
-    );
+    final response = await _dio.get<Map<String, dynamic>>(ApiConstants.authMe);
     return UserModel.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 }

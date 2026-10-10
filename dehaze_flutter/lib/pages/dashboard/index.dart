@@ -24,9 +24,17 @@ class DashboardPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildWelcomeCard(theme, authState.user?.nickname ?? authState.user?.username ?? '管理员'),
+            _buildWelcomeCard(
+              theme,
+              authState.user?.nickname ?? authState.user?.username ?? '管理员',
+            ),
             SizedBox(height: AppTheme.spacingL),
-            Text('快捷入口', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              '快捷入口',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             SizedBox(height: AppTheme.spacingM),
             _buildQuickGrid(context, theme, isWide, authState),
           ],
@@ -45,14 +53,30 @@ class DashboardPage extends ConsumerWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('欢迎回来，$name', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+        Text(
+          '欢迎回来，$name',
+          style: theme.textTheme.titleLarge?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
         SizedBox(height: AppTheme.spacingS),
-        Text('Dehaze 管理系统工作台', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.8))),
+        Text(
+          'Dehaze 管理系统工作台',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+        ),
       ],
     ),
   );
 
-  Widget _buildQuickGrid(BuildContext context, ThemeData theme, bool isWide, AuthState auth) {
+  Widget _buildQuickGrid(
+    BuildContext context,
+    ThemeData theme,
+    bool isWide,
+    AuthState auth,
+  ) {
     final entries = _getQuickEntries(auth);
     final crossAxisCount = isWide ? 4 : 2;
 
@@ -79,9 +103,21 @@ class DashboardPage extends ConsumerWidget {
                 children: [
                   Icon(entry.icon, size: 32, color: AppTheme.brandBlue),
                   SizedBox(height: AppTheme.spacingS),
-                  Text(entry.title, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center),
+                  Text(
+                    entry.title,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                   SizedBox(height: 2),
-                  Text(entry.desc, style: theme.textTheme.bodySmall, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    entry.desc,
+                    style: theme.textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -93,14 +129,75 @@ class DashboardPage extends ConsumerWidget {
 
   List<_QuickEntry> _getQuickEntries(AuthState auth) {
     final entries = <_QuickEntry>[];
-    if (auth.hasPerm('sys:user:*')) entries.add(_QuickEntry(Icons.people, '用户管理', '系统用户增删改查', '/profile/admin/user-manage'));
-    if (auth.hasPerm('sys:algorithm:*')) entries.add(_QuickEntry(Icons.science, '算法管理', '算法审核与上下架', '/profile/admin/algorithm-manage'));
-    if (auth.hasPerm('sys:dataset:*')) entries.add(_QuickEntry(Icons.storage, '数据集管理', '数据集创建与维护', '/profile/admin/dataset-manage'));
-    if (auth.hasPerm('sys:task:*')) entries.add(_QuickEntry(Icons.task, '任务管理', '全用户任务监控', '/profile/admin/task-manage'));
-    if (auth.hasPerm('sys:order:*')) entries.add(_QuickEntry(Icons.receipt_long, '订单管理', '订单处理与退款', '/profile/admin/order-manage'));
-    if (auth.hasPerm('sys:member:*')) entries.add(_QuickEntry(Icons.card_membership, '会员管理', '会员等级与权益', '/profile/admin/member-manage'));
-    if (auth.hasPerm('sys:package:*')) entries.add(_QuickEntry(Icons.shopping_bag, '套餐管理', '套餐配置与上下架', '/profile/admin/package-manage'));
-    if (auth.hasPerm('sys:notify:*')) entries.add(_QuickEntry(Icons.campaign, '消息管理', '公告/模板/群发', '/profile/admin/message-manage'));
+    if (auth.hasModulePerm('sys:user')) {
+      entries.add(
+        _QuickEntry(
+          Icons.people,
+          '用户管理',
+          '系统用户增删改查',
+          '/profile/admin/user-manage',
+        ),
+      );
+    }
+    if (auth.hasModulePerm('sys:dataset')) {
+      entries.add(
+        _QuickEntry(
+          Icons.storage,
+          '数据集管理',
+          '数据集创建与维护',
+          '/profile/admin/dataset-manage',
+        ),
+      );
+    }
+    // 任务域后端无接口级权限校验（仅登录态 + create_by 归属校验），不按权限控制
+    entries.add(
+      _QuickEntry(
+        Icons.task,
+        '任务管理',
+        '当前用户任务列表与取消/重试',
+        '/profile/admin/task-manage',
+      ),
+    );
+    if (auth.hasModulePerm('order')) {
+      entries.add(
+        _QuickEntry(
+          Icons.receipt_long,
+          '订单管理',
+          '订单处理与退款',
+          '/profile/admin/order-manage',
+        ),
+      );
+    }
+    if (auth.hasModulePerm('member')) {
+      entries.add(
+        _QuickEntry(
+          Icons.card_membership,
+          '会员管理',
+          '会员等级与权益',
+          '/profile/admin/member-manage',
+        ),
+      );
+    }
+    if (auth.hasModulePerm('package')) {
+      entries.add(
+        _QuickEntry(
+          Icons.shopping_bag,
+          '套餐管理',
+          '套餐配置与上下架',
+          '/profile/admin/package-manage',
+        ),
+      );
+    }
+    if (auth.hasModulePerm('notify')) {
+      entries.add(
+        _QuickEntry(
+          Icons.campaign,
+          '消息管理',
+          '公告/模板/群发',
+          '/profile/admin/message-manage',
+        ),
+      );
+    }
     return entries;
   }
 }

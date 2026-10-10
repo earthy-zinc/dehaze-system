@@ -51,6 +51,7 @@ class ErrorInterceptor extends Interceptor {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
         return DioException(
           requestOptions: err.requestOptions,
           type: err.type,
@@ -78,10 +79,7 @@ class ErrorInterceptor extends Interceptor {
             requestOptions: err.requestOptions,
             response: err.response,
             type: err.type,
-            error: const ApiException(
-              code: 'A0230',
-              message: '登录已过期，请重新登录',
-            ),
+            error: const ApiException(code: 'A0230', message: '登录已过期，请重新登录'),
           );
         }
         if (statusCode == 403) {
@@ -89,10 +87,7 @@ class ErrorInterceptor extends Interceptor {
             requestOptions: err.requestOptions,
             response: err.response,
             type: err.type,
-            error: const ApiException(
-              code: 'A0300',
-              message: '您没有权限执行此操作',
-            ),
+            error: const ApiException(code: 'A0300', message: '您没有权限执行此操作'),
           );
         }
         if (statusCode == 404) {
@@ -100,10 +95,7 @@ class ErrorInterceptor extends Interceptor {
             requestOptions: err.requestOptions,
             response: err.response,
             type: err.type,
-            error: const ApiException(
-              code: 'A0401',
-              message: '请求的资源不存在',
-            ),
+            error: const ApiException(code: 'A0401', message: '请求的资源不存在'),
           );
         }
         if (statusCode != null && statusCode >= 500) {
@@ -111,10 +103,7 @@ class ErrorInterceptor extends Interceptor {
             requestOptions: err.requestOptions,
             response: err.response,
             type: err.type,
-            error: const ApiException(
-              code: 'B0001',
-              message: '服务器内部错误，请稍后重试',
-            ),
+            error: const ApiException(code: 'B0001', message: '服务器内部错误，请稍后重试'),
           );
         }
         return err;
@@ -123,10 +112,7 @@ class ErrorInterceptor extends Interceptor {
         return DioException(
           requestOptions: err.requestOptions,
           type: err.type,
-          error: const ApiException(
-            code: 'A0001',
-            message: '请求已取消',
-          ),
+          error: const ApiException(code: 'A0001', message: '请求已取消'),
         );
 
       case DioExceptionType.badCertificate:
@@ -134,10 +120,7 @@ class ErrorInterceptor extends Interceptor {
         return DioException(
           requestOptions: err.requestOptions,
           type: err.type,
-          error: ApiException(
-            code: 'B0001',
-            message: err.message ?? '发生未知错误',
-          ),
+          error: ApiException(code: 'B0001', message: err.message ?? '发生未知错误'),
         );
     }
   }

@@ -24,8 +24,11 @@ const LEVEL_LABELS: Record<string, string> = {
 
 const MemberManagePage: React.FC = () => {
   const { hasPermission } = usePermission();
-  const canView = hasPermission("sys:member:*");
-  const canAdjust = hasPermission("sys:member:edit");
+  const canView = hasPermission("member:*");
+  // 三个操作各自对应后端接口级权限（member:list / member:level:edit / member:status:edit）
+  const canViewGrowth = hasPermission("member:list");
+  const canAdjustLevel = hasPermission("member:level:edit");
+  const canToggleStatus = hasPermission("member:status:edit");
 
   const [members, setMembers] = useState<MemberPageVO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,7 +103,7 @@ const MemberManagePage: React.FC = () => {
   };
 
   const handleToggleStatus = async (member: MemberPageVO) => {
-    if (!canAdjust) return;
+    if (!canToggleStatus) return;
     const newStatus = member.status === 1 ? 0 : 1;
     const label = newStatus === 0 ? "冻结" : "解冻";
     const res = await Taro.showModal({
@@ -224,26 +227,32 @@ const MemberManagePage: React.FC = () => {
                     </Text>
                   )}
                 </View>
-                {canAdjust && (
+                {(canViewGrowth || canAdjustLevel || canToggleStatus) && (
                   <View className="card-actions">
-                    <View
-                      className="action-btn"
-                      onClick={() => handleViewGrowth(m.userId)}
-                    >
-                      成长记录
-                    </View>
-                    <View
-                      className="action-btn"
-                      onClick={() => openLevelAdjust(m.userId)}
-                    >
-                      调整等级
-                    </View>
-                    <View
-                      className={`action-btn ${m.status === 1 ? "danger" : "primary"}`}
-                      onClick={() => handleToggleStatus(m)}
-                    >
-                      {m.status === 1 ? "冻结" : "解冻"}
-                    </View>
+                    {canViewGrowth && (
+                      <View
+                        className="action-btn"
+                        onClick={() => handleViewGrowth(m.userId)}
+                      >
+                        成长记录
+                      </View>
+                    )}
+                    {canAdjustLevel && (
+                      <View
+                        className="action-btn"
+                        onClick={() => openLevelAdjust(m.userId)}
+                      >
+                        调整等级
+                      </View>
+                    )}
+                    {canToggleStatus && (
+                      <View
+                        className={`action-btn ${m.status === 1 ? "danger" : "primary"}`}
+                        onClick={() => handleToggleStatus(m)}
+                      >
+                        {m.status === 1 ? "冻结" : "解冻"}
+                      </View>
+                    )}
                   </View>
                 )}
               </View>

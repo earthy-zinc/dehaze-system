@@ -263,7 +263,7 @@ const FeedbackPage: React.FC = () => {
                 <View key={r.id} className="feedback-card">
                   <View className="feedback-top">
                     <View className="feedback-title-row">
-                      <Text className="feedback-title">{r.algorithmName}</Text>
+                      <Text className="feedback-title">{r.modelName}</Text>
                       <Tag color="warning" size="small">
                         {"★".repeat(r.rating)}
                       </Tag>

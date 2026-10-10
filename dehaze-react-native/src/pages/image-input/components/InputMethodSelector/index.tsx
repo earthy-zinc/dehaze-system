@@ -54,7 +54,11 @@ interface MethodButtonProps {
   onPress: () => void;
 }
 
-const MethodButton: React.FC<MethodButtonProps> = ({ config, isActive, onPress }) => {
+const MethodButton: React.FC<MethodButtonProps> = ({
+  config,
+  isActive,
+  onPress,
+}) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -96,10 +100,7 @@ const MethodButton: React.FC<MethodButtonProps> = ({ config, isActive, onPress }
           color={isActive ? theme.colors.primary : theme.colors.text.secondary}
         />
         <Text
-          style={[
-            styles.methodTitle,
-            isActive && styles.methodTitleActive,
-          ]}
+          style={[styles.methodTitle, isActive && styles.methodTitleActive]}
         >
           {config.title}
         </Text>

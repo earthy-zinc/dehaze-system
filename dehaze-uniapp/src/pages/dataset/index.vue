@@ -238,16 +238,16 @@ import {
   flattenDatasetItems,
 } from "./data/datasetData";
 import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
-import type { Dataset } from "dehaze-sdk-js";
+import type { DatasetVO } from "dehaze-sdk-js";
 import { formatFileSize, formatRelativeTime } from "@/utils/format";
 
 // ==================== 状态定义 ====================
 
 const currentView = ref<"list" | "detail">("list");
 const searchKeyword = ref("");
-const datasets = ref<Dataset[]>([]);
+const datasets = ref<DatasetVO[]>([]);
 const listLoading = ref(false);
-const currentDataset = ref<Dataset | null>(null);
+const currentDataset = ref<DatasetVO | null>(null);
 const images = ref<DatasetImageItem[]>([]);
 const imagesLoading = ref(false);
 const showImageViewer = ref(false);
@@ -328,7 +328,7 @@ const handleClearSearch = () => {
   handleSearch();
 };
 
-const handleDatasetClick = async (dataset: Dataset) => {
+const handleDatasetClick = async (dataset: DatasetVO) => {
   uni.showLoading({ title: "加载中..." });
   try {
     const detail = await DatasetAPI.getDatasetInfoById(dataset.id);

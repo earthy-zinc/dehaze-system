@@ -31,20 +31,18 @@ class ApiConstants {
   static const String itemFiles = '/item-files';
   static const String itemFilesBatch = '$itemFiles/batch';
 
-  // Algorithms
-  static const String algorithm = '/algorithms';
-  static const String algorithmOptions = '$algorithm/options';
-  static const String algorithmList = '$algorithm/list';
-  static const String algorithmSelect = '$algorithm/select';
-  static const String algorithmSelectTree = '$algorithm/select/tree';
-  static const String algorithmSelectCompare = '$algorithm/select/compare';
-  static const String algorithmSelectSearch = '$algorithm/select/search';
+  // AI Models
+  static const String aiModels = '/ai/models';
+  static const String aiModelsEnabled = '$aiModels/enabled';
 
-  // Prediction
-  static const String prediction = '/prediction';
-  static const String predictionLogs = '$prediction/logs';
-  static const String predictionBatch = '$prediction/batch';
-  static const String predictionQuota = '$prediction/quota';
+  // AI Billing
+  static const String aiBilling = '/ai-billing';
+  static const String aiBillingBalance = '$aiBilling/balance';
+
+  // Image Tasks（图像任务，统一图像模型入口）
+  static const String images = '/images';
+  static const String imagesEdits = '$images/edits';
+  static const String imagesTasks = '$images/tasks';
 
   // Evaluation
   static const String evaluation = '/evaluation';
@@ -61,7 +59,7 @@ class ApiConstants {
   // Recommendations
   static const String recommendations = '/recommendations';
   static const String recommendationsAnalyze = '$recommendations/analyze';
-  static const String recommendationsAlgorithms = '$recommendations/algorithms';
+  static const String recommendationsModels = '$recommendations/models';
   static const String recommendationsFeedback = '$recommendations/feedback';
   static const String recommendationsRules = '$recommendations/rules';
   static const String recommendationsReport = '$recommendations/report';
@@ -127,7 +125,8 @@ class ApiConstants {
   static const String feedbackRatingsMy = '$feedback/ratings/my';
   static const String feedbackRatingsPage = '$feedback/ratings/page';
   static const String feedbackRatingsStats = '$feedback/ratings/stats';
-  static const String feedbackRatingsByPrediction = '$feedback/ratings/by-prediction';
+  static const String feedbackRatingsByPrediction =
+      '$feedback/ratings/by-prediction';
   static const String feedbackMy = '$feedback/my';
   static const String feedbackPage = '$feedback/page';
   static const String feedbackStats = '$feedback/stats';

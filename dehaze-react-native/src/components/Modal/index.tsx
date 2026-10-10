@@ -53,7 +53,11 @@ const Modal: React.FC<ModalProps> = ({
                     onPress={onClose}
                     activeOpacity={0.8}
                   >
-                    <Icon name="times" size={20} color={colors.text.secondary} />
+                    <Icon
+                      name="times"
+                      size={20}
+                      color={colors.text.secondary}
+                    />
                   </TouchableOpacity>
                 )}
               </View>

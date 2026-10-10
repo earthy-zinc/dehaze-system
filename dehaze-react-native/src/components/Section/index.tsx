@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { theme } from '@/theme';
 
 interface SectionProps {
@@ -26,7 +21,6 @@ const Section: React.FC<SectionProps> = ({
   centered = true,
   padding = theme.spacing.huge,
 }) => {
-
   return (
     <View style={[styles.container, { padding }, style]}>
       {(title || subtitle) && (

@@ -8,7 +8,7 @@ import '../../../theme/app_theme.dart';
 ///
 /// 对齐产品文档 F-M05-007「对比工具栏」：
 /// - 顶部：图标 + 标题 + 副标题
-/// - 底部：模式切换行 + 快捷操作行（保存/分享/重新处理/更换算法/导出报告/收藏）
+/// - 底部：模式切换行 + 快捷操作行（保存/分享/重新处理/更换模型/导出报告/收藏）
 ///
 /// 各对比子页只需提供 [body] 与可选 [controls]，
 /// 不再各自重复实现 header / bottomNav / noData。
@@ -48,7 +48,7 @@ class ComparisonScaffold extends StatelessWidget {
     (AppRouterConfig.magnifier, '放大镜'),
     (AppRouterConfig.filter, '滤镜调节'),
     (AppRouterConfig.compareMetrics, '指标评估'),
-    (AppRouterConfig.algorithm, '算法信息'),
+    (AppRouterConfig.modelInfo, '模型信息'),
   ];
 
   @override
@@ -59,7 +59,7 @@ class ComparisonScaffold extends StatelessWidget {
         children: [
           _buildHeader(theme),
           Expanded(child: body),
-          if (controls != null) controls!,
+          ?controls,
           _buildBottomBar(context, theme),
         ],
       ),
@@ -67,59 +67,65 @@ class ComparisonScaffold extends StatelessWidget {
   }
 
   Widget _buildHeader(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(bottom: BorderSide(color: theme.dividerColor)),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.surface,
+      border: Border(bottom: BorderSide(color: theme.dividerColor)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, color: AppTheme.brandBlue),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppTheme.brandBlue),
-            const SizedBox(width: 8),
-            Text(title,
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-            const Spacer(),
-            if (subtitle != null)
-              Text(subtitle!,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      );
+        const Spacer(),
+        if (subtitle != null)
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    ),
+  );
 
   Widget _buildBottomBar(BuildContext context, ThemeData theme) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(top: BorderSide(color: theme.dividerColor)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.surface,
+      border: Border(top: BorderSide(color: theme.dividerColor)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 模式切换行（排除当前页）
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 8,
           children: [
-            // 模式切换行（排除当前页）
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              children: [
-                for (final (route, label) in _allModes)
-                  if (route != currentRoute)
-                    ActionChip(
-                      label: Text(label),
-                      onPressed: () => context.go(route),
-                    ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // 快捷操作行（对齐 F-M05-007）
-            _buildQuickActions(context, theme),
+            for (final (route, label) in _allModes)
+              if (route != currentRoute)
+                ActionChip(
+                  label: Text(label),
+                  onPressed: () => context.go(route),
+                ),
           ],
         ),
-      );
+        const SizedBox(height: 8),
+        // 快捷操作行（对齐 F-M05-007）
+        _buildQuickActions(context, theme),
+      ],
+    ),
+  );
 
   /// 快捷操作工具栏
   ///
-  /// 其中「重新处理」「更换算法」接通真实跳转；
+  /// 其中「重新处理」「更换模型」接通真实跳转；
   /// 保存/分享/导出/收藏当前无后端接口，先以 toast 提示「功能开发中」并保持可点击，
   /// 避免出现死入口（项目约束：导航参数必须完整传递，避免死入口或空白页面）。
   Widget _buildQuickActions(BuildContext context, ThemeData theme) {
@@ -135,8 +141,8 @@ class ComparisonScaffold extends StatelessWidget {
         ),
         _QuickAction(
           icon: Icons.bolt,
-          label: '更换算法',
-          onTap: () => context.go(AppRouterConfig.algorithmSelect),
+          label: '更换模型',
+          onTap: () => context.go(AppRouterConfig.processing),
         ),
         _QuickAction(
           icon: Icons.save_outlined,

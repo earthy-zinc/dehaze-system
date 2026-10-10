@@ -128,9 +128,9 @@
           <SvgIcon name="refresh" size="18" color="rgba(255,255,255,0.7)" />
           <text>重新处理</text>
         </view>
-        <view class="action-item" @click="handleChangeAlgorithm">
+        <view class="action-item" @click="handleChangeModel">
           <SvgIcon name="swap" size="18" color="rgba(255,255,255,0.7)" />
-          <text>换算法</text>
+          <text>换模型</text>
         </view>
         <view class="action-item" @click="handleFavorite">
           <SvgIcon
@@ -200,7 +200,7 @@ let lastPinchDist = 0;
 const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
-const resultId = computed(() => store.result?.logId);
+const resultId = computed(() => store.result?.taskId);
 
 const showOriginLens = computed(
   () => displayMode.value === "origin" || displayMode.value === "compare"
@@ -369,8 +369,8 @@ function handleReprocess() {
   uni.redirectTo({ url: "/pages/processing/index" });
 }
 
-function handleChangeAlgorithm() {
-  uni.redirectTo({ url: "/pages/algorithm-select/index" });
+function handleChangeModel() {
+  uni.redirectTo({ url: "/pages/processing/index" });
 }
 
 async function handleFavorite() {

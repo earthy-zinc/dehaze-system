@@ -40,6 +40,7 @@ import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
+import { copyText } from "@/utils/clipboard";
 
 defineOptions({ name: "MarkdownRenderer" });
 
@@ -263,19 +264,6 @@ function toggleFold(index: number) {
   }
 }
 
-// navigator.clipboard 仅在安全上下文可用，非安全上下文降级 execCommand
-function legacyCopy(text: string): boolean {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  document.body.removeChild(textarea);
-  return copied;
-}
-
 async function handleClick(event: MouseEvent) {
   const target = event.target as HTMLElement;
   const copyBtn = target.closest(".md-copy-btn");
@@ -283,15 +271,10 @@ async function handleClick(event: MouseEvent) {
     const code =
       copyBtn.closest(".md-code-block")?.querySelector("pre code")
         ?.textContent ?? "";
-    try {
-      await navigator.clipboard.writeText(code);
+    if (await copyText(code)) {
       ElMessage.success("代码已复制");
-    } catch {
-      if (legacyCopy(code)) {
-        ElMessage.success("代码已复制");
-      } else {
-        ElMessage.error("复制失败，请手动选择复制");
-      }
+    } else {
+      ElMessage.error("复制失败，请手动选择复制");
     }
     return;
   }

@@ -15,18 +15,38 @@ export const useChatUserStore = defineStore("chatUser", () => {
   // ===== 可用模型（应用级缓存，登录会话内仅拉取一次） =====
   const availableModels = ref<AiModelVO[]>([]);
   const modelsLoaded = ref(false);
+  /** 在途请求：并发触发合并为一次请求（首屏多处初始化会同时调用） */
+  let modelsInflight: Promise<void> | null = null;
 
-  async function ensureModels() {
-    if (modelsLoaded.value) return;
-    availableModels.value = await AiModelAPI.listEnabledModels("chat");
-    modelsLoaded.value = true;
+  function ensureModels(): Promise<void> {
+    if (modelsLoaded.value) return Promise.resolve();
+    if (modelsInflight) return modelsInflight;
+    modelsInflight = (async () => {
+      try {
+        availableModels.value = await AiModelAPI.listEnabledModels("chat");
+        modelsLoaded.value = true;
+      } finally {
+        modelsInflight = null;
+      }
+    })();
+    return modelsInflight;
   }
 
   // ===== 配额（发送消息前后刷新） =====
   const quota = ref<BalanceVO | null>(null);
+  /** 在途请求：首屏多处触发配额加载时合并为一次，避免同一份数据重复打接口 */
+  let quotaInflight: Promise<void> | null = null;
 
-  async function fetchQuota() {
-    quota.value = await AiBillingAPI.getBalance();
+  function fetchQuota(): Promise<void> {
+    if (quotaInflight) return quotaInflight;
+    quotaInflight = (async () => {
+      try {
+        quota.value = await AiBillingAPI.getBalance();
+      } finally {
+        quotaInflight = null;
+      }
+    })();
+    return quotaInflight;
   }
 
   // ===== 输入草稿（localStorage 按会话持久化，刷新/误关闭不丢失） =====

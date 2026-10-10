@@ -12,11 +12,21 @@
 
       <!-- 处理信息区 -->
       <view class="info-section">
-        <view class="info-row">
-          <text class="info-label">选择算法</text>
-          <text class="info-value">{{
-            store.selectedAlgorithm?.name || "-"
-          }}</text>
+        <view class="info-row model-row">
+          <text class="info-label">选择模型</text>
+          <scroll-view scroll-x class="model-scroll" :show-scrollbar="false">
+            <view
+              v-for="model in models"
+              :key="model.modelId"
+              :class="[
+                'model-chip',
+                { selected: store.selectedModel?.modelId === model.modelId },
+              ]"
+              @click="handleSelectModel(model)"
+            >
+              <text>{{ model.displayName }}</text>
+            </view>
+          </scroll-view>
         </view>
         <view class="info-row">
           <text class="info-label">图片文件</text>
@@ -131,9 +141,6 @@
           />
           <view class="result-info">
             <text class="result-time">处理耗时: {{ store.result.time }}s</text>
-            <text v-if="store.result.fromCache" class="cache-badge"
-              >缓存命中</text
-            >
           </view>
         </view>
       </view>
@@ -142,21 +149,8 @@
     <!-- 底部操作栏 -->
     <view class="bottom-bar">
       <view class="bar-content">
-        <!-- 处理前：开始按钮 -->
-        <template
-          v-if="store.status === 'algorithm' || store.status === 'failed'"
-        >
-          <button
-            class="process-btn"
-            :disabled="store.isProcessing"
-            @click="handleProcess"
-          >
-            {{ store.isProcessing ? "处理中..." : "开始处理" }}
-          </button>
-        </template>
-
         <!-- 处理中 -->
-        <template v-else-if="store.status === 'processing'">
+        <template v-if="store.status === 'processing'">
           <view class="processing-indicator">
             <view class="loading-spinner" />
             <text class="processing-text">去雾处理中...</text>
@@ -173,6 +167,17 @@
             查看对比效果
           </button>
         </template>
+
+        <!-- 其余状态（待处理/失败重试）：开始按钮，未加载出模型前不可提交 -->
+        <template v-else>
+          <button
+            class="process-btn"
+            :disabled="store.isProcessing || !store.selectedModel"
+            @click="handleProcess"
+          >
+            {{ store.isProcessing ? "处理中..." : "开始处理" }}
+          </button>
+        </template>
       </view>
     </view>
   </PageLayout>
@@ -183,7 +188,11 @@ import { ref, computed, onMounted } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
-import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
+import {
+  useProcessingStore,
+  DEFAULT_DEHAZE_PARAMS,
+  type ImageModelOption,
+} from "@/store/processing";
 import { ModelAPI } from "dehaze-sdk-js";
 import type { PresetVO } from "dehaze-sdk-js";
 import type { SliderChangeEvent } from "@/types/uni-events";
@@ -192,6 +201,7 @@ import type { SliderChangeEvent } from "@/types/uni-events";
 
 const store = useProcessingStore();
 const presets = ref<PresetVO[]>([]);
+const models = computed(() => store.imageModels);
 
 // ==================== 计算属性 ====================
 
@@ -199,7 +209,7 @@ const statusText = computed(() => {
   const map: Record<string, string> = {
     idle: "等待开始",
     selected: "已选择图片",
-    algorithm: "准备就绪",
+    model: "准备就绪",
     processing: "正在处理...",
     completed: "处理完成",
     failed: "处理失败",
@@ -237,7 +247,7 @@ function resetParams() {
   store.updateParams({ ...DEFAULT_DEHAZE_PARAMS });
 }
 
-/** 构建预测参数：仅提交与默认值不同的参数 */
+/** 构建处理参数：仅提交与默认值不同的参数 */
 function buildPredictParams(): string | undefined {
   const paramsObj: Record<string, number> = {};
   (Object.keys(DEFAULT_DEHAZE_PARAMS) as ParamKey[]).forEach((key) => {
@@ -250,11 +260,16 @@ function buildPredictParams(): string | undefined {
     : undefined;
 }
 
+/** 选择模型 */
+function handleSelectModel(model: ImageModelOption) {
+  store.setModel(model);
+}
+
 /** 开始处理 */
 async function handleProcess() {
   if (store.isProcessing) return;
-  if (!store.selectedAlgorithm || !store.currentImage) {
-    uni.showToast({ title: "缺少图片或算法", icon: "none" });
+  if (!store.selectedModel || !store.currentImage) {
+    uni.showToast({ title: "缺少图片或模型", icon: "none" });
     return;
   }
 
@@ -262,7 +277,7 @@ async function handleProcess() {
   const confirmResult = await new Promise<boolean>((resolve) => {
     uni.showModal({
       title: "确认开始去雾处理",
-      content: `图片：${store.currentImage!.name}\n算法：${store.selectedAlgorithm!.name}`,
+      content: `图片：${store.currentImage!.name}\n模型：${store.selectedModel!.displayName}`,
       confirmText: "开始处理",
       cancelText: "取消",
       success: (res) => resolve(res.confirm),
@@ -271,24 +286,10 @@ async function handleProcess() {
   });
   if (!confirmResult) return;
 
-  const res = await store.runPrediction({
-    algorithmId: store.selectedAlgorithm.id,
+  const res = await store.runImageTask({
     fileId: store.fileId ?? undefined,
     imageUrl: !store.fileId ? store.currentImage?.url : undefined,
     params: buildPredictParams(),
-    onQuotaExhausted: ({ used, total }) => {
-      uni.showModal({
-        title: "预测次数不足",
-        content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
-        confirmText: "去充值",
-        cancelText: "取消",
-        success: (r) => {
-          if (r.confirm) {
-            uni.navigateTo({ url: "/pages/personal/quota/index" });
-          }
-        },
-      });
-    },
   });
 
   if (res.ok && res.result) {
@@ -345,10 +346,16 @@ function handleApplyPreset(preset: PresetVO) {
 // ==================== 生命周期 ====================
 
 onMounted(() => {
-  if (!store.hasAlgorithm) {
-    uni.showToast({ title: "请先选择算法", icon: "none", duration: 2000 });
+  if (!store.currentImage) {
+    uni.showToast({ title: "请先选择图片", icon: "none", duration: 2000 });
     setTimeout(() => uni.navigateBack(), 2000);
   }
+
+  // 模型选择内联：store 按「历史最近使用 → 启用列表首项」预选
+  store.loadImageModels().catch(() => {
+    uni.showToast({ title: "加载模型失败", icon: "none" });
+  });
+
   ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
     .then((res) => {
       presets.value = res.list || [];
@@ -408,6 +415,33 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 模型选择 */
+.model-row {
+  align-items: flex-start;
+}
+
+.model-scroll {
+  max-width: 68%;
+  white-space: nowrap;
+}
+
+.model-chip {
+  display: inline-block;
+  padding: 10rpx 24rpx;
+  margin-left: 12rpx;
+  font-size: 26rpx;
+  color: $color-text-secondary;
+  background: $color-bg-secondary;
+  border: 2rpx solid transparent;
+  border-radius: 999rpx;
+
+  &.selected {
+    color: $color-primary;
+    background: rgba(59, 130, 246, 0.1);
+    border-color: $color-primary;
+  }
 }
 
 /* 参数面板 */

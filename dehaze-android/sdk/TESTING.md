@@ -26,6 +26,7 @@
 ### 查看测试报告
 
 测试报告位于以下目录：
+
 ```
 build/reports/tests/test/index.html
 ```
@@ -33,18 +34,24 @@ build/reports/tests/test/index.html
 ## 测试说明
 
 ### DehazeSDKTest
+
 测试SDK的基本功能，包括：
+
 - SDK初始化
 - Session 管理
 - 认证API调用
 
 ### ErrorUtilsTest
+
 测试错误处理工具类的功能：
+
 - 错误解析
 - 错误消息生成
 
 ### TokenManagerTest
+
 测试 Session 管理器的功能：
+
 - SessionId 的设置和获取
 - SessionId 的清除
 - Session 失效回调触发

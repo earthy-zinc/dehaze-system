@@ -55,7 +55,6 @@ function moduleLabel(m: ImportModule): string {
     dept: "部门",
     menu: "菜单",
     dict: "字典",
-    algorithm: "算法",
   };
   return map[m] ?? m;
 }

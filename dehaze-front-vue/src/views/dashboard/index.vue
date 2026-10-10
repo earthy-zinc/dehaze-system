@@ -19,9 +19,12 @@
             <el-icon class="entry-icon"><Files /></el-icon>
             <span>数据集</span>
           </div>
-          <div class="quick-entry" @click="router.push('/algorithm/list')">
+          <div
+            class="quick-entry"
+            @click="router.push('/admin/ai-models/models')"
+          >
             <el-icon class="entry-icon"><Cpu /></el-icon>
-            <span>算法库</span>
+            <span>模型库</span>
           </div>
         </div>
       </div>
@@ -109,7 +112,7 @@
         />
         <el-table-column label="类型" width="120" align="center">
           <template #default="{ row }">{{
-            taskTypeLabel[row.taskType] ?? row.taskType
+            TASK_TYPE_LABELS[row.taskType] ?? row.taskType
           }}</template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -146,7 +149,8 @@
 <script lang="ts" setup>
 import { useUserStore } from "@/store/modules/user";
 import { useTaskStore } from "@/store/modules/task";
-import { AlgorithmAPI, DatasetAPI } from "dehaze-sdk-js";
+import { TASK_TYPE_LABELS } from "@/views/task/constants";
+import { AiModelAPI, DatasetAPI } from "dehaze-sdk-js";
 import * as echarts from "echarts";
 import {
   FolderOpened,
@@ -191,7 +195,7 @@ const greetings = computed(() => {
 
 // 核心指标
 const datasetCount = ref(0);
-const algorithmCount = ref(0);
+const modelCount = ref(0);
 const taskTotal = ref(0);
 const completedTaskCount = ref(0);
 
@@ -205,12 +209,12 @@ const statCards = computed(() => [
     link: "/dataset/list",
   },
   {
-    key: "algorithm",
-    label: "可用算法",
-    value: algorithmCount.value,
+    key: "model",
+    label: "可用模型",
+    value: modelCount.value,
     icon: Cpu,
     bg: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    link: "/algorithm/list",
+    link: "/admin/ai-models/models",
   },
   {
     key: "task",
@@ -234,11 +238,6 @@ const statCards = computed(() => [
 const recentTasks = ref<any[]>([]);
 const taskLoading = ref(false);
 
-const taskTypeLabel: Record<string, string> = {
-  DEHAZE: "图像去雾",
-  BATCH_DEHAZE: "批量去雾",
-  EVALUATION: "算法评测",
-};
 const statusLabel: Record<number, string> = {
   1: "待执行",
   2: "执行中",
@@ -268,13 +267,13 @@ function formatTime(t?: string) {
 // 加载统计数据
 async function loadStats() {
   try {
-    const [dsRes, algRes, taskRes] = await Promise.all([
+    const [dsRes, modelRes, taskRes] = await Promise.all([
       DatasetAPI.getList({ pageNum: 1, pageSize: 1 }),
-      AlgorithmAPI.getList({}),
+      AiModelAPI.listEnabledModels("image_edit"),
       taskStore.getTaskList({ pageNum: 1, pageSize: 5 }),
     ]);
     datasetCount.value = dsRes.total || 0;
-    algorithmCount.value = Array.isArray(algRes) ? algRes.length : 0;
+    modelCount.value = modelRes.length;
     taskTotal.value = taskStore.total || 0;
     recentTasks.value = taskStore.taskList.slice(0, 5) || [];
     // 统计已完成

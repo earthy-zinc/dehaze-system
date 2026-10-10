@@ -8,7 +8,7 @@ import com.pei.dehaze.sdk.model.recommendation.ImageFeatureAnalysisVO;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationFeedback;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationReport;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationRule;
-import com.pei.dehaze.sdk.model.recommendation.RecommendedAlgorithmVO;
+import com.pei.dehaze.sdk.model.recommendation.RecommendedModelVO;
 
 import java.util.List;
 
@@ -28,9 +28,9 @@ public class RecommendationAPI {
         call.enqueue(callback);
     }
 
-    public static void getAlgorithmRecommendations(Long analysisId, String imageMd5, ApiCallback<List<RecommendedAlgorithmVO>> callback) {
-        Call<Result<List<RecommendedAlgorithmVO>>> call = DehazeSDK.getInstance()
-                .getRecommendationApiService().getAlgorithmRecommendations(analysisId, imageMd5);
+    public static void getModelRecommendations(Long analysisId, String imageMd5, ApiCallback<List<RecommendedModelVO>> callback) {
+        Call<Result<List<RecommendedModelVO>>> call = DehazeSDK.getInstance()
+                .getRecommendationApiService().getModelRecommendations(analysisId, imageMd5);
         call.enqueue(callback);
     }
 

@@ -26,7 +26,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="正在执行去雾算法，请耐心等待"
+        android:text="正在执行去雾处理，请耐心等待"
         android:textColor="@color/text_secondary"
         android:textSize="14sp" />
 

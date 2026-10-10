@@ -57,7 +57,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
                     && Objects.equals(oldItem.getOriginalImageUrl(), newItem.getOriginalImageUrl())
                     && Objects.equals(oldItem.getResultImageUrl(), newItem.getResultImageUrl())
                     && Objects.equals(oldItem.getStatus(), newItem.getStatus())
-                    && Objects.equals(oldItem.getAlgorithmName(), newItem.getAlgorithmName());
+                    && Objects.equals(oldItem.getModelName(), newItem.getModelName());
         }
     };
 
@@ -128,7 +128,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
         private final CheckBox cbSelect;
         private final ImageView ivOriginal;
         private final ImageView ivResult;
-        private final TextView tvAlgorithmName;
+        private final TextView tvModelName;
         private final TextView tvStatus;
         private final TextView tvSource;
         private final TextView tvProcessingTime;
@@ -141,7 +141,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
             cbSelect = itemView.findViewById(R.id.cb_select);
             ivOriginal = itemView.findViewById(R.id.iv_original);
             ivResult = itemView.findViewById(R.id.iv_result);
-            tvAlgorithmName = itemView.findViewById(R.id.tv_algorithm_name);
+            tvModelName = itemView.findViewById(R.id.tv_model_name);
             tvStatus = itemView.findViewById(R.id.tv_status);
             tvSource = itemView.findViewById(R.id.tv_source);
             tvProcessingTime = itemView.findViewById(R.id.tv_processing_time);
@@ -151,7 +151,7 @@ public class InputHistoryAdapter extends ListAdapter<InputHistoryVO, InputHistor
         }
 
         void bind(InputHistoryVO item) {
-            tvAlgorithmName.setText("算法: " + StringUtils.safe(item.getAlgorithmName()));
+            tvModelName.setText("模型: " + StringUtils.safe(item.getModelName()));
             tvStatus.setText("状态: " + formatStatus(item.getStatus()));
             tvSource.setText("来源: " + (item.getInputSource() != null ? item.getInputSource().getLabel() : ""));
             tvProcessingTime.setText(item.getProcessingTime() != null

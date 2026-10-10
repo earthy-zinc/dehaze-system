@@ -45,7 +45,7 @@ class ShowcaseSection extends StatelessWidget {
       SizedBox(height: AppTheme.spacingM),
 
       Text(
-        '智能算法自动识别雾霾程度，精准还原图像细节',
+        '智能模型自动识别雾霾程度，精准还原图像细节',
         style: theme.textTheme.titleLarge?.copyWith(
           fontSize: 20,
           color: Colors.grey[700],
@@ -61,10 +61,8 @@ class ShowcaseSection extends StatelessWidget {
   /// 使用 NH-HAZE-2023 数据集真实样本展示去雾前后对比
   Widget _buildComparisonImage(BuildContext context, ThemeData theme) {
     // NH-HAZE-2023 数据集真实样本：001 号样本的雾图与清晰图
-    final beforeUrl =
-        '${ApiConfig.datasetBaseUrl}/NH-HAZE-2023/hazy/001.JPG';
-    final afterUrl =
-        '${ApiConfig.datasetBaseUrl}/NH-HAZE-2023/clean/001.JPG';
+    final beforeUrl = '${ApiConfig.datasetBaseUrl}/NH-HAZE-2023/hazy/001.JPG';
+    final afterUrl = '${ApiConfig.datasetBaseUrl}/NH-HAZE-2023/clean/001.JPG';
 
     return Container(
       decoration: BoxDecoration(
@@ -101,7 +99,10 @@ class ShowcaseSection extends StatelessWidget {
                             Positioned(
                               top: AppTheme.spacingM,
                               left: AppTheme.spacingM,
-                              child: _buildSideLabel('去雾前', const Color(0xFFFBBF24)),
+                              child: _buildSideLabel(
+                                '去雾前',
+                                const Color(0xFFFBBF24),
+                              ),
                             ),
                           ],
                         ),
@@ -123,7 +124,10 @@ class ShowcaseSection extends StatelessWidget {
                             Positioned(
                               top: AppTheme.spacingM,
                               right: AppTheme.spacingM,
-                              child: _buildSideLabel('去雾后', const Color(0xFF34D399)),
+                              child: _buildSideLabel(
+                                '去雾后',
+                                const Color(0xFF34D399),
+                              ),
                             ),
                           ],
                         ),
@@ -198,21 +202,17 @@ class ShowcaseSection extends StatelessWidget {
 
   /// 构建图片角标标签
   Widget _buildSideLabel(String text, Color color) => Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppTheme.spacingS,
-          vertical: AppTheme.spacingXS,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      );
+    padding: EdgeInsets.symmetric(
+      horizontal: AppTheme.spacingS,
+      vertical: AppTheme.spacingXS,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(AppTheme.radiusS),
+    ),
+    child: Text(
+      text,
+      style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+    ),
+  );
 }

@@ -3,13 +3,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  Linking,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
 import { launchCamera, ImagePickerResponse } from 'react-native-image-picker';
 import Icon from '@/components/Icon';
 import Button from '@/components/Button';
@@ -50,14 +44,10 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         if (result.errorCode === 'camera_unavailable') {
           Alert.alert('相机不可用', '请检查相机权限设置');
         } else if (result.errorCode === 'permission') {
-          Alert.alert(
-            '需要相机权限',
-            '请在设置中允许应用访问相机',
-            [
-              { text: '取消', style: 'cancel' },
-              { text: '去设置', onPress: () => Linking.openSettings() },
-            ]
-          );
+          Alert.alert('需要相机权限', '请在设置中允许应用访问相机', [
+            { text: '取消', style: 'cancel' },
+            { text: '去设置', onPress: () => Linking.openSettings() },
+          ]);
         } else {
           Alert.alert('错误', result.errorMessage || '拍照失败');
         }
@@ -86,10 +76,17 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       setUploading(true);
       let fileInfo;
       try {
-        fileInfo = await imageInputApi.uploadImage(asset.uri, fileName, asset.type);
+        fileInfo = await imageInputApi.uploadImage(
+          asset.uri,
+          fileName,
+          asset.type,
+        );
       } catch (error) {
         setUploading(false);
-        Alert.alert('上传失败', error instanceof Error ? error.message : '图片上传失败，请重试');
+        Alert.alert(
+          '上传失败',
+          error instanceof Error ? error.message : '图片上传失败，请重试',
+        );
         return;
       }
       setUploading(false);
@@ -134,15 +131,27 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       <View style={styles.tipsContainer}>
         <View style={styles.tipItem}>
-          <Icon name="checkmark-circle" size={16} color={theme.colors.status.success} />
+          <Icon
+            name="checkmark-circle"
+            size={16}
+            color={theme.colors.status.success}
+          />
           <Text style={styles.tipText}>支持前后摄像头切换</Text>
         </View>
         <View style={styles.tipItem}>
-          <Icon name="checkmark-circle" size={16} color={theme.colors.status.success} />
+          <Icon
+            name="checkmark-circle"
+            size={16}
+            color={theme.colors.status.success}
+          />
           <Text style={styles.tipText}>自动保存高质量照片</Text>
         </View>
         <View style={styles.tipItem}>
-          <Icon name="information-circle" size={16} color={theme.colors.status.info} />
+          <Icon
+            name="information-circle"
+            size={16}
+            color={theme.colors.status.info}
+          />
           <Text style={styles.tipText}>建议在光线充足的环境下拍摄</Text>
         </View>
       </View>

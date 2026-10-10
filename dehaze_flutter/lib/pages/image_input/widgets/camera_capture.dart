@@ -18,10 +18,7 @@ class CameraCapture extends ConsumerWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.dividerColor,
-          width: 1,
-        ),
+        border: Border.all(color: theme.dividerColor, width: 1),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -55,7 +52,8 @@ class CameraCapture extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
-            onPressed: () => ref.read(imageInputProvider.notifier).captureImage(),
+            onPressed: () =>
+                ref.read(imageInputProvider.notifier).captureImage(),
             icon: const Icon(Icons.camera_alt),
             label: const Text('打开相机'),
             style: FilledButton.styleFrom(

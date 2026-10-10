@@ -24,12 +24,12 @@
         android:orientation="horizontal">
 
         <EditText
-            android:id="@+id/et_algorithm_filter"
+            android:id="@+id/et_model_filter"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:background="@drawable/bg_search_input"
-            android:hint="算法ID（可选）"
+            android:hint="模型标识（可选）"
             android:inputType="number"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
@@ -47,17 +47,8 @@
             android:text="查询" />
     </LinearLayout>
 
-    <!-- Tab 切换 -->
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/tab_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/bg_card"
-        app:tabSelectedTextColor="@color/brand_primary"
-        app:tabTextColor="@color/text_regular" />
-
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/view_pager"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragment_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />

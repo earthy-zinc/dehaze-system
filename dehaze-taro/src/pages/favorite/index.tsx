@@ -17,7 +17,7 @@ const TYPE_CONFIG: Record<
   FavoriteTargetType,
   { label: string; color: string }
 > = {
-  algorithm: { label: "算法", color: "#3b82f6" },
+  model: { label: "模型", color: "#3b82f6" },
   result: { label: "结果", color: "#10b981" },
   dataset: { label: "数据集", color: "#f59e0b" },
   image: { label: "图片", color: "#ec4899" },
@@ -26,7 +26,7 @@ const TYPE_CONFIG: Record<
 
 const ALL_TYPES: { key: "" | FavoriteTargetType; label: string }[] = [
   { key: "", label: "全部" },
-  { key: "algorithm", label: "算法" },
+  { key: "model", label: "模型" },
   { key: "result", label: "结果" },
   { key: "dataset", label: "数据集" },
   { key: "image", label: "图片" },
@@ -93,8 +93,8 @@ const FavoritePage: React.FC = () => {
   // 跳转处理
   const handleNavigate = (targetType: FavoriteTargetType, targetId: number) => {
     switch (targetType) {
-      case "algorithm":
-        Taro.navigateTo({ url: `/pages/algorithm/detail?id=${targetId}` });
+      case "model":
+        Taro.showToast({ title: "模型详情开发中", icon: "none" });
         break;
       case "dataset":
         Taro.navigateTo({ url: `/pages/dataset/index?parentId=${targetId}` });
@@ -217,10 +217,7 @@ const FavoritePage: React.FC = () => {
                         >
                           {item.targetName || "未命名"}
                         </Text>
-                        <StatusTag
-                          status={item.status ?? 1}
-                          size="small"
-                        />
+                        <StatusTag status={item.status ?? 1} size="small" />
                       </View>
 
                       {item.targetSummary && (

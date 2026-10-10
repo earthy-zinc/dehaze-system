@@ -60,11 +60,7 @@ class FileInfo {
 ///
 /// 对齐 JS SDK FileQuery。
 class FileQuery {
-  const FileQuery({
-    this.pageNum,
-    this.pageSize,
-    this.keywords,
-  });
+  const FileQuery({this.pageNum, this.pageSize, this.keywords});
 
   /// 页码
   final int? pageNum;
@@ -76,8 +72,8 @@ class FileQuery {
   final String? keywords;
 
   Map<String, dynamic> toJson() => {
-        if (pageNum != null) 'pageNum': pageNum,
-        if (pageSize != null) 'pageSize': pageSize,
-        if (keywords != null) 'keywords': keywords,
-      };
+    if (pageNum != null) 'pageNum': pageNum,
+    if (pageSize != null) 'pageSize': pageSize,
+    if (keywords != null) 'keywords': keywords,
+  };
 }

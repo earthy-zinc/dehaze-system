@@ -40,7 +40,7 @@
             android:layout_height="36dp"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="算法"
+            android:text="模型"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:background="@color/bg_page" />

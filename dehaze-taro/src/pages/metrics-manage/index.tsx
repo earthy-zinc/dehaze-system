@@ -9,7 +9,7 @@ import Taro, { useLoad } from "@tarojs/taro";
 import { Navbar, Button, Loading, Tag } from "@taroify/core";
 import { ArrowLeft } from "@taroify/icons";
 import { ModelAPI } from "dehaze-sdk-js";
-import type { EvalMetricsVO, PredEvalTaskStatus } from "dehaze-sdk-js";
+import type { EvalMetricsVO, EvalTaskStatus } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import EmptyState from "@/components/common/EmptyState";
 import { getErrorMessage } from "@/utils/error";
@@ -97,7 +97,7 @@ const MetricsManagePage: React.FC = () => {
     return Array.from(keys);
   }, [compareRecords]);
 
-  const statusLabel = (status?: PredEvalTaskStatus): string => {
+  const statusLabel = (status?: EvalTaskStatus): string => {
     if (status === 2) return "已完成";
     if (status === 3) return "失败";
     if (status === 1) return "处理中";
@@ -156,7 +156,7 @@ const MetricsManagePage: React.FC = () => {
                   {compareRecords.map((r) => (
                     <View key={r.id} className="table-cell algo-cell">
                       <Text className="algo-name">
-                        {r.algorithmName || `算法${r.algorithmId}`}
+                        {r.modelName || r.modelId}
                       </Text>
                     </View>
                   ))}
@@ -207,7 +207,7 @@ const MetricsManagePage: React.FC = () => {
                 >
                   <View className="card-header">
                     <Text className="card-algo">
-                      {record.algorithmName || `算法${record.algorithmId}`}
+                      {record.modelName || record.modelId}
                     </Text>
                     <View className="card-meta">
                       <Tag
@@ -246,7 +246,7 @@ const MetricsManagePage: React.FC = () => {
                   <View className="card-footer">
                     {record.time != null && (
                       <Text className="card-time">
-                        耗时 {(record.time / 1000).toFixed(1)}s
+                        耗时 {record.time.toFixed(1)}s
                       </Text>
                     )}
                     {record.createTime && (

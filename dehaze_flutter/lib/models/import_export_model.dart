@@ -67,13 +67,13 @@ class ImportRecordQuery {
 
   /// 转为 queryParameters 格式
   Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (type != null) 'type': type,
-        if (status != null) 'status': status,
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (type != null) 'type': type,
+    if (status != null) 'status': status,
+    if (startDate != null) 'startDate': startDate,
+    if (endDate != null) 'endDate': endDate,
+  };
 }
 
 /// 导出记录视图对象
@@ -139,13 +139,13 @@ class ExportRecordQuery {
 
   /// 转为 queryParameters 格式
   Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (type != null) 'type': type,
-        if (status != null) 'status': status,
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (type != null) 'type': type,
+    if (status != null) 'status': status,
+    if (startDate != null) 'startDate': startDate,
+    if (endDate != null) 'endDate': endDate,
+  };
 }
 
 /// 导入模板视图对象

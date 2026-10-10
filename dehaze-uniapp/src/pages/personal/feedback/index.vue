@@ -63,7 +63,7 @@
         <view v-else-if="ratings.length > 0" class="list">
           <view v-for="r in ratings" :key="r.id" class="card">
             <view class="card-header">
-              <text class="card-title">{{ r.algorithmName }}</text>
+              <text class="card-title">{{ r.modelName }}</text>
               <view class="stars">
                 <text v-for="i in 5" :key="i" :class="{ active: i <= r.rating }"
                   >★</text

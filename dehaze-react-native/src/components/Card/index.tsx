@@ -27,7 +27,9 @@ const Card: React.FC<CardProps> = ({
   margin = 0,
   borderRadius = theme.layout.borderRadius.xl,
 }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation({ scale: 0.98 });
+  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation({
+    scale: 0.98,
+  });
 
   const cardStyle = [
     styles.card,
@@ -41,12 +43,7 @@ const Card: React.FC<CardProps> = ({
   ];
 
   const CardComponent = (
-    <Animated.View
-      style={[
-        cardStyle,
-        onPress && animatedStyle,
-      ]}
-    >
+    <Animated.View style={[cardStyle, onPress && animatedStyle]}>
       {children}
     </Animated.View>
   );

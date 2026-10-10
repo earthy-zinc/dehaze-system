@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 import type { KnowledgeBaseVO } from "dehaze-sdk-js";
 import { computed } from "vue";
+import { formatTokens } from "@/utils/format";
 
 defineOptions({ name: "KbListCard" });
 
@@ -22,11 +23,11 @@ const canManage = computed(() => {
   return props.kb.visibility === "private";
 });
 
-function formatTokens(count: number): string {
-  if (count >= 10000) {
-    return `${(count / 10000).toFixed(1)}万`;
+/** 卡片「···」菜单分发（破坏性操作集中在此） */
+function handleCommand(command: string) {
+  if (command === "delete") {
+    emit("delete", props.kb);
   }
-  return String(count);
 }
 </script>
 
@@ -50,16 +51,24 @@ function formatTokens(count: number): string {
           公共
         </el-tag>
       </div>
-      <div v-if="canManage" @click.stop>
+      <div v-if="canManage" class="kb-card__actions" @click.stop>
         <el-button type="primary" link size="small" @click="emit('edit', kb)">
           编辑
         </el-button>
-        <el-button type="danger" link size="small" @click="emit('delete', kb)">
-          删除
-        </el-button>
+        <!-- 删除是破坏性操作：收进「···」并二次确认，避免红字常驻误触（设计评审 #14） -->
+        <el-dropdown trigger="click" @command="handleCommand">
+          <el-button link size="small" class="kb-card__more">···</el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="delete">删除</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
-    <p class="kb-desc">{{ kb.description || "暂无描述" }}</p>
+    <p class="kb-desc">
+      {{ kb.description || "暂无描述，点击卡片进入可补充" }}
+    </p>
     <div class="kb-stats">
       <span>文档 {{ kb.documentCount }}</span>
       <el-divider direction="vertical" />
@@ -71,6 +80,16 @@ function formatTokens(count: number): string {
 </template>
 
 <style lang="scss" scoped>
+.kb-card__actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.kb-card__more {
+  letter-spacing: 1px;
+}
+
 .kb-desc {
   display: -webkit-box;
   min-height: 36px;

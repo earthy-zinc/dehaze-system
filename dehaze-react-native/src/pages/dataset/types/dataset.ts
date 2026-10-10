@@ -1,11 +1,11 @@
 /**
  * 数据集模块类型定义
  *
- * 直接复用 SDK 类型（Dataset / DatasetItemVO / ImageUrlVO / TaskVO），
+ * 直接复用 SDK 类型（DatasetVO / DatasetItemVO / ImageUrlVO / TaskVO），
  * 不再维护独立的字段结构，避免与后端 schema 漂移。
  */
 import type {
-  Dataset as SDKDataset,
+  DatasetVO as SDKDataset,
   DatasetItemVO,
   ImageUrlVO,
   DatasetQuery,
@@ -14,7 +14,7 @@ import type {
 } from 'dehaze-sdk-js';
 
 /** 数据集（SDK 类型再导出，便于模块内统一引用） */
-export type Dataset = SDKDataset;
+export type DatasetVO = SDKDataset;
 
 /** 数据项 */
 export type DatasetItem = DatasetItemVO;
@@ -28,7 +28,7 @@ export type { DatasetQuery, DatasetItemQuery, TaskQuery };
 /**
  * 数据集树形节点（移动端懒加载展开/收起状态）
  */
-export interface DatasetTreeNode extends Dataset {
+export interface DatasetTreeNode extends DatasetVO {
   /** 子节点（懒加载后填充） */
   children?: DatasetTreeNode[];
   /** 是否已加载过子节点 */

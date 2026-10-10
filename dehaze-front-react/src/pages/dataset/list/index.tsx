@@ -1,4 +1,4 @@
-import { DatasetAPI, type Dataset, type DatasetQuery } from "dehaze-sdk-js";
+import { DatasetAPI, type DatasetVO, type DatasetQuery } from "dehaze-sdk-js";
 import DatasetFormDialog, {
   type DatasetFormDialogRef,
 } from "@/pages/dataset/list/components/DatasetFormDialog";
@@ -38,7 +38,7 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 /** 清理空 children 数组 */
-function cleanDatasets(datasets: Dataset[]): void {
+function cleanDatasets(datasets: DatasetVO[]): void {
   for (const d of datasets) {
     if (d.children?.length) {
       cleanDatasets(d.children);
@@ -49,7 +49,7 @@ function cleanDatasets(datasets: Dataset[]): void {
 }
 
 export default function DatasetList() {
-  const [datasetList, setDatasetList] = useState<Dataset[]>([]);
+  const [datasetList, setDatasetList] = useState<DatasetVO[]>([]);
   const [loading, setLoading] = useState(false);
   const [queryParams, setQueryParams] = useState<DatasetQuery>({});
   const [searchForm] = Form.useForm();
@@ -65,8 +65,8 @@ export default function DatasetList() {
       const result = await DatasetAPI.getList(params);
       const list = (result as any)?.list || result;
       if (Array.isArray(list)) {
-        cleanDatasets(list as Dataset[]);
-        setDatasetList(list as Dataset[]);
+        cleanDatasets(list as DatasetVO[]);
+        setDatasetList(list as DatasetVO[]);
       } else {
         setDatasetList([]);
       }
@@ -100,17 +100,17 @@ export default function DatasetList() {
   );
 
   const handleAddSub = useCallback(
-    (record: Dataset) => dialogRef.current?.open("addSub", record),
+    (record: DatasetVO) => dialogRef.current?.open("addSub", record),
     []
   );
 
   const handleEdit = useCallback(
-    (record: Dataset) => dialogRef.current?.open("edit", record),
+    (record: DatasetVO) => dialogRef.current?.open("edit", record),
     []
   );
 
   const handleDelete = useCallback(
-    (record: Dataset) => {
+    (record: DatasetVO) => {
       DatasetAPI.deleteById(record.id)
         .then(() => {
           message.success(`数据集「${record.name}」删除成功`);
@@ -123,7 +123,7 @@ export default function DatasetList() {
 
   // ==================== 表格列 ====================
 
-  const columns: TableColumnsType<Dataset> = useMemo(
+  const columns: TableColumnsType<DatasetVO> = useMemo(
     () => [
       {
         title: "数据集名称",
@@ -174,7 +174,7 @@ export default function DatasetList() {
         width: 280,
         align: "center",
         fixed: "right",
-        render: (_: unknown, record: Dataset) => (
+        render: (_: unknown, record: DatasetVO) => (
           <Space size="small">
             <Button
               type="link"

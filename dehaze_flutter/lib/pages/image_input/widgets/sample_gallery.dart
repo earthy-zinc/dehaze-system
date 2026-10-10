@@ -86,58 +86,54 @@ class _SampleGalleryState extends ConsumerState<SampleGallery> {
   }
 
   Widget _buildEmptyState(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.collections_outlined,
-              size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '暂无样例图片',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.collections_outlined,
+          size: 64,
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无样例图片',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildErrorState(ThemeData theme, String error) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '加载失败',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.error,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => ref.read(sampleProvider.notifier).refresh(),
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+        const SizedBox(height: 16),
+        Text(
+          '加载失败',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.error,
+          ),
         ),
-      );
+        const SizedBox(height: 8),
+        Text(
+          error,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () => ref.read(sampleProvider.notifier).refresh(),
+          icon: const Icon(Icons.refresh),
+          label: const Text('重试'),
+        ),
+      ],
+    ),
+  );
 
   void _selectSample(SampleImageModel sample) {
     ref.read(imageInputProvider.notifier).selectSampleImage(sample);

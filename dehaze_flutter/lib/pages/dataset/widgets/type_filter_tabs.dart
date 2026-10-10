@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
-import '../models/dataset_model.dart';
+import '../models/dataset_image_model.dart';
 
 /// 类型筛选标签组件
 ///
@@ -112,8 +112,8 @@ class _FilterButtonState extends State<_FilterButton> {
                   color: widget.isSelected
                       ? tealColor
                       : _isHovered
-                          ? tealColor
-                          : const Color(0xFFE5E7EB),
+                      ? tealColor
+                      : const Color(0xFFE5E7EB),
                   width: 2,
                 ),
                 boxShadow: widget.isSelected
@@ -137,8 +137,8 @@ class _FilterButtonState extends State<_FilterButton> {
                       color: widget.isSelected
                           ? Colors.white
                           : _isHovered
-                              ? tealColor
-                              : const Color(0xFF6B7280),
+                          ? tealColor
+                          : const Color(0xFF6B7280),
                     ),
                   ),
                   if (widget.count > 0) ...[

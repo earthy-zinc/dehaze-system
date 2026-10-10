@@ -63,6 +63,18 @@ export function formatPercent(value: number, decimals: number = 1): string {
 }
 
 /**
+ * Token 数量展示：过万折算为「1.2万」，否则原样
+ * @param count Token 数
+ * @returns 展示用字符串（知识库卡片与表格共用，保证同一数量在两处口径一致）
+ */
+export function formatTokens(count: number): string {
+  if (count >= 10000) {
+    return `${(count / 10000).toFixed(1)}万`;
+  }
+  return String(count);
+}
+
+/**
  * 秒数转为可读时间
  * @param seconds 秒数
  * @returns 可读时间字符串（如 "1h 23m 45s" 或 "45s"）

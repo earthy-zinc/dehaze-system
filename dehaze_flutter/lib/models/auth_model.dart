@@ -26,10 +26,7 @@ class LoginRequest {
 
 @JsonSerializable()
 class LoginResponse {
-  const LoginResponse({
-    required this.sessionId,
-    required this.user,
-  });
+  const LoginResponse({required this.sessionId, required this.user});
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
       _$LoginResponseFromJson(json);

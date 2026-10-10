@@ -13,6 +13,7 @@ const BILL_TYPE_LABELS: Record<BillingType, string> = {
   kb_inject: "知识库注入",
   asr: "语音识别",
   tts: "语音合成",
+  image: "图像处理",
 };
 
 const billingStore = useBillingStore();

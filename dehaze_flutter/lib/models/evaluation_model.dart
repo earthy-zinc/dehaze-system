@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-import 'prediction_model.dart';
+import 'image_task_model.dart';
 
 part 'evaluation_model.g.dart';
 
@@ -11,6 +11,7 @@ int? _evalStatusToJson(TaskStatus? status) {
   return switch (status) {
     TaskStatus.completed => 2,
     TaskStatus.failed => 3,
+    TaskStatus.canceled => 4,
     TaskStatus.processing => 1,
   };
 }
@@ -18,12 +19,12 @@ int? _evalStatusToJson(TaskStatus? status) {
 /// 评估请求
 ///
 /// 对应后端 EvaluationForm：
-/// algorithmId（Long，必填）、predUrl/gtUrl（String）、params（String，JSON）。
+/// modelId（图像模型 slug，必填）、predUrl/gtUrl（String）、params（String，JSON）。
 /// 去雾流程中使用结果图 URL 进行评估。
 @JsonSerializable(includeIfNull: false)
 class EvaluationRequest {
   const EvaluationRequest({
-    required this.algorithmId,
+    required this.modelId,
     this.predUrl,
     this.gtUrl,
     this.params,
@@ -32,8 +33,8 @@ class EvaluationRequest {
   factory EvaluationRequest.fromJson(Map<String, dynamic> json) =>
       _$EvaluationRequestFromJson(json);
 
-  /// 算法 ID
-  final int algorithmId;
+  /// 图像模型标识（统一模型规范 slug）
+  final String modelId;
 
   /// 预测结果图 URL
   final String? predUrl;
@@ -75,7 +76,7 @@ class EvaluationResult {
   @JsonKey(defaultValue: <String, double>{})
   final Map<String, double>? metrics;
 
-  /// 处理耗时（毫秒）
+  /// 处理耗时（秒）
   final int? time;
 
   /// 失败错误信息（status=failed 时返回）
@@ -133,12 +134,42 @@ class EvaluationMetrics {
 
   /// 获取所有指标列表（用于 UI 展示）
   List<MetricItem> toList() => [
-        MetricItem(name: 'PSNR', value: psnr, unit: 'dB', higherIsBetter: true, description: '峰值信噪比'),
-        MetricItem(name: 'SSIM', value: ssim, unit: '', higherIsBetter: true, description: '结构相似性'),
-        MetricItem(name: 'MSE', value: mse, unit: '', higherIsBetter: false, description: '均方误差'),
-        MetricItem(name: 'FSIM', value: fsim, unit: '', higherIsBetter: true, description: '特征相似性'),
-        MetricItem(name: 'LPIPS', value: lpips, unit: '', higherIsBetter: false, description: '感知损失'),
-      ];
+    MetricItem(
+      name: 'PSNR',
+      value: psnr,
+      unit: 'dB',
+      higherIsBetter: true,
+      description: '峰值信噪比',
+    ),
+    MetricItem(
+      name: 'SSIM',
+      value: ssim,
+      unit: '',
+      higherIsBetter: true,
+      description: '结构相似性',
+    ),
+    MetricItem(
+      name: 'MSE',
+      value: mse,
+      unit: '',
+      higherIsBetter: false,
+      description: '均方误差',
+    ),
+    MetricItem(
+      name: 'FSIM',
+      value: fsim,
+      unit: '',
+      higherIsBetter: true,
+      description: '特征相似性',
+    ),
+    MetricItem(
+      name: 'LPIPS',
+      value: lpips,
+      unit: '',
+      higherIsBetter: false,
+      description: '感知损失',
+    ),
+  ];
 }
 
 /// 单个指标项（UI 展示用）
@@ -157,9 +188,8 @@ class MetricItem {
   final bool higherIsBetter;
   final String description;
 
-  String get displayValue => value != null
-      ? value!.toStringAsFixed(value! < 1 ? 4 : 2)
-      : '-';
+  String get displayValue =>
+      value != null ? value!.toStringAsFixed(value! < 1 ? 4 : 2) : '-';
 }
 
 /// 评估日志（对应后端 EvalLogVO）
@@ -169,8 +199,7 @@ class MetricItem {
 class EvaluationLog {
   const EvaluationLog({
     required this.id,
-    required this.algorithmId,
-    this.algorithmName,
+    required this.modelId,
     this.predUrl,
     this.gtUrl,
     this.status,
@@ -185,9 +214,8 @@ class EvaluationLog {
 
   final int id;
 
-  final int algorithmId;
-
-  final String? algorithmName;
+  /// 图像模型标识（统一模型规范 slug）
+  final String modelId;
 
   /// 预测结果图 URL
   final String? predUrl;
@@ -205,7 +233,7 @@ class EvaluationLog {
   /// 评估指标结果（PSNR/SSIM 等 Map 或 JSON 字符串）
   final dynamic result;
 
-  /// 处理耗时（毫秒）
+  /// 处理耗时（秒）
   final int? time;
 
   /// 创建时间
@@ -219,8 +247,7 @@ class EvaluationLog {
 /// 用于评估指标历史列表展示，仅包含已完成任务的指标数据。
 class EvalMetricsVO {
   final int id;
-  final int algorithmId;
-  final String? algorithmName;
+  final String modelId;
   final String? predUrl;
   final String? gtUrl;
   final Map<String, double>? metrics;
@@ -231,8 +258,7 @@ class EvalMetricsVO {
 
   const EvalMetricsVO({
     required this.id,
-    required this.algorithmId,
-    this.algorithmName,
+    required this.modelId,
     this.predUrl,
     this.gtUrl,
     this.metrics,
@@ -245,34 +271,28 @@ class EvalMetricsVO {
   factory EvalMetricsVO.fromJson(Map<String, dynamic> json) {
     return EvalMetricsVO(
       id: (json['id'] as num).toInt(),
-      algorithmId: (json['algorithm_id'] ?? json['algorithmId']) != null
-          ? ((json['algorithm_id'] ?? json['algorithmId']) as num).toInt()
-          : 0,
-      algorithmName:
-          (json['algorithm_name'] ?? json['algorithmName']) as String?,
-      predUrl: (json['pred_url'] ?? json['predUrl']) as String?,
-      gtUrl: (json['gt_url'] ?? json['gtUrl']) as String?,
+      modelId: (json['modelId'] ?? json['model_id']) as String? ?? '',
+      predUrl: (json['predUrl'] ?? json['pred_url']) as String?,
+      gtUrl: (json['gtUrl'] ?? json['gt_url']) as String?,
       metrics: (json['metrics'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(k, (e as num).toDouble()),
       ),
       time: (json['time'] as num?)?.toInt(),
       status: _evalStatusFromJson((json['status'] as num?)?.toInt()),
-      errorMessage:
-          (json['error_message'] ?? json['errorMessage']) as String?,
-      createTime: (json['create_time'] ?? json['createTime']) as String?,
+      errorMessage: (json['errorMessage'] ?? json['error_message']) as String?,
+      createTime: (json['createTime'] ?? json['create_time']) as String?,
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'algorithm_id': algorithmId,
-        if (algorithmName != null) 'algorithm_name': algorithmName,
-        if (predUrl != null) 'pred_url': predUrl,
-        if (gtUrl != null) 'gt_url': gtUrl,
-        if (metrics != null) 'metrics': metrics,
-        if (time != null) 'time': time,
-        if (status != null) 'status': _evalStatusToJson(status),
-        if (errorMessage != null) 'error_message': errorMessage,
-        if (createTime != null) 'create_time': createTime,
-      };
+    'id': id,
+    'modelId': modelId,
+    if (predUrl != null) 'predUrl': predUrl,
+    if (gtUrl != null) 'gtUrl': gtUrl,
+    if (metrics != null) 'metrics': metrics,
+    if (time != null) 'time': time,
+    if (status != null) 'status': _evalStatusToJson(status),
+    if (errorMessage != null) 'errorMessage': errorMessage,
+    if (createTime != null) 'createTime': createTime,
+  };
 }

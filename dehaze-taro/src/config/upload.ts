@@ -34,7 +34,7 @@ async function uploadInH5(
         }
       }
     : undefined;
-  return FileAPI.upload(file, undefined, onUploadProgress);
+  return FileAPI.upload(file, onUploadProgress);
 }
 
 function uploadInMini(

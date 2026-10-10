@@ -36,7 +36,6 @@ export const MODULE_LABEL_MAP: Record<ImportModule, string> = {
   dept: "部门",
   menu: "菜单",
   dict: "字典",
-  algorithm: "算法",
 };
 
 export const TASK_TYPE_LABEL_MAP: Record<string, string> = {
@@ -46,13 +45,11 @@ export const TASK_TYPE_LABEL_MAP: Record<string, string> = {
   dept_export: "部门导出",
   menu_export: "菜单导出",
   dict_export: "字典导出",
-  algorithm_export: "算法导出",
   user_import: "用户导入",
   role_import: "角色导入",
   dept_import: "部门导入",
   menu_import: "菜单导入",
   dict_import: "字典导入",
-  algorithm_import: "算法导入",
 };
 
 export const STATUS_LABEL_MAP: Record<number, string> = {

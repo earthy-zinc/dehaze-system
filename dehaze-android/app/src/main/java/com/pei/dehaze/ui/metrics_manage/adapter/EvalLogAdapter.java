@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -94,7 +94,7 @@ public class EvalLogAdapter extends RecyclerView.Adapter<EvalLogAdapter.ViewHold
     class ViewHolder extends RecyclerView.ViewHolder {
         private final CheckBox cbSelect;
         private final TextView tvLogId;
-        private final TextView tvAlgoId;
+        private final TextView tvModelId;
         private final TextView tvPsnr;
         private final TextView tvSsim;
         private final TextView tvLpips;
@@ -105,7 +105,7 @@ public class EvalLogAdapter extends RecyclerView.Adapter<EvalLogAdapter.ViewHold
             super(itemView);
             cbSelect = itemView.findViewById(R.id.cb_select);
             tvLogId = itemView.findViewById(R.id.tv_log_id);
-            tvAlgoId = itemView.findViewById(R.id.tv_algo_id);
+            tvModelId = itemView.findViewById(R.id.tv_model_id);
             tvPsnr = itemView.findViewById(R.id.tv_psnr);
             tvSsim = itemView.findViewById(R.id.tv_ssim);
             tvLpips = itemView.findViewById(R.id.tv_lpips);
@@ -115,11 +115,11 @@ public class EvalLogAdapter extends RecyclerView.Adapter<EvalLogAdapter.ViewHold
 
         void bind(EvaluationLogVO log) {
             tvLogId.setText("评估记录 #" + (log.getId() != null ? log.getId() : "--"));
-            tvAlgoId.setText("算法ID: " + (log.getAlgorithmId() != null ? log.getAlgorithmId() : "--"));
+            tvModelId.setText("模型: " + (log.getModelId() != null ? log.getModelId() : "--"));
 
             // 指标
-            if (log.getResult() != null && log.getResult().getMetrics() != null) {
-                java.util.Map<String, Double> metrics = log.getResult().getMetrics();
+            java.util.Map<String, Double> metrics = log.getMetrics();
+            if (metrics != null) {
                 tvPsnr.setText("PSNR: " + formatMetric(metrics.get("PSNR")));
                 tvSsim.setText("SSIM: " + formatMetric(metrics.get("SSIM")));
                 tvLpips.setText("LPIPS: " + formatMetric(metrics.get("LPIPS")));
@@ -131,12 +131,12 @@ public class EvalLogAdapter extends RecyclerView.Adapter<EvalLogAdapter.ViewHold
 
             tvTime.setText(log.getCreateTime() != null ? log.getCreateTime() : "--");
 
-            if (log.getResult() != null && log.getResult().getStatus() != null) {
-                PredEvalTaskStatus status = log.getResult().getStatus();
-                tvStatus.setText(status == PredEvalTaskStatus.COMPLETED ? "已完成" :
-                        status == PredEvalTaskStatus.FAILED ? "失败" : "处理中");
-                tvStatus.setTextColor(status == PredEvalTaskStatus.COMPLETED ? 0xFF4CAF50 :
-                        status == PredEvalTaskStatus.FAILED ? 0xFFE53935 : 0xFF2196F3);
+            EvalTaskStatus status = log.getStatus();
+            if (status != null) {
+                tvStatus.setText(status == EvalTaskStatus.COMPLETED ? "已完成" :
+                        status == EvalTaskStatus.FAILED ? "失败" : "处理中");
+                tvStatus.setTextColor(status == EvalTaskStatus.COMPLETED ? 0xFF4CAF50 :
+                        status == EvalTaskStatus.FAILED ? 0xFFE53935 : 0xFF2196F3);
             }
 
             // 对比模式

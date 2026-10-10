@@ -18,7 +18,8 @@ class UploadArea extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return GestureDetector(
-      onTap: uploadProgress.status == UploadStatus.idle ||
+      onTap:
+          uploadProgress.status == UploadStatus.idle ||
               uploadProgress.status == UploadStatus.error ||
               uploadProgress.status == UploadStatus.success
           ? () => ref.read(imageInputProvider.notifier).pickImage()
@@ -27,7 +28,9 @@ class UploadArea extends ConsumerWidget {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.5,
+          ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: _getBorderColor(uploadProgress.status, theme),
@@ -56,7 +59,11 @@ class UploadArea extends ConsumerWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, UploadProgress progress) {
+  Widget _buildContent(
+    BuildContext context,
+    WidgetRef ref,
+    UploadProgress progress,
+  ) {
     final theme = Theme.of(context);
 
     switch (progress.status) {
@@ -78,127 +85,123 @@ class UploadArea extends ConsumerWidget {
   }
 
   Widget _buildIdleState(ThemeData theme) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.cloud_upload_outlined,
-              size: 48,
-              color: Color(0xFF3B82F6),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '点击上传图片',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '支持 JPG、PNG、WEBP、HEIC 格式',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '最大 20MB，建议分辨率 ≥640×480',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.cloud_upload_outlined,
+          size: 48,
+          color: Color(0xFF3B82F6),
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        '点击上传图片',
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '支持 JPG、PNG、WEBP、HEIC 格式',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '最大 20MB，建议分辨率 ≥640×480',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 
   /// 不定式加载状态（转圈 + 文案，不显示百分比）
   Widget _buildLoadingState(ThemeData theme, String message) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(
-            width: 48,
-            height: 48,
-            child: CircularProgressIndicator(strokeWidth: 3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const SizedBox(
+        width: 48,
+        height: 48,
+        child: CircularProgressIndicator(strokeWidth: 3),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        message,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+    ],
+  );
 
   Widget _buildSuccessState(ThemeData theme) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.check,
-              size: 32,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '上传成功',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF10B981),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '点击重新选择',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: const BoxDecoration(
+          color: Color(0xFF10B981),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.check, size: 32, color: Colors.white),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        '上传成功',
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF10B981),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '点击重新选择',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 
   Widget _buildErrorState(ThemeData theme, String? errorMessage) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.error_outline,
-              size: 32,
-              color: Color(0xFFEF4444),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            errorMessage ?? '上传失败',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: const Color(0xFFEF4444),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '点击重试',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(
+          Icons.error_outline,
+          size: 32,
+          color: Color(0xFFEF4444),
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        errorMessage ?? '上传失败',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: const Color(0xFFEF4444),
+        ),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        '点击重试',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ],
+  );
 }

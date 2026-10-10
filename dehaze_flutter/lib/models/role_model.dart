@@ -27,12 +27,12 @@ enum DataScope {
   custom;
 
   int get value => switch (this) {
-        DataScope.all => 1,
-        DataScope.dept => 2,
-        DataScope.deptAndSub => 3,
-        DataScope.self => 4,
-        DataScope.custom => 5,
-      };
+    DataScope.all => 1,
+    DataScope.dept => 2,
+    DataScope.deptAndSub => 3,
+    DataScope.self => 4,
+    DataScope.custom => 5,
+  };
 
   static DataScope fromValue(int? value) {
     switch (value) {
@@ -50,12 +50,12 @@ enum DataScope {
   }
 
   String get label => switch (this) {
-        DataScope.all => '全部数据权限',
-        DataScope.dept => '本部门数据权限',
-        DataScope.deptAndSub => '本部门及以下数据权限',
-        DataScope.self => '仅本人数据权限',
-        DataScope.custom => '自定义数据权限',
-      };
+    DataScope.all => '全部数据权限',
+    DataScope.dept => '本部门数据权限',
+    DataScope.deptAndSub => '本部门及以下数据权限',
+    DataScope.self => '仅本人数据权限',
+    DataScope.custom => '自定义数据权限',
+  };
 }
 
 /// 角色详情（对应 JS SDK Role）
@@ -101,11 +101,7 @@ class Role {
 /// 角色查询参数（对应 JS SDK RoleQuery）
 @JsonSerializable()
 class RoleQuery {
-  const RoleQuery({
-    this.pageNum = 1,
-    this.pageSize = 10,
-    this.keywords,
-  });
+  const RoleQuery({this.pageNum = 1, this.pageSize = 10, this.keywords});
 
   factory RoleQuery.fromJson(Map<String, dynamic> json) =>
       _$RoleQueryFromJson(json);
@@ -118,10 +114,10 @@ class RoleQuery {
 
   /// 转为 queryParameters 格式
   Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
+  };
 }
 
 /// 角色分页项（对应 JS SDK RolePageVO）
@@ -188,11 +184,7 @@ class RoleForm {
 /// 角色下拉选项（对应 JS SDK OptionType）
 @JsonSerializable()
 class RoleOption {
-  const RoleOption({
-    required this.id,
-    required this.name,
-    required this.code,
-  });
+  const RoleOption({required this.id, required this.name, required this.code});
 
   factory RoleOption.fromJson(Map<String, dynamic> json) =>
       _$RoleOptionFromJson(json);

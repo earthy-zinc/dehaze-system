@@ -12,9 +12,16 @@ const DatasetDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="数据集详情" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="数据集详情"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.content}>
-        <DatasetDetailSection datasetId={datasetId} onBack={() => navigation.goBack()} />
+        <DatasetDetailSection
+          datasetId={datasetId}
+          onBack={() => navigation.goBack()}
+        />
       </View>
     </View>
   );

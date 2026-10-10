@@ -121,7 +121,7 @@ public class BatchResultAdapter extends RecyclerView.Adapter<BatchResultAdapter.
                     btnRetry.setVisibility(View.GONE);
                     break;
                 case COMPLETED:
-                    tvResultStatus.setText("完成");
+                    tvResultStatus.setText(item.getTime() != null ? "完成 · 耗时 " + item.getTime() + "s" : "完成");
                     tvResultStatus.setTextColor(0xFF4CAF50);
                     progressResult.setVisibility(View.GONE);
                     btnViewResult.setVisibility(View.VISIBLE);

@@ -1,7 +1,7 @@
 import {
-  AlgorithmAPI,
+  AiModelAPI,
   FeedbackAPI,
-  type Algorithm,
+  type AiModelVO,
   type RatingPageVO,
   type RatingQuery,
 } from "dehaze-sdk-js";
@@ -53,8 +53,8 @@ const RatingManagement: React.FC = () => {
   const [pageData, setPageData] = useState<RatingPageVO[]>([]);
   const [total, setTotal] = useState(0);
   const [searchForm] = Form.useForm();
-  const [algorithmOptions, setAlgorithmOptions] = useState<
-    { value: number; label: string }[]
+  const [modelOptions, setModelOptions] = useState<
+    { value: string; label: string }[]
   >([]);
   const [queryParams, setQueryParams] = useState<RatingQuery>({
     pageNum: 1,
@@ -83,9 +83,12 @@ const RatingManagement: React.FC = () => {
     loadData(queryParams);
   }, [queryParams, refreshFlag]);
 
+  // 模型筛选项：当前用户可用的图像编辑模型
   useEffect(() => {
-    AlgorithmAPI.listAll().then((list: Algorithm[]) => {
-      setAlgorithmOptions(list.map((a) => ({ value: a.id, label: a.name })));
+    AiModelAPI.listEnabledModels("image_edit").then((list: AiModelVO[]) => {
+      setModelOptions(
+        list.map((m) => ({ value: m.modelId, label: m.displayName }))
+      );
     });
   }, []);
 
@@ -96,7 +99,7 @@ const RatingManagement: React.FC = () => {
   const handleSearch = useCallback(
     (values: {
       keywords?: string;
-      algorithmId?: number;
+      modelId?: string;
       ratingMin?: number;
       ratingMax?: number;
       hasComment?: boolean;
@@ -106,7 +109,7 @@ const RatingManagement: React.FC = () => {
         ...queryParams,
         pageNum: 1,
         keywords: values.keywords || undefined,
-        algorithmId: values.algorithmId,
+        modelId: values.modelId,
         ratingMin: values.ratingMin,
         ratingMax: values.ratingMax,
         hasComment: values.hasComment,
@@ -177,9 +180,9 @@ const RatingManagement: React.FC = () => {
           ),
       },
       {
-        title: "算法",
-        dataIndex: "algorithmName",
-        key: "algorithmName",
+        title: "模型",
+        dataIndex: "modelName",
+        key: "modelName",
         width: 120,
         align: "center",
       },
@@ -281,12 +284,12 @@ const RatingManagement: React.FC = () => {
               style={{ width: 180 }}
             />
           </Form.Item>
-          <Form.Item name="algorithmId" label="算法">
+          <Form.Item name="modelId" label="模型">
             <Select
               placeholder="全部"
               allowClear
               style={{ width: 160 }}
-              options={algorithmOptions}
+              options={modelOptions}
             />
           </Form.Item>
           <Form.Item name="ratingMin" label="最低分">

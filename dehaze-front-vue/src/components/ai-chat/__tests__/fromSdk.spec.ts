@@ -40,13 +40,13 @@ interface WireInterruptData {
   confirmKind?: "algorithm_recommend" | "tool_permission" | "dangerous_op";
   recommendation?: {
     recommendationId: number;
-    algorithmId: number;
-    algorithmName: string;
+    modelId: string;
+    modelName: string;
     reason: string;
   };
   alternatives?: Array<{
-    algorithmId: number;
-    algorithmName: string;
+    modelId: string;
+    modelName: string;
     matchScore: number;
     reason: string;
   }>;
@@ -356,14 +356,14 @@ describe("fromSdk 适配", () => {
         data: {
           recommendation: {
             recommendationId: 1,
-            algorithmId: 7,
-            algorithmName: "去雾",
+            modelId: "aecrnet",
+            modelName: "AECR-Net",
             reason: "最佳",
           },
           alternatives: [
             {
-              algorithmId: 8,
-              algorithmName: "备选",
+              modelId: "dcp",
+              modelName: "DCP",
               matchScore: 0.5,
               reason: "次优",
             },
@@ -373,14 +373,14 @@ describe("fromSdk 适配", () => {
       expect(vm).toEqual({
         type: "confirm",
         recommendation: {
-          algorithmId: 7,
-          algorithmName: "去雾",
+          modelId: "aecrnet",
+          modelName: "AECR-Net",
           reason: "最佳",
         },
         alternatives: [
           {
-            algorithmId: 8,
-            algorithmName: "备选",
+            modelId: "dcp",
+            modelName: "DCP",
             matchScore: 0.5,
             reason: "次优",
           },

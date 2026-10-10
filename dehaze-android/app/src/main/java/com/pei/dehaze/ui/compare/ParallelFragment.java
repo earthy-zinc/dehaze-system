@@ -14,7 +14,7 @@ import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentParallelBinding;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
 
@@ -59,33 +59,33 @@ public class ParallelFragment extends Fragment {
                 .into(binding.ivOriginal);
     }
 
-    private void showDehazed(PredResult result) {
+    private void showDehazed(ImageTaskResponse result) {
         if (result == null || result.getResultUrl() == null) return;
         statePlaceholder.hide();
         Glide.with(this).load(result.getResultUrl())
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivDehazed);
-        binding.tvAlgorithmInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms"));
+        binding.tvModelInfo.setText("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "s"));
     }
 
-    private void showMultiResults(Map<Long, PredResult> results) {
+    private void showMultiResults(Map<String, ImageTaskResponse> results) {
         if (results == null || results.isEmpty()) return;
-        PredResult first = results.values().iterator().next();
+        ImageTaskResponse first = results.values().iterator().next();
         if (first.getResultUrl() == null) return;
         statePlaceholder.hide();
         Glide.with(this).load(first.getResultUrl())
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(binding.ivDehazed);
-        StringBuilder sb = new StringBuilder("完成 " + results.size() + " 个算法：");
+        StringBuilder sb = new StringBuilder("完成 " + results.size() + " 个模型：");
         boolean firstItem = true;
-        for (Map.Entry<Long, PredResult> entry : results.entrySet()) {
+        for (Map.Entry<String, ImageTaskResponse> entry : results.entrySet()) {
             if (!firstItem) sb.append("、");
-            sb.append("算法#").append(entry.getKey());
+            sb.append(entry.getKey());
             firstItem = false;
         }
-        binding.tvAlgorithmInfo.setText(sb.toString());
+        binding.tvModelInfo.setText(sb.toString());
     }
 
     @Override

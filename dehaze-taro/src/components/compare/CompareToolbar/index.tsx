@@ -18,7 +18,7 @@ interface CompareToolbarProps {
 
 /**
  * 对比模式通用工具栏
- * 包含模式切换标签 + 5 个操作按钮（保存/分享/重新处理/换算法/收藏）
+ * 包含模式切换标签 + 5 个操作按钮（保存/分享/重新处理/换模型/收藏）
  */
 const CompareToolbar: React.FC<CompareToolbarProps> = ({
   currentMode,
@@ -80,9 +80,9 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     Taro.redirectTo({ url: "/pages/processing/index" });
   }, []);
 
-  // 更换算法
-  const handleChangeAlgorithm = useCallback(() => {
-    Taro.redirectTo({ url: "/pages/algorithm-select/index" });
+  // 更换模型（模型在处理页内联选择）
+  const handleChangeModel = useCallback(() => {
+    Taro.redirectTo({ url: "/pages/processing/index" });
   }, []);
 
   // 收藏/取消收藏
@@ -110,8 +110,12 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     { icon: "💾", text: "保存", onClick: handleSave },
     { icon: "📤", text: "分享", onClick: handleShare },
     { icon: "🔄", text: "重新处理", onClick: handleReprocess },
-    { icon: "⚡", text: "换算法", onClick: handleChangeAlgorithm },
-    { icon: favorited ? "❤️" : "🤍", text: favorited ? "已收藏" : "收藏", onClick: handleFavorite },
+    { icon: "⚡", text: "换模型", onClick: handleChangeModel },
+    {
+      icon: favorited ? "❤️" : "🤍",
+      text: favorited ? "已收藏" : "收藏",
+      onClick: handleFavorite,
+    },
   ];
 
   return (

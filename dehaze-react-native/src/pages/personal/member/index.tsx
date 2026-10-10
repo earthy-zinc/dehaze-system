@@ -65,12 +65,15 @@ const PersonalMemberScreen: React.FC = () => {
     setRefreshing(false);
   }, [loadMember]);
 
-  const colors = LEVEL_COLORS[member?.levelCode || 'level_0'] || LEVEL_COLORS.level_0;
-  const isVip = member && member.levelCode !== 'level_0' && member.levelCode !== 'level_1';
+  const colors =
+    LEVEL_COLORS[member?.levelCode || 'level_0'] || LEVEL_COLORS.level_0;
+  const isVip =
+    member && member.levelCode !== 'level_0' && member.levelCode !== 'level_1';
   const nextGrowth = member?.nextLevelGrowth;
-  const growthProgress = nextGrowth && nextGrowth > 0
-    ? Math.min(1, (member?.growthValue || 0) / nextGrowth)
-    : 0;
+  const growthProgress =
+    nextGrowth && nextGrowth > 0
+      ? Math.min(1, (member?.growthValue || 0) / nextGrowth)
+      : 0;
 
   const benefits = member?.benefits;
   const benefitList: { label: string; value: string }[] = benefits
@@ -79,17 +82,27 @@ const PersonalMemberScreen: React.FC = () => {
         { label: '月度评估额度', value: `${benefits.monthlyEvaluateQuota} 次` },
         { label: '批量处理上限', value: `${benefits.batchLimit} 张` },
         { label: '历史保留', value: `${benefits.historyRetention} 天` },
-        { label: '高级参数', value: benefits.advancedParams ? '支持' : '不支持' },
+        {
+          label: '高级参数',
+          value: benefits.advancedParams ? '支持' : '不支持',
+        },
         { label: '高清导出', value: benefits.hdExport ? '支持' : '不支持' },
         { label: '报告导出', value: benefits.reportExport ? '支持' : '不支持' },
-        { label: '批量下载', value: benefits.batchDownload ? '支持' : '不支持' },
+        {
+          label: '批量下载',
+          value: benefits.batchDownload ? '支持' : '不支持',
+        },
       ]
     : [];
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <AppHeader title="会员中心" showBack onBackPress={() => navigation.goBack()} />
+        <AppHeader
+          title="会员中心"
+          showBack
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>加载中...</Text>
@@ -101,9 +114,17 @@ const PersonalMemberScreen: React.FC = () => {
   if (error && !member) {
     return (
       <View style={styles.container}>
-        <AppHeader title="会员中心" showBack onBackPress={() => navigation.goBack()} />
+        <AppHeader
+          title="会员中心"
+          showBack
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.centered}>
-          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.text.tertiary} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={48}
+            color={theme.colors.text.tertiary}
+          />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       </View>
@@ -112,76 +133,114 @@ const PersonalMemberScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="会员中心" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="会员中心"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
       >
-      {/* 会员卡 */}
-      <LinearGradient
-        colors={colors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.memberCard}
-      >
-        <Ionicons name="diamond" size={32} color="#fff" style={styles.cardIcon} />
-        <Text style={styles.levelName}>{member?.levelName || '普通用户'}</Text>
-        <Text style={styles.growthLabel}>成长值</Text>
-        <Text style={styles.growthValue}>{member?.growthValue ?? 0}</Text>
-        {nextGrowth ? (
-          <>
-            <View style={styles.growthBar}>
-              <View style={[styles.growthFill, { width: `${growthProgress * 100}%` }]} />
-            </View>
-            <Text style={styles.growthHint}>距离下一级还需 {nextGrowth - (member?.growthValue || 0)} 成长值</Text>
-          </>
-        ) : null}
-        {member?.expireTime ? (
-          <Text style={styles.expireText}>
-            会员有效期至 {new Date(member.expireTime).toLocaleDateString('zh-CN')}
+        {/* 会员卡 */}
+        <LinearGradient
+          colors={colors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.memberCard}
+        >
+          <Ionicons
+            name="diamond"
+            size={32}
+            color="#fff"
+            style={styles.cardIcon}
+          />
+          <Text style={styles.levelName}>
+            {member?.levelName || '普通用户'}
           </Text>
-        ) : null}
-      </LinearGradient>
-
-      {/* 月度用量 */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>本月用量</Text>
-        <View style={styles.usageRow}>
-          <View style={styles.usageItem}>
-            <Text style={styles.usageValue}>{summary?.imageCategory?.remaining ?? 0}</Text>
-            <Text style={styles.usageLabel}>图像处理剩余</Text>
-          </View>
-          <View style={styles.usageItem}>
-            <Text style={styles.usageValue}>{summary?.evaluateCategory?.remaining ?? 0}</Text>
-            <Text style={styles.usageLabel}>评估剩余</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* 权益列表 */}
-      {benefitList.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>会员权益</Text>
-          <View style={styles.benefitCard}>
-            {benefitList.map((b, idx) => (
-              <View key={b.label} style={[styles.benefitRow, idx < benefitList.length - 1 && styles.benefitDivider]}>
-                <Text style={styles.benefitLabel}>{b.label}</Text>
-                <Text style={styles.benefitValue}>{b.value}</Text>
+          <Text style={styles.growthLabel}>成长值</Text>
+          <Text style={styles.growthValue}>{member?.growthValue ?? 0}</Text>
+          {nextGrowth ? (
+            <>
+              <View style={styles.growthBar}>
+                <View
+                  style={[
+                    styles.growthFill,
+                    { width: `${growthProgress * 100}%` },
+                  ]}
+                />
               </View>
-            ))}
+              <Text style={styles.growthHint}>
+                距离下一级还需 {nextGrowth - (member?.growthValue || 0)} 成长值
+              </Text>
+            </>
+          ) : null}
+          {member?.expireTime ? (
+            <Text style={styles.expireText}>
+              会员有效期至{' '}
+              {new Date(member.expireTime).toLocaleDateString('zh-CN')}
+            </Text>
+          ) : null}
+        </LinearGradient>
+
+        {/* 月度用量 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>本月用量</Text>
+          <View style={styles.usageRow}>
+            <View style={styles.usageItem}>
+              <Text style={styles.usageValue}>
+                {summary?.imageCategory?.remaining ?? 0}
+              </Text>
+              <Text style={styles.usageLabel}>图像处理剩余</Text>
+            </View>
+            <View style={styles.usageItem}>
+              <Text style={styles.usageValue}>
+                {summary?.evaluateCategory?.remaining ?? 0}
+              </Text>
+              <Text style={styles.usageLabel}>评估剩余</Text>
+            </View>
           </View>
         </View>
-      )}
 
-      {!isVip && (
-        <View style={styles.upgradeHint}>
-          <Ionicons name="diamond-outline" size={18} color={theme.colors.status.warning} />
-          <Text style={styles.upgradeText}>开通 VIP 会员享受更多权益</Text>
-        </View>
-      )}
-    </ScrollView>
+        {/* 权益列表 */}
+        {benefitList.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>会员权益</Text>
+            <View style={styles.benefitCard}>
+              {benefitList.map((b, idx) => (
+                <View
+                  key={b.label}
+                  style={[
+                    styles.benefitRow,
+                    idx < benefitList.length - 1 && styles.benefitDivider,
+                  ]}
+                >
+                  <Text style={styles.benefitLabel}>{b.label}</Text>
+                  <Text style={styles.benefitValue}>{b.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {!isVip && (
+          <View style={styles.upgradeHint}>
+            <Ionicons
+              name="diamond-outline"
+              size={18}
+              color={theme.colors.status.warning}
+            />
+            <Text style={styles.upgradeText}>开通 VIP 会员享受更多权益</Text>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
@@ -189,9 +248,23 @@ const PersonalMemberScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background.secondary },
   content: { padding: theme.spacing.md, paddingBottom: theme.spacing.xxxl },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: theme.spacing.xl },
-  loadingText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
-  errorText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.secondary, marginTop: theme.spacing.sm, textAlign: 'center' },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.sm,
+    textAlign: 'center',
+  },
   memberCard: {
     borderRadius: theme.layout.borderRadius.xxl,
     padding: theme.spacing.xl,

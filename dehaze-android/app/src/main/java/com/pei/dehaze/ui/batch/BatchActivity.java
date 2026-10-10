@@ -15,13 +15,16 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.pei.dehaze.databinding.ActivityBatchBinding;
-import com.pei.dehaze.sdk.model.algorithm.Algorithm;
-import com.pei.dehaze.ui.batch.adapter.BatchAlgorithmAdapter;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
 import com.pei.dehaze.ui.batch.adapter.BatchImageAdapter;
 import com.pei.dehaze.ui.batch.adapter.BatchResultAdapter;
 import com.pei.dehaze.ui.batch.model.BatchImageItem;
 import com.pei.dehaze.ui.batch.viewmodel.BatchViewModel;
+import com.pei.dehaze.ui.common.adapter.ModelSelectAdapter;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
 
@@ -32,17 +35,15 @@ import java.util.List;
 
 /**
  * 批量处理 Activity（L2）
- * 步骤1: 选择图片 → 步骤2: 选择算法 → 步骤3: 批量处理 → 查看结果
+ * 步骤1: 选择图片 → 步骤2: 选择模型 → 步骤3: 逐张提交图像任务 → 查看结果
  */
 public class BatchActivity extends BaseActivity {
-
-    private static final int MAX_IMAGES = 20;
 
     private BatchViewModel viewModel;
     private ActivityBatchBinding binding;
 
     private BatchImageAdapter imageAdapter;
-    private BatchAlgorithmAdapter algorithmAdapter;
+    private ModelSelectAdapter modelAdapter;
     private BatchResultAdapter resultAdapter;
 
     private Uri pendingCameraUri;
@@ -59,7 +60,7 @@ public class BatchActivity extends BaseActivity {
         initLaunchers();
         initViews();
         setupObservers();
-        viewModel.loadAlgorithms();
+        viewModel.loadOptions();
     }
 
     private void initViewModels() {
@@ -71,7 +72,7 @@ public class BatchActivity extends BaseActivity {
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == RESULT_OK && pendingCameraUri != null) {
-                        viewModel.addImage(pendingCameraUri);
+                        addImage(pendingCameraUri);
                     }
                 });
 
@@ -79,7 +80,7 @@ public class BatchActivity extends BaseActivity {
                 new ActivityResultContracts.GetContent(),
                 uri -> {
                     if (uri != null) {
-                        viewModel.addImage(uri);
+                        addImage(uri);
                     }
                 });
     }
@@ -94,29 +95,23 @@ public class BatchActivity extends BaseActivity {
         imageAdapter.setOnRemoveListener(position -> viewModel.removeImage(position));
 
         binding.btnCamera.setOnClickListener(v -> {
-            if (imageAdapter.getItems().size() >= MAX_IMAGES) {
-                ToastUtils.showShort(this, "最多选择" + MAX_IMAGES + "张图片");
-                return;
-            }
+            if (!checkCapacity()) return;
             dispatchCameraIntent();
         });
 
         binding.btnPickImages.setOnClickListener(v -> {
-            if (imageAdapter.getItems().size() >= MAX_IMAGES) {
-                ToastUtils.showShort(this, "最多选择" + MAX_IMAGES + "张图片");
-                return;
-            }
+            if (!checkCapacity()) return;
             imagePickerLauncher.launch("image/*");
         });
 
-        // 算法选择
-        algorithmAdapter = new BatchAlgorithmAdapter();
-        binding.rvAlgorithms.setLayoutManager(new LinearLayoutManager(this));
-        binding.rvAlgorithms.setAdapter(algorithmAdapter);
-        algorithmAdapter.setOnAlgorithmSelectListener(algo -> {
-            viewModel.setSelectedAlgorithmId(algo.getId());
-            binding.tvAlgorithmHint.setText("已选择: " + algo.getName());
+        // 模型选择
+        modelAdapter = new ModelSelectAdapter(model -> {
+            viewModel.setSelectedModel(model);
+            binding.tvModelHint.setText("已选择: "
+                    + (model.getDisplayName() != null ? model.getDisplayName() : model.getModelId()));
         });
+        binding.rvModels.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvModels.setAdapter(modelAdapter);
 
         // 结果列表
         resultAdapter = new BatchResultAdapter();
@@ -128,8 +123,7 @@ public class BatchActivity extends BaseActivity {
             @Override
             public void onViewResult(BatchImageItem item) {
                 if (item.getResultUrl() != null) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(item.getResultUrl()));
-                    startActivity(intent);
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(item.getResultUrl())));
                 }
             }
 
@@ -144,16 +138,58 @@ public class BatchActivity extends BaseActivity {
                 ToastUtils.showShort(this, "请先选择图片");
                 return;
             }
-            if (viewModel.getSelectedAlgorithmId() <= 0) {
-                ToastUtils.showShort(this, "请先选择算法");
+            if (viewModel.getSelectedModel() == null) {
+                ToastUtils.showShort(this, "请先选择模型");
                 return;
             }
             if (Boolean.TRUE.equals(viewModel.getIsProcessing().getValue())) {
                 ToastUtils.showShort(this, "正在处理中...");
                 return;
             }
+            DehazeParams params = parseParams();
+            if (params == null) return;
+            viewModel.setParams(params);
             viewModel.startBatchProcessing();
         });
+    }
+
+    /** 参数留空取默认值；JSON 非法或超出范围时提示并返回 null */
+    private DehazeParams parseParams() {
+        String text = binding.etParams.getText() == null
+                ? "" : binding.etParams.getText().toString().trim();
+        if (text.isEmpty()) return new DehazeParams();
+        DehazeParams params;
+        try {
+            params = new Gson().fromJson(text, DehazeParams.class);
+        } catch (JsonSyntaxException e) {
+            params = null;
+        }
+        if (params == null) {
+            ToastUtils.showShort(this, "模型参数不是合法 JSON");
+            return null;
+        }
+        String invalid = params.validate();
+        if (invalid != null) {
+            ToastUtils.showShort(this, invalid);
+            return null;
+        }
+        return params;
+    }
+
+    private void addImage(Uri uri) {
+        File file = UriUtils.copyToCache(this, uri);
+        if (file == null) {
+            ToastUtils.showShort(this, "无法读取所选图片");
+            return;
+        }
+        viewModel.addImage(uri, file);
+    }
+
+    private boolean checkCapacity() {
+        if (viewModel.canAddMore()) return true;
+        Integer limit = viewModel.getMaxImages().getValue();
+        ToastUtils.showShort(this, "最多选择" + (limit != null ? limit : 0) + "张图片");
+        return false;
     }
 
     private void dispatchCameraIntent() {
@@ -185,11 +221,21 @@ public class BatchActivity extends BaseActivity {
             for (BatchImageItem item : items) {
                 imageAdapter.addItem(item);
             }
-            binding.tvImageCount.setText("已选择 " + items.size() + "/" + MAX_IMAGES + " 张");
+            Integer limit = viewModel.getMaxImages().getValue();
+            binding.tvImageCount.setText("已选择 " + items.size() + "/" + (limit != null ? limit : 0) + " 张");
         });
 
-        viewModel.getAlgorithms().observe(this, list -> {
-            algorithmAdapter.submitList(list);
+        viewModel.getMaxImages().observe(this, limit -> binding.tvLimitHint.setText(
+                "最多" + (limit != null ? limit : 0) + "张（会员等级权益），支持拍照或相册选择"));
+
+        viewModel.getModels().observe(this, list -> {
+            modelAdapter.submitList(list);
+            AiModelVO selected = viewModel.getSelectedModel();
+            modelAdapter.setSelectedModelId(selected != null ? selected.getModelId() : null);
+            if (selected != null) {
+                binding.tvModelHint.setText("已选择: " + (selected.getDisplayName() != null
+                        ? selected.getDisplayName() : selected.getModelId()));
+            }
         });
 
         viewModel.getResultItems().observe(this, list -> {
@@ -202,9 +248,8 @@ public class BatchActivity extends BaseActivity {
             binding.progressBar.setVisibility(processing ? View.VISIBLE : View.GONE);
         });
 
-        viewModel.getProgressCount().observe(this, count -> {
-            binding.tvProgress.setText(count != null && !count.isEmpty() ? "进度: " + count : "");
-        });
+        viewModel.getProgressCount().observe(this, count ->
+                binding.tvProgress.setText(count != null && !count.isEmpty() ? "进度: " + count : ""));
 
         observeError(viewModel);
     }

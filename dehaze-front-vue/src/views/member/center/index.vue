@@ -79,16 +79,16 @@
       <el-row :gutter="20">
         <el-col :sm="6" :xs="12">
           <div class="benefit-item">
-            <div class="benefit-label">图像处理剩余</div>
-            <div class="benefit-value">{{ imageRemaining }}</div>
-            <div class="benefit-sub">7 类图像任务取最低剩余</div>
+            <div class="benefit-label">积分余额</div>
+            <div class="benefit-value">{{ creditsBalance }}</div>
+            <div class="benefit-sub">图像处理与语音等按实际用量扣除</div>
           </div>
         </el-col>
         <el-col :sm="6" :xs="12">
           <div class="benefit-item">
-            <div class="benefit-label">评估剩余</div>
-            <div class="benefit-value">{{ evaluateRemaining }}</div>
-            <div class="benefit-sub">本月剩余评估次数</div>
+            <div class="benefit-label">本月已用积分</div>
+            <div class="benefit-value">{{ monthlyUsed }}</div>
+            <div class="benefit-sub">本月累计消耗</div>
           </div>
         </el-col>
         <el-col :sm="6" :xs="12">
@@ -221,8 +221,9 @@
 
 <script lang="ts" setup>
 import {
+  AiBillingAPI,
+  BalanceVO,
   MemberAPI,
-  BenefitSummaryVO,
   SignInCalendarVO,
   MemberLevelCode,
 } from "dehaze-sdk-js";
@@ -239,7 +240,7 @@ const memberStore = useMemberStoreHook();
 const profile = computed(() => memberStore.profile);
 
 const loading = ref(false);
-const summary = ref<BenefitSummaryVO>();
+const balance = ref<BalanceVO>();
 const calendar = ref<SignInCalendarVO>();
 const calendarDate = ref(new Date());
 const signInLoading = ref(false);
@@ -279,13 +280,9 @@ const growthToNext = computed(() => {
   return Math.max(0, profile.value.nextLevelGrowth - profile.value.growthValue);
 });
 
-const imageRemaining = computed(
-  () => summary.value?.imageCategory?.remaining ?? 0
-);
+const creditsBalance = computed(() => balance.value?.creditsBalance ?? 0);
 
-const evaluateRemaining = computed(
-  () => summary.value?.evaluateCategory?.remaining ?? 0
-);
+const monthlyUsed = computed(() => balance.value?.monthlyUsed ?? 0);
 
 const hasAnyUnlockedFeature = computed(() => {
   if (!profile.value?.benefits) return false;
@@ -318,9 +315,9 @@ function isToday(day: string) {
 
 function loadData() {
   loading.value = true;
-  Promise.all([memberStore.refreshProfile(), MemberAPI.getBenefitSummary()])
-    .then(([, summaryData]) => {
-      summary.value = summaryData;
+  Promise.all([memberStore.refreshProfile(), AiBillingAPI.getBalance()])
+    .then(([, balanceData]) => {
+      balance.value = balanceData;
     })
     .finally(() => {
       loading.value = false;

@@ -2,7 +2,7 @@
   <el-card class="recommendation-panel" shadow="never">
     <template #header>
       <div class="panel-header">
-        <span class="panel-title">算法推荐</span>
+        <span class="panel-title">模型推荐</span>
         <el-tag v-if="imageReady" type="success" size="small">分析完成</el-tag>
         <el-tag v-else-if="imageId || imageUrl" type="warning" size="small"
           >等待分析</el-tag
@@ -77,49 +77,49 @@
         </el-collapse-item>
       </el-collapse>
 
-      <!-- Recommended Algorithms Section -->
-      <div class="algo-section">
-        <div class="section-title">Top 推荐算法</div>
+      <!-- Recommended Models Section -->
+      <div class="model-section">
+        <div class="section-title">Top 推荐模型</div>
         <div
-          v-for="(algo, idx) in recommendations"
-          :key="algo.algorithmId"
-          class="algo-card"
+          v-for="(model, idx) in recommendations"
+          :key="model.modelId"
+          class="model-card"
         >
-          <div class="algo-header">
-            <span class="algo-rank">{{ idx + 1 }}</span>
-            <div class="algo-info">
-              <div class="algo-name">{{ algo.algorithmName }}</div>
+          <div class="model-header">
+            <span class="model-rank">{{ idx + 1 }}</span>
+            <div class="model-info">
+              <div class="model-name">{{ model.modelName }}</div>
               <el-rate
-                :model-value="algo.rating ?? undefined"
+                :model-value="model.rating ?? undefined"
                 disabled
                 :show-text="false"
               />
             </div>
-            <el-button link type="primary" @click="handleSelect(algo)">
+            <el-button link type="primary" @click="handleSelect(model)">
               选择
             </el-button>
           </div>
-          <div class="algo-score-bar">
+          <div class="model-score-bar">
             <el-progress
-              :percentage="algo.matchScore"
-              :color="scoreColor(algo.matchScore)"
+              :percentage="model.matchScore"
+              :color="scoreColor(model.matchScore)"
               :stroke-width="8"
             />
           </div>
-          <div class="algo-reason">{{ algo.reason }}</div>
-          <div class="algo-meta">
-            <span>匹配度 {{ algo.matchScore }}%</span>
-            <span v-if="algo.estimatedTime"
-              >预计耗时 {{ formatTime(algo.estimatedTime) }}</span
+          <div class="model-reason">{{ model.reason }}</div>
+          <div class="model-meta">
+            <span>匹配度 {{ model.matchScore }}%</span>
+            <span v-if="model.estimatedTime"
+              >预计耗时 {{ formatTime(model.estimatedTime) }}</span
             >
           </div>
-          <div class="algo-feedback">
+          <div class="model-feedback">
             <el-button
               link
               type="success"
               size="small"
-              :loading="feedbackLoading === algo.recommendationId"
-              @click="handleFeedback(algo, true)"
+              :loading="feedbackLoading === model.recommendationId"
+              @click="handleFeedback(model, true)"
             >
               <el-icon><ThumbUp /></el-icon>有用
             </el-button>
@@ -127,8 +127,8 @@
               link
               type="danger"
               size="small"
-              :loading="feedbackLoading === algo.recommendationId"
-              @click="handleFeedback(algo, false)"
+              :loading="feedbackLoading === model.recommendationId"
+              @click="handleFeedback(model, false)"
             >
               <el-icon><CircleClose /></el-icon>无用
             </el-button>
@@ -155,7 +155,7 @@ import { ref, computed, watch } from "vue";
 import {
   RecommendationAPI,
   ImageFeatureAnalysis,
-  RecommendedAlgorithm,
+  RecommendedModelVO,
 } from "dehaze-sdk-js";
 import { CircleClose } from "@element-plus/icons-vue";
 import type { TagType } from "@/enums/TagType";
@@ -168,11 +168,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "select", algorithm: RecommendedAlgorithm): void;
+  (e: "select", model: RecommendedModelVO): void;
 }>();
 
 const analysis = ref<ImageFeatureAnalysis | null>(null);
-const recommendations = ref<RecommendedAlgorithm[]>([]);
+const recommendations = ref<RecommendedModelVO[]>([]);
 const analyzing = ref(false);
 const error = ref("");
 const feedbackLoading = ref<number | null>(null);
@@ -209,29 +209,29 @@ async function doAnalyze() {
 
 async function fetchRecommendations(imageMd5?: string) {
   try {
-    const list = await RecommendationAPI.getAlgorithmRecommendations({
+    const list = await RecommendationAPI.getModelRecommendations({
       imageMd5,
     });
     recommendations.value = list.slice(0, 3);
   } catch {
-    ElMessage.warning("未能获取推荐算法");
+    ElMessage.warning("未能获取推荐模型");
   }
 }
 
-function handleSelect(algo: RecommendedAlgorithm) {
-  emit("select", algo);
-  ElMessage.success(`已选择 ${algo.algorithmName}`);
+function handleSelect(model: RecommendedModelVO) {
+  emit("select", model);
+  ElMessage.success(`已选择 ${model.modelName}`);
 }
 
-async function handleFeedback(algo: RecommendedAlgorithm, useful: boolean) {
-  if (!algo.recommendationId) {
+async function handleFeedback(model: RecommendedModelVO, useful: boolean) {
+  if (!model.recommendationId) {
     ElMessage.warning("暂无反馈入口");
     return;
   }
-  feedbackLoading.value = algo.recommendationId;
+  feedbackLoading.value = model.recommendationId;
   try {
     await RecommendationAPI.submitFeedback({
-      recommendationId: algo.recommendationId,
+      recommendationId: model.recommendationId,
       useful,
     });
     ElMessage.success(useful ? "反馈已提交（有用）" : "反馈已提交（无用）");
@@ -386,7 +386,7 @@ watch(
   color: #303133;
 }
 
-.algo-section {
+.model-section {
   margin-top: 16px;
 }
 
@@ -396,7 +396,7 @@ watch(
   font-weight: 600;
 }
 
-.algo-card {
+.model-card {
   padding: 12px;
   margin-bottom: 12px;
   border: 1px solid #ebeef5;
@@ -404,18 +404,18 @@ watch(
   transition: box-shadow 0.2s;
 }
 
-.algo-card:hover {
+.model-card:hover {
   box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
-.algo-header {
+.model-header {
   display: flex;
   gap: 10px;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.algo-rank {
+.model-rank {
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -429,31 +429,31 @@ watch(
   border-radius: 50%;
 }
 
-.algo-info {
+.model-info {
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 2px;
 }
 
-.algo-name {
+.model-name {
   font-size: 14px;
   font-weight: 600;
   color: #303133;
 }
 
-.algo-score-bar {
+.model-score-bar {
   margin-bottom: 6px;
 }
 
-.algo-reason {
+.model-reason {
   margin-bottom: 6px;
   font-size: 12px;
   line-height: 1.5;
   color: #606266;
 }
 
-.algo-meta {
+.model-meta {
   display: flex;
   gap: 12px;
   margin-bottom: 8px;
@@ -461,7 +461,7 @@ watch(
   color: #909399;
 }
 
-.algo-feedback {
+.model-feedback {
   display: flex;
   gap: 12px;
 }

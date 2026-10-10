@@ -9,7 +9,7 @@ public class RecommendationRule {
     private Long id;
     private String ruleName;
     private String sceneType;
-    private List<Long> algorithmIds;
+    private List<String> modelIds;
     private Integer weight;
     private Boolean enabled;
 }

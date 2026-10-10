@@ -32,20 +32,13 @@
 
 <script lang="ts" setup>
 import { Lightning } from "@element-plus/icons-vue";
+import bgUrl from "@/assets/images/hero-bg-dehaze.jpg";
 
 defineOptions({
   name: "HeroSection",
 });
 
 const router = useRouter();
-
-// 背景配图（真实生成，非占位图）
-const bgUrl =
-  "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
-  encodeURIComponent(
-    "Soft morning mist over a serene mountain landscape, light blue and white tones, hazy atmosphere, wide shot, professional photography"
-  ) +
-  "&image_size=landscape_16_9";
 </script>
 
 <style lang="scss" scoped>

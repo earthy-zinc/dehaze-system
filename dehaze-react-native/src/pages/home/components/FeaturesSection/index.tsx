@@ -8,7 +8,7 @@ import { theme } from '@/theme';
 
 interface FeaturesSectionProps {
   onImageInputPress: () => void;
-  onAlgorithmSelectPress: () => void;
+  onModelSelectPress: () => void;
   onProcessingPress: () => void;
   onComparePress: () => void;
   onDatasetManagePress: () => void;
@@ -17,13 +17,14 @@ interface FeaturesSectionProps {
 
 const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   onImageInputPress,
-  onAlgorithmSelectPress,
+  onModelSelectPress,
   onProcessingPress,
   onComparePress,
   onDatasetManagePress,
   onTaskCenterPress,
 }) => {
-  const { width, isMobile, isTablet, spacing, containerPadding, fontScale } = useResponsive();
+  const { width, isMobile, isTablet, spacing, containerPadding, fontScale } =
+    useResponsive();
 
   // ... workflowSteps and tools definitions ...
   const workflowSteps = [
@@ -37,9 +38,9 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
     {
       number: '02',
       icon: 'brain',
-      title: '智能算法',
-      description: '多种去雾算法可选\nAI智能推荐最优方案',
-      onPress: onAlgorithmSelectPress,
+      title: '智能模型',
+      description: '多种去雾模型可选\nAI智能推荐最优方案',
+      onPress: onModelSelectPress,
     },
     {
       number: '03',
@@ -96,17 +97,22 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   ];
 
   // 计算工作流步骤卡片宽度
-  const stepCardWidth = isMobile 
-    ? width - containerPadding * 2 - 40 
+  const stepCardWidth = isMobile
+    ? width - containerPadding * 2 - 40
     : Math.min(280, (width - containerPadding * 2 - spacing * 4) / 3);
 
   // 计算工具卡片宽度（响应式网格）
   const toolColumns = isMobile ? 1 : isTablet ? 2 : 3;
-  const toolCardWidth = (width - containerPadding * 2 - spacing * (toolColumns - 1)) / toolColumns;
+  const toolCardWidth =
+    (width - containerPadding * 2 - spacing * (toolColumns - 1)) / toolColumns;
 
   // 响应式字体大小
-  const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
-  const subtitleFontSize = isMobile ? theme.typography.sizes.medium : theme.typography.sizes.h6 * fontScale;
+  const titleFontSize = isMobile
+    ? theme.typography.sizes.h3
+    : theme.typography.sizes.h1 * fontScale;
+  const subtitleFontSize = isMobile
+    ? theme.typography.sizes.medium
+    : theme.typography.sizes.h6 * fontScale;
 
   return (
     <View style={styles.container}>
@@ -133,14 +139,16 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
           <View key={`workflow-${index}`} style={styles.stepWrapper}>
             <WorkflowStep {...step} width={stepCardWidth} />
             {index < workflowSteps.length - 1 && (
-              <View style={[
-                styles.arrowContainer,
-                isMobile && styles.arrowContainerMobile,
-              ]}>
-                <Icon 
-                  name={isMobile ? 'arrow-down' : 'arrow-right'} 
-                  size={isMobile ? 20 : 24} 
-                  color={theme.colors.border.light} 
+              <View
+                style={[
+                  styles.arrowContainer,
+                  isMobile && styles.arrowContainerMobile,
+                ]}
+              >
+                <Icon
+                  name={isMobile ? 'arrow-down' : 'arrow-right'}
+                  size={isMobile ? 20 : 24}
+                  color={theme.colors.border.light}
                 />
               </View>
             )}
@@ -149,20 +157,18 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
       </ScrollView>
 
       {/* Tools Grid */}
-      <View style={[
-        styles.toolsSection,
-        { paddingHorizontal: containerPadding },
-      ]}>
-        <View style={[
-          styles.toolsGrid,
-          { gap: spacing },
-        ]}>
+      <View
+        style={[styles.toolsSection, { paddingHorizontal: containerPadding }]}
+      >
+        <View style={[styles.toolsGrid, { gap: spacing }]}>
           {tools.map((tool, index) => (
-            <View 
-              key={`tool-${index}`} 
+            <View
+              key={`tool-${index}`}
               style={[
                 styles.toolWrapper,
-                { width: toolCardWidth - (isMobile ? 0 : spacing / toolColumns) },
+                {
+                  width: toolCardWidth - (isMobile ? 0 : spacing / toolColumns),
+                },
               ]}
             >
               <ToolCard {...tool} />

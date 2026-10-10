@@ -11,10 +11,15 @@ const SESSION_INVALID_CODES: readonly string[] = [
 ];
 
 function isSessionInvalid(error: unknown): boolean {
-  const err = error as { response?: { status?: number; data?: { code?: string } } };
+  const err = error as {
+    response?: { status?: number; data?: { code?: string } };
+  };
   const status = err.response?.status;
   const code = err.response?.data?.code;
-  return status === 401 || (typeof code === 'string' && SESSION_INVALID_CODES.includes(code));
+  return (
+    status === 401 ||
+    (typeof code === 'string' && SESSION_INVALID_CODES.includes(code))
+  );
 }
 
 function buildAxiosConfig(baseURL: string): InterceptorCallbacks {

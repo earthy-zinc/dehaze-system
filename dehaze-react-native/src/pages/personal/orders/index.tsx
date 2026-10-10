@@ -19,6 +19,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import { theme } from '@/theme';
 import { AppHeader } from '@/layout';
+import { fenToYuan } from '@/utils/money';
 
 const PAGE_SIZE = 20;
 
@@ -74,21 +75,35 @@ const PersonalOrdersScreen: React.FC = () => {
   }, [hasMore, refreshing, page, loadOrders]);
 
   const renderItem = useCallback(({ item }: { item: MyOrderVO }) => {
-    const statusInfo = ORDER_STATUS_MAP[item.status] || { label: item.status, color: theme.colors.text.tertiary };
+    const statusInfo = ORDER_STATUS_MAP[item.status] || {
+      label: item.status,
+      color: theme.colors.text.tertiary,
+    };
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.orderNo} numberOfLines={1}>{item.orderNo}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+          <Text style={styles.orderNo} numberOfLines={1}>
+            {item.orderNo}
+          </Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: statusInfo.color + '20' },
+            ]}
+          >
+            <Text style={[styles.statusText, { color: statusInfo.color }]}>
+              {statusInfo.label}
+            </Text>
           </View>
         </View>
         <Text style={styles.packageName}>{item.packageName}</Text>
         <View style={styles.cardFooter}>
-          <Text style={styles.amount}>¥{(item.payableAmount ?? 0).toFixed(2)}</Text>
+          <Text style={styles.amount}>¥{fenToYuan(item.payableAmount)}</Text>
           <Text style={styles.time}>
-            {item.createTime ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''}
+            {item.createTime
+              ? new Date(item.createTime).toLocaleDateString('zh-CN')
+              : ''}
           </Text>
         </View>
       </View>
@@ -98,21 +113,34 @@ const PersonalOrdersScreen: React.FC = () => {
   const renderEmpty = () =>
     !loading ? (
       <View style={styles.empty}>
-        <Ionicons name="cart-outline" size={48} color={theme.colors.text.tertiary} />
+        <Ionicons
+          name="cart-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
         <Text style={styles.emptyText}>暂无订单</Text>
       </View>
     ) : null;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="我的订单" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="我的订单"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <FlatList
         data={orders}
         renderItem={renderItem}
         keyExtractor={item => item.orderNo}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -174,7 +202,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   empty: { alignItems: 'center', paddingVertical: theme.spacing.xxxl },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
 });
 
 export default PersonalOrdersScreen;

@@ -29,13 +29,6 @@ vi.mock("element-plus", async () => {
   };
 });
 
-// Mock useImageShowStore
-vi.mock("@/store/modules/imageShow", () => ({
-  useImageShowStore: () => ({
-    modelId: "test-model-id",
-  }),
-}));
-
 describe("SingleUpload Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -155,7 +148,7 @@ describe("SingleUpload Component", () => {
       await (wrapper.vm as any).uploadFile(uploadOptions);
 
       expect(FileAPI.uploadCheck).toHaveBeenCalled();
-      expect(FileAPI.upload).toHaveBeenCalledWith(file, "test-model-id");
+      expect(FileAPI.upload).toHaveBeenCalledWith(file);
       expect(wrapper.emitted("update:modelValue")).toBeTruthy();
       expect(wrapper.emitted("update:modelValue")?.[0]).toEqual([
         "https://example.com/uploaded.jpg",

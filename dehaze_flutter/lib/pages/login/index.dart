@@ -118,7 +118,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       label: '用户名',
                       icon: Icons.person_outline,
                       hint: '请输入用户名',
-                      validator: (v) => (v == null || v.isEmpty) ? '请输入用户名' : null,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? '请输入用户名' : null,
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 16),
@@ -134,9 +135,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
-                      validator: (v) => (v == null || v.isEmpty) ? '请输入密码' : null,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? '请输入密码' : null,
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 16),
@@ -159,7 +163,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('登录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          : const Text(
+                              '登录',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -209,9 +219,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
           ),
         ),
         TextFormField(
@@ -272,14 +282,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.refresh, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                                  Icon(
+                                    Icons.refresh,
+                                    size: 18,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
                                   SizedBox(height: 2),
-                                  Text('点击获取', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                                  Text(
+                                    '点击获取',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
                                 ],
                               ),
                       )
@@ -289,9 +311,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           _decodeBase64Image(_captcha!.captchaBase64),
                           fit: BoxFit.fill,
                           gaplessPlayback: true,
-                          errorBuilder: (_, _, _) => const Center(
-                            child: Icon(Icons.broken_image),
-                          ),
+                          errorBuilder: (_, _, _) =>
+                              const Center(child: Icon(Icons.broken_image)),
                         ),
                       ),
               ),

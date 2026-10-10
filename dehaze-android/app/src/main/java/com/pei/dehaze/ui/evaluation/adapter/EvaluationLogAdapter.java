@@ -11,9 +11,9 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
-import com.pei.dehaze.sdk.model.evaluation.EvalResult;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
+
 
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +45,8 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
                 public boolean areContentsTheSame(@NonNull EvaluationLogVO oldItem,
                                                   @NonNull EvaluationLogVO newItem) {
                     return Objects.equals(oldItem.getCreateTime(), newItem.getCreateTime())
-                            && Objects.equals(oldItem.getResult(), newItem.getResult());
+                            && Objects.equals(oldItem.getStatus(), newItem.getStatus())
+                            && Objects.equals(oldItem.getMetrics(), newItem.getMetrics());
                 }
             };
 
@@ -83,29 +84,21 @@ public class EvaluationLogAdapter extends ListAdapter<EvaluationLogVO, Evaluatio
         void bind(EvaluationLogVO log) {
             tvTitle.setText("评估记录 #" + (log.getId() == null ? "-" : log.getId()));
 
-            EvalResult result = log.getResult();
-            if (result == null) {
-                tvStatus.setText("未评估");
+            EvalTaskStatus status = log.getStatus();
+            if (status == EvalTaskStatus.FAILED) {
+                tvStatus.setText("失败");
+                tvStatus.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_red_dark));
+            } else if (status == EvalTaskStatus.COMPLETED) {
+                tvStatus.setText("完成");
+                tvStatus.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_green_dark));
+            } else {
+                tvStatus.setText("处理中");
                 tvStatus.setTextColor(itemView.getContext().getResources()
                         .getColor(android.R.color.darker_gray));
-                tvMetrics.setText("暂无指标数据");
-            } else {
-                PredEvalTaskStatus status = result.getStatus();
-                if (status == PredEvalTaskStatus.FAILED) {
-                    tvStatus.setText("失败");
-                    tvStatus.setTextColor(itemView.getContext().getResources()
-                            .getColor(android.R.color.holo_red_dark));
-                } else if (status == PredEvalTaskStatus.COMPLETED) {
-                    tvStatus.setText("完成");
-                    tvStatus.setTextColor(itemView.getContext().getResources()
-                            .getColor(android.R.color.holo_green_dark));
-                } else {
-                    tvStatus.setText("处理中");
-                    tvStatus.setTextColor(itemView.getContext().getResources()
-                            .getColor(android.R.color.darker_gray));
-                }
-                tvMetrics.setText(formatMetrics(result.getMetrics()));
             }
+            tvMetrics.setText(formatMetrics(log.getMetrics()));
 
             tvCreateTime.setText(log.getCreateTime() == null ? "" : log.getCreateTime());
 

@@ -27,11 +27,15 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
     easing = Easing.out(Easing.cubic),
     scale,
   } = options;
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(
-    direction === 'down' || direction === 'right' ? -slideDistance : slideDistance
-  )).current;
+  const slideAnim = useRef(
+    new Animated.Value(
+      direction === 'down' || direction === 'right'
+        ? -slideDistance
+        : slideDistance,
+    ),
+  ).current;
   const scaleAnim = useRef(new Animated.Value(scale?.initial ?? 1)).current;
 
   const start = useCallback(() => {
@@ -60,7 +64,7 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
           easing,
           useNativeDriver: true,
           delay,
-        })
+        }),
       );
     }
 
@@ -74,7 +78,11 @@ export function useFadeSlideAnimation(options: FadeSlideOptions = {}) {
   }, [autoStart, start]);
 
   const animatedStyle = useMemo(() => {
-    const transform: Array<{ translateX?: Animated.Value } | { translateY?: Animated.Value } | { scale?: Animated.Value }> = [];
+    const transform: Array<
+      | { translateX?: Animated.Value }
+      | { translateY?: Animated.Value }
+      | { scale?: Animated.Value }
+    > = [];
 
     if (slideDistance > 0) {
       if (direction === 'left' || direction === 'right') {
@@ -108,14 +116,10 @@ interface PressAnimationOptions {
  * 按压动画 Hook
  */
 export function usePressAnimation(options: PressAnimationOptions = {}) {
-  const {
-    scale = 0.95,
-    tension = 100,
-    friction = 8,
-  } = options;
+  const { scale = 0.95, tension = 100, friction = 8 } = options;
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  
+
   const onPressIn = useCallback(() => {
     Animated.spring(scaleAnim, {
       toValue: scale,
@@ -134,9 +138,12 @@ export function usePressAnimation(options: PressAnimationOptions = {}) {
     }).start();
   }, [scaleAnim, tension, friction]);
 
-  const animatedStyle = useMemo(() => ({
-    transform: [{ scale: scaleAnim }],
-  }), [scaleAnim]);
+  const animatedStyle = useMemo(
+    () => ({
+      transform: [{ scale: scaleAnim }],
+    }),
+    [scaleAnim],
+  );
 
   return { scaleAnim, onPressIn, onPressOut, animatedStyle };
 }

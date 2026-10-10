@@ -76,7 +76,11 @@ const RegisterScreen: React.FC = () => {
       Alert.alert('提示', '两次密码不一致');
       return;
     }
-    if (captcha && !captchaCode) {
+    if (!captcha) {
+      Alert.alert('提示', '验证码加载失败，请点击验证码区域重试');
+      return;
+    }
+    if (!captchaCode) {
       Alert.alert('提示', '请输入验证码');
       return;
     }
@@ -87,8 +91,8 @@ const RegisterScreen: React.FC = () => {
         username: username.trim(),
         password,
         nickname: nickname.trim(),
-        captchaKey: captcha?.captchaKey,
-        captchaCode: captcha ? captchaCode : undefined,
+        captchaKey: captcha.captchaKey,
+        captchaCode,
       });
       Alert.alert('注册成功', '请使用新账号登录', [
         { text: '去登录', onPress: () => navigation.replace('Login') },
@@ -104,13 +108,13 @@ const RegisterScreen: React.FC = () => {
   };
 
   const inputGroups: {
-     label: string;
-     icon: string;
-     value: string;
-     onChange: (v: string) => void;
-     placeholder: string;
-     secure: boolean;
-   }[] = [
+    label: string;
+    icon: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder: string;
+    secure: boolean;
+  }[] = [
     {
       label: '用户名',
       icon: 'person-outline',
@@ -198,14 +202,17 @@ const RegisterScreen: React.FC = () => {
                         autoCapitalize="none"
                         returnKeyType="next"
                       />
-                      {(group.label === '密码' || group.label === '确认密码') && (
+                      {(group.label === '密码' ||
+                        group.label === '确认密码') && (
                         <TouchableOpacity
                           onPress={() => setShowPassword(s => !s)}
                           style={styles.eyeBtn}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
                           <Ionicons
-                            name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                            name={
+                              showPassword ? 'eye-outline' : 'eye-off-outline'
+                            }
                             size={18}
                             color={colors.text.tertiary}
                           />
@@ -263,7 +270,11 @@ const RegisterScreen: React.FC = () => {
                   activeOpacity={0.9}
                 >
                   <LinearGradient
-                    colors={loading ? ['#93c5fd', '#a5b4fc'] : [colors.primary, colors.gradient.primary[1]]}
+                    colors={
+                      loading
+                        ? ['#93c5fd', '#a5b4fc']
+                        : [colors.primary, colors.gradient.primary[1]]
+                    }
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.button}
@@ -289,7 +300,9 @@ const RegisterScreen: React.FC = () => {
                   onPress={() => navigation.replace('Login')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.registerLinkText}>已有账号？立即登录</Text>
+                  <Text style={styles.registerLinkText}>
+                    已有账号？立即登录
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

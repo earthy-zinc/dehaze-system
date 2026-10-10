@@ -11,18 +11,18 @@
           />
         </el-form-item>
 
-        <el-form-item label="算法" prop="algorithmId">
+        <el-form-item label="模型" prop="modelId">
           <el-select
-            v-model="queryParams.algorithmId"
+            v-model="queryParams.modelId"
             clearable
             placeholder="全部"
             style="width: 160px"
           >
             <el-option
-              v-for="item in algorithmOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="item in modelOptions"
+              :key="item.modelId"
+              :label="item.displayName"
+              :value="item.modelId"
             />
           </el-select>
         </el-form-item>
@@ -128,7 +128,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="算法" prop="algorithmName" width="120" />
+        <el-table-column label="模型" prop="modelName" width="120" />
 
         <el-table-column label="评分" width="120" align="center">
           <template #default="scope">
@@ -218,8 +218,8 @@
         <el-descriptions-item label="用户名">{{
           detailData.isAnonymous === 1 ? "匿名用户" : detailData.username || "-"
         }}</el-descriptions-item>
-        <el-descriptions-item label="算法">{{
-          detailData.algorithmName
+        <el-descriptions-item label="模型">{{
+          detailData.modelName
         }}</el-descriptions-item>
         <el-descriptions-item label="评分">
           <el-rate :model-value="detailData.rating" disabled />
@@ -319,8 +319,9 @@
 
 <script lang="ts" setup>
 import {
+  AiModelAPI,
+  AiModelVO,
   FeedbackAPI,
-  AlgorithmAPI,
   RatingQuery,
   RatingPageVO,
   RatingDetailVO,
@@ -350,11 +351,11 @@ const queryParams = reactive<RatingQuery>({
   pageSize: 10,
 });
 
-const algorithmOptions = ref<{ value: number; label: string }[]>([]);
+const modelOptions = ref<AiModelVO[]>([]);
 
 onMounted(() => {
-  AlgorithmAPI.listAll().then((list) => {
-    algorithmOptions.value = list.map((a) => ({ value: a.id, label: a.name }));
+  AiModelAPI.listEnabledModels("image_edit").then((list) => {
+    modelOptions.value = list;
   });
 });
 
@@ -388,7 +389,7 @@ function resetQuery() {
   queryFormRef.value?.resetFields();
   timeRange.value = null;
   queryParams.keywords = undefined;
-  queryParams.algorithmId = undefined;
+  queryParams.modelId = undefined;
   queryParams.ratingMin = undefined;
   queryParams.ratingMax = undefined;
   queryParams.hasComment = undefined;

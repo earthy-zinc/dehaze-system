@@ -1,4 +1,4 @@
-<!-- 中断交互卡片：confirm 按 confirmKind 路由（算法推荐/工具授权/危险操作/写入冲突）/
+<!-- 中断交互卡片：confirm 按 confirmKind 路由（模型推荐/工具授权/危险操作/写入冲突）/
      quota 配额不足 / async_wait 异步等待 / plan_approve 计划确认（可编辑：remove/reorder/add）。
      纯展示，决策经单一 resume 事件上抛完整 ChatResumeFormVM 载荷。 -->
 <script lang="ts" setup>
@@ -25,7 +25,7 @@ const hasRecommendation = computed(
     !!props.interrupt.recommendation || !!props.interrupt.alternatives?.length
 );
 
-// confirmKind 缺省时按载荷特征回退（算法推荐 / 写冲突），否则归"通用确认"
+// confirmKind 缺省时按载荷特征回退（模型推荐 / 写冲突），否则归"通用确认"
 const kind = computed<ChatConfirmKindVM | undefined>(() => {
   if (props.interrupt.confirmKind) return props.interrupt.confirmKind;
   if (props.interrupt.recommendation) return "algorithm_recommend";
@@ -59,9 +59,9 @@ const title = computed(() => {
   }
 });
 
-// ===== confirm：算法推荐 / 工具授权 / 危险操作 / 写冲突 / 通用 =====
-function acceptRecommendation(algorithmId: number) {
-  emit("resume", { confirm: true, params: { algorithmId } });
+// ===== confirm：模型推荐 / 工具授权 / 危险操作 / 写冲突 / 通用 =====
+function acceptRecommendation(modelId: string) {
+  emit("resume", { confirm: true, params: { modelId } });
 }
 
 function accept() {
@@ -218,31 +218,29 @@ const canApprove = computed(() =>
       </div>
     </template>
 
-    <!-- confirm：算法推荐 -->
+    <!-- confirm：模型推荐 -->
     <template
       v-else-if="interrupt.type === 'confirm' && kind === 'algorithm_recommend'"
     >
       <div class="interrupt-card__body">
         <template v-if="interrupt.recommendation">
           <div>
-            推荐算法：<strong>{{
-              interrupt.recommendation.algorithmName
-            }}</strong>
+            推荐模型：<strong>{{ interrupt.recommendation.modelName }}</strong>
           </div>
           <div class="interrupt-card__desc">
             {{ interrupt.recommendation.reason }}
           </div>
         </template>
         <div v-if="interrupt.alternatives?.length" class="interrupt-card__desc">
-          备选算法：
+          备选模型：
           <el-button
             v-for="alt in interrupt.alternatives"
-            :key="alt.algorithmId"
+            :key="alt.modelId"
             link
             size="small"
-            @click="acceptRecommendation(alt.algorithmId)"
+            @click="acceptRecommendation(alt.modelId)"
           >
-            {{ alt.algorithmName }}
+            {{ alt.modelName }}
           </el-button>
         </div>
       </div>
@@ -251,7 +249,7 @@ const canApprove = computed(() =>
           v-if="interrupt.recommendation"
           type="primary"
           size="small"
-          @click="acceptRecommendation(interrupt.recommendation.algorithmId)"
+          @click="acceptRecommendation(interrupt.recommendation.modelId)"
         >
           采纳推荐
         </el-button>
@@ -268,7 +266,7 @@ const canApprove = computed(() =>
           {{ interrupt.detail ?? interrupt.reason ?? "需要授权调用工具" }}
         </div>
         <div v-if="hasRecommendation" class="interrupt-card__desc">
-          {{ interrupt.recommendation?.algorithmName }}
+          {{ interrupt.recommendation?.modelName }}
         </div>
       </div>
       <div class="interrupt-card__actions">

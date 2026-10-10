@@ -1,6 +1,5 @@
 package com.pei.dehaze.sdk.model.evaluation;
 
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import lombok.Data;
 
 import java.util.Map;
@@ -13,9 +12,18 @@ import java.util.Map;
  */
 @Data
 public class EvalResult {
+    /** 评估日志ID */
     private Long logId;
-    private PredEvalTaskStatus status;
+    /** 任务状态（1=处理中，2=已完成，3=失败） */
+    private EvalTaskStatus status;
+    /** 评估指标（completed 时返回） */
     private Map<String, Double> metrics;
+    /** 预测图内容MD5（completed 时返回） */
+    private String predMd5;
+    /** 参考图内容MD5（completed 时返回） */
+    private String gtMd5;
+    /** 处理时间（秒） */
     private Integer time;
+    /** 失败错误信息（failed 时返回） */
     private String errorMessage;
 }

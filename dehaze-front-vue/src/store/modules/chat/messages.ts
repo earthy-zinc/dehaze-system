@@ -8,6 +8,25 @@ export function findMessage(ctx: ChatCtx, messageId: number) {
   return ctx.messages.value.find((item) => item.id === messageId);
 }
 
+/**
+ * 标记会话已读：调后端更新 last_read_message_id，并把本地列表未读清零。
+ * 失败不影响消息浏览（仅未读红点保留）。
+ */
+export async function markConversationRead(
+  ctx: ChatCtx,
+  conversationId: number
+): Promise<void> {
+  try {
+    await AiConversationAPI.markConversationRead(conversationId);
+    const conversation = ctx.conversations.value.find(
+      (item) => item.id === conversationId
+    );
+    if (conversation) conversation.unreadCount = 0;
+  } catch {
+    // 已读标记失败不影响消息浏览
+  }
+}
+
 /** 追加本地 assistant 占位消息（负数 id，待 message.start 绑定服务端 id） */
 export function appendAssistantPlaceholder(
   ctx: ChatCtx,
@@ -91,7 +110,7 @@ export function createMessagesSlice(ctx: ChatCtx, teardownStream: () => void) {
       }
       messages.value = list;
       if (scope.value === "self") {
-        markConversationRead(conversationId);
+        void markConversationRead(ctx, conversationId);
       }
     } finally {
       messagesLoading.value = false;
@@ -138,18 +157,6 @@ export function createMessagesSlice(ctx: ChatCtx, teardownStream: () => void) {
     }
   }
 
-  async function markConversationRead(conversationId: number) {
-    try {
-      await AiConversationAPI.markConversationRead(conversationId);
-      const conversation = conversations.value.find(
-        (item) => item.id === conversationId
-      );
-      if (conversation) conversation.unreadCount = 0;
-    } catch {
-      // 已读标记失败不影响消息浏览
-    }
-  }
-
   async function deleteMessage(messageId: number) {
     await AiConversationAPI.deleteMessage(messageId);
     messages.value = messages.value.filter((item) => item.id !== messageId);
@@ -187,7 +194,8 @@ export function createMessagesSlice(ctx: ChatCtx, teardownStream: () => void) {
     fetchMessages,
     loadMoreMessages,
     deleteMessage,
-    markConversationRead,
+    markConversationRead: (conversationId: number) =>
+      markConversationRead(ctx, conversationId),
     switchBranch,
   };
 }

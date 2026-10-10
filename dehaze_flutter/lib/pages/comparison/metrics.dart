@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
 import '../../models/evaluation_model.dart';
-import '../../models/prediction_model.dart';
+import '../../models/image_task_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../providers/providers.dart';
 import '../../router/config.dart';
@@ -34,12 +34,12 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
 
   Future<void> _evaluate() async {
     final state = ref.read(processingProvider);
-    final predUrl = state.predictionResult?.resultUrl;
-    final algorithmId = state.selectedAlgorithm?.id;
+    final predUrl = state.taskResult?.resultUrl;
+    final modelId = state.selectedModel?.modelId;
     final gtUrl = state.selectedImage?.cleanUrl;
 
-    if (predUrl == null || algorithmId == null) {
-      setState(() => _errorMessage = '缺少预测结果或算法信息');
+    if (predUrl == null || modelId == null) {
+      setState(() => _errorMessage = '缺少处理结果或模型信息');
       return;
     }
 
@@ -62,7 +62,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
     try {
       final service = ref.read(evaluationServiceProvider);
       final request = EvaluationRequest(
-        algorithmId: algorithmId,
+        modelId: modelId,
         predUrl: predUrl,
         gtUrl: gtUrl,
       );
@@ -122,7 +122,11 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.block_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.block_outlined,
+                size: 64,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(height: 16),
               Text('无法评估', style: theme.textTheme.titleLarge),
               const SizedBox(height: 8),
@@ -181,7 +185,9 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = item.higherIsBetter ? AppTheme.techGreen : AppTheme.errorColor;
+    final color = item.higherIsBetter
+        ? AppTheme.techGreen
+        : AppTheme.errorColor;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -205,23 +211,40 @@ class _MetricCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(item.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        item.name,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           item.higherIsBetter ? '越高越好' : '越低越好',
-                          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: color,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(item.description, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    item.description,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -231,7 +254,10 @@ class _MetricCard extends StatelessWidget {
               children: [
                 Text(
                   item.displayValue,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: color),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
                 if (item.unit.isNotEmpty)
                   Text(item.unit, style: theme.textTheme.bodySmall),

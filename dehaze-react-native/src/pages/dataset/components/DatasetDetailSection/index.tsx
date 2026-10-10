@@ -1,9 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '@/components/Button';
 import Icon from '@/components/Icon';
@@ -15,7 +11,7 @@ import SearchBar from '../SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import type {
-  Dataset,
+  DatasetVO,
   DatasetItem,
   DatasetImage,
   AnnotationFilter,
@@ -29,7 +25,7 @@ interface DatasetDetailSectionProps {
   datasetId: number;
   onBack: () => void;
   /** 导出任务创建回调 */
-  onExport?: (dataset: Dataset) => void;
+  onExport?: (dataset: DatasetVO) => void;
 }
 
 const PAGE_SIZE = 20;
@@ -39,9 +35,10 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
   onBack,
   onExport,
 }) => {
-  const [dataset, setDataset] = useState<Dataset | null>(null);
+  const [dataset, setDataset] = useState<DatasetVO | null>(null);
   const [items, setItems] = useState<DatasetItem[]>([]);
-  const [selectedType, setSelectedType] = useState<AnnotationFilter>('annotated');
+  const [selectedType, setSelectedType] =
+    useState<AnnotationFilter>('annotated');
   const [searchValue, setSearchValue] = useState('');
   const [isLoading, setLoading] = useState(true);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
@@ -119,15 +116,24 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         const img = item.clearImage;
         if (selectedType === 'annotated' && isImageAnnotated(img.hazeLevel)) {
           result.push(img);
-        } else if (selectedType === 'unannotated' && !isImageAnnotated(img.hazeLevel)) {
+        } else if (
+          selectedType === 'unannotated' &&
+          !isImageAnnotated(img.hazeLevel)
+        ) {
           result.push(img);
         }
       }
       if (item.hazyImages) {
         for (const hazy of item.hazyImages) {
-          if (selectedType === 'annotated' && isImageAnnotated(hazy.hazeLevel)) {
+          if (
+            selectedType === 'annotated' &&
+            isImageAnnotated(hazy.hazeLevel)
+          ) {
             result.push(hazy);
-          } else if (selectedType === 'unannotated' && !isImageAnnotated(hazy.hazeLevel)) {
+          } else if (
+            selectedType === 'unannotated' &&
+            !isImageAnnotated(hazy.hazeLevel)
+          ) {
             result.push(hazy);
           }
         }
@@ -176,32 +182,33 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
     if (onExport) {
       onExport(dataset);
     } else {
-      Alert.alert('提示', `将创建数据集"${dataset.name}"的导出任务，导出完成后可在任务中心下载。`, [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '确认导出',
-          onPress: async () => {
-            try {
-              await taskApi.create({
-                type: 'dataset_export',
-                targetId: dataset.id,
-                options: {
-                  structure: 'by_item',
-                  includeTypes: ['clear', 'hazy'],
-                  includeThumbnail: false,
-                },
-              });
-              Alert.alert('已创建', '导出任务已创建，请到任务中心查看进度');
-            } catch (err: unknown) {
-              const e = err as { msg?: string; message?: string };
-              Alert.alert(
-                '导出失败',
-                e?.msg || e?.message || '请稍后重试',
-              );
-            }
+      Alert.alert(
+        '提示',
+        `将创建数据集"${dataset.name}"的导出任务，导出完成后可在任务中心下载。`,
+        [
+          { text: '取消', style: 'cancel' },
+          {
+            text: '确认导出',
+            onPress: async () => {
+              try {
+                await taskApi.create({
+                  type: 'dataset_export',
+                  targetId: dataset.id,
+                  options: {
+                    structure: 'by_item',
+                    includeTypes: ['clear', 'hazy'],
+                    includeThumbnail: false,
+                  },
+                });
+                Alert.alert('已创建', '导出任务已创建，请到任务中心查看进度');
+              } catch (err: unknown) {
+                const e = err as { msg?: string; message?: string };
+                Alert.alert('导出失败', e?.msg || e?.message || '请稍后重试');
+              }
+            },
           },
-        },
-      ]);
+        ],
+      );
     }
   }, [dataset, onExport]);
 
@@ -282,7 +289,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         />
       </View>
 
-      {/* Dataset Info */}
+      {/* DatasetVO Info */}
       <View style={styles.infoSection}>
         <DatasetInfoCard dataset={dataset} />
       </View>
@@ -329,7 +336,9 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             description={
               searchValue
                 ? '未找到匹配的数据项'
-                : `暂无${selectedType === 'annotated' ? '已标注' : '未标注'}图片`
+                : `暂无${
+                    selectedType === 'annotated' ? '已标注' : '未标注'
+                  }图片`
             }
           />
         </View>

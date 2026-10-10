@@ -42,6 +42,15 @@ const quotaReached = computed(
   () => userKbStore.quota.created >= userKbStore.quota.limit
 );
 
+/** 搜索/筛选态：空列表的引导动作要与「一个都没有」区分（搜索无结果 → 清空条件） */
+const searching = computed(
+  () => (kbDataStore.kbListQuery.keyword?.trim() ?? "").length > 0
+);
+
+function clearSearch() {
+  kbDataStore.kbListQuery.keyword = "";
+}
+
 function goDetail(kb: KnowledgeBaseVO) {
   router.push(`/kb/${kb.id}`);
 }
@@ -133,7 +142,9 @@ onMounted(async () => {
     >
       <EmptyStateGuide
         :is-public="userKbStore.activeGroup === 'public'"
+        :searching="searching"
         @create="handleCreateClick"
+        @clear-search="clearSearch"
       />
     </el-card>
 

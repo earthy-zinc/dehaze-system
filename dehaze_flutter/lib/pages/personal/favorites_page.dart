@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/api_result.dart';
 import '../../models/favorite_model.dart';
 import '../../providers/providers.dart';
 
@@ -38,11 +39,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
     try {
       final service = ref.read(favoriteServiceProvider);
       final result = await service.getPage(
-        const FavoriteQuery(
-          targetType: FavoriteTargetType.algorithm,
-          pageNum: 1,
-          pageSize: _pageSize,
-        ),
+        const FavoriteQuery(pageNum: 1, pageSize: _pageSize),
       );
       if (!mounted) return;
       setState(() {
@@ -68,11 +65,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
       final service = ref.read(favoriteServiceProvider);
       final nextPage = _pageNum + 1;
       final result = await service.getPage(
-        FavoriteQuery(
-          targetType: FavoriteTargetType.algorithm,
-          pageNum: nextPage,
-          pageSize: _pageSize,
-        ),
+        FavoriteQuery(pageNum: nextPage, pageSize: _pageSize),
       );
       if (!mounted) return;
       setState(() {
@@ -81,26 +74,26 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
         _pageNum = nextPage;
         _total = result.total;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
     }
   }
 
   Future<void> _removeFavorite(int index) async {
     final item = _items[index];
     try {
-      await ref.read(favoriteServiceProvider).remove(
-            item.targetId,
-            item.targetType,
-          );
+      await ref.read(favoriteServiceProvider).deleteByIds([item.id]);
       if (!mounted) return;
       setState(() => _items.removeAt(index));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('取消收藏失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('取消收藏失败: $e')));
     }
   }
 
@@ -118,37 +111,36 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : _items.isEmpty
-                  ? _buildEmpty(theme)
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: NotificationListener<ScrollNotification>(
-                        onNotification: (notification) {
-                          if (notification is ScrollEndNotification &&
-                              notification.metrics.pixels >=
-                                  notification.metrics.maxScrollExtent - 100) {
-                            _loadMore();
-                          }
-                          return false;
-                        },
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _items.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _items.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            final item = _items[index];
-                            return _buildItemCard(item, index, theme);
-                          },
-                        ),
-                      ),
-                    ),
+          ? _buildError(theme)
+          : _items.isEmpty
+          ? _buildEmpty(theme)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.pixels >=
+                          notification.metrics.maxScrollExtent - 100) {
+                    _loadMore();
+                  }
+                  return false;
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length + (_hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index >= _items.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final item = _items[index];
+                    return _buildItemCard(item, index, theme);
+                  },
+                ),
+              ),
+            ),
     );
   }
 
@@ -158,11 +150,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: item.targetImage != null && item.targetImage!.isNotEmpty
+        leading:
+            item.targetThumbnail != null && item.targetThumbnail!.isNotEmpty
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: Image.network(
-                  item.targetImage!,
+                  item.targetThumbnail!,
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,
@@ -175,10 +168,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (item.targetDescription != null &&
-                item.targetDescription!.isNotEmpty)
+            if (item.targetSummary != null && item.targetSummary!.isNotEmpty)
               Text(
-                item.targetDescription!,
+                item.targetSummary!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall,
@@ -201,30 +193,35 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(_error!, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(_error!, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.favorite_border,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('暂无收藏',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.favorite_border,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无收藏',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -12,7 +12,11 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { launchImageLibrary, ImagePickerResponse, Asset } from 'react-native-image-picker';
+import {
+  launchImageLibrary,
+  ImagePickerResponse,
+  Asset,
+} from 'react-native-image-picker';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
@@ -51,47 +55,53 @@ const UploadArea: React.FC<UploadAreaProps> = ({
     }).start();
   };
 
-  const processImage = useCallback(async (asset: Asset & { uri: string }) => {
-    setUploading(true);
-    try {
-      // 获取图片尺寸
-      let width = asset.width || 0;
-      let height = asset.height || 0;
+  const processImage = useCallback(
+    async (asset: Asset & { uri: string }) => {
+      setUploading(true);
+      try {
+        // 获取图片尺寸
+        let width = asset.width || 0;
+        let height = asset.height || 0;
 
-      if (!width || !height) {
-        const size = await getImageSizeWithFallback(asset.uri);
-        width = size.width;
-        height = size.height;
+        if (!width || !height) {
+          const size = await getImageSizeWithFallback(asset.uri);
+          width = size.width;
+          height = size.height;
+        }
+
+        const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+        // 上传到后端文件服务，获取后端可访问的远程 URL
+        const fileInfo = await imageInputApi.uploadImage(
+          asset.uri,
+          fileName,
+          asset.type,
+        );
+
+        const selectedImage: SelectedImage = {
+          id: Date.now().toString(),
+          url: fileInfo.url,
+          // 后端未提供独立缩略图 URL，复用原图 URL 避免历史记录写入本地临时路径
+          thumbUrl: fileInfo.url,
+          name: fileInfo.name || fileName,
+          width,
+          height,
+          size: asset.fileSize || 0,
+          source: 'upload',
+        };
+
+        onImageSelected(selectedImage);
+      } catch (error) {
+        Alert.alert(
+          '上传失败',
+          error instanceof Error ? error.message : '图片上传失败，请重试',
+        );
+      } finally {
+        setUploading(false);
       }
-
-      const fileName = asset.fileName || `image_${Date.now()}.jpg`;
-
-      // 上传到后端文件服务，获取后端可访问的远程 URL
-      const fileInfo = await imageInputApi.uploadImage(
-        asset.uri,
-        fileName,
-        asset.type,
-      );
-
-      const selectedImage: SelectedImage = {
-        id: Date.now().toString(),
-        url: fileInfo.url,
-        // 后端未提供独立缩略图 URL，复用原图 URL 避免历史记录写入本地临时路径
-        thumbUrl: fileInfo.url,
-        name: fileInfo.name || fileName,
-        width,
-        height,
-        size: asset.fileSize || 0,
-        source: 'upload',
-      };
-
-      onImageSelected(selectedImage);
-    } catch (error) {
-      Alert.alert('上传失败', error instanceof Error ? error.message : '图片上传失败，请重试');
-    } finally {
-      setUploading(false);
-    }
-  }, [onImageSelected]);
+    },
+    [onImageSelected],
+  );
 
   const handleSelectImage = useCallback(async () => {
     if (busy) return;
@@ -123,7 +133,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       // 验证图片
       const validation = imageInputApi.validateImage(
         asset.fileSize || 0,
-        asset.type
+        asset.type,
       );
 
       if (!validation.valid) {
@@ -146,10 +156,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       disabled={busy}
     >
       <Animated.View
-        style={[
-          styles.container,
-          { transform: [{ scale: scaleAnim }] },
-        ]}
+        style={[styles.container, { transform: [{ scale: scaleAnim }] }]}
       >
         {busy ? (
           <View style={styles.loadingContainer}>
@@ -161,12 +168,14 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         ) : (
           <>
             <View style={styles.iconContainer}>
-              <Icon name="cloud-upload" size={48} color={theme.colors.primary} />
+              <Icon
+                name="cloud-upload"
+                size={48}
+                color={theme.colors.primary}
+              />
             </View>
             <Text style={styles.title}>点击选择图片</Text>
-            <Text style={styles.subtitle}>
-              支持 JPG、PNG、WEBP、HEIC 格式
-            </Text>
+            <Text style={styles.subtitle}>支持 JPG、PNG、WEBP、HEIC 格式</Text>
             <Text style={styles.hint}>最大 20MB</Text>
           </>
         )}

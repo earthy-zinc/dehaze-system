@@ -13,6 +13,7 @@ import type {
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
+import { fenToYuan } from "@/utils/format";
 import "./index.less";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -32,7 +33,8 @@ const REFUND_STATUS_LABELS: Record<string, string> = {
 
 const OrderManagePage: React.FC = () => {
   const { hasPermission } = usePermission();
-  const canViewRefund = hasPermission("sys:order:refund");
+  const canViewRefund = hasPermission("order:refund:list");
+  const canAuditRefund = hasPermission("order:refund:approve");
 
   const [tab, setTab] = useState(0);
   const [orders, setOrders] = useState<OrderPageVO[]>([]);
@@ -164,7 +166,9 @@ const OrderManagePage: React.FC = () => {
               <Text className="stat-label">总订单</Text>
             </View>
             <View className="stat-item">
-              <Text className="stat-value">{stats.totalRevenue}</Text>
+              <Text className="stat-value">
+                {fenToYuan(stats.totalRevenue)}
+              </Text>
               <Text className="stat-label">总收入</Text>
             </View>
             <View className="stat-item">
@@ -253,7 +257,9 @@ const OrderManagePage: React.FC = () => {
                       <Text className="meta-item">
                         用户: {o.username} (ID:{o.userId})
                       </Text>
-                      <Text className="meta-item">实付: ¥{o.paidAmount}</Text>
+                      <Text className="meta-item">
+                        实付: ¥{fenToYuan(o.paidAmount)}
+                      </Text>
                       {o.packageLevel && (
                         <Text className="meta-item">
                           等级: {o.packageLevel}
@@ -317,7 +323,9 @@ const OrderManagePage: React.FC = () => {
                     <Text className="meta-item">
                       用户: {r.username} (ID:{r.userId})
                     </Text>
-                    <Text className="meta-item">退款: ¥{r.refundAmount}</Text>
+                    <Text className="meta-item">
+                      退款: ¥{fenToYuan(r.refundAmount)}
+                    </Text>
                     <Text className="meta-item">原因: {r.reason}</Text>
                   </View>
                   <View className="card-meta">
@@ -330,7 +338,7 @@ const OrderManagePage: React.FC = () => {
                       </Text>
                     )}
                   </View>
-                  {r.status === "refunding" && (
+                  {r.status === "refunding" && canAuditRefund && (
                     <View className="card-actions">
                       <View
                         className="action-btn primary"
@@ -382,7 +390,7 @@ const OrderManagePage: React.FC = () => {
                       订单号: {auditingRefund.orderNo}
                     </Text>
                     <Text className="audit-line">
-                      退款金额: ¥{auditingRefund.refundAmount}
+                      退款金额: ¥{fenToYuan(auditingRefund.refundAmount)}
                     </Text>
                     <Text className="audit-line">
                       退款原因: {auditingRefund.reason}

@@ -8,8 +8,8 @@ public class MyOrderVO {
     private String orderNo;
     private String packageName;
     private String packageLevel;
-    private Double payableAmount;
-    private Double paidAmount;
+    private Long payableAmount;
+    private Long paidAmount;
     private String payMethod;
     private String status;
     private String createTime;

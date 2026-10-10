@@ -435,7 +435,7 @@ public class FeedbackActivity extends BaseActivity {
             @Override
             public void onBindViewHolder(@NonNull VH holder, int position) {
                 MyRatingVO item = items.get(position);
-                holder.title.setText(item.getAlgorithmName() != null ? item.getAlgorithmName() : "未命名算法");
+                holder.title.setText(item.getModelName() != null ? item.getModelName() : "未命名模型");
                 Integer rating = item.getRating();
                 String comment = item.getComment();
                 String subtitle = "评分: " + (rating != null ? rating + "星" : "未评分")

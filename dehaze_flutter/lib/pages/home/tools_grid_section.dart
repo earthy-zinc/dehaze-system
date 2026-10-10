@@ -86,7 +86,7 @@ class ToolsGridSection extends StatelessWidget {
   /// 根据屏幕宽度获取宽高比
   double _getAspectRatio(double width) {
     if (width > 1200) return 1.2; // 大屏幕
-    if (width > 800) return 1.1;  // 中等屏幕，降低宽高比增加高度
+    if (width > 800) return 1.1; // 中等屏幕，降低宽高比增加高度
     if (width > 480) return 1.0;
     return 0.95;
   }
@@ -129,10 +129,14 @@ class _ToolCardState extends State<_ToolCard> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        transform: Matrix4.identity()..setEntry(0, 0, _isHovered ? 1.02 : 1.0)..setEntry(1, 1, _isHovered ? 1.02 : 1.0),
+        transform: Matrix4.identity()
+          ..setEntry(0, 0, _isHovered ? 1.02 : 1.0)
+          ..setEntry(1, 1, _isHovered ? 1.02 : 1.0),
         child: Card(
           elevation: _isHovered ? 8 : 2,
-          shadowColor: AppTheme.brandBlue.withValues(alpha: _isHovered ? 0.3 : 0.1),
+          shadowColor: AppTheme.brandBlue.withValues(
+            alpha: _isHovered ? 0.3 : 0.1,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusL),
             side: BorderSide(
@@ -204,7 +208,9 @@ class _ToolCardState extends State<_ToolCard> {
                       style: theme.textTheme.bodySmall?.copyWith(
                         height: 1.3,
                         fontSize: 11,
-                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.8,
+                        ),
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,

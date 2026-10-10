@@ -5,7 +5,7 @@ import '../models/recommendation_model.dart';
 
 /// 推荐服务
 ///
-/// 根据图像特征、用户偏好、算法表现等多维信息，为用户推荐最合适的去雾算法。
+/// 根据图像特征、用户偏好、模型表现等多维信息，为用户推荐最合适的去雾模型。
 ///
 /// - analyze / getRecommendations / submitFeedback：仅需登录用户身份
 /// - getRules / updateRule / getReport：管理员接口
@@ -28,24 +28,21 @@ class RecommendationService {
     );
   }
 
-  /// 获取算法推荐
+  /// 获取模型推荐
   ///
-  /// GET /recommendations/algorithms
-  /// 基于分析结果返回 Top 3 推荐算法及匹配度和理由。
-  Future<List<RecommendedAlgorithm>> getRecommendations({
+  /// GET /recommendations/models
+  /// 基于分析结果返回 Top 3 推荐模型及匹配度和理由。
+  Future<List<RecommendedModel>> getRecommendations({
     int? analysisId,
     String? imageMd5,
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      ApiConstants.recommendationsAlgorithms,
-      queryParameters: {
-        if (analysisId != null) 'analysisId': analysisId,
-        if (imageMd5 != null) 'imageMd5': imageMd5,
-      },
+      ApiConstants.recommendationsModels,
+      queryParameters: {'analysisId': ?analysisId, 'imageMd5': ?imageMd5},
     );
     final list = response.data!['data'] as List<dynamic>? ?? [];
     return list
-        .map((e) => RecommendedAlgorithm.fromJson(e as Map<String, dynamic>))
+        .map((e) => RecommendedModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -95,10 +92,7 @@ class RecommendationService {
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.recommendationsReport,
-      queryParameters: {
-        if (startDate != null) 'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-      },
+      queryParameters: {'startDate': ?startDate, 'endDate': ?endDate},
     );
     return RecommendationReport.fromJson(
       response.data!['data'] as Map<String, dynamic>,

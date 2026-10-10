@@ -8,7 +8,6 @@ export function setupStore(app: App<Element>) {
   app.use(store);
 }
 
-export * from "./modules/algorithm";
 export * from "./modules/app";
 export * from "./modules/dict";
 export * from "./modules/member";

@@ -35,6 +35,7 @@ import RefundAuditDialog, {
   type RefundAuditDialogRef,
 } from "./components/RefundAuditDialog";
 import "./index.scss";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_OPTIONS: { label: string; value: RefundStatus }[] = [
   { label: "退款中", value: "refunding" },
@@ -154,7 +155,7 @@ const RefundManagement: React.FC = () => {
         key: "refundAmount",
         width: 110,
         align: "right",
-        render: (v: number) => `¥${v.toFixed(2)}`,
+        render: (v: number) => `¥${fenToYuan(v)}`,
       },
       {
         title: "退款原因",
@@ -165,10 +166,15 @@ const RefundManagement: React.FC = () => {
       },
       {
         title: "已用配额",
-        dataIndex: "usedQuota",
         key: "usedQuota",
-        width: 100,
+        width: 120,
         align: "center",
+        render: (_: unknown, record: RefundRecordVO) =>
+          record.usedDays != null
+            ? `${record.usedDays} 天`
+            : record.usedCredits != null
+              ? `${record.usedCredits} 积分`
+              : "-",
       },
       {
         title: "状态",
@@ -206,7 +212,7 @@ const RefundManagement: React.FC = () => {
         render: (_: unknown, record: RefundRecordVO) =>
           record.status === "refunding" ? (
             <Space size="small">
-              {hasPerm("order:refund:audit") && (
+              {hasPerm("order:refund:approve") && (
                 <Button
                   type="link"
                   size="small"
@@ -216,7 +222,7 @@ const RefundManagement: React.FC = () => {
                   通过
                 </Button>
               )}
-              {hasPerm("order:refund:audit") && (
+              {hasPerm("order:refund:approve") && (
                 <Button
                   type="link"
                   size="small"

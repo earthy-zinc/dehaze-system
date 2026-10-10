@@ -125,7 +125,12 @@ async function submitCreate() {
 }
 
 async function submitEdit() {
-  await formRef.value?.validate();
+  try {
+    await formRef.value?.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   if (oversized.value) {
     ElMessage.error(
       `指令内容 ${(instructionSize.value / 1024).toFixed(1)}KB，超过 100KB 上限`

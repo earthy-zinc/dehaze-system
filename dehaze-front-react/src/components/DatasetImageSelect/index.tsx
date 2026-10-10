@@ -1,7 +1,7 @@
 import {
   DatasetAPI,
   DatasetItemAPI,
-  Dataset,
+  DatasetVO,
   DatasetItemQuery,
   DatasetItemVO,
   OptionType,
@@ -26,7 +26,7 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
 }) => {
   const [selectedDatasetId, setSelectedDatasetId] = useState<number>(1);
   const [datasetOptions, setDatasetOptions] = useState<OptionType[]>([]);
-  const [datasetInfo, setDatasetInfo] = useState<Dataset>({
+  const [datasetInfo, setDatasetInfo] = useState<DatasetVO>({
     id: 0,
     parentId: 0,
     name: "",
@@ -68,7 +68,8 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
         return {
           id: item.id,
           src: image.url,
-          originSrc: image.originUrl || image.url,
+          // ImageUrlVO 无 originUrl 字段（url 即原图，thumbnailUrl 为缩略图）
+          originSrc: image.url,
           alt: image.description || "",
         } as ViewCard;
       })

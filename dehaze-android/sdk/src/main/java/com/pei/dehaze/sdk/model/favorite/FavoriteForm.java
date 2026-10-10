@@ -8,7 +8,7 @@ import lombok.Data;
  */
 @Data
 public class FavoriteForm {
-    /** 收藏对象类型(algorithm/result/dataset/image/preset) */
+    /** 收藏对象类型(model/result/dataset/image/preset) */
     private String targetType;
     /** 收藏对象ID */
     private Long targetId;

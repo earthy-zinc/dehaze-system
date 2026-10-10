@@ -97,7 +97,10 @@ class _InputMethodButtonState extends State<_InputMethodButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           transform: Matrix4.diagonal3Values(
-              _isPressed ? 0.95 : 1.0, _isPressed ? 0.95 : 1.0, 1.0),
+            _isPressed ? 0.95 : 1.0,
+            _isPressed ? 0.95 : 1.0,
+            1.0,
+          ),
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             color: widget.isSelected
@@ -108,8 +111,8 @@ class _InputMethodButtonState extends State<_InputMethodButton> {
               color: widget.isSelected
                   ? _iconColor
                   : _isHovered
-                      ? _iconColor.withValues(alpha: 0.5)
-                      : theme.dividerColor,
+                  ? _iconColor.withValues(alpha: 0.5)
+                  : theme.dividerColor,
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: _isHovered || widget.isSelected
@@ -128,14 +131,20 @@ class _InputMethodButtonState extends State<_InputMethodButton> {
               Icon(
                 _icon,
                 size: 32,
-                color: widget.isSelected ? _iconColor : theme.colorScheme.onSurfaceVariant,
+                color: widget.isSelected
+                    ? _iconColor
+                    : theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 8),
               Text(
                 widget.method.displayName,
                 style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: widget.isSelected ? _iconColor : theme.colorScheme.onSurface,
+                  fontWeight: widget.isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                  color: widget.isSelected
+                      ? _iconColor
+                      : theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 2),

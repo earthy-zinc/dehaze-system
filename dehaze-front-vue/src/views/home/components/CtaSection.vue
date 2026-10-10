@@ -11,7 +11,7 @@
           </div>
           <h2 class="cta-title">准备好让画面<br />回归清晰了吗？</h2>
           <p class="cta-desc">
-            注册即可使用全部去雾算法，支持单张与批量处理，立即查看你的图像修复效果。
+            注册即可使用全部去雾模型，支持单张与批量处理，立即查看你的图像修复效果。
           </p>
           <div class="cta-actions">
             <button
@@ -34,7 +34,7 @@
             </span>
             <span class="cta-trust__item">
               <el-icon><Check /></el-icon>
-              30+ 算法可选
+              30+ 模型可选
             </span>
           </div>
         </div>
@@ -61,20 +61,13 @@
 
 <script lang="ts" setup>
 import { Star, Check, Lightning } from "@element-plus/icons-vue";
+import visualUrl from "@/assets/images/cta-bg-dehaze.jpg";
 
 defineOptions({
   name: "CtaSection",
 });
 
 const router = useRouter();
-
-// 去雾效果配图（真实生成，非占位图）
-const visualUrl =
-  "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
-  encodeURIComponent(
-    "A clear urban street scene photo, modern city architecture, bright vivid colors, high detail, professional photography"
-  ) +
-  "&image_size=landscape_16_9";
 </script>
 
 <style lang="scss" scoped>

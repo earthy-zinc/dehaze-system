@@ -17,14 +17,14 @@ describe("InterruptCard", () => {
         type: "confirm",
         confirmKind: "algorithm_recommend",
         recommendation: {
-          algorithmId: 7,
-          algorithmName: "去雾",
+          modelId: "aecrnet",
+          modelName: "AECR-Net",
           reason: "最佳",
         },
         alternatives: [
           {
-            algorithmId: 8,
-            algorithmName: "备选",
+            modelId: "dcp",
+            modelName: "DCP",
             matchScore: 0.5,
             reason: "次优",
           },
@@ -32,12 +32,12 @@ describe("InterruptCard", () => {
       });
 
       await findButton(wrapper, "采纳推荐")!.trigger("click");
-      await findButton(wrapper, "备选")!.trigger("click");
+      await findButton(wrapper, "DCP")!.trigger("click");
       await findButton(wrapper, "拒绝")!.trigger("click");
 
       expect(wrapper.emitted("resume")).toEqual([
-        [{ confirm: true, params: { algorithmId: 7 } }],
-        [{ confirm: true, params: { algorithmId: 8 } }],
+        [{ confirm: true, params: { modelId: "aecrnet" } }],
+        [{ confirm: true, params: { modelId: "dcp" } }],
         [{ confirm: false }],
       ]);
     });

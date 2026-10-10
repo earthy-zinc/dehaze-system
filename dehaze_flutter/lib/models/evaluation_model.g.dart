@@ -9,7 +9,7 @@ part of 'evaluation_model.dart';
 EvaluationRequest _$EvaluationRequestFromJson(Map<String, dynamic> json) =>
     $checkedCreate('EvaluationRequest', json, ($checkedConvert) {
       final val = EvaluationRequest(
-        algorithmId: $checkedConvert('algorithmId', (v) => (v as num).toInt()),
+        modelId: $checkedConvert('modelId', (v) => v as String),
         predUrl: $checkedConvert('predUrl', (v) => v as String?),
         gtUrl: $checkedConvert('gtUrl', (v) => v as String?),
         params: $checkedConvert('params', (v) => v as String?),
@@ -19,10 +19,10 @@ EvaluationRequest _$EvaluationRequestFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$EvaluationRequestToJson(EvaluationRequest instance) =>
     <String, dynamic>{
-      'algorithmId': instance.algorithmId,
-      if (instance.predUrl case final value?) 'predUrl': value,
-      if (instance.gtUrl case final value?) 'gtUrl': value,
-      if (instance.params case final value?) 'params': value,
+      'modelId': instance.modelId,
+      'predUrl': ?instance.predUrl,
+      'gtUrl': ?instance.gtUrl,
+      'params': ?instance.params,
     };
 
 EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
@@ -49,19 +49,18 @@ EvaluationResult _$EvaluationResultFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$EvaluationResultToJson(EvaluationResult instance) =>
     <String, dynamic>{
-      if (instance.logId case final value?) 'logId': value,
-      if (_evalStatusToJson(instance.status) case final value?) 'status': value,
-      if (instance.metrics case final value?) 'metrics': value,
-      if (instance.time case final value?) 'time': value,
-      if (instance.errorMessage case final value?) 'errorMessage': value,
+      'logId': ?instance.logId,
+      'status': ?_evalStatusToJson(instance.status),
+      'metrics': ?instance.metrics,
+      'time': ?instance.time,
+      'errorMessage': ?instance.errorMessage,
     };
 
 EvaluationLog _$EvaluationLogFromJson(Map<String, dynamic> json) =>
     $checkedCreate('EvaluationLog', json, ($checkedConvert) {
       final val = EvaluationLog(
         id: $checkedConvert('id', (v) => (v as num).toInt()),
-        algorithmId: $checkedConvert('algorithmId', (v) => (v as num).toInt()),
-        algorithmName: $checkedConvert('algorithmName', (v) => v as String?),
+        modelId: $checkedConvert('modelId', (v) => v as String),
         predUrl: $checkedConvert('predUrl', (v) => v as String?),
         gtUrl: $checkedConvert('gtUrl', (v) => v as String?),
         status: $checkedConvert(
@@ -79,13 +78,12 @@ EvaluationLog _$EvaluationLogFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$EvaluationLogToJson(EvaluationLog instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'algorithmId': instance.algorithmId,
-      if (instance.algorithmName case final value?) 'algorithmName': value,
-      if (instance.predUrl case final value?) 'predUrl': value,
-      if (instance.gtUrl case final value?) 'gtUrl': value,
-      if (_evalStatusToJson(instance.status) case final value?) 'status': value,
-      if (instance.errorMessage case final value?) 'errorMessage': value,
-      if (instance.result case final value?) 'result': value,
-      if (instance.time case final value?) 'time': value,
-      if (instance.createTime case final value?) 'createTime': value,
+      'modelId': instance.modelId,
+      'predUrl': ?instance.predUrl,
+      'gtUrl': ?instance.gtUrl,
+      'status': ?_evalStatusToJson(instance.status),
+      'errorMessage': ?instance.errorMessage,
+      'result': ?instance.result,
+      'time': ?instance.time,
+      'createTime': ?instance.createTime,
     };

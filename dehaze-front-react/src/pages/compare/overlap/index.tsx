@@ -1,11 +1,12 @@
 import {
-  AlgorithmAPI,
+  AiImageAPI,
+  AiModelAPI,
   FileAPI,
   ModelAPI,
+  type AiModelVO,
   type CompareReportForm,
   type CompareReportResultVO,
   type FileInfo,
-  type OptionType,
 } from "dehaze-sdk-js";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
@@ -15,18 +16,9 @@ import OverlapImageShow from "@/components/OverlapImageShow";
 import SingleImageShow from "@/components/SingleImageShow";
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { calculateFileMd5 } from "@/utils/md5";
-import {
-  Button,
-  Card,
-  Cascader,
-  message,
-  Modal,
-  Select,
-  Switch,
-  Tag,
-} from "antd";
+import { Button, Card, message, Modal, Select } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
-import { DownloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { DownloadOutlined } from "@ant-design/icons";
 import styles from "./index.module.scss";
 
 type ActivePage =
@@ -47,21 +39,13 @@ export default function Overlap() {
   const [exampleImageUrls, setExampleImageUrls] = useState<string[]>([
     "http://192.168.31.3:8989/api/v1/files/dataset/thumbnail/Dense-Haze/hazy/01_hazy.png",
   ]);
-  const [modelOptions, setModelOptions] = useState<OptionType[]>([]);
-  const [selectedModel, setSelectedModel] = useState<OptionType>({
-    value: 1,
-    label: "模型名称",
-  });
+  const [models, setModels] = useState<AiModelVO[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
   const [activePage, setActivePage] = useState<ActivePage>("overlap");
-  const [algorithmInfo, setAlgorithmInfo] = useState<any>(null);
-  const [algorithmLoading, setAlgorithmLoading] = useState(false);
   const [lastLogId, setLastLogId] = useState<number | null>(null);
 
   // 导出报告相关状态
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [reportFormat, setReportFormat] = useState<"pdf" | "image">("pdf");
-  const [includeMetrics, setIncludeMetrics] = useState(true);
-  const [includeFilters, setIncludeFilters] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const { width } = useWindowSize();
@@ -115,13 +99,14 @@ export default function Overlap() {
   };
 
   const handleGenerateImage = () => {
+    if (!selectedModel) {
+      message.error("请选择模型");
+      return;
+    }
     setActivePage("loading");
-    ModelAPI.predictAndWait({
-      algorithmId: Number(selectedModel?.value) || 1,
-      imageUrl: image1,
-    })
+    AiImageAPI.submitAndWait({ model: selectedModel, imageUrl: image1 })
       .then((res) => {
-        setLastLogId(res.logId || null);
+        setLastLogId(res.taskId || null);
         if (res.status === 3) {
           throw new Error(res.errorMessage || "去雾处理失败");
         }
@@ -138,16 +123,6 @@ export default function Overlap() {
     setImage1(url);
     setActivePage("singleImage");
   };
-
-  // 获取算法信息
-  useEffect(() => {
-    if (!selectedModel?.value) return;
-    setAlgorithmLoading(true);
-    AlgorithmAPI.getAlgorithmInfoById(Number(selectedModel.value))
-      .then(setAlgorithmInfo)
-      .catch(() => message.error("获取算法信息失败"))
-      .finally(() => setAlgorithmLoading(false));
-  }, [selectedModel?.value]);
 
   // 打开导出报告弹窗
   const handleOpenReportModal = () => {
@@ -170,12 +145,7 @@ export default function Overlap() {
     setExporting(true);
     try {
       message.info("正在生成报告...");
-      const reportForm: CompareReportForm = {
-        logId: lastLogId,
-        format: reportFormat,
-        includeMetrics,
-        includeFilters,
-      };
+      const reportForm: CompareReportForm = { logId: lastLogId };
 
       const reportTask = await ModelAPI.generateReport(reportForm);
       message.info(`报告生成任务已启动，任务ID: ${reportTask.taskId}`);
@@ -211,23 +181,19 @@ export default function Overlap() {
     setPoint({ x: p.x, y: p.y });
   };
 
+  // 模型下拉数据源：当前用户可用的图像编辑模型
+  // 默认选中后端标记的平台默认模型（isDefault ← 字典 ai_model.default_model.image_edit）；
+  // 后端未配置默认时不下选，由用户显式选择（不再回落到"启用列表首项"猜值）
   useEffect(() => {
-    AlgorithmAPI.getOption().then((options) => {
-      setModelOptions(options);
-      if (options.length > 0) {
-        setSelectedModel(options[0]);
+    AiModelAPI.listEnabledModels("image_edit").then((list) => {
+      setModels(list);
+      const platformDefault = list.find((m) => m.isDefault);
+      if (platformDefault) {
+        setSelectedModel(platformDefault.modelId);
       }
     });
   }, []);
 
-  const handleChange = (
-    value: (string | number)[],
-    selectedOptions: OptionType[]
-  ) => {
-    if (selectedOptions.length > 0) {
-      setSelectedModel(selectedOptions[selectedOptions.length - 1]);
-    }
-  };
   const showActivePage = () => {
     switch (activePage) {
       case "singleImage":
@@ -246,45 +212,6 @@ export default function Overlap() {
           <div
             style={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
-            {/* 算法信息区域 */}
-            <Card style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <InfoCircleOutlined
-                  style={{ fontSize: 20, color: "#1890ff" }}
-                />
-                <div style={{ flex: 1 }}>
-                  {algorithmLoading ? (
-                    <span style={{ color: "#999" }}>加载中...</span>
-                  ) : algorithmInfo ? (
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 16 }}>
-                        {algorithmInfo.name}
-                        {algorithmInfo.version && (
-                          <Tag style={{ marginLeft: 8 }}>
-                            v{algorithmInfo.version}
-                          </Tag>
-                        )}
-                      </div>
-                      <div
-                        style={{ fontSize: 13, color: "#666", marginTop: 4 }}
-                      >
-                        {algorithmInfo.description || "暂无描述"}
-                      </div>
-                      <div
-                        style={{ fontSize: 13, color: "#999", marginTop: 4 }}
-                      >
-                        {algorithmInfo.params && (
-                          <span>参数: {algorithmInfo.params}</span>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <span style={{ color: "#999" }}>暂无算法信息</span>
-                  )}
-                </div>
-              </div>
-            </Card>
-
             {/* 导出报告按钮 */}
             <div
               style={{
@@ -333,11 +260,16 @@ export default function Overlap() {
         {/* 选择模型区域 */}
         <div className={styles["select-wrap"]}>
           <h3 className={"text-align-center"}>选择去雾模型</h3>
-          <Cascader
+          <Select
             className={"ml-20"}
-            defaultValue={[selectedModel?.value || 1]}
-            options={modelOptions}
-            onChange={handleChange}
+            value={selectedModel || undefined}
+            placeholder="请选择模型"
+            options={models.map((m) => ({
+              value: m.modelId,
+              label: m.displayName,
+            }))}
+            onChange={setSelectedModel}
+            style={{ width: 240 }}
           />
         </div>
       </AlgorithmToolBar>
@@ -353,31 +285,7 @@ export default function Overlap() {
         width={500}
       >
         <div style={{ padding: "8px 0" }}>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告格式</div>
-            <Select
-              value={reportFormat}
-              onChange={(v) => setReportFormat(v)}
-              options={[
-                { label: "PDF 文档", value: "pdf" },
-                { label: "图片 (PNG)", value: "image" },
-              ]}
-              style={{ width: "100%" }}
-            />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 500, marginBottom: 8 }}>报告选项</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Switch checked={includeMetrics} onChange={setIncludeMetrics} />
-                <span>包含性能指标</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Switch checked={includeFilters} onChange={setIncludeFilters} />
-                <span>包含滤镜参数</span>
-              </div>
-            </div>
-          </div>
+          <p>报告格式固定为 HTML，将在生成完成后自动下载。</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button onClick={handleCloseReportModal}>取消</Button>
             <Button

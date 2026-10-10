@@ -8,8 +8,8 @@ import java.util.Map;
 @Data
 public class OrderStatsVO {
     private Integer totalOrders;
-    private Double totalRevenue;
-    private Double totalRefund;
+    private Long totalRevenue;
+    private Long totalRefund;
     private Double refundRate;
     private Map<String, Integer> statusDistribution;
     private Map<String, Integer> payMethodDistribution;
@@ -21,13 +21,13 @@ public class OrderStatsVO {
         private Long packageId;
         private String packageName;
         private Integer count;
-        private Double revenue;
+        private Long revenue;
     }
 
     @Data
     public static class DailyStat {
         private String date;
         private Integer count;
-        private Double revenue;
+        private Long revenue;
     }
 }

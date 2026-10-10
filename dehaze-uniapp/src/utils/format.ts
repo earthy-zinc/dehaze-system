@@ -42,3 +42,21 @@ export function formatRelativeTime(timestamp: string | number): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * 金额分转元（接口金额单位统一为分，页面以元展示）
+ * @param fen 金额（分）
+ * @returns 形如 "100.00" 的元金额字符串
+ */
+export function fenToYuan(fen?: number): string {
+  return ((fen ?? 0) / 100).toFixed(2);
+}
+
+/**
+ * 金额元转分（表单以元录入，接口金额单位统一为分）
+ * @param yuan 金额（元）
+ * @returns 四舍五入后的整数分
+ */
+export function yuanToFen(yuan: number | string): number {
+  return Math.round(Number(yuan) * 100);
+}

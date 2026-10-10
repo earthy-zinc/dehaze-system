@@ -40,6 +40,7 @@ import OrderStatsDrawer, {
   type OrderStatsDrawerRef,
 } from "./components/OrderStatsDrawer";
 import "./index.scss";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_OPTIONS: { label: string; value: OrderStatus }[] = [
   { label: "待支付", value: "pending" },
@@ -186,7 +187,7 @@ const OrderManagement: React.FC = () => {
         key: "payableAmount",
         width: 100,
         align: "right",
-        render: (v: number) => `¥${(v ?? 0).toFixed(2)}`,
+        render: (v: number) => `¥${fenToYuan(v)}`,
       },
       {
         title: "优惠",
@@ -195,7 +196,7 @@ const OrderManagement: React.FC = () => {
         align: "right",
         render: (_: unknown, record: OrderPageVO) => {
           const sum = (record.discountAmount ?? 0) + (record.couponAmount ?? 0);
-          return sum > 0 ? `-¥${sum.toFixed(2)}` : "-";
+          return sum > 0 ? `-¥${fenToYuan(sum)}` : "-";
         },
       },
       {

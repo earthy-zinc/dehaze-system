@@ -15,14 +15,14 @@ class OrderService {
   // ==================== 用户端 ====================
 
   /// 创建订单
-  Future<MyOrderVO> create(OrderCreateForm form) async {
+  ///
+  /// 创建订单不发起渠道下单，第三方支付参数由 [pay] 获取。
+  Future<PayResult> create(OrderCreateForm form) async {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.orders,
       data: form.toJson(),
     );
-    return MyOrderVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return PayResult.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 我的订单列表
@@ -40,38 +40,48 @@ class OrderService {
     );
   }
 
-  /// 我的订单详情
-  Future<OrderDetailVO> getMyOrderDetail(int id) async {
+  /// 订单详情（用户端 / 后台共用，按订单号查询）
+  Future<OrderDetailVO> getDetail(String orderNo) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.ordersMy}/$id',
+      '${ApiConstants.orders}/$orderNo',
     );
     return OrderDetailVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
     );
   }
 
-  /// 取消订单
-  Future<void> cancelOrder(int id) async {
+  /// 取消订单（取消原因必填）
+  Future<void> cancelOrder(String orderNo, String reason) async {
     await _dio.put<Map<String, dynamic>>(
-      '${ApiConstants.orders}/$id/cancel',
+      '${ApiConstants.orders}/$orderNo/cancel',
+      queryParameters: {'reason': reason},
+    );
+  }
+
+  /// 申请退款
+  Future<void> applyRefund(String orderNo, RefundApplyForm form) async {
+    await _dio.post<Map<String, dynamic>>(
+      '${ApiConstants.orders}/$orderNo/refund',
+      data: form.toJson(),
     );
   }
 
   /// 发起支付
-  Future<PayResult> pay(PayRequest request) async {
+  ///
+  /// 订单号在路径中传递，请求体仅描述支付方式。
+  Future<PayResult> pay(String orderNo, PayRequest request) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.orders}/pay',
+      '${ApiConstants.orders}/$orderNo/pay',
       data: request.toJson(),
     );
-    return PayResult.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return PayResult.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
-  /// 查询自动续费配置
-  Future<AutoRenewConfigVO> getAutoRenewConfig(int orderId) async {
+  /// 查询自动续费配置（按套餐查询）
+  Future<AutoRenewConfigVO> getAutoRenewConfig(int packageId) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.ordersAutoRenewConfig}/$orderId',
+      ApiConstants.ordersAutoRenewConfig,
+      queryParameters: {'packageId': packageId},
     );
     return AutoRenewConfigVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
@@ -103,16 +113,6 @@ class OrderService {
     );
   }
 
-  /// 订单详情
-  Future<OrderDetailVO> getDetail(int id) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.orders}/$id',
-    );
-    return OrderDetailVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
-  }
-
   /// 订单统计
   Future<OrderStatsVO> getStats() async {
     final response = await _dio.get<Map<String, dynamic>>(
@@ -138,10 +138,11 @@ class OrderService {
     );
   }
 
-  /// 退款审核
-  Future<void> auditRefund(RefundAuditForm form) async {
+  /// 退款审核（通过 / 驳回由 [RefundAuditForm.approved] 决定，分别对应两个端点）
+  Future<void> auditRefund(int refundId, RefundAuditForm form) async {
+    final action = form.approved ? 'approve' : 'reject';
     await _dio.put<Map<String, dynamic>>(
-      ApiConstants.ordersRefunds,
+      '${ApiConstants.ordersRefunds}/$refundId/$action',
       data: form.toJson(),
     );
   }

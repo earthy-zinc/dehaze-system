@@ -14,7 +14,7 @@ interface ShowcaseSectionProps {
 
 const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
   const { width, isMobile, containerPadding, fontScale } = useResponsive();
-  
+
   const { animatedStyle } = useFadeSlideAnimation({
     scale: { initial: 0.9, final: 1 },
     slideDistance: 0, // Only scale and fade
@@ -48,7 +48,12 @@ const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
           { paddingHorizontal: containerPadding },
         ]}
       >
-        <Card onPress={onPress} margin={0} padding={0} borderRadius={theme.layout.borderRadius.xxl}>
+        <Card
+          onPress={onPress}
+          margin={0}
+          padding={0}
+          borderRadius={theme.layout.borderRadius.xxl}
+        >
           <View style={styles.comparisonContainer}>
             {showcaseImageUrl ? (
               <ImageLoader
@@ -69,28 +74,45 @@ const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
                 }}
               />
             )}
-            <View style={[
-              styles.comparisonLabel,
-              isMobile && styles.comparisonLabelMobile,
-            ]}>
+            <View
+              style={[
+                styles.comparisonLabel,
+                isMobile && styles.comparisonLabelMobile,
+              ]}
+            >
               <View style={styles.labelItem}>
                 <View style={[styles.labelDot, styles.beforeDot]} />
-                <Text style={[
-                  styles.labelText,
-                  styles.beforeText,
-                  isMobile ? styles.labelTextMobile : { fontSize: 15 * fontScale },
-                ]}>
+                <Text
+                  style={[
+                    styles.labelText,
+                    styles.beforeText,
+                    isMobile
+                      ? styles.labelTextMobile
+                      : { fontSize: 15 * fontScale },
+                  ]}
+                >
                   去雾前
                 </Text>
               </View>
-              <Text style={[styles.divider, isMobile ? styles.dividerMobile : undefined]}>→</Text>
+              <Text
+                style={[
+                  styles.divider,
+                  isMobile ? styles.dividerMobile : undefined,
+                ]}
+              >
+                →
+              </Text>
               <View style={styles.labelItem}>
                 <View style={[styles.labelDot, styles.afterDot]} />
-                <Text style={[
-                  styles.labelText,
-                  styles.afterText,
-                  isMobile ? styles.labelTextMobile : { fontSize: 15 * fontScale },
-                ]}>
+                <Text
+                  style={[
+                    styles.labelText,
+                    styles.afterText,
+                    isMobile
+                      ? styles.labelTextMobile
+                      : { fontSize: 15 * fontScale },
+                  ]}
+                >
                   去雾后
                 </Text>
               </View>

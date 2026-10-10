@@ -21,7 +21,10 @@ import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
 import CompareEmptyState from '@/components/CompareEmptyState';
-import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
+import {
+  controlBarStyles,
+  controlButtonStyles,
+} from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareOverlay'>;
@@ -29,7 +32,10 @@ type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareOverlay'>;
 type Direction = 'vertical' | 'horizontal';
 
 const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, modelId } = route.params ?? {
+    originalUrl: '',
+    processedUrl: '',
+  };
   const { height: screenHeight } = useWindowDimensions();
   const [direction, setDirection] = useState<Direction>('vertical');
   const [dividerPos, setDividerPos] = useState(0.5);
@@ -46,14 +52,20 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (evt) => {
+      onPanResponderMove: evt => {
         const { width, height } = layoutRef.current;
         const dir = directionRef.current;
         if (dir === 'vertical') {
-          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / width));
+          const ratio = Math.max(
+            0,
+            Math.min(1, evt.nativeEvent.locationX / width),
+          );
           setDividerPos(ratio);
         } else {
-          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationY / height));
+          const ratio = Math.max(
+            0,
+            Math.min(1, evt.nativeEvent.locationY / height),
+          );
           setDividerPos(ratio);
         }
       },
@@ -81,12 +93,15 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="CompareOverlay"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, modelId }}
       />
 
       {/* 控制栏 */}
       <View style={controlBarStyles.bar}>
-        <TouchableOpacity style={controlButtonStyles.button} onPress={toggleDirection}>
+        <TouchableOpacity
+          style={controlButtonStyles.button}
+          onPress={toggleDirection}
+        >
           <Icon
             name={direction === 'vertical' ? 'arrow-right' : 'arrow-down'}
             size={14}

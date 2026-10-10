@@ -30,62 +30,100 @@ const PersonalAboutScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="关于我们" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="关于我们"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView contentContainerStyle={styles.content}>
-      {/* Logo 区域 */}
-      <View style={styles.logoSection}>
-        <View style={styles.logoWrap}>
-          <Ionicons name="water-outline" size={48} color={theme.colors.primary} />
+        {/* Logo 区域 */}
+        <View style={styles.logoSection}>
+          <View style={styles.logoWrap}>
+            <Ionicons
+              name="water-outline"
+              size={48}
+              color={theme.colors.primary}
+            />
+          </View>
+          <Text style={styles.appName}>Dehaze 图像去雾</Text>
+          <Text style={styles.version}>版本 1.0.0</Text>
         </View>
-        <Text style={styles.appName}>Dehaze 图像去雾</Text>
-        <Text style={styles.version}>版本 1.0.0</Text>
-      </View>
 
-      {/* 简介 */}
-      <View style={styles.card}>
-        <Text style={styles.descTitle}>产品简介</Text>
-        <Text style={styles.descText}>
-          Dehaze 是一款基于深度学习技术的智能图像去雾系统，支持多种先进算法，
-          可高效去除图像中的雾霾、提高图像清晰度与对比度。
-          系统提供上传处理、效果对比、批量处理、数据集管理等功能，
-          满足科研与工业场景下的图像增强需求。
+        {/* 简介 */}
+        <View style={styles.card}>
+          <Text style={styles.descTitle}>产品简介</Text>
+          <Text style={styles.descText}>
+            Dehaze 是一款基于深度学习技术的智能图像去雾系统，支持多种先进算法，
+            可高效去除图像中的雾霾、提高图像清晰度与对比度。
+            系统提供上传处理、效果对比、批量处理、数据集管理等功能，
+            满足科研与工业场景下的图像增强需求。
+          </Text>
+        </View>
+
+        {/* 技术栈 */}
+        <View style={styles.card}>
+          <Text style={styles.descTitle}>技术栈</Text>
+          <Text style={styles.descText}>
+            React Native 0.81 · React 19 · TypeScript{'\n'}
+            @react-navigation v7 · zustand{'\n'}
+            后端：Java Spring Boot · Python · Go
+          </Text>
+        </View>
+
+        {/* 链接 */}
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={handleOpenPrivacy}
+            activeOpacity={0.6}
+          >
+            <Ionicons
+              name="shield-checkmark-outline"
+              size={20}
+              color={theme.colors.text.secondary}
+            />
+            <Text style={styles.linkText}>隐私政策</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.text.tertiary}
+            />
+          </TouchableOpacity>
+          <View style={styles.linkDivider} />
+          <TouchableOpacity
+            style={styles.linkRow}
+            onPress={handleOpenTerms}
+            activeOpacity={0.6}
+          >
+            <Ionicons
+              name="document-text-outline"
+              size={20}
+              color={theme.colors.text.secondary}
+            />
+            <Text style={styles.linkText}>用户协议</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.text.tertiary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.copyright}>
+          © 2024 Dehaze Team. All rights reserved.
         </Text>
-      </View>
-
-      {/* 技术栈 */}
-      <View style={styles.card}>
-        <Text style={styles.descTitle}>技术栈</Text>
-        <Text style={styles.descText}>
-          React Native 0.81 · React 19 · TypeScript{'\n'}
-          @react-navigation v7 · zustand{'\n'}
-          后端：Java Spring Boot · Python · Go
-        </Text>
-      </View>
-
-      {/* 链接 */}
-      <View style={styles.card}>
-        <TouchableOpacity style={styles.linkRow} onPress={handleOpenPrivacy} activeOpacity={0.6}>
-          <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.text.secondary} />
-          <Text style={styles.linkText}>隐私政策</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
-        </TouchableOpacity>
-        <View style={styles.linkDivider} />
-        <TouchableOpacity style={styles.linkRow} onPress={handleOpenTerms} activeOpacity={0.6}>
-          <Ionicons name="document-text-outline" size={20} color={theme.colors.text.secondary} />
-          <Text style={styles.linkText}>用户协议</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.copyright}>© 2024 Dehaze Team. All rights reserved.</Text>
-    </ScrollView>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.background.secondary },
-  content: { padding: theme.spacing.md, paddingBottom: theme.spacing.xxxl, alignItems: 'center' },
+  content: {
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xxxl,
+    alignItems: 'center',
+  },
   logoSection: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,

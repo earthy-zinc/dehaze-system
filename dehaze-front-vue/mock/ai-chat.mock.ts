@@ -585,7 +585,12 @@ let artifacts: ArtifactVO[] = [
     type: "metric_report",
     refType: "sys_eval_log",
     refId: 3201,
-    summary: { algorithmName: "DCP", psnr: 24.6, ssim: 0.91, windowRadius: 11 },
+    summary: {
+      modelName: "AECR-Net",
+      psnr: 24.6,
+      ssim: 0.91,
+      windowRadius: 11,
+    },
     isInvalid: 0,
     createTime: "2026-08-27 09:12:41",
   },
@@ -608,7 +613,7 @@ let artifacts: ArtifactVO[] = [
     refType: "sys_recommendation",
     refId: 512,
     summary: {
-      algorithmName: "MSRCR",
+      modelName: "AODNet",
       matchScore: 0.87,
       reason: "低照度细节保留优先",
     },
@@ -634,7 +639,7 @@ let artifacts: ArtifactVO[] = [
     refType: "sys_recommendation",
     refId: 533,
     summary: {
-      algorithmName: "DehazeNet",
+      modelName: "C2PNet",
       matchScore: 0.74,
       reason: "轻量化前置去雾",
     },
@@ -646,7 +651,7 @@ let artifacts: ArtifactVO[] = [
 /** 产物详情：summary 之外补充渲染所需的前端运行时字段 */
 const artifactDetails: Record<number, Record<string, unknown>> = {
   1: {
-    algorithmName: "DCP",
+    modelName: "AECR-Net",
     psnr: 24.6,
     ssim: 0.91,
     windowRadius: 11,
@@ -658,9 +663,9 @@ const artifactDetails: Record<number, Record<string, unknown>> = {
       "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NDAiIGhlaWdodD0iMzYwIj48cmVjdCB3aWR0aD0iNjQwIiBoZWlnaHQ9IjM2MCIgZmlsbD0iIzJiMzU0YiIvPjx0ZXh0IHg9IjMyMCIgeT0iMTkwIiBmaWxsPSIjZmZmIiBmb250LXNpemU9IjI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7nvZfooannlLfnlKjmiYblhpc8L3RleHQ+PC9zdmc+",
     resolution: "1920x1080",
   },
-  3: { algorithmName: "MSRCR", matchScore: 0.87, scales: [15, 80, 250] },
+  3: { modelName: "AODNet", matchScore: 0.87, scales: [15, 80, 250] },
   4: { fileName: "显存占用采样.csv", sizeBytes: 18420, downloadable: false },
-  5: { algorithmName: "DehazeNet", matchScore: 0.74, params: { layers: 12 } },
+  5: { modelName: "C2PNet", matchScore: 0.74, params: { layers: 12 } },
 };
 
 // ==================== 记忆 ====================
@@ -819,7 +824,7 @@ let agents: AgentRecord[] = [
     },
     permissions: [{ filesystem: "read_only", paths: ["/data/dataset"] }],
     skills: ["dehaze-tuning", "metric-report"],
-    mcpNamespaces: ["algorithm-service"],
+    mcpNamespaces: ["image-model-service"],
     subagents: [
       {
         agentId: 2,
@@ -868,7 +873,7 @@ let agents: AgentRecord[] = [
     config: { maxSteps: 10, tokenBudget: 48000, reflexionThreshold: 0.8 },
     permissions: [],
     skills: ["dehaze-tuning"],
-    mcpNamespaces: ["algorithm-service", "weather-data"],
+    mcpNamespaces: ["image-model-service", "weather-data"],
     subagents: [],
   },
   {
@@ -948,7 +953,7 @@ let agentVersions: AgentVersionDetail[] = [
     snapshot: {
       name: "去雾助手",
       reasoningMode: "react",
-      mcpNamespaces: ["algorithm-service", "weather-data"],
+      mcpNamespaces: ["image-model-service", "weather-data"],
     },
   },
   {
@@ -1036,7 +1041,7 @@ let evalSamples: EvalSampleResult[] = [
     datasetId: 1,
     taskGoal: "为 1080p 雾天监控图像推荐窗口半径",
     allowedInput: "图像分辨率 1920x1080，雾浓度中等",
-    tools: ["kb_search", "algorithm_list"],
+    tools: [{ name: "kb_search" }, { name: "get_api_v1_ai_models_enabled" }],
     expectedProcess: "先检索调参文档，再结合分辨率给出分级建议",
     expectedResult: "窗口半径 11",
     forbiddenBehavior: "不得臆造未在文档中出现的参数",
@@ -1047,7 +1052,7 @@ let evalSamples: EvalSampleResult[] = [
     id: 2,
     datasetId: 1,
     taskGoal: "判断浓雾场景是否应提高 t0",
-    tools: ["kb_search"],
+    tools: [{ name: "kb_search" }],
     expectedResult: "建议 t0 提高到 0.15~0.2",
     riskLevel: "medium",
     createTime: "2026-08-15 10:15:00",
@@ -1540,10 +1545,10 @@ interface McpServerRecord extends McpServerVO {
 let mcpServers: McpServerRecord[] = [
   {
     id: 1,
-    name: "图像算法服务",
-    description: "去雾/增强算法调用与参数校验",
+    name: "统一模型服务",
+    description: "图像模型发现、任务提交与指标查询",
     protocolType: "streamable-http",
-    endpoint: "https://mcp.example.com/algorithm",
+    endpoint: "https://mcp.example.com/models",
     authType: "api_key",
     status: 1,
     health: "online",
@@ -1581,33 +1586,37 @@ let mcpServers: McpServerRecord[] = [
 const mcpTools: Record<number, McpToolVO[]> = {
   1: [
     {
-      name: "algorithm_list",
-      description: "列出可用算法及适用场景",
-      inputSchema: {
-        type: "object",
-        properties: { scene: { type: "string" } },
-      },
-    },
-    {
-      name: "algorithm_invoke",
-      description: "调用指定算法处理图像",
+      name: "get_api_v1_ai_models_enabled",
+      description: "列出可用图像模型及适用场景",
       inputSchema: {
         type: "object",
         properties: {
-          algorithmId: { type: "number" },
-          params: { type: "object" },
+          modelType: { type: "string" },
+          taskTags: { type: "string" },
         },
-        required: ["algorithmId"],
       },
     },
     {
-      name: "param_validate",
-      description: "校验算法参数取值范围",
+      name: "post_api_v1_images_edits",
+      description: "提交图像编辑任务",
       inputSchema: {
         type: "object",
         properties: {
-          algorithmId: { type: "number" },
-          params: { type: "object" },
+          model: { type: "string" },
+          fileId: { type: "number" },
+          imageUrl: { type: "string" },
+          params: { type: "string" },
+        },
+        required: ["model"],
+      },
+    },
+    {
+      name: "get_api_v1_evaluation_metrics",
+      description: "查询当前用户评估指标历史",
+      inputSchema: {
+        type: "object",
+        properties: {
+          modelId: { type: "string" },
         },
       },
     },
@@ -1666,8 +1675,12 @@ const mcpTools: Record<number, McpToolVO[]> = {
 const mcpNamespaces: Record<number, McpNamespaceVO[]> = {
   1: [
     {
-      name: "algorithm-service",
-      toolNames: ["algorithm_list", "algorithm_invoke", "param_validate"],
+      name: "image-model-service",
+      toolNames: [
+        "get_api_v1_ai_models_enabled",
+        "post_api_v1_images_edits",
+        "get_api_v1_evaluation_metrics",
+      ],
     },
     { name: "metric-service", toolNames: ["metric_eval"] },
   ],
@@ -1687,10 +1700,10 @@ const mcpNamespaces: Record<number, McpNamespaceVO[]> = {
 
 const mcpMarket: McpMarketPresetVO[] = [
   {
-    presetId: "preset-algorithm",
-    name: "图像算法服务",
-    description: "去雾/增强算法调用与参数校验",
-    capabilityTags: ["图像处理", "算法调用"],
+    presetId: "preset-model-service",
+    name: "统一模型服务",
+    description: "图像模型发现、任务提交与指标查询",
+    capabilityTags: ["图像处理", "模型调用"],
     installed: true,
   },
   {
@@ -1721,8 +1734,8 @@ let mcpCalls: McpCallVO[] = [
     id: 1,
     userId: 1,
     serverId: 1,
-    serverName: "图像算法服务",
-    toolName: "algorithm_list",
+    serverName: "统一模型服务",
+    toolName: "get_api_v1_ai_models_enabled",
     result: "success",
     latencyMs: 320,
     createTime: "2026-08-28 16:40:05",
@@ -1731,8 +1744,8 @@ let mcpCalls: McpCallVO[] = [
     id: 2,
     userId: 1,
     serverId: 1,
-    serverName: "图像算法服务",
-    toolName: "algorithm_invoke",
+    serverName: "统一模型服务",
+    toolName: "post_api_v1_images_edits",
     result: "success",
     latencyMs: 1840,
     createTime: "2026-08-28 16:41:12",
@@ -1741,8 +1754,8 @@ let mcpCalls: McpCallVO[] = [
     id: 3,
     userId: 2,
     serverId: 1,
-    serverName: "图像算法服务",
-    toolName: "param_validate",
+    serverName: "统一模型服务",
+    toolName: "get_api_v1_evaluation_metrics",
     result: "success",
     latencyMs: 210,
     createTime: "2026-08-27 20:12:40",
@@ -1761,8 +1774,8 @@ let mcpCalls: McpCallVO[] = [
     id: 5,
     userId: 3,
     serverId: 1,
-    serverName: "图像算法服务",
-    toolName: "metric_eval",
+    serverName: "统一模型服务",
+    toolName: "get_api_v1_evaluation_metrics",
     result: "success",
     latencyMs: 640,
     createTime: "2026-08-26 09:22:18",
@@ -2340,6 +2353,9 @@ function aggregateCosts(dimension: string): AiObservabilityCostItem[] {
 }
 
 // ==================== 模型（会话设置下拉） ====================
+
+/** 用户偏好默认模型：内存态，null 表示跟随平台默认 */
+let preferredModelId: string | null = null;
 
 const chatModels: AiModelVO[] = [
   {
@@ -5040,6 +5056,25 @@ export default defineMock([
     method: ["GET"],
     body() {
       return ok(chatModels.filter((item) => item.status === 1));
+    },
+  },
+
+  // ==================== 用户偏好默认模型（会话设置面板） ====================
+
+  {
+    url: "ai/user-preference",
+    method: ["GET"],
+    body() {
+      return ok({ defaultModel: preferredModelId });
+    },
+  },
+  // PUT 与后端一致：统一信封空 data，不回传写入后的偏好体
+  {
+    url: "ai/user-preference",
+    method: ["PUT"],
+    body({ body }) {
+      preferredModelId = (body?.defaultModel as string | null) ?? null;
+      return ok(null);
     },
   },
 ]);

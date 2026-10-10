@@ -1,22 +1,31 @@
 /**
  * 去雾 Tab 根页面（重构为页内步骤流）
  *
- * 按 05 规划 2.3：上传 → 算法选择 → 参数调节 → 处理 → 对比（页内步骤流）
+ * 按 05 规划 2.3：上传 → 模型选择 → 参数调节 → 处理 → 对比（页内步骤流）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, Image, Button, Slider, Input, ScrollView } from "@tarojs/components";
+import {
+  View,
+  Text,
+  Image,
+  Button,
+  Slider,
+  Input,
+  ScrollView,
+} from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { PhotoOutlined, Search, Arrow } from "@taroify/icons";
 import PageLayout from "@/layout";
-import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
-import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
+import { AiImageAPI, ModelAPI } from "dehaze-sdk-js";
+import type { AiModelVO, ImageTaskResponse, PresetVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/config/upload";
 import { getErrorMessage } from "@/utils/error";
-import { formatFileSize, formatDuration } from "@/utils/format";
+import { formatFileSize, formatDuration, formatSeconds } from "@/utils/format";
 import { useProcessStore } from "@/stores/process";
+import { loadImageEditModels } from "@/utils/imageModel";
 import "./index.less";
 
-type StepKey = "upload" | "algorithm" | "params" | "processing" | "compare";
+type StepKey = "upload" | "model" | "params" | "processing" | "compare";
 
 interface StepDef {
   key: StepKey;
@@ -25,7 +34,7 @@ interface StepDef {
 
 const STEPS: StepDef[] = [
   { key: "upload", label: "上传图像" },
-  { key: "algorithm", label: "选择算法" },
+  { key: "model", label: "选择模型" },
   { key: "params", label: "调节参数" },
   { key: "processing", label: "处理" },
   { key: "compare", label: "效果对比" },
@@ -62,15 +71,13 @@ const MAX_RETRIES = 3;
 const DehazePage: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [currentImage, setCurrentImage] = useState<ImageData | null>(null);
-  const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
-  const [algoLoading, setAlgoLoading] = useState(false);
-  const [algoSearch, setAlgoSearch] = useState("");
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState<Algorithm | null>(
-    null
-  );
+  const [models, setModels] = useState<AiModelVO[]>([]);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
+  const [selectedModel, setSelectedModel] = useState<AiModelVO | null>(null);
   const [params, setParams] = useState<ProcessParams>(DEFAULT_PARAMS);
   const [processStatus, setProcessStatus] = useState<ProcessStatus>("idle");
-  const [result, setResult] = useState<PredictionResultVO | null>(null);
+  const [result, setResult] = useState<ImageTaskResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [presets, setPresets] = useState<PresetVO[]>([]);
@@ -90,22 +97,27 @@ const DehazePage: React.FC = () => {
     return clearTimer;
   }, [clearTimer]);
 
-  // 切换到算法选择步骤时加载算法
+  // 切换到模型选择步骤时加载图像编辑模型（预选：历史最近使用 → 首项）
   useEffect(() => {
-    if (currentStep === 1 && algorithms.length === 0 && !algoLoading) {
-      setAlgoLoading(true);
-      AlgorithmAPI.getList()
-        .then((data) => setAlgorithms(data || []))
-        .catch(() => Taro.showToast({ title: "加载算法失败", icon: "none" }))
-        .finally(() => setAlgoLoading(false));
+    if (currentStep === 1 && models.length === 0 && !modelLoading) {
+      setModelLoading(true);
+      loadImageEditModels()
+        .then(({ models: list, preselected }) => {
+          setModels(list);
+          setSelectedModel((prev) => prev ?? preselected);
+        })
+        .catch(() => Taro.showToast({ title: "加载模型失败", icon: "none" }))
+        .finally(() => setModelLoading(false));
     }
-  }, [currentStep, algorithms.length, algoLoading]);
+  }, [currentStep, models.length, modelLoading]);
 
   // 加载参数预设
   useEffect(() => {
     ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
       .then((res) => setPresets(res.list || []))
-      .catch(() => { /* 静默 */ });
+      .catch(() => {
+        /* 静默 */
+      });
   }, []);
 
   // 步骤跳转
@@ -118,14 +130,14 @@ const DehazePage: React.FC = () => {
           Taro.showToast({ title: "请先上传图片", icon: "none" });
           return;
         }
-        if (step >= 2 && !selectedAlgorithm) {
-          Taro.showToast({ title: "请先选择算法", icon: "none" });
+        if (step >= 2 && !selectedModel) {
+          Taro.showToast({ title: "请先选择模型", icon: "none" });
           return;
         }
       }
       setCurrentStep(step);
     },
-    [currentStep, currentImage, selectedAlgorithm]
+    [currentStep, currentImage, selectedModel]
   );
 
   // 上传图片
@@ -155,38 +167,20 @@ const DehazePage: React.FC = () => {
     }
   }, []);
 
-  // 收集所有叶子算法
-  const collectLeaves = useCallback((nodes: Algorithm[]): Algorithm[] => {
-    const leaves: Algorithm[] = [];
-    const walk = (list: Algorithm[]) => {
-      for (const node of list) {
-        if (node.children && node.children.length > 0) {
-          walk(node.children);
-        } else {
-          leaves.push(node);
-        }
-      }
-    };
-    walk(nodes);
-    return leaves;
-  }, []);
-
-  const leafAlgorithms = collectLeaves(algorithms).filter(
-    (a) => a.status === 4
-  );
-
-  const filteredAlgorithms = algoSearch
-    ? leafAlgorithms.filter(
-        (a) =>
-          a.name?.toLowerCase().includes(algoSearch.toLowerCase()) ||
-          a.description?.toLowerCase().includes(algoSearch.toLowerCase())
+  const filteredModels = modelSearch
+    ? models.filter((m) =>
+        m.displayName.toLowerCase().includes(modelSearch.toLowerCase())
       )
-    : leafAlgorithms;
+    : models;
 
-  // 选择算法
-  const handleSelectAlgorithm = useCallback(
-    (algorithm: Algorithm) => {
-      setSelectedAlgorithm(algorithm);
+  // 选择模型
+  const handleSelectModel = useCallback(
+    (model: AiModelVO) => {
+      setSelectedModel(model);
+      useProcessStore.getState().setModel({
+        modelId: model.modelId,
+        displayName: model.displayName,
+      });
       goStep(2);
     },
     [goStep]
@@ -209,34 +203,13 @@ const DehazePage: React.FC = () => {
 
   // 执行处理（含递增重试）
   const handleProcess = useCallback(async () => {
-    if (!currentImage || !selectedAlgorithm) return;
-
-    // 配额检查
-    try {
-      const quota = await ModelAPI.getQuota();
-      if (quota.remaining === 0) {
-        Taro.showModal({
-          title: "预测次数不足",
-          content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
-          confirmText: "去充值",
-          cancelText: "取消",
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({ url: "/pages/user-center/index" });
-            }
-          },
-        });
-        return;
-      }
-    } catch {
-      // 配额查询失败也允许继续处理
-    }
+    if (!currentImage || !selectedModel) return;
 
     // 确认对话框
     const confirmResult = await new Promise<boolean>((resolve) => {
       Taro.showModal({
         title: "确认开始去雾处理",
-        content: `图片：${currentImage.name}\n尺寸：${currentImage.width}×${currentImage.height}\n算法：${selectedAlgorithm.name}`,
+        content: `图片：${currentImage.name}\n尺寸：${currentImage.width}×${currentImage.height}\n模型：${selectedModel.displayName}`,
         confirmText: "开始处理",
         cancelText: "取消",
         success: (res) => resolve(res.confirm),
@@ -258,12 +231,22 @@ const DehazePage: React.FC = () => {
 
       try {
         if (!uploadedFileIdRef.current) {
-          const fileInfo = await uploadImage(currentImage.url, currentImage.name);
+          const fileInfo = await uploadImage(
+            currentImage.url,
+            currentImage.name
+          );
           uploadedFileIdRef.current = fileInfo.id;
         }
+        useProcessStore.getState().setImage({
+          url: currentImage.url,
+          name: currentImage.name,
+          width: currentImage.width,
+          height: currentImage.height,
+          size: currentImage.size,
+        });
 
-        const res = await ModelAPI.predictAndWait({
-          algorithmId: selectedAlgorithm.id,
+        const res = await AiImageAPI.submitAndWait({
+          model: selectedModel.modelId,
           fileId: uploadedFileIdRef.current,
           params: JSON.stringify(params),
         });
@@ -288,7 +271,9 @@ const DehazePage: React.FC = () => {
         if (attemptNumber < MAX_RETRIES) {
           const delay = RETRY_DELAYS[attemptNumber];
           retryCountRef.current = attemptNumber + 1;
-          setErrorMsg(`${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`);
+          setErrorMsg(
+            `${errMsg}，${delay / 1000}秒后自动重试（${attemptNumber + 1}/${MAX_RETRIES}）`
+          );
           await new Promise((r) => setTimeout(r, delay));
           if (!cancelledRef.current) {
             return attempt(attemptNumber + 1);
@@ -302,7 +287,7 @@ const DehazePage: React.FC = () => {
     };
 
     await attempt(0);
-  }, [currentImage, selectedAlgorithm, params, clearTimer, goStep]);
+  }, [currentImage, selectedModel, params, clearTimer, goStep]);
 
   // 进入对比页
   const handleGoCompare = useCallback(() => {
@@ -323,7 +308,7 @@ const DehazePage: React.FC = () => {
   const handleReset = useCallback(() => {
     setCurrentStep(0);
     setCurrentImage(null);
-    setSelectedAlgorithm(null);
+    setSelectedModel(null);
     setParams(DEFAULT_PARAMS);
     setProcessStatus("idle");
     setResult(null);
@@ -394,46 +379,41 @@ const DehazePage: React.FC = () => {
           onClick={() => goStep(1)}
           disabled={!currentImage}
         >
-          下一步：选择算法
+          下一步：选择模型
           <Arrow size="14" color="#fff" />
         </Button>
       </View>
     </View>
   );
 
-  // 步骤2：选择算法
-  const renderAlgorithmSelect = () => (
+  // 步骤2：选择模型
+  const renderModelSelect = () => (
     <View className="dehaze-step-content">
       <View className="dehaze-algo-search">
         <Search size="16" color="#9ca3af" />
         <Input
           className="dehaze-algo-search-input"
-          placeholder="搜索算法..."
-          value={algoSearch}
-          onInput={(e) => setAlgoSearch(e.detail.value)}
+          placeholder="搜索模型..."
+          value={modelSearch}
+          onInput={(e) => setModelSearch(e.detail.value)}
         />
       </View>
-      {algoLoading ? (
+      {modelLoading ? (
         <View className="dehaze-loading">
-          <Text>加载算法中...</Text>
+          <Text>加载模型中...</Text>
         </View>
       ) : (
         <View className="dehaze-algo-list">
-          {filteredAlgorithms.map((algo) => (
+          {filteredModels.map((model) => (
             <View
-              key={algo.id}
-              className={`dehaze-algo-card ${selectedAlgorithm?.id === algo.id ? "selected" : ""}`}
-              onClick={() => handleSelectAlgorithm(algo)}
+              key={model.id}
+              className={`dehaze-algo-card ${selectedModel?.id === model.id ? "selected" : ""}`}
+              onClick={() => handleSelectModel(model)}
             >
-              <Text className="dehaze-algo-name">{algo.name}</Text>
-              {algo.type && (
-                <View className="dehaze-algo-type">
-                  <Text>{algo.type}</Text>
-                </View>
-              )}
-              {algo.description && (
-                <Text className="dehaze-algo-desc">{algo.description}</Text>
-              )}
+              <Text className="dehaze-algo-name">{model.displayName}</Text>
+              <View className="dehaze-algo-type">
+                <Text>{model.modelId}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -446,9 +426,9 @@ const DehazePage: React.FC = () => {
           返回上一步
         </View>
         <Button
-          className={`dehaze-btn dehaze-btn-primary ${!selectedAlgorithm ? "disabled" : ""}`}
+          className={`dehaze-btn dehaze-btn-primary ${!selectedModel ? "disabled" : ""}`}
           onClick={() => goStep(2)}
-          disabled={!selectedAlgorithm}
+          disabled={!selectedModel}
         >
           下一步：调节参数
           <Arrow size="14" color="#fff" />
@@ -465,7 +445,12 @@ const DehazePage: React.FC = () => {
         {presets.length > 0 && (
           <View className="dehaze-preset-section">
             <Text className="dehaze-preset-label">参数预设</Text>
-            <ScrollView scrollX className="dehaze-preset-scroll" enhanced showScrollbar={false}>
+            <ScrollView
+              scrollX
+              className="dehaze-preset-scroll"
+              enhanced
+              showScrollbar={false}
+            >
               {presets.map((preset) => (
                 <View
                   key={preset.id}
@@ -543,10 +528,12 @@ const DehazePage: React.FC = () => {
         </View>
       </View>
 
-      {selectedAlgorithm && (
+      {selectedModel && (
         <View className="dehaze-algo-summary">
-          <Text className="dehaze-summary-label">已选算法：</Text>
-          <Text className="dehaze-summary-value">{selectedAlgorithm.name}</Text>
+          <Text className="dehaze-summary-label">已选模型：</Text>
+          <Text className="dehaze-summary-value">
+            {selectedModel.displayName}
+          </Text>
         </View>
       )}
 
@@ -593,8 +580,7 @@ const DehazePage: React.FC = () => {
           <View className="dehaze-success-icon">✓</View>
           <Text className="dehaze-status-text">处理完成</Text>
           <Text className="dehaze-status-hint">
-            耗时 {formatDuration(result.time ?? 0)}
-            {result.fromCache ? " · 缓存命中" : ""}
+            耗时 {formatSeconds(result.time ?? 0)}
           </Text>
           {result.resultUrl && (
             <View className="dehaze-result-preview">
@@ -679,7 +665,7 @@ const DehazePage: React.FC = () => {
 
   const stepRenderers: Record<StepKey, () => React.ReactNode> = {
     upload: renderUpload,
-    algorithm: renderAlgorithmSelect,
+    model: renderModelSelect,
     params: renderParams,
     processing: renderProcessing,
     compare: renderCompare,

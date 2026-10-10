@@ -32,7 +32,7 @@
           </div>
           <h2 class="showcase-title">数据驱动的<br />去雾引擎</h2>
           <p class="showcase-desc">
-            覆盖 30+ SOTA 算法，千万级真实图像训练，量化指标行业领先。
+            覆盖 30+ SOTA 去雾模型，千万级真实图像训练，量化指标行业领先。
           </p>
           <div class="grid grid-cols-2 gap-5">
             <div v-for="m in metrics" :key="m.label" class="metric-card">
@@ -100,21 +100,14 @@
 
 <script lang="ts" setup>
 import { CircleCheck, ChatDotRound } from "@element-plus/icons-vue";
+import compareUrl from "@/assets/images/dataset-card-cityscape.jpg";
 
 defineOptions({
   name: "ShowcaseSection",
 });
 
-// 效果对比配图（真实生成，非占位图）
-const compareUrl =
-  "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=" +
-  encodeURIComponent(
-    "A crystal clear scenic landscape photo, snow-capped mountains and turquoise lake, vivid colors, high detail, professional photography"
-  ) +
-  "&image_size=landscape_16_9";
-
 const metrics = [
-  { value: "30", unit: "+", label: "SOTA 去雾算法", highlight: false },
+  { value: "30", unit: "+", label: "SOTA 去雾模型", highlight: false },
   { value: "1000", unit: "万+", label: "累计处理图像", highlight: false },
   { value: "42", unit: "dB", label: "平均 PSNR · 行业领先", highlight: true },
   { value: "4.9", unit: "/5", label: "用户综合评分", highlight: false },
@@ -139,7 +132,7 @@ const testimonials = [
   },
   {
     quote:
-      "算法市场覆盖主流 SOTA 方案，对比评估一目了然，为我们的模型选型节省了大量调研时间。",
+      "统一模型库覆盖主流 SOTA 方案，对比评估一目了然，为我们的模型选型节省了大量调研时间。",
     avatar: "李",
     name: "李研究员",
     org: "清华大学 · 视觉实验室",

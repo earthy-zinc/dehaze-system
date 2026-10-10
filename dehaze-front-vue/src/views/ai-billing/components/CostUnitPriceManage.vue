@@ -342,17 +342,29 @@ async function openDialog(row: ModelCostVO | null) {
     effectiveTo: row?.effectiveTo,
     status: row?.status ?? 1,
   });
+  // 出参档位单价为后端 Decimal 字符串，回填到可编辑表单（unitPrice: number）时需 Number() 转换
   detailRows.splice(
     0,
     detailRows.length,
-    ...(row?.details ?? []).map((d) => ({ ...d }))
+    ...(row?.details ?? []).map((d) => ({
+      tokenType: d.tokenType,
+      timeSlot: d.timeSlot,
+      minTokens: d.minTokens,
+      maxTokens: d.maxTokens ?? undefined,
+      unitPrice: Number(d.unitPrice),
+    }))
   );
   if (detailRows.length === 0) addDetailRow();
   dialogVisible.value = true;
 }
 
 async function submit() {
-  await formRef.value?.validate();
+  try {
+    await formRef.value?.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   if (detailRows.length === 0) {
     ElMessage.warning("请至少配置一条成本档位");
     return;

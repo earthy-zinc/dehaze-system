@@ -74,9 +74,7 @@ class DatasetService {
 
   /// 删除单个数据集
   Future<void> deleteById(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.datasets}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.datasets}/$id');
   }
 
   /// 批量删除数据集
@@ -99,7 +97,9 @@ class DatasetItemService {
   final Dio _dio;
 
   /// 分页查询数据项列表
-  Future<PageResult<DatasetItemVO>> getList([DatasetItemQuery? queryParams]) async {
+  Future<PageResult<DatasetItemVO>> getList([
+    DatasetItemQuery? queryParams,
+  ]) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.datasetItems,
       queryParameters: queryParams?.toJson(),
@@ -144,9 +144,7 @@ class DatasetItemService {
 
   /// 删除数据项
   Future<void> deleteById(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.datasetItems}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.datasetItems}/$id');
   }
 
   /// 创建数据项并上传配对图片
@@ -154,9 +152,7 @@ class DatasetItemService {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.datasetItemsUpload,
       data: formData,
-      options: Options(
-        headers: {'Content-Type': 'multipart/form-data'},
-      ),
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
     );
     return DatasetItemVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
@@ -168,9 +164,7 @@ class DatasetItemService {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.datasetItemsBatch,
       data: formData,
-      options: Options(
-        headers: {'Content-Type': 'multipart/form-data'},
-      ),
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
     );
     return BatchUploadResultVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
@@ -201,13 +195,9 @@ class ItemFileService {
     final response = await _dio.post<Map<String, dynamic>>(
       ApiConstants.itemFiles,
       data: formData,
-      options: Options(
-        headers: {'Content-Type': 'multipart/form-data'},
-      ),
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
     );
-    return ImageUrlVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return ImageUrlVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 获取图片详细信息
@@ -215,9 +205,7 @@ class ItemFileService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.itemFiles}/$id',
     );
-    return ImageUrlVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return ImageUrlVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 修改图片信息
@@ -230,9 +218,7 @@ class ItemFileService {
 
   /// 删除图片
   Future<void> deleteById(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.itemFiles}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.itemFiles}/$id');
   }
 
   /// 批量删除图片

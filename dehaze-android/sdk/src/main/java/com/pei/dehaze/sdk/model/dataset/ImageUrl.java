@@ -10,6 +10,5 @@ public class ImageUrl {
     private Long id;
     private String type;
     private String url;
-    private String originUrl;
     private String description;
 }

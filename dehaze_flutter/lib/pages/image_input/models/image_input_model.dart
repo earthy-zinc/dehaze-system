@@ -162,19 +162,18 @@ class SelectedImageModel {
     int? fileSize,
     ImageSource? source,
     SampleImageModel? sampleInfo,
-  }) =>
-      SelectedImageModel(
-        id: id ?? this.id,
-        url: url ?? this.url,
-        localPath: localPath ?? this.localPath,
-        bytes: bytes ?? this.bytes,
-        filename: filename ?? this.filename,
-        width: width ?? this.width,
-        height: height ?? this.height,
-        fileSize: fileSize ?? this.fileSize,
-        source: source ?? this.source,
-        sampleInfo: sampleInfo ?? this.sampleInfo,
-      );
+  }) => SelectedImageModel(
+    id: id ?? this.id,
+    url: url ?? this.url,
+    localPath: localPath ?? this.localPath,
+    bytes: bytes ?? this.bytes,
+    filename: filename ?? this.filename,
+    width: width ?? this.width,
+    height: height ?? this.height,
+    fileSize: fileSize ?? this.fileSize,
+    source: source ?? this.source,
+    sampleInfo: sampleInfo ?? this.sampleInfo,
+  );
 }
 
 /// 样例图片模型
@@ -187,7 +186,7 @@ class SampleImageModel {
     required this.category,
     required this.difficulty,
     this.sceneType,
-    this.recommendedAlgorithm,
+    this.recommendedModel,
     this.cleanUrl,
   });
 
@@ -211,7 +210,7 @@ class SampleImageModel {
 
   final String? sceneType; // 场景类型
 
-  final String? recommendedAlgorithm;
+  final String? recommendedModel;
 
   /// 清晰图（Ground Truth）URL，用于指标评估
   /// 仅样例图片有值（来自数据集项的 clearImage），上传/拍照图片无 GT 参考
@@ -236,10 +235,7 @@ class ImageValidationResult {
 
 /// 上传进度状态
 class UploadProgress {
-  const UploadProgress({
-    required this.status,
-    this.errorMessage,
-  });
+  const UploadProgress({required this.status, this.errorMessage});
 
   final UploadStatus status;
   final String? errorMessage;

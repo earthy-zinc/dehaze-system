@@ -39,35 +39,33 @@ describe("favoriteSlice toggleFavorite", () => {
     mockApi.add.mockResolvedValue(1 as any);
     const { store, dispatch } = createStore();
 
-    await dispatch(toggleFavorite({ targetType: "algorithm", targetId: 10 }));
+    await dispatch(toggleFavorite({ targetType: "model", targetId: 10 }));
 
     expect(mockApi.add).toHaveBeenCalledWith({
-      targetType: "algorithm",
+      targetType: "model",
       targetId: 10,
     });
     expect(mockApi.deleteByIds).not.toHaveBeenCalled();
-    expect(store.getState().favorite.status.algorithm[10]).toBe(true);
+    expect(store.getState().favorite.status.model[10]).toBe(true);
   });
 
   it("已收藏时 toggle 通过 getPage 找到记录 id 后 deleteByIds 并将状态置为 false", async () => {
     mockApi.getPage.mockResolvedValue({
       total: 1,
-      list: [{ id: 99, targetType: "algorithm", targetId: 10 } as any],
+      list: [{ id: 99, targetType: "model", targetId: 10 } as any],
     });
     mockApi.deleteByIds.mockResolvedValue(undefined);
     const { store, dispatch } = createStore();
-    dispatch(
-      setStatus({ targetType: "algorithm", targetId: 10, favorited: true })
-    );
+    dispatch(setStatus({ targetType: "model", targetId: 10, favorited: true }));
 
-    await dispatch(toggleFavorite({ targetType: "algorithm", targetId: 10 }));
+    await dispatch(toggleFavorite({ targetType: "model", targetId: 10 }));
 
     expect(mockApi.getPage).toHaveBeenCalledWith({
-      targetType: "algorithm",
+      targetType: "model",
       pageSize: 500,
     });
     expect(mockApi.deleteByIds).toHaveBeenCalledWith([99]);
     expect(mockApi.add).not.toHaveBeenCalled();
-    expect(store.getState().favorite.status.algorithm[10]).toBe(false);
+    expect(store.getState().favorite.status.model[10]).toBe(false);
   });
 });

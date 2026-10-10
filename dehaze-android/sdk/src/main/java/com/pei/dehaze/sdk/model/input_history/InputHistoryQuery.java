@@ -13,8 +13,8 @@ import lombok.EqualsAndHashCode;
 public class InputHistoryQuery extends PageQuery {
     /** 图片来源筛选 */
     private InputSource inputSource;
-    /** 仅收藏 */
-    private Boolean favoriteOnly = false;
+    /** 处理状态筛选（1=成功，2=失败，3=处理中） */
+    private Integer status;
     /** 关键词 */
     private String keywords;
 }

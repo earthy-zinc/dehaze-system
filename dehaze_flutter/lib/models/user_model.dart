@@ -1,5 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
+import '../core/auth/permission_match.dart';
+
 part 'user_model.g.dart';
 
 /// 当前登录用户信息（对应 JS SDK UserInfo / 后端 /auth/me 返回）
@@ -51,12 +53,12 @@ class UserModel {
   /// 部门名称
   final String? deptName;
 
-  /// 角色 ID 列表
+  /// 角色 ID 列表（/auth/me 不返回，仅部分接口回填）
   @JsonKey(defaultValue: [])
   final List<int> roleIds;
 
-  /// 角色名称列表
-  @JsonKey(defaultValue: [])
+  /// 角色名列表（后端字段名为 roles）
+  @JsonKey(name: 'roles', defaultValue: [])
   final List<String> roleNames;
 
   /// 数据权限范围（1=全部 2=本部门 3=本部门及以下 4=仅本人 5=自定义）
@@ -65,8 +67,8 @@ class UserModel {
   /// 状态（1=启用 0=禁用）
   final int? status;
 
-  /// 权限标识列表（如 ["sys:user:add", "sys:dataset:edit"]）
-  @JsonKey(defaultValue: [])
+  /// 权限标识列表（如 ["sys:user:add", "sys:dataset:edit"]；后端字段名为 perms）
+  @JsonKey(name: 'perms', defaultValue: [])
   final List<String> permissions;
 
   /// 创建时间
@@ -75,7 +77,9 @@ class UserModel {
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   /// 是否为 ROOT 角色
-  bool get isRoot => roleNames.contains('ROOT') || roleNames.any((r) => r.toUpperCase() == 'ROOT');
+  bool get isRoot =>
+      roleNames.contains('ROOT') ||
+      roleNames.any((r) => r.toUpperCase() == 'ROOT');
 
   /// 是否已登录（有 userId 且有角色）
   bool get isAuthenticated => userId > 0;
@@ -90,6 +94,14 @@ class UserModel {
   bool hasAnyPermission(List<String> permList) {
     if (isRoot) return true;
     return permList.any(permissions.contains);
+  }
+
+  /// 检查是否命中指定模块的任一权限（模块级入口显隐 / 路由守卫用）
+  ///
+  /// 后端权限为按钮级细粒度串，模块级可见性按前缀判定。
+  bool hasModulePerm(String modulePrefix) {
+    if (isRoot) return true;
+    return matchModulePerm(permissions, modulePrefix);
   }
 
   /// 检查是否拥有指定角色
@@ -184,14 +196,14 @@ class UserQuery {
 
   /// 转为 queryParameters 格式
   Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
-        if (status != null) 'status': status,
-        if (deptId != null) 'deptId': deptId,
-        if (startTime != null && startTime!.isNotEmpty) 'startTime': startTime,
-        if (endTime != null && endTime!.isNotEmpty) 'endTime': endTime,
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (keywords != null && keywords!.isNotEmpty) 'keywords': keywords,
+    if (status != null) 'status': status,
+    if (deptId != null) 'deptId': deptId,
+    if (startTime != null && startTime!.isNotEmpty) 'startTime': startTime,
+    if (endTime != null && endTime!.isNotEmpty) 'endTime': endTime,
+  };
 }
 
 /// 用户分页项（对应 JS SDK UserPageVO）

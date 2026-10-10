@@ -11,9 +11,10 @@ import '../../services/menu_service.dart';
 import '../../theme/app_theme.dart';
 
 final menuManageProvider =
-    StateNotifierProvider<MenuManageNotifier, AsyncValue<PagedList<Menu>>>(
-  (ref) => MenuManageNotifier(ref.watch(menuServiceProvider)),
-);
+    StateNotifierProvider<
+      MenuManageNotifier,
+      AsyncValue<PagedList<Menu>>
+    >((ref) => MenuManageNotifier(ref.watch(menuServiceProvider)));
 
 class MenuManageNotifier extends PagedListNotifier<Menu> {
   MenuManageNotifier(this._service) : super();
@@ -68,7 +69,11 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
     }
     try {
       await ref.read(menuServiceProvider).deleteByIds([id]);
-      _showSnack('删除成功');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('删除成功')));
+      }
       ref.read(menuManageProvider.notifier).refresh();
     } catch (e) {
       _showSnack(extractErrorMessage(e));
@@ -79,8 +84,7 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
     if (!mounted) {
       return;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   void _showForm({int? menuId, int? parentId}) {
@@ -106,8 +110,10 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
       widgets.add(
         Card(
           child: ListTile(
-            contentPadding:
-                EdgeInsets.only(left: 16.0 + depth * 24.0, right: 8),
+            contentPadding: EdgeInsets.only(
+              left: 16.0 + depth * 24.0,
+              right: 8,
+            ),
             leading: Icon(
               item.type == 2 ? Icons.smart_button : Icons.folder_outlined,
               size: 20,
@@ -134,8 +140,11 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
                   onPressed: () => _showForm(menuId: item.id),
                 ),
                 IconButton(
-                  icon:
-                      Icon(Icons.delete, size: 20, color: AppTheme.errorColor),
+                  icon: Icon(
+                    Icons.delete,
+                    size: 20,
+                    color: AppTheme.errorColor,
+                  ),
                   tooltip: '删除',
                   onPressed: () => _deleteMenu(item.id),
                 ),
@@ -186,7 +195,8 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
                   },
                 ),
               ),
-              onSubmitted: (v) => ref.read(menuManageProvider.notifier).search(v),
+              onSubmitted: (v) =>
+                  ref.read(menuManageProvider.notifier).search(v),
             ),
           ),
           Expanded(
@@ -217,9 +227,7 @@ class _MenuManagePageState extends ConsumerState<MenuManagePage> {
                       child: LoadMoreListener(
                         onLoadMore: () =>
                             ref.read(menuManageProvider.notifier).loadMore(),
-                        child: ListView(
-                          children: _buildTree(page.items, 0),
-                        ),
+                        child: ListView(children: _buildTree(page.items, 0)),
                       ),
                     ),
             ),
@@ -282,7 +290,13 @@ class _MenuFormSheetState extends ConsumerState<_MenuFormSheet> {
           _visible = data.visible;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('菜单信息加载失败')));
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -313,9 +327,9 @@ class _MenuFormSheetState extends ConsumerState<_MenuFormSheet> {
       widget.onSaved();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(extractErrorMessage(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
       }
     } finally {
       if (mounted) {
@@ -328,7 +342,9 @@ class _MenuFormSheetState extends ConsumerState<_MenuFormSheet> {
   Widget build(BuildContext context) {
     final isNew = widget.menuId == null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(AppTheme.spacingL),
         child: Form(
@@ -337,14 +353,15 @@ class _MenuFormSheetState extends ConsumerState<_MenuFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(isNew ? '新增菜单' : '编辑菜单',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                isNew ? '新增菜单' : '编辑菜单',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               SizedBox(height: AppTheme.spacingL),
               TextFormField(
                 controller: _nameCtrl,
                 decoration: const InputDecoration(labelText: '菜单名称'),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? '必填' : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
               ),
               SizedBox(height: AppTheme.spacingM),
               TextFormField(

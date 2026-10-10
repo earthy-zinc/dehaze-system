@@ -55,9 +55,7 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
 
                     // 图片预览（如果有选中的图片）
                     if (selectedImage != null)
-                      ImagePreview(
-                        onNextStep: _goToAlgorithmSelect,
-                      ),
+                      ImagePreview(onNextStep: _goToProcessing),
 
                     // 快速体验卡片（如果没有选中图片）
                     if (selectedImage == null) ...[
@@ -76,51 +74,43 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
 
   /// 构建页面头部
   Widget _buildHeaderSliver(ThemeData theme) => SliverToBoxAdapter(
-        child: Container(
-          padding: ResponsiveUtils.getResponsivePadding(context),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            border: Border(
-              bottom: BorderSide(
-                color: theme.dividerColor,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: Container(
+      padding: ResponsiveUtils.getResponsivePadding(context),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 标题行
+          Row(
             children: [
-              // 标题行
-              Row(
-                children: [
-                  Icon(
-                    Icons.image_outlined,
-                    color: AppTheme.brandBlue,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '图像输入',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              Icon(Icons.image_outlined, color: AppTheme.brandBlue, size: 24),
+              const SizedBox(width: 8),
               Text(
-                '选择图片开始去雾处理',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                '图像输入',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-        ),
-      );
+          const SizedBox(height: 8),
+          Text(
+            '选择图片开始去雾处理',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   /// 构建图像输入卡片
-  Widget _buildInputCard(ThemeData theme, InputMethod currentMethod) => Container(
+  Widget _buildInputCard(ThemeData theme, InputMethod currentMethod) =>
+      Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
@@ -159,10 +149,7 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
     // 根据不同输入方式显示不同内容
     switch (currentMethod) {
       case InputMethod.upload:
-        return const Padding(
-          padding: EdgeInsets.all(16),
-          child: UploadArea(),
-        );
+        return const Padding(padding: EdgeInsets.all(16), child: UploadArea());
       case InputMethod.camera:
         return const Padding(
           padding: EdgeInsets.all(16),
@@ -181,79 +168,69 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
 
   /// 构建快速体验卡片
   Widget _buildQuickStartCard(ThemeData theme) => Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.brandBlue,
-              AppTheme.indigo,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.brandBlue.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [AppTheme.brandBlue, AppTheme.indigo],
+      ),
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: AppTheme.brandBlue.withValues(alpha: 0.3),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.bolt,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '快速体验',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                    const Icon(Icons.bolt, color: Colors.white, size: 24),
+                    const SizedBox(width: 8),
                     Text(
-                      '使用样例图片快速体验去雾效果',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
+                      '快速体验',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 16),
-              FilledButton(
-                onPressed: _quickStart,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppTheme.brandBlue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 8),
+                Text(
+                  '使用样例图片快速体验去雾效果',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
-                child: const Text('立即体验'),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
+          const SizedBox(width: 16),
+          FilledButton(
+            onPressed: _quickStart,
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppTheme.brandBlue,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('立即体验'),
+          ),
+        ],
+      ),
+    ),
+  );
 
   /// 快速体验 - 随机选择样例图片
   void _quickStart() {
@@ -270,8 +247,8 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
     });
   }
 
-  /// 跳转到算法选择页面
-  void _goToAlgorithmSelect() {
-    context.go(AppRouterConfig.algorithmSelect);
+  /// 跳转到去雾处理页面
+  void _goToProcessing() {
+    context.go(AppRouterConfig.processing);
   }
 }

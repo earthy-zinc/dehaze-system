@@ -77,8 +77,8 @@ class _CategoryChipState extends State<_CategoryChip> {
             color: widget.isSelected
                 ? const Color(0xFF3B82F6)
                 : _isHovered
-                    ? theme.colorScheme.surfaceContainerHighest
-                    : theme.colorScheme.surface,
+                ? theme.colorScheme.surfaceContainerHighest
+                : theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: widget.isSelected
@@ -93,14 +93,21 @@ class _CategoryChipState extends State<_CategoryChip> {
               Text(
                 widget.label,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: widget.isSelected ? Colors.white : theme.colorScheme.onSurface,
+                  fontWeight: widget.isSelected
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                  color: widget.isSelected
+                      ? Colors.white
+                      : theme.colorScheme.onSurface,
                 ),
               ),
               if (widget.count > 0) ...[
                 const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: widget.isSelected
                         ? Colors.white.withValues(alpha: 0.2)

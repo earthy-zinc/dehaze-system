@@ -2,7 +2,7 @@ import { create } from "zustand";
 import Taro from "@tarojs/taro";
 import { DatasetAPI, DatasetItemAPI } from "dehaze-sdk-js";
 import type {
-  Dataset,
+  DatasetVO,
   DatasetItemVO,
   ImageUrlVO,
   DatasetAddForm,
@@ -19,7 +19,7 @@ interface DatasetState {
   currentDatasetId: number | null;
 
   // 数据集列表（根级）
-  datasets: Dataset[];
+  datasets: DatasetVO[];
   datasetsLoading: boolean;
   datasetsError: string | null;
   datasetsPage: number;
@@ -28,14 +28,14 @@ interface DatasetState {
 
   // 树形结构：展开的节点 ID 和子节点缓存
   expandedIds: number[];
-  childrenMap: Record<number, Dataset[]>;
+  childrenMap: Record<number, DatasetVO[]>;
   childrenLoading: Record<number, boolean>;
 
   // 数据集下拉选项（用于新增/编辑表单的父级选择）
   datasetOptions: OptionType[];
 
   // 当前数据集详情
-  currentDataset: Dataset | null;
+  currentDataset: DatasetVO | null;
   datasetDetailLoading: boolean;
   datasetDetailError: string | null;
 

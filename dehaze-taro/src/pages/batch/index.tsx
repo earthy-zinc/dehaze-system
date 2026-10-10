@@ -1,15 +1,17 @@
 /**
  * 批量处理页面（L2）
- * 批量上传图片 → 选择算法 → 批量执行 → 进度追踪 → 结果查看
+ * 批量上传图片 → 选择模型 → 逐张提交 → 进度追踪 → 结果查看
  */
 import React, { useState, useCallback } from "react";
 import { View, Text, Image, ScrollView } from "@tarojs/components";
 import Taro, { useLoad } from "@tarojs/taro";
 import { Navbar, Button, Loading, Progress } from "@taroify/core";
 import { ArrowLeft, Plus, Cross } from "@taroify/icons";
-import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
+import { AiImageAPI, MemberAPI } from "dehaze-sdk-js";
+import type { AiModelVO } from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
+import { uploadImage } from "@/config/upload";
+import { loadImageEditModels } from "@/utils/imageModel";
 import "./index.less";
 
 interface BatchItem {
@@ -20,48 +22,43 @@ interface BatchItem {
   resultUrl?: string;
   errorMessage?: string;
   time?: number;
-  logId?: number;
+  taskId?: number;
 }
 
-/** 会员等级对应的批量处理上限 */
-const VIP_MAX_IMAGES: Record<string, number> = {
-  svip: 20,
-  VIP2: 15,
-  VIP1: 10,
-  default: 5,
-};
+/** 会员未配置批量上限时的默认值 */
+const DEFAULT_MAX_IMAGES = 5;
 const RETRY_DELAYS = [2000, 5000, 10000];
 const MAX_RETRIES = 3;
 
 const BatchPage: React.FC = () => {
   const [images, setImages] = useState<BatchItem[]>([]);
-  const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
-  const [algoLoading, setAlgoLoading] = useState(true);
-  const [selectedAlgoId, setSelectedAlgoId] = useState<number | null>(null);
+  const [models, setModels] = useState<AiModelVO[]>([]);
+  const [modelLoading, setModelLoading] = useState(true);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [params, setParams] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [maxImages, setMaxImages] = useState(20);
+  const [maxImages, setMaxImages] = useState(DEFAULT_MAX_IMAGES);
 
-  // 加载算法列表 + 获取会员上限
+  // 加载图像编辑模型 + 会员批量上限
   useLoad(() => {
-    setAlgoLoading(true);
-    AlgorithmAPI.getList()
-      .then((data) => setAlgorithms(data || []))
+    setModelLoading(true);
+    loadImageEditModels()
+      .then(({ models: list, preselected }) => {
+        setModels(list);
+        setSelectedModelId((prev) => prev || preselected?.modelId || "");
+      })
       .catch(() => {
-        Taro.showToast({ title: "加载算法失败", icon: "none" });
+        Taro.showToast({ title: "加载模型失败", icon: "none" });
       })
-      .finally(() => setAlgoLoading(false));
+      .finally(() => setModelLoading(false));
 
-    // 获取配额信息来推断会员等级上限
-    ModelAPI.getQuota()
-      .then((quota) => {
-        const total = quota.total || 0;
-        if (total >= 200) setMaxImages(VIP_MAX_IMAGES.svip);
-        else if (total >= 150) setMaxImages(VIP_MAX_IMAGES.VIP2);
-        else if (total >= 100) setMaxImages(VIP_MAX_IMAGES.VIP1);
-        else setMaxImages(VIP_MAX_IMAGES.default);
+    MemberAPI.getProfile()
+      .then((profile) => {
+        setMaxImages(profile.benefits?.batchLimit || DEFAULT_MAX_IMAGES);
       })
-      .catch(() => { /* 使用默认上限 */ });
+      .catch(() => {
+        /* 非会员使用默认上限 */
+      });
   });
 
   // 选择图片
@@ -91,118 +88,9 @@ const BatchPage: React.FC = () => {
     setImages((prev) => prev.filter((img) => img.id !== id));
   }, []);
 
-  // 开始批量处理
-  const handleStartBatch = useCallback(async () => {
-    if (!selectedAlgoId) {
-      Taro.showToast({ title: "请先选择算法", icon: "none" });
-      return;
-    }
-    if (images.length === 0) {
-      Taro.showToast({ title: "请先上传图片", icon: "none" });
-      return;
-    }
-
-    setProcessing(true);
-    setImages((prev) => prev.map((img) => ({ ...img, status: "pending" })));
-
-    try {
-      const result = await ModelAPI.batchPredict({
-        algorithmId: selectedAlgoId,
-        items: images.map((img) => ({
-          imageUrl: img.localPath,
-          params: params || undefined,
-        })),
-      });
-
-      // 批量预测返回多结果
-      if (result.results && result.results.length > 0) {
-        setImages((prev) =>
-          prev.map((img, idx) => {
-            const r = result.results[idx];
-            if (!r) return img;
-            if (r.status === 2) {
-              return {
-                ...img,
-                status: "completed",
-                resultUrl: r.resultUrl,
-                time: r.time,
-              };
-            }
-            if (r.status === 3) {
-              return { ...img, status: "failed", errorMessage: r.errorMessage };
-            }
-            return { ...img, status: "processing", logId: r.logId };
-          })
-        );
-
-        // 轮询未完成的任务
-        const pendingTasks = result.results
-          .map((r, idx) => ({ ...r, idx }))
-          .filter((r) => r.status === 1);
-
-        if (pendingTasks.length > 0) {
-          const pollPromises = pendingTasks.map(async (task) => {
-            try {
-              const finalResult = await ModelAPI.predictAndWait(
-                {
-                  algorithmId: selectedAlgoId,
-                  imageUrl: images[task.idx].localPath,
-                  params: params || undefined,
-                },
-                { intervalMs: 2000, timeoutMs: 120000 }
-              );
-              setImages((prev) =>
-                prev.map((img, idx) => {
-                  if (idx !== task.idx) return img;
-                  if (finalResult.status === 2) {
-                    return {
-                      ...img,
-                      status: "completed",
-                      resultUrl: finalResult.resultUrl,
-                      time: finalResult.time,
-                    };
-                  }
-                  return {
-                    ...img,
-                    status: "failed",
-                    errorMessage: finalResult.errorMessage,
-                  };
-                })
-              );
-            } catch {
-              setImages((prev) =>
-                prev.map((img, idx) =>
-                  idx === task.idx
-                    ? { ...img, status: "failed", errorMessage: "处理超时" }
-                    : img
-                )
-              );
-            }
-          });
-          await Promise.all(pollPromises);
-        }
-      }
-    } catch (err: unknown) {
-      Taro.showToast({
-        title: getErrorMessage(err, "批量处理失败"),
-        icon: "none",
-      });
-      setImages((prev) =>
-        prev.map((img) =>
-          img.status === "pending"
-            ? { ...img, status: "failed", errorMessage: "提交失败" }
-            : img
-        )
-      );
-    } finally {
-      setProcessing(false);
-    }
-  }, [selectedAlgoId, images, params]);
-
-  // 重试单张（含递增重试间隔）
-  const handleRetryImage = useCallback(
+  // 提交单张图片（本地临时路径服务端不可访问，需先上传换取 fileId）
+  const processOne = useCallback(
     async (img: BatchItem) => {
-      if (!selectedAlgoId) return;
       setImages((prev) =>
         prev.map((item) =>
           item.id === img.id ? { ...item, status: "processing" } : item
@@ -211,9 +99,12 @@ const BatchPage: React.FC = () => {
 
       const attempt = async (attemptNumber: number): Promise<void> => {
         try {
-          const result = await ModelAPI.predictAndWait({
-            algorithmId: selectedAlgoId,
-            imageUrl: img.localPath,
+          const fileId =
+            img.fileId ??
+            (await uploadImage(img.localPath, `batch_${img.id}`)).id;
+          const result = await AiImageAPI.submitAndWait({
+            model: selectedModelId,
+            fileId,
             params: params || undefined,
           });
           setImages((prev) =>
@@ -222,13 +113,16 @@ const BatchPage: React.FC = () => {
               if (result.status === 2) {
                 return {
                   ...item,
+                  fileId,
                   status: "completed",
                   resultUrl: result.resultUrl,
                   time: result.time,
+                  taskId: result.taskId,
                 };
               }
               return {
                 ...item,
+                fileId,
                 status: "failed",
                 errorMessage: result.errorMessage,
               };
@@ -236,7 +130,9 @@ const BatchPage: React.FC = () => {
           );
         } catch (err: unknown) {
           if (attemptNumber < MAX_RETRIES) {
-            await new Promise((r) => setTimeout(r, RETRY_DELAYS[attemptNumber]));
+            await new Promise((resolve) =>
+              setTimeout(resolve, RETRY_DELAYS[attemptNumber])
+            );
             return attempt(attemptNumber + 1);
           }
           setImages((prev) =>
@@ -255,7 +151,36 @@ const BatchPage: React.FC = () => {
 
       await attempt(0);
     },
-    [selectedAlgoId, params]
+    [selectedModelId, params]
+  );
+
+  // 开始批量处理：批量端点已退役，按多张独立任务提交
+  const handleStartBatch = useCallback(async () => {
+    if (!selectedModelId) {
+      Taro.showToast({ title: "请先选择模型", icon: "none" });
+      return;
+    }
+    if (images.length === 0) {
+      Taro.showToast({ title: "请先上传图片", icon: "none" });
+      return;
+    }
+
+    setProcessing(true);
+    setImages((prev) => prev.map((img) => ({ ...img, status: "pending" })));
+    try {
+      await Promise.all(images.map(processOne));
+    } finally {
+      setProcessing(false);
+    }
+  }, [selectedModelId, images, processOne]);
+
+  // 重试单张
+  const handleRetryImage = useCallback(
+    (img: BatchItem) => {
+      if (!selectedModelId) return;
+      return processOne(img);
+    },
+    [selectedModelId, processOne]
   );
 
   // 预览结果图
@@ -327,33 +252,29 @@ const BatchPage: React.FC = () => {
           </View>
         </View>
 
-        {/* 算法选择 */}
+        {/* 模型选择 */}
         <View className="section">
-          <Text className="section-title">选择算法</Text>
-          {algoLoading ? (
+          <Text className="section-title">选择模型</Text>
+          {modelLoading ? (
             <View className="algo-loading">
               <Loading size="16" />
-              <Text>加载算法中...</Text>
+              <Text>加载模型中...</Text>
             </View>
           ) : (
             <View className="algo-list">
-              {algorithms
-                .filter((a) => a.status === 4 && !a.children?.length)
-                .map((algo) => (
-                  <View
-                    key={algo.id}
-                    className={`algo-card ${selectedAlgoId === algo.id ? "selected" : ""}`}
-                    onClick={() => setSelectedAlgoId(algo.id)}
-                  >
-                    <Text className="algo-name">{algo.name}</Text>
-                    {algo.description && (
-                      <Text className="algo-desc">{algo.description}</Text>
-                    )}
-                    {selectedAlgoId === algo.id && (
-                      <View className="algo-check">✓</View>
-                    )}
-                  </View>
-                ))}
+              {models.map((model) => (
+                <View
+                  key={model.id}
+                  className={`algo-card ${selectedModelId === model.modelId ? "selected" : ""}`}
+                  onClick={() => setSelectedModelId(model.modelId)}
+                >
+                  <Text className="algo-name">{model.displayName}</Text>
+                  <Text className="algo-desc">{model.modelId}</Text>
+                  {selectedModelId === model.modelId && (
+                    <View className="algo-check">✓</View>
+                  )}
+                </View>
+              ))}
             </View>
           )}
         </View>
@@ -366,7 +287,9 @@ const BatchPage: React.FC = () => {
               className="params-input"
               placeholder='JSON参数，如 {"strength":0.8}'
               value={params}
-              onInput={(e) => setParams((e.target as HTMLTextAreaElement).value)}
+              onInput={(e) =>
+                setParams((e.target as HTMLTextAreaElement).value)
+              }
             />
           </View>
         </View>
@@ -409,7 +332,7 @@ const BatchPage: React.FC = () => {
                           </Text>
                           {img.time && (
                             <Text className="result-time">
-                              耗时 {img.time}ms
+                              耗时 {img.time}s
                             </Text>
                           )}
                           <View className="result-actions">
@@ -453,7 +376,7 @@ const BatchPage: React.FC = () => {
             block
             color="primary"
             loading={processing}
-            disabled={images.length === 0 || !selectedAlgoId || processing}
+            disabled={images.length === 0 || !selectedModelId || processing}
             onClick={handleStartBatch}
           >
             {processing ? "处理中..." : "开始批量处理"}

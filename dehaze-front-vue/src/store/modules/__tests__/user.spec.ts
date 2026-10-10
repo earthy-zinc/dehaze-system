@@ -12,10 +12,6 @@ vi.mock("dehaze-sdk-js", () => ({
   },
 }));
 
-vi.mock("@/router", () => ({
-  resetRouter: vi.fn(),
-}));
-
 describe("useUserStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,15 +124,23 @@ describe("useUserStore", () => {
     });
   });
 
-  describe("resetToken", () => {
-    it("应该重置路由", async () => {
-      const { resetRouter } = await import("@/router");
+  describe("resetSession", () => {
+    it("应该清空用户态（会话失效后登录页守卫据此放行）", async () => {
+      vi.mocked(UserAPI.getInfo).mockResolvedValue({
+        userId: 1,
+        username: "admin",
+        roles: ["ROOT"],
+        perms: ["ai:model:manage"],
+      } as never);
 
       const store = useUserStore();
+      await store.getUserInfo();
+      expect(store.user.roles).toEqual(["ROOT"]);
 
-      await store.resetToken();
+      store.resetSession();
 
-      expect(resetRouter).toHaveBeenCalled();
+      expect(store.user.roles).toEqual([]);
+      expect(store.user.perms).toEqual([]);
     });
   });
 

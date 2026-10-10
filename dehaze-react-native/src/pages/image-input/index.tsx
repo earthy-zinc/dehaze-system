@@ -3,13 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  Text,
-} from 'react-native';
+import { View, ScrollView, StyleSheet, Alert, Text } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ToolsStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
@@ -43,7 +37,9 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
   const [currentMethod, setCurrentMethod] = useState<InputMethod>(
     route.params?.initialMethod ?? 'upload',
   );
-  const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(null);
+  const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   // 处理输入方式切换
@@ -68,16 +64,9 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    // 历史记录复用：携带 algorithmId 与参数时直接进入处理页，跳过算法选择
-    if (selectedImage.algorithmId) {
-      navigation.navigate('Processing', {
-        algorithmId: selectedImage.algorithmId,
-        image: selectedImage,
-      });
-      return;
-    }
-
-    navigation.navigate('AlgorithmSelect', {
+    // 处理页内联模型选择：有历史模型时作为默认项传入
+    navigation.navigate('Processing', {
+      model: selectedImage.modelId,
       image: selectedImage,
     });
   }, [selectedImage, navigation]);
@@ -120,7 +109,10 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
       setSelectedImage(quickStartImage);
       setCurrentMethod('sample');
     } catch (error) {
-      Alert.alert('错误', error instanceof Error ? error.message : '加载样例图片失败');
+      Alert.alert(
+        '错误',
+        error instanceof Error ? error.message : '加载样例图片失败',
+      );
     } finally {
       setLoading(false);
     }
@@ -131,33 +123,19 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
     switch (currentMethod) {
       case 'upload':
         return (
-          <UploadArea
-            onImageSelected={handleImageSelected}
-            loading={loading}
-          />
+          <UploadArea onImageSelected={handleImageSelected} loading={loading} />
         );
 
       case 'camera':
         return (
-          <CameraCapture
-            onCapture={handleImageSelected}
-            loading={loading}
-          />
+          <CameraCapture onCapture={handleImageSelected} loading={loading} />
         );
 
       case 'sample':
-        return (
-          <SampleGallery
-            onSelectSample={handleImageSelected}
-          />
-        );
+        return <SampleGallery onSelectSample={handleImageSelected} />;
 
       case 'history':
-        return (
-          <HistoryList
-            onSelectRecord={handleImageSelected}
-          />
-        );
+        return <HistoryList onSelectRecord={handleImageSelected} />;
 
       default:
         return null;
@@ -166,7 +144,11 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="图像输入" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="图像输入"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -199,9 +181,7 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
           />
 
           {/* 输入内容区域 */}
-          <View style={styles.inputContent}>
-            {renderInputContent()}
-          </View>
+          <View style={styles.inputContent}>{renderInputContent()}</View>
         </Card>
 
         {/* 图片预览 */}

@@ -75,53 +75,33 @@
   }
 }
 
-/* 算法信息 */
-.algorithm-info {
-  .algo-name-row {
-    display: flex;
-    gap: 16rpx;
-    align-items: center;
+/* 模型选择 */
+.algo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+
+  .algo-card {
+    padding: 20rpx 24rpx;
+    background: #f9fafb;
+    border: 2rpx solid transparent;
+    border-radius: 16rpx;
+
+    &.selected {
+      background: #eef2ff;
+      border-color: #6366f1;
+    }
 
     .algo-name {
-      font-size: 32rpx;
+      display: block;
+      font-size: 30rpx;
       font-weight: 600;
       color: #1f2937;
     }
 
-    .algo-type-tag {
-      padding: 4rpx 16rpx;
-      font-size: 22rpx;
-      color: #6366f1;
-      background: #eef2ff;
-      border-radius: 8rpx;
-    }
-  }
-
-  .algo-desc {
-    display: block;
-    margin-top: 12rpx;
-    font-size: 26rpx;
-    color: #6b7280;
-  }
-
-  .algo-version {
-    display: block;
-    margin-top: 8rpx;
-    font-size: 24rpx;
-    color: #9ca3af;
-  }
-
-  .algo-meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24rpx;
-    margin-top: 12rpx;
-
-    .algo-version {
-      margin-top: 0;
-    }
-
-    .algo-estimate {
+    .algo-desc {
+      display: block;
+      margin-top: 8rpx;
       font-size: 24rpx;
       color: #9ca3af;
     }

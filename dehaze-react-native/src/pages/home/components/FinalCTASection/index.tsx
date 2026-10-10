@@ -16,31 +16,44 @@ const FinalCTASection: React.FC<FinalCTASectionProps> = ({ onStartPress }) => {
   const { animatedStyle } = useFadeSlideAnimation({ slideDistance: 30 });
 
   // 响应式字体大小
-  const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h2 * fontScale;
-  const subtitleFontSize = isMobile ? theme.typography.sizes.medium : theme.typography.sizes.large * fontScale;
+  const titleFontSize = isMobile
+    ? theme.typography.sizes.h3
+    : theme.typography.sizes.h2 * fontScale;
+  const subtitleFontSize = isMobile
+    ? theme.typography.sizes.medium
+    : theme.typography.sizes.large * fontScale;
 
   return (
-    <View style={[
-      styles.container,
-      {
-        paddingHorizontal: containerPadding,
-        minHeight: height * 0.4,
-      },
-    ]}>
-      <Animated.View style={[
-        styles.content,
-        animatedStyle,
-      ]}>
-        <Text style={[
-          styles.ctaTitle,
-          { fontSize: titleFontSize, lineHeight: titleFontSize * theme.typography.lineHeights.title },
-        ]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingHorizontal: containerPadding,
+          minHeight: height * 0.4,
+        },
+      ]}
+    >
+      <Animated.View style={[styles.content, animatedStyle]}>
+        <Text
+          style={[
+            styles.ctaTitle,
+            {
+              fontSize: titleFontSize,
+              lineHeight: titleFontSize * theme.typography.lineHeights.title,
+            },
+          ]}
+        >
           准备好体验专业级图像去雾了吗？
         </Text>
-        <Text style={[
-          styles.ctaSubtitle,
-          { fontSize: subtitleFontSize, lineHeight: subtitleFontSize * theme.typography.lineHeights.body },
-        ]}>
+        <Text
+          style={[
+            styles.ctaSubtitle,
+            {
+              fontSize: subtitleFontSize,
+              lineHeight: subtitleFontSize * theme.typography.lineHeights.body,
+            },
+          ]}
+        >
           立即开始，让您的图像重获清晰
         </Text>
 
@@ -48,7 +61,13 @@ const FinalCTASection: React.FC<FinalCTASectionProps> = ({ onStartPress }) => {
           title="开始使用"
           onPress={onStartPress}
           variant="large"
-          icon={<Icon name="arrow-right" size={18} color={theme.colors.text.inverse} />}
+          icon={
+            <Icon
+              name="arrow-right"
+              size={18}
+              color={theme.colors.text.inverse}
+            />
+          }
           style={isMobile ? styles.ctaButtonMobile : styles.ctaButton}
         />
       </Animated.View>

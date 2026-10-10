@@ -5,7 +5,7 @@ import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+import { AiModelAPI, AiModelVO, ModelAPI } from "dehaze-sdk-js";
 
 interface MetricItem {
   label: string;
@@ -95,7 +95,7 @@ const state = reactive({
   },
 });
 
-const algorithmInfo = ref<Algorithm | null>(null);
+const modelInfo = ref<AiModelVO | null>(null);
 const metrics = ref<MetricItem[]>();
 
 const { imageInfo } = toRefs(imageShowStore);
@@ -175,7 +175,7 @@ function handleReset() {
   imageShowStore.imageInfo.images.urls = [];
   showResult.value = false;
   metrics.value = undefined;
-  algorithmInfo.value = null;
+  modelInfo.value = null;
 }
 
 const allUploaded = computed(() => {
@@ -187,14 +187,19 @@ async function handleEvaluation() {
     ElMessage.error("请先上传图片");
     return;
   }
+  const currentModelId = modelId.value;
+  if (!currentModelId) {
+    ElMessage.error("缺少本次处理使用的图像模型");
+    return;
+  }
   loading.value = true;
   try {
-    algorithmInfo.value = await AlgorithmAPI.getAlgorithmInfoById(
-      modelId.value
-    );
+    const enabledModels = await AiModelAPI.listEnabledModels("image_edit");
+    modelInfo.value =
+      enabledModels.find((m) => m.modelId === currentModelId) ?? null;
 
     const result = await ModelAPI.evaluateAndWait({
-      algorithmId: modelId.value,
+      modelId: currentModelId,
       predUrl: pred.value!.url,
       gtUrl: gt.value!.url,
     });
@@ -404,13 +409,12 @@ function handleExportReport() {
     ElMessage.error("暂无评估结果可导出");
     return;
   }
-  const algo = algorithmInfo.value;
+  const model = modelInfo.value;
   let content = "图像去雾效果评估报告\n";
   content += "========================================\n";
   content += `生成时间：${new Date().toLocaleString()}\n`;
-  content += `算法名称：${algo?.name ?? "未知"}\n`;
-  content += `算法类型：${algo?.type ?? "未知"}\n`;
-  content += `算法描述：${algo?.description ?? ""}\n`;
+  content += `模型名称：${model?.displayName ?? "未知"}\n`;
+  content += `模型标识：${model?.modelId ?? "未知"}\n`;
   content += "========================================\n";
   content += "一、评估指标\n";
   metrics.value.forEach((m) => {
@@ -594,34 +598,13 @@ onUnmounted(() => {
           <el-tab-pane label="指标对比" name="metrics">
             <div class="flex metrics-row">
               <div style="min-width: 42vw; padding-right: 20px">
-                <h3 class="text-center">算法说明</h3>
+                <h3 class="text-center">模型信息</h3>
                 <el-descriptions :column="2" border>
-                  <el-descriptions-item :span="2" :width="120" label="算法名称">
-                    {{ algorithmInfo?.name }}
+                  <el-descriptions-item :span="2" :width="120" label="模型名称">
+                    {{ modelInfo?.displayName }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="类型"
-                    >{{ algorithmInfo?.type }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="权重大小">
-                    {{ algorithmInfo?.size }}
-                  </el-descriptions-item>
-                  <el-descriptions-item
-                    v-if="algorithmInfo?.flops"
-                    label="浮点数量"
-                  >
-                    {{ algorithmInfo.flops }}
-                  </el-descriptions-item>
-                  <el-descriptions-item
-                    v-if="algorithmInfo?.params"
-                    label="参数量"
-                  >
-                    {{ algorithmInfo.params }}
-                  </el-descriptions-item>
-                  <el-descriptions-item :span="2" label="算法描述">
-                    {{ algorithmInfo?.description }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="网络架构">
-                    <div style="height: 105px"></div>
+                  <el-descriptions-item :span="2" label="模型标识">
+                    {{ modelInfo?.modelId }}
                   </el-descriptions-item>
                 </el-descriptions>
               </div>

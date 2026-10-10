@@ -18,9 +18,10 @@ const router = useRouter();
 const chatStore = useChatStore();
 
 onMounted(() => {
-  // 路由直入 /chat/:id 时页面仅拉取消息，会话列表在此兜底加载
+  // 路由直入 /chat/:id 时页面仅拉取消息，会话列表在此兜底加载。
+  // joinInflight：页面 onMounted 也会触发列表加载，两者并发时合并为一次请求
   if (chatStore.conversations.length === 0 && !chatStore.conversationsLoading) {
-    chatStore.fetchConversations();
+    chatStore.fetchConversations(true);
   }
 });
 

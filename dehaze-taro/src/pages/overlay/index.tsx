@@ -6,7 +6,7 @@ import Taro from "@tarojs/taro";
 import { ModelAPI } from "dehaze-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";
-import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
+import ModelInfoCard from "@/components/compare/ModelInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
 import EmptyState from "@/components/common/EmptyState";
 import "./index.less";
@@ -33,24 +33,19 @@ const OverlayPage: React.FC = () => {
   } | null>(null);
   const isDragging = useRef(false);
 
-  const { originImage, result, algorithm } = ctx;
+  const { originImage, result, model } = ctx;
   const hasResult = originImage && result?.resultUrl;
 
   // 生成并下载报告
   const handleExportReport = async () => {
-    if (!algorithm?.id || !originImage?.cleanUrl || !result?.resultUrl) {
+    if (!result?.taskId || !originImage?.cleanUrl || !result?.resultUrl) {
       Taro.showToast({ title: "缺少必要参数，无法生成报告", icon: "none" });
       return;
     }
 
     setReportLoading(true);
     try {
-      const res = await ModelAPI.generateReport({
-        logId: algorithm.id,
-        format: "pdf",
-        includeMetrics: true,
-        includeFilters: true,
-      });
+      const res = await ModelAPI.generateReport({ logId: result.taskId });
       const taskId = res.taskId;
       if (!taskId) {
         throw new Error("未返回任务ID");
@@ -150,7 +145,11 @@ const OverlayPage: React.FC = () => {
     <ImmersiveLayout
       title="重叠对比"
       toolbar={
-        <CompareToolbar currentMode="overlay" resultUrl={result?.resultUrl} resultId={result?.logId} />
+        <CompareToolbar
+          currentMode="overlay"
+          resultUrl={result?.resultUrl}
+          resultId={result?.taskId}
+        />
       }
     >
       {/* 重叠对比区域 */}
@@ -216,8 +215,8 @@ const OverlayPage: React.FC = () => {
               <Text>← 拖动分隔线对比效果 →</Text>
             </View>
 
-            {/* 算法信息 */}
-            <AlgorithmInfoCard algorithm={algorithm} result={result} />
+            {/* 模型信息 */}
+            <ModelInfoCard model={model} result={result} />
 
             {/* 导出报告按钮 */}
             <View className="export-report-section">

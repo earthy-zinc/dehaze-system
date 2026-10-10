@@ -8,7 +8,7 @@ import '../../utils/format_utils.dart';
 import '../../utils/responsive_utils.dart';
 import '../../utils/ui_utils.dart';
 import '../../widgets/dehaze_image.dart';
-import 'models/dataset_model.dart';
+import 'models/dataset_image_model.dart';
 import 'providers/dataset_provider.dart';
 import 'providers/image_provider.dart';
 import 'widgets/dataset_card.dart';
@@ -81,9 +81,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
     if (selectedDataset == null &&
         widget.initialDatasetId != null &&
         _loadingDetail) {
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -107,10 +105,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           border: Border(
-            bottom: BorderSide(
-              color: theme.dividerColor,
-              width: 1,
-            ),
+            bottom: BorderSide(color: theme.dividerColor, width: 1),
           ),
         ),
         child: Column(
@@ -127,11 +122,7 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
                   ),
                   const SizedBox(width: 8),
                 ],
-                Icon(
-                  Icons.storage_outlined,
-                  color: AppTheme.teal,
-                  size: 24,
-                ),
+                Icon(Icons.storage_outlined, color: AppTheme.teal, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   selectedDataset != null ? '数据集详情' : '数据集',
@@ -166,48 +157,39 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
 
   /// 构建搜索栏
   Widget _buildSearchBar(Dataset? selectedDataset) => TextField(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        decoration: InputDecoration(
-          hintText: selectedDataset != null ? '搜索图片...' : '搜索数据集或图片...',
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    _performSearch('');
-                    _searchFocusNode.unfocus();
-                  },
-                  icon: const Icon(Icons.clear),
-                  tooltip: '清除',
-                )
-              : null,
-          filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: AppTheme.teal,
-              width: 2,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-        onChanged: _performSearch,
-      );
+    controller: _searchController,
+    focusNode: _searchFocusNode,
+    decoration: InputDecoration(
+      hintText: selectedDataset != null ? '搜索图片...' : '搜索数据集或图片...',
+      prefixIcon: const Icon(Icons.search),
+      suffixIcon: _searchController.text.isNotEmpty
+          ? IconButton(
+              onPressed: () {
+                _searchController.clear();
+                _performSearch('');
+                _searchFocusNode.unfocus();
+              },
+              icon: const Icon(Icons.clear),
+              tooltip: '清除',
+            )
+          : null,
+      filled: true,
+      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppTheme.teal, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    ),
+    onChanged: _performSearch,
+  );
 
   /// 构建数据集列表视图
-  Widget _buildListView(
-    AsyncValue<List<Dataset>> datasetsAsync,
-    bool isWide,
-  ) =>
+  Widget _buildListView(AsyncValue<List<Dataset>> datasetsAsync, bool isWide) =>
       RefreshIndicator(
         onRefresh: () async {
           await ref.read(datasetProvider.notifier).refresh();
@@ -233,19 +215,18 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
           loading: () => _buildListScroll(
             const Center(child: CircularProgressIndicator()),
           ),
-          error: (error, stack) => _buildListScroll(
-            _buildErrorState(extractErrorMessage(error)),
-          ),
+          error: (error, stack) =>
+              _buildListScroll(_buildErrorState(extractErrorMessage(error))),
         ),
       );
 
   /// 构建带 Header 的单内容滚动视图（空/加载/错误态共用）
   Widget _buildListScroll(Widget content) => CustomScrollView(
-        slivers: [
-          _buildHeaderSliver(null),
-          SliverFillRemaining(child: content),
-        ],
-      );
+    slivers: [
+      _buildHeaderSliver(null),
+      SliverFillRemaining(child: content),
+    ],
+  );
 
   /// 构建数据集网格（宽屏）- Sliver 版本
   Widget _buildDatasetGridSliver(List<Dataset> datasets) {
@@ -279,20 +260,20 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
 
   /// 构建数据集列表（窄屏）- Sliver 版本
   Widget _buildDatasetListSliver(List<Dataset> datasets) => SliverPadding(
-        padding: ResponsiveUtils.getResponsivePadding(context),
-        sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: DatasetCard(
-                dataset: datasets[index],
-                onTap: () => _showDatasetDetail(datasets[index]),
-              ),
-            ),
-            childCount: datasets.length,
+    padding: ResponsiveUtils.getResponsivePadding(context),
+    sliver: SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: DatasetCard(
+            dataset: datasets[index],
+            onTap: () => _showDatasetDetail(datasets[index]),
           ),
         ),
-      );
+        childCount: datasets.length,
+      ),
+    ),
+  );
 
   /// 构建详情视图
   Widget _buildDetailView(Dataset dataset, bool isWide) {
@@ -336,9 +317,8 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
             loading: () => const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (error, stack) => SliverFillRemaining(
-              child: _buildErrorState(error.toString()),
-            ),
+            error: (error, stack) =>
+                SliverFillRemaining(child: _buildErrorState(error.toString())),
           ),
         ],
       ),
@@ -346,64 +326,57 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   }
 
   Widget _buildEmptyState(String message, IconData icon) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 64,
-              color: AppTheme.gray300,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.gray500,
-                  ),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 64, color: AppTheme.gray300),
+        const SizedBox(height: 12),
+        Text(
+          message,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: AppTheme.gray500),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildErrorState(String error) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '加载失败',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                error,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                final selectedDataset = ref.read(selectedDatasetProvider);
-                if (selectedDataset != null) {
-                  ref.read(imageProvider.notifier).refresh();
-                } else {
-                  ref.read(datasetProvider.notifier).refresh();
-                }
-              },
-              icon: const Icon(Icons.refresh),
-              label: const Text('重试'),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.error_outline,
+          size: 64,
+          color: Theme.of(context).colorScheme.error,
         ),
-      );
+        const SizedBox(height: 16),
+        Text('加载失败', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            error,
+            style: Theme.of(context).textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: () {
+            final selectedDataset = ref.read(selectedDatasetProvider);
+            if (selectedDataset != null) {
+              ref.read(imageProvider.notifier).refresh();
+            } else {
+              ref.read(datasetProvider.notifier).refresh();
+            }
+          },
+          icon: const Icon(Icons.refresh),
+          label: const Text('重试'),
+        ),
+      ],
+    ),
+  );
 
   void _performSearch(String query) {
     final selectedDataset = ref.read(selectedDatasetProvider);
@@ -479,52 +452,46 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
 
   /// 图片查看器底部信息条（文件名 + 类型/尺寸/大小）
   Widget _buildImageInfoBar(ImageModel image) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(12),
-            bottomRight: Radius.circular(12),
-          ),
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.8),
-              Colors.transparent,
-            ],
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(12),
+        bottomRight: Radius.circular(12),
+      ),
+      gradient: LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+      ),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          image.filename,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 16,
           children: [
-            Text(
-              image.filename,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 16,
-              children: [
-                _infoText('类型: ${image.imageType.displayName}'),
-                _infoText('尺寸: ${image.width} × ${image.height}'),
-                if (image.fileSize != null)
-                  _infoText('大小: ${FormatUtils.formatFileSize(image.fileSize!)}'),
-              ],
-            ),
+            _infoText('类型: ${image.imageType.displayName}'),
+            _infoText('尺寸: ${image.width} × ${image.height}'),
+            if (image.fileSize != null)
+              _infoText('大小: ${FormatUtils.formatFileSize(image.fileSize!)}'),
           ],
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _infoText(String text) => Text(
-        text,
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.9),
-          fontSize: 14,
-        ),
-      );
+    text,
+    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14),
+  );
 }

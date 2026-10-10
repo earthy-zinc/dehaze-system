@@ -7,11 +7,17 @@
  * - 处理耗时与缓存标识
  */
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
 import ImageLoader from '@/components/ImageLoader';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
-import { formatDuration } from '@/utils/time';
+import { formatSeconds } from '@/utils/time';
 import type { ProcessingResult } from '@/types/processing';
 
 interface ResultPreviewProps {
@@ -31,21 +37,19 @@ const ResultPreview: React.FC<ResultPreviewProps> = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Icon name="check-circle" size={18} color={theme.colors.status.success} />
+          <Icon
+            name="check-circle"
+            size={18}
+            color={theme.colors.status.success}
+          />
           <Text style={styles.title}>处理完成</Text>
         </View>
-        {result.fromCache && (
-          <View style={styles.cacheBadge}>
-            <Icon name="bolt" size={12} color={theme.colors.status.warning} />
-            <Text style={styles.cacheText}>命中缓存</Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Icon name="clock" size={12} color={theme.colors.text.tertiary} />
-          <Text style={styles.metaText}>耗时 {formatDuration(result.time)}</Text>
+          <Text style={styles.metaText}>耗时 {formatSeconds(result.time)}</Text>
         </View>
       </View>
 
@@ -57,7 +61,12 @@ const ResultPreview: React.FC<ResultPreviewProps> = ({
         {/* 原图 */}
         <View style={styles.previewCard}>
           <View style={styles.previewLabelRow}>
-            <View style={[styles.previewLabelBadge, styles.previewLabelBadgeOriginal]}>
+            <View
+              style={[
+                styles.previewLabelBadge,
+                styles.previewLabelBadgeOriginal,
+              ]}
+            >
               <Text style={styles.previewLabelText}>原图</Text>
             </View>
           </View>
@@ -71,7 +80,9 @@ const ResultPreview: React.FC<ResultPreviewProps> = ({
         {/* 处理后 */}
         <View style={styles.previewCard}>
           <View style={styles.previewLabelRow}>
-            <View style={[styles.previewLabelBadge, styles.previewLabelBadgeResult]}>
+            <View
+              style={[styles.previewLabelBadge, styles.previewLabelBadgeResult]}
+            >
               <Text style={styles.previewLabelText}>去雾后</Text>
             </View>
           </View>
@@ -132,20 +143,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.large,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
-  },
-  cacheBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: `${theme.colors.status.warning}15`,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: theme.layout.borderRadius.full,
-  },
-  cacheText: {
-    fontSize: theme.typography.sizes.tiny,
-    color: theme.colors.status.warning,
-    fontWeight: theme.typography.weights.medium,
   },
   metaRow: {
     flexDirection: 'row',

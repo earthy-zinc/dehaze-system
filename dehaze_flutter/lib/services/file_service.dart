@@ -22,10 +22,7 @@ class FileService {
     void Function(int sent, int total)? onProgress,
   }) async {
     final formData = FormData.fromMap({
-      'file': MultipartFile.fromBytes(
-        bytes,
-        filename: fileName,
-      ),
+      'file': MultipartFile.fromBytes(bytes, filename: fileName),
     });
 
     final response = await _dio.post<Map<String, dynamic>>(
@@ -33,9 +30,7 @@ class FileService {
       data: formData,
       onSendProgress: onProgress,
     );
-    return FileInfo.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return FileInfo.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// MD5 秒传检查 — 检查文件是否已存在，避免重复上传
@@ -71,9 +66,7 @@ class FileService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.files}/$id',
     );
-    return FileInfo.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return FileInfo.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 下载文件（返回流式响应，用于保存到本地或分享）

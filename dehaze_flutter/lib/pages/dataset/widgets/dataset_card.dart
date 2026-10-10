@@ -42,7 +42,9 @@ class _DatasetCardState extends State<DatasetCard> {
             ..setEntry(1, 1, _isPressed ? 0.98 : 1.0),
           child: Card(
             elevation: _isHovered ? 12 : 2,
-            shadowColor: Colors.black.withValues(alpha: _isHovered ? 0.12 : 0.08),
+            shadowColor: Colors.black.withValues(
+              alpha: _isHovered ? 0.12 : 0.08,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -61,21 +63,18 @@ class _DatasetCardState extends State<DatasetCard> {
 
   /// 移动端布局 - 纵向排列
   Widget _buildMobileLayout(ThemeData theme) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildThumbnail(height: 120),
-          _buildContent(theme),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [_buildThumbnail(height: 120), _buildContent(theme)],
+  );
 
   /// 桌面端布局 - 横向排列
   Widget _buildDesktopLayout(ThemeData theme) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildThumbnail(width: 128, height: 128),
-          Expanded(child: _buildContent(theme)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _buildThumbnail(width: 128, height: 128),
+      Expanded(child: _buildContent(theme)),
+    ],
+  );
 
   /// 构建缩略图头部
   ///
@@ -107,17 +106,13 @@ class _DatasetCardState extends State<DatasetCard> {
     return Container(
       width: width ?? double.infinity,
       height: height,
-      decoration: BoxDecoration(
-        gradient: AppTheme.getSecondaryGradient(),
-      ),
+      decoration: BoxDecoration(gradient: AppTheme.getSecondaryGradient()),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              hasChildren
-                  ? Icons.folder_outlined
-                  : Icons.storage_outlined,
+              hasChildren ? Icons.folder_outlined : Icons.storage_outlined,
               color: Colors.white,
               size: 40,
             ),
@@ -139,77 +134,73 @@ class _DatasetCardState extends State<DatasetCard> {
 
   /// 构建内容区域
   Widget _buildContent(ThemeData theme) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 标题
+        Text(
+          widget.dataset.name,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1F2937),
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+
+        const SizedBox(height: 8),
+
+        // 描述
+        Text(
+          widget.dataset.description ?? '暂无描述',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: const Color(0xFF6B7280),
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+
+        const SizedBox(height: 12),
+
+        // 统计信息
+        Row(
           children: [
-            // 标题
-            Text(
-              widget.dataset.name,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF1F2937),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            _buildStatItem(
+              context,
+              Icons.category_outlined,
+              widget.dataset.type,
+              const Color(0xFF14B8A6),
             ),
-
-            const SizedBox(height: 8),
-
-            // 描述
-            Text(
-              widget.dataset.description ?? '暂无描述',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B7280),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            const SizedBox(height: 12),
-
-            // 统计信息
-            Row(
-              children: [
-                _buildStatItem(
-                  context,
-                  Icons.category_outlined,
-                  widget.dataset.type,
-                  const Color(0xFF14B8A6),
-                ),
-                const SizedBox(width: 16),
-                _buildStatItem(
-                  context,
-                  Icons.access_time_outlined,
-                  _formatDate(widget.dataset.createTime ?? ''),
-                  const Color(0xFF9CA3AF),
-                ),
-              ],
+            const SizedBox(width: 16),
+            _buildStatItem(
+              context,
+              Icons.access_time_outlined,
+              _formatDate(widget.dataset.createTime ?? ''),
+              const Color(0xFF9CA3AF),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildStatItem(
     BuildContext context,
     IconData icon,
     String text,
     Color color,
-  ) =>
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF9CA3AF),
-            ),
-          ),
-        ],
-      );
+  ) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 14, color: color),
+      const SizedBox(width: 4),
+      Text(
+        text,
+        style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+      ),
+    ],
+  );
 
   String _formatDate(String dateStr) {
     try {

@@ -48,8 +48,10 @@ export const useBillingStore = defineStore("billing", () => {
   const rechargeAlert = computed<RechargeAlert | null>(() => {
     const balance = billingDataStore.balance;
     if (!balance) return null;
+    // creditsBalance 为后端 Decimal 字符串，参与比较/运算前需 Number() 转换
+    const creditsBalance = Number(balance.creditsBalance);
     if (balance.arrearsStatus) {
-      return { reason: "arrears", gap: Math.max(0, -balance.creditsBalance) };
+      return { reason: "arrears", gap: Math.max(0, -creditsBalance) };
     }
     const quotaReached =
       (balance.dailyLimit > 0 && balance.dailyUsed >= balance.dailyLimit) ||
@@ -57,10 +59,10 @@ export const useBillingStore = defineStore("billing", () => {
     if (quotaReached) {
       return { reason: "quota", gap: 0 };
     }
-    if (balance.creditsBalance < LOW_BALANCE_CREDITS) {
+    if (creditsBalance < LOW_BALANCE_CREDITS) {
       return {
         reason: "low",
-        gap: LOW_BALANCE_CREDITS - balance.creditsBalance,
+        gap: LOW_BALANCE_CREDITS - creditsBalance,
       };
     }
     return null;

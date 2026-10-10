@@ -29,19 +29,19 @@
             }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="关联算法" min-width="240">
+        <el-table-column label="关联模型" min-width="240">
           <template #default="scope">
             <el-tag
-              v-for="(alg, idx) in getAlgoNames(
-                (scope.row as RecommendationRule).algorithmIds
+              v-for="(name, idx) in getModelNames(
+                (scope.row as RecommendationRule).modelIds
               )"
               :key="idx"
               size="small"
               style="margin: 2px"
             >
-              {{ alg }}
+              {{ name }}
             </el-tag>
-            <span v-if="!(scope.row as RecommendationRule).algorithmIds?.length"
+            <span v-if="!(scope.row as RecommendationRule).modelIds?.length"
               >-</span
             >
           </template>
@@ -124,19 +124,19 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="关联算法" prop="algorithmIds">
+        <el-form-item label="关联模型" prop="modelIds">
           <el-select
-            v-model="formData.algorithmIds"
+            v-model="formData.modelIds"
             multiple
             filterable
-            placeholder="请选择关联算法"
+            placeholder="请选择关联模型"
             style="width: 100%"
           >
             <el-option
-              v-for="item in algorithmOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
+              v-for="item in modelOptions"
+              :key="item.modelId"
+              :label="item.displayName"
+              :value="item.modelId"
             />
           </el-select>
         </el-form-item>
@@ -172,10 +172,10 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from "vue";
 import {
+  AiModelAPI,
+  AiModelVO,
   RecommendationAPI,
   RecommendationRule,
-  AlgorithmAPI,
-  OptionType,
 } from "dehaze-sdk-js";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
 
@@ -184,9 +184,9 @@ defineOptions({ name: "RecommendationRules" });
 const loading = ref(false);
 const submitting = ref(false);
 const tableData = ref<RecommendationRule[]>([]);
-const algorithmOptions = ref<OptionType[]>([]);
-// Local map for algorithm id -> name resolution
-const algoNameMap = ref<Record<number, string>>({});
+const modelOptions = ref<AiModelVO[]>([]);
+// 规则里存的是模型 slug，列表展示需回显显示名
+const modelNameMap = ref<Record<string, string>>({});
 
 const dialog = reactive({
   visible: false,
@@ -197,7 +197,7 @@ const formRef = ref<any>(null);
 const formData = reactive<RecommendationRule>({
   ruleName: "",
   sceneType: "urban",
-  algorithmIds: [],
+  modelIds: [],
   weight: 50,
   enabled: true,
 });
@@ -205,8 +205,8 @@ const formData = reactive<RecommendationRule>({
 const rules = {
   ruleName: [{ required: true, message: "请输入规则名称", trigger: "blur" }],
   sceneType: [{ required: true, message: "请选择场景类型", trigger: "change" }],
-  algorithmIds: [
-    { required: true, message: "请至少选择一个关联算法", trigger: "change" },
+  modelIds: [
+    { required: true, message: "请至少选择一个关联模型", trigger: "change" },
   ],
 };
 
@@ -225,21 +225,19 @@ function getSceneTypeLabel(sceneType: string): string {
   );
 }
 
-function getAlgoNames(ids?: number[]): string[] {
-  if (!ids?.length) return [];
-  return ids.map((id) => algoNameMap.value[id] || String(id));
+function getModelNames(modelIds?: string[]): string[] {
+  if (!modelIds?.length) return [];
+  return modelIds.map((id) => modelNameMap.value[id] || id);
 }
 
 async function loadData() {
   loading.value = true;
   try {
     tableData.value = await RecommendationAPI.getRules();
-    // Fetch algorithm options to resolve algorithm names
-    const algoList = await AlgorithmAPI.getOption();
-    algorithmOptions.value = algoList;
-    algoNameMap.value = {};
-    algoList.forEach((a) => {
-      algoNameMap.value[Number(a.value)] = a.label;
+    modelOptions.value = await AiModelAPI.listEnabledModels("image_edit");
+    modelNameMap.value = {};
+    modelOptions.value.forEach((m) => {
+      modelNameMap.value[m.modelId] = m.displayName;
     });
   } catch {
   } finally {

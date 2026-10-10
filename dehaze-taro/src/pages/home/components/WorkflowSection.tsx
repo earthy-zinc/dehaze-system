@@ -22,8 +22,8 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
   target,
 }) => {
   const handleClick = () => {
-    // algorithm-select 和 processing 依赖当前图片，未选择图片时引导用户先去图像输入
-    if (target === "algorithm-select" || target === "processing") {
+    // processing 依赖当前图片，未选择图片时引导用户先去图像输入
+    if (target === "processing") {
       const hasImage = !!useProcessStore.getState().image;
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
@@ -75,9 +75,9 @@ const WorkflowSection: React.FC = () => {
         <WorkflowStep
           number="02"
           icon={<BulbOutlined size="28" color="#ffffff" />}
-          title="智能算法"
-          description="多种去雾算法可选\nAI智能推荐最优方案"
-          target="algorithm-select"
+          title="智能模型"
+          description="多种去雾模型可选\nAI智能推荐最优方案"
+          target="processing"
         />
 
         <View className="workflow-arrow">

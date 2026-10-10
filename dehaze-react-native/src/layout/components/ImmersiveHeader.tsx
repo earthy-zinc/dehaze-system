@@ -5,7 +5,13 @@
  * 用于对比页（SideBySide/Overlay/Magnifier/Filter/Metrics）。
  */
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -16,13 +22,20 @@ interface ImmersiveHeaderProps {
   rightActions?: React.ReactNode;
 }
 
-const ImmersiveHeader: React.FC<ImmersiveHeaderProps> = ({ title, rightActions }) => {
+const ImmersiveHeader: React.FC<ImmersiveHeaderProps> = ({
+  title,
+  rightActions,
+}) => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
       <View style={styles.content}>
         <TouchableOpacity
           style={styles.backButton}

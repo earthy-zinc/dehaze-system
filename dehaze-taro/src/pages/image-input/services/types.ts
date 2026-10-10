@@ -21,7 +21,6 @@ export interface SampleImage {
   category: Exclude<SampleCategory, "all">;
   sceneType?: string; // 场景类型
   hazeLevel?: "light" | "medium" | "heavy"; // 雾霾程度
-  recommendAlgorithm?: string; // 推荐算法
   cleanUrl?: string; // 对应的清晰图 URL（作为 GT 参考图）
 }
 

@@ -65,7 +65,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({
                 end={{ x: 1, y: 1 }}
                 style={styles.logoGradient}
               >
-                <Ionicons name="cloud-outline" size={18} color={colors.text.inverse} />
+                <Ionicons
+                  name="cloud-outline"
+                  size={18}
+                  color={colors.text.inverse}
+                />
               </LinearGradient>
               <Text style={styles.title}>{title}</Text>
             </View>

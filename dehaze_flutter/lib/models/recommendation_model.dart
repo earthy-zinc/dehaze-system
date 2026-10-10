@@ -6,8 +6,8 @@ part 'recommendation_model.g.dart';
 
 /// 推荐对象类型
 enum RecommendationTargetType {
-  @JsonValue('algorithm')
-  algorithm,
+  @JsonValue('model')
+  model,
   @JsonValue('preset')
   preset,
   @JsonValue('dataset')
@@ -16,7 +16,7 @@ enum RecommendationTargetType {
   enhance,
 }
 
-/// 雾霾浓度（30% 权重，影响算法强度选择）
+/// 雾霾浓度（30% 权重，影响模型强度选择）
 enum HazeLevel {
   @JsonValue('light')
   light,
@@ -56,7 +56,7 @@ enum Lighting {
   backlight,
 }
 
-/// 分辨率（5% 权重，影响算法可处理性）
+/// 分辨率（5% 权重，影响模型可处理性）
 enum Resolution {
   @JsonValue('sd')
   sd,
@@ -180,13 +180,13 @@ class ImageFeatureAnalysis {
   Map<String, dynamic> toJson() => _$ImageFeatureAnalysisToJson(this);
 }
 
-/// 推荐算法项
+/// 推荐模型项
 @JsonSerializable()
-class RecommendedAlgorithm {
-  const RecommendedAlgorithm({
+class RecommendedModel {
+  const RecommendedModel({
     this.recommendationId,
-    required this.algorithmId,
-    required this.algorithmName,
+    required this.modelId,
+    required this.modelName,
     required this.matchScore,
     required this.reason,
     required this.rating,
@@ -194,18 +194,19 @@ class RecommendedAlgorithm {
     this.effectDescription,
   });
 
-  factory RecommendedAlgorithm.fromJson(Map<String, dynamic> json) =>
-      _$RecommendedAlgorithmFromJson(json);
+  factory RecommendedModel.fromJson(Map<String, dynamic> json) =>
+      _$RecommendedModelFromJson(json);
 
   /// 推荐记录 ID，用于提交反馈
   @JsonKey(name: 'recommendationId')
   final int? recommendationId;
 
-  @JsonKey(name: 'algorithmId')
-  final int algorithmId;
+  /// 图像模型标识（统一模型规范 slug）
+  @JsonKey(name: 'modelId')
+  final String modelId;
 
-  @JsonKey(name: 'algorithmName')
-  final String algorithmName;
+  @JsonKey(name: 'modelName')
+  final String modelName;
 
   /// 匹配度 0-100
   @JsonKey(name: 'matchScore')
@@ -214,7 +215,7 @@ class RecommendedAlgorithm {
   /// 推荐理由
   final String reason;
 
-  /// 算法评分 0-5（基于用户评价的综合评分）
+  /// 模型评分 0-5（基于用户评价的综合评分）
   final int rating;
 
   /// 预估处理耗时(ms)
@@ -225,10 +226,10 @@ class RecommendedAlgorithm {
   @JsonKey(name: 'effectDescription')
   final String? effectDescription;
 
-  Map<String, dynamic> toJson() => _$RecommendedAlgorithmToJson(this);
+  Map<String, dynamic> toJson() => _$RecommendedModelToJson(this);
 }
 
-/// 推荐结果（分析结果 + Top N 推荐算法列表）
+/// 推荐结果（分析结果 + Top N 推荐模型列表）
 @JsonSerializable()
 class RecommendationResult {
   const RecommendationResult({
@@ -242,8 +243,8 @@ class RecommendationResult {
   /// 图像特征分析结果
   final ImageFeatureAnalysis analysis;
 
-  /// Top N 推荐算法列表（默认 Top 3）
-  final List<RecommendedAlgorithm> recommendations;
+  /// Top N 推荐模型列表（默认 Top 3）
+  final List<RecommendedModel> recommendations;
 
   Map<String, dynamic> toJson() => _$RecommendationResultToJson(this);
 }
@@ -279,7 +280,7 @@ class RecommendationRule {
     this.id,
     required this.ruleName,
     required this.sceneType,
-    required this.algorithmIds,
+    required this.modelIds,
     required this.weight,
     required this.enabled,
   });
@@ -295,8 +296,9 @@ class RecommendationRule {
   @JsonKey(name: 'sceneType')
   final String sceneType;
 
-  @JsonKey(name: 'algorithmIds')
-  final List<int> algorithmIds;
+  /// 候选图像模型标识列表（统一模型规范 slug）
+  @JsonKey(name: 'modelIds')
+  final List<String> modelIds;
 
   /// 权重 0-100
   final int weight;

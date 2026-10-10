@@ -3,7 +3,7 @@
  *
  * 消息列表（分页/分类 Tab/未读红点）+ 搜索 + 删除 + 设置入口
  */
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, ScrollView, Input } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { MessageAPI } from "dehaze-sdk-js";
@@ -43,6 +43,8 @@ const MessagesPage: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [showSearch, setShowSearch] = useState(false);
   const [keyword, setKeyword] = useState("");
+  // 首屏/切换 Tab 时按"当时最新的关键词"决定走搜索还是列表，但不该随输入逐字重查，故用 ref 读取
+  const keywordRef = useRef(keyword);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [deleteMode, setDeleteMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -99,7 +101,11 @@ const MessagesPage: React.FC = () => {
       if (!kw.trim()) return;
       try {
         setLoading(true);
-        const res = await MessageAPI.search({ keyword: kw.trim(), pageNum: page, pageSize: 20 });
+        const res = await MessageAPI.search({
+          keyword: kw.trim(),
+          pageNum: page,
+          pageSize: 20,
+        });
         const list = res.list || [];
         if (append) {
           setMessages((prev) => [...prev, ...list]);
@@ -109,7 +115,10 @@ const MessagesPage: React.FC = () => {
         setHasMore(list.length >= 20);
         // 保存搜索历史（去重，最多5条）
         setSearchHistory((prev) => {
-          const next = [kw.trim(), ...prev.filter((h) => h !== kw.trim())].slice(0, 5);
+          const next = [
+            kw.trim(),
+            ...prev.filter((h) => h !== kw.trim()),
+          ].slice(0, 5);
           return next;
         });
       } catch (error) {
@@ -129,13 +138,17 @@ const MessagesPage: React.FC = () => {
   }, [fetchUnreadCount]);
 
   useEffect(() => {
+    keywordRef.current = keyword;
+  }, [keyword]);
+
+  useEffect(() => {
     setPageNum(1);
-    if (showSearch && keyword.trim()) {
-      doSearch(1, keyword, false);
+    if (showSearch && keywordRef.current.trim()) {
+      doSearch(1, keywordRef.current, false);
     } else {
       fetchMessages(1, activeTab, false);
     }
-  }, [activeTab, showSearch]);
+  }, [activeTab, showSearch, doSearch, fetchMessages]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -148,29 +161,32 @@ const MessagesPage: React.FC = () => {
     setSelectedIds(new Set());
   }, []);
 
-  const handleMessageClick = useCallback(async (message: MessageVO) => {
-    if (deleteMode) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(message.id)) next.delete(message.id);
-        else next.add(message.id);
-        return next;
-      });
-      return;
-    }
-    if (message.readStatus === 0) {
-      try {
-        await MessageAPI.markRead(message.id);
-        setMessages((prev) =>
-          prev.map((m) => (m.id === message.id ? { ...m, readStatus: 1 } : m))
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch {
-        // 标记失败也继续跳转
+  const handleMessageClick = useCallback(
+    async (message: MessageVO) => {
+      if (deleteMode) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(message.id)) next.delete(message.id);
+          else next.add(message.id);
+          return next;
+        });
+        return;
       }
-    }
-    Taro.navigateTo({ url: `/pages/messages/detail/index?id=${message.id}` });
-  }, [deleteMode]);
+      if (message.readStatus === 0) {
+        try {
+          await MessageAPI.markRead(message.id);
+          setMessages((prev) =>
+            prev.map((m) => (m.id === message.id ? { ...m, readStatus: 1 } : m))
+          );
+          setUnreadCount((prev) => Math.max(0, prev - 1));
+        } catch {
+          // 标记失败也继续跳转
+        }
+      }
+      Taro.navigateTo({ url: `/pages/messages/detail/index?id=${message.id}` });
+    },
+    [deleteMode]
+  );
 
   const handleMarkAllRead = useCallback(async () => {
     try {
@@ -196,7 +212,16 @@ const MessagesPage: React.FC = () => {
     } else {
       fetchMessages(nextPage, activeTab, true);
     }
-  }, [loading, hasMore, pageNum, activeTab, showSearch, keyword, fetchMessages, doSearch]);
+  }, [
+    loading,
+    hasMore,
+    pageNum,
+    activeTab,
+    showSearch,
+    keyword,
+    fetchMessages,
+    doSearch,
+  ]);
 
   const handleGoSettings = useCallback(() => {
     Taro.navigateTo({ url: "/pages/notify/index" });
@@ -215,24 +240,27 @@ const MessagesPage: React.FC = () => {
     doSearch(1, keyword, false);
   }, [keyword, activeTab, fetchMessages, doSearch]);
 
-  const handleDeleteSingle = useCallback(async (id: number) => {
-    const res = await Taro.showModal({
-      title: "确认删除",
-      content: "确定删除这条消息吗？",
-    });
-    if (!res.confirm) return;
-    try {
-      await MessageAPI.deleteByIds(String(id));
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-      Taro.showToast({ title: "已删除", icon: "success" });
-      fetchUnreadCount();
-    } catch (error) {
-      Taro.showToast({
-        title: getErrorMessage(error, "删除失败"),
-        icon: "none",
+  const handleDeleteSingle = useCallback(
+    async (id: number) => {
+      const res = await Taro.showModal({
+        title: "确认删除",
+        content: "确定删除这条消息吗？",
       });
-    }
-  }, [fetchUnreadCount]);
+      if (!res.confirm) return;
+      try {
+        await MessageAPI.deleteByIds(String(id));
+        setMessages((prev) => prev.filter((m) => m.id !== id));
+        Taro.showToast({ title: "已删除", icon: "success" });
+        fetchUnreadCount();
+      } catch (error) {
+        Taro.showToast({
+          title: getErrorMessage(error, "删除失败"),
+          icon: "none",
+        });
+      }
+    },
+    [fetchUnreadCount]
+  );
 
   const handleBatchDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -246,7 +274,10 @@ const MessagesPage: React.FC = () => {
       setMessages((prev) => prev.filter((m) => !selectedIds.has(m.id)));
       setSelectedIds(new Set());
       setDeleteMode(false);
-      Taro.showToast({ title: `已删除 ${selectedIds.size} 条`, icon: "success" });
+      Taro.showToast({
+        title: `已删除 ${selectedIds.size} 条`,
+        icon: "success",
+      });
       fetchUnreadCount();
     } catch (error) {
       Taro.showToast({
@@ -328,16 +359,28 @@ const MessagesPage: React.FC = () => {
             </ScrollView>
           </View>
           <View className="messages-header-actions">
-            <View className="messages-header-icon" onClick={() => setShowSearch(true)}>
+            <View
+              className="messages-header-icon"
+              onClick={() => setShowSearch(true)}
+            >
               <Text className="icon-text">🔍</Text>
             </View>
             {deleteMode ? (
               <>
-                <View className="messages-action-btn" onClick={() => { setDeleteMode(false); setSelectedIds(new Set()); }}>
+                <View
+                  className="messages-action-btn"
+                  onClick={() => {
+                    setDeleteMode(false);
+                    setSelectedIds(new Set());
+                  }}
+                >
                   <Text>取消</Text>
                 </View>
                 {selectedIds.size > 0 && (
-                  <View className="messages-action-btn danger" onClick={handleBatchDelete}>
+                  <View
+                    className="messages-action-btn danger"
+                    onClick={handleBatchDelete}
+                  >
                     <Text>删除({selectedIds.size})</Text>
                   </View>
                 )}
@@ -345,14 +388,23 @@ const MessagesPage: React.FC = () => {
             ) : (
               <>
                 {unreadCount > 0 && (
-                  <View className="messages-mark-all" onClick={handleMarkAllRead}>
+                  <View
+                    className="messages-mark-all"
+                    onClick={handleMarkAllRead}
+                  >
                     <Text>全部已读</Text>
                   </View>
                 )}
-                <View className="messages-header-icon" onClick={() => setDeleteMode(true)}>
+                <View
+                  className="messages-header-icon"
+                  onClick={() => setDeleteMode(true)}
+                >
                   <Text className="icon-text">🗑</Text>
                 </View>
-                <View className="messages-header-icon" onClick={handleGoSettings}>
+                <View
+                  className="messages-header-icon"
+                  onClick={handleGoSettings}
+                >
                   <Text className="icon-text">⚙</Text>
                 </View>
               </>
@@ -394,7 +446,9 @@ const MessagesPage: React.FC = () => {
                         <View className="message-unread-dot" />
                       )}
                       {deleteMode && (
-                        <View className={`message-checkbox ${selectedIds.has(msg.id) ? "checked" : ""}`}>
+                        <View
+                          className={`message-checkbox ${selectedIds.has(msg.id) ? "checked" : ""}`}
+                        >
                           {selectedIds.has(msg.id) && <Text>✓</Text>}
                         </View>
                       )}
@@ -404,7 +458,9 @@ const MessagesPage: React.FC = () => {
                       {msg.summary || ""}
                     </Text>
                   </View>
-                  <Text className="message-item-time">{formatTime(msg.createTime)}</Text>
+                  <Text className="message-item-time">
+                    {formatTime(msg.createTime)}
+                  </Text>
                 </View>
               ))}
             </View>

@@ -1,8 +1,9 @@
 import '@/config/sdk';
-import { AuthAPI, SESSION_KEY } from 'dehaze-sdk-js';
-import type { LoginData, LoginResult, AuthUserInfo } from 'dehaze-sdk-js';
+import { AuthAPI, UserAPI, SESSION_KEY } from 'dehaze-sdk-js';
+import type { LoginData, LoginResult, UserInfo } from 'dehaze-sdk-js';
 import { CacheEnum } from '@/enums/CacheEnum';
 import { storage } from '@/utils/storage';
+import { matchPerm } from '@/utils/permission';
 import { sessionStore, setOnSessionInvalid } from '@/utils/tokenStore';
 import { Alert } from 'react-native';
 import { create } from 'zustand';
@@ -11,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthState {
   sessionId: string | null;
-  userInfo: AuthUserInfo | null;
+  userInfo: UserInfo | null;
   loading: boolean;
   login: (data: LoginData) => Promise<void>;
   logout: () => Promise<void>;
@@ -68,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
           if (data.rememberMe !== false) {
             await storage.set(SESSION_KEY, result.sessionId);
           }
-          const userInfo = await AuthAPI.getCurrentUser();
+          const userInfo = await UserAPI.getInfo();
           await storage.set(CacheEnum.AUTH_INFO, userInfo);
           set({ sessionId: result.sessionId, userInfo, loading: false });
         },
@@ -86,14 +87,14 @@ export const useAuthStore = create<AuthState>()(
         },
 
         refreshUserInfo: async () => {
-          const userInfo = await AuthAPI.getCurrentUser();
+          const userInfo = await UserAPI.getInfo();
           await storage.set(CacheEnum.AUTH_INFO, userInfo);
           set({ userInfo });
         },
 
         hasPerm: (perm: string) => {
           const { userInfo } = get();
-          return userInfo?.perms?.includes(perm) ?? false;
+          return matchPerm(userInfo?.perms, perm);
         },
 
         hasRole: (role: string) => {
@@ -110,7 +111,7 @@ export const useAuthStore = create<AuthState>()(
         userInfo: state.userInfo,
       }),
       onRehydrateStorage: () => {
-        return (state) => {
+        return state => {
           // 必须走 setState 触发订阅通知：直接 mutation state 不会让组件重渲染，会一直停在加载态
           useAuthStore.setState({ loading: false });
           if (state?.sessionId) {

@@ -3,7 +3,7 @@ import {
   DatasetItemAPI,
   ItemFileAPI,
   TaskAPI,
-  type Dataset,
+  type DatasetVO,
   type DatasetItemVO,
   type DatasetStatistics,
   type ImageUrlVO,
@@ -77,10 +77,8 @@ interface DisplayImage {
   itemId: number;
   /** 图片文件ID */
   fileId: number;
-  /** 缩略图URL */
+  /** 原图 URL（= `ImageUrlVO.url`，该契约无 originUrl 字段） */
   url: string;
-  /** 原图URL */
-  originUrl: string;
   /** 描述 */
   alt: string;
   /** 文件名 */
@@ -228,8 +226,7 @@ const extractAllImagesFromItem = (item: DatasetItemVO): DisplayImage[] => {
     result.push({
       itemId,
       fileId: img.id,
-      url: img.thumbnailUrl || img.url,
-      originUrl: img.originUrl || img.url,
+      url: img.url,
       alt: img.description || img.fileName || "",
       fileName: img.fileName || "",
       sizeBytes: img.sizeBytes || 0,
@@ -268,7 +265,7 @@ export default function DatasetDetail() {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const [datasetInfo, setDatasetInfo] = useState<Dataset | null>(null);
+  const [datasetInfo, setDatasetInfo] = useState<DatasetVO | null>(null);
   const [imageData, setImageData] = useState<DatasetItemVO[]>([]);
   const [annotationFilter, setAnnotationFilter] =
     useState<AnnotationFilter>("annotated");
@@ -1044,6 +1041,7 @@ export default function DatasetDetail() {
       <StatisticsModal
         visible={statsVisible}
         statistics={statistics}
+        images={displayImages}
         onClose={() => setStatsVisible(false)}
       />
 
@@ -1249,8 +1247,22 @@ const DistributionBar: React.FC<{
 const StatisticsModal: React.FC<{
   visible: boolean;
   statistics: DatasetStatistics | undefined;
+  /** 已加载的图片列表：用于派生分辨率分布 */
+  images: DisplayImage[];
   onClose: () => void;
-}> = ({ visible, statistics, onClose }) => {
+}> = ({ visible, statistics, images, onClose }) => {
+  // 分辨率分布由已加载图片派生（DatasetStatistics 不提供该字段，与 front-vue 同口径）
+  const resolutionDistribution = useMemo<Record<string, number>>(() => {
+    const dist: Record<string, number> = {};
+    images.forEach((img) => {
+      if (img.width && img.height) {
+        const key = `${img.width}×${img.height}`;
+        dist[key] = (dist[key] || 0) + 1;
+      }
+    });
+    return dist;
+  }, [images]);
+
   return (
     <Modal
       title="统计分析"
@@ -1282,10 +1294,7 @@ const StatisticsModal: React.FC<{
             />
           </Col>
           <Col span={12}>
-            <DistributionBar
-              data={statistics.resolutionDistribution || {}}
-              title="分辨率分布"
-            />
+            <DistributionBar data={resolutionDistribution} title="分辨率分布" />
           </Col>
         </Row>
       )}
@@ -1594,7 +1603,7 @@ const ImageViewerModal: React.FC<{
             }}
           >
             <img
-              src={image.originUrl || image.url}
+              src={image.url}
               alt={image.alt}
               style={{
                 maxWidth: "100%",

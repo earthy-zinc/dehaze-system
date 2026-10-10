@@ -99,10 +99,10 @@ class MenuQuery {
   Map<String, dynamic> toJson() => _$MenuQueryToJson(this);
 
   Map<String, dynamic> toQuery() => {
-        if (name != null) 'keywords': name,
-        if (status != null) 'status': status,
-        if (visible != null) 'visible': visible,
-      };
+    if (name != null) 'keywords': name,
+    if (status != null) 'status': status,
+    if (visible != null) 'visible': visible,
+  };
 }
 
 // ==================== MenuForm ====================
@@ -160,11 +160,7 @@ class MenuForm {
 
 @JsonSerializable()
 class MenuOption {
-  const MenuOption({
-    required this.id,
-    required this.name,
-    this.children,
-  });
+  const MenuOption({required this.id, required this.name, this.children});
 
   factory MenuOption.fromJson(Map<String, dynamic> json) =>
       _$MenuOptionFromJson(json);

@@ -2,11 +2,7 @@ import 'package:dio/dio.dart';
 
 /// 字段校验错误详情
 class ApiFieldError {
-  const ApiFieldError({
-    this.field,
-    this.message,
-    this.code,
-  });
+  const ApiFieldError({this.field, this.message, this.code});
 
   final String? field;
   final String? message;
@@ -17,11 +13,7 @@ class ApiFieldError {
 ///
 /// 当后端返回 code != "00000" 时抛出
 class ApiException implements Exception {
-  const ApiException({
-    required this.code,
-    required this.message,
-    this.errors,
-  });
+  const ApiException({required this.code, required this.message, this.errors});
 
   /// 业务状态码
   final String code;

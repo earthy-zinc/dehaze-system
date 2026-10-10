@@ -2,9 +2,9 @@
  * 去雾处理页面
  *
  * 业务流程：
- * 1. 从算法选择页接收 { algorithmId, image }
- * 2. 加载算法详情（AlgorithmAPI.getAlgorithmInfoById）
- * 3. 显示原图预览 + 算法信息
+ * 1. 从图像输入页接收 { model, image }（model 可缺省，缺省时按用户偏好/列表首项选中）
+ * 2. 页内加载启用的 image_edit 模型并内联选择
+ * 3. 显示原图预览 + 模型信息
  * 4. 提供参数调节面板（可选展开）
  * 5. 用户点击「开始去雾」→ 确认对话框 → 调用 predictSingle
  * 6. 处理过程中显示真实状态与已用时间（ProcessingProgress，API 同步返回不模拟进度）
@@ -28,15 +28,15 @@ import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
-import { AlgorithmAPI } from 'dehaze-sdk-js';
-import type { Algorithm } from 'dehaze-sdk-js';
-import type { CommonAlgorithmParams } from '@/types/processing';
+import type { ImageEditParams } from '@/types/processing';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useProcessing } from '@/hooks/useProcessing';
+import { useImageEditModels } from '@/hooks/useImageEditModels';
 import { DEFAULT_PARAMS } from './services/processingApi';
 import { historyStorage } from '@/pages/image-input/services/historyStorage';
 import ProcessingProgress from './components/ProcessingProgress';
 import ParamsPanel from './components/ParamsPanel';
+import ModelPicker from './components/ModelPicker';
 import ResultPreview from './components/ResultPreview';
 
 type Props = CompositeScreenProps<
@@ -46,8 +46,15 @@ type Props = CompositeScreenProps<
 
 const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   const { containerPadding } = useResponsive();
-  const { algorithmId, image } = route.params ?? {};
-  const { phase, progress, result, predict, cancel, retry, reset } = useProcessing();
+  const { model, image } = route.params ?? {};
+  const { phase, progress, result, predict, cancel, retry, reset } =
+    useProcessing();
+  const {
+    models,
+    loading: modelsLoading,
+    selectedModel,
+    selectModel,
+  } = useImageEditModels(model ?? image?.modelId);
 
   const getResultStatusText = () => {
     if (result) return '已完成';
@@ -55,15 +62,11 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
     return '待处理';
   };
 
-  // 算法详情
-  const [algorithm, setAlgorithm] = useState<Algorithm | null>(null);
-  const [algorithmLoading, setAlgorithmLoading] = useState(false);
-
-  // 参数（历史记录复用时从 image.algorithmParams 初始化）
-  const [params, setParams] = useState<CommonAlgorithmParams>(() => {
-    if (image?.algorithmParams) {
+  // 参数（历史记录复用时从 image.modelParams 初始化）
+  const [params, setParams] = useState<ImageEditParams>(() => {
+    if (image?.modelParams) {
       try {
-        const parsed = JSON.parse(image.algorithmParams) as CommonAlgorithmParams;
+        const parsed = JSON.parse(image.modelParams) as ImageEditParams;
         return { ...DEFAULT_PARAMS, ...parsed };
       } catch {
         // 参数解析失败时回退到默认值
@@ -72,24 +75,13 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
     return { ...DEFAULT_PARAMS };
   });
   const [showParams, setShowParams] = useState(false);
-
-  // 加载算法详情
-  useEffect(() => {
-    if (!algorithmId) return;
-    setAlgorithmLoading(true);
-    AlgorithmAPI.getAlgorithmInfoById(algorithmId)
-      .then(data => setAlgorithm(data))
-      .catch(err => {
-        Alert.alert('加载算法失败', err instanceof Error ? err.message : '请稍后重试');
-      })
-      .finally(() => setAlgorithmLoading(false));
-  }, [algorithmId]);
+  const [showModels, setShowModels] = useState(false);
 
   /** 开始去雾处理（确认弹窗确认后实际执行） */
   const startProcessing = useCallback(() => {
-    if (!image?.url || !algorithmId || !algorithm) return;
-    predict(image, algorithm, params);
-  }, [image, algorithmId, algorithm, params, predict]);
+    if (!image?.url || !selectedModel) return;
+    predict(image, selectedModel, params);
+  }, [image, selectedModel, params, predict]);
 
   // 处理完成后写入图像输入历史记录（失败不阻塞主流程）
   useEffect(() => {
@@ -100,28 +92,31 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         originalThumbnailUrl: image?.thumbUrl,
         resultImageUrl: result.resultUrl,
         resultThumbnailUrl: result.resultThumbnailUrl,
-        algorithmId,
-        algorithmName: algorithm?.name,
-        algorithmParams: JSON.stringify(params),
-        processingTime: result.time,
+        modelId: selectedModel?.modelId,
+        modelName: selectedModel?.displayName,
+        modelParams: JSON.stringify(params),
+        // sys_input_history.processing_time 为毫秒列，后端 time 为秒
+        processingTime: result.time * 1000,
         status: 1,
         inputSource: image?.source,
       })
       .catch(() => {
         /* 历史记录写入失败不影响处理结果展示 */
       });
-  }, [phase, result, image, algorithmId, algorithm, params]);
+  }, [phase, result, image, selectedModel, params]);
 
   /** 开始去雾处理（弹出确认对话框） */
   const handleStart = useCallback(() => {
-    if (!image?.url || !algorithmId) {
-      Alert.alert('提示', '缺少图片或算法信息，请返回上一步重新选择');
+    if (!image?.url || !selectedModel) {
+      Alert.alert('提示', '缺少图片或去雾模型，请返回上一步重新选择');
       return;
     }
 
     Alert.alert(
       '确认开始去雾',
-      `图片：${image.name ?? '未命名'}\n算法：${algorithm?.name ?? algorithmId}\n参数：去雾强度 ${params.strength ?? 50}`,
+      `图片：${image.name ?? '未命名'}\n模型：${
+        selectedModel.displayName
+      }\n参数：去雾强度 ${params.strength ?? 50}`,
       [
         { text: '取消', style: 'cancel' },
         {
@@ -132,43 +127,38 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         },
       ],
     );
-  }, [image, algorithmId, algorithm, params, startProcessing]);
+  }, [image, selectedModel, params, startProcessing]);
 
   /** 进入效果对比 */
   const handleEnterCompare = useCallback(() => {
     if (!image?.url || !result?.resultUrl) return;
-    // 默认进入并排对比（携带 algorithmId 与 GT 参考图 cleanUrl，供指标评估使用）
+    // 默认进入并排对比（携带 modelId 与 GT 参考图 cleanUrl，供指标评估使用）
     navigation.navigate('CompareSideBySide', {
       originalUrl: image.url,
       processedUrl: result.resultUrl,
       cleanUrl: image.cleanUrl,
-      algorithmId,
+      modelId: selectedModel?.modelId,
     });
-  }, [image, result, navigation, algorithmId]);
+  }, [image, result, navigation, selectedModel]);
 
   /** 返回图像输入页 */
   const handleBackToImageInput = useCallback(() => {
     navigation.navigate('ImageInput');
   }, [navigation]);
 
-  /** 返回算法选择页 */
-  const handleBackToAlgorithmSelect = useCallback(() => {
-    if (image) {
-      navigation.navigate('AlgorithmSelect', { image });
-    } else {
-      navigation.navigate('AlgorithmSelect');
-    }
-  }, [navigation, image]);
-
-  // 缺少图片或算法参数
-  if (!image?.url || !algorithmId) {
+  // 缺少图片
+  if (!image?.url) {
     return (
       <View style={styles.screenContainer}>
-        <AppHeader title="图像处理" showBack onBackPress={() => navigation.goBack()} />
+        <AppHeader
+          title="图像处理"
+          showBack
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.emptyContainer}>
           <Icon name="image" size={48} color={theme.colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>缺少必要的图片或算法信息</Text>
-          <Text style={styles.emptyDesc}>请先选择图片与算法</Text>
+          <Text style={styles.emptyTitle}>缺少必要的图片信息</Text>
+          <Text style={styles.emptyDesc}>请先选择图片</Text>
           <TouchableOpacity
             style={styles.emptyButton}
             onPress={handleBackToImageInput}
@@ -182,7 +172,11 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <View style={styles.screenContainer}>
-      <AppHeader title="图像处理" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="图像处理"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
@@ -191,7 +185,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* 算法与图片信息卡片 */}
+        {/* 模型与图片信息卡片 */}
         <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <View style={styles.infoIconWrapper}>
@@ -199,15 +193,15 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
             <View style={styles.infoHeaderText}>
               <Text style={styles.infoTitle} numberOfLines={1}>
-                {algorithmLoading ? '加载算法中...' : algorithm?.name ?? '未知算法'}
+                {modelsLoading
+                  ? '加载模型中...'
+                  : selectedModel?.displayName ?? '未选择模型'}
               </Text>
               <Text style={styles.infoSubtitle}>
-                {algorithm
-                  ? `${algorithm.type ?? '通用类型'} · v${algorithm.version ?? '1.0'}`
-                  : `算法ID: ${algorithmId}`}
+                {selectedModel?.modelId ?? '暂无可用去雾模型'}
               </Text>
             </View>
-            {algorithmLoading && (
+            {modelsLoading && (
               <ActivityIndicator size="small" color={theme.colors.primary} />
             )}
           </View>
@@ -228,13 +222,19 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
               )}
             </View>
             <View style={styles.imagePreviewArrow}>
-              <Icon name="arrow-right" size={20} color={theme.colors.text.tertiary} />
+              <Icon
+                name="arrow-right"
+                size={20}
+                color={theme.colors.text.tertiary}
+              />
             </View>
             <View style={styles.imagePreviewItem}>
               <View style={[styles.imageThumb, styles.imageThumbPlaceholder]}>
                 {result && (result.resultThumbnailUrl || result.resultUrl) ? (
                   <ImageLoader
-                    source={{ uri: result.resultThumbnailUrl || result.resultUrl }}
+                    source={{
+                      uri: result.resultThumbnailUrl || result.resultUrl,
+                    }}
                     style={styles.imageThumb}
                     resizeMode="cover"
                   />
@@ -255,6 +255,38 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* 配置阶段：参数调节 + 开始按钮 */}
         {phase === 'config' && (
           <>
+            {/* 模型选择（可折叠） */}
+            <TouchableOpacity
+              style={styles.collapseHeader}
+              onPress={() => setShowModels(v => !v)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.collapseHeaderLeft}>
+                <Icon
+                  name="cube-outline"
+                  size={16}
+                  color={theme.colors.text.secondary}
+                />
+                <Text style={styles.collapseHeaderText}>模型选择</Text>
+              </View>
+              <Icon
+                name={showModels ? 'arrow-down' : 'arrow-right'}
+                size={14}
+                color={theme.colors.text.tertiary}
+              />
+            </TouchableOpacity>
+
+            {showModels && (
+              <View style={styles.collapseBody}>
+                <ModelPicker
+                  models={models}
+                  loading={modelsLoading}
+                  selectedModelId={selectedModel?.modelId}
+                  onSelect={selectModel}
+                />
+              </View>
+            )}
+
             {/* 参数调节（可折叠） */}
             <TouchableOpacity
               style={styles.collapseHeader}
@@ -262,7 +294,11 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.collapseHeaderLeft}>
-                <Icon name="settings" size={16} color={theme.colors.text.secondary} />
+                <Icon
+                  name="settings"
+                  size={16}
+                  color={theme.colors.text.secondary}
+                />
                 <Text style={styles.collapseHeaderText}>参数调节</Text>
               </View>
               <Icon
@@ -281,15 +317,6 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
               </View>
             )}
-
-            {/* 切换算法 */}
-            <TouchableOpacity
-              style={styles.changeAlgorithmButton}
-              onPress={handleBackToAlgorithmSelect}
-            >
-              <Icon name="refresh" size={14} color={theme.colors.text.secondary} />
-              <Text style={styles.changeAlgorithmText}>更换算法</Text>
-            </TouchableOpacity>
 
             {/* 开始处理按钮 */}
             <TouchableOpacity
@@ -474,18 +501,6 @@ const styles = StyleSheet.create({
   },
   collapseBody: {
     marginBottom: theme.spacing.sm,
-  },
-  changeAlgorithmButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  changeAlgorithmText: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.secondary,
   },
   startButton: {
     flexDirection: 'row',

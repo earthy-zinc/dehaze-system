@@ -7,8 +7,8 @@
 
 .filter-row {
   display: flex;
-  gap: 12rpx;
   flex-wrap: wrap;
+  gap: 12rpx;
   padding: 16rpx 24rpx 8rpx;
 }
 
@@ -71,17 +71,40 @@
     }
 
     .order-status {
+      padding: 4rpx 12rpx;
       font-size: var(--font-xs);
       font-weight: 500;
-      padding: 4rpx 12rpx;
       border-radius: 8rpx;
 
-      &.status-pending { color: #f59e0b; background: #fef3c7; }
-      &.status-paid { color: #3b82f6; background: #dbeafe; }
-      &.status-completed { color: #10b981; background: #ecfdf5; }
-      &.status-cancelled { color: #9ca3af; background: #f3f4f6; }
-      &.status-refunding { color: #ef4444; background: #fef2f2; }
-      &.status-refunded { color: #6b7280; background: #f3f4f6; }
+      &.status-pending {
+        color: #f59e0b;
+        background: #fef3c7;
+      }
+
+      &.status-paid {
+        color: #3b82f6;
+        background: #dbeafe;
+      }
+
+      &.status-completed {
+        color: #10b981;
+        background: #ecfdf5;
+      }
+
+      &.status-cancelled {
+        color: #9ca3af;
+        background: #f3f4f6;
+      }
+
+      &.status-refunding {
+        color: #ef4444;
+        background: #fef2f2;
+      }
+
+      &.status-refunded {
+        color: #6b7280;
+        background: #f3f4f6;
+      }
     }
   }
 
@@ -117,8 +140,8 @@
   .order-actions {
     display: flex;
     gap: 16rpx;
-    margin-top: 16rpx;
     padding-top: 16rpx;
+    margin-top: 16rpx;
     border-top: 1rpx solid var(--color-border-light);
 
     .action-btn {
@@ -142,7 +165,7 @@
 
 .load-more {
   padding: 24rpx 0;
-  text-align: center;
   font-size: var(--font-sm);
   color: var(--color-text-secondary);
+  text-align: center;
 }

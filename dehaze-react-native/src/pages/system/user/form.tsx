@@ -17,8 +17,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProfileStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
 import { theme } from '@/theme';
-import { UserAPI } from 'dehaze-sdk-js'
-import type { UserForm } from 'dehaze-sdk-js'
+import { UserAPI } from 'dehaze-sdk-js';
+import type { UserForm } from 'dehaze-sdk-js';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemUserForm'>;
 
@@ -40,7 +40,7 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEdit && userId) {
       setLoading(true);
       UserAPI.getFormData(userId)
-        .then((data) => setForm(data))
+        .then(data => setForm(data))
         .catch(() => Alert.alert('错误', '加载用户信息失败'))
         .finally(() => setLoading(false));
     }
@@ -67,13 +67,17 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const updateField = (field: keyof UserForm, value: string | number) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
-      <AppHeader title={isEdit ? '编辑用户' : '新增用户'} showBack onBackPress={() => navigation.goBack()} />
+        <AppHeader
+          title={isEdit ? '编辑用户' : '新增用户'}
+          showBack
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
@@ -83,13 +87,20 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title={isEdit ? '编辑用户' : '新增用户'} showBack onBackPress={() => navigation.goBack()} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <AppHeader
+        title={isEdit ? '编辑用户' : '新增用户'}
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         <FormField label="用户名" required>
           <TextInput
             style={styles.input}
             value={form.username}
-            onChangeText={(v) => updateField('username', v)}
+            onChangeText={v => updateField('username', v)}
             placeholder="请输入用户名"
             placeholderTextColor={theme.colors.text.tertiary}
             editable={!isEdit}
@@ -99,7 +110,7 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
           <TextInput
             style={styles.input}
             value={form.nickname}
-            onChangeText={(v) => updateField('nickname', v)}
+            onChangeText={v => updateField('nickname', v)}
             placeholder="请输入昵称"
             placeholderTextColor={theme.colors.text.tertiary}
           />
@@ -108,7 +119,7 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
           <TextInput
             style={styles.input}
             value={form.email}
-            onChangeText={(v) => updateField('email', v)}
+            onChangeText={v => updateField('email', v)}
             placeholder="请输入邮箱"
             placeholderTextColor={theme.colors.text.tertiary}
             keyboardType="email-address"
@@ -118,7 +129,7 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
           <TextInput
             style={styles.input}
             value={form.mobile}
-            onChangeText={(v) => updateField('mobile', v)}
+            onChangeText={v => updateField('mobile', v)}
             placeholder="请输入手机号"
             placeholderTextColor={theme.colors.text.tertiary}
             keyboardType="phone-pad"
@@ -127,16 +138,36 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
         <FormField label="状态">
           <View style={styles.toggleRow}>
             <TouchableOpacity
-              style={[styles.toggleBtn, form.status === 1 && styles.toggleBtnActive]}
+              style={[
+                styles.toggleBtn,
+                form.status === 1 && styles.toggleBtnActive,
+              ]}
               onPress={() => updateField('status', 1)}
             >
-              <Text style={[styles.toggleText, form.status === 1 && styles.toggleTextActive]}>启用</Text>
+              <Text
+                style={[
+                  styles.toggleText,
+                  form.status === 1 && styles.toggleTextActive,
+                ]}
+              >
+                启用
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleBtn, form.status === 0 && styles.toggleBtnActive]}
+              style={[
+                styles.toggleBtn,
+                form.status === 0 && styles.toggleBtnActive,
+              ]}
               onPress={() => updateField('status', 0)}
             >
-              <Text style={[styles.toggleText, form.status === 0 && styles.toggleTextActive]}>禁用</Text>
+              <Text
+                style={[
+                  styles.toggleText,
+                  form.status === 0 && styles.toggleTextActive,
+                ]}
+              >
+                禁用
+              </Text>
             </TouchableOpacity>
           </View>
         </FormField>
@@ -158,11 +189,11 @@ const SystemUserFormScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 };
 
-const FormField: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({
-  label,
-  required,
-  children,
-}) => (
+const FormField: React.FC<{
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}> = ({ label, required, children }) => (
   <View style={styles.field}>
     <Text style={styles.fieldLabel}>
       {label}
@@ -203,8 +234,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   toggleBtnActive: { backgroundColor: theme.colors.primary },
-  toggleText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.secondary },
-  toggleTextActive: { color: '#fff', fontWeight: theme.typography.weights.semibold },
+  toggleText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.secondary,
+  },
+  toggleTextActive: {
+    color: '#fff',
+    fontWeight: theme.typography.weights.semibold,
+  },
   saveBtn: {
     marginTop: theme.spacing.lg,
     backgroundColor: theme.colors.primary,

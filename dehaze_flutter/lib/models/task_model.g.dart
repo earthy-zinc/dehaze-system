@@ -34,19 +34,18 @@ TaskVO _$TaskVOFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$TaskVOToJson(TaskVO instance) => <String, dynamic>{
   'taskId': instance.taskId,
-  if (_statusToJson(instance.status) case final value?) 'status': value,
+  'status': ?_statusToJson(instance.status),
   'progress': instance.progress,
-  if (instance.taskType case final value?) 'taskType': value,
-  if (_categoryToJson(instance.taskCategory) case final value?)
-    'taskCategory': value,
-  if (instance.totalFiles case final value?) 'totalFiles': value,
-  if (instance.processedFiles case final value?) 'processedFiles': value,
-  if (instance.downloadUrl case final value?) 'downloadUrl': value,
-  if (instance.expiresAt case final value?) 'expiresAt': value,
-  if (instance.createdAt case final value?) 'createdAt': value,
-  if (instance.startedAt case final value?) 'startedAt': value,
-  if (instance.completedAt case final value?) 'completedAt': value,
-  if (instance.error case final value?) 'error': value,
+  'taskType': ?instance.taskType,
+  'taskCategory': ?_categoryToJson(instance.taskCategory),
+  'totalFiles': ?instance.totalFiles,
+  'processedFiles': ?instance.processedFiles,
+  'downloadUrl': ?instance.downloadUrl,
+  'expiresAt': ?instance.expiresAt,
+  'createdAt': ?instance.createdAt,
+  'startedAt': ?instance.startedAt,
+  'completedAt': ?instance.completedAt,
+  'error': ?instance.error,
 };
 
 TaskCreateForm _$TaskCreateFormFromJson(Map<String, dynamic> json) =>
@@ -66,7 +65,7 @@ TaskCreateForm _$TaskCreateFormFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$TaskCreateFormToJson(TaskCreateForm instance) =>
     <String, dynamic>{
       'type': instance.type,
-      if (instance.targetId case final value?) 'targetId': value,
-      if (instance.targetIds case final value?) 'targetIds': value,
-      if (instance.options case final value?) 'options': value,
+      'targetId': ?instance.targetId,
+      'targetIds': ?instance.targetIds,
+      'options': ?instance.options,
     };

@@ -90,9 +90,9 @@ class CTASection extends StatelessWidget {
         ),
       ),
       TextButton.icon(
-        onPressed: () => context.go(AppRouterConfig.algorithm),
+        onPressed: () => context.go(AppRouterConfig.modelInfo),
         icon: Icon(Icons.science, size: 16),
-        label: const Text('了解算法'),
+        label: const Text('了解模型'),
         style: TextButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.primary,
         ),

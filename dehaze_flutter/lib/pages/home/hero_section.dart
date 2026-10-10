@@ -69,7 +69,7 @@ class HeroSection extends StatelessWidget {
 
           // 描述文本
           Text(
-            '采用先进的深度学习算法，一键还原清晰视界\n从图像输入到效果评估的完整闭环体验',
+            '采用先进的深度学习模型，一键还原清晰视界\n从图像输入到效果评估的完整闭环体验',
             style: theme.textTheme.titleLarge?.copyWith(
               fontSize: _getResponsiveFontSize(context, 20, 16),
               color: Colors.grey[700],

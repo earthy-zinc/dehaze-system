@@ -22,6 +22,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_MAP: Record<OrderStatus, { label: string; color: string }> = {
   pending: { label: "待支付", color: "warning" },
@@ -93,7 +94,7 @@ const OrderDetailDrawer = forwardRef<OrderDetailDrawerRef>((_, ref) => {
       key: "amount",
       width: 100,
       align: "right",
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount: number) => `¥${fenToYuan(amount)}`,
     },
     {
       title: "状态",
@@ -144,22 +145,22 @@ const OrderDetailDrawer = forwardRef<OrderDetailDrawerRef>((_, ref) => {
                 {data.packageName} ({data.packageLevel})
               </Descriptions.Item>
               <Descriptions.Item label="原价">
-                ¥{data.originalPrice.toFixed(2)}
+                ¥{fenToYuan(data.originalPrice)}
               </Descriptions.Item>
               <Descriptions.Item label="折扣优惠">
-                ¥{data.discountAmount.toFixed(2)}
+                ¥{fenToYuan(data.discountAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="优惠券抵扣">
-                ¥{data.couponAmount.toFixed(2)}
+                ¥{fenToYuan(data.couponAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="实付">
-                ¥{data.payableAmount.toFixed(2)}
+                ¥{fenToYuan(data.payableAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="支付方式">
                 {data.payMethod ? PAY_METHOD_LABEL[data.payMethod] : "-"}
               </Descriptions.Item>
               <Descriptions.Item label="已支付金额">
-                ¥{data.paidAmount.toFixed(2)}
+                ¥{fenToYuan(data.paidAmount)}
               </Descriptions.Item>
               <Descriptions.Item label="创建时间">
                 {data.createTime}
@@ -215,14 +216,21 @@ const OrderDetailDrawer = forwardRef<OrderDetailDrawerRef>((_, ref) => {
                         {data.refundRecord.refundNo}
                       </Descriptions.Item>
                       <Descriptions.Item label="退款金额">
-                        ¥{data.refundRecord.refundAmount.toFixed(2)}
+                        ¥{fenToYuan(data.refundRecord.refundAmount)}
                       </Descriptions.Item>
                       <Descriptions.Item label="退款原因">
                         {data.refundRecord.reason}
                       </Descriptions.Item>
-                      <Descriptions.Item label="已用配额">
-                        {data.refundRecord.usedQuota}
-                      </Descriptions.Item>
+                      {data.refundRecord.usedDays != null && (
+                        <Descriptions.Item label="已使用天数">
+                          {data.refundRecord.usedDays} 天
+                        </Descriptions.Item>
+                      )}
+                      {data.refundRecord.usedCredits != null && (
+                        <Descriptions.Item label="已消耗积分">
+                          {data.refundRecord.usedCredits}
+                        </Descriptions.Item>
+                      )}
                       <Descriptions.Item label="状态">
                         <Tag
                           color={

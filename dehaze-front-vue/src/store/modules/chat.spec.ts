@@ -43,6 +43,7 @@ vi.mock("dehaze-sdk-js", async (importOriginal) => {
       getMessageDetail: vi.fn(),
       reconnectStream: vi.fn(),
       getMessages: vi.fn(),
+      getConversations: vi.fn(),
       markConversationRead: vi.fn().mockResolvedValue({}),
     },
   };
@@ -143,6 +144,38 @@ describe("chat store：SSE 流式状态机", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe("首屏请求去重", () => {
+    it("joinInflight 时并发触发的会话列表加载合并为一次请求", async () => {
+      // 页面 onMounted 与 ChatSidebar onMounted 会同时触发列表加载（子组件先挂载）
+      vi.mocked(AiConversationAPI.getConversations).mockResolvedValue({
+        list: [],
+        total: 0,
+      } as never);
+
+      const chat = useChatStore();
+      chat.initScope("self");
+      await Promise.all([
+        chat.fetchConversations(true),
+        chat.fetchConversations(true),
+      ]);
+
+      expect(AiConversationAPI.getConversations).toHaveBeenCalledTimes(1);
+    });
+
+    it("缺省（变更/搜索/筛选后）不复用在途请求，始终取最新数据", async () => {
+      vi.mocked(AiConversationAPI.getConversations).mockResolvedValue({
+        list: [],
+        total: 0,
+      } as never);
+
+      const chat = useChatStore();
+      chat.initScope("self");
+      await Promise.all([chat.fetchConversations(), chat.fetchConversations()]);
+
+      expect(AiConversationAPI.getConversations).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("消息绑定", () => {
@@ -412,8 +445,8 @@ describe("chat store：SSE 流式状态机", () => {
         data: {
           recommendation: {
             recommendationId: 1,
-            algorithmId: 2,
-            algorithmName: "去雾算法",
+            modelId: "aecrnet",
+            modelName: "AECR-Net",
             reason: "需要确认",
           },
         },
@@ -485,6 +518,28 @@ describe("chat store：SSE 流式状态机", () => {
       const msg = messageOf(chat) as AiMessageVO & { error?: string };
       expect(msg.status).toBe(3);
       expect(msg.error).toContain("网络连接中断");
+    });
+
+    it("HTTP 业务错误按真实原因提示且不重连", async () => {
+      const chat = openStream();
+      handlers.onStart?.(START);
+      // SDK fetchSSE 对非 2xx 响应抛出的 SSEHttpError：携带状态码与业务信封
+      const httpError = Object.assign(new Error("参数校验失败"), {
+        name: "SSEHttpError",
+        status: 400,
+        code: "A0400",
+        msg: "单条消息超出模型上下文预算（14136 字符，模型 qwen3-0.6b）",
+      });
+
+      handlers.onNetworkError?.(httpError);
+      await vi.advanceTimersByTimeAsync(5_000);
+
+      const msg = messageOf(chat) as AiMessageVO & { error?: string };
+      expect(msg.status).toBe(3);
+      expect(msg.error).toBe(
+        "单条消息超出模型上下文预算（14136 字符，模型 qwen3-0.6b）"
+      );
+      expect(AiConversationAPI.reconnectStream).not.toHaveBeenCalled();
     });
 
     it("流已达终态后 onClose 不再重连", async () => {
@@ -760,31 +815,31 @@ describe("chat store：SSE 流式状态机", () => {
       return chat;
     }
 
-    it("algorithm_recommend：{confirm, params:{algorithmId}}（取调用方选择）", () => {
+    it("algorithm_recommend：{confirm, params:{modelId}}（取调用方选择）", () => {
       const chat = interruptOf({
         confirmKind: "algorithm_recommend",
         recommendation: {
           recommendationId: 1,
-          algorithmId: 7,
-          algorithmName: "去雾",
+          modelId: "aecrnet",
+          modelName: "AECR-Net",
           reason: "最佳",
         },
       });
-      chat.resumeInterrupt(4, { confirm: true, params: { algorithmId: 8 } });
+      chat.resumeInterrupt(4, { confirm: true, params: { modelId: "dcp" } });
 
       expect(resumePayload).toEqual({
         confirm: true,
-        params: { algorithmId: 8 },
+        params: { modelId: "dcp" },
       });
     });
 
-    it("algorithm_recommend：未指定则回退推荐算法 id", () => {
+    it("algorithm_recommend：未指定则回退推荐模型标识", () => {
       const chat = interruptOf({
         confirmKind: "algorithm_recommend",
         recommendation: {
           recommendationId: 1,
-          algorithmId: 7,
-          algorithmName: "去雾",
+          modelId: "aecrnet",
+          modelName: "AECR-Net",
           reason: "最佳",
         },
       });
@@ -792,7 +847,7 @@ describe("chat store：SSE 流式状态机", () => {
 
       expect(resumePayload).toEqual({
         confirm: true,
-        params: { algorithmId: 7 },
+        params: { modelId: "aecrnet" },
       });
     });
 

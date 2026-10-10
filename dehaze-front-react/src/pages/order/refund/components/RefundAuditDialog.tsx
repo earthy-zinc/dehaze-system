@@ -10,6 +10,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { fenToYuan } from "@/utils/format";
 
 export interface RefundAuditDialogRef {
   open: (record: RefundRecordVO, approved: boolean) => void;
@@ -102,7 +103,7 @@ const RefundAuditDialog = forwardRef<
             <span>{record.username}</span>
           </Form.Item>
           <Form.Item label="退款金额">
-            <span>¥{record.refundAmount.toFixed(2)}</span>
+            <span>¥{fenToYuan(record.refundAmount)}</span>
           </Form.Item>
           <Form.Item label="审核结果">
             <Tag color={approved ? "success" : "error"}>

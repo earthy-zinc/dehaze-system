@@ -4,10 +4,10 @@ import { Button } from "@taroify/core";
 import Taro from "@tarojs/taro";
 
 import ImmersiveLayout from "@/layout/immersive";
-import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
-import type { EvaluationResultVO, AlgorithmMonitorVO } from "dehaze-sdk-js";
+import { ModelAPI } from "dehaze-sdk-js";
+import type { EvaluationResultVO } from "dehaze-sdk-js";
 import CompareToolbar from "@/components/compare/CompareToolbar";
-import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
+import ModelInfoCard from "@/components/compare/ModelInfoCard";
 import { loadCompareContext } from "@/components/compare/types";
 import "./index.less";
 
@@ -56,31 +56,15 @@ const MetricsPage: React.FC = () => {
   const [evaluation, setEvaluation] = useState<EvaluationResultVO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [monitorData, setMonitorData] = useState<AlgorithmMonitorVO | null>(
-    null
-  );
-  const [monitorLoading, setMonitorLoading] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportDownloading, setReportDownloading] = useState(false);
 
-  const { algorithm, result: prediction, originImage } = ctx;
+  const { model, result: prediction, originImage } = ctx;
   const cleanUrl = originImage?.cleanUrl;
-
-  // 加载算法监控数据
-  useEffect(() => {
-    if (!algorithm?.id) return;
-    setMonitorLoading(true);
-    AlgorithmAPI.getMonitorData(algorithm.id)
-      .then(setMonitorData)
-      .catch(() => {
-        // 忽略错误
-      })
-      .finally(() => setMonitorLoading(false));
-  }, [algorithm?.id]);
 
   // 执行评估（GT 必须是 clean 图，不能用 hazy 原图）
   const fetchEvaluation = useCallback(async () => {
-    if (!algorithm || !prediction?.resultUrl) {
+    if (!model || !prediction?.resultUrl) {
       setLoading(false);
       return;
     }
@@ -96,7 +80,7 @@ const MetricsPage: React.FC = () => {
       setError("");
 
       const res = await ModelAPI.evaluateAndWait({
-        algorithmId: algorithm.id,
+        modelId: model.modelId,
         predUrl: prediction.resultUrl,
         gtUrl: cleanUrl,
       });
@@ -111,7 +95,7 @@ const MetricsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [algorithm, prediction, cleanUrl]);
+  }, [model, prediction, cleanUrl]);
 
   useEffect(() => {
     fetchEvaluation();
@@ -156,7 +140,9 @@ const MetricsPage: React.FC = () => {
     }
     setReportLoading(true);
     try {
-      const res = await ModelAPI.generateReport({ logId: 0, format: "pdf" });
+      const res = await ModelAPI.generateReport({
+        logId: prediction.taskId ?? 0,
+      });
       const taskId = res.taskId;
       if (!taskId) throw new Error("未返回任务ID");
       while (true) {
@@ -167,21 +153,37 @@ const MetricsPage: React.FC = () => {
             setReportLoading(false);
             setReportDownloading(true);
             try {
-              const filePath = await Taro.downloadFile({ url: statusRes.downloadUrl });
+              const filePath = await Taro.downloadFile({
+                url: statusRes.downloadUrl,
+              });
               if (filePath.tempFilePath) {
-                await Taro.openDocument({ filePath: filePath.tempFilePath, showMenu: true });
+                await Taro.openDocument({
+                  filePath: filePath.tempFilePath,
+                  showMenu: true,
+                });
               }
-            } catch { Taro.showToast({ title: "打开报告失败", icon: "none" }); }
-            finally { setReportDownloading(false); }
-          } else { throw new Error("报告生成但无下载链接"); }
+            } catch {
+              Taro.showToast({ title: "打开报告失败", icon: "none" });
+            } finally {
+              setReportDownloading(false);
+            }
+          } else {
+            throw new Error("报告生成但无下载链接");
+          }
           break;
         }
-        if (status === 3) throw new Error(statusRes.errorMessage || "报告生成失败");
+        if (status === 3)
+          throw new Error(statusRes.errorMessage || "报告生成失败");
         await new Promise((r) => setTimeout(r, 2000));
       }
     } catch (err: unknown) {
-      Taro.showToast({ title: err instanceof Error ? err.message : "报告生成失败", icon: "none" });
-    } finally { setReportLoading(false); }
+      Taro.showToast({
+        title: err instanceof Error ? err.message : "报告生成失败",
+        icon: "none",
+      });
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   const metrics = evaluation?.metrics || {};
@@ -194,69 +196,17 @@ const MetricsPage: React.FC = () => {
         <CompareToolbar
           currentMode="metrics"
           resultUrl={prediction?.resultUrl}
-          resultId={prediction?.logId}
+          resultId={prediction?.taskId}
         />
       }
     >
       <ScrollView className="metrics-content" scrollY>
-        {/* 算法信息 + 性能数据（使用统一组件，含评估耗时） */}
-        <AlgorithmInfoCard
-          algorithm={algorithm}
+        {/* 模型信息 + 性能数据（使用统一组件，含评估耗时） */}
+        <ModelInfoCard
+          model={model}
           result={prediction}
           evaluationTime={evaluation?.time}
         />
-
-        {/* 算法运行监控 */}
-        {algorithm && (
-          <View className="info-card">
-            <View className="card-title">
-              <Text>运行监控</Text>
-            </View>
-            {monitorLoading ? (
-              <View className="loading-state">
-                <View className="loading-spinner" />
-                <Text>加载中...</Text>
-              </View>
-            ) : monitorData ? (
-              <View className="metrics-list">
-                <View className="metric-item">
-                  <View className="metric-info">
-                    <Text className="metric-label">今日调用</Text>
-                  </View>
-                  <Text className="metric-value">
-                    {monitorData.todayCallCount}
-                  </Text>
-                </View>
-                <View className="metric-item">
-                  <View className="metric-info">
-                    <Text className="metric-label">总调用</Text>
-                  </View>
-                  <Text className="metric-value">{monitorData.callCount}</Text>
-                </View>
-                <View className="metric-item">
-                  <View className="metric-info">
-                    <Text className="metric-label">平均耗时</Text>
-                  </View>
-                  <Text className="metric-value">
-                    {(monitorData.avgTime / 1000).toFixed(1)}s
-                  </Text>
-                </View>
-                <View className="metric-item">
-                  <View className="metric-info">
-                    <Text className="metric-label">成功率</Text>
-                  </View>
-                  <Text className="metric-value">
-                    {(monitorData.successRate * 100).toFixed(1)}%
-                  </Text>
-                </View>
-              </View>
-            ) : (
-              <View className="empty-metrics">
-                <Text>暂无监控数据</Text>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* 评估指标 */}
         <View className="info-card">

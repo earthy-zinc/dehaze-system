@@ -13,9 +13,7 @@ class RoleService {
 
   /// 获取角色列表
   Future<List<Role>> getList() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      ApiConstants.roles,
-    );
+    final response = await _dio.get<Map<String, dynamic>>(ApiConstants.roles);
     final list = response.data!['data'] as List<dynamic>? ?? [];
     return list.map((e) => Role.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -27,14 +25,12 @@ class RoleService {
       queryParameters: query.toQuery(),
     );
     final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>?)
+    final list =
+        (data['list'] as List<dynamic>?)
             ?.map((e) => RolePageVO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
-    return PageResult(
-      list: list,
-      total: (data['total'] as num?)?.toInt() ?? 0,
-    );
+    return PageResult(list: list, total: (data['total'] as num?)?.toInt() ?? 0);
   }
 
   /// 获取角色下拉选项

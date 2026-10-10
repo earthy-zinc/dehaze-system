@@ -37,13 +37,13 @@ Map<String, dynamic> _$MessageTemplateVOToJson(MessageTemplateVO instance) =>
       'title': instance.title,
       'content': instance.content,
       'type': instance.type,
-      if (instance.typeName case final value?) 'typeName': value,
-      if (instance.variables case final value?) 'variables': value,
+      'typeName': ?instance.typeName,
+      'variables': ?instance.variables,
       'status': instance.status,
-      if (instance.statusName case final value?) 'statusName': value,
-      if (instance.description case final value?) 'description': value,
+      'statusName': ?instance.statusName,
+      'description': ?instance.description,
       'createTime': instance.createTime,
-      if (instance.updateTime case final value?) 'updateTime': value,
+      'updateTime': ?instance.updateTime,
     };
 
 MessageTemplateQuery _$MessageTemplateQueryFromJson(
@@ -65,10 +65,10 @@ Map<String, dynamic> _$MessageTemplateQueryToJson(
 ) => <String, dynamic>{
   'pageNum': instance.pageNum,
   'pageSize': instance.pageSize,
-  if (instance.code case final value?) 'code': value,
-  if (instance.name case final value?) 'name': value,
-  if (instance.type case final value?) 'type': value,
-  if (instance.status case final value?) 'status': value,
+  'code': ?instance.code,
+  'name': ?instance.name,
+  'type': ?instance.type,
+  'status': ?instance.status,
 };
 
 MessageTemplateForm _$MessageTemplateFormFromJson(Map<String, dynamic> json) =>
@@ -93,13 +93,13 @@ MessageTemplateForm _$MessageTemplateFormFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$MessageTemplateFormToJson(
   MessageTemplateForm instance,
 ) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
+  'id': ?instance.id,
   'code': instance.code,
   'name': instance.name,
   'title': instance.title,
   'content': instance.content,
   'type': instance.type,
-  if (instance.variables case final value?) 'variables': value,
+  'variables': ?instance.variables,
   'status': instance.status,
-  if (instance.description case final value?) 'description': value,
+  'description': ?instance.description,
 };

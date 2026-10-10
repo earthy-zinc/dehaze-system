@@ -48,10 +48,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
         pageNum: 1,
         pageSize: 20,
       );
-      final ratingResult = await service.getMyRatings(
-        pageNum: 1,
-        pageSize: 20,
-      );
+      final ratingResult = await service.getMyRatings(pageNum: 1, pageSize: 20);
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -86,10 +83,9 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
           children: [
             Text(
               '提交反馈',
-              style: Theme.of(ctx)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(
+                ctx,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -129,7 +125,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
       final service = ref.read(feedbackServiceProvider);
       await service.createFeedback(
         FeedbackCreateForm(
-          type: FeedbackType.suggestion.value,
+          feedbackType: FeedbackType.suggestion,
           title: titleCtl.text.trim(),
           content: contentCtl.text.trim(),
         ),
@@ -159,13 +155,13 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
             children: [
               Text(
                 fb.title,
-                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  ctx,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
-              _detailRow('类型', fb.typeName ?? fb.type),
-              _detailRow('状态', fb.statusName ?? fb.status),
+              _detailRow('类型', fb.feedbackType.displayName),
+              _detailRow('状态', fb.status.displayName),
               _detailRow('提交时间', fb.createTime),
               if (fb.updateTime != null) _detailRow('更新时间', fb.updateTime!),
             ],
@@ -186,8 +182,8 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(child: Text(value)),
@@ -218,14 +214,11 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildFeedbackList(theme),
-                    _buildRatingList(theme),
-                  ],
-                ),
+          ? _buildError(theme)
+          : TabBarView(
+              controller: _tabController,
+              children: [_buildFeedbackList(theme), _buildRatingList(theme)],
+            ),
     );
   }
 
@@ -243,7 +236,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
           child: ListTile(
             title: Text(fb.title),
             subtitle: Text(
-              '${fb.typeName ?? fb.type}  ·  ${fb.statusName ?? fb.status}  ·  ${fb.createTime}',
+              '${fb.feedbackType.displayName}  ·  ${fb.status.displayName}  ·  ${fb.createTime}',
             ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _showFeedbackDetail(fb),
@@ -273,7 +266,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
                   children: [
                     Expanded(
                       child: Text(
-                        r.algorithmName,
+                        r.modelName,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
@@ -294,10 +287,7 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
                 ),
                 if (r.comment != null && r.comment!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    r.comment!,
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text(r.comment!, style: theme.textTheme.bodyMedium),
                 ],
                 const SizedBox(height: 8),
                 Text(
@@ -315,39 +305,39 @@ class _FeedbackPageState extends ConsumerState<FeedbackPage>
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(
-              _error!,
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(
+          _error!,
+          style: theme.textTheme.bodyMedium,
+          textAlign: TextAlign.center,
         ),
-      );
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme, String message) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.feedback_outlined,
-              size: 64,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.feedback_outlined,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          message,
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }

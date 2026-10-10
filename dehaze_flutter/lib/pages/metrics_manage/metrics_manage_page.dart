@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_result.dart';
 import '../../models/evaluation_model.dart';
-import '../../models/prediction_model.dart';
+import '../../models/image_task_model.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
@@ -92,85 +92,86 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
   }
 
   Widget _buildHeader(ThemeData theme) => Container(
-        padding: ResponsiveUtils.getResponsivePadding(context),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          border: Border(
-            bottom: BorderSide(color: theme.dividerColor, width: 1),
+    padding: ResponsiveUtils.getResponsivePadding(context),
+    decoration: BoxDecoration(
+      color: theme.colorScheme.surface,
+      border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.analytics_outlined, color: AppTheme.indigo, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              '指标管理',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Spacer(),
+            if (_selectedIds.isNotEmpty)
+              TextButton.icon(
+                onPressed: _clearSelection,
+                icon: const Icon(Icons.clear_all, size: 18),
+                label: const Text('清除选择'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '查看评估指标历史记录，支持筛选和对比',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.analytics_outlined,
-                    color: AppTheme.indigo, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  '指标管理',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                if (_selectedIds.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: _clearSelection,
-                    icon: const Icon(Icons.clear_all, size: 18),
-                    label: const Text('清除选择'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '查看评估指标历史记录，支持筛选和对比',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildFilterBar(ThemeData theme) => Container(
-        padding: ResponsiveUtils.getResponsivePadding(context),
-        color: theme.colorScheme.surface,
-        child: Row(
-          children: [
-            Text('指标筛选:',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                )),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('全部'),
-                      selected: _filterMetric == null,
-                      onSelected: (_) =>
-                          setState(() => _filterMetric = null),
-                    ),
-                    const SizedBox(width: 8),
-                    ..._metricNames.map((name) => Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(name),
-                            selected: _filterMetric == name,
-                            onSelected: (selected) => setState(() =>
-                                _filterMetric = selected ? name : null),
-                          ),
-                        )),
-                  ],
-                ),
-              ),
-            ),
-          ],
+    padding: ResponsiveUtils.getResponsivePadding(context),
+    color: theme.colorScheme.surface,
+    child: Row(
+      children: [
+        Text(
+          '指标筛选:',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      );
+        const SizedBox(width: 12),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('全部'),
+                  selected: _filterMetric == null,
+                  onSelected: (_) => setState(() => _filterMetric = null),
+                ),
+                const SizedBox(width: 8),
+                ..._metricNames.map(
+                  (name) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(name),
+                      selected: _filterMetric == name,
+                      onSelected: (selected) => setState(
+                        () => _filterMetric = selected ? name : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildContent(ThemeData theme) {
     if (_isLoading) {
@@ -185,7 +186,11 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: theme.colorScheme.error,
+              ),
               const SizedBox(height: 16),
               Text('加载失败', style: theme.textTheme.titleLarge),
               const SizedBox(height: 8),
@@ -220,9 +225,7 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
     final filtered = _filteredLogs;
 
     if (filtered.isEmpty) {
-      return const SliverFillRemaining(
-        child: Center(child: Text('无匹配的评估记录')),
-      );
+      return const SliverFillRemaining(child: Center(child: Text('无匹配的评估记录')));
     }
 
     return SliverToBoxAdapter(
@@ -280,8 +283,11 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
                     ),
                   ),
                   if (isSelected)
-                    Icon(Icons.check_circle,
-                        color: AppTheme.brandBlue, size: 20),
+                    Icon(
+                      Icons.check_circle,
+                      color: AppTheme.brandBlue,
+                      size: 20,
+                    ),
                 ],
               ),
               if (log.metrics != null && log.metrics!.isNotEmpty) ...[
@@ -291,7 +297,7 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
               if (log.time != null) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '耗时: ${(log.time! / 1000).toStringAsFixed(1)}s',
+                  '耗时: ${log.time}s',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -317,6 +323,7 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
     final (color, text) = switch (status) {
       TaskStatus.completed => (AppTheme.techGreen, '完成'),
       TaskStatus.failed => (AppTheme.errorColor, '失败'),
+      TaskStatus.canceled => (AppTheme.errorColor, '已取消'),
       TaskStatus.processing => (AppTheme.warningColor, '处理中'),
     };
 
@@ -345,7 +352,9 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
       spacing: 16,
       runSpacing: 8,
       children: items.map((item) {
-        final color = item.higherIsBetter ? AppTheme.techGreen : AppTheme.errorColor;
+        final color = item.higherIsBetter
+            ? AppTheme.techGreen
+            : AppTheme.errorColor;
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -407,43 +416,52 @@ class _MetricsManagePageState extends ConsumerState<MetricsManagePage> {
             child: DataTable(
               columns: [
                 const DataColumn(label: Text('指标')),
-                ...selectedLogs.map((log) => DataColumn(
-                      label: Text('#${log.logId}',
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                    )),
+                ...selectedLogs.map(
+                  (log) => DataColumn(
+                    label: Text(
+                      '#${log.logId}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
               ],
               rows: metricKeys.map((key) {
-                final metricItem = EvaluationMetrics.fromMap(
-                  {key.toLowerCase(): 0.0},
-                ).toList().firstWhere(
-                  (m) => m.name == key,
-                  orElse: () => const MetricItem(
-                    name: '',
-                    value: null,
-                    unit: '',
-                    higherIsBetter: true,
-                    description: '',
-                  ),
-                );
-
-                return DataRow(cells: [
-                  DataCell(Text(key)),
-                  ...selectedLogs.map((log) {
-                    final value = log.metrics![key.toLowerCase()];
-                    final color = metricItem.higherIsBetter
-                        ? AppTheme.techGreen
-                        : AppTheme.errorColor;
-                    return DataCell(Text(
-                      value != null
-                          ? value.toStringAsFixed(value < 1 ? 4 : 2)
-                          : '-',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w500,
-                        color: value != null ? color : null,
+                final metricItem =
+                    EvaluationMetrics.fromMap({
+                      key.toLowerCase(): 0.0,
+                    }).toList().firstWhere(
+                      (m) => m.name == key,
+                      orElse: () => const MetricItem(
+                        name: '',
+                        value: null,
+                        unit: '',
+                        higherIsBetter: true,
+                        description: '',
                       ),
-                    ));
-                  }),
-                ]);
+                    );
+
+                return DataRow(
+                  cells: [
+                    DataCell(Text(key)),
+                    ...selectedLogs.map((log) {
+                      final value = log.metrics![key.toLowerCase()];
+                      final color = metricItem.higherIsBetter
+                          ? AppTheme.techGreen
+                          : AppTheme.errorColor;
+                      return DataCell(
+                        Text(
+                          value != null
+                              ? value.toStringAsFixed(value < 1 ? 4 : 2)
+                              : '-',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            color: value != null ? color : null,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                );
               }).toList(),
             ),
           ),

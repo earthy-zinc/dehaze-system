@@ -1,5 +1,6 @@
 package com.pei.dehaze.ui.home;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,6 +17,9 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentHomeBinding;
 import com.pei.dehaze.ui.dashboard.adapter.StatAdapter;
+import com.pei.dehaze.ui.batch.BatchActivity;
+import com.pei.dehaze.ui.input.InputHistoryActivity;
+import com.pei.dehaze.ui.personal.FavoritesActivity;
 import com.pei.dehaze.utils.ToastUtils;
 
 import java.util.ArrayList;
@@ -57,47 +61,30 @@ public class HomeFragment extends Fragment {
     }
 
     private void bindQuickEntries() {
-        // 快捷入口：处理历史 -> 我的Tab的处理历史（暂无独立Activity，跳转 profileFragment 提示）
         View historyEntry = binding.quickEntries.getChildAt(0);
-        historyEntry.setOnClickListener(v -> {
-            NavController navController = getNavController();
-            // 处理历史入口：跳转到 profileFragment（后续 dev-personal 会细化到具体子页）
-            navController.navigate(R.id.profileFragment);
-        });
+        historyEntry.setOnClickListener(v -> startActivity(new Intent(getActivity(), InputHistoryActivity.class)));
 
-        // 快捷入口：我的收藏
         View favoriteEntry = binding.quickEntries.getChildAt(1);
-        favoriteEntry.setOnClickListener(v -> {
-            NavController navController = getNavController();
-            navController.navigate(R.id.profileFragment);
-        });
+        favoriteEntry.setOnClickListener(v -> startActivity(new Intent(getActivity(), FavoritesActivity.class)));
 
-        // 快捷入口：批量处理 -> BatchActivity
         View batchEntry = binding.quickEntries.getChildAt(2);
-        batchEntry.setOnClickListener(v -> {
-            NavController navController = getNavController();
-            navController.navigate(R.id.dehazeFragment);
-        });
+        batchEntry.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), BatchActivity.class)));
 
-        // 快捷入口：算法选择 -> 算法列表
-        View algorithmEntry = binding.quickEntries.getChildAt(3);
-        algorithmEntry.setOnClickListener(v -> {
-            NavController navController = getNavController();
-            navController.navigate(R.id.algorithmFragment);
-        });
+        View evaluationEntry = binding.quickEntries.getChildAt(3);
+        evaluationEntry.setOnClickListener(v -> getNavController().navigate(R.id.action_global_evaluationActivity));
     }
 
     private void bindFeatureCards() {
         // 特色能力区块在 layout 中是一个垂直 LinearLayout，包含 3 个 MaterialCardView
         // 需要找到该 LinearLayout（它是特色能力标题之后、底部间距之前的那个）
-        // 特色能力区：智能算法推荐 -> 算法列表
         View featureContainer = binding.getRoot().findViewWithTag("featureCards");
         if (featureContainer instanceof ViewGroup) {
             ViewGroup fc = (ViewGroup) featureContainer;
             if (fc.getChildCount() >= 3) {
-                // 智能算法推荐
+                // 智能模型推荐：模型选择内联在去雾流程中
                 fc.getChildAt(0).setOnClickListener(v -> {
-                    getNavController().navigate(R.id.algorithmFragment);
+                    getNavController().navigate(R.id.dehazeFragment);
                 });
                 // 多模式效果对比 -> CompareActivity
                 fc.getChildAt(1).setOnClickListener(v -> {
@@ -151,9 +138,8 @@ public class HomeFragment extends Fragment {
                 (int) stats.getProcessCount(), "累计去雾处理次数"));
         items.add(new StatAdapter.StatItem(STAT_IDS[1], "我的收藏",
                 (int) stats.getFavoriteCount(), "收藏的处理结果"));
-        // 算法数量：暂无直接接口，展示为占位，后续 dev-tabs 对接算法统计接口
-        items.add(new StatAdapter.StatItem(STAT_IDS[2], "可用算法",
-                0, "已注册算法数量"));
+        items.add(new StatAdapter.StatItem(STAT_IDS[2], "可用模型",
+                (int) stats.getModelCount(), "可用图像模型数量"));
         // 评分：暂无直接接口
         items.add(new StatAdapter.StatItem(STAT_IDS[3], "用户评分",
                 0, "系统综合评分"));

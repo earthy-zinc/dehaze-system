@@ -100,11 +100,11 @@
     </FrameLayout>
 
     <TextView
-        android:id="@+id/tv_algorithm_info"
+        android:id="@+id/tv_model_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="算法信息：等待处理"
+        android:text="处理信息：等待处理"
         android:textSize="12sp" />
 
 </LinearLayout>

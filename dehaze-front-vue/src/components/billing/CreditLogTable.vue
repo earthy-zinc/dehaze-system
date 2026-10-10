@@ -98,8 +98,13 @@ watch(
       </el-table-column>
       <el-table-column label="变动金额" width="110" align="center">
         <template #default="{ row }">
-          <span :class="row.amount >= 0 ? 'text-[#67c23a]' : 'text-[#f56c6c]'">
-            {{ row.amount >= 0 ? "+" : "" }}{{ row.amount }}
+          <!-- row.amount 为后端 Decimal 字符串，符号判断前需 Number() 转换；展示保持原串 -->
+          <span
+            :class="
+              Number(row.amount) >= 0 ? 'text-[#67c23a]' : 'text-[#f56c6c]'
+            "
+          >
+            {{ Number(row.amount) >= 0 ? "+" : "" }}{{ row.amount }}
           </span>
         </template>
       </el-table-column>

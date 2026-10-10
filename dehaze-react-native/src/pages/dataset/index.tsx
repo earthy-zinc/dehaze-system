@@ -8,7 +8,8 @@ import DatasetListSection from './components/DatasetListSection';
 import type { DatasetTreeNode } from './types/dataset';
 
 const DatasetScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<ToolsStackParamList, 'Dataset'>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<ToolsStackParamList, 'Dataset'>>();
   const [searchValue, setSearchValue] = useState('');
 
   const handleDatasetPress = useCallback(
@@ -24,7 +25,11 @@ const DatasetScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="数据集管理" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="数据集管理"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.content}>
         <DatasetListSection
           onDatasetPress={handleDatasetPress}

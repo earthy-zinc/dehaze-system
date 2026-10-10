@@ -18,10 +18,10 @@ const ToolCard: React.FC<ToolCardProps> = ({
   onPress,
 }) => {
   return (
-    <Card 
-      onPress={onPress} 
-      padding={24} 
-      margin={0} 
+    <Card
+      onPress={onPress}
+      padding={24}
+      margin={0}
       borderRadius={20}
       style={styles.card}
     >

@@ -1,7 +1,7 @@
 /**
  * 去雾处理模块类型定义
  *
- * 任务状态、参数定义、批量任务等。
+ * 任务状态、图像编辑参数、处理结果等。
  */
 
 /** 处理任务状态 */
@@ -21,8 +21,8 @@ export interface TaskProgress {
   error?: string;
 }
 
-/** 通用算法参数 */
-export interface CommonAlgorithmParams {
+/** 图像编辑参数（去雾强度/饱和度/对比度/锐化） */
+export interface ImageEditParams {
   /** 去雾强度 0-100 */
   strength?: number;
   /** 色彩饱和度 0-200 */
@@ -35,11 +35,12 @@ export interface CommonAlgorithmParams {
 
 /** 单张处理结果 */
 export interface ProcessingResult {
-  logId?: number;
+  /** 图像任务 ID */
+  taskId?: number;
   resultUrl: string;
   resultThumbnailUrl?: string;
-  /** 处理耗时（ms） */
+  /** 处理耗时（秒） */
   time: number;
-  /** 是否命中缓存 */
-  fromCache?: boolean;
+  /** 预估消耗积分（提交时返回） */
+  estimatedCredits?: number;
 }

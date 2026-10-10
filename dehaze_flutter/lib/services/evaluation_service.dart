@@ -4,7 +4,7 @@ import '../core/constants/api_constants.dart';
 import '../core/network/page_result.dart';
 import '../core/network/task_poller.dart';
 import '../models/evaluation_model.dart';
-import '../models/prediction_model.dart';
+import '../models/image_task_model.dart';
 
 /// 评估服务
 ///
@@ -71,10 +71,7 @@ class EvaluationService {
   }) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.evaluationLogs,
-      queryParameters: {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-      },
+      queryParameters: {'pageNum': pageNum, 'pageSize': pageSize},
     );
     final data = response.data!['data'] as Map<String, dynamic>;
     final list = (data['list'] as List<dynamic>? ?? [])
@@ -90,14 +87,14 @@ class EvaluationService {
   Future<PageResult<EvalMetricsVO>> getEvalMetrics({
     int pageNum = 1,
     int pageSize = 10,
-    int? algorithmId,
+    String? modelId,
   }) async {
     final queryParams = <String, dynamic>{
       'pageNum': pageNum,
       'pageSize': pageSize,
     };
-    if (algorithmId != null) {
-      queryParams['algorithmId'] = algorithmId;
+    if (modelId != null) {
+      queryParams['modelId'] = modelId;
     }
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.evaluationMetrics,

@@ -132,7 +132,7 @@ public class PackageActivity extends BaseActivity {
             holder.name.setText(item.getName() != null ? item.getName() : "未命名套餐");
 
             if (item.getSalePrice() != null) {
-                holder.price.setText("¥" + String.format("%.2f", item.getSalePrice()));
+                holder.price.setText("¥" + String.format("%.2f", item.getSalePrice() / 100.0));
             } else {
                 holder.price.setText("价格待定");
             }
@@ -140,7 +140,7 @@ public class PackageActivity extends BaseActivity {
             // 原价（划线展示）
             if (item.getOriginalPrice() != null && item.getOriginalPrice() > 0
                     && !item.getOriginalPrice().equals(item.getSalePrice())) {
-                holder.originalPrice.setText("¥" + String.format("%.2f", item.getOriginalPrice()));
+                holder.originalPrice.setText("¥" + String.format("%.2f", item.getOriginalPrice() / 100.0));
                 holder.originalPrice.setPaintFlags(
                         holder.originalPrice.getPaintFlags() | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
                 holder.originalPrice.setVisibility(View.VISIBLE);

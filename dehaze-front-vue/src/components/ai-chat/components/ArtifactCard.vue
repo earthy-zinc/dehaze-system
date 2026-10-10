@@ -1,4 +1,4 @@
-<!-- 产物卡片：图片缩略图/指标报告/算法推荐/文件引用（纯展示，props 进、open 事件出） -->
+<!-- 产物卡片：图片缩略图/指标报告/模型推荐/文件引用（纯展示，props 进、open 事件出） -->
 <script lang="ts" setup>
 import { computed } from "vue";
 import type { ChatArtifactVM } from "../types";
@@ -20,7 +20,7 @@ const typeMeta = computed(() => {
     case "metric_report":
       return { label: "指标报告" };
     case "algorithm_recommend":
-      return { label: "算法推荐" };
+      return { label: "模型推荐" };
     case "file_ref":
       return { label: "文件引用" };
     default:

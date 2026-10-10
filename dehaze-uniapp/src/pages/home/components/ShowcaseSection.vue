@@ -24,7 +24,7 @@ import SectionHeader from "@/components/common/SectionHeader.vue";
 
 /** 数据集静态文件服务地址（来自 .env 的 VITE_DATASET_HOST） */
 const DATASET_BASE_URL =
-  import.meta.env.VITE_DATASET_HOST || "http://127.0.0.1:9000";
+  import.meta.env.VITE_DATASET_HOST || "http://127.0.0.1:19000";
 
 // 使用真实数据集图片（NH-HAZE-2023 样例）
 const hazyUrl = `${DATASET_BASE_URL}/datasets/NH-HAZE-2023/hazy/001.JPG`;

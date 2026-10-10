@@ -1,0 +1,11 @@
+node_modules
+android
+ios
+.bundle
+dist
+build
+coverage
+*.md
+*.sh
+pnpm-lock.yaml
+yarn.lock

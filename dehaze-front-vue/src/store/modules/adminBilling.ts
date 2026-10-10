@@ -188,8 +188,9 @@ export const useAdminBillingStore = defineStore("adminBilling", () => {
     if (!current) return null;
 
     const latest = (versionsPage.list ?? [])[0];
+    // 出参档位单价为后端 Decimal 字符串，求和前必须 Number() 转换（否则字符串拼接）
     const oldPrice = latest?.details?.length
-      ? latest.details.reduce((sum, d) => sum + d.unitPrice, 0) /
+      ? latest.details.reduce((sum, d) => sum + Number(d.unitPrice), 0) /
         latest.details.length
       : 0;
     const newPrice = form.details?.length

@@ -18,8 +18,8 @@
     <view class="card-content">
       <text class="card-name">{{ displayName }}</text>
       <text class="card-time">{{ formatTimestamp(record.createTime) }}</text>
-      <text v-if="record.algorithmName" class="card-algo">{{
-        record.algorithmName
+      <text v-if="record.modelName" class="card-model">{{
+        record.modelName
       }}</text>
     </view>
 
@@ -138,7 +138,7 @@ const handleLoad = () => {
   margin-bottom: 4rpx;
 }
 
-.card-algo {
+.card-model {
   font-size: 22rpx;
   color: $color-primary;
 }

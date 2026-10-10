@@ -69,13 +69,13 @@ class MessageTemplateQuery {
 
   /// 转为 queryParameters 格式（仅非 null 字段）
   Map<String, dynamic> toQuery() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (code != null) 'code': code,
-        if (name != null) 'name': name,
-        if (type != null) 'type': type,
-        if (status != null) 'status': status,
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (code != null) 'code': code,
+    if (name != null) 'name': name,
+    if (type != null) 'type': type,
+    if (status != null) 'status': status,
+  };
 }
 
 // ==================== 消息模板表单 ====================

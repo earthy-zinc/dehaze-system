@@ -21,7 +21,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [conversation: ConversationVO];
-  create: [];
   edit: [conversation: ConversationVO];
   delete: [conversation: ConversationVO];
   batch: [ids: number[], action: BatchAction];
@@ -34,6 +33,29 @@ const filterStatus = ref<ConversationFilterStatus>(0);
 const checkedIds = ref<number[]>([]);
 
 const isSelf = computed(() => props.scope === "self");
+
+/**
+ * 列表按时间分组（今天 / 7 天内 / 更早）：会长列表先定位时间段再找会话，
+ * 免去逐条扫读（设计评审 #2）；无 lastMessageAt 的会话归入「更早」。
+ */
+const groupedConversations = computed(() => {
+  const groups = [
+    { label: "今天", items: [] as ConversationVO[] },
+    { label: "7 天内", items: [] as ConversationVO[] },
+    { label: "更早", items: [] as ConversationVO[] },
+  ];
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  for (const conversation of props.conversations) {
+    const time = conversation.lastMessageAt
+      ? new Date(conversation.lastMessageAt).getTime()
+      : 0;
+    const index =
+      !time || time < sevenDaysAgo ? 2 : time >= startOfToday ? 0 : 1;
+    groups[index]!.items.push(conversation);
+  }
+  return groups.filter((group) => group.items.length > 0);
+});
 
 const filterOptions: Array<{ label: string; value: ConversationFilterStatus }> =
   [
@@ -91,13 +113,6 @@ function formatTime(time?: string) {
           :value="option.value"
         />
       </el-select>
-      <el-button
-        v-if="isSelf && !selectionMode"
-        type="primary"
-        @click="emit('create')"
-      >
-        新会话
-      </el-button>
     </div>
 
     <div v-if="isSelf && selectionMode" class="conversation-list__batch">
@@ -120,89 +135,92 @@ function formatTime(time?: string) {
     </div>
 
     <div class="conversation-list__items">
-      <div
-        v-for="conversation in conversations"
-        :key="conversation.id"
-        class="conversation-item"
-        @click="emit('select', conversation)"
-      >
-        <el-checkbox
-          v-if="isSelf && selectionMode"
-          :model-value="checkedIds.includes(conversation.id)"
-          @click.stop
-          @change="
-            (checked: CheckboxValueType) =>
-              toggleChecked(conversation.id, checked === true)
-          "
-        />
-        <div class="conversation-item__main">
-          <div class="conversation-item__title-row">
-            <el-icon
-              v-if="conversation.pinned === 1"
-              class="conversation-item__pin"
-            >
-              <Top />
-            </el-icon>
-            <span class="conversation-item__title">{{
-              conversation.title
-            }}</span>
-            <el-badge
-              v-if="isSelf && (conversation.unreadCount ?? 0) > 0"
-              :value="conversation.unreadCount"
-              :max="99"
-              class="conversation-item__unread"
-            />
-          </div>
-          <div class="conversation-item__meta">
-            <template v-if="isSelf">
-              <span>{{ conversation.messageCount }} 条</span>
-              <span>{{ formatTime(conversation.lastMessageAt) }}</span>
-            </template>
-            <template v-else>
-              <span>{{
-                conversation.userName ?? `用户 ${conversation.userId ?? "-"}`
+      <template v-for="group in groupedConversations" :key="group.label">
+        <div class="conversation-list__group">{{ group.label }}</div>
+        <div
+          v-for="conversation in group.items"
+          :key="conversation.id"
+          class="conversation-item"
+          @click="emit('select', conversation)"
+        >
+          <el-checkbox
+            v-if="isSelf && selectionMode"
+            :model-value="checkedIds.includes(conversation.id)"
+            @click.stop
+            @change="
+              (checked: CheckboxValueType) =>
+                toggleChecked(conversation.id, checked === true)
+            "
+          />
+          <div class="conversation-item__main">
+            <div class="conversation-item__title-row">
+              <el-icon
+                v-if="conversation.pinned === 1"
+                class="conversation-item__pin"
+              >
+                <Top />
+              </el-icon>
+              <span class="conversation-item__title">{{
+                conversation.title
               }}</span>
-              <span>{{ conversation.model }}</span>
-              <span>{{ conversation.messageCount }} 条</span>
-              <span v-if="conversation.tokenConsumed != null">
-                Token {{ conversation.tokenConsumed }}
-              </span>
-              <span v-if="conversation.creditsConsumed != null">
-                积分 {{ conversation.creditsConsumed }}
-              </span>
-            </template>
+              <el-badge
+                v-if="isSelf && (conversation.unreadCount ?? 0) > 0"
+                :value="conversation.unreadCount"
+                :max="99"
+                class="conversation-item__unread"
+              />
+            </div>
+            <div class="conversation-item__meta">
+              <template v-if="isSelf">
+                <span>{{ conversation.messageCount }} 条</span>
+                <span>{{ formatTime(conversation.lastMessageAt) }}</span>
+              </template>
+              <template v-else>
+                <span>{{
+                  conversation.userName ?? `用户 ${conversation.userId ?? "-"}`
+                }}</span>
+                <span>{{ conversation.model }}</span>
+                <span>{{ conversation.messageCount }} 条</span>
+                <span v-if="conversation.tokenConsumed != null">
+                  Token {{ conversation.tokenConsumed }}
+                </span>
+                <span v-if="conversation.creditsConsumed != null">
+                  积分 {{ conversation.creditsConsumed }}
+                </span>
+              </template>
+            </div>
+            <div
+              v-if="conversation.anomalyLabel"
+              class="conversation-item__anomaly"
+            >
+              <el-tag type="danger" size="small">{{
+                conversation.anomalyLabel
+              }}</el-tag>
+            </div>
           </div>
           <div
-            v-if="conversation.anomalyLabel"
-            class="conversation-item__anomaly"
+            v-if="isSelf && !selectionMode"
+            class="conversation-item__actions"
+            @click.stop
           >
-            <el-tag type="danger" size="small">{{
-              conversation.anomalyLabel
-            }}</el-tag>
+            <el-tooltip content="重命名" placement="top">
+              <el-button link size="small" @click="emit('edit', conversation)">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+            </el-tooltip>
+            <el-tooltip content="删除" placement="top">
+              <el-button
+                link
+                size="small"
+                type="danger"
+                @click="emit('delete', conversation)"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </el-tooltip>
           </div>
         </div>
-        <div
-          v-if="isSelf && !selectionMode"
-          class="conversation-item__actions"
-          @click.stop
-        >
-          <el-tooltip content="重命名" placement="top">
-            <el-button link size="small" @click="emit('edit', conversation)">
-              <el-icon><Edit /></el-icon>
-            </el-button>
-          </el-tooltip>
-          <el-tooltip content="删除" placement="top">
-            <el-button
-              link
-              size="small"
-              type="danger"
-              @click="emit('delete', conversation)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
-      </div>
+      </template>
       <el-empty
         v-if="conversations.length === 0 && !loading"
         description="暂无会话"
@@ -235,6 +253,13 @@ function formatTime(time?: string) {
   &__items {
     flex: 1;
     overflow-y: auto;
+  }
+
+  // 时间分组标题（今天 / 7 天内 / 更早）：弱化字重与色阶，避免与会话标题争夺注意力
+  &__group {
+    padding: 8px 12px 4px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
   }
 }
 

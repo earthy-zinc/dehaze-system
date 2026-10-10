@@ -6,13 +6,18 @@ import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
-import { useAlgorithmStore } from "@/store";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import examples from "@/views/presentation/dehaze/exampleImages";
-import { FileAPI, ImageInputHistoryAPI, ModelAPI } from "dehaze-sdk-js";
+import { groupModelsByTaskTag } from "@/views/presentation/dehaze/modelGroups";
+import {
+  AiBillingAPI,
+  AiImageAPI,
+  AiModelAPI,
+  AiModelVO,
+  FileAPI,
+  ImageInputHistoryAPI,
+} from "dehaze-sdk-js";
 import { UploadFile, UploadUserFile } from "element-plus";
-
-const algorithmStore = useAlgorithmStore();
 
 defineOptions({ name: "PresentationDehaze" });
 const imageShowStore = useImageShowStore();
@@ -23,7 +28,14 @@ const { urls: imgUrls } = toRefs(images.value);
 
 const exampleHazeUrls = computed(() => examples.map((item) => item.haze));
 const cleanUrl = ref("");
-const selectedModel = ref<number>();
+// 图像模型标识（统一模型规范 slug），提交任务与评估/对比页共用
+const selectedModel = ref<string>();
+const modelOptions = ref<AiModelVO[]>([]);
+
+// 分组规则与跨端口径见 modelGroups（与 flutter 同口径，其余端为扁平列表）
+const groupedModelOptions = computed(() =>
+  groupModelsByTaskTag(modelOptions.value)
+);
 
 // 当前激活的页面（单值状态机，替代多个布尔标志）
 type PageName =
@@ -94,15 +106,14 @@ function handleCameraSave(file: File) {
   handleImageUpload(file, "camera");
 }
 
-function handleSelectModel(id: number) {
-  imageShowStore.modelId = id;
+function handleSelectModel(modelId: string) {
+  imageShowStore.modelId = modelId;
 }
 
 function handleImageUpload(file: File, source: InputSource = "upload") {
   lastInputSource = source;
   imageShowStore.loading = true;
-  // 上传文件
-  FileAPI.upload(file, imageShowStore.modelId)
+  FileAPI.upload(file)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
       imageShowStore.setImageUrl(res.url, ImageTypeEnum.HAZE);
@@ -121,19 +132,33 @@ function handleReset() {
   activePage.value = "example";
 }
 
+// 在途图像任务号（提交/轮询回调回填，供取消使用）
+let currentTaskId: number | undefined;
+
+/** 取消后端在途任务（幂等；任务已终态或请求中断时忽略，不阻断交互） */
+async function cancelRunningTask() {
+  if (!currentTaskId) return;
+  try {
+    await AiImageAPI.cancelImageTask(currentTaskId);
+  } catch {}
+}
+
 // 取消处理
-function handleCancelProcess() {
+async function handleCancelProcess() {
   cancelFlag = true;
   processing.value = false;
   stopProgressSimulation();
   progress.value = 0;
   activePage.value = "singleImage";
+  await cancelRunningTask();
   ElMessage.info("已取消处理");
 }
 
 // 当前重试倒计时
 const retryCountdown = ref(0);
 const showRetryPanel = ref(false);
+// 失败原因：优先用后端返回的 errorMessage（引擎/模型类错误不能归因成网络问题）
+const failureMessage = ref("");
 let retryTimer: number | undefined;
 
 // 选择模型后生成对比图（原图 | 去雾图），含5阶段进度显示
@@ -146,13 +171,14 @@ async function handleGenerateImage() {
     ElMessage.error("请先上传图片");
     return;
   }
-  // 检查配额
+  // 积分余额预提示（真实扣减与校验由服务端按张执行）
   try {
-    const quota = await ModelAPI.getQuota();
-    if (quota.remaining === 0) {
+    const balance = await AiBillingAPI.getBalance();
+    // creditsBalance 为后端 Decimal 字符串，比较前需 Number() 转换
+    if (Number(balance.creditsBalance) <= 0) {
       const confirmed = await ElMessageBox.confirm(
-        `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
-        "配额不足",
+        `当前积分余额为 ${balance.creditsBalance}，图像处理按张扣减积分，请及时充值。`,
+        "积分不足",
         {
           confirmButtonText: "去充值",
           cancelButtonText: "取消",
@@ -160,26 +186,24 @@ async function handleGenerateImage() {
         }
       );
       if (confirmed) {
-        // 跳转充值页（如有）或提示联系管理员
         ElMessage.info("请联系管理员充值");
       }
       return;
     }
   } catch (e: any) {
-    ElMessage.warning("无法获取配额信息：" + (e.message || "未知错误"));
+    ElMessage.warning("无法获取积分余额：" + (e.message || "未知错误"));
   }
   // 显示确认对话框
-  const modelOption = algorithmStore.algorithmOptions.find(
-    (m: any) => m.value === selectedModel.value
-  );
-  const modelName = modelOption?.label || `模型ID: ${selectedModel.value}`;
+  const modelName =
+    modelOptions.value.find((m) => m.modelId === selectedModel.value)
+      ?.displayName ?? selectedModel.value;
   const imgUrl = imgUrls.value[0].url;
   const imageName = imgUrl.split("/").pop() || "未命名图片";
   try {
     await ElMessageBox.confirm(
       [
         `图片：${imageName}`,
-        `算法：${modelName}`,
+        `模型：${modelName}`,
         `参数：去雾强度 ${dehazeParams.value.dehazeStrength}% / 色彩饱和度 ${dehazeParams.value.colorSaturation}% / 对比度 ${dehazeParams.value.contrast}% / 锐化 ${dehazeParams.value.sharpen}%`,
         "",
         "确认开始去雾处理？处理期间请勿离开页面。",
@@ -199,6 +223,7 @@ async function handleGenerateImage() {
     return;
   }
   showRetryPanel.value = false;
+  failureMessage.value = "";
   retryCountdown.value = 0;
   const modelId = selectedModel.value;
   cancelFlag = false;
@@ -209,13 +234,25 @@ async function handleGenerateImage() {
   activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
-  ModelAPI.predictAndWait({
-    algorithmId: modelId,
-    imageUrl: imgUrl,
-    params: dehazeParams.value ? JSON.stringify(dehazeParams.value) : undefined,
-  })
+  AiImageAPI.submitAndWait(
+    {
+      model: modelId,
+      imageUrl: imgUrl,
+      params: dehazeParams.value
+        ? JSON.stringify(dehazeParams.value)
+        : undefined,
+    },
+    {
+      onPoll: (_status, taskId) => {
+        currentTaskId = taskId ?? currentTaskId;
+      },
+    }
+  )
     .then(async (res) => {
-      if (cancelFlag) return;
+      if (cancelFlag) {
+        await cancelRunningTask();
+        return;
+      }
       if (res.status === 3) {
         throw new Error(res.errorMessage || "去雾处理失败");
       }
@@ -223,24 +260,24 @@ async function handleGenerateImage() {
       stopProgressSimulation();
       imageShowStore.setImageUrl(imgUrl, ImageTypeEnum.HAZE);
       imageShowStore.setImageUrl(res.resultUrl || "", ImageTypeEnum.PRED);
-      imageShowStore.predLogId = res.logId || 0;
+      imageShowStore.predLogId = res.taskId || 0;
       // 回写云端历史（F-M04-007），失败不阻断处理主流程
       ImageInputHistoryAPI.create({
         originalImageUrl: imgUrl,
         resultImageUrl: res.resultUrl,
-        algorithmId: modelId,
-        algorithmName: modelName,
-        algorithmParams: dehazeParams.value
+        modelId,
+        modelName,
+        modelParams: dehazeParams.value
           ? JSON.stringify(dehazeParams.value)
           : undefined,
-        processingTime: res.time,
+        // res.time 为秒，输入历史 processing_time 列为毫秒
+        processingTime: res.time != null ? res.time * 1000 : undefined,
         status: 1,
         inputSource: lastInputSource,
       }).catch(() => {});
       if (cleanUrl.value) {
         try {
-          const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
-          cleanUrl.value = cleanRes;
+          cleanUrl.value = await handleCleanUrl(cleanUrl.value);
         } catch {}
       }
       progress.value = 100;
@@ -248,6 +285,10 @@ async function handleGenerateImage() {
     })
     .catch((err) => {
       if (cancelFlag) return;
+      failureMessage.value =
+        err instanceof Error && err.message
+          ? err.message
+          : "处理失败，请稍后重试";
       showRetryPanel.value = true;
       retryCountdown.value = 3;
       startRetryCountdown();
@@ -314,7 +355,7 @@ async function handleSaveResult() {
     const file = new File([blob], `dehaze_result_${Date.now()}.jpg`, {
       type: "image/jpeg",
     });
-    await FileAPI.upload(file, selectedModel.value);
+    await FileAPI.upload(file);
     ElMessage.success("结果保存成功");
   } catch (e: any) {
     // axios 类错误（HTTP/业务码）由全局钩子提示，这里只兜底原生 fetch 抛出的本地错误
@@ -335,7 +376,7 @@ interface BatchTask {
   progress: number;
   hazeUrl: string;
   resultUrl: string;
-  logId: number;
+  taskId: number;
   errorMsg: string;
 }
 const batchTasks = ref<BatchTask[]>([]);
@@ -372,7 +413,7 @@ function handleConfirmBatchAdd() {
       progress: 0,
       hazeUrl: "",
       resultUrl: "",
-      logId: 0,
+      taskId: 0,
       errorMsg: "",
     });
   });
@@ -403,10 +444,10 @@ async function handleStartBatch() {
     }, 300);
     try {
       // 先上传原图
-      const uploadRes = await FileAPI.upload(task.file, modelId);
+      const uploadRes = await FileAPI.upload(task.file);
       task.hazeUrl = uploadRes.url;
-      const predRes = await ModelAPI.predictAndWait({
-        algorithmId: modelId,
+      const predRes = await AiImageAPI.submitAndWait({
+        model: modelId,
         imageUrl: task.hazeUrl,
         params: dehazeParams.value
           ? JSON.stringify(dehazeParams.value)
@@ -416,7 +457,7 @@ async function handleStartBatch() {
         throw new Error(predRes.errorMessage || "处理失败");
       }
       task.resultUrl = predRes.resultUrl || "";
-      task.logId = predRes.logId || 0;
+      task.taskId = predRes.taskId || 0;
       task.progress = 100;
       task.status = "success";
     } catch (e: any) {
@@ -505,9 +546,25 @@ function handleExampleImageClick(url: string) {
   activePage.value = "singleImage";
 }
 
-// 获取模型选项列表
-async function getAlgorithmList() {
-  await algorithmStore.getAlgorithmOptions();
+// 加载可选图像模型：默认选中最近一次使用且仍启用的模型（既定预选规则），
+// 无历史记录时取后端标记的平台默认模型（isDefault ← 字典 ai_model.default_model.image_edit）；
+// 后端未配置平台默认时不下选，由用户显式选择（不再回落到"启用列表首项"猜值）
+async function loadModels() {
+  modelOptions.value = await AiModelAPI.listEnabledModels("image_edit");
+  let historyModelId: string | undefined;
+  try {
+    const history = await ImageInputHistoryAPI.getPage({
+      pageNum: 1,
+      pageSize: 1,
+    });
+    historyModelId = history.list[0]?.modelId;
+  } catch {}
+  const matched = modelOptions.value.find((m) => m.modelId === historyModelId);
+  const preferred = matched ?? modelOptions.value.find((m) => m.isDefault);
+  if (preferred && !selectedModel.value) {
+    selectedModel.value = preferred.modelId;
+    imageShowStore.modelId = preferred.modelId;
+  }
 }
 
 function handleDatasetImageSelect(haze: string, clear: string) {
@@ -518,12 +575,12 @@ function handleDatasetImageSelect(haze: string, clear: string) {
   activePage.value = "singleImage";
 }
 
-async function handleCleanUrl(url: string, modelId: number) {
+async function handleCleanUrl(url: string) {
   try {
     const res = await fetch(url);
     const blob = await res.blob();
     const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
-    const cleanRes = await FileAPI.upload(cleanFile, modelId);
+    const cleanRes = await FileAPI.upload(cleanFile);
     return cleanRes.url;
   } catch (e: any) {
     throw new Error("清晰图处理失败：" + (e.message || "未知错误"));
@@ -570,7 +627,7 @@ function loadImageFromQuery() {
 
 onMounted(() => {
   imageShowStore.loading = true;
-  getAlgorithmList();
+  loadModels();
   imageShowStore.imageInfo.images.urls = [];
   if (!loadImageFromQuery()) {
     activePage.value = "example";
@@ -609,13 +666,26 @@ onUnmounted(() => {
       <template #default>
         <div class="select-wrap">
           <span>选择去雾模型</span>
-          <el-tree-select
+          <el-select
             v-model="selectedModel"
-            :data="algorithmStore.algorithmOptions"
-            placeholder="请选择去雾模型算法"
+            data-testid="model-select"
+            placeholder="请选择去雾模型"
             style="width: 240px"
             @change="handleSelectModel"
-          />
+          >
+            <el-option-group
+              v-for="group in groupedModelOptions"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="model in group.models"
+                :key="model.modelId"
+                :label="model.displayName"
+                :value="model.modelId"
+              />
+            </el-option-group>
+          </el-select>
         </div>
         <div class="batch-entry-wrap">
           <el-button type="primary" plain @click="batchDialogVisible = true">
@@ -700,7 +770,7 @@ onUnmounted(() => {
         class="retry-panel"
       >
         <el-alert
-          title="处理失败，请检查网络连接或联系管理员"
+          :title="failureMessage"
           type="error"
           :closable="false"
           show-icon
@@ -715,7 +785,7 @@ onUnmounted(() => {
               retryCountdown > 0 ? `自动重试(${retryCountdown})` : "手动重试"
             }}
           </el-button>
-          <el-button @click="showRetryPanel = false">取消</el-button>
+          <el-button @click="showRetryPanel = false">关闭</el-button>
         </div>
       </div>
       <!-- 批量处理任务列表 -->

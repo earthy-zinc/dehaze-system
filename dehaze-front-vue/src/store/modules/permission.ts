@@ -50,6 +50,43 @@ function generateRouteName(routePath: string, componentPath?: string): string {
 }
 
 /**
+ * 本次生成过程中已被占用的路由名。
+ *
+ * vue-router 的 addRoute 遇到**重名**会移除先前注册的同名路由：表现为该路径直接
+ * 404（匹配不到任何记录）、按 name 跳转会跳到另一个模块的页面。
+ * 菜单里多个模块都有 `path=index` 的子路由，其组件名派生后与父级同名而被保留为
+ * 接口名 "Index"，正是同名冲突的来源。
+ */
+const usedRouteNames = new Set<string>();
+
+/**
+ * 由完整路径派生全局唯一的路由名（`/chat/index` → `ChatIndex`）。
+ * 只在名称缺失/与父级同名/与其他路由重名时使用，避免影响既有按名跳转与 keep-alive 缓存名。
+ */
+function deriveUniqueRouteName(fullPath: string): string {
+  const base =
+    fullPath
+      .split("/")
+      .filter(Boolean)
+      .map((segment) =>
+        segment
+          .replace(/[^a-zA-Z0-9]+/g, " ")
+          .trim()
+          .split(" ")
+          .filter(Boolean)
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join("")
+      )
+      .join("") || "Route";
+  let name = base;
+  let suffix = 2;
+  while (usedRouteNames.has(name)) {
+    name = `${base}${suffix++}`;
+  }
+  return name;
+}
+
+/**
  * 递归过滤有权限的动态路由
  *
  * @param routes 接口返回所有的动态路由
@@ -74,10 +111,19 @@ const filterAsyncRoutes = (
         tmpRoute.path,
         tmpRoute.component?.toString()
       );
-      // 仅在名称非空且与父级名称不同时设置，避免 Vue Router 嵌套路由名称冲突
-      if (routeName && routeName !== parentName) {
+      // 名称必须全局唯一：与父级同名会造成嵌套冲突，与其他路由同名会被 addRoute 顶掉
+      if (
+        routeName &&
+        routeName !== parentName &&
+        !usedRouteNames.has(routeName)
+      ) {
         tmpRoute.name = routeName;
+      } else {
+        tmpRoute.name = deriveUniqueRouteName(fullPath);
       }
+      usedRouteNames.add(tmpRoute.name as string);
+      // 子级递归时以实际生效的名称为“父级名”，避免与真实注册结果不一致
+      const effectiveName = tmpRoute.name as string;
       // 如果是顶级目录，替换为 Layout 组件
       if (tmpRoute.component?.toString() == "Layout") {
         tmpRoute.component = Layout;
@@ -96,7 +142,7 @@ const filterAsyncRoutes = (
           route.children,
           roles,
           fullPath,
-          routeName
+          effectiveName
         );
       }
 
@@ -118,6 +164,8 @@ export const usePermissionStore = defineStore("permission", () => {
   /** 生成动态路由 */
   async function generateRoutes(roles: string[]) {
     const data = await MenuAPI.getRoutes();
+    // 每次重建都清空名称占用表，否则重注册时会把上次的名字当成冲突而改名
+    usedRouteNames.clear();
     const accessedRoutes = filterAsyncRoutes(data, roles);
     setRoutes(accessedRoutes);
     return accessedRoutes;

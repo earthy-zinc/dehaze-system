@@ -31,8 +31,8 @@
       <!-- 数据指标 -->
       <view class="hero-stats">
         <view class="stat-item">
-          <text class="stat-value">{{ algorithmCountDisplay }}</text>
-          <text class="stat-label">去雾算法</text>
+          <text class="stat-value">{{ modelCountDisplay }}</text>
+          <text class="stat-label">去雾模型</text>
         </view>
         <view class="stat-divider" />
         <view class="stat-item">
@@ -54,7 +54,7 @@ import { computed } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 
 interface Props {
-  algorithmCount?: number | string;
+  modelCount?: number | string;
 }
 
 interface Emits {
@@ -63,14 +63,14 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  algorithmCount: 0,
+  modelCount: 0,
 });
 
 const emit = defineEmits<Emits>();
 
-/** 算法数量展示：字符串原样显示，数字按 `${n}+` 格式（0 显示 "--"） */
-const algorithmCountDisplay = computed(() => {
-  const v = props.algorithmCount;
+/** 模型数量展示：字符串原样显示，数字按 `${n}+` 格式（0 显示 "--"） */
+const modelCountDisplay = computed(() => {
+  const v = props.modelCount;
   if (typeof v === "string") return v;
   return v > 0 ? `${v}+` : "--";
 });

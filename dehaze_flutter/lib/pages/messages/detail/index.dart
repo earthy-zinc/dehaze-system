@@ -54,59 +54,57 @@ class _MessageDetailPageState extends ConsumerState<MessageDetailPage> {
       body: _loading
           ? Center(child: CircularProgressIndicator())
           : _message == null
-              ? Center(child: Text('消息不存在'))
-              : SingleChildScrollView(
-                  padding: EdgeInsets.all(AppTheme.spacingM),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          ? Center(child: Text('消息不存在'))
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(AppTheme.spacingM),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _message!.title,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: AppTheme.spacingS),
+                  Row(
                     children: [
-                      Text(
-                        _message!.title,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppTheme.spacingS,
+                          vertical: AppTheme.spacingXS,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                        ),
+                        child: Text(
+                          _message!.typeLabel,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppTheme.brandBlue,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                      SizedBox(height: AppTheme.spacingS),
-                      Row(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppTheme.spacingS,
-                              vertical: AppTheme.spacingXS,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                            ),
-                            child: Text(
-                              _message!.typeLabel,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: AppTheme.brandBlue,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          SizedBox(width: AppTheme.spacingS),
-                          Text(
-                            _message!.createTime,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: AppTheme.spacingL),
-                      Divider(),
-                      SizedBox(height: AppTheme.spacingL),
+                      SizedBox(width: AppTheme.spacingS),
                       Text(
-                        _message!.content ?? _message!.summary ?? '',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          height: 1.7,
+                        _message!.createTime,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                ),
+                  SizedBox(height: AppTheme.spacingL),
+                  Divider(),
+                  SizedBox(height: AppTheme.spacingL),
+                  Text(
+                    _message!.content ?? _message!.summary ?? '',
+                    style: theme.textTheme.bodyLarge?.copyWith(height: 1.7),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }

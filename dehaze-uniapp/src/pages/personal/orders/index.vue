@@ -21,7 +21,9 @@
           </view>
           <view class="order-body">
             <text class="order-package">{{ order.packageName }}</text>
-            <text class="order-amount">¥{{ order.payableAmount }}</text>
+            <text class="order-amount"
+              >¥{{ fenToYuan(order.payableAmount) }}</text
+            >
           </view>
           <view class="order-footer">
             <text class="order-time">{{
@@ -46,7 +48,7 @@ import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { OrderAPI } from "dehaze-sdk-js";
 import type { MyOrderVO, OrderStatus } from "dehaze-sdk-js";
-import { formatRelativeTime } from "@/utils/format";
+import { fenToYuan, formatRelativeTime } from "@/utils/format";
 
 const loading = ref(false);
 const orders = ref<MyOrderVO[]>([]);
@@ -108,15 +110,17 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
-@import "@/styles/mixins.scss";
+@import "@/styles/mixins";
 
 .page {
   width: 100%;
   min-height: 100vh;
   background: $color-bg-primary;
 }
+
 .main-content {
   padding: $spacing-md;
+
   @include safe-area-bottom(80rpx);
 }
 
@@ -125,48 +129,58 @@ onMounted(() => loadData());
   flex-direction: column;
   gap: 16rpx;
 }
+
 .order-card {
+  padding: 24rpx;
   background: $color-white;
   border-radius: 20rpx;
-  padding: 24rpx;
   box-shadow: $shadow-sm;
+
   &:active {
     background: $color-bg-primary;
   }
 }
+
 .order-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12rpx;
 }
+
 .order-no {
+  font-family: monospace;
   font-size: $font-sm;
   color: $color-text-secondary;
-  font-family: monospace;
 }
+
 .order-status {
+  padding: 4rpx 12rpx;
   font-size: $font-xs;
   font-weight: 500;
-  padding: 4rpx 12rpx;
   border-radius: 8rpx;
 }
+
 .status-pending {
   color: $color-warning;
   background: #fef3c7;
 }
+
 .status-paid {
   color: $color-primary;
   background: #dbeafe;
 }
+
 .status-done {
   color: $color-success;
   background: #ecfdf5;
 }
+
 .status-cancel {
   color: $color-text-placeholder;
   background: $color-bg-secondary;
 }
+
 .status-warn {
   color: $color-danger;
   background: #fef2f2;
@@ -174,62 +188,72 @@ onMounted(() => loadData());
 
 .order-body {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12rpx;
 }
+
 .order-package {
   font-size: $font-md;
   font-weight: 600;
   color: $color-text-primary;
 }
+
 .order-amount {
   font-size: $font-lg;
   font-weight: 700;
   color: $color-warning;
 }
+
 .order-footer {
 }
+
 .order-time {
   font-size: $font-xs;
   color: $color-text-placeholder;
 }
 
 .end-text {
-  text-align: center;
+  padding: 32rpx 0;
   font-size: $font-sm;
   color: $color-text-disabled;
-  padding: 32rpx 0;
-}
-.load-more {
   text-align: center;
+}
+
+.load-more {
+  padding: 24rpx 0;
   font-size: $font-sm;
   color: $color-secondary;
-  padding: 24rpx 0;
+  text-align: center;
 }
+
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 120rpx 0;
 }
+
 .loading-text {
   margin-top: 24rpx;
   font-size: $font-md;
   color: $color-text-placeholder;
 }
+
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
 }
+
 .empty-tip {
   font-size: $font-md;
 }
+
 .empty-hint {
+  margin-top: 16rpx;
   font-size: $font-sm;
   color: $color-text-placeholder;
-  margin-top: 16rpx;
 }
 </style>

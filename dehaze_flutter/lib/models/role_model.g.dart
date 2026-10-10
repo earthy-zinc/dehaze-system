@@ -37,15 +37,15 @@ Map<String, dynamic> _$RoleToJson(Role instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'code': instance.code,
-  if (instance.sort case final value?) 'sort': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.dataScope case final value?) 'dataScope': value,
-  if (instance.dataScopeName case final value?) 'dataScopeName': value,
+  'sort': ?instance.sort,
+  'status': ?instance.status,
+  'dataScope': ?instance.dataScope,
+  'dataScopeName': ?instance.dataScopeName,
   'menuIds': instance.menuIds,
-  if (instance.deptIds case final value?) 'deptIds': value,
-  if (instance.remark case final value?) 'remark': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'deptIds': ?instance.deptIds,
+  'remark': ?instance.remark,
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 RoleQuery _$RoleQueryFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -64,7 +64,7 @@ RoleQuery _$RoleQueryFromJson(Map<String, dynamic> json) => $checkedCreate(
 Map<String, dynamic> _$RoleQueryToJson(RoleQuery instance) => <String, dynamic>{
   'pageNum': instance.pageNum,
   'pageSize': instance.pageSize,
-  if (instance.keywords case final value?) 'keywords': value,
+  'keywords': ?instance.keywords,
 };
 
 RolePageVO _$RolePageVOFromJson(Map<String, dynamic> json) =>
@@ -84,12 +84,12 @@ RolePageVO _$RolePageVOFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$RolePageVOToJson(RolePageVO instance) =>
     <String, dynamic>{
       'id': instance.id,
-      if (instance.name case final value?) 'name': value,
-      if (instance.code case final value?) 'code': value,
-      if (instance.sort case final value?) 'sort': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.dataScope case final value?) 'dataScope': value,
-      if (instance.createTime case final value?) 'createTime': value,
+      'name': ?instance.name,
+      'code': ?instance.code,
+      'sort': ?instance.sort,
+      'status': ?instance.status,
+      'dataScope': ?instance.dataScope,
+      'createTime': ?instance.createTime,
     };
 
 RoleForm _$RoleFormFromJson(Map<String, dynamic> json) =>
@@ -115,15 +115,15 @@ RoleForm _$RoleFormFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$RoleFormToJson(RoleForm instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
+  'id': ?instance.id,
   'name': instance.name,
   'code': instance.code,
-  if (instance.sort case final value?) 'sort': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.dataScope case final value?) 'dataScope': value,
-  if (instance.menuIds case final value?) 'menuIds': value,
-  if (instance.deptIds case final value?) 'deptIds': value,
-  if (instance.remark case final value?) 'remark': value,
+  'sort': ?instance.sort,
+  'status': ?instance.status,
+  'dataScope': ?instance.dataScope,
+  'menuIds': ?instance.menuIds,
+  'deptIds': ?instance.deptIds,
+  'remark': ?instance.remark,
 };
 
 RoleOption _$RoleOptionFromJson(Map<String, dynamic> json) =>

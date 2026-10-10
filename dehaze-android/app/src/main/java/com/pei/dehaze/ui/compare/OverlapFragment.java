@@ -15,7 +15,7 @@ import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentOverlapBinding;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
 
@@ -75,7 +75,7 @@ public class OverlapFragment extends Fragment {
                 .into(binding.ivOriginal);
     }
 
-    private void showDehazed(PredResult result) {
+    private void showDehazed(ImageTaskResponse result) {
         if (result == null || result.getResultUrl() == null) return;
         statePlaceholder.hide();
         Glide.with(this).load(result.getResultUrl())

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.dehaze_flutter"
+    namespace = "com.pei.flutter.dehaze"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,10 +20,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.dehaze_flutter"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // 包名与其它客户端同构：dehaze-android=com.pei.dehaze、dehaze-react-native=com.pei.react.dehaze
+        applicationId = "com.pei.flutter.dehaze"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,8 +30,8 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // 仓库不提供发布签名密钥，release 沿用 debug 签名以保证 `flutter run --release` 可用；
+            // 需要上架时再按 flutter.dev/to/review-gradle-config 接入 keystore。
             signingConfig = signingConfigs.getByName("debug")
         }
     }

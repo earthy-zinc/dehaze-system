@@ -3,13 +3,13 @@ import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
-import { Algorithm, AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
+import { AiModelAPI, AiModelVO, ModelAPI } from "dehaze-sdk-js";
 
 interface MetricItem {
   label: string;
   value: number | string;
 }
-import { Setting, Picture, Download } from "@element-plus/icons-vue";
+import { Setting, Download } from "@element-plus/icons-vue";
 
 const imageShowStore = useImageShowStore();
 
@@ -34,9 +34,7 @@ const state = reactive({
   },
 });
 
-const algorithmInfo = ref<Algorithm | null>(null);
-const algorithmLoading = ref(false);
-const algorithmError = ref(false);
+const modelInfo = ref<AiModelVO | null>(null);
 const metrics = ref<MetricItem[]>();
 
 // Export report（logId 为去雾处理的预测记录ID，来自 imageShowStore.predLogId）
@@ -155,21 +153,20 @@ onMounted(() => {
     ElMessage.error("不存在图像");
     return;
   }
-  algorithmLoading.value = true;
-  algorithmError.value = false;
-  AlgorithmAPI.getAlgorithmInfoById(modelId.value)
-    .then((res) => {
-      algorithmInfo.value = res;
+  const currentModelId = modelId.value;
+  if (!currentModelId) {
+    ElMessage.error("缺少本次处理使用的图像模型");
+    return;
+  }
+  AiModelAPI.listEnabledModels("image_edit")
+    .then((models) => {
+      modelInfo.value =
+        models.find((m) => m.modelId === currentModelId) ?? null;
     })
-    .catch(() => {
-      algorithmError.value = true;
-    })
-    .finally(() => {
-      algorithmLoading.value = false;
-    });
+    .catch(() => {});
 
   ModelAPI.evaluateAndWait({
-    algorithmId: modelId.value,
+    modelId: currentModelId,
     predUrl: pred.value.url,
     gtUrl: gt.value.url,
   })
@@ -307,48 +304,13 @@ onMounted(() => {
 
       <div class="flex">
         <div style="padding-right: 20px">
-          <h3 class="text-center">算法说明</h3>
+          <h3 class="text-center">模型信息</h3>
           <el-descriptions :column="2" border>
-            <el-descriptions-item :span="2" :width="120" label="算法名称">
-              {{ algorithmInfo?.name }}
+            <el-descriptions-item :span="2" :width="120" label="模型名称">
+              {{ modelInfo?.displayName }}
             </el-descriptions-item>
-            <el-descriptions-item label="类型"
-              >{{ algorithmInfo?.type }}
-            </el-descriptions-item>
-            <el-descriptions-item label="权重大小">
-              {{ algorithmInfo?.size }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="algorithmInfo?.flops" label="浮点数量">
-              {{ algorithmInfo.flops }}
-            </el-descriptions-item>
-            <el-descriptions-item v-if="algorithmInfo?.params" label="参数量">
-              {{ algorithmInfo.params }}
-            </el-descriptions-item>
-            <el-descriptions-item :span="2" label="算法描述">
-              {{ algorithmInfo?.description }}
-            </el-descriptions-item>
-            <el-descriptions-item :span="2" label="网络架构">
-              <div v-if="algorithmLoading" class="arch-loading">
-                <el-skeleton :rows="3" animated />
-              </div>
-              <div v-else-if="algorithmError" class="arch-empty">
-                <el-icon :size="32" color="#999"><Picture /></el-icon>
-                <div>网络架构图不可用</div>
-              </div>
-              <el-image
-                v-else
-                :src="algorithmInfo?.img || ''"
-                fit="contain"
-                class="network-arch"
-                preview-teleported
-              >
-                <template #error>
-                  <div class="arch-empty">
-                    <el-icon :size="32" color="#999"><Picture /></el-icon>
-                    <div>网络架构图加载失败</div>
-                  </div>
-                </template>
-              </el-image>
+            <el-descriptions-item :span="2" label="模型标识">
+              {{ modelInfo?.modelId }}
             </el-descriptions-item>
           </el-descriptions>
         </div>
@@ -413,28 +375,5 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
-}
-
-.arch-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 105px;
-}
-
-.arch-empty {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  min-height: 105px;
-  font-size: 14px;
-  color: #999;
-}
-
-.network-arch {
-  max-height: 200px;
-  border-radius: 4px;
 }
 </style>

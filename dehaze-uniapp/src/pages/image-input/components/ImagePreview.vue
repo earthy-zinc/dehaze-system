@@ -36,19 +36,13 @@
           <text class="tag-text">样例图片</text>
         </view>
         <text class="sample-name">{{ image.sampleInfo.name }}</text>
-        <view v-if="image.sampleInfo.recommendAlgorithm" class="recommend-algo">
-          <text class="recommend-label">推荐算法:</text>
-          <text class="recommend-value">{{
-            image.sampleInfo.recommendAlgorithm
-          }}</text>
-        </view>
       </view>
 
       <!-- 操作按钮 -->
       <view class="preview-actions">
         <view class="action-btn primary" @click="handleNext">
           <SvgIcon name="arrow-right" size="18" color="$color-white" />
-          <text class="action-text">下一步：选择算法</text>
+          <text class="action-text">下一步：选择模型</text>
         </view>
       </view>
     </view>
@@ -183,23 +177,6 @@ const handlePreviewImage = () => {
   font-weight: 600;
   color: #92400e;
   margin-bottom: 8rpx;
-}
-
-.recommend-algo {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.recommend-label {
-  font-size: 24rpx;
-  color: #b45309;
-}
-
-.recommend-value {
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #92400e;
 }
 
 .preview-actions {

@@ -9,7 +9,7 @@ import {
   Delete,
   Add,
 } from "@taroify/icons";
-import type { Dataset } from "../../services/types";
+import type { DatasetVO } from "../../services/types";
 import "./DatasetCard.less";
 
 // 数据集类型标签配置
@@ -21,7 +21,7 @@ const TYPE_LABELS: Record<string, { label: string; className: string }> = {
 };
 
 interface DatasetCardProps {
-  dataset: Dataset;
+  dataset: DatasetVO;
   depth?: number;
   expanded?: boolean;
   hasChildren?: boolean;

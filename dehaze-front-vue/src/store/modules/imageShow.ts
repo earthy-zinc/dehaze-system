@@ -18,9 +18,10 @@ export const useImageShowStore = defineStore("imageShow", () => {
 
   const loading = ref(false);
 
-  const modelId = ref();
+  // 图像模型标识（统一模型规范 slug）
+  const modelId = ref<string>();
 
-  // 最近一次去雾处理的预测记录ID（sys_pred_log.id），供对比页导出 HTML 报告使用
+  // 最近一次图像任务ID（sys_pred_log.id，即提交响应的 taskId），供评估/对比页导出报告使用
   const predLogId = ref(0);
 
   const imageInfo = reactive({

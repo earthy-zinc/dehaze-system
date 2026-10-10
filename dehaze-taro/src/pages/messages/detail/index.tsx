@@ -103,7 +103,9 @@ const MessageDetailPage: React.FC = () => {
             <Text>{message.typeLabel}</Text>
           </View>
           <Text className="message-detail-title">{message.title}</Text>
-          <Text className="message-detail-time">{formatDateTime(message.createTime)}</Text>
+          <Text className="message-detail-time">
+            {formatDateTime(message.createTime)}
+          </Text>
         </View>
         <View className="message-detail-body">
           {message.content ? (

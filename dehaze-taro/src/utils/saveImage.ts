@@ -3,8 +3,8 @@
  */
 
 import Taro from "@tarojs/taro";
-import { getErrorMessage } from "./error";
 import { isH5 } from "@/utils/platform";
+import { getErrorMessage } from "./error";
 
 interface SaveImageOptions {
   /** H5 端是否通过 a 标签触发下载（默认 true） */

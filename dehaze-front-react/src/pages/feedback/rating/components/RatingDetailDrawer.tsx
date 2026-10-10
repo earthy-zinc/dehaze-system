@@ -51,8 +51,8 @@ const RatingDetailDrawer = forwardRef<RatingDetailDrawerRef>((_, ref) => {
               <Descriptions.Item label="用户名">
                 {detail.isAnonymous === 1 ? "匿名用户" : detail.username || "-"}
               </Descriptions.Item>
-              <Descriptions.Item label="算法">
-                {detail.algorithmName}
+              <Descriptions.Item label="模型">
+                {detail.modelName}
               </Descriptions.Item>
               <Descriptions.Item label="评分">
                 <Rate disabled value={detail.rating} />

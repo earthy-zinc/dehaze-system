@@ -12,7 +12,6 @@ import PageLayout from "@/layout";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
 import { confirmDialog } from "@/utils/dialog";
-import { usePermission } from "@/hooks/usePermission";
 import {
   STATUS_FILTERS,
   PAGE_SIZE,
@@ -23,10 +22,6 @@ import {
 import "./index.less";
 
 const TaskManagePage: React.FC = () => {
-  const { hasPermission } = usePermission();
-  const canCancel = hasPermission("sys:task:cancel");
-  const canRetry = hasPermission("sys:task:retry");
-
   const [taskList, setTaskList] = useState<TaskVO[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -151,59 +146,51 @@ const TaskManagePage: React.FC = () => {
     [stopPolling, loadTaskList]
   );
 
-  const handleCancel = useCallback(
-    async (task: TaskVO) => {
-      if (!canCancel) return;
-      const confirmed = await confirmDialog({
-        title: "取消任务",
-        content: "确认取消该任务吗？",
-        confirmColor: "#ff4d4f",
+  const handleCancel = useCallback(async (task: TaskVO) => {
+    const confirmed = await confirmDialog({
+      title: "取消任务",
+      content: "确认取消该任务吗？",
+      confirmColor: "#ff4d4f",
+    });
+    if (!confirmed) return;
+    setCancelLoadingId(task.taskId);
+    try {
+      await TaskAPI.cancel(task.taskId);
+      setTaskList((prev) =>
+        prev.map((t) =>
+          t.taskId === task.taskId ? { ...t, status: 5 as TaskStatus } : t
+        )
+      );
+      Taro.showToast({ title: "任务已取消", icon: "success" });
+    } catch (err: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(err, "取消失败"),
+        icon: "none",
       });
-      if (!confirmed) return;
-      setCancelLoadingId(task.taskId);
-      try {
-        await TaskAPI.cancel(task.taskId);
-        setTaskList((prev) =>
-          prev.map((t) =>
-            t.taskId === task.taskId ? { ...t, status: 5 as TaskStatus } : t
-          )
-        );
-        Taro.showToast({ title: "任务已取消", icon: "success" });
-      } catch (err: unknown) {
-        Taro.showToast({
-          title: getErrorMessage(err, "取消失败"),
-          icon: "none",
-        });
-      } finally {
-        setCancelLoadingId(null);
-      }
-    },
-    [canCancel]
-  );
+    } finally {
+      setCancelLoadingId(null);
+    }
+  }, []);
 
-  const handleRetry = useCallback(
-    async (task: TaskVO) => {
-      if (!canRetry) return;
-      setRetryLoadingId(task.taskId);
-      try {
-        await TaskAPI.retry(task.taskId);
-        setTaskList((prev) =>
-          prev.map((t) =>
-            t.taskId === task.taskId ? { ...t, status: 1 as TaskStatus } : t
-          )
-        );
-        Taro.showToast({ title: "已重新提交", icon: "success" });
-      } catch (err: unknown) {
-        Taro.showToast({
-          title: getErrorMessage(err, "重试失败"),
-          icon: "none",
-        });
-      } finally {
-        setRetryLoadingId(null);
-      }
-    },
-    [canRetry]
-  );
+  const handleRetry = useCallback(async (task: TaskVO) => {
+    setRetryLoadingId(task.taskId);
+    try {
+      await TaskAPI.retry(task.taskId);
+      setTaskList((prev) =>
+        prev.map((t) =>
+          t.taskId === task.taskId ? { ...t, status: 1 as TaskStatus } : t
+        )
+      );
+      Taro.showToast({ title: "已重新提交", icon: "success" });
+    } catch (err: unknown) {
+      Taro.showToast({
+        title: getErrorMessage(err, "重试失败"),
+        icon: "none",
+      });
+    } finally {
+      setRetryLoadingId(null);
+    }
+  }, []);
 
   return (
     <PageLayout level="L2" title="任务管理">
@@ -287,7 +274,7 @@ const TaskManagePage: React.FC = () => {
                           : "-"}
                       </Text>
                       <View className="task-actions">
-                        {isActive && canCancel && (
+                        {isActive && (
                           <Button
                             size="mini"
                             color="danger"
@@ -297,7 +284,7 @@ const TaskManagePage: React.FC = () => {
                             取消
                           </Button>
                         )}
-                        {isFailed && canRetry && (
+                        {isFailed && (
                           <Button
                             size="mini"
                             color="primary"

@@ -1,0 +1,45 @@
+.model-info-card {
+  margin: 24rpx 32rpx;
+  overflow: hidden;
+  background-color: var(--color-bg-card);
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
+
+  .info-section {
+    padding: 24rpx 32rpx;
+    border-bottom: 2rpx solid var(--color-border-light);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .section-title {
+    margin-bottom: 16rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12rpx 0;
+
+    .info-label {
+      flex-shrink: 0;
+      margin-right: 24rpx;
+      font-size: 26rpx;
+      color: var(--color-text-muted);
+    }
+
+    .info-value {
+      flex: 1;
+      font-size: 26rpx;
+      color: var(--color-text-primary);
+      text-align: right;
+      word-break: break-all;
+    }
+  }
+}

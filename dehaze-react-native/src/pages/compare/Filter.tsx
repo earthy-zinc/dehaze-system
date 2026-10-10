@@ -37,7 +37,10 @@ import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import CompareEmptyState from '@/components/CompareEmptyState';
 import SliderControl from '@/components/SliderControl';
-import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
+import {
+  controlBarStyles,
+  controlButtonStyles,
+} from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareFilter'>;
@@ -73,14 +76,40 @@ function isFilterParamsEqual(a: FilterParams, b: FilterParams): boolean {
 }
 
 const PRESETS: { key: string; name: string; params: FilterParams }[] = [
-  { key: 'natural', name: '自然', params: { ...DEFAULT_PARAMS, brightness: 5, contrast: 10, saturation: 5 } },
-  { key: 'vivid', name: '鲜艳', params: { ...DEFAULT_PARAMS, contrast: 30, saturation: 40 } },
-  { key: 'soft', name: '柔和', params: { ...DEFAULT_PARAMS, contrast: -20, denoise: 15 } },
-  { key: 'clear', name: '清晰', params: { ...DEFAULT_PARAMS, contrast: 20, sharpen: 40 } },
-  { key: 'vintage', name: '复古', params: { ...DEFAULT_PARAMS, saturation: -20, warmth: 30 } },
+  {
+    key: 'natural',
+    name: '自然',
+    params: { ...DEFAULT_PARAMS, brightness: 5, contrast: 10, saturation: 5 },
+  },
+  {
+    key: 'vivid',
+    name: '鲜艳',
+    params: { ...DEFAULT_PARAMS, contrast: 30, saturation: 40 },
+  },
+  {
+    key: 'soft',
+    name: '柔和',
+    params: { ...DEFAULT_PARAMS, contrast: -20, denoise: 15 },
+  },
+  {
+    key: 'clear',
+    name: '清晰',
+    params: { ...DEFAULT_PARAMS, contrast: 20, sharpen: 40 },
+  },
+  {
+    key: 'vintage',
+    name: '复古',
+    params: { ...DEFAULT_PARAMS, saturation: -20, warmth: 30 },
+  },
 ];
 
-const PARAM_LIST: { key: keyof FilterParams; label: string; min: number; max: number; step: number }[] = [
+const PARAM_LIST: {
+  key: keyof FilterParams;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}[] = [
   { key: 'brightness', label: '亮度', min: -100, max: 100, step: 1 },
   { key: 'contrast', label: '对比度', min: -100, max: 100, step: 1 },
   { key: 'saturation', label: '饱和度', min: -100, max: 100, step: 1 },
@@ -134,10 +163,26 @@ function buildFilterPrimitives(params: FilterParams) {
         in={currentIn}
         type="matrix"
         values={[
-          slope, 0, 0, 0, intercept + warmthOffset,
-          0, slope, 0, 0, intercept,
-          0, 0, slope, 0, intercept - warmthOffset,
-          0, 0, 0, 1, 0,
+          slope,
+          0,
+          0,
+          0,
+          intercept + warmthOffset,
+          0,
+          slope,
+          0,
+          0,
+          intercept,
+          0,
+          0,
+          slope,
+          0,
+          intercept - warmthOffset,
+          0,
+          0,
+          0,
+          1,
+          0,
         ]}
         result={out}
       />,
@@ -195,7 +240,10 @@ function buildFilterPrimitives(params: FilterParams) {
 }
 
 const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, modelId } = route.params ?? {
+    originalUrl: '',
+    processedUrl: '',
+  };
   const [params, setParams] = useState<FilterParams>({ ...DEFAULT_PARAMS });
   const [showOriginal, setShowOriginal] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
@@ -213,7 +261,8 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const handleReset = () => setParams({ ...DEFAULT_PARAMS });
 
-  const handlePreset = (presetParams: FilterParams) => setParams({ ...presetParams });
+  const handlePreset = (presetParams: FilterParams) =>
+    setParams({ ...presetParams });
 
   const isDefault = isFilterParamsEqual(params, DEFAULT_PARAMS);
 
@@ -233,21 +282,38 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="CompareFilter"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, modelId }}
       />
 
       {/* 控制栏 */}
       <View style={controlBarStyles.bar}>
         <TouchableOpacity
-          style={[controlButtonStyles.button, showOriginal && controlButtonStyles.buttonActive]}
+          style={[
+            controlButtonStyles.button,
+            showOriginal && controlButtonStyles.buttonActive,
+          ]}
           onPressIn={() => setShowOriginal(true)}
           onPressOut={() => setShowOriginal(false)}
         >
-          <Icon name="image" size={14} color={showOriginal ? '#fff' : theme.colors.text.secondary} />
-          <Text style={[controlButtonStyles.text, showOriginal && controlButtonStyles.textActive]}>按住看原图</Text>
+          <Icon
+            name="image"
+            size={14}
+            color={showOriginal ? '#fff' : theme.colors.text.secondary}
+          />
+          <Text
+            style={[
+              controlButtonStyles.text,
+              showOriginal && controlButtonStyles.textActive,
+            ]}
+          >
+            按住看原图
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[controlButtonStyles.button, isDefault && controlButtonStyles.buttonDisabled]}
+          style={[
+            controlButtonStyles.button,
+            isDefault && controlButtonStyles.buttonDisabled,
+          ]}
           onPress={handleReset}
           disabled={isDefault}
         >
@@ -274,8 +340,17 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
             />
           </Svg>
           <View style={styles.previewLabelRow}>
-            <View style={[styles.previewLabel, showOriginal ? styles.previewLabelOriginal : styles.previewLabelResult]}>
-              <Text style={styles.previewLabelText}>{showOriginal ? '原图' : '滤镜预览'}</Text>
+            <View
+              style={[
+                styles.previewLabel,
+                showOriginal
+                  ? styles.previewLabelOriginal
+                  : styles.previewLabelResult,
+              ]}
+            >
+              <Text style={styles.previewLabelText}>
+                {showOriginal ? '原图' : '滤镜预览'}
+              </Text>
             </View>
           </View>
         </View>
@@ -283,16 +358,28 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
         {/* 预设方案 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>预设方案</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.presetRow}
+          >
             {PRESETS.map(preset => {
               const isActive = isFilterParamsEqual(params, preset.params);
               return (
                 <TouchableOpacity
                   key={preset.key}
-                  style={[styles.presetChip, isActive && styles.presetChipActive]}
+                  style={[
+                    styles.presetChip,
+                    isActive && styles.presetChipActive,
+                  ]}
                   onPress={() => handlePreset(preset.params)}
                 >
-                  <Text style={[styles.presetText, isActive && styles.presetTextActive]}>
+                  <Text
+                    style={[
+                      styles.presetText,
+                      isActive && styles.presetTextActive,
+                    ]}
+                  >
                     {preset.name}
                   </Text>
                 </TouchableOpacity>

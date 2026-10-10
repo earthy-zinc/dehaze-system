@@ -85,36 +85,33 @@ class DatasetInfoCard extends StatelessWidget {
   }
 
   Widget _buildInfoItem(_InfoData item, bool isMobile) => Container(
-        padding: EdgeInsets.symmetric(
-          vertical: isMobile ? 6 : 8,
-          horizontal: 12,
+    padding: EdgeInsets.symmetric(vertical: isMobile ? 6 : 8, horizontal: 12),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${item.label}:',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 12,
+          ),
         ),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
+        const SizedBox(width: 4),
+        Text(
+          item.value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '${item.label}:',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              item.value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 }
 
 class _InfoData {

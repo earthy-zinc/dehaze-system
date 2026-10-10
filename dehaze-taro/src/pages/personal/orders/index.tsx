@@ -6,6 +6,7 @@ import { OrderAPI } from "dehaze-sdk-js";
 import type { MyOrderVO, OrderStatus, MyOrderQuery } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { confirmDialog } from "@/utils/dialog";
+import { fenToYuan } from "@/utils/format";
 import "./index.less";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -116,7 +117,11 @@ const OrdersPage: React.FC = () => {
           ))}
         </View>
 
-        <ScrollView scrollY className="orders-scroll" onScrollToLower={handleLoadMore}>
+        <ScrollView
+          scrollY
+          className="orders-scroll"
+          onScrollToLower={handleLoadMore}
+        >
           {loading && orders.length === 0 ? (
             <View className="loading-wrapper">
               <Text>加载中...</Text>
@@ -139,28 +144,43 @@ const OrdersPage: React.FC = () => {
                   </View>
                   <View className="order-body">
                     <Text className="order-package">{order.packageName}</Text>
-                    <Text className="order-amount">¥{order.payableAmount}</Text>
+                    <Text className="order-amount">
+                      ¥{fenToYuan(order.payableAmount)}
+                    </Text>
                   </View>
                   <View className="order-footer">
-                    <Text className="order-time">{formatTime(order.createTime)}</Text>
+                    <Text className="order-time">
+                      {formatTime(order.createTime)}
+                    </Text>
                     {order.paidTime && (
-                      <Text className="order-time">支付: {formatTime(order.paidTime)}</Text>
+                      <Text className="order-time">
+                        支付: {formatTime(order.paidTime)}
+                      </Text>
                     )}
                   </View>
                   {(order.status === "pending" || order.status === "paid") && (
                     <View className="order-actions">
                       {order.status === "pending" && (
                         <>
-                          <View className="action-btn primary" onClick={() => handlePay(order)}>
+                          <View
+                            className="action-btn primary"
+                            onClick={() => handlePay(order)}
+                          >
                             立即支付
                           </View>
-                          <View className="action-btn danger" onClick={() => handleCancel(order)}>
+                          <View
+                            className="action-btn danger"
+                            onClick={() => handleCancel(order)}
+                          >
                             取消订单
                           </View>
                         </>
                       )}
                       {order.status === "paid" && (
-                        <View className="action-btn primary" onClick={() => handleCancel(order)}>
+                        <View
+                          className="action-btn primary"
+                          onClick={() => handleCancel(order)}
+                        >
                           申请退款
                         </View>
                       )}

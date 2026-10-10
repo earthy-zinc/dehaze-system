@@ -154,7 +154,7 @@ import Popup from "@/components/common/Popup.vue";
 import DatasetTreeNode from "./components/DatasetTreeNode.vue";
 import { usePagedList } from "@/composables/usePagedList";
 import { DatasetAPI } from "dehaze-sdk-js";
-import type { Dataset, OptionType } from "dehaze-sdk-js";
+import type { DatasetVO, OptionType } from "dehaze-sdk-js";
 
 // ==================== 类型选项 ====================
 const typeOptions = [
@@ -166,17 +166,17 @@ const typeOptions = [
 
 // ==================== 列表状态 ====================
 const { list, keyword, hasMore, loading, fetchList, handleSearch, loadMore } =
-  usePagedList<Dataset>({
+  usePagedList<DatasetVO>({
     fetcher: (p) =>
       DatasetAPI.getList({
         pageNum: p.pageNum,
         pageSize: 10,
         keyword: p.keyword,
-      }).then((r) => (r.list as Dataset[]) || []),
+      }).then((r) => (r.list as DatasetVO[]) || []),
   });
 
 const expandedIds = ref<number[]>([]);
-const childrenMap = ref<Record<number, Dataset[]>>({});
+const childrenMap = ref<Record<number, DatasetVO[]>>({});
 const childrenLoading = ref<Record<number, boolean>>({});
 
 // ==================== 表单状态 ====================
@@ -239,7 +239,7 @@ const handleAddRoot = () => {
   showForm.value = true;
 };
 
-const handleAddChild = (parent: Dataset) => {
+const handleAddChild = (parent: DatasetVO) => {
   form.value = {
     id: 0,
     parentId: parent.id,
@@ -253,7 +253,7 @@ const handleAddChild = (parent: Dataset) => {
   showForm.value = true;
 };
 
-const handleEdit = (dataset: Dataset) => {
+const handleEdit = (dataset: DatasetVO) => {
   form.value = {
     id: dataset.id,
     parentId: dataset.parentId ?? 0,
@@ -269,7 +269,7 @@ const handleEdit = (dataset: Dataset) => {
   showForm.value = true;
 };
 
-const handleDelete = async (dataset: Dataset) => {
+const handleDelete = async (dataset: DatasetVO) => {
   const res = await uni.showModal({
     title: "确认删除",
     content: `确定要删除数据集「${dataset.name}」吗？此操作不可恢复，子数据集和图片也将被删除。`,
@@ -286,7 +286,7 @@ const handleDelete = async (dataset: Dataset) => {
   }
 };
 
-const handleItemClick = (dataset: Dataset) => {
+const handleItemClick = (dataset: DatasetVO) => {
   uni.navigateTo({ url: `/pages/dataset/index?datasetId=${dataset.id}` });
 };
 
@@ -314,7 +314,7 @@ const handleSave = async () => {
         type: form.value.type,
         name: form.value.name,
         description: form.value.description,
-        status: String(form.value.status),
+        status: Number(form.value.status),
       });
       uni.showToast({ title: "更新成功", icon: "success" });
     } else {
@@ -323,7 +323,7 @@ const handleSave = async () => {
         type: form.value.type,
         name: form.value.name,
         description: form.value.description,
-        status: String(form.value.status),
+        status: Number(form.value.status),
       });
       uni.showToast({ title: "创建成功", icon: "success" });
     }

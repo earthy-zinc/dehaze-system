@@ -10,7 +10,8 @@ export interface CompareRouteParams {
   originalUrl: string;
   processedUrl: string;
   cleanUrl?: string;
-  algorithmId?: number;
+  /** 图像模型标识（统一模型规范 slug），用于指标评估 */
+  modelId?: string;
 }
 
 // ============================================================
@@ -34,16 +35,13 @@ export type HomeStackParamList = {
 export type ToolsStackParamList = {
   Index: undefined;
   ImageInput: { initialMethod?: InputMethod } | undefined;
-  AlgorithmSelect: { image?: SelectedImage } | undefined;
-  AlgorithmBrowse: undefined;
-  Algorithm: { algorithmId: number } | undefined;
   Dataset: undefined;
   DatasetBrowse: undefined;
   DatasetDetail: { datasetId: number };
   Task: undefined;
   MetricsManage: undefined;
   Batch: undefined;
-  Processing: { algorithmId: number; image?: SelectedImage } | undefined;
+  Processing: { model?: string; image?: SelectedImage } | undefined;
 };
 
 // ============================================================
@@ -51,16 +49,15 @@ export type ToolsStackParamList = {
 // ============================================================
 export type DehazeStackParamList = {
   Index: undefined;
-  AlgorithmSelect: { image?: SelectedImage } | undefined;
-  AlgorithmBrowse: undefined;
-  Algorithm: { algorithmId: number } | undefined;
-  Processing: { algorithmId: number; image?: SelectedImage } | undefined;
+  Processing: { model?: string; image?: SelectedImage } | undefined;
   Batch: undefined;
   CompareSideBySide: CompareRouteParams | undefined;
   CompareOverlay: CompareRouteParams | undefined;
   CompareMagnifier: CompareRouteParams | undefined;
   CompareFilter: CompareRouteParams | undefined;
-  CompareMetrics: (CompareRouteParams & { metrics?: EvaluationMetrics }) | undefined;
+  CompareMetrics:
+    | (CompareRouteParams & { metrics?: EvaluationMetrics })
+    | undefined;
 };
 
 // ============================================================
@@ -107,9 +104,6 @@ export type ProfileStackParamList = {
   SystemDictTypeForm: { dictTypeId?: number } | undefined;
   SystemDictItem: { typeCode: string; typeName: string };
   SystemDictItemForm: { dictItemId?: number; typeCode: string } | undefined;
-  SystemAlgorithm: undefined;
-  SystemAlgorithmForm: { algorithmId?: number } | undefined;
-  SystemAlgorithmAudit: { algorithmId: number };
   SystemDataset: undefined;
   SystemDatasetForm: { datasetId?: number } | undefined;
   SystemTask: undefined;

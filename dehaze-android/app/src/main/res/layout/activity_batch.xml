@@ -39,7 +39,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="最多20张，支持拍照或相册选择"
+                android:id="@+id/tv_limit_hint"
+                android:text="最多5张（会员等级权益），支持拍照或相册选择"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
 
@@ -78,33 +79,33 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="已选择 0/20 张"
+                android:text="已选择 0/5 张"
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp" />
 
-            <!-- 步骤2：算法选择 -->
+            <!-- 步骤2：模型选择 -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:text="步骤2：选择算法"
+                android:text="步骤2：选择模型"
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_algorithms"
+                android:id="@+id/rv_models"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:nestedScrollingEnabled="false" />
 
             <TextView
-                android:id="@+id/tv_algorithm_hint"
+                android:id="@+id/tv_model_hint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="请选择算法"
+                android:text="请选择模型"
                 android:textColor="@color/text_placeholder"
                 android:textSize="12sp" />
 
@@ -113,7 +114,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="算法参数（JSON，可选）">
+                android:hint="模型参数（JSON，可选）">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_params"

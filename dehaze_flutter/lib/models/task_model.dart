@@ -6,7 +6,7 @@ part 'task_model.g.dart';
 
 /// 任务状态（对齐后端 TaskConstants: PENDING=1, PROCESSING=2, COMPLETED=3, FAILED=4, CANCELLED=5）
 ///
-/// 注意：prediction_model.dart 中已有 TaskStatus 枚举（仅3个值：processing/completed/failed），
+/// 注意：image_task_model.dart 中已有 TaskStatus 枚举（仅4个值：processing/completed/failed/canceled），
 /// 语义和值域均不同，因此此处独立定义 TaskStatusType 避免冲突。
 enum TaskStatusType {
   @JsonValue(1)
@@ -65,14 +65,16 @@ TaskStatusType _statusFromJson(dynamic value) {
   return TaskStatusType.pending;
 }
 
-int? _statusToJson(TaskStatusType? status) => status?.index == null ? null : (status!.index + 1);
+int? _statusToJson(TaskStatusType? status) =>
+    status?.index == null ? null : (status!.index + 1);
 
 TaskCategory _categoryFromJson(dynamic value) {
   if (value is String) return TaskCategory.fromValue(value);
   return TaskCategory.export_;
 }
 
-String? _categoryToJson(TaskCategory? category) => category?.name.endsWith('_') == true
+String? _categoryToJson(TaskCategory? category) =>
+    category?.name.endsWith('_') == true
     ? category!.name.substring(0, category.name.length - 1)
     : category?.name;
 
@@ -200,10 +202,10 @@ class TaskQuery {
   final TaskCategory? taskCategory;
 
   Map<String, dynamic> toQueryParameters() => {
-        'pageNum': pageNum,
-        'pageSize': pageSize,
-        if (status != null) 'status': _statusToJson(status),
-        if (taskType != null && taskType!.isNotEmpty) 'taskType': taskType,
-        if (taskCategory != null) 'taskCategory': _categoryToJson(taskCategory),
-      };
+    'pageNum': pageNum,
+    'pageSize': pageSize,
+    if (status != null) 'status': _statusToJson(status),
+    if (taskType != null && taskType!.isNotEmpty) 'taskType': taskType,
+    if (taskCategory != null) 'taskCategory': _categoryToJson(taskCategory),
+  };
 }

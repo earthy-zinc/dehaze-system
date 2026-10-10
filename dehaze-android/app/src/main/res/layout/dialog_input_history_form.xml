@@ -29,10 +29,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="算法ID（可选）">
+            android:hint="模型标识（可选）">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_algorithm_id"
+                android:id="@+id/et_model_id"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="number" />
@@ -43,10 +43,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="算法名称">
+            android:hint="模型名称">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_algorithm_name"
+                android:id="@+id/et_model_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text" />
@@ -57,10 +57,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="算法参数（JSON）">
+            android:hint="模型参数（JSON）">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_algorithm_params"
+                android:id="@+id/et_model_params"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textMultiLine"
@@ -105,34 +105,6 @@
             android:id="@+id/spinner_source"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="是否收藏"
-            android:textStyle="bold" />
-
-        <RadioGroup
-            android:id="@+id/rg_favorite"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <RadioButton
-                android:id="@+id/rb_favorite_no"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true"
-                android:text="不收藏" />
-
-            <RadioButton
-                android:id="@+id/rb_favorite_yes"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="收藏" />
-        </RadioGroup>
 
     </LinearLayout>
 

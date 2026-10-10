@@ -94,17 +94,19 @@ export interface ChatUsageVM {
   subAgents?: ChatSubAgentUsageVM[];
 }
 
-/** 中断推荐主算法（confirm） */
+/** 中断推荐主模型（confirm） */
 export interface ChatInterruptRecommendationVM {
-  algorithmId: number;
-  algorithmName: string;
+  /** 图像模型标识（统一模型规范 slug） */
+  modelId: string;
+  modelName: string;
   reason: string;
 }
 
-/** 中断备选算法（confirm） */
+/** 中断备选模型（confirm） */
 export interface ChatInterruptAlternativeVM {
-  algorithmId: number;
-  algorithmName: string;
+  /** 图像模型标识（统一模型规范 slug） */
+  modelId: string;
+  modelName: string;
   matchScore: number;
   reason: string;
 }
@@ -169,13 +171,13 @@ export type ChatConfirmKindVM =
  */
 export interface ChatInterruptVM {
   type: "confirm" | "quota" | "async_wait" | "plan_approve";
-  /** confirm：细分确认类型（算法推荐 / 工具授权 / 危险操作 / 写入冲突） */
+  /** confirm：细分确认类型（模型推荐 / 工具授权 / 危险操作 / 写入冲突） */
   confirmKind?: ChatConfirmKindVM;
   /** confirm(write_conflict)：写冲突动作标识 */
   action?: "write_conflict";
-  /** confirm：算法推荐主结果 */
+  /** confirm：模型推荐主结果 */
   recommendation?: ChatInterruptRecommendationVM;
-  /** confirm：算法推荐备选 */
+  /** confirm：模型推荐备选 */
   alternatives?: ChatInterruptAlternativeVM[];
   /** quota：升级引导文案 */
   upgradeTip?: string;
@@ -203,7 +205,7 @@ export interface ChatInterruptVM {
 export interface ChatResumeFormVM {
   /** confirm 中断：true 接受推荐，false 拒绝 */
   confirm?: boolean;
-  /** 确认参数（如 algorithmId 表示选择了备选算法） */
+  /** 确认参数（如 modelId 表示选择了备选模型） */
   params?: Record<string, unknown>;
   /** plan_approve：计划干预 */
   planEdit?: ChatPlanEditVM;

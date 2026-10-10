@@ -5,10 +5,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Spinner;
-import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -20,18 +16,16 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityCompareBinding;
-import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
-import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
 import com.pei.dehaze.utils.ViewUtils;
@@ -48,9 +42,9 @@ public class CompareActivity extends BaseActivity {
     private ActivityCompareBinding binding;
     private StatePlaceholder statePlaceholder;
 
-    private final List<Option> algorithmOptions = new ArrayList<>();
-    private final Set<Long> selectedAlgorithmIds = new HashSet<>();
-    private final List<String> selectedAlgorithmLabels = new ArrayList<>();
+    private final List<AiModelVO> modelOptions = new ArrayList<>();
+    private final Set<String> selectedModelIds = new HashSet<>();
+    private final List<String> selectedModelLabels = new ArrayList<>();
 
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -78,7 +72,7 @@ public class CompareActivity extends BaseActivity {
         binding.btnSelectImage.setOnClickListener(v ->
                 pickImageLauncher.launch("image/*"));
 
-        binding.btnAddAlgorithm.setOnClickListener(v -> addCurrentAlgorithm());
+        binding.btnAddModel.setOnClickListener(v -> addCurrentModel());
         binding.btnCompare.setOnClickListener(v -> onCompareClick());
 
         binding.viewPager.setAdapter(new ComparePagerAdapter(this));
@@ -87,28 +81,28 @@ public class CompareActivity extends BaseActivity {
                 .attach();
 
         statePlaceholder = new StatePlaceholder(binding.statePlaceholder.getRoot());
-        statePlaceholder.showEmpty("请先上传图片并选择算法", R.drawable.ic_image_compare);
+        statePlaceholder.showEmpty("请先上传图片并选择模型", R.drawable.ic_image_compare);
     }
 
-    private void addCurrentAlgorithm() {
-        int pos = binding.spinnerAlgorithm.getSelectedItemPosition();
-        if (pos < 0 || pos >= algorithmOptions.size()) {
-            ToastUtils.showShort(this, "请先选择算法");
+    private void addCurrentModel() {
+        int pos = binding.spinnerModel.getSelectedItemPosition();
+        if (pos < 0 || pos >= modelOptions.size()) {
+            ToastUtils.showShort(this, "请先选择模型");
             return;
         }
-        Option option = algorithmOptions.get(pos);
-        Long id = option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
-        if (id == null) {
-            ToastUtils.showShort(this, "算法ID无效");
+        AiModelVO model = modelOptions.get(pos);
+        String modelId = model.getModelId();
+        if (modelId == null) {
+            ToastUtils.showShort(this, "模型标识无效");
             return;
         }
-        if (selectedAlgorithmIds.contains(id)) {
-            ToastUtils.showShort(this, "该算法已添加");
+        if (selectedModelIds.contains(modelId)) {
+            ToastUtils.showShort(this, "该模型已添加");
             return;
         }
-        selectedAlgorithmIds.add(id);
-        selectedAlgorithmLabels.add(option.getLabel());
-        binding.tvSelectedAlgorithms.setText("已选算法：" + TextUtils.join("、", selectedAlgorithmLabels));
+        selectedModelIds.add(modelId);
+        selectedModelLabels.add(model.getDisplayName() != null ? model.getDisplayName() : modelId);
+        binding.tvSelectedModels.setText("已选模型：" + TextUtils.join("、", selectedModelLabels));
     }
 
     private void onCompareClick() {
@@ -116,20 +110,19 @@ public class CompareActivity extends BaseActivity {
             ToastUtils.showShort(this, "请先上传图片");
             return;
         }
-        if (selectedAlgorithmIds.isEmpty()) {
-            ToastUtils.showShort(this, "请至少添加一个算法");
+        if (selectedModelIds.isEmpty()) {
+            ToastUtils.showShort(this, "请至少添加一个模型");
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle("确认对比")
-                .setMessage("确认开始对比处理？将使用 " + selectedAlgorithmIds.size() + " 个算法处理图片。")
+                .setMessage("确认开始对比处理？将使用 " + selectedModelIds.size() + " 个模型处理图片。")
                 .setPositiveButton("确定", (d, w) -> {
                     DehazeParams params = new DehazeParams();
-                    if (selectedAlgorithmIds.size() == 1) {
-                        Long id = selectedAlgorithmIds.iterator().next();
-                        compareViewModel.predict(id, params);
+                    if (selectedModelIds.size() == 1) {
+                        compareViewModel.predict(selectedModelIds.iterator().next(), params);
                     } else {
-                        compareViewModel.predictMultiple(new ArrayList<>(selectedAlgorithmIds), params);
+                        compareViewModel.predictMultiple(new ArrayList<>(selectedModelIds), params);
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -142,7 +135,7 @@ public class CompareActivity extends BaseActivity {
 
     private void setupObservers() {
         compareViewModel.getUploadedFile().observe(this, this::showUploadedImage);
-        compareViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
+        compareViewModel.getModels().observe(this, this::updateModelSpinner);
         compareViewModel.getPredictionResult().observe(this, this::onPredictionResult);
         compareViewModel.getMultiPredictionResults().observe(this, this::onMultiPredictionResults);
         compareViewModel.getLoading().observe(this, isLoading -> {
@@ -165,34 +158,34 @@ public class CompareActivity extends BaseActivity {
                 .into(binding.ivSelectedImage);
     }
 
-    private void updateAlgorithmSpinner(List<Option> options) {
-        algorithmOptions.clear();
-        if (options != null) {
-            algorithmOptions.addAll(options);
+    private void updateModelSpinner(List<AiModelVO> models) {
+        modelOptions.clear();
+        if (models != null) {
+            modelOptions.addAll(models);
         }
-        ViewUtils.updateAlgorithmSpinner(binding.spinnerAlgorithm, algorithmOptions);
+        ViewUtils.updateModelSpinner(binding.spinnerModel, modelOptions);
     }
 
-    private void onPredictionResult(PredResult result) {
+    private void onPredictionResult(ImageTaskResponse result) {
         if (result == null) return;
         statePlaceholder.hide();
         new AlertDialog.Builder(this)
                 .setTitle("处理完成")
-                .setMessage("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "ms"))
+                .setMessage("耗时：" + (result.getTime() == null ? "-" : result.getTime() + "s"))
                 .setPositiveButton("确定", null)
                 .show();
     }
 
-    private void onMultiPredictionResults(java.util.Map<Long, PredResult> results) {
+    private void onMultiPredictionResults(java.util.Map<String, ImageTaskResponse> results) {
         if (results == null || results.isEmpty()) return;
         statePlaceholder.hide();
         int success = results.size();
-        int total = selectedAlgorithmIds.size();
-        ToastUtils.showShort(this, "完成 " + success + "/" + total + " 个算法处理");
+        int total = selectedModelIds.size();
+        ToastUtils.showShort(this, "完成 " + success + "/" + total + " 个模型处理");
     }
 
     private void loadData() {
-        compareViewModel.loadAlgorithmOptions();
+        compareViewModel.loadModels();
     }
 
     private void uploadImage(Uri uri) {
@@ -204,9 +197,9 @@ public class CompareActivity extends BaseActivity {
         compareViewModel.uploadImage(tempFile);
     }
 
-    /** 6 种对比模式（设计稿要求） */
+    /** 5 种对比模式 */
     private static final String[] COMPARE_TABS = {
-            "并排对比", "重叠对比", "放大镜", "滤镜调节", "指标评估", "算法信息"
+            "并排对比", "重叠对比", "放大镜", "滤镜调节", "指标评估"
     };
 
     private static class ComparePagerAdapter extends FragmentStateAdapter {
@@ -223,7 +216,6 @@ public class CompareActivity extends BaseActivity {
                 case 2: return new MagnifierFragment();
                 case 3: return new FilterFragment();
                 case 4: return new MetricsFragment();
-                case 5: return new AlgorithmInfoFragment();
                 default: return new ParallelFragment();
             }
         }

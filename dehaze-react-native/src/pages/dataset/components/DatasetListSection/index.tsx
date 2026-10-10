@@ -13,7 +13,7 @@ import SearchBar from '../SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
-import { DatasetTreeNode, Dataset } from '../../types/dataset';
+import { DatasetTreeNode, DatasetVO } from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
 import { theme } from '@/theme';
 
@@ -69,9 +69,9 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
   /** 搜索防抖计时器 */
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /** 将后端 Dataset[] 转为树节点（懒加载模式：丢弃后端 children，按需 fetchChildren） */
+  /** 将后端 DatasetVO[] 转为树节点（懒加载模式：丢弃后端 children，按需 fetchChildren） */
   const toTreeNodes = useCallback(
-    (list: Dataset[], level: number): DatasetTreeNode[] => {
+    (list: DatasetVO[], level: number): DatasetTreeNode[] => {
       return list.map(item => {
         const { children: _children, ...rest } = item;
         return {
@@ -96,7 +96,7 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
         }
         setError(null);
 
-        let rootList: Dataset[];
+        let rootList: DatasetVO[];
         if (searchValue.trim()) {
           // 搜索走分页接口，取前 50 条
           const page = await datasetApi.fetchDatasets({
@@ -219,7 +219,10 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {isLoadingChildren ? (
-                <ActivityIndicator size="small" color={theme.colors.secondary} />
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.secondary}
+                />
               ) : (
                 <Icon
                   name={isExpanded ? 'chevron-down' : 'chevron-right'}
@@ -249,7 +252,11 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
                 </Text>
               )}
             </View>
-            <Icon name="chevron-right" size={14} color={theme.colors.border.light} />
+            <Icon
+              name="chevron-right"
+              size={14}
+              color={theme.colors.border.light}
+            />
           </TouchableOpacity>
         </View>
       );
@@ -257,7 +264,10 @@ const DatasetListSection: React.FC<DatasetListSectionProps> = ({
     [handleToggleExpand, onDatasetPress, loadingKeys],
   );
 
-  const keyExtractor = useCallback((item: DatasetTreeNode) => item.id.toString(), []);
+  const keyExtractor = useCallback(
+    (item: DatasetTreeNode) => item.id.toString(),
+    [],
+  );
 
   if (error && treeNodes.length === 0 && !isLoading) {
     return (

@@ -36,10 +36,7 @@ class ImageInputService {
   ) async {
     // 检查文件大小
     if (bytes.isEmpty) {
-      return const ImageValidationResult(
-        isValid: false,
-        errorMessage: '文件为空',
-      );
+      return const ImageValidationResult(isValid: false, errorMessage: '文件为空');
     }
     if (bytes.length > maxFileSizeBytes) {
       return const ImageValidationResult(
@@ -82,10 +79,7 @@ class ImageInputService {
         needsCompression: needsCompression,
       );
     } catch (e) {
-      return ImageValidationResult(
-        isValid: false,
-        errorMessage: '图片解析失败: $e',
-      );
+      return ImageValidationResult(isValid: false, errorMessage: '图片解析失败: $e');
     }
   }
 
@@ -163,18 +157,21 @@ class ImageInputService {
         final url = image['url'] as String?;
         if (url == null || url.isEmpty) continue;
 
-        samples.add(SampleImageModel(
-          id: image['id'] as int? ?? 0,
-          name: item['name'] as String? ??
-              image['fileName'] as String? ??
-              '样例图片',
-          url: url,
-          category: _categoryFromHazeLevel(image['hazeLevel'] as String?),
-          difficulty: _difficultyFromHazeLevel(image['hazeLevel'] as String?),
-          sceneType:
-              image['sceneType'] as String? ?? item['sceneType'] as String?,
-          cleanUrl: cleanUrl,
-        ));
+        samples.add(
+          SampleImageModel(
+            id: image['id'] as int? ?? 0,
+            name:
+                item['name'] as String? ??
+                image['fileName'] as String? ??
+                '样例图片',
+            url: url,
+            category: _categoryFromHazeLevel(image['hazeLevel'] as String?),
+            difficulty: _difficultyFromHazeLevel(image['hazeLevel'] as String?),
+            sceneType:
+                image['sceneType'] as String? ?? item['sceneType'] as String?,
+            cleanUrl: cleanUrl,
+          ),
+        );
       }
     }
 

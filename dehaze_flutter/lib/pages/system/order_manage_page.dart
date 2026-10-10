@@ -8,11 +8,13 @@ import '../../models/order_model.dart';
 import '../../providers/providers.dart';
 import '../../services/order_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format_utils.dart';
 
 final orderManageProvider =
-    StateNotifierProvider<OrderManageNotifier, AsyncValue<PagedList<OrderPageVO>>>(
-  (ref) => OrderManageNotifier(ref.watch(orderServiceProvider)),
-);
+    StateNotifierProvider<
+      OrderManageNotifier,
+      AsyncValue<PagedList<OrderPageVO>>
+    >((ref) => OrderManageNotifier(ref.watch(orderServiceProvider)));
 
 class OrderManageNotifier extends PagedListNotifier<OrderPageVO> {
   OrderManageNotifier(this._service) : super();
@@ -21,15 +23,16 @@ class OrderManageNotifier extends PagedListNotifier<OrderPageVO> {
   @override
   Future<PageResult<OrderPageVO>> fetchPage(int pageNum) {
     return _service.getPage(
-      OrderQuery(pageNum: pageNum, pageSize: pageSize, keyword: keyword),
+      OrderQuery(pageNum: pageNum, pageSize: pageSize, keywords: keyword),
     );
   }
 }
 
-final refundManageProvider = StateNotifierProvider<
-    RefundManageNotifier, AsyncValue<PagedList<RefundRecordVO>>>(
-  (ref) => RefundManageNotifier(ref.watch(orderServiceProvider)),
-);
+final refundManageProvider =
+    StateNotifierProvider<
+      RefundManageNotifier,
+      AsyncValue<PagedList<RefundRecordVO>>
+    >((ref) => RefundManageNotifier(ref.watch(orderServiceProvider)));
 
 class RefundManageNotifier extends PagedListNotifier<RefundRecordVO> {
   RefundManageNotifier(this._service) : super();
@@ -105,13 +108,12 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
       return;
     }
     try {
-      await ref.read(orderServiceProvider).auditRefund(
-        RefundAuditForm(
-          refundId: refundId,
-          approved: approved,
-          remark: reasonCtrl.text.trim(),
-        ),
-      );
+      await ref
+          .read(orderServiceProvider)
+          .auditRefund(
+            refundId,
+            RefundAuditForm(approved: approved, remark: reasonCtrl.text.trim()),
+          );
       _showSnack('审核完成');
       ref.read(refundManageProvider.notifier).refresh();
     } catch (e) {
@@ -137,7 +139,10 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
         title: const Text('订单管理'),
         bottom: TabBar(
           controller: _tabCtrl,
-          tabs: const [Tab(text: '订单列表'), Tab(text: '退款审核')],
+          tabs: const [
+            Tab(text: '订单列表'),
+            Tab(text: '退款审核'),
+          ],
         ),
       ),
       body: Column(
@@ -174,14 +179,20 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
     );
   }
 
-  Widget _buildOrderList(ThemeData theme, AsyncValue<PagedList<OrderPageVO>> state) {
+  Widget _buildOrderList(
+    ThemeData theme,
+    AsyncValue<PagedList<OrderPageVO>> state,
+  ) {
     return state.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+            Text(
+              extractErrorMessage(e),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
             SizedBox(height: AppTheme.spacingM),
             FilledButton(
               onPressed: () => ref.read(orderManageProvider.notifier).refresh(),
@@ -206,7 +217,10 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
                   child: ListTile(
                     leading: const Icon(Icons.receipt_long),
                     title: Text(item.orderNo),
-                    subtitle: Text('¥${item.amount} | ${item.statusName}'),
+                    subtitle: Text(
+                      '${formatYuan(item.paidAmount > 0 ? item.paidAmount : item.payableAmount)}'
+                      ' | ${item.status.displayName} | ${item.username}',
+                    ),
                   ),
                 );
               },
@@ -217,17 +231,24 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
     );
   }
 
-  Widget _buildRefundList(ThemeData theme, AsyncValue<PagedList<RefundRecordVO>> state) {
+  Widget _buildRefundList(
+    ThemeData theme,
+    AsyncValue<PagedList<RefundRecordVO>> state,
+  ) {
     return state.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)),
+            Text(
+              extractErrorMessage(e),
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
             SizedBox(height: AppTheme.spacingM),
             FilledButton(
-              onPressed: () => ref.read(refundManageProvider.notifier).refresh(),
+              onPressed: () =>
+                  ref.read(refundManageProvider.notifier).refresh(),
               child: const Text('重试'),
             ),
           ],
@@ -240,7 +261,8 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
         return RefreshIndicator(
           onRefresh: () => ref.read(refundManageProvider.notifier).refresh(),
           child: LoadMoreListener(
-            onLoadMore: () => ref.read(refundManageProvider.notifier).loadMore(),
+            onLoadMore: () =>
+                ref.read(refundManageProvider.notifier).loadMore(),
             child: ListView.builder(
               itemCount: page.items.length,
               itemBuilder: (context, index) {
@@ -248,8 +270,10 @@ class _OrderManagePageState extends ConsumerState<OrderManagePage>
                 return Card(
                   child: ListTile(
                     leading: const Icon(Icons.money_off),
-                    title: Text('退款单号: ${item.orderNo}'),
-                    subtitle: Text('¥${item.amount} | ${item.statusName}'),
+                    title: Text('退款单号: ${item.refundNo}'),
+                    subtitle: Text(
+                      '${formatYuan(item.refundAmount)} | ${item.status.displayName}',
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

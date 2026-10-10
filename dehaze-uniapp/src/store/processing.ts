@@ -3,24 +3,23 @@
  *
  * 管理从图像输入到去雾处理的完整流程状态：
  * - 当前选中图片（含 fileId）
- * - 选中算法
+ * - 选中图像模型（数据源为启用模型列表）
  * - 处理参数
- * - 处理状态与结果
- * - runPrediction：配额校验 + 提交预测 + 递增重试 + 取消 + 耗时计时
+ * - 处理状态与结果（提交-轮询-取消，对齐 /api/v1/images/* 任务模式）
  */
 
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
-import { ModelAPI } from "dehaze-sdk-js";
-import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
+import { AiImageAPI, AiModelAPI } from "dehaze-sdk-js";
+import type { ImageTaskResponse } from "dehaze-sdk-js";
 import { getErrorMessage } from "@/utils/error";
 
 /** 处理状态 */
 export type ProcessingStatus =
   | "idle" // 空闲
   | "selected" // 已选图片
-  | "algorithm" // 已选算法
+  | "model" // 已选模型
   | "uploading" // 上传中
   | "processing" // 处理中
   | "completed" // 已完成
@@ -46,24 +45,31 @@ export const DEFAULT_DEHAZE_PARAMS: DehazeParams = {
   sharpness: 30,
 };
 
+/** 可选图像模型（选择场景只需标识与展示名） */
+export interface ImageModelOption {
+  /** 模型业务标识（slug），提交图像任务时作为 model */
+  modelId: string;
+  displayName: string;
+}
+
 /** 重试间隔（毫秒）：2s → 3s → 5s */
 const RETRY_DELAYS = [2000, 3000, 5000];
 const MAX_RETRIES = 3;
 
-/** runPrediction 参数 */
-export interface RunPredictionOptions {
-  algorithmId: number;
+/** 查找历史最近使用模型时回看的历史任务条数 */
+const RECENT_TASK_PAGE_SIZE = 20;
+
+/** runImageTask 参数 */
+export interface RunImageTaskOptions {
   fileId?: number;
   imageUrl?: string;
   params?: string;
-  /** 配额耗尽回调（页面弹"去充值"并跳转） */
-  onQuotaExhausted?: (quota: { used: number; total: number }) => void;
 }
 
-/** runPrediction 返回值 */
-export interface RunPredictionResult {
+/** runImageTask 返回值 */
+export interface RunImageTaskResult {
   ok: boolean;
-  result?: PredictionResultVO;
+  result?: ImageTaskResponse;
   error?: string;
 }
 
@@ -82,22 +88,28 @@ export const useProcessingStore = defineStore("processing", () => {
   /** 上传后获取的文件 ID */
   const fileId = ref<number | null>(null);
 
-  /** 选中算法 */
-  const selectedAlgorithm = ref<Algorithm | null>(null);
+  /** 可用图像编辑模型列表 */
+  const imageModels = ref<ImageModelOption[]>([]);
+
+  /** 当前选中模型 */
+  const selectedModel = ref<ImageModelOption | null>(null);
 
   /** 处理参数 */
   const params = ref<DehazeParams>({ ...DEFAULT_DEHAZE_PARAMS });
 
   /** 处理结果 */
-  const result = ref<PredictionResultVO | null>(null);
+  const result = ref<ImageTaskResponse | null>(null);
+
+  /** 提交后返回的任务 ID（取消任务用） */
+  const currentTaskId = ref<number | null>(null);
 
   /** 错误信息 */
   const errorMessage = ref("");
 
-  /** 是否正在执行 runPrediction */
+  /** 是否正在执行 runImageTask */
   const isProcessing = ref(false);
 
-  /** 已耗时（毫秒），runPrediction 期间每 100ms 递增 */
+  /** 已耗时（毫秒），runImageTask 期间每 100ms 递增 */
   const elapsedTime = ref(0);
 
   /** 是否已取消（由 cancelProcessing 设置） */
@@ -107,12 +119,6 @@ export const useProcessingStore = defineStore("processing", () => {
   let elapsedTimer: ReturnType<typeof setInterval> | null = null;
 
   // ==================== 计算属性 ====================
-
-  /** 是否有图片 */
-  const hasImage = computed(() => !!currentImage.value);
-
-  /** 是否有算法 */
-  const hasAlgorithm = computed(() => !!selectedAlgorithm.value);
 
   /** 是否已完成 */
   const isCompleted = computed(() => status.value === "completed");
@@ -139,6 +145,62 @@ export const useProcessingStore = defineStore("processing", () => {
     }
   }
 
+  // ==================== 模型 ====================
+
+  /**
+   * 加载启用的图像编辑模型
+   *
+   * 预选次序：历史最近使用（且仍在启用列表内）→ 后端标记的平台默认模型
+   * （`isDefault` ← 字典 `ai_model.default_model.image_edit`）；后端未配置平台默认时不预选
+   * （由用户在模型下拉中显式选择），不再回落到"启用列表首项"猜值；
+   * 已有选择仍有效时保留，避免用户从对比页返回后被重置。
+   */
+  async function loadImageModels() {
+    const list = await AiModelAPI.listEnabledModels("image_edit");
+    imageModels.value = list.map((m) => ({
+      modelId: m.modelId,
+      displayName: m.displayName,
+    }));
+
+    const stillEnabled = imageModels.value.some(
+      (m) => m.modelId === selectedModel.value?.modelId
+    );
+    if (stillEnabled) return;
+
+    const platformDefault = list.find((m) => m.isDefault);
+    selectedModel.value =
+      (await findRecentlyUsedModel()) ??
+      (platformDefault
+        ? {
+            modelId: platformDefault.modelId,
+            displayName: platformDefault.displayName,
+          }
+        : null);
+  }
+
+  /** 历史最近使用的模型（按任务时间倒序取首个仍在启用列表内的） */
+  async function findRecentlyUsedModel(): Promise<ImageModelOption | null> {
+    try {
+      const tasks = await AiImageAPI.listImageTasks({
+        pageNum: 1,
+        pageSize: RECENT_TASK_PAGE_SIZE,
+      });
+      for (const task of tasks.list) {
+        const match = imageModels.value.find((m) => m.modelId === task.model);
+        if (match) return match;
+      }
+    } catch {
+      // 历史查询失败时回落启用列表首项
+    }
+    return null;
+  }
+
+  /** 选择模型 */
+  function setModel(model: ImageModelOption) {
+    selectedModel.value = model;
+    status.value = "model";
+  }
+
   // ==================== 方法 ====================
 
   /** 设置图片（图像输入页选中后调用） */
@@ -146,20 +208,6 @@ export const useProcessingStore = defineStore("processing", () => {
     currentImage.value = image;
     status.value = "selected";
     fileId.value = image.fileId || null;
-  }
-
-  /** 设置上传后的文件 ID */
-  function setFileId(id: number) {
-    fileId.value = id;
-    if (currentImage.value) {
-      currentImage.value.fileId = id;
-    }
-  }
-
-  /** 选择算法 */
-  function setAlgorithm(algorithm: Algorithm) {
-    selectedAlgorithm.value = algorithm;
-    status.value = "algorithm";
   }
 
   /** 更新处理参数 */
@@ -172,14 +220,8 @@ export const useProcessingStore = defineStore("processing", () => {
     status.value = "uploading";
   }
 
-  /** 开始处理 */
-  function startProcessing() {
-    status.value = "processing";
-    errorMessage.value = "";
-  }
-
   /** 处理完成 */
-  function complete(resultData: PredictionResultVO) {
+  function complete(resultData: ImageTaskResponse) {
     status.value = "completed";
     result.value = resultData;
   }
@@ -195,9 +237,10 @@ export const useProcessingStore = defineStore("processing", () => {
     status.value = "idle";
     currentImage.value = null;
     fileId.value = null;
-    selectedAlgorithm.value = null;
+    selectedModel.value = null;
     params.value = { ...DEFAULT_DEHAZE_PARAMS };
     result.value = null;
+    currentTaskId.value = null;
     errorMessage.value = "";
     isProcessing.value = false;
     elapsedTime.value = 0;
@@ -205,30 +248,38 @@ export const useProcessingStore = defineStore("processing", () => {
     stopElapsedTimer();
   }
 
-  // ==================== runPrediction ====================
+  // ==================== runImageTask ====================
 
   /**
-   * 单次预测尝试（带递增重试）
+   * 单次提交尝试（带递增重试）
    *
    * 成功返回 {ok:true, result}；重试耗尽返回 {ok:false, error}；
    * 取消返回 {ok:false}（cancelProcessing 已处理 fail）。
    */
   async function attempt(
-    opts: RunPredictionOptions,
+    opts: RunImageTaskOptions,
     attemptNumber: number
-  ): Promise<RunPredictionResult> {
+  ): Promise<RunImageTaskResult> {
     if (cancelled.value) return { ok: false };
 
     try {
-      const res = await ModelAPI.predictAndWait({
-        algorithmId: opts.algorithmId,
-        fileId: opts.fileId,
-        imageUrl: opts.imageUrl,
-        params: opts.params,
-      });
+      const res = await AiImageAPI.submitAndWait(
+        {
+          model: selectedModel.value!.modelId,
+          fileId: opts.fileId,
+          imageUrl: opts.imageUrl,
+          params: opts.params,
+        },
+        {
+          onPoll: (_status, taskId) => {
+            if (taskId) currentTaskId.value = taskId;
+          },
+        }
+      );
 
       if (cancelled.value) return { ok: false };
 
+      if (res.status === 4) return { ok: false };
       if (res.status === 3) {
         throw new Error(res.errorMessage || "处理失败");
       }
@@ -256,34 +307,28 @@ export const useProcessingStore = defineStore("processing", () => {
   }
 
   /**
-   * 执行去雾预测（配额校验 + 提交 + 递增重试 + 耗时计时）
+   * 执行去雾处理（提交图像任务 + 递增重试 + 耗时计时）
    *
    * 行为：
-   * 1. isProcessing 为 true 时直接返回 {ok:false}
-   * 2. 配额校验：remaining===0 时回调 onQuotaExhausted 并返回 {ok:false}
-   * 3. 设置 isProcessing=true、cancelled=false，启动计时器
-   * 4. 递增重试调用 predictAndWait；成功返回 {ok:true,result}，重试耗尽返回 {ok:false,error}
-   * 5. cancelProcessing 可随时中止
+   * 1. 未选模型或 isProcessing 为 true 时直接返回 {ok:false}
+   * 2. 设置 isProcessing=true、cancelled=false，启动计时器
+   * 3. 递增重试调用 submitAndWait；成功返回 {ok:true,result}，重试耗尽返回 {ok:false,error}
+   * 4. cancelProcessing 可随时中止
    */
-  async function runPrediction(
-    opts: RunPredictionOptions
-  ): Promise<RunPredictionResult> {
+  async function runImageTask(
+    opts: RunImageTaskOptions
+  ): Promise<RunImageTaskResult> {
     if (isProcessing.value) return { ok: false };
-
-    // 配额校验（失败则忽略，继续处理）
-    try {
-      const quota = await ModelAPI.getQuota();
-      if (quota.remaining === 0) {
-        opts.onQuotaExhausted?.({ used: quota.used, total: quota.total });
-        return { ok: false };
-      }
-    } catch {
-      // 配额查询失败，允许继续
+    if (!selectedModel.value) {
+      fail("请先选择模型");
+      return { ok: false, error: "请先选择模型" };
     }
 
     isProcessing.value = true;
     cancelled.value = false;
-    startProcessing();
+    currentTaskId.value = null;
+    status.value = "processing";
+    errorMessage.value = "";
     startElapsedTimer();
 
     const ret = await attempt(opts, 0);
@@ -296,16 +341,20 @@ export const useProcessingStore = defineStore("processing", () => {
     } else if (!ret.ok && ret.error) {
       fail(ret.error);
     }
-    // 取消情况：cancelProcessing 已调用 fail
+    // 取消或任务已处于取消态：cancelProcessing 已调用 fail
 
     return ret;
   }
 
-  /** 取消正在进行的处理 */
-  function cancelProcessing() {
+  /** 取消正在进行的处理（已提交则同时取消后端任务） */
+  async function cancelProcessing() {
     cancelled.value = true;
     stopElapsedTimer();
     isProcessing.value = false;
+    if (currentTaskId.value) {
+      // 取消为幂等操作，失败不影响前端已取消的终态
+      await AiImageAPI.cancelImageTask(currentTaskId.value).catch(() => {});
+    }
     fail("已取消");
   }
 
@@ -314,33 +363,29 @@ export const useProcessingStore = defineStore("processing", () => {
     status,
     currentImage,
     fileId,
-    selectedAlgorithm,
+    imageModels,
+    selectedModel,
     params,
     result,
     errorMessage,
     isProcessing,
     elapsedTime,
-    cancelled,
 
     // 计算属性
-    hasImage,
-    hasAlgorithm,
     isCompleted,
     originUrl,
 
     // 方法
+    loadImageModels,
+    setModel,
     setImage,
-    setFileId,
-    setAlgorithm,
     updateParams,
     startUploading,
-    startProcessing,
     complete,
-    fail,
     reset,
 
-    // 预测执行
-    runPrediction,
+    // 任务执行
+    runImageTask,
     cancelProcessing,
   };
 });

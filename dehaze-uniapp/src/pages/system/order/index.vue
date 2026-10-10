@@ -7,11 +7,11 @@
           ><text class="stat-label">总订单</text></view
         >
         <view class="stat-item"
-          ><text class="stat-val">¥{{ stats.totalRevenue || 0 }}</text
+          ><text class="stat-val">¥{{ fenToYuan(stats.totalRevenue) }}</text
           ><text class="stat-label">总收入</text></view
         >
         <view class="stat-item"
-          ><text class="stat-val">{{ stats.totalRefund || 0 }}</text
+          ><text class="stat-val">{{ fenToYuan(stats.totalRefund) }}</text
           ><text class="stat-label">总退款</text></view
         >
       </view>
@@ -40,7 +40,7 @@
           @click="goDetail(item.orderNo)"
         >
           <text class="cell">{{ item.orderNo }}</text>
-          <text class="cell">¥{{ item.payableAmount }}</text>
+          <text class="cell">¥{{ fenToYuan(item.payableAmount) }}</text>
           <view class="cell">
             <view
               class="tag tag-sm"
@@ -65,7 +65,7 @@
         </view>
         <view v-for="item in refunds" :key="item.id" class="list-row">
           <text class="cell">{{ item.orderNo }}</text>
-          <text class="cell">¥{{ item.refundAmount }}</text>
+          <text class="cell">¥{{ fenToYuan(item.refundAmount) }}</text>
           <text class="cell">{{ item.reason }}</text>
           <view class="cell cell-actions">
             <button
@@ -98,6 +98,7 @@ import PageLayout from "@/layout/index.vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import { usePagedList } from "@/composables/usePagedList";
 import { OrderAPI } from "dehaze-sdk-js";
+import { fenToYuan } from "@/utils/format";
 
 const tabs = [{ name: "订单列表" }, { name: "退款审核" }];
 const orderStatusMap: Record<string, string> = {
@@ -193,54 +194,62 @@ fetchRefunds();
 .page-body {
   padding: 20rpx;
 }
+
 .stats-row {
   display: flex;
   gap: 16rpx;
   margin-bottom: 20rpx;
 }
+
 .stat-item {
   flex: 1;
-  background: $color-white;
-  border-radius: $radius-lg;
   padding: 20rpx;
   text-align: center;
+  background: $color-white;
+  border-radius: $radius-lg;
 }
+
 .stat-val {
+  display: block;
   font-size: 36rpx;
   font-weight: bold;
   color: $color-primary;
-  display: block;
 }
+
 .stat-label {
+  margin-top: 8rpx;
   font-size: 24rpx;
   color: $color-text-secondary;
-  margin-top: 8rpx;
 }
+
 .tabs {
   display: flex;
-  background: $color-white;
-  border-radius: $radius-lg;
   margin-bottom: 20rpx;
   overflow: hidden;
+  background: $color-white;
+  border-radius: $radius-lg;
 }
+
 .tab-item {
   flex: 1;
-  text-align: center;
   padding: 20rpx;
   font-size: 28rpx;
   color: $color-text-secondary;
+  text-align: center;
 }
+
 .tab-item.active {
-  color: $color-primary;
   font-weight: 600;
+  color: $color-primary;
   border-bottom: 4rpx solid $color-primary;
 }
+
 .list-row {
   display: flex;
   align-items: center;
   padding: 20rpx 16rpx;
-  border-bottom: 1rpx solid $color-border;
   font-size: 26rpx;
+  border-bottom: 1rpx solid $color-border;
 
   .cell {
     flex: 1;
@@ -249,68 +258,83 @@ fetchRefunds();
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
   .cell-actions {
     display: flex;
     gap: 8rpx;
   }
 }
+
 .list-row-head {
-  background: $color-bg-secondary;
   font-weight: 600;
   color: $color-text-secondary;
+  background: $color-bg-secondary;
 }
+
 .tag {
   padding: 4rpx 12rpx;
-  border-radius: $radius-sm;
   font-size: $font-xs;
+  border-radius: $radius-sm;
 }
+
 .tag-sm {
   padding: 2rpx 10rpx;
 }
+
 .tag-primary {
   color: $color-primary;
   background: $color-primary-bg;
 }
+
 .tag-success {
   color: $color-success;
   background: $color-success-bg;
 }
+
 .tag-warning {
   color: $color-warning;
   background: $color-warning-bg;
 }
+
 .tag-danger {
   color: $color-danger;
   background: $color-danger-bg;
 }
+
 .tag-info {
   color: $color-text-secondary;
   background: $color-bg-secondary;
 }
+
 .btn {
   padding: 8rpx 20rpx;
-  border-radius: $radius-sm;
   font-size: $font-sm;
   line-height: 1.6;
+  border-radius: $radius-sm;
+
   &::after {
     border: none;
   }
 }
+
 .btn-sm {
   padding: 4rpx 16rpx;
   font-size: $font-xs;
 }
+
 .btn-success {
   color: $color-white;
   background: $color-success;
 }
+
 .btn-danger {
   color: $color-white;
   background: $color-danger;
 }
+
 .load-more {
-  text-align: center;
   padding: 20rpx;
   color: $color-text-secondary;
+  text-align: center;
 }
 </style>

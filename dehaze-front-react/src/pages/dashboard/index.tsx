@@ -209,15 +209,6 @@ const Dashboard: React.FC = () => {
           <Col xs={24} sm={12} md={6}>
             <Button
               block
-              icon={<ExperimentOutlined />}
-              onClick={() => navigate("/algorithm")}
-            >
-              管理模型
-            </Button>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Button
-              block
               icon={<DatabaseOutlined />}
               onClick={() => navigate("/dataset")}
             >

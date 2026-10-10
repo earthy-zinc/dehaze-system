@@ -19,12 +19,14 @@ class NotificationSettingsService {
   }
 
   /// 更新通知设置
+  ///
+  /// 后端 PATCH 语义为 preferences 逐 key 深合并，调用方应提交完整偏好以避免丢字段。
   Future<NotificationSettings> updateSettings(
-    NotificationSettingsForm form,
+    NotificationSettings settings,
   ) async {
-    final response = await _dio.put<Map<String, dynamic>>(
+    final response = await _dio.patch<Map<String, dynamic>>(
       ApiConstants.notificationSettings,
-      data: form.toJson(),
+      data: settings.toJson(),
     );
     return NotificationSettings.fromJson(
       response.data!['data'] as Map<String, dynamic>,

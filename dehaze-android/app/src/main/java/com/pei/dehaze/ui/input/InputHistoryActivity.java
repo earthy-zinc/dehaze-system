@@ -38,6 +38,9 @@ public class InputHistoryActivity extends BaseActivity {
 
     private static final String[] SOURCE_LABELS = {"全部", "上传", "相机", "样本"};
     private static final InputSource[] SOURCE_VALUES = {null, InputSource.UPLOAD, InputSource.CAMERA, InputSource.SAMPLE};
+    private static final String[] STATUS_LABELS = {"全部状态", "成功", "失败", "处理中"};
+    /** 与 ProcessStatus 值域一致：1=成功，2=失败，3=处理中；null 表示不筛选 */
+    private static final Integer[] STATUS_VALUES = {null, 1, 2, 3};
 
     private InputHistoryViewModel viewModel;
     private InputHistoryAdapter adapter;
@@ -80,15 +83,15 @@ public class InputHistoryActivity extends BaseActivity {
         binding.btnSearch.setOnClickListener(v -> {
             String keywords = binding.etKeywords.getText().toString().trim();
             InputSource source = SOURCE_VALUES[binding.spinnerSource.getSelectedItemPosition()];
-            boolean favoriteOnly = binding.cbFavoriteOnly.isChecked();
-            viewModel.setQueryParams(keywords, source, favoriteOnly);
+            Integer status = STATUS_VALUES[binding.spinnerStatus.getSelectedItemPosition()];
+            viewModel.setQueryParams(keywords, source, status);
             loadData();
         });
 
         binding.btnReset.setOnClickListener(v -> {
             binding.etKeywords.setText("");
             binding.spinnerSource.setSelection(0);
-            binding.cbFavoriteOnly.setChecked(false);
+            binding.spinnerStatus.setSelection(0);
             viewModel.resetQuery();
             loadData();
         });

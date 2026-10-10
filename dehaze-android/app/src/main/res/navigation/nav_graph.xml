@@ -88,12 +88,6 @@
         tools:layout="@layout/fragment_dataset_detail" />
 
     <fragment
-        android:id="@+id/algorithmFragment"
-        android:name="com.pei.dehaze.ui.algorithm.AlgorithmFragment"
-        android:label="算法"
-        tools:layout="@layout/fragment_algorithm" />
-
-    <fragment
         android:id="@+id/systemManagementFragment"
         android:name="com.pei.dehaze.ui.system.SystemManagementFragment"
         android:label="系统管理"

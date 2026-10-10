@@ -83,11 +83,6 @@ describe("ImportDialog", () => {
     expect(screen.getByText("导入角色")).not.toBeNull();
   });
 
-  it("module 为 algorithm 时标题为导入算法", () => {
-    renderDialog({ module: "algorithm" });
-    expect(screen.getByText("导入算法")).not.toBeNull();
-  });
-
   it("点击 Excel 模板按钮调用 downloadTemplate", () => {
     renderDialog();
     fireEvent.click(screen.getByText("Excel 模板"));

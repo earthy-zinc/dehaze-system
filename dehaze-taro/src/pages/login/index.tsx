@@ -176,8 +176,13 @@ const Login: React.FC = () => {
           </View>
 
           {/* 记住我复选框 */}
-          <View className="form-group remember-row" onClick={() => setRememberMe(!rememberMe)}>
-            <View className={`remember-checkbox ${rememberMe ? "checked" : ""}`}>
+          <View
+            className="form-group remember-row"
+            onClick={() => setRememberMe(!rememberMe)}
+          >
+            <View
+              className={`remember-checkbox ${rememberMe ? "checked" : ""}`}
+            >
               {rememberMe && <Text className="remember-check">✓</Text>}
             </View>
             <Text className="remember-text">记住我</Text>

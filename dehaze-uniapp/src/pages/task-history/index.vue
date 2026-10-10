@@ -27,9 +27,7 @@
             <image :src="record.predUrl" class="thumb-img" mode="aspectFill" />
           </view>
           <view class="record-body">
-            <text class="record-algo">{{
-              record.algorithmName || "未知算法"
-            }}</text>
+            <text class="record-model">{{ record.model || "未知模型" }}</text>
             <text class="record-time">
               耗时 {{ record.time ? record.time + "s" : "-" }}
             </text>
@@ -81,17 +79,16 @@
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import PageHeaderCard from "@/components/common/PageHeaderCard.vue";
-import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
-import type { PredLogVO } from "dehaze-sdk-js";
+import { AiImageAPI } from "dehaze-sdk-js";
+import type { ImageTaskVO } from "dehaze-sdk-js";
 import { useProcessingStore } from "@/store/processing";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
 import { formatRelativeTime } from "@/utils/format";
 import SvgIcon from "@/components/SvgIcon/index.vue";
-import { getErrorMessage } from "@/utils/error";
 
 const processingStore = useProcessingStore();
 const loading = ref(false);
-const records = ref<PredLogVO[]>([]);
+const records = ref<ImageTaskVO[]>([]);
 const currentPage = ref(1);
 const hasMore = ref(true);
 
@@ -100,7 +97,10 @@ async function loadData(page = 1) {
   loading.value = true;
 
   try {
-    const result = await ModelAPI.getPredLogs({ pageNum: page, pageSize: 15 });
+    const result = await AiImageAPI.listImageTasks({
+      pageNum: page,
+      pageSize: 15,
+    });
     if (page === 1) {
       records.value = result.list;
     } else {
@@ -121,7 +121,7 @@ function loadMore() {
   }
 }
 
-function handleClick(record: PredLogVO) {
+function handleClick(record: ImageTaskVO) {
   if (record.predUrl) {
     uni.previewImage({ urls: [record.predUrl], current: record.predUrl });
   }
@@ -136,7 +136,7 @@ function buildImageData(originUrl: string): ImageData {
 }
 
 /** 对比：跳转到并排对比页，注入原图与结果图 */
-function handleCompare(record: PredLogVO) {
+function handleCompare(record: ImageTaskVO) {
   if (!record.predUrl || !record.originUrl) {
     uni.showToast({ title: "缺少原图或结果图，无法对比", icon: "none" });
     return;
@@ -152,31 +152,23 @@ function handleCompare(record: PredLogVO) {
   uni.navigateTo({ url: "/pages/side-by-side/index" });
 }
 
-/** 重新处理：拉取算法详情后跳转到处理页 */
-async function handleReprocess(record: PredLogVO) {
+/** 重新处理：携带原图与模型跳转到处理页 */
+function handleReprocess(record: ImageTaskVO) {
   if (!record.originUrl) {
     uni.showToast({ title: "缺少原图，无法重新处理", icon: "none" });
     return;
   }
-  if (!record.algorithmId) {
-    uni.showToast({ title: "缺少算法信息", icon: "none" });
+  if (!record.model) {
+    uni.showToast({ title: "缺少模型信息", icon: "none" });
     return;
   }
-  uni.showLoading({ title: "准备中...", mask: true });
-  try {
-    const algorithm = await AlgorithmAPI.getAlgorithmInfoById(
-      record.algorithmId
-    );
-    processingStore.reset();
-    processingStore.setImage(buildImageData(record.originUrl));
-    processingStore.setAlgorithm(algorithm);
-    uni.hideLoading();
-    uni.navigateTo({ url: "/pages/processing/index" });
-  } catch (e) {
-    uni.hideLoading();
-    const msg = getErrorMessage(e, "算法信息加载失败");
-    uni.showToast({ title: msg, icon: "none" });
-  }
+  processingStore.reset();
+  processingStore.setImage(buildImageData(record.originUrl));
+  processingStore.setModel({
+    modelId: record.model,
+    displayName: record.model,
+  });
+  uni.navigateTo({ url: "/pages/processing/index" });
 }
 
 function handleStart() {
@@ -232,7 +224,7 @@ onMounted(() => loadData());
   flex: 1;
   min-width: 0;
 }
-.record-algo {
+.record-model {
   display: block;
   font-size: 28rpx;
   font-weight: 600;

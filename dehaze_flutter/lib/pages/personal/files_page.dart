@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/api_result.dart';
 import '../../models/file_model.dart';
 import '../../providers/providers.dart';
 
@@ -73,9 +74,12 @@ class _FilesPageState extends ConsumerState<FilesPage> {
         _pageNum = nextPage;
         _total = result.total;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
     }
   }
 
@@ -123,46 +127,53 @@ class _FilesPageState extends ConsumerState<FilesPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : _items.isEmpty
-                  ? _buildEmpty(theme)
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: NotificationListener<ScrollNotification>(
-                        onNotification: (notification) {
-                          if (notification is ScrollEndNotification &&
-                              notification.metrics.pixels >=
-                                  notification.metrics.maxScrollExtent - 100) {
-                            _loadMore();
-                          }
-                          return false;
-                        },
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _items.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _items.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            final item = _items[index];
-                            return _buildFileCard(item, theme);
-                          },
-                        ),
-                      ),
-                    ),
+          ? _buildError(theme)
+          : _items.isEmpty
+          ? _buildEmpty(theme)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.pixels >=
+                          notification.metrics.maxScrollExtent - 100) {
+                    _loadMore();
+                  }
+                  return false;
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length + (_hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index >= _items.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final item = _items[index];
+                    return _buildFileCard(item, theme);
+                  },
+                ),
+              ),
+            ),
     );
   }
 
   bool get _hasMore => _items.length < _total;
 
   Widget _buildFileCard(FileInfo item, ThemeData theme) {
-    final isImage = item.type != null &&
-        ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']
-            .contains(item.type!.toLowerCase());
+    final isImage =
+        item.type != null &&
+        [
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'webp',
+          'bmp',
+          'svg',
+        ].contains(item.type!.toLowerCase());
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -180,11 +191,7 @@ class _FilesPageState extends ConsumerState<FilesPage> {
                 ),
               )
             : Icon(_fileIcon(item.type), size: 36),
-        title: Text(
-          item.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -208,30 +215,35 @@ class _FilesPageState extends ConsumerState<FilesPage> {
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(_error!, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(_error!, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.folder_open,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('暂无文件',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.folder_open,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无文件',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }

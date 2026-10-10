@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
 import '../../../widgets/dehaze_image.dart';
-import '../models/dataset_model.dart';
+import '../models/dataset_image_model.dart';
 
 /// 图片网格组件
 ///
@@ -24,6 +24,7 @@ class ImageGrid extends StatelessWidget {
   final VoidCallback? onLoadMore;
   final bool hasMore;
   final bool isLoading;
+
   /// 是否作为 Sliver 使用（用于 CustomScrollView）
   final bool asSliver;
 
@@ -102,32 +103,26 @@ class ImageGrid extends StatelessWidget {
       padding: EdgeInsets.all(spacing),
       sliver: SliverGrid(
         gridDelegate: gridDelegate,
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index == images.length && hasMore && isLoading) {
-              return _buildLoadingItem();
-            }
-            final image = images[index];
-            return _ImageCard(
-              image: image,
-              onTap: () => onImageTap?.call(image),
-            );
-          },
-          childCount: images.length + (hasMore && isLoading ? 1 : 0),
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index == images.length && hasMore && isLoading) {
+            return _buildLoadingItem();
+          }
+          final image = images[index];
+          return _ImageCard(image: image, onTap: () => onImageTap?.call(image));
+        }, childCount: images.length + (hasMore && isLoading ? 1 : 0)),
       ),
     );
   }
 
   Widget _buildLoadingItem() => Card(
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            color: Colors.grey[200],
-          ),
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-      );
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        color: Colors.grey[200],
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    ),
+  );
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
@@ -170,10 +165,7 @@ class ImageGrid extends StatelessWidget {
 ///
 /// 支持悬停效果，与设计稿 waterfall-item 样式对应
 class _ImageCard extends StatefulWidget {
-  const _ImageCard({
-    required this.image,
-    this.onTap,
-  });
+  const _ImageCard({required this.image, this.onTap});
 
   final ImageModel image;
   final VoidCallback? onTap;
@@ -203,7 +195,9 @@ class _ImageCardState extends State<_ImageCard>
             ..setEntry(1, 1, _isPressed ? 0.95 : 1.0),
           child: Card(
             elevation: _isHovered ? 8 : 2,
-            shadowColor: Colors.black.withValues(alpha: _isHovered ? 0.12 : 0.08),
+            shadowColor: Colors.black.withValues(
+              alpha: _isHovered ? 0.12 : 0.08,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
             ),
@@ -284,20 +278,20 @@ class _TypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: _getBackgroundColor(),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          type.displayName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: _getBackgroundColor(),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(
+      type.displayName,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
 
   Color _getBackgroundColor() {
     switch (type) {

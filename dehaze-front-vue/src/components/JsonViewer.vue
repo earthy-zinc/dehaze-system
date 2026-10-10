@@ -11,6 +11,7 @@ import {
 } from "vue";
 import { CopyDocument, Download } from "@element-plus/icons-vue";
 import { ElMessage } from "element-plus";
+import { copyText } from "@/utils/clipboard";
 
 defineOptions({ name: "JsonViewer" });
 
@@ -37,12 +38,11 @@ const prettyText = computed(() =>
 );
 
 async function handleCopy() {
-  try {
-    await navigator.clipboard.writeText(prettyText.value);
+  if (await copyText(prettyText.value)) {
     copied.value = true;
     ElMessage.success("已复制");
     setTimeout(() => (copied.value = false), 1500);
-  } catch {
+  } else {
     ElMessage.error("复制失败");
   }
 }

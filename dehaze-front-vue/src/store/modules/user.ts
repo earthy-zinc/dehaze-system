@@ -1,4 +1,3 @@
-import { resetRouter } from "@/router";
 import { store } from "@/store";
 
 import { AuthAPI, LoginData, UserAPI, UserInfo } from "dehaze-sdk-js";
@@ -27,8 +26,12 @@ export const useUserStore = defineStore("user", () => {
     location.reload();
   }
 
-  function resetToken() {
-    resetRouter();
+  /**
+   * 会话失效兜底：内存 roles 是「已登录」的唯一凭证（cookie 为 HttpOnly，JS 不可清），
+   * 必须连用户信息一并清空，登录页才不会被守卫弹回首页。
+   */
+  function resetSession() {
+    user.value = { roles: [], perms: [] };
   }
 
   return {
@@ -36,7 +39,7 @@ export const useUserStore = defineStore("user", () => {
     login,
     getUserInfo,
     logout,
-    resetToken,
+    resetSession,
   };
 });
 

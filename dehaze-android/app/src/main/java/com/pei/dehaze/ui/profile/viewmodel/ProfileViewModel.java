@@ -8,9 +8,9 @@ import com.pei.dehaze.sdk.api.AuthAPI;
 import com.pei.dehaze.sdk.api.UserAPI;
 import com.pei.dehaze.sdk.api.FavoriteAPI;
 import com.pei.dehaze.sdk.api.TaskAPI;
-import com.pei.dehaze.sdk.api.MemberAPI;
+import com.pei.dehaze.sdk.api.AiBillingAPI;
 import com.pei.dehaze.sdk.model.favorite.FavoriteCountVO;
-import com.pei.dehaze.sdk.model.member.MemberProfileVO;
+import com.pei.dehaze.sdk.model.billing.BalanceVO;
 import com.pei.dehaze.sdk.model.task.TaskQuery;
 import com.pei.dehaze.sdk.model.task.TaskVO;
 import com.pei.dehaze.sdk.model.user.UserInfo;
@@ -25,7 +25,7 @@ public class ProfileViewModel extends BaseViewModel {
     private final MutableLiveData<UserInfo> userInfo = new MutableLiveData<>();
     private final MutableLiveData<Boolean> logoutSuccess = new MutableLiveData<>(false);
     private final MutableLiveData<Boolean> notLoggedIn = new MutableLiveData<>(false);
-    private final MutableLiveData<Long> quotaRemaining = new MutableLiveData<>();
+    private final MutableLiveData<String> creditsBalance = new MutableLiveData<>();
     private final MutableLiveData<Long> favoriteCount = new MutableLiveData<>();
     private final MutableLiveData<Long> taskTotal = new MutableLiveData<>();
 
@@ -42,7 +42,7 @@ public class ProfileViewModel extends BaseViewModel {
     public void loadStats() {
         loadFavoriteCount();
         loadTaskTotal();
-        loadMemberProfile();
+        loadCreditsBalance();
     }
 
     private void loadFavoriteCount() {
@@ -67,13 +67,11 @@ public class ProfileViewModel extends BaseViewModel {
                         taskTotal.postValue(data != null ? data.getTotal() : 0L))));
     }
 
-    private void loadMemberProfile() {
-        MemberAPI.getProfile(RepositoryAdapters.wrap(
-                withLoading((OnSuccess<MemberProfileVO>) data -> {
+    private void loadCreditsBalance() {
+        AiBillingAPI.getBalance(RepositoryAdapters.wrap(
+                withLoading((OnSuccess<BalanceVO>) data -> {
                     if (data != null) {
-                        int quota = data.getMonthlyDehazeQuota() != null ? data.getMonthlyDehazeQuota() : 0;
-                        int used = data.getMonthlyDehazeUsed() != null ? data.getMonthlyDehazeUsed() : 0;
-                        quotaRemaining.postValue((long) Math.max(0, quota - used));
+                        creditsBalance.postValue(data.getCreditsBalance());
                     }
                 })));
     }
@@ -85,7 +83,7 @@ public class ProfileViewModel extends BaseViewModel {
     public LiveData<UserInfo> getUserInfo() { return userInfo; }
     public LiveData<Boolean> getLogoutSuccess() { return logoutSuccess; }
     public LiveData<Boolean> getNotLoggedIn() { return notLoggedIn; }
-    public LiveData<Long> getQuotaRemaining() { return quotaRemaining; }
+    public LiveData<String> getCreditsBalance() { return creditsBalance; }
     public LiveData<Long> getFavoriteCount() { return favoriteCount; }
     public LiveData<Long> getTaskTotal() { return taskTotal; }
 }

@@ -1,6 +1,6 @@
 <!-- 语音服务监控：ASR/TTS 引擎在线状态、并发会话数、模型加载状态，30s 轮询 -->
 <script lang="ts" setup>
-import { onMounted, onUnmounted } from "vue";
+import { onActivated, onDeactivated, onMounted, onUnmounted } from "vue";
 import { Refresh } from "@element-plus/icons-vue";
 import { useAdminVoiceStore } from "@/store/modules/adminVoice";
 
@@ -10,8 +10,18 @@ function engineTagType(status: "online" | "offline") {
   return status === "online" ? "success" : "danger";
 }
 
+// 本页路由 keepAlive=true：切走时组件只失活不卸载（onUnmounted 不触发），
+// 故必须同时监听 activated/deactivated，否则 30s 轮询会一直跑下去
 onMounted(() => {
   adminVoiceStore.startMonitor();
+});
+
+onActivated(() => {
+  adminVoiceStore.startMonitor();
+});
+
+onDeactivated(() => {
+  adminVoiceStore.stopMonitor();
 });
 
 onUnmounted(() => {

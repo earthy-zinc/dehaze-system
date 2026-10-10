@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../models/dataset_model.dart' as g;
+import '../../../models/dataset_model.dart';
 import '../../../providers/providers.dart';
 import '../../../services/dataset_service.dart';
-import '../models/dataset_model.dart';
+import '../models/dataset_image_model.dart';
 
 /// 图片列表状态管理
 ///
@@ -36,12 +36,14 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
     if (!_hasMore || _currentDatasetId == null) return;
 
     try {
-      final result = await _service.getList(g.DatasetItemQuery(
-        datasetId: _currentDatasetId!,
-        pageNum: _currentPage,
-        pageSize: 20,
-        keyword: _searchQuery.isEmpty ? null : _searchQuery,
-      ));
+      final result = await _service.getList(
+        DatasetItemQuery(
+          datasetId: _currentDatasetId!,
+          pageNum: _currentPage,
+          pageSize: 20,
+          keyword: _searchQuery.isEmpty ? null : _searchQuery,
+        ),
+      );
 
       final images = <ImageModel>[];
       for (final item in result.list) {
@@ -99,7 +101,7 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
 }
 
 /// 从全局 DatasetItemVO 提取图片列表（清晰图 + 有雾图）
-List<ImageModel> _extractImagesFromItem(g.DatasetItemVO item, int datasetId) {
+List<ImageModel> _extractImagesFromItem(DatasetItemVO item, int datasetId) {
   final images = <ImageModel>[];
   final createTime = item.createTime ?? '';
 
@@ -115,7 +117,7 @@ List<ImageModel> _extractImagesFromItem(g.DatasetItemVO item, int datasetId) {
 }
 
 /// 将全局 ImageUrlVO 映射为本地 ImageModel
-ImageModel _imageUrlToModel(g.ImageUrlVO img, int datasetId, String createdAt) {
+ImageModel _imageUrlToModel(ImageUrlVO img, int datasetId, String createdAt) {
   return ImageModel(
     id: img.id,
     datasetId: datasetId,
@@ -132,9 +134,9 @@ ImageModel _imageUrlToModel(g.ImageUrlVO img, int datasetId, String createdAt) {
 /// 图片列表 Provider
 final imageProvider =
     StateNotifierProvider<ImageNotifier, AsyncValue<List<ImageModel>>>((ref) {
-  final service = ref.watch(datasetItemServiceProvider);
-  return ImageNotifier(service);
-});
+      final service = ref.watch(datasetItemServiceProvider);
+      return ImageNotifier(service);
+    });
 
 /// 图片类型筛选 Provider
 final imageTypeFilterProvider = StateProvider<ImageType?>((ref) => null);

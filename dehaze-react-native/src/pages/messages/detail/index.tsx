@@ -14,7 +14,11 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { MessageAPI } from 'dehaze-sdk-js';
@@ -24,10 +28,16 @@ import { spacing, layout } from '@/theme/spacing';
 import { useMessagesStore } from '@/store/messages';
 import type { MessagesStackParamList } from '@/routes/types';
 
-type MessageDetailRouteProp = RouteProp<MessagesStackParamList, 'MessageDetail'>;
+type MessageDetailRouteProp = RouteProp<
+  MessagesStackParamList,
+  'MessageDetail'
+>;
 
 const MessageDetailScreen: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'MessageDetail'>>();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<MessagesStackParamList, 'MessageDetail'>
+    >();
   const route = useRoute<MessageDetailRouteProp>();
   const { messageId } = route.params;
   const { decrementUnread } = useMessagesStore();
@@ -65,7 +75,10 @@ const MessageDetailScreen: React.FC = () => {
   const formatTime = (timeStr?: string) => {
     if (!timeStr) return '';
     const d = new Date(timeStr);
-    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d
+      .getHours()
+      .toString()
+      .padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -79,9 +92,16 @@ const MessageDetailScreen: React.FC = () => {
   if (!message) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={48} color={colors.text.tertiary} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={colors.text.tertiary}
+        />
         <Text style={styles.errorText}>消息不存在或已被删除</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.backBtnText}>返回</Text>
         </TouchableOpacity>
       </View>
@@ -92,7 +112,10 @@ const MessageDetailScreen: React.FC = () => {
     <View style={styles.container}>
       {/* 自定义导航栏 (L2: 返回 + 标题) */}
       <View style={styles.navbar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>
@@ -109,7 +132,12 @@ const MessageDetailScreen: React.FC = () => {
         {/* 消息头部 */}
         <View style={styles.detailHeader}>
           <View style={styles.typeRow}>
-            <View style={[styles.typeBadge, { backgroundColor: colors.primaryLight }]}>
+            <View
+              style={[
+                styles.typeBadge,
+                { backgroundColor: colors.primaryLight },
+              ]}
+            >
               <Text style={[styles.typeBadgeText, { color: colors.primary }]}>
                 {message.typeLabel || message.type}
               </Text>
@@ -122,7 +150,9 @@ const MessageDetailScreen: React.FC = () => {
             )}
           </View>
           <Text style={styles.detailTitle}>{message.title}</Text>
-          <Text style={styles.detailTime}>{formatTime(message.createTime)}</Text>
+          <Text style={styles.detailTime}>
+            {formatTime(message.createTime)}
+          </Text>
         </View>
 
         {/* 消息正文 */}

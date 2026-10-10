@@ -32,19 +32,43 @@ export function createConversationSlice(
     currentConversationId.value = null;
   }
 
-  async function fetchConversations() {
+  /** 在途请求：首屏页面与侧边栏会同时触发列表加载，joinInflight=true 时复用同一请求 */
+  let conversationsInflight: Promise<void> | null = null;
+
+  /**
+   * 加载会话列表。
+   *
+   * `joinInflight=true`：已有同类请求在途时复用它（首屏页面与 ChatSidebar 挂载都会触发一次
+   * 加载，子组件先挂载，合并后只打一次接口）；
+   * 缺省 false：变更/搜索/筛选后必须拿到最新数据，始终新发请求（复用会返回过期结果）。
+   */
+  function fetchConversations(joinInflight = false): Promise<void> {
+    if (joinInflight && conversationsInflight) return conversationsInflight;
     conversationsLoading.value = true;
-    try {
-      const query: ConversationQuery = { ...conversationQuery };
-      if (scope.value === "admin") {
-        query.view = "admin";
+    const request = (async () => {
+      try {
+        const query: ConversationQuery = { ...conversationQuery };
+        if (scope.value === "admin") {
+          query.view = "admin";
+        }
+        const result = await AiConversationAPI.getConversations(query);
+        conversations.value = result.list ?? [];
+        conversationsTotal.value = result.total ?? 0;
+      } finally {
+        conversationsLoading.value = false;
       }
-      const result = await AiConversationAPI.getConversations(query);
-      conversations.value = result.list ?? [];
-      conversationsTotal.value = result.total ?? 0;
-    } finally {
-      conversationsLoading.value = false;
-    }
+    })();
+    conversationsInflight = request;
+    // 仅在仍指向本请求时清空在途标记；用 then 双分支而非 finally，避免产生未处理的拒绝
+    void request.then(
+      () => {
+        if (conversationsInflight === request) conversationsInflight = null;
+      },
+      () => {
+        if (conversationsInflight === request) conversationsInflight = null;
+      }
+    );
+    return request;
   }
 
   async function createConversation(form?: ConversationCreateForm) {

@@ -97,7 +97,8 @@ class DehazeApp extends ConsumerStatefulWidget {
   ConsumerState<DehazeApp> createState() => _DehazeAppState();
 }
 
-class _DehazeAppState extends ConsumerState<DehazeApp> with WidgetsBindingObserver {
+class _DehazeAppState extends ConsumerState<DehazeApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();

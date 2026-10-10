@@ -88,14 +88,13 @@ class ResponsiveConstraints extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Align(
-        alignment: alignment,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Padding(
-            padding:
-                padding ?? ResponsiveUtils.getResponsivePadding(context),
-            child: child,
-          ),
-        ),
-      );
+    alignment: alignment,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Padding(
+        padding: padding ?? ResponsiveUtils.getResponsivePadding(context),
+        child: child,
+      ),
+    ),
+  );
 }

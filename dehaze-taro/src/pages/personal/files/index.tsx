@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { FileAPI } from "dehaze-sdk-js";
@@ -12,32 +12,33 @@ const FilesPage: React.FC = () => {
   const [pageNum, setPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const loadData = useCallback(
-    async (page = 1) => {
-      if (loading) return;
-      setLoading(true);
-      try {
-        const result = await FileAPI.getPage({ pageNum: page, pageSize: 20 });
-        const list = result.list || [];
-        if (page === 1) {
-          setFiles(list);
-        } else {
-          setFiles((prev) => [...prev, ...list]);
-        }
-        setHasMore(list.length < (result.total || 0));
-        setPageNum(page);
-      } catch {
-        Taro.showToast({ title: "加载失败", icon: "none" });
-      } finally {
-        setLoading(false);
+  const loadingRef = useRef(false);
+
+  const loadData = useCallback(async (page = 1) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      const result = await FileAPI.getPage({ pageNum: page, pageSize: 20 });
+      const list = result.list || [];
+      if (page === 1) {
+        setFiles(list);
+      } else {
+        setFiles((prev) => [...prev, ...list]);
       }
-    },
-    [loading]
-  );
+      setHasMore(list.length < (result.total || 0));
+      setPageNum(page);
+    } catch {
+      Taro.showToast({ title: "加载失败", icon: "none" });
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadData(1);
-  }, []);
+  }, [loadData]);
 
   const handleClick = (file: FileInfo) => {
     if (file.url) {
@@ -86,9 +87,18 @@ const FilesPage: React.FC = () => {
             <Text className="loading-text">加载中...</Text>
           </View>
         ) : files.length > 0 ? (
-          <ScrollView scrollY className="files-scroll" enhanced showScrollbar={false}>
+          <ScrollView
+            scrollY
+            className="files-scroll"
+            enhanced
+            showScrollbar={false}
+          >
             {files.map((file) => (
-              <View key={file.id} className="file-card" onClick={() => handleClick(file)}>
+              <View
+                key={file.id}
+                className="file-card"
+                onClick={() => handleClick(file)}
+              >
                 <View className="file-icon">
                   <Text>{getIcon(file.type)}</Text>
                 </View>

@@ -6,7 +6,8 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { colors } from '@/theme/colors';
 
 const TechSpecsSection: React.FC = () => {
-  const { width, isMobile, isTablet, spacing, containerPadding } = useResponsive();
+  const { width, isMobile, isTablet, spacing, containerPadding } =
+    useResponsive();
 
   const specs = [
     {
@@ -33,7 +34,8 @@ const TechSpecsSection: React.FC = () => {
 
   // 响应式列数计算
   const columns = isMobile ? 2 : isTablet ? 2 : 4;
-  const cardWidth = (width - containerPadding * 2 - spacing * (columns - 1)) / columns;
+  const cardWidth =
+    (width - containerPadding * 2 - spacing * (columns - 1)) / columns;
 
   return (
     <Section
@@ -42,17 +44,16 @@ const TechSpecsSection: React.FC = () => {
       padding={isMobile ? 60 : 80}
       style={styles.container}
     >
-      <View style={[
-        styles.specsGrid,
-        { paddingHorizontal: containerPadding, gap: spacing },
-      ]}>
+      <View
+        style={[
+          styles.specsGrid,
+          { paddingHorizontal: containerPadding, gap: spacing },
+        ]}
+      >
         {specs.map((spec, index) => (
-          <View 
-            key={`spec-${index}`} 
-            style={[
-              styles.specWrapper,
-              { width: cardWidth },
-            ]}
+          <View
+            key={`spec-${index}`}
+            style={[styles.specWrapper, { width: cardWidth }]}
           >
             <SpecCard {...spec} compact={isMobile} />
           </View>

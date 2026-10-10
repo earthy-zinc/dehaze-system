@@ -29,16 +29,16 @@
 import { ref, computed, onMounted } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import { DatasetItemAPI } from "dehaze-sdk-js";
-import type { Dataset } from "dehaze-sdk-js";
+import type { DatasetVO } from "dehaze-sdk-js";
 import { formatRelativeTime } from "@/utils/format";
 import { flattenDatasetItems } from "../data/datasetData";
 
 interface Props {
-  dataset: Dataset;
+  dataset: DatasetVO;
 }
 
 interface Emits {
-  (e: "click", dataset: Dataset): void;
+  (e: "click", dataset: DatasetVO): void;
 }
 
 const props = defineProps<Props>();

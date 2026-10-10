@@ -32,14 +32,28 @@
           align="center"
         />
         <el-table-column label="成功率" width="90" align="center">
-          <template #default="{ row }">{{ row.successRate }}%</template>
+          <!-- successRate 为 0-1 比率（ai_provider.py 契约，null=近 24h 无调用），展示前需 ×100 -->
+          <template #default="{ row }">
+            {{
+              row.successRate == null
+                ? "-"
+                : (row.successRate * 100).toFixed(1) + "%"
+            }}
+          </template>
         </el-table-column>
         <el-table-column
           label="限流(429)"
           prop="rate429"
           width="100"
           align="center"
-        />
+        >
+          <!-- rate429 同为 0-1 比率契约，与成功率同口径展示 -->
+          <template #default="{ row }">
+            {{
+              row.rate429 == null ? "-" : (row.rate429 * 100).toFixed(1) + "%"
+            }}
+          </template>
+        </el-table-column>
         <el-table-column label="P95延迟" width="100" align="center">
           <template #default="{ row }">
             {{ row.p95LatencyMs != null ? row.p95LatencyMs + "ms" : "-" }}
@@ -213,6 +227,14 @@ async function handleTestConnection(row: ProviderVO) {
       `连通性测试结果 - ${row.displayName}`,
       { dangerouslyUseHTMLString: true }
     );
+  } catch (error) {
+    // 连通失败是预期结果（无可用 Key、供应商不可达），须就地给出结论，不能冒泡成未捕获异常
+    const msg =
+      (error as { response?: { data?: { msg?: string } } })?.response?.data
+        ?.msg ?? "连通性测试请求失败";
+    ElMessageBox.alert(msg, `连通性测试失败 - ${row.displayName}`, {
+      type: "error",
+    });
   } finally {
     testingId.value = null;
   }

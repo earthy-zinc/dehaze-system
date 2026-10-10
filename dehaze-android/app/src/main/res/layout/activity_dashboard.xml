@@ -85,7 +85,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="14dp"
-                        android:text="一站式图像去雾处理 · 算法对比 · 效果评估"
+                        android:text="一站式图像去雾处理 · 模型对比 · 效果评估"
                         android:textColor="#B3FFFFFF"
                         android:textSize="11sp" />
                 </LinearLayout>
@@ -202,7 +202,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:orientation="horizontal"
-                android:weightSum="2">
+                android:weightSum="1">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_dataset"
@@ -210,24 +210,10 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_weight="1"
-                    android:layout_marginEnd="6dp"
                     android:text="数据集"
                     android:textColor="@color/brand_primary"
                     app:cornerRadius="12dp"
                     app:icon="@drawable/ic_dataset"
-                    app:iconTint="@color/brand_primary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_algorithm"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:layout_marginStart="6dp"
-                    android:text="算法管理"
-                    android:textColor="@color/brand_primary"
-                    app:cornerRadius="12dp"
-                    app:icon="@drawable/ic_algorithm"
                     app:iconTint="@color/brand_primary" />
             </LinearLayout>
 

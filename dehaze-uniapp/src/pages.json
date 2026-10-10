@@ -67,13 +67,6 @@
       }
     },
     {
-      "path": "pages/algorithm-select/index",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": ""
-      }
-    },
-    {
       "path": "pages/processing/index",
       "style": {
         "navigationStyle": "custom",
@@ -126,13 +119,6 @@
       }
     },
     {
-      "path": "pages/algorithm/index",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": ""
-      }
-    },
-    {
       "path": "pages/profile/index",
       "style": {
         "navigationStyle": "custom",
@@ -168,7 +154,7 @@
       }
     },
     {
-      "path": "pages/personal/quota/index",
+      "path": "pages/personal/credits/index",
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": ""
@@ -309,13 +295,6 @@
     },
     {
       "path": "pages/system/dept/index",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": ""
-      }
-    },
-    {
-      "path": "pages/system/algorithm/index",
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": ""

@@ -1,13 +1,14 @@
 import { HeartFilled, HeartOutlined, LoadingOutlined } from "@ant-design/icons";
 import { Button, Tooltip } from "antd";
 import React from "react";
+import type { FavoriteTargetType } from "dehaze-sdk-js";
 import { useFavorite } from "@/hooks/useFavorite";
 import "./index.module.scss";
 
 export type FavoriteSize = "small" | "middle" | "large";
 
 interface FavoriteButtonProps {
-  targetType: "algorithm" | "result" | "dataset" | "image" | "preset";
+  targetType: FavoriteTargetType;
   targetId: number;
   size?: FavoriteSize;
   showText?: boolean;
@@ -23,8 +24,8 @@ const SIZE_MAP: Record<
   large: { width: 44, height: 44, fontSize: 22 },
 };
 
-const TEXT_MAP = {
-  algorithm: "收藏算法",
+const TEXT_MAP: Record<FavoriteTargetType, string> = {
+  model: "收藏模型",
   result: "收藏结果",
   dataset: "收藏数据集",
   image: "收藏图片",

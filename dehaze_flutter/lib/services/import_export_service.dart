@@ -21,9 +21,7 @@ class ImportExportService {
     final response = await _dio.post<Map<String, dynamic>>(
       '${ApiConstants.importExport}/import',
       data: formData,
-      options: Options(
-        headers: {'Content-Type': 'multipart/form-data'},
-      ),
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
     );
     return ImportRecordVO.fromJson(
       response.data!['data'] as Map<String, dynamic>,
@@ -39,10 +37,9 @@ class ImportExportService {
       queryParameters: query.toQuery(),
     );
     final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>?)
-            ?.map(
-              (e) => ImportRecordVO.fromJson(e as Map<String, dynamic>),
-            )
+    final list =
+        (data['list'] as List<dynamic>?)
+            ?.map((e) => ImportRecordVO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
     return PageResult<ImportRecordVO>(
@@ -85,10 +82,9 @@ class ImportExportService {
       queryParameters: query.toQuery(),
     );
     final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>?)
-            ?.map(
-              (e) => ExportRecordVO.fromJson(e as Map<String, dynamic>),
-            )
+    final list =
+        (data['list'] as List<dynamic>?)
+            ?.map((e) => ExportRecordVO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
     return PageResult<ExportRecordVO>(

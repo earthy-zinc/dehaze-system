@@ -1,10 +1,11 @@
 import {
-  AlgorithmAPI,
+  AiBillingAPI,
+  AiImageAPI,
+  AiModelAPI,
   FileAPI,
-  ModelAPI,
+  type AiModelVO,
   type FileInfo,
-  type OptionType,
-  type PredictionQuota,
+  type ImageTaskStatus,
 } from "dehaze-sdk-js";
 
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
@@ -104,8 +105,7 @@ const Dehaze: React.FC = () => {
     overlap: false,
   });
 
-  const [selectedModel, setSelectedModel] = useState<number>();
-  const [algorithmOptions, setAlgorithmOptions] = useState<OptionType[]>([]);
+  const [models, setModels] = useState<AiModelVO[]>([]);
   const [dialogVisible, setDialogVisible] = useState(false);
   const [cleanUrl, setCleanUrl] = useState("");
 
@@ -114,6 +114,7 @@ const Dehaze: React.FC = () => {
   const [progress, setProgress] = useState(0);
   const cancelFlagRef = useRef(false);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const taskIdRef = useRef<number | null>(null);
 
   // 算法参数
   const [dehazeIntensity, setDehazeIntensity] = useState(50);
@@ -127,8 +128,6 @@ const Dehaze: React.FC = () => {
   // 保存结果状态
   const [saving, setSaving] = useState(false);
 
-  // 配额状态
-  const [quota, setQuota] = useState<PredictionQuota | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [predictionFailed, setPredictionFailed] = useState(false);
 
@@ -140,7 +139,7 @@ const Dehaze: React.FC = () => {
   const urls = useSelector((state: RootState) => state.imageShow.urls);
   const modelId = useSelector((state: RootState) => state.imageShow.modelId);
 
-  // 获取模型可选项，并默认选择第一个模型展示
+  // 模型下拉数据源：当前用户可用的图像编辑模型
   useEffect(() => {
     // 检查 URL 查询参数 imageUrl，若有则自动加载图片（来自图像输入页跳转）
     const imageUrl = searchParams.get("imageUrl");
@@ -153,12 +152,21 @@ const Dehaze: React.FC = () => {
         overlap: false,
       }));
     }
-    const fetchData = async () => {
-      const options = await AlgorithmAPI.getOption();
-      setAlgorithmOptions(options);
-    };
-    fetchData().then();
+    AiModelAPI.listEnabledModels("image_edit").then(setModels);
   }, []);
+
+  // 选中项：沿用持久化的历史选择；历史模型已停用或首次进入时取后端标记的平台默认模型
+  // （isDefault ← 字典 ai_model.default_model.image_edit）；后端未配置默认时不下选，
+  // 由用户显式选择（不再回落到"启用列表首项"猜值）
+  useEffect(() => {
+    if (models.length === 0) return;
+    if (!models.some((m) => m.modelId === modelId)) {
+      const platformDefault = models.find((m) => m.isDefault);
+      if (platformDefault) {
+        dispatch(setModelId(platformDefault.modelId));
+      }
+    }
+  }, [models, modelId, dispatch]);
 
   // 组件卸载时清理定时器
   useEffect(() => {
@@ -186,7 +194,7 @@ const Dehaze: React.FC = () => {
         message.success("文件秒传成功");
       } else {
         // 未命中，执行实际上传
-        res = await FileAPI.upload(file, modelId);
+        res = await FileAPI.upload(file);
       }
       dispatch(
         setImageUrl({
@@ -221,15 +229,13 @@ const Dehaze: React.FC = () => {
   };
 
   const handleGenerateImage = async () => {
-    if (!selectedModel) return message.error("请选择模型");
+    if (!modelId) return message.error("请选择模型");
     if (!urls[0]) return message.error("请先上传图片");
-
-    // 检查配额
-    const hasQuota = await checkQuotaAndPredict();
-    if (!hasQuota) return;
+    if (!(await ensureCredits())) return;
 
     // 重置状态
     cancelFlagRef.current = false;
+    taskIdRef.current = null;
     setPredictionFailed(false);
     setProcessing(true);
     setProgress(0);
@@ -240,13 +246,16 @@ const Dehaze: React.FC = () => {
     startProgressSimulation();
 
     try {
-      const response = await ModelAPI.predictAndWait({
-        algorithmId: selectedModel,
-        imageUrl: urls[0].url,
-      });
+      const response = await AiImageAPI.submitAndWait(
+        { model: modelId, imageUrl: urls[0].url },
+        { onPoll: trackTaskId }
+      );
 
-      // 已取消则忽略结果
-      if (cancelFlagRef.current) return;
+      // 已取消则终止后端任务并忽略结果
+      if (cancelFlagRef.current) {
+        await cancelRunningTask();
+        return;
+      }
 
       if (response.status === 3) {
         throw new Error(response.errorMessage || "去雾处理失败");
@@ -290,8 +299,27 @@ const Dehaze: React.FC = () => {
     }
   };
 
+  /** 记录在途任务号，供取消使用 */
+  const trackTaskId = (_status: ImageTaskStatus, taskId?: number) => {
+    taskIdRef.current = taskId ?? null;
+  };
+
+  /**
+   * 取消后端在途任务（幂等）。
+   * 终态任务仍返回当前状态，且本地已按取消处理，故取消失败不阻断交互。
+   */
+  const cancelRunningTask = async () => {
+    const taskId = taskIdRef.current;
+    if (!taskId) return;
+    try {
+      await AiImageAPI.cancelImageTask(taskId);
+    } catch {
+      // 忽略：任务可能已进入终态或请求已中断
+    }
+  };
+
   /** 取消正在进行的处理 */
-  const handleCancel = () => {
+  const handleCancel = async () => {
     cancelFlagRef.current = true;
     if (progressTimerRef.current) {
       clearInterval(progressTimerRef.current);
@@ -301,6 +329,7 @@ const Dehaze: React.FC = () => {
     setProgress(0);
     dispatch(setLoading(false));
     setShow((prev) => ({ ...prev, singleImage: true, overlap: false }));
+    await cancelRunningTask();
     message.info("已取消处理");
   };
 
@@ -320,7 +349,7 @@ const Dehaze: React.FC = () => {
       const md5 = await calculateFileMd5(file);
       const existingResult = await FileAPI.uploadCheck(md5);
       if (!existingResult) {
-        await FileAPI.upload(file, modelId);
+        await FileAPI.upload(file);
       }
       message.success("结果保存成功");
     } catch (error) {
@@ -336,7 +365,7 @@ const Dehaze: React.FC = () => {
       message.warning("最多支持20张图片");
       return;
     }
-    if (!selectedModel) {
+    if (!modelId) {
       message.error("请先选择模型");
       return;
     }
@@ -373,14 +402,14 @@ const Dehaze: React.FC = () => {
         const existingFile = await FileAPI.uploadCheck(md5);
         const uploadRes = existingFile
           ? existingFile
-          : await FileAPI.upload(files[i], modelId);
+          : await FileAPI.upload(files[i]);
         if (batchCancelRef.current) break;
 
-        // 调用预测接口（异步轮询直到终态）
-        const predRes = await ModelAPI.predictAndWait({
-          algorithmId: selectedModel,
-          imageUrl: uploadRes.url,
-        });
+        // 提交图像任务并轮询直到终态
+        const predRes = await AiImageAPI.submitAndWait(
+          { model: modelId, imageUrl: uploadRes.url },
+          { onPoll: trackTaskId }
+        );
         if (batchCancelRef.current) break;
 
         if (predRes.status === 3) {
@@ -425,7 +454,7 @@ const Dehaze: React.FC = () => {
   };
 
   /** 取消批量处理 */
-  const handleBatchCancel = () => {
+  const handleBatchCancel = async () => {
     batchCancelRef.current = true;
     setBatchTasks((prev) =>
       prev.map((t) =>
@@ -434,6 +463,7 @@ const Dehaze: React.FC = () => {
           : t
       )
     );
+    await cancelRunningTask();
     message.info("已取消批量处理");
   };
 
@@ -455,9 +485,8 @@ const Dehaze: React.FC = () => {
     }));
   };
 
-  const handleSelectModel = (id: number) => {
-    setSelectedModel(id);
-    dispatch(setModelId(id));
+  const handleSelectModel = (slug: string) => {
+    dispatch(setModelId(slug));
   };
 
   const handleDatasetImageSelect = (haze: string, clean: string) => {
@@ -476,32 +505,20 @@ const Dehaze: React.FC = () => {
   const handleEval = () => {
     navigate("/evaluation", {
       state: {
-        modelId: selectedModel,
+        modelId,
         images: urls,
         cleanUrl,
       },
     });
   };
 
-  // 获取配额信息
-  const fetchQuota = async () => {
-    try {
-      const q = await ModelAPI.getQuota();
-      setQuota(q);
-    } catch {
-      // 静默失败，不影响主流程
-    }
-  };
-
-  // 处理前检查配额
-  const checkQuotaAndPredict = async () => {
-    if (!quota || quota.remaining > 0) {
-      return true;
-    }
-    // 配额不足，弹出提示
+  /** 提交前校验积分余额；余额为 0 引导充值（后端提交时仍会二次校验，错误码 A0515） */
+  const ensureCredits = async () => {
+    const { creditsBalance } = await AiBillingAPI.getBalance();
+    if (Number(creditsBalance) > 0) return true;
     Modal.confirm({
-      title: "预测次数不足",
-      content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
+      title: "积分不足",
+      content: `当前积分余额为 ${creditsBalance}，请充值或升级会员后重试。`,
       okText: "去充值",
       cancelText: "取消",
       onOk: () => {
@@ -525,16 +542,15 @@ const Dehaze: React.FC = () => {
     }, 200);
   };
 
-  /** 重试失败的预测 */
+  /** 重试失败的处理 */
   const handleRetry = async () => {
-    if (!selectedModel || !urls[0]) return;
+    if (!modelId || !urls[0]) return;
     setRetrying(true);
     try {
-      // 重新触发 predictAndWait
-      const response = await ModelAPI.predictAndWait({
-        algorithmId: selectedModel,
-        imageUrl: urls[0].url,
-      });
+      const response = await AiImageAPI.submitAndWait(
+        { model: modelId, imageUrl: urls[0].url },
+        { onPoll: trackTaskId }
+      );
 
       if (response.status === 3) {
         throw new Error(response.errorMessage || "去雾处理失败");
@@ -609,8 +625,12 @@ const Dehaze: React.FC = () => {
         <div className={styles["select-wrap"]}>
           <span>选择去雾模型</span>
           <Select
-            value={selectedModel}
-            options={algorithmOptions}
+            value={modelId || undefined}
+            placeholder="请选择模型"
+            options={models.map((m) => ({
+              value: m.modelId,
+              label: m.displayName,
+            }))}
             onChange={handleSelectModel}
             style={{ width: 240 }}
           />

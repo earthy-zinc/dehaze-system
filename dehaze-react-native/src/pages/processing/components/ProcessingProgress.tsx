@@ -20,14 +20,26 @@ const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; isError: boolean; isSuccess: boolean; showSpinner: boolean }
 > = {
-  0: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
-  1: { label: '去雾处理中', isError: false, isSuccess: false, showSpinner: true },
+  0: {
+    label: '去雾处理中',
+    isError: false,
+    isSuccess: false,
+    showSpinner: true,
+  },
+  1: {
+    label: '去雾处理中',
+    isError: false,
+    isSuccess: false,
+    showSpinner: true,
+  },
   2: { label: '处理完成', isError: false, isSuccess: true, showSpinner: false },
   3: { label: '处理失败', isError: true, isSuccess: false, showSpinner: false },
   4: { label: '已取消', isError: true, isSuccess: false, showSpinner: false },
 };
 
-const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => {
+const ProcessingProgress: React.FC<ProcessingProgressProps> = ({
+  progress,
+}) => {
   const { status, elapsed, error } = progress;
   const config = STATUS_CONFIG[status];
   const showElapsed = config.showSpinner || config.isSuccess;
@@ -40,7 +52,11 @@ const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => 
           {config.isError ? (
             <Icon name="times" size={18} color={theme.colors.status.error} />
           ) : config.isSuccess ? (
-            <Icon name="check-circle" size={18} color={theme.colors.status.success} />
+            <Icon
+              name="check-circle"
+              size={18}
+              color={theme.colors.status.success}
+            />
           ) : (
             <ActivityIndicator size="small" color={theme.colors.primary} />
           )}
@@ -60,7 +76,9 @@ const ProcessingProgress: React.FC<ProcessingProgressProps> = ({ progress }) => 
       {showElapsed && (
         <View style={styles.metaRow}>
           <Icon name="clock" size={14} color={theme.colors.text.tertiary} />
-          <Text style={styles.metaText}>已用时间：{formatDuration(elapsed)}</Text>
+          <Text style={styles.metaText}>
+            已用时间：{formatDuration(elapsed)}
+          </Text>
         </View>
       )}
 

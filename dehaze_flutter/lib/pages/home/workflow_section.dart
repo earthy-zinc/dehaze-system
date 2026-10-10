@@ -23,9 +23,9 @@ class WorkflowSection extends StatelessWidget {
       {
         'number': '02',
         'icon': Icons.psychology,
-        'title': '智能算法',
-        'description': '多种去雾算法可选\nAI智能推荐最优方案',
-        'route': AppRouterConfig.algorithmSelect,
+        'title': '智能模型',
+        'description': '多种去雾模型可选\n模型选择内联于处理页',
+        'route': AppRouterConfig.processing,
       },
       {
         'number': '03',

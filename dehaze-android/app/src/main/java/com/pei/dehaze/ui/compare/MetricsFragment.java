@@ -19,7 +19,7 @@ import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentMetricsBinding;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
 import com.pei.dehaze.utils.StatePlaceholder;
 import com.pei.dehaze.utils.ToastUtils;
@@ -38,7 +38,7 @@ public class MetricsFragment extends Fragment {
     private FragmentMetricsBinding binding;
     private StatePlaceholder statePlaceholder;
 
-    private PredResult currentPredResult;
+    private ImageTaskResponse currentTask;
     private String gtUrl;
 
     private final ActivityResultLauncher<String> pickGtLauncher =
@@ -62,7 +62,7 @@ public class MetricsFragment extends Fragment {
         statePlaceholder.showEmpty("请先完成去雾处理", R.drawable.ic_metrics);
 
         compareViewModel.getPredictionResult().observe(getViewLifecycleOwner(), result -> {
-            currentPredResult = result;
+            currentTask = result;
             if (result != null && result.getResultUrl() != null) {
                 statePlaceholder.showEmpty("上传参考图（GT）以计算指标", R.drawable.ic_metrics);
                 binding.btnUploadGt.setEnabled(true);
@@ -72,14 +72,14 @@ public class MetricsFragment extends Fragment {
         compareViewModel.getLoading().observe(getViewLifecycleOwner(), isLoading -> {
             if (isLoading != null && isLoading) {
                 statePlaceholder.showLoading("正在评估…");
-            } else if (currentPredResult != null) {
+            } else if (currentTask != null) {
                 statePlaceholder.hide();
             }
         });
 
         binding.btnUploadGt.setEnabled(false);
         binding.btnUploadGt.setOnClickListener(v -> {
-            if (currentPredResult == null || currentPredResult.getResultUrl() == null) {
+            if (currentTask == null || currentTask.getResultUrl() == null) {
                 ToastUtils.showShort(requireContext(), "请先完成去雾处理");
                 return;
             }
@@ -106,7 +106,7 @@ public class MetricsFragment extends Fragment {
     }
 
     private void onEvaluateClick() {
-        if (currentPredResult == null || currentPredResult.getResultUrl() == null) {
+        if (currentTask == null || currentTask.getResultUrl() == null) {
             ToastUtils.showShort(requireContext(), "请先完成去雾处理");
             return;
         }
@@ -114,12 +114,12 @@ public class MetricsFragment extends Fragment {
             ToastUtils.showShort(requireContext(), "请先上传参考图");
             return;
         }
-        Long algorithmId = compareViewModel.getCurrentAlgorithmId();
-        if (algorithmId == null) {
-            ToastUtils.showShort(requireContext(), "算法 ID 缺失");
+        String modelId = compareViewModel.getCurrentModelId();
+        if (modelId == null) {
+            ToastUtils.showShort(requireContext(), "模型标识缺失");
             return;
         }
-        compareViewModel.evaluate(algorithmId, currentPredResult.getResultUrl(), gtUrl);
+        compareViewModel.evaluate(modelId, currentTask.getResultUrl(), gtUrl);
     }
 
     private void showMetrics(EvalResult result) {
@@ -142,7 +142,7 @@ public class MetricsFragment extends Fragment {
         }
 
         if (result.getTime() != null) {
-            binding.tvEvalTime.setText("耗时：" + result.getTime() + "ms");
+            binding.tvEvalTime.setText("耗时：" + result.getTime() + "s");
             binding.tvEvalTime.setVisibility(View.VISIBLE);
         }
     }

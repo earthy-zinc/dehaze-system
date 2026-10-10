@@ -5,7 +5,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,14 +33,14 @@ public final class ViewUtils {
     }
 
     /**
-     * 根据 Option 列表更新算法选择 Spinner 的显示内容。
-     * 构建 label 列表并设置 ArrayAdapter，options 为 null 时清空。
+     * 根据启用模型列表更新模型选择 Spinner 的显示内容（展示 displayName）。
+     * 构建 label 列表并设置 ArrayAdapter，models 为 null 时清空。
      */
-    public static void updateAlgorithmSpinner(Spinner spinner, List<Option> options) {
+    public static void updateModelSpinner(Spinner spinner, List<AiModelVO> models) {
         List<String> labels = new ArrayList<>();
-        if (options != null) {
-            for (Option opt : options) {
-                labels.add(opt.getLabel());
+        if (models != null) {
+            for (AiModelVO model : models) {
+                labels.add(model.getDisplayName() != null ? model.getDisplayName() : model.getModelId());
             }
         }
         ArrayAdapter<String> adapter = new ArrayAdapter<>(spinner.getContext(),

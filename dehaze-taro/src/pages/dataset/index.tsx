@@ -17,7 +17,7 @@ import DatasetInfo from "./components/DatasetInfo";
 import ImageGrid from "./components/ImageGrid";
 
 import { useDataset } from "./store/datasetStore";
-import type { Dataset } from "./services/types";
+import type { DatasetVO } from "./services/types";
 import {
   AnnotationFilter,
   ANNOTATION_FILTER_LABELS,
@@ -82,7 +82,7 @@ const DatasetBrowseContent: React.FC = () => {
     handleSearch("");
   };
 
-  const handleDatasetClick = (dataset: Dataset) => {
+  const handleDatasetClick = (dataset: DatasetVO) => {
     setCurrentDatasetId(dataset.id);
     setView("detail");
     resetImages();

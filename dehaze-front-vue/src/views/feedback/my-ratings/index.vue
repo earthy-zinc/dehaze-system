@@ -10,7 +10,7 @@
           <div class="card-header">
             <div class="header-left">
               <el-icon class="algo-icon"><Star /></el-icon>
-              <span class="algo-name">{{ rating.algorithmName }}</span>
+              <span class="algo-name">{{ rating.modelName }}</span>
             </div>
             <div class="header-right">
               <el-rate

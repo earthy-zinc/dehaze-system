@@ -36,7 +36,7 @@ const RecommendManagePage: React.FC = () => {
   const [formData, setFormData] = useState<{
     ruleName?: string;
     sceneType?: string;
-    algorithmIds?: string;
+    modelIds?: string;
     weight?: number;
     enabled?: boolean;
   }>({ enabled: true, weight: 1 });
@@ -65,7 +65,7 @@ const RecommendManagePage: React.FC = () => {
     setFormData({
       ruleName: rule.ruleName,
       sceneType: rule.sceneType,
-      algorithmIds: rule.algorithmIds?.join(",") || "",
+      modelIds: rule.modelIds?.join(",") || "",
       weight: rule.weight ?? 1,
       enabled: rule.enabled ?? true,
     });
@@ -82,17 +82,17 @@ const RecommendManagePage: React.FC = () => {
       return;
     }
     try {
-      const algoIds = formData.algorithmIds
-        ? formData.algorithmIds
+      const modelIds = formData.modelIds
+        ? formData.modelIds
             .split(",")
-            .map((s) => Number(s.trim()))
-            .filter((n) => !isNaN(n))
+            .map((s) => s.trim())
+            .filter(Boolean)
         : [];
       await RecommendationAPI.updateRule(editingRule.id, {
         id: editingRule.id,
         ruleName: formData.ruleName,
         sceneType: formData.sceneType || "",
-        algorithmIds: algoIds,
+        modelIds,
         weight: formData.weight || 1,
         enabled: formData.enabled ?? true,
       });
@@ -269,15 +269,15 @@ const RecommendManagePage: React.FC = () => {
                 />
               </View>
               <View className="form-item">
-                <Text className="form-label">关联算法ID（逗号分隔）</Text>
+                <Text className="form-label">关联模型标识（逗号分隔）</Text>
                 <Input
                   className="form-input"
-                  placeholder="如: 1,2,3"
-                  value={formData.algorithmIds || ""}
+                  placeholder="如: wpxnet-dehaze,dcp"
+                  value={formData.modelIds || ""}
                   onInput={(e) =>
                     setFormData({
                       ...formData,
-                      algorithmIds: e.detail?.value,
+                      modelIds: e.detail?.value,
                     })
                   }
                 />

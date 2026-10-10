@@ -7,16 +7,11 @@
  * - 重置为默认值
  */
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import SliderControl from '@/components/SliderControl';
-import type { CommonAlgorithmParams } from '@/types/processing';
+import type { ImageEditParams } from '@/types/processing';
 import {
   PARAM_SCHEMAS,
   PARAM_PRESETS,
@@ -26,13 +21,17 @@ import {
 // RN 自带 Slider 在 0.71+ 已移除，使用社区包；若未安装则用简化版按钮调节
 // 这里采用纯 TouchableOpacity + 数值显示的简化实现，避免引入额外依赖
 interface ParamsPanelProps {
-  params: CommonAlgorithmParams;
-  onChange: (params: CommonAlgorithmParams) => void;
+  params: ImageEditParams;
+  onChange: (params: ImageEditParams) => void;
   disabled?: boolean;
 }
 
-const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = false }) => {
-  const handlePreset = (presetParams: CommonAlgorithmParams) => {
+const ParamsPanel: React.FC<ParamsPanelProps> = ({
+  params,
+  onChange,
+  disabled = false,
+}) => {
+  const handlePreset = (presetParams: ImageEditParams) => {
     if (disabled) return;
     onChange({ ...presetParams });
   };
@@ -42,7 +41,7 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
     onChange({ ...DEFAULT_PARAMS });
   };
 
-  const handleValueChange = (key: keyof CommonAlgorithmParams, value: number) => {
+  const handleValueChange = (key: keyof ImageEditParams, value: number) => {
     if (disabled) return;
     onChange({ ...params, [key]: value });
   };
@@ -84,7 +83,11 @@ const ParamsPanel: React.FC<ParamsPanelProps> = ({ params, onChange, disabled = 
             onPress={handleReset}
             disabled={disabled}
           >
-            <Icon name="refresh" size={12} color={theme.colors.text.secondary} />
+            <Icon
+              name="refresh"
+              size={12}
+              color={theme.colors.text.secondary}
+            />
             <Text style={styles.resetText}>重置</Text>
           </TouchableOpacity>
         </View>

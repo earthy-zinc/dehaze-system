@@ -12,9 +12,9 @@ public class PackageDetailVO {
     private String levelName;
     private String period;
     private Integer periodDays;
-    private Double originalPrice;
-    private Double salePrice;
-    private Double dailyPrice;
+    private Long originalPrice;
+    private Long salePrice;
+    private Long dailyPrice;
     private String description;
     private Map<String, Integer> benefits;
     private Object[] activePromotions;

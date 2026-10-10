@@ -113,7 +113,9 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
                     ]}
                   >
                     {getTypeLabel(img.type)}
-                    {img.hazeLevel ? `-${getHazeLevelLabel(img.hazeLevel)}` : ''}
+                    {img.hazeLevel
+                      ? `-${getHazeLevelLabel(img.hazeLevel)}`
+                      : ''}
                   </Text>
                 </TouchableOpacity>
               ))}

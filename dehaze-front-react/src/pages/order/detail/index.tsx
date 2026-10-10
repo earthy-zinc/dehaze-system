@@ -31,6 +31,7 @@ import PaymentDialog, {
   type PaymentDialogRef,
 } from "./components/PaymentDialog";
 import "./index.scss";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_MAP: Record<OrderStatus, { label: string; color: string }> = {
   pending: { label: "待支付", color: "warning" },
@@ -144,7 +145,7 @@ const OrderDetail: React.FC = () => {
       key: "amount",
       width: 100,
       align: "right",
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount: number) => `¥${fenToYuan(amount)}`,
     },
     {
       title: "状态",
@@ -228,14 +229,14 @@ const OrderDetail: React.FC = () => {
                 <div className="amount-row">
                   <span className="amount-label">订单原价</span>
                   <span className="amount-value">
-                    ¥{order.originalPrice.toFixed(2)}
+                    ¥{fenToYuan(order.originalPrice)}
                   </span>
                 </div>
                 {order.discountAmount > 0 && (
                   <div className="amount-row discount">
                     <span className="amount-label">折扣优惠</span>
                     <span className="amount-value">
-                      -¥{order.discountAmount.toFixed(2)}
+                      -¥{fenToYuan(order.discountAmount)}
                     </span>
                   </div>
                 )}
@@ -243,7 +244,7 @@ const OrderDetail: React.FC = () => {
                   <div className="amount-row discount">
                     <span className="amount-label">优惠券抵扣</span>
                     <span className="amount-value">
-                      -¥{order.couponAmount.toFixed(2)}
+                      -¥{fenToYuan(order.couponAmount)}
                     </span>
                   </div>
                 )}
@@ -251,14 +252,14 @@ const OrderDetail: React.FC = () => {
                 <div className="amount-row total">
                   <span className="amount-label">实付金额</span>
                   <span className="amount-value payable">
-                    ¥{order.payableAmount.toFixed(2)}
+                    ¥{fenToYuan(order.payableAmount)}
                   </span>
                 </div>
                 {order.paidAmount > 0 && (
                   <div className="amount-row">
                     <span className="amount-label">已支付金额</span>
                     <span className="amount-value">
-                      ¥{order.paidAmount.toFixed(2)}
+                      ¥{fenToYuan(order.paidAmount)}
                     </span>
                   </div>
                 )}
@@ -311,7 +312,7 @@ const OrderDetail: React.FC = () => {
                   <div className="amount-row">
                     <span className="amount-label">退款金额</span>
                     <span className="amount-value refund-amount">
-                      ¥{order.refundRecord.refundAmount.toFixed(2)}
+                      ¥{fenToYuan(order.refundRecord.refundAmount)}
                     </span>
                   </div>
                   <div className="amount-row">
@@ -320,12 +321,22 @@ const OrderDetail: React.FC = () => {
                       {order.refundRecord.reason}
                     </span>
                   </div>
-                  <div className="amount-row">
-                    <span className="amount-label">已用配额</span>
-                    <span className="amount-value">
-                      {order.refundRecord.usedQuota}
-                    </span>
-                  </div>
+                  {order.refundRecord.usedDays != null && (
+                    <div className="amount-row">
+                      <span className="amount-label">已使用天数</span>
+                      <span className="amount-value">
+                        {order.refundRecord.usedDays} 天
+                      </span>
+                    </div>
+                  )}
+                  {order.refundRecord.usedCredits != null && (
+                    <div className="amount-row">
+                      <span className="amount-label">已消耗积分</span>
+                      <span className="amount-value">
+                        {order.refundRecord.usedCredits}
+                      </span>
+                    </div>
+                  )}
                   <div className="amount-row">
                     <span className="amount-label">退款状态</span>
                     <Tag

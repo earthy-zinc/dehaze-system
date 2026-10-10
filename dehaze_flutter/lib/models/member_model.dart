@@ -27,12 +27,13 @@ enum MemberLevelSource {
 
 /// 成长值变动类型
 enum GrowthChangeType {
-  dehaze('dehaze'),
+  process('process'),
   evaluate('evaluate'),
   rating('rating'),
   signIn('sign_in'),
   signInBonus('sign_in_bonus'),
   consume('consume'),
+  aiConsume('ai_consume'),
   refundDeduct('refund_deduct'),
   adminAdjust('admin_adjust');
 
@@ -152,10 +153,7 @@ class MemberGrowthAdjustForm {
 /// 会员状态变更表单
 @JsonSerializable()
 class MemberStatusForm {
-  const MemberStatusForm({
-    required this.status,
-    this.reason,
-  });
+  const MemberStatusForm({required this.status, this.reason});
 
   factory MemberStatusForm.fromJson(Map<String, dynamic> json) =>
       _$MemberStatusFormFromJson(json);
@@ -174,7 +172,18 @@ class BenefitForm {
     this.growthMin,
     this.growthMax,
     this.monthlyDehazeQuota,
+    this.monthlyDerainQuota,
+    this.monthlyDesnowQuota,
+    this.monthlyLowlightQuota,
+    this.monthlySuperResolutionQuota,
+    this.monthlyDenoiseQuota,
+    this.monthlyInpaintQuota,
     this.monthlyEvaluateQuota,
+    this.aiCreditsDaily,
+    this.aiCreditsMonthly,
+    this.multimodalLimit,
+    this.maxDevices,
+    this.vipGiftCredits,
     this.historyRetention,
     this.batchLimit,
     this.priority,
@@ -193,7 +202,20 @@ class BenefitForm {
   final int? growthMin;
   final int? growthMax;
   final int? monthlyDehazeQuota;
+  final int? monthlyDerainQuota;
+  final int? monthlyDesnowQuota;
+  final int? monthlyLowlightQuota;
+  final int? monthlySuperResolutionQuota;
+  final int? monthlyDenoiseQuota;
+  final int? monthlyInpaintQuota;
   final int? monthlyEvaluateQuota;
+  final int? aiCreditsDaily;
+  final int? aiCreditsMonthly;
+  final int? multimodalLimit;
+
+  /// 同时在线设备数上限
+  final int? maxDevices;
+  final int? vipGiftCredits;
   final int? historyRetention;
   final int? batchLimit;
   final int? priority;
@@ -216,7 +238,18 @@ class BenefitVO {
     required this.growthMin,
     required this.growthMax,
     required this.monthlyDehazeQuota,
+    required this.monthlyDerainQuota,
+    required this.monthlyDesnowQuota,
+    required this.monthlyLowlightQuota,
+    required this.monthlySuperResolutionQuota,
+    required this.monthlyDenoiseQuota,
+    required this.monthlyInpaintQuota,
     required this.monthlyEvaluateQuota,
+    required this.aiCreditsDaily,
+    required this.aiCreditsMonthly,
+    required this.multimodalLimit,
+    required this.maxDevices,
+    required this.vipGiftCredits,
     required this.historyRetention,
     required this.batchLimit,
     required this.priority,
@@ -236,7 +269,26 @@ class BenefitVO {
   final int growthMin;
   final int growthMax;
   final int monthlyDehazeQuota;
+  final int monthlyDerainQuota;
+  final int monthlyDesnowQuota;
+  final int monthlyLowlightQuota;
+  final int monthlySuperResolutionQuota;
+  final int monthlyDenoiseQuota;
+  final int monthlyInpaintQuota;
   final int monthlyEvaluateQuota;
+
+  /// AI 对话日限额（积分/天）
+  final int aiCreditsDaily;
+
+  /// AI 对话月限额（积分/月）
+  final int aiCreditsMonthly;
+  final int multimodalLimit;
+
+  /// 同时在线设备数上限
+  final int maxDevices;
+
+  /// VIP 按月赠送积分（0 表示不赠送）
+  final int vipGiftCredits;
   final int historyRetention;
   final int batchLimit;
   final int priority;
@@ -260,6 +312,7 @@ class MemberProfileVO {
     this.avatar,
     required this.levelCode,
     required this.levelName,
+    this.levelSource,
     required this.growthValue,
     this.nextLevelGrowth,
     required this.progressPercent,
@@ -281,6 +334,9 @@ class MemberProfileVO {
   final String? avatar;
   final String levelCode;
   final String levelName;
+
+  /// 等级来源（growth 成长值 / purchase 购买 / admin 管理员）
+  final String? levelSource;
   final int growthValue;
   final int? nextLevelGrowth;
   final int progressPercent;

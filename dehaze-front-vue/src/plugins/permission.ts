@@ -6,6 +6,8 @@ import { RouteRecordRaw } from "vue-router";
 const NOT_FOUND_ROUTE_NAME = "NotFound";
 // 已注册的动态路由顶层名称，菜单变更重注册前据此移除旧路由（移除父路由会级联移除其子路由）
 let dynamicRouteNames: RouteRecordRaw["name"][] = [];
+// 动态路由是否已注册（冷启动预注册与路由守卫共用同一标志）
+let isDynamicRoutesAdded = false;
 
 async function addDynamicRoutes(roles: string[]) {
   dynamicRouteNames.forEach((name) => {
@@ -41,9 +43,29 @@ export async function reloadDynamicRoutes() {
   await addDynamicRoutes(userStore.user.roles);
 }
 
+/**
+ * 冷启动预注册动态路由：必须在 `app.use(router)`（首帧解析）之前调用。
+ *
+ * 动态路由来自会话用户信息（cookie 会话，roles 不落 localStorage）。不预注册时，
+ * 首帧解析深链（如 `/#/admin/ai-billing/overview`）时路由表里还没有这些路由，
+ * 会先打一条 `[Vue Router warn]: No match found for location with path "..."`，
+ * 再由守卫补注册重导航兜底——用户看到一次首页闪烁、控制台留下告警（评审已发现）。
+ * 未登录/接口失败不阻塞启动，交由路由守卫跳登录。
+ */
+export async function preloadDynamicRoutes(): Promise<void> {
+  if (isDynamicRoutesAdded) return;
+  const userStore = useUserStore();
+  try {
+    const { roles } = await userStore.getUserInfo();
+    await addDynamicRoutes(roles);
+    isDynamicRoutesAdded = true;
+  } catch {
+    // 未登录或会话失效：维持未注册，交由路由守卫处理
+  }
+}
+
 export function setupPermission() {
   const whiteList = ["/login", "/register"];
-  let isDynamicRoutesAdded = false;
 
   router.beforeEach(async (to, from, next) => {
     NProgress.start();
@@ -52,10 +74,18 @@ export function setupPermission() {
     const hasRoles = userStore.user.roles && userStore.user.roles.length > 0;
 
     if (to.path === "/login") {
-      if (hasRoles) {
-        next({ path: "/" });
-      } else {
+      // roles 仅存内存，可能是已失效会话的残留：必须由服务端确认后才弹回首页，
+      // 否则失效会话的用户会被永远挡在登录页外（cookie 为 HttpOnly，无自助清会话手段）
+      if (!hasRoles) {
         next();
+      } else {
+        try {
+          await userStore.getUserInfo();
+          next({ path: "/" });
+        } catch {
+          userStore.resetSession();
+          next();
+        }
       }
       NProgress.done();
       return;
@@ -73,7 +103,7 @@ export function setupPermission() {
           await addDynamicRoutes(userStore.user.roles);
           isDynamicRoutesAdded = true;
         } catch (e) {
-          userStore.resetToken();
+          userStore.resetSession();
           next(`/login?redirect=${to.path}`);
           NProgress.done();
           return;
@@ -89,7 +119,7 @@ export function setupPermission() {
         isDynamicRoutesAdded = true;
         next({ ...to, replace: true });
       } catch (e) {
-        userStore.resetToken();
+        userStore.resetSession();
         next(`/login?redirect=${to.path}`);
         NProgress.done();
       }

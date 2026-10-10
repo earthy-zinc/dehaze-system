@@ -1,13 +1,6 @@
 <script lang="ts" setup>
 import EditDialog from "@/components/DataList/EditDialog/index.vue";
-import {
-  Algorithm,
-  AlgorithmAPI,
-  AlgorithmQuery,
-  DatasetVO,
-  DatasetAPI,
-  DatasetQuery,
-} from "dehaze-sdk-js";
+import { DatasetAPI, DatasetQuery, DatasetVO } from "dehaze-sdk-js";
 import {
   Delete,
   Edit,
@@ -18,21 +11,13 @@ import {
 } from "@element-plus/icons-vue";
 import ImportExportToolbar from "@/components/ImportExportToolbar/index.vue";
 
-const props = defineProps<{
-  listType: string;
-}>();
-
-const isDatasetList: boolean = props.listType === "dataset";
-
-const API = isDatasetList ? DatasetAPI : AlgorithmAPI;
-
 const queryFormRef = ref(ElForm);
 const loading = ref(false);
-const queryParams = reactive<any>({
+const queryParams = reactive<DatasetQuery>({
   pageNum: 1,
   pageSize: 20,
 });
-const list = ref<Algorithm[] | DatasetVO[]>([]);
+const list = ref<DatasetVO[]>([]);
 const total = ref(0);
 const selectedId = ref<number>();
 const ids = ref<number[]>([]);
@@ -41,7 +26,7 @@ const selectedColumns = ref([
   "type",
   "description",
   "size",
-  isDatasetList ? "total" : "importPath",
+  "total",
   "path",
   "status",
 ]);
@@ -50,51 +35,37 @@ const columns = [
   { label: "类型", value: "type" },
   { label: "描述", value: "description" },
   { label: "大小", value: "size" },
-  isDatasetList
-    ? { label: "图片数量", value: "total" }
-    : { label: "代码导入路径", value: "importPath" },
+  { label: "图片数量", value: "total" },
   { label: "存储位置", value: "path" },
   { label: "状态", value: "status" },
 ];
 
 function handleQuery() {
   loading.value = true;
-  if (isDatasetList) {
-    API.getList(queryParams as DatasetQuery)
-      .then((data: any) => {
-        list.value = data.list;
-        total.value = data.total;
-      })
-      .finally(() => {
-        loading.value = false;
-      });
-  } else {
-    API.getList(queryParams as AlgorithmQuery)
-      .then((data: any) => {
-        list.value = data;
-      })
-      .finally(() => {
-        loading.value = false;
-      });
-  }
+  DatasetAPI.getList(queryParams)
+    .then((data) => {
+      list.value = data.list;
+      total.value = data.total;
+    })
+    .finally(() => {
+      loading.value = false;
+    });
 }
 
 function resetQuery() {
   queryFormRef.value.resetFields();
-  if (isDatasetList) {
-    (queryParams as DatasetQuery).pageNum = 1;
-  }
+  queryParams.pageNum = 1;
   handleQuery();
 }
 
 function handleSizeChange(size: number) {
-  (queryParams as DatasetQuery).pageSize = size;
-  (queryParams as DatasetQuery).pageNum = 1;
+  queryParams.pageSize = size;
+  queryParams.pageNum = 1;
   handleQuery();
 }
 
 function handleCurrentChange(page: number) {
-  (queryParams as DatasetQuery).pageNum = page;
+  queryParams.pageNum = page;
   handleQuery();
 }
 
@@ -116,73 +87,52 @@ function loadChildren(
     });
 }
 
-function onRowClick<T extends Algorithm | DatasetVO>(row: T) {
+const router = useRouter();
+
+function onRowClick(row: DatasetVO) {
   selectedId.value = row.id;
 }
 
-const router = useRouter();
-
-function handleShow<T extends Algorithm | DatasetVO>(row: T) {
+function handleShow(row: DatasetVO) {
   selectedId.value = row.id;
   router.push(`/dataset/${selectedId.value}`);
 }
 
-function handleDelete(row?: any) {
-  if (row) {
-    const tip = isDatasetList
-      ? `确认删除数据集「${row.name}」？其中的图片也将一并删除！`
-      : `确认删除模型「${row.name}」？`;
-    ElMessageBox.confirm(tip, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
-      .then(() => {
-        if (isDatasetList) {
-          DatasetAPI.deleteById(row.id);
-        } else {
-          AlgorithmAPI.deleteByIds([row.id.toString()]);
-        }
-        ElMessage.success("删除成功");
-        handleQuery();
-      })
-      .catch(() => ElMessage.info("已取消删除"));
-  } else if (ids.value.length > 0) {
-    const tip = isDatasetList
-      ? `确认删除选中的 ${ids.value.length} 个数据集？其中的图片也将一并删除！`
-      : `确认删除选中的 ${ids.value.length} 个模型？`;
-    ElMessageBox.confirm(tip, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
-      .then(() => {
-        if (isDatasetList) {
-          DatasetAPI.batchDelete({ ids: ids.value });
-        } else {
-          AlgorithmAPI.deleteByIds(ids.value.map(String));
-        }
-        ElMessage.success("删除成功");
-        handleQuery();
-      })
-      .catch(() => ElMessage.info("已取消删除"));
-  } else {
+function handleDelete(row?: DatasetVO) {
+  const tip = row
+    ? `确认删除数据集「${row.name}」？其中的图片也将一并删除！`
+    : `确认删除选中的 ${ids.value.length} 个数据集？其中的图片也将一并删除！`;
+  if (!row && ids.value.length === 0) {
     ElMessage.warning("请勾选删除项");
+    return;
   }
+  ElMessageBox.confirm(tip, "警告", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      if (row) {
+        DatasetAPI.deleteById(row.id);
+      } else {
+        DatasetAPI.batchDelete({ ids: ids.value });
+      }
+      ElMessage.success("删除成功");
+      handleQuery();
+    })
+    .catch(() => ElMessage.info("已取消删除"));
 }
 
 /** 行复选框选中记录选中ID集合 */
-function handleSelectionChange(selection: any) {
-  ids.value = selection.map((item: any) => item.id);
+function handleSelectionChange(selection: DatasetVO[]) {
+  ids.value = selection.map((item) => item.id);
 }
 
 const dialogRef = ref();
 
-function openDialog<T extends Algorithm | DatasetVO>(type: string, dataset: T) {
+function openDialog(type: string, dataset: DatasetVO | object) {
   dialogRef.value.open(type, dataset);
 }
-
-function handleSettings() {}
 
 onMounted(() => {
   handleQuery();
@@ -196,7 +146,7 @@ onMounted(() => {
         <el-form-item label="关键字" prop="keyword">
           <el-input
             v-model="queryParams.keyword"
-            :placeholder="isDatasetList ? '数据集名称' : '模型名称'"
+            placeholder="数据集名称"
             clearable
             @keyup.enter="handleQuery"
           />
@@ -243,10 +193,7 @@ onMounted(() => {
 
     <el-card class="table-container" shadow="never">
       <div class="toolbar">
-        <el-button
-          type="success"
-          @click="openDialog('新增', {} as Algorithm | DatasetVO)"
-        >
+        <el-button type="success" @click="openDialog('新增', {})">
           <el-icon><Plus /></el-icon>
           新增
         </el-button>
@@ -259,8 +206,8 @@ onMounted(() => {
           删除
         </el-button>
         <ImportExportToolbar
-          :module="isDatasetList ? 'dataset' : 'algorithm'"
-          :importable="!isDatasetList"
+          :importable="false"
+          module="dataset"
           :query-params="queryParams"
           @import-complete="handleQuery"
         />
@@ -273,9 +220,8 @@ onMounted(() => {
           children: 'children',
           hasChildren: 'hasChildren',
         }"
-        :lazy="isDatasetList"
-        :load="isDatasetList ? loadChildren : undefined"
-        :default-expand-all="!isDatasetList"
+        lazy
+        :load="loadChildren"
         highlight-current-row
         row-key="id"
         @row-click="onRowClick"
@@ -307,16 +253,10 @@ onMounted(() => {
           width="120"
         />
         <el-table-column
-          v-if="isDatasetList && selectedColumns.includes('total')"
+          v-if="selectedColumns.includes('total')"
           label="图片数量"
           prop="total"
           width="100"
-        />
-        <el-table-column
-          v-if="!isDatasetList && selectedColumns.includes('importPath')"
-          label="代码导入路径"
-          min-width="180"
-          prop="importPath"
         />
         <el-table-column
           v-if="selectedColumns.includes('path')"
@@ -340,11 +280,10 @@ onMounted(() => {
         <el-table-column align="center" fixed="right" label="操作" width="260">
           <template #default="scope">
             <el-button
-              v-if="isDatasetList"
               link
               size="small"
               type="primary"
-              @click="handleShow(scope.row as DatasetVO | Algorithm)"
+              @click="handleShow(scope.row as DatasetVO)"
             >
               <svg-icon icon-class="eye-open" />
               查看
@@ -354,7 +293,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('新增', scope.row as DatasetVO | Algorithm)"
+              @click="openDialog('新增', scope.row as DatasetVO)"
             >
               <el-icon><Plus /></el-icon>
               新增
@@ -364,7 +303,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="openDialog('编辑', scope.row as DatasetVO | Algorithm)"
+              @click="openDialog('编辑', scope.row as DatasetVO)"
             >
               <el-icon><Edit /></el-icon>
               编辑
@@ -373,7 +312,7 @@ onMounted(() => {
               link
               size="small"
               type="primary"
-              @click="handleDelete(scope.row)"
+              @click="handleDelete(scope.row as DatasetVO)"
             >
               <el-icon><Delete /></el-icon>
               删除
@@ -383,7 +322,6 @@ onMounted(() => {
       </el-table>
 
       <el-pagination
-        v-if="isDatasetList"
         v-model:current-page="queryParams.pageNum"
         v-model:page-size="queryParams.pageSize"
         :page-sizes="[10, 20, 50, 100]"
@@ -398,7 +336,6 @@ onMounted(() => {
 
     <EditDialog
       ref="dialogRef"
-      :isDatasetList="isDatasetList"
       @on-update="handleQuery"
       @on-add="handleQuery"
     />

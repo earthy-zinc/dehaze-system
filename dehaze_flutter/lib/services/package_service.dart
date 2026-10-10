@@ -71,9 +71,7 @@ class PackageService {
   ///
   /// DELETE /packages/{id}
   Future<void> delete(int id) async {
-    await _dio.delete<Map<String, dynamic>>(
-      '${ApiConstants.packages}/$id',
-    );
+    await _dio.delete<Map<String, dynamic>>('${ApiConstants.packages}/$id');
   }
 
   /// 上下架套餐
@@ -122,18 +120,13 @@ class PackageService {
 
   /// 价格计算（下单前预览）
   ///
-  /// GET /packages/calculate-price?packageId=...&couponId=...
-  Future<PriceResult> calculatePrice(int packageId, {int? couponId}) async {
+  /// GET /packages/calculate-price?packageId=...&userCouponId=...
+  Future<PriceResult> calculatePrice(int packageId, {int? userCouponId}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.packagesCalculatePrice,
-      queryParameters: {
-        'packageId': packageId,
-        if (couponId != null) 'couponId': couponId,
-      },
+      queryParameters: {'packageId': packageId, 'userCouponId': ?userCouponId},
     );
-    return PriceResult.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return PriceResult.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   // ==================== 优惠券（管理端） ====================
@@ -161,9 +154,7 @@ class PackageService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.packagesCoupons}/$id',
     );
-    return CouponVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return CouponVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 创建优惠券
@@ -223,9 +214,7 @@ class PackageService {
   Future<List<UserCouponVO>> getMyCoupons({int? status}) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.packagesCouponsMy,
-      queryParameters: {
-        if (status != null) 'status': status,
-      },
+      queryParameters: {'status': ?status},
     );
     final list = response.data!['data'] as List<dynamic>? ?? [];
     return list

@@ -1,5 +1,5 @@
-import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
-import { useProcessStore } from "@/stores/process";
+import type { ImageTaskResponse } from "dehaze-sdk-js";
+import { useProcessStore, type SelectedModel } from "@/stores/process";
 
 /**
  * 对比模式类型（含放大镜和滤镜）
@@ -44,14 +44,14 @@ export const COMPARE_MODES: CompareModeConfig[] = [
  */
 export interface CompareContext {
   originImage: CompareImageData | null;
-  result: PredictionResultVO | null;
-  algorithm: Algorithm | null;
+  result: ImageTaskResponse | null;
+  model: SelectedModel | null;
 }
 
 /**
  * 从内存 store 加载对比数据
  */
 export const loadCompareContext = (): CompareContext => {
-  const { image, algorithm, result } = useProcessStore.getState();
-  return { originImage: image, result, algorithm };
+  const { image, model, result } = useProcessStore.getState();
+  return { originImage: image, result, model };
 };

@@ -51,7 +51,10 @@ const PersonalFeedbackScreen: React.FC = () => {
     try {
       if (isRefresh) setRefreshing(true);
       else if (pageNum === 1) setLoading(true);
-      const result = await FeedbackAPI.listMyFeedback({ pageNum, pageSize: PAGE_SIZE });
+      const result = await FeedbackAPI.listMyFeedback({
+        pageNum,
+        pageSize: PAGE_SIZE,
+      });
       const list = result.list || [];
       if (pageNum === 1) setFeedbacks(list);
       else setFeedbacks(prev => [...prev, ...list]);
@@ -71,7 +74,10 @@ const PersonalFeedbackScreen: React.FC = () => {
     }, [loadFeedbacks]),
   );
 
-  const handleRefresh = useCallback(() => loadFeedbacks(1, true), [loadFeedbacks]);
+  const handleRefresh = useCallback(
+    () => loadFeedbacks(1, true),
+    [loadFeedbacks],
+  );
   const handleLoadMore = useCallback(() => {
     if (hasMore && !refreshing) loadFeedbacks(page + 1);
   }, [hasMore, refreshing, page, loadFeedbacks]);
@@ -83,7 +89,11 @@ const PersonalFeedbackScreen: React.FC = () => {
     }
     setSubmitting(true);
     try {
-      await FeedbackAPI.createFeedback({ feedbackType: type, title: title.trim(), content: content.trim() });
+      await FeedbackAPI.createFeedback({
+        feedbackType: type,
+        title: title.trim(),
+        content: content.trim(),
+      });
       Alert.alert('提交成功', '感谢您的反馈！');
       setShowForm(false);
       setTitle('');
@@ -98,20 +108,36 @@ const PersonalFeedbackScreen: React.FC = () => {
   }, [title, content, type, loadFeedbacks]);
 
   const renderItem = useCallback(({ item }: { item: FeedbackPageVO }) => {
-    const statusInfo = FEEDBACK_STATUS_MAP[item.status] || { label: item.status, color: theme.colors.text.tertiary };
+    const statusInfo = FEEDBACK_STATUS_MAP[item.status] || {
+      label: item.status,
+      color: theme.colors.text.tertiary,
+    };
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Text style={styles.fbTitle} numberOfLines={1}>{item.title}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusInfo.color + '20' }]}>
-            <Text style={[styles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+          <Text style={styles.fbTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: statusInfo.color + '20' },
+            ]}
+          >
+            <Text style={[styles.statusText, { color: statusInfo.color }]}>
+              {statusInfo.label}
+            </Text>
           </View>
         </View>
         {item.content ? (
-          <Text style={styles.fbContent} numberOfLines={2}>{item.content}</Text>
+          <Text style={styles.fbContent} numberOfLines={2}>
+            {item.content}
+          </Text>
         ) : null}
         <Text style={styles.fbTime}>
-          {item.createTime ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''}
+          {item.createTime
+            ? new Date(item.createTime).toLocaleDateString('zh-CN')
+            : ''}
         </Text>
       </View>
     );
@@ -120,21 +146,34 @@ const PersonalFeedbackScreen: React.FC = () => {
   const renderEmpty = () =>
     !loading ? (
       <View style={styles.empty}>
-        <Ionicons name="chatbox-outline" size={48} color={theme.colors.text.tertiary} />
+        <Ionicons
+          name="chatbox-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
         <Text style={styles.emptyText}>暂无反馈</Text>
       </View>
     ) : null;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="反馈评价" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="反馈评价"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <FlatList
         data={feedbacks}
         renderItem={renderItem}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -151,7 +190,11 @@ const PersonalFeedbackScreen: React.FC = () => {
       </TouchableOpacity>
 
       {/* 提交反馈模态 */}
-      <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet">
+      <Modal
+        visible={showForm}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
         <View style={styles.formContainer}>
           <View style={styles.formHeader}>
             <TouchableOpacity onPress={() => setShowForm(false)}>
@@ -159,7 +202,12 @@ const PersonalFeedbackScreen: React.FC = () => {
             </TouchableOpacity>
             <Text style={styles.formTitle}>提交反馈</Text>
             <TouchableOpacity onPress={handleSubmit} disabled={submitting}>
-              <Text style={[styles.submitText, submitting && styles.submitTextDisabled]}>
+              <Text
+                style={[
+                  styles.submitText,
+                  submitting && styles.submitTextDisabled,
+                ]}
+              >
                 {submitting ? '提交中...' : '提交'}
               </Text>
             </TouchableOpacity>
@@ -167,14 +215,27 @@ const PersonalFeedbackScreen: React.FC = () => {
 
           {/* 类型选择 */}
           <View style={styles.typeRow}>
-            {(['bug', 'suggestion', 'experience', 'complaint'] as FeedbackType[]).map(t => (
+            {(
+              ['bug', 'suggestion', 'experience', 'complaint'] as FeedbackType[]
+            ).map(t => (
               <TouchableOpacity
                 key={t}
                 style={[styles.typeChip, type === t && styles.typeChipActive]}
                 onPress={() => setType(t)}
               >
-                <Text style={[styles.typeChipText, type === t && styles.typeChipTextActive]}>
-                  {t === 'bug' ? '问题反馈' : t === 'suggestion' ? '功能建议' : t === 'experience' ? '体验反馈' : '投诉'}
+                <Text
+                  style={[
+                    styles.typeChipText,
+                    type === t && styles.typeChipTextActive,
+                  ]}
+                >
+                  {t === 'bug'
+                    ? '问题反馈'
+                    : t === 'suggestion'
+                    ? '功能建议'
+                    : t === 'experience'
+                    ? '体验反馈'
+                    : '投诉'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -247,7 +308,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
   },
   empty: { alignItems: 'center', paddingVertical: theme.spacing.xxxl },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
   fab: {
     position: 'absolute',
     right: theme.spacing.lg,
@@ -269,9 +334,20 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
-  cancelText: { fontSize: theme.typography.sizes.medium, color: theme.colors.text.secondary },
-  formTitle: { fontSize: theme.typography.sizes.large, fontWeight: theme.typography.weights.bold, color: theme.colors.text.primary },
-  submitText: { fontSize: theme.typography.sizes.medium, fontWeight: theme.typography.weights.semibold, color: theme.colors.primary },
+  cancelText: {
+    fontSize: theme.typography.sizes.medium,
+    color: theme.colors.text.secondary,
+  },
+  formTitle: {
+    fontSize: theme.typography.sizes.large,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+  },
+  submitText: {
+    fontSize: theme.typography.sizes.medium,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.primary,
+  },
   submitTextDisabled: { opacity: 0.5 },
   typeRow: {
     flexDirection: 'row',

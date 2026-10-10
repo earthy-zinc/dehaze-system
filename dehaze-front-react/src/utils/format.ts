@@ -45,3 +45,17 @@ export function truncateText(
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + suffix;
 }
+
+/**
+ * 金额分转元：后端金额单位统一为分，页面展示以元为单位
+ */
+export function fenToYuan(fen?: number): string {
+  return ((fen ?? 0) / 100).toFixed(2);
+}
+
+/**
+ * 金额元转分：表单以元录入，接口金额单位统一为分
+ */
+export function yuanToFen(yuan: number | string): number {
+  return Math.round(Number(yuan) * 100);
+}

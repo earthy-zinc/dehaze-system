@@ -32,13 +32,15 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
     final theme = Theme.of(context);
     final originalUrl = state.selectedImage?.fileUrl;
     final originalBytes = state.selectedImage?.bytes;
-    final resultUrl = state.predictionResult?.resultUrl;
+    final resultUrl = state.taskResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
       return ComparisonScaffold(
         icon: Icons.search_outlined,
         title: '放大镜对比',
-        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
+        body: CompareEmptyState(
+          onAction: () => context.go(AppRouterConfig.processing),
+        ),
         currentRoute: AppRouterConfig.magnifier,
       );
     }
@@ -60,15 +62,24 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (!_initialized) {
-          _position = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+          _position = Offset(
+            constraints.maxWidth / 2,
+            constraints.maxHeight / 2,
+          );
           _initialized = true;
         }
         return GestureDetector(
           onPanUpdate: (details) {
             setState(() {
               _position = Offset(
-                (_position.dx + details.delta.dx).clamp(0, constraints.maxWidth),
-                (_position.dy + details.delta.dy).clamp(0, constraints.maxHeight),
+                (_position.dx + details.delta.dx).clamp(
+                  0,
+                  constraints.maxWidth,
+                ),
+                (_position.dy + details.delta.dy).clamp(
+                  0,
+                  constraints.maxHeight,
+                ),
               );
             });
           },
@@ -88,7 +99,12 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
                     height: _lensSize,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                     child: Stack(
                       children: [
@@ -101,14 +117,14 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
                               -1 + 2 * (_position.dy / constraints.maxHeight),
                             ),
                             child: SizedBox(
-                                      width: constraints.maxWidth * 2,
-                                      height: constraints.maxHeight * 2,
-                                      child: DehazeImage(
-                                        bytes: _showOriginal ? originalBytes : null,
-                                        url: _showOriginal ? originalUrl : resultUrl,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
+                              width: constraints.maxWidth * 2,
+                              height: constraints.maxHeight * 2,
+                              child: DehazeImage(
+                                bytes: _showOriginal ? originalBytes : null,
+                                url: _showOriginal ? originalUrl : resultUrl,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -124,40 +140,41 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
   }
 
   Widget _buildControls(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: true, label: Text('看原图')),
-                    ButtonSegment(value: false, label: Text('看结果')),
-                  ],
-                  selected: {_showOriginal},
-                  onSelectionChanged: (v) => setState(() => _showOriginal = v.first),
-                ),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: true, label: Text('看原图')),
+                ButtonSegment(value: false, label: Text('看结果')),
               ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text('镜片大小'),
-                Expanded(
-                  child: Slider(
-                    value: _lensSize,
-                    min: 60,
-                    max: 240,
-                    divisions: 18,
-                    label: '${_lensSize.toInt()}',
-                    onChanged: (v) => setState(() => _lensSize = v),
-                  ),
-                ),
-                Text('${_lensSize.toInt()}px'),
-              ],
+              selected: {_showOriginal},
+              onSelectionChanged: (v) =>
+                  setState(() => _showOriginal = v.first),
             ),
           ],
         ),
-      );
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Text('镜片大小'),
+            Expanded(
+              child: Slider(
+                value: _lensSize,
+                min: 60,
+                max: 240,
+                divisions: 18,
+                label: '${_lensSize.toInt()}',
+                onChanged: (v) => setState(() => _lensSize = v),
+              ),
+            ),
+            Text('${_lensSize.toInt()}px'),
+          ],
+        ),
+      ],
+    ),
+  );
 }

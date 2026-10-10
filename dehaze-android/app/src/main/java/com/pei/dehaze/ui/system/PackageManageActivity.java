@@ -25,6 +25,7 @@ import com.pei.dehaze.ui.system.viewmodel.PackageManageViewModel;
 import com.pei.dehaze.utils.StringUtils;
 import com.pei.dehaze.utils.ToastUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -119,6 +120,21 @@ public class PackageManageActivity extends BaseActivity {
         binding.tvPageInfo.setText("第 " + pageNum + " 页 / 共 " + totalPages + " 页 (共 " + total + " 条)");
     }
 
+    // ---- 金额换算：后端金额单位为分（整数语义），表单按元输入 ----
+
+    private static String centsToYuanText(Long cents) {
+        return cents == null ? "" : BigDecimal.valueOf(cents, 2).toPlainString();
+    }
+
+    /** 元文本严格转分：非法格式或超过两位小数返回 null，由调用方提示错误 */
+    private static Long yuanTextToCents(String yuanText) {
+        try {
+            return new BigDecimal(yuanText).movePointRight(2).longValueExact();
+        } catch (NumberFormatException | ArithmeticException e) {
+            return null;
+        }
+    }
+
     // ---- 新增/编辑对话框 ----
     private void showPackageFormDialog(PackagePageVO existing) {
         boolean isEdit = existing != null;
@@ -136,8 +152,8 @@ public class PackageManageActivity extends BaseActivity {
 
         if (isEdit) {
             etName.setText(StringUtils.safe(existing.getName()));
-            etOriginalPrice.setText(existing.getOriginalPrice() != null ? String.valueOf(existing.getOriginalPrice()) : "");
-            etSalePrice.setText(existing.getSalePrice() != null ? String.valueOf(existing.getSalePrice()) : "");
+            etOriginalPrice.setText(centsToYuanText(existing.getOriginalPrice()));
+            etSalePrice.setText(centsToYuanText(existing.getSalePrice()));
             etPeriodDays.setText(existing.getPeriodDays() != null ? String.valueOf(existing.getPeriodDays()) : "");
             rgStatus.check(existing.getStatus() != null && existing.getStatus() == 1
                     ? R.id.rb_status_on : R.id.rb_status_off);
@@ -207,12 +223,20 @@ public class PackageManageActivity extends BaseActivity {
                     form.setStatus(status);
 
                     if (!TextUtils.isEmpty(origPriceStr)) {
-                        try { form.setOriginalPrice(Double.parseDouble(origPriceStr)); }
-                        catch (NumberFormatException e) { /* ignore */ }
+                        Long originalPrice = yuanTextToCents(origPriceStr);
+                        if (originalPrice == null) {
+                            ToastUtils.showShort(PackageManageActivity.this, "原价格式错误，请输入不超过两位小数的金额");
+                            return;
+                        }
+                        form.setOriginalPrice(originalPrice);
                     }
                     if (!TextUtils.isEmpty(salePriceStr)) {
-                        try { form.setSalePrice(Double.parseDouble(salePriceStr)); }
-                        catch (NumberFormatException e) { /* ignore */ }
+                        Long salePrice = yuanTextToCents(salePriceStr);
+                        if (salePrice == null) {
+                            ToastUtils.showShort(PackageManageActivity.this, "售价格式错误，请输入不超过两位小数的金额");
+                            return;
+                        }
+                        form.setSalePrice(salePrice);
                     }
                     if (!TextUtils.isEmpty(periodDaysStr)) {
                         try { form.setPeriodDays(Integer.parseInt(periodDaysStr)); }
@@ -284,14 +308,14 @@ public class PackageManageActivity extends BaseActivity {
             holder.tvStatus.setTextColor(status == 1 ? 0xFF4CAF50 : 0xFFF44336);
 
             if (item.getSalePrice() != null) {
-                holder.tvPrice.setText("¥" + String.format("%.2f", item.getSalePrice()));
+                holder.tvPrice.setText("¥" + String.format("%.2f", item.getSalePrice() / 100.0));
                 holder.tvPrice.setVisibility(View.VISIBLE);
             } else {
                 holder.tvPrice.setVisibility(View.GONE);
             }
 
             if (item.getOriginalPrice() != null && item.getOriginalPrice() > 0) {
-                holder.tvOriginalPrice.setText("原价¥" + String.format("%.2f", item.getOriginalPrice()));
+                holder.tvOriginalPrice.setText("原价¥" + String.format("%.2f", item.getOriginalPrice() / 100.0));
                 holder.tvOriginalPrice.setVisibility(View.VISIBLE);
             } else {
                 holder.tvOriginalPrice.setVisibility(View.GONE);

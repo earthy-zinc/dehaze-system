@@ -11,10 +11,9 @@ interface MessagesState {
   decrementUnread: (delta?: number) => void;
 }
 
-export const useMessagesStore = create<MessagesState>((set) => ({
+export const useMessagesStore = create<MessagesState>(set => ({
   unreadCount: 0,
   setUnreadCount: (count: number) => set({ unreadCount: count }),
   decrementUnread: (delta = 1) =>
-    set((state) => ({ unreadCount: Math.max(0, state.unreadCount - delta) }),
-  ),
+    set(state => ({ unreadCount: Math.max(0, state.unreadCount - delta) })),
 }));

@@ -38,20 +38,21 @@ const SpecCard: React.FC<SpecCardProps> = ({
   }, [scaleAnim, fadeAnim]);
 
   return (
-    <Animated.View style={{
-      opacity: fadeAnim,
-      transform: [{ scale: scaleAnim }],
-    }}>
-      <Card 
-        padding={compact ? 20 : 32} 
-        margin={0} 
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ scale: scaleAnim }],
+      }}
+    >
+      <Card
+        padding={compact ? 20 : 32}
+        margin={0}
         borderRadius={20}
         style={styles.card}
       >
-        <View style={[
-          styles.iconContainer,
-          compact && styles.iconContainerCompact,
-        ]}>
+        <View
+          style={[styles.iconContainer, compact && styles.iconContainerCompact]}
+        >
           <Icon
             name={icon}
             size={compact ? 24 : 32}
@@ -60,16 +61,12 @@ const SpecCard: React.FC<SpecCardProps> = ({
             borderRadius={compact ? 28 : 36}
           />
         </View>
-        <Text style={[
-          styles.title,
-          compact && styles.titleCompact,
-        ]}>
+        <Text style={[styles.title, compact && styles.titleCompact]}>
           {title}
         </Text>
-        <Text style={[
-          styles.description,
-          compact && styles.descriptionCompact,
-        ]}>
+        <Text
+          style={[styles.description, compact && styles.descriptionCompact]}
+        >
           {description}
         </Text>
       </Card>

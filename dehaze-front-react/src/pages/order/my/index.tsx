@@ -25,6 +25,7 @@ import { ClockCircleOutlined, WalletOutlined } from "@ant-design/icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./index.scss";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_TABS: { label: string; value: OrderStatus | undefined }[] = [
   { label: "全部", value: undefined },
@@ -272,12 +273,12 @@ const MyOrders: React.FC = () => {
                   <div className="card-footer">
                     <div className="amount-area">
                       <span className="payable-amount">
-                        ¥{order.payableAmount.toFixed(2)}
+                        ¥{fenToYuan(order.payableAmount)}
                       </span>
                       {(order.payableAmount < order.paidAmount ||
                         hasDiscount(order)) && (
                         <span className="original-amount">
-                          ¥{order.paidAmount.toFixed(2)}
+                          ¥{fenToYuan(order.paidAmount)}
                         </span>
                       )}
                       {order.payMethod && (
@@ -360,7 +361,7 @@ const MyOrders: React.FC = () => {
               <div className="refund-info-row">
                 <span className="label">退款金额：</span>
                 <span className="refund-amount">
-                  ¥{refundModal.row.paidAmount.toFixed(2)}
+                  ¥{fenToYuan(refundModal.row.paidAmount)}
                 </span>
               </div>
             </div>

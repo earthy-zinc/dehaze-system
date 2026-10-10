@@ -55,9 +55,9 @@ class DeptQuery {
   Map<String, dynamic> toJson() => _$DeptQueryToJson(this);
 
   Map<String, dynamic> toQuery() => {
-        if (name != null) 'keywords': name,
-        if (status != null) 'status': status,
-      };
+    if (name != null) 'keywords': name,
+    if (status != null) 'status': status,
+  };
 }
 
 // ==================== DeptForm ====================
@@ -97,11 +97,7 @@ class DeptForm {
 
 @JsonSerializable()
 class DeptOption {
-  const DeptOption({
-    required this.id,
-    required this.name,
-    this.children,
-  });
+  const DeptOption({required this.id, required this.name, this.children});
 
   factory DeptOption.fromJson(Map<String, dynamic> json) =>
       _$DeptOptionFromJson(json);

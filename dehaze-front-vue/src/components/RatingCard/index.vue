@@ -3,14 +3,14 @@
     :model-value="visible"
     :show-close="false"
     :close-on-click-modal="false"
-    title="算法效果评价"
+    title="模型效果评价"
     width="600px"
     class="rating-card-dialog"
     @update:model-value="(val: boolean) => emit('update:visible', val)"
   >
-    <div class="algorithm-tip">
+    <div class="model-tip">
       <el-icon><Picture /></el-icon>
-      <span>{{ algorithmName }}</span>
+      <span>{{ modelName }}</span>
     </div>
 
     <el-form
@@ -108,7 +108,7 @@ defineOptions({ name: "RatingCard" });
 
 const props = defineProps<{
   predLogId: number;
-  algorithmName: string;
+  modelName: string;
   visible: boolean;
 }>();
 
@@ -300,7 +300,7 @@ const handleSubmit = useThrottleFn(() => {
   }
 }
 
-.algorithm-tip {
+.model-tip {
   display: inline-flex;
   gap: 6px;
   align-items: center;

@@ -10,9 +10,10 @@ import '../../services/task_service.dart';
 import '../../theme/app_theme.dart';
 
 final taskManageProvider =
-    StateNotifierProvider<TaskManageNotifier, AsyncValue<PagedList<TaskVO>>>(
-  (ref) => TaskManageNotifier(ref.watch(taskServiceProvider)),
-);
+    StateNotifierProvider<
+      TaskManageNotifier,
+      AsyncValue<PagedList<TaskVO>>
+    >((ref) => TaskManageNotifier(ref.watch(taskServiceProvider)));
 
 class TaskManageNotifier extends PagedListNotifier<TaskVO> {
   TaskManageNotifier(this._service) : super(pageSize: 20);
@@ -24,13 +25,15 @@ class TaskManageNotifier extends PagedListNotifier<TaskVO> {
 
   @override
   Future<PageResult<TaskVO>> fetchPage(int pageNum) {
-    return _service.getPage(TaskQuery(
-      pageNum: pageNum,
-      pageSize: 20,
-      status: _status,
-      taskType: _taskType,
-      taskCategory: _taskCategory,
-    ));
+    return _service.getPage(
+      TaskQuery(
+        pageNum: pageNum,
+        pageSize: 20,
+        status: _status,
+        taskType: _taskType,
+        taskCategory: _taskCategory,
+      ),
+    );
   }
 
   Future<void> applyFilters({
@@ -55,7 +58,7 @@ const _statusLabels = {
 
 /// 任务管理页面（L2）
 ///
-/// 权限：sys:task:*
+/// 权限：无（任务域后端仅需登录态，操作由 create_by 归属校验）
 class TaskManagePage extends ConsumerWidget {
   const TaskManagePage({super.key});
 
@@ -102,7 +105,8 @@ class TaskManagePage extends ConsumerWidget {
               ),
               SizedBox(height: AppTheme.spacingM),
               FilledButton(
-                onPressed: () => ref.read(taskManageProvider.notifier).refresh(),
+                onPressed: () =>
+                    ref.read(taskManageProvider.notifier).refresh(),
                 child: const Text('重试'),
               ),
             ],
@@ -111,9 +115,11 @@ class TaskManagePage extends ConsumerWidget {
         data: (page) => page.items.isEmpty
             ? const Center(child: Text('暂无数据'))
             : RefreshIndicator(
-                onRefresh: () => ref.read(taskManageProvider.notifier).refresh(),
+                onRefresh: () =>
+                    ref.read(taskManageProvider.notifier).refresh(),
                 child: LoadMoreListener(
-                  onLoadMore: () => ref.read(taskManageProvider.notifier).loadMore(),
+                  onLoadMore: () =>
+                      ref.read(taskManageProvider.notifier).loadMore(),
                   child: ListView.builder(
                     itemCount: page.items.length,
                     itemBuilder: (context, index) {
@@ -126,9 +132,7 @@ class TaskManagePage extends ConsumerWidget {
                       return Card(
                         child: ListTile(
                           title: Text(item.taskType ?? ''),
-                          subtitle: Text(
-                            'ID: ${item.taskId} | 状态: $label',
-                          ),
+                          subtitle: Text('ID: ${item.taskId} | 状态: $label'),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

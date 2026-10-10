@@ -7,10 +7,10 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import type { Algorithm } from 'dehaze-sdk-js';
+import type { AiModelVO } from 'dehaze-sdk-js';
 import type { SelectedImage } from '@/types/image';
 import type {
-  CommonAlgorithmParams,
+  ImageEditParams,
   ProcessingResult,
   TaskProgress,
 } from '@/types/processing';
@@ -18,14 +18,16 @@ import { predictSingle } from '@/pages/processing/services/processingApi';
 
 export type ProcessingPhase = 'config' | 'processing' | 'done' | 'failed';
 
+export type ProcessingModel = Pick<AiModelVO, 'modelId' | 'displayName'>;
+
 interface ProcessingState {
   phase: ProcessingPhase;
   progress: TaskProgress | null;
   result: ProcessingResult | null;
   predict: (
     image: SelectedImage,
-    algorithm: Algorithm,
-    params?: CommonAlgorithmParams,
+    model: ProcessingModel,
+    params?: ImageEditParams,
   ) => Promise<void>;
   cancel: () => Promise<void>;
   retry: () => Promise<void>;
@@ -42,19 +44,19 @@ export function useProcessing(): ProcessingState {
   // 记录最近一次 predict 入参，供 retry 复用
   const lastPredictRef = useRef<{
     image: SelectedImage;
-    algorithm: Algorithm;
-    params?: CommonAlgorithmParams;
+    model: ProcessingModel;
+    params?: ImageEditParams;
   } | null>(null);
 
   const predict = useCallback(
     async (
       image: SelectedImage,
-      algorithm: Algorithm,
-      params?: CommonAlgorithmParams,
+      model: ProcessingModel,
+      params?: ImageEditParams,
     ) => {
-      if (!image?.url || !algorithm?.id) return;
+      if (!image?.url || !model?.modelId) return;
 
-      lastPredictRef.current = { image, algorithm, params };
+      lastPredictRef.current = { image, model, params };
       cancelSignalRef.current = { canceled: false };
       setPhase('processing');
       setProgress({ status: 0, elapsed: 0 });
@@ -62,7 +64,7 @@ export function useProcessing(): ProcessingState {
 
       try {
         const res = await predictSingle({
-          algorithmId: algorithm.id,
+          model: model.modelId,
           imageUrl: image.url,
           params,
           onProgress: p => setProgress(p),
@@ -79,7 +81,10 @@ export function useProcessing(): ProcessingState {
         }));
         setPhase(isCanceled ? 'config' : 'failed');
         if (!isCanceled) {
-          Alert.alert('处理失败', err instanceof Error ? err.message : '请稍后重试');
+          Alert.alert(
+            '处理失败',
+            err instanceof Error ? err.message : '请稍后重试',
+          );
         }
       }
     },
@@ -105,7 +110,7 @@ export function useProcessing(): ProcessingState {
   const retry = useCallback(async () => {
     const last = lastPredictRef.current;
     if (!last) return;
-    await predict(last.image, last.algorithm, last.params);
+    await predict(last.image, last.model, last.params);
   }, [predict]);
 
   const reset = useCallback(() => {

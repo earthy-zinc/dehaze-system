@@ -72,13 +72,18 @@ class _DevLogsPageState extends State<DevLogsPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: SingleChildScrollView(
                     child: SelectableText(
                       content.isEmpty ? '(空文件)' : content,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -112,29 +117,29 @@ class _DevLogsPageState extends State<DevLogsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _logFiles.isEmpty
-              ? const Center(child: Text('暂无日志文件'))
-              : ListView.builder(
-                  itemCount: _logFiles.length,
-                  itemBuilder: (context, index) {
-                    final file = _logFiles[index];
-                    final size = file.lengthSync();
-                    final sizeText = size > 1024 * 1024
-                        ? '${(size / 1024 / 1024).toStringAsFixed(1)} MB'
-                        : size > 1024
-                            ? '${(size / 1024).toStringAsFixed(0)} KB'
-                            : '$size B';
-                    return ListTile(
-                      leading: const Icon(Icons.description_outlined),
-                      title: Text(
-                        file.path.split('/logs/').last,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      subtitle: Text(sizeText),
-                      onTap: () => _exportLog(file),
-                      trailing: const Icon(Icons.chevron_right),
-                    );
-                  },
-                ),
+          ? const Center(child: Text('暂无日志文件'))
+          : ListView.builder(
+              itemCount: _logFiles.length,
+              itemBuilder: (context, index) {
+                final file = _logFiles[index];
+                final size = file.lengthSync();
+                final sizeText = size > 1024 * 1024
+                    ? '${(size / 1024 / 1024).toStringAsFixed(1)} MB'
+                    : size > 1024
+                    ? '${(size / 1024).toStringAsFixed(0)} KB'
+                    : '$size B';
+                return ListTile(
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(
+                    file.path.split('/logs/').last,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  subtitle: Text(sizeText),
+                  onTap: () => _exportLog(file),
+                  trailing: const Icon(Icons.chevron_right),
+                );
+              },
+            ),
     );
   }
 }

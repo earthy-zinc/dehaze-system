@@ -59,7 +59,7 @@ const MyRatings: React.FC = () => {
                   <div className="card-header">
                     <div className="header-left">
                       <StarOutlined className="algo-icon" />
-                      <span className="algo-name">{rating.algorithmName}</span>
+                      <span className="algo-name">{rating.modelName}</span>
                     </div>
                     <div className="header-right">
                       <Rate disabled value={rating.rating} />

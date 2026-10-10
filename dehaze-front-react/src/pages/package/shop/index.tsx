@@ -15,16 +15,7 @@ import {
   GiftOutlined,
   ShoppingCartOutlined,
 } from "@ant-design/icons";
-import {
-  Button,
-  Empty,
-  Modal,
-  Select,
-  Spin,
-  Table,
-  Tag,
-  message,
-} from "antd";
+import { Button, Empty, Modal, Select, Spin, Table, Tag, message } from "antd";
 import type { TableColumnsType } from "antd";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -113,9 +104,9 @@ const PackageShop: React.FC = () => {
   const [couponLoading, setCouponLoading] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [myCoupons, setMyCoupons] = useState<UserCouponVO[]>([]);
-  const [selectedCouponId, setSelectedCouponId] = useState<
-    number | undefined
-  >(undefined);
+  const [selectedCouponId, setSelectedCouponId] = useState<number | undefined>(
+    undefined
+  );
 
   const currentLevelCode = profile?.levelCode ?? "level_0";
 
@@ -253,7 +244,11 @@ const PackageShop: React.FC = () => {
   const comparisonPackages = useMemo(() => {
     const levelMap = new Map<string, PackageDetailVO>();
     packages.forEach((pkg) => {
-      if (pkg.packageType === "vip" && pkg.levelCode && !levelMap.has(pkg.levelCode)) {
+      if (
+        pkg.packageType === "vip" &&
+        pkg.levelCode &&
+        !levelMap.has(pkg.levelCode)
+      ) {
         levelMap.set(pkg.levelCode, pkg);
       }
     });
@@ -493,7 +488,9 @@ const PackageShop: React.FC = () => {
             </div>
             <div className="detail-row">
               <span className="detail-label">原价</span>
-              <span className="detail-value">¥{yuan(priceResult?.originalPrice)}</span>
+              <span className="detail-value">
+                ¥{yuan(priceResult?.originalPrice)}
+              </span>
             </div>
             <div className="detail-row">
               <span className="detail-label">促销优惠</span>

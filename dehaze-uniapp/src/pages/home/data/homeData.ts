@@ -42,12 +42,12 @@ export const homeData = {
       target: "image-input",
     },
     {
-      id: "algorithm-select",
+      id: "processing",
       number: "02",
-      title: "智能算法",
-      description: "多种去雾算法可选\nAI智能推荐最优方案",
+      title: "智能模型",
+      description: "多种去雾模型可选\nAI智能推荐最优方案",
       icon: "gift",
-      target: "algorithm-select",
+      target: "processing",
     },
     {
       id: "processing",
@@ -67,13 +67,6 @@ export const homeData = {
       description: "支持上传、拍照、样例图片多种输入方式",
       icon: "camera",
       target: "image-input",
-    },
-    {
-      id: "algorithm",
-      title: "算法库",
-      description: "浏览多种去雾算法，智能推荐最优方案",
-      icon: "gift",
-      target: "algorithm",
     },
     {
       id: "dataset",
@@ -107,9 +100,9 @@ export const homeData = {
     },
     {
       icon: "gift",
-      title: "智能算法",
+      title: "智能模型",
       value: "",
-      description: "支持多种先进去雾算法",
+      description: "支持多种先进去雾模型",
     },
     {
       icon: "integral",
@@ -119,10 +112,10 @@ export const homeData = {
     },
   ] as SpecItem[],
 
-  // 算法特性数据
-  algorithmFeatures: [
-    "智能推荐最适合的去雾算法",
-    "实时对比不同算法的处理效果",
+  // 模型特性数据
+  modelFeatures: [
+    "智能推荐最适合的去雾模型",
+    "实时对比不同模型的处理效果",
     "GPU加速推理，快速查看结果",
     "支持参数自定义和效果评估",
   ],

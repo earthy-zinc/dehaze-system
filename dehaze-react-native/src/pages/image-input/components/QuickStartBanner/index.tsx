@@ -51,10 +51,7 @@ const QuickStartBanner: React.FC<QuickStartBannerProps> = ({
       disabled={loading}
     >
       <Animated.View
-        style={[
-          styles.container,
-          { transform: [{ scale: scaleAnim }] },
-        ]}
+        style={[styles.container, { transform: [{ scale: scaleAnim }] }]}
       >
         <View style={styles.content}>
           <View style={styles.iconContainer}>
@@ -63,9 +60,7 @@ const QuickStartBanner: React.FC<QuickStartBannerProps> = ({
 
           <View style={styles.textContainer}>
             <Text style={styles.title}>快速体验</Text>
-            <Text style={styles.description}>
-              使用样例图片快速体验去雾效果
-            </Text>
+            <Text style={styles.description}>使用样例图片快速体验去雾效果</Text>
           </View>
 
           <View style={styles.buttonContainer}>
@@ -74,7 +69,11 @@ const QuickStartBanner: React.FC<QuickStartBannerProps> = ({
                 {loading ? '加载中...' : '立即体验'}
               </Text>
               {!loading && (
-                <Icon name="arrow-forward" size={16} color={theme.colors.primary} />
+                <Icon
+                  name="arrow-forward"
+                  size={16}
+                  color={theme.colors.primary}
+                />
               )}
             </View>
           </View>

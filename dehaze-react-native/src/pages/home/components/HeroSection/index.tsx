@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -13,7 +19,7 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onStartPress }) => {
   const { isMobile, fontScale, containerPadding, height } = useResponsive();
-  
+
   const { animatedStyle } = useFadeSlideAnimation({
     scale: { initial: 0.95, final: 1 },
     slideDistance: 30,
@@ -35,7 +41,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartPress }) => {
         <Text
           style={[
             styles.heroTitle,
-            { fontSize: titleFontSize, lineHeight: titleFontSize * theme.typography.lineHeights.hero },
+            {
+              fontSize: titleFontSize,
+              lineHeight: titleFontSize * theme.typography.lineHeights.hero,
+            },
           ]}
         >
           AI 图像去雾
@@ -43,7 +52,10 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onStartPress }) => {
         <Text
           style={[
             styles.heroSubtitle,
-            { fontSize: subtitleFontSize, lineHeight: subtitleFontSize * theme.typography.lineHeights.title },
+            {
+              fontSize: subtitleFontSize,
+              lineHeight: subtitleFontSize * theme.typography.lineHeights.title,
+            },
           ]}
         >
           一键清晰，还原真实视界

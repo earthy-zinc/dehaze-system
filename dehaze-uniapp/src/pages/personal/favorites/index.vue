@@ -71,7 +71,7 @@
       <!-- 空状态 -->
       <view v-else class="empty-state">
         <view class="empty-tip">暂无收藏</view>
-        <text class="empty-hint">收藏的处理结果或算法会显示在这里</text>
+        <text class="empty-hint">收藏的处理结果或模型会显示在这里</text>
       </view>
     </view>
   </PageLayout>
@@ -94,7 +94,7 @@ const typeFilter = ref<"" | FavoriteTargetType>("");
 
 const typeTabs = [
   { key: "" as const, label: "全部" },
-  { key: "algorithm" as const, label: "算法" },
+  { key: "model" as const, label: "模型" },
   { key: "result" as const, label: "结果" },
   { key: "dataset" as const, label: "数据集" },
   { key: "image" as const, label: "图片" },
@@ -103,7 +103,7 @@ const typeTabs = [
 
 function getTypeColor(type: string): string {
   const map: Record<string, string> = {
-    algorithm: "#3b82f6",
+    model: "#3b82f6",
     result: "#10b981",
     dataset: "#f59e0b",
     image: "#ec4899",

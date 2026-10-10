@@ -1,307 +1,397 @@
 <!-- AI 模型管理端页：模型注册表 + 价格版本 + 运营视图 -->
 <template>
   <div class="app-container">
-    <!-- 运营视图：用量/健康/降级统计 -->
-    <el-card shadow="never" class="mb-[12px]">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <span>运营视图</span>
-          <el-button
-            :loading="modelStore.operationLoading"
-            @click="modelStore.fetchOperation()"
-          >
-            <el-icon><Refresh /></el-icon>刷新
-          </el-button>
-        </div>
-      </template>
-      <el-tabs v-model="modelStore.statsTab">
-        <el-tab-pane label="供应商健康" name="health">
-          <el-table
-            v-if="operation?.providerHealth?.length"
-            :data="operation.providerHealth"
-            size="small"
-          >
-            <el-table-column
-              label="供应商"
-              prop="providerName"
-              min-width="120"
-            />
-            <el-table-column label="健康状态" width="90" align="center">
+    <!-- 运营监控与模型注册是两件事：拆成页内 Tab，避免监控表压在 CRUD 列表上方拉长滚动 -->
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="模型列表" name="models">
+        <!-- 模型列表 -->
+        <el-card shadow="never">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <el-input
+                  v-model="modelStore.query.keyword"
+                  clearable
+                  placeholder="名称/模型标识"
+                  style="width: 180px"
+                  @keyup.enter="handleQuery"
+                  @input="debouncedQuery"
+                />
+                <el-select
+                  v-model="modelStore.modelTypeFilter"
+                  class="!w-[140px]"
+                  @change="handleQuery"
+                >
+                  <el-option label="全部类型" value="all" />
+                  <el-option
+                    v-for="[value, label] in modelTypeOptions"
+                    :key="value"
+                    :label="label"
+                    :value="value"
+                  />
+                </el-select>
+              </div>
+              <el-button
+                v-hasPerm="['ai:model:manage']"
+                type="success"
+                @click="openCreate()"
+              >
+                <el-icon><Plus /></el-icon>新增模型
+              </el-button>
+            </div>
+          </template>
+
+          <el-table v-loading="modelStore.loading" :data="modelStore.models">
+            <el-table-column label="模型名称" min-width="150">
               <template #default="{ row }">
-                <el-tag :type="providerHealthTag(row.health).type" size="small">
-                  {{ providerHealthTag(row.health).label }}
+                <div>{{ row.displayName }}</div>
+                <div class="text-xs text-gray-400">{{ row.modelId }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="类型" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag
+                  :type="typeTag[row.modelType as AiModelType].type"
+                  size="small"
+                >
+                  {{ typeTag[row.modelType as AiModelType].label }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column
-              label="调用量"
-              prop="callCount"
-              width="90"
-              align="center"
-            />
-            <el-table-column label="成功率" width="90" align="center">
-              <template #default="{ row }">{{ row.successRate }}%</template>
-            </el-table-column>
-            <el-table-column
-              label="限流(429)"
-              prop="rate429"
-              width="100"
-              align="center"
-            />
-            <el-table-column label="P95延迟" width="100" align="center">
+            <el-table-column label="任务标签" min-width="120">
               <template #default="{ row }">
-                {{ row.p95LatencyMs != null ? row.p95LatencyMs + "ms" : "-" }}
+                <template v-if="row.taskTags?.length">
+                  <el-tag
+                    v-for="t in row.taskTags"
+                    :key="t"
+                    class="mr-1"
+                    size="small"
+                    type="info"
+                    >{{ t }}</el-tag
+                  >
+                </template>
+                <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column label="熔断" width="80" align="center">
+            <el-table-column label="供应商" width="120">
               <template #default="{ row }">
-                <el-tag v-if="row.circuitOpen" type="danger" size="small"
-                  >熔断中</el-tag
+                {{
+                  modelStore.providerNameMap.get(row.providerId) ??
+                  row.providerId
+                }}
+              </template>
+            </el-table-column>
+            <el-table-column label="上下文" width="90" align="center">
+              <template #default="{ row }">{{ row.maxContextTokens }}</template>
+            </el-table-column>
+            <el-table-column label="速度档位" width="90" align="center">
+              <template #default="{ row }">
+                {{
+                  row.speedTier
+                    ? (speedLabel[row.speedTier] ?? row.speedTier)
+                    : "-"
+                }}
+              </template>
+            </el-table-column>
+            <el-table-column label="降级" width="70" align="center">
+              <template #default="{ row }">
+                <el-tag v-if="row.fallbackModelId" type="warning" size="small"
+                  >有</el-tag
                 >
                 <span v-else>-</span>
               </template>
             </el-table-column>
-          </el-table>
-          <el-empty v-else description="暂无供应商健康数据" :image-size="60" />
-        </el-tab-pane>
-        <el-tab-pane label="模型用量分布" name="usage" lazy>
-          <el-table
-            v-if="operation?.modelUsage?.length"
-            :data="operation.modelUsage"
-            size="small"
-          >
-            <el-table-column label="模型" prop="displayName" min-width="140" />
-            <el-table-column label="标识" prop="modelId" min-width="140" />
-            <el-table-column
-              label="调用数"
-              prop="callCount"
-              width="100"
-              align="center"
-            />
-            <el-table-column
-              label="输入Token"
-              prop="inputTokens"
-              width="110"
-              align="center"
-            />
-            <el-table-column
-              label="输出Token"
-              prop="outputTokens"
-              width="110"
-              align="center"
-            />
-            <el-table-column
-              label="积分开销"
-              prop="credits"
-              width="100"
-              align="center"
-            />
-          </el-table>
-          <el-empty v-else description="暂无用量数据" :image-size="60" />
-        </el-tab-pane>
-        <el-tab-pane label="降级与故障" name="degrade" lazy>
-          <template v-if="operation?.degradeFault">
-            <div class="mb-2 flex gap-6 text-sm">
-              <span
-                >Key 失败切换：<b>{{
-                  operation.degradeFault.keyFailoverCount
-                }}</b>
-                次</span
-              >
-              <span
-                >故障次数：<b>{{ operation.degradeFault.faultCount }}</b>
-                次</span
-              >
-            </div>
-            <el-table
-              v-if="operation.degradeFault.downgradeFrequency?.length"
-              :data="operation.degradeFault.downgradeFrequency"
-              size="small"
-            >
-              <el-table-column label="模型" prop="modelId" min-width="180" />
-              <el-table-column
-                label="降级次数"
-                prop="count"
-                width="120"
-                align="center"
-              />
-            </el-table>
-            <el-empty v-else description="暂无降级记录" :image-size="60" />
-          </template>
-          <el-empty v-else description="暂无降级与故障数据" :image-size="60" />
-        </el-tab-pane>
-      </el-tabs>
-    </el-card>
-
-    <!-- 模型列表 -->
-    <el-card shadow="never">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <div class="flex items-center gap-2">
-            <el-input
-              v-model="modelStore.query.keyword"
-              clearable
-              placeholder="名称/模型标识"
-              style="width: 180px"
-              @keyup.enter="handleQuery"
-              @input="debouncedQuery"
-            />
-            <el-select
-              v-model="modelStore.modelTypeFilter"
-              class="!w-[120px]"
-              @change="handleQuery"
-            >
-              <el-option label="全部类型" value="all" />
-              <el-option label="对话" value="chat" />
-              <el-option label="向量" value="embedding" />
-              <el-option label="重排" value="rerank" />
-            </el-select>
-          </div>
-          <el-button
-            v-hasPerm="['ai:model:manage']"
-            type="success"
-            @click="openCreate()"
-          >
-            <el-icon><Plus /></el-icon>新增模型
-          </el-button>
-        </div>
-      </template>
-
-      <el-table v-loading="modelStore.loading" :data="modelStore.models">
-        <el-table-column label="模型名称" min-width="150">
-          <template #default="{ row }">
-            <div>{{ row.displayName }}</div>
-            <div class="text-xs text-gray-400">{{ row.modelId }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="类型" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag
-              :type="typeTag[row.modelType as AiModelType].type"
-              size="small"
-            >
-              {{ typeTag[row.modelType as AiModelType].label }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="供应商" width="120">
-          <template #default="{ row }">
-            {{
-              modelStore.providerNameMap.get(row.providerId) ?? row.providerId
-            }}
-          </template>
-        </el-table-column>
-        <el-table-column label="上下文" width="90" align="center">
-          <template #default="{ row }">{{ row.maxContextTokens }}</template>
-        </el-table-column>
-        <el-table-column label="速度档位" width="90" align="center">
-          <template #default="{ row }">
-            {{
-              row.speedTier ? (speedLabel[row.speedTier] ?? row.speedTier) : "-"
-            }}
-          </template>
-        </el-table-column>
-        <el-table-column label="降级" width="70" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.fallbackModelId" type="warning" size="small"
-              >有</el-tag
-            >
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="VIP等级" width="100" align="center">
-          <template #default="{ row }">{{
-            vipLabel[row.vipLevel] ?? row.vipLevel
-          }}</template>
-        </el-table-column>
-        <el-table-column label="状态" width="80" align="center">
-          <template #default="{ row }">
-            <el-switch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              @change="handleStatusChange(row as AiModelVO)"
-            />
-          </template>
-        </el-table-column>
-        <el-table-column label="最近测试" width="100" align="center">
-          <template #default="{ row }">
-            <el-tooltip :disabled="!row.lastTestAt" placement="top">
-              <template #content>
-                <div v-if="row.lastTestError">{{ row.lastTestError }}</div>
-                <div>{{ row.lastTestAt }}</div>
+            <el-table-column label="VIP等级" width="100" align="center">
+              <template #default="{ row }">{{
+                vipLabel[row.vipLevel] ?? row.vipLevel
+              }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="80" align="center">
+              <template #default="{ row }">
+                <el-switch
+                  v-model="row.status"
+                  :active-value="1"
+                  :inactive-value="0"
+                  @change="handleStatusChange(row as AiModelVO)"
+                />
               </template>
-              <el-tag
-                :type="testStatusInfo(row.lastTestStatus).type"
+            </el-table-column>
+            <el-table-column label="最近测试" width="110" align="center">
+              <template #default="{ row }">
+                <!-- 未测试只给状态没有下一步动作，改为「去测试」引导（设计评审 #10） -->
+                <el-button
+                  v-if="(row.lastTestStatus ?? 0) === 0"
+                  v-hasPerm="['ai:model:manage']"
+                  link
+                  type="primary"
+                  size="small"
+                  :loading="testingIds.has(row.modelId)"
+                  @click="handleTest(row as AiModelVO)"
+                >
+                  去测试
+                </el-button>
+                <el-tooltip v-else :disabled="!row.lastTestAt" placement="top">
+                  <template #content>
+                    <div v-if="row.lastTestError">{{ row.lastTestError }}</div>
+                    <div>{{ row.lastTestAt }}</div>
+                  </template>
+                  <el-tag
+                    :type="testStatusInfo(row.lastTestStatus).type"
+                    size="small"
+                  >
+                    {{ testStatusInfo(row.lastTestStatus).label }}
+                  </el-tag>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column label="近24h实调" width="130" align="center">
+              <template #default="{ row }">
+                <span v-if="row.calls24h == null">-</span>
+                <span v-else-if="row.successRate24h == null"
+                  >{{ row.calls24h }} 次</span
+                >
+                <span v-else
+                  >{{ row.calls24h }} 次 · 成功率
+                  {{ row.successRate24h }}%</span
+                >
+              </template>
+            </el-table-column>
+            <el-table-column
+              label="操作"
+              width="240"
+              align="center"
+              fixed="right"
+            >
+              <template #default="{ row }">
+                <el-button
+                  v-hasPerm="['ai:model:manage']"
+                  link
+                  type="primary"
+                  size="small"
+                  @click="openEdit(row as AiModelVO)"
+                >
+                  编辑
+                </el-button>
+                <el-button
+                  v-hasPerm="['ai:model:manage']"
+                  link
+                  type="primary"
+                  size="small"
+                  @click="modelStore.openPriceDialog(row as AiModelVO)"
+                >
+                  价格
+                </el-button>
+                <el-button
+                  v-hasPerm="['ai:model:manage']"
+                  link
+                  type="primary"
+                  size="small"
+                  :loading="testingIds.has(row.modelId)"
+                  @click="handleTest(row as AiModelVO)"
+                >
+                  测试
+                </el-button>
+                <!-- 「下线」是破坏性操作：收进「···」并二次确认，避免与常规操作同级误触（设计评审 #10） -->
+                <el-dropdown
+                  trigger="click"
+                  @command="
+                    (command: string) =>
+                      handleRowAction(command, row as AiModelVO)
+                  "
+                >
+                  <el-button v-hasPerm="['ai:model:manage']" link size="small">
+                    ···
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="delete">下线</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <pagination
+            v-if="modelStore.total > 0"
+            v-model:limit="modelStore.query.pageSize"
+            v-model:page="modelStore.query.pageNum"
+            v-model:total="modelStore.total"
+            @pagination="modelStore.fetchModels()"
+          />
+        </el-card>
+      </el-tab-pane>
+      <el-tab-pane label="运营监控" name="operation">
+        <!-- 运营视图：用量/健康/降级统计 -->
+        <el-card shadow="never" class="mb-[12px]">
+          <template #header>
+            <div class="flex justify-between items-center">
+              <span>运营视图</span>
+              <el-button
+                :loading="modelStore.operationLoading"
+                @click="modelStore.fetchOperation()"
+              >
+                <el-icon><Refresh /></el-icon>刷新
+              </el-button>
+            </div>
+          </template>
+          <el-tabs v-model="modelStore.statsTab">
+            <el-tab-pane label="供应商健康" name="health">
+              <el-table
+                v-if="operation?.providerHealth?.length"
+                :data="operation.providerHealth"
                 size="small"
               >
-                {{ testStatusInfo(row.lastTestStatus).label }}
-              </el-tag>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column label="近24h实调" width="130" align="center">
-          <template #default="{ row }">
-            <span v-if="row.calls24h == null">-</span>
-            <span v-else-if="row.successRate24h == null"
-              >{{ row.calls24h }} 次</span
-            >
-            <span v-else
-              >{{ row.calls24h }} 次 · 成功率 {{ row.successRate24h }}%</span
-            >
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="240" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button
-              v-hasPerm="['ai:model:manage']"
-              link
-              type="primary"
-              size="small"
-              @click="openEdit(row as AiModelVO)"
-            >
-              编辑
-            </el-button>
-            <el-button
-              v-hasPerm="['ai:model:manage']"
-              link
-              type="primary"
-              size="small"
-              @click="modelStore.openPriceDialog(row as AiModelVO)"
-            >
-              价格
-            </el-button>
-            <el-button
-              v-hasPerm="['ai:model:manage']"
-              link
-              type="primary"
-              size="small"
-              :loading="testingIds.has(row.modelId)"
-              @click="handleTest(row as AiModelVO)"
-            >
-              测试
-            </el-button>
-            <el-button
-              v-hasPerm="['ai:model:manage']"
-              link
-              type="danger"
-              size="small"
-              @click="handleDelete(row as AiModelVO)"
-            >
-              下线
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <pagination
-        v-if="modelStore.total > 0"
-        v-model:limit="modelStore.query.pageSize"
-        v-model:page="modelStore.query.pageNum"
-        v-model:total="modelStore.total"
-        @pagination="modelStore.fetchModels()"
-      />
-    </el-card>
+                <el-table-column
+                  label="供应商"
+                  prop="providerName"
+                  min-width="120"
+                />
+                <el-table-column label="健康状态" width="90" align="center">
+                  <template #default="{ row }">
+                    <el-tag
+                      :type="providerHealthTag(row.health).type"
+                      size="small"
+                    >
+                      {{ providerHealthTag(row.health).label }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="调用量"
+                  prop="callCount"
+                  width="90"
+                  align="center"
+                />
+                <el-table-column label="成功率" width="90" align="center">
+                  <!-- successRate 为 0-1 比率（ai_provider.py 契约，null=近 24h 无调用），展示前需 ×100 -->
+                  <template #default="{ row }">
+                    {{
+                      row.successRate == null
+                        ? "-"
+                        : (row.successRate * 100).toFixed(1) + "%"
+                    }}
+                  </template>
+                </el-table-column>
+                <el-table-column
+                  label="限流(429)"
+                  prop="rate429"
+                  width="100"
+                  align="center"
+                >
+                  <!-- rate429 同为 0-1 比率契约，与成功率同口径展示 -->
+                  <template #default="{ row }">
+                    {{
+                      row.rate429 == null
+                        ? "-"
+                        : (row.rate429 * 100).toFixed(1) + "%"
+                    }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="P95延迟" width="100" align="center">
+                  <template #default="{ row }">
+                    {{
+                      row.p95LatencyMs != null ? row.p95LatencyMs + "ms" : "-"
+                    }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="熔断" width="80" align="center">
+                  <template #default="{ row }">
+                    <el-tag v-if="row.circuitOpen" type="danger" size="small"
+                      >熔断中</el-tag
+                    >
+                    <span v-else>-</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <el-empty
+                v-else
+                description="暂无供应商健康数据"
+                :image-size="60"
+              />
+            </el-tab-pane>
+            <el-tab-pane label="模型用量分布" name="usage" lazy>
+              <el-table
+                v-if="operation?.modelUsage?.length"
+                :data="operation.modelUsage"
+                size="small"
+              >
+                <el-table-column
+                  label="模型"
+                  prop="displayName"
+                  min-width="140"
+                />
+                <el-table-column label="标识" prop="modelId" min-width="140" />
+                <el-table-column
+                  label="调用数"
+                  prop="callCount"
+                  width="100"
+                  align="center"
+                />
+                <el-table-column
+                  label="输入Token"
+                  prop="inputTokens"
+                  width="110"
+                  align="center"
+                />
+                <el-table-column
+                  label="输出Token"
+                  prop="outputTokens"
+                  width="110"
+                  align="center"
+                />
+                <el-table-column
+                  label="积分开销"
+                  prop="credits"
+                  width="100"
+                  align="center"
+                />
+              </el-table>
+              <el-empty v-else description="暂无用量数据" :image-size="60" />
+            </el-tab-pane>
+            <el-tab-pane label="降级与故障" name="degrade" lazy>
+              <template v-if="operation?.degradeFault">
+                <div class="mb-2 flex gap-6 text-sm">
+                  <span
+                    >Key 失败切换：<b>{{
+                      operation.degradeFault.keyFailoverCount
+                    }}</b>
+                    次</span
+                  >
+                  <span
+                    >故障次数：<b>{{ operation.degradeFault.faultCount }}</b>
+                    次</span
+                  >
+                </div>
+                <el-table
+                  v-if="operation.degradeFault.downgradeFrequency?.length"
+                  :data="operation.degradeFault.downgradeFrequency"
+                  size="small"
+                >
+                  <el-table-column
+                    label="模型"
+                    prop="modelId"
+                    min-width="180"
+                  />
+                  <el-table-column
+                    label="降级次数"
+                    prop="count"
+                    width="120"
+                    align="center"
+                  />
+                </el-table>
+                <el-empty v-else description="暂无降级记录" :image-size="60" />
+              </template>
+              <el-empty
+                v-else
+                description="暂无降级与故障数据"
+                :image-size="60"
+              />
+            </el-tab-pane>
+          </el-tabs>
+        </el-card>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- 模型表单弹窗（类型化字段） -->
     <el-dialog
@@ -332,9 +422,12 @@
             :disabled="!!formDialog.model"
             class="!w-[240px]"
           >
-            <el-option label="对话 (chat)" value="chat" />
-            <el-option label="向量 (embedding)" value="embedding" />
-            <el-option label="重排 (rerank)" value="rerank" />
+            <el-option
+              v-for="[value, label] in modelTypeOptions"
+              :key="value"
+              :label="`${label} (${value})`"
+              :value="value"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="模型标识" prop="modelId">
@@ -342,6 +435,18 @@
             v-model="form.modelId"
             :disabled="!!formDialog.model"
             placeholder="创建后不可修改，如 deepseek-chat"
+          />
+        </el-form-item>
+        <el-form-item label="任务标签">
+          <el-select
+            v-model="form.taskTags"
+            class="!w-[320px]"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            :reserve-keyword="false"
+            placeholder="回车录入，如图像模型 dehaze/super_resolution、asr stream/offline"
           />
         </el-form-item>
         <el-form-item
@@ -366,14 +471,15 @@
         <el-form-item label="显示名称" prop="displayName">
           <el-input v-model="form.displayName" />
         </el-form-item>
-        <el-form-item label="最大上下文Token">
+        <!-- 上下文/输出 Token 列仅文本类模型（chat/embedding/rerank）有意义，其它类型保持默认值 -->
+        <el-form-item v-if="isTextModel" label="最大上下文Token">
           <el-input-number
             v-model="form.maxContextTokens"
             :min="1"
             controls-position="right"
           />
         </el-form-item>
-        <el-form-item label="最大输出Token">
+        <el-form-item v-if="isTextModel" label="最大输出Token">
           <el-input-number
             v-model="form.maxOutputTokens"
             :min="1"
@@ -451,9 +557,12 @@
       destroy-on-close
     >
       <div class="mb-2 text-xs text-gray-400">
-        保存将生成新价格版本，历史版本自动保留；单价单位：积分/百万token
+        保存将生成新价格版本，历史版本自动保留；计费单位：积分/{{
+          currentBillingUnit ? billingUnitLabels[currentBillingUnit] : "-"
+        }}
       </div>
-      <el-table :data="modelStore.priceRows" size="small">
+      <!-- token 模型：token 类型 × 时段 × 上下文分段矩阵 -->
+      <el-table v-if="isTokenBilling" :data="modelStore.priceRows" size="small">
         <el-table-column label="Token类型" width="120">
           <template #default="{ row }">
             <el-select v-model="row.tokenType" size="small">
@@ -516,7 +625,25 @@
           </template>
         </el-table-column>
       </el-table>
+      <!-- 非 token 模型：单一 unit 档（张/秒/万字符/帧），不设峰谷与分段 -->
+      <el-form v-else label-width="90px">
+        <el-form-item label="单价">
+          <el-input-number
+            v-if="modelStore.priceRows[0]"
+            v-model="modelStore.priceRows[0].unitPrice"
+            :min="0"
+            :precision="2"
+            controls-position="right"
+          />
+          <span class="ml-2 text-xs text-gray-400">
+            积分/{{
+              currentBillingUnit ? billingUnitLabels[currentBillingUnit] : ""
+            }}
+          </span>
+        </el-form-item>
+      </el-form>
       <el-button
+        v-if="isTokenBilling"
         class="mt-2"
         size="small"
         type="primary"
@@ -538,8 +665,16 @@
           width="70"
           align="center"
         />
-        <el-table-column label="生效时间" prop="effectiveFrom" width="160" />
-        <el-table-column label="失效时间" width="160">
+        <el-table-column label="计费单位" width="90" align="center">
+          <template #default="{ row }">
+            {{
+              billingUnitLabels[row.billingUnit as ModelPriceBillingUnit] ??
+              row.billingUnit
+            }}
+          </template>
+        </el-table-column>
+        <el-table-column label="生效时间" prop="effectiveFrom" width="150" />
+        <el-table-column label="失效时间" width="150">
           <template #default="{ row }">{{
             row.effectiveTo ?? "长期"
           }}</template>
@@ -554,9 +689,17 @@
         <el-table-column label="档位明细">
           <template #default="{ row }">
             <div v-for="d in row.details" :key="d.id" class="text-xs leading-5">
-              {{ d.tokenType }}/{{ d.timeSlot }} [{{ d.minTokens }}~{{
-                d.maxTokens ?? "∞"
-              }}]： {{ d.unitPrice }} 积分/百万token
+              <template v-if="d.usageKind === 'unit'">
+                unit：{{ d.unitPrice }} 积分/{{
+                  billingUnitLabels[row.billingUnit as ModelPriceBillingUnit] ??
+                  row.billingUnit
+                }}
+              </template>
+              <template v-else>
+                {{ d.tokenType }}/{{ d.timeSlot }} [{{ d.minTokens }}~{{
+                  d.maxTokens ?? "∞"
+                }}]： {{ d.unitPrice }} 积分/百万token
+              </template>
             </div>
           </template>
         </el-table-column>
@@ -598,15 +741,24 @@ import {
   AiModelForm,
   AiModelType,
   AiModelVO,
+  ModelPriceBillingUnit,
   ProviderHealth,
   ProviderVO,
 } from "dehaze-sdk-js";
-import { useAdminModelStore } from "@/store/modules/adminModel";
+import {
+  billingUnitByType,
+  billingUnitLabels,
+  useAdminModelStore,
+} from "@/store/modules/adminModel";
 import { useAdminProviderStore } from "@/store/modules/adminProvider";
 import type { TagType } from "@/enums/TagType";
 
 const modelStore = useAdminModelStore();
 const providerStore = useAdminProviderStore();
+
+// 页内 Tab：模型列表（日常 CRUD）与运营监控（只读看板）职责不同，默认停在模型列表
+type ModelPageTab = "models" | "operation";
+const activeTab = ref<ModelPageTab>("models");
 
 const formRef = ref(ElForm);
 const submitting = ref(false);
@@ -615,10 +767,35 @@ const formDialog = computed(() => modelStore.formDialog);
 const priceDialog = computed(() => modelStore.priceDialog);
 const operation = computed(() => modelStore.operation);
 
+/** 模型类型中文标签（全模态白名单，与 SDK AiModelType 同步） */
+const modelTypeLabels: Record<AiModelType, string> = {
+  chat: "对话",
+  embedding: "向量",
+  rerank: "重排",
+  image_gen: "文生图",
+  image_edit: "图像编辑",
+  video_gen: "视频生成",
+  asr: "语音识别",
+  tts: "语音合成",
+  music_gen: "音乐生成",
+  "3d_gen": "3D生成",
+};
+const modelTypeOptions = Object.entries(modelTypeLabels) as [
+  AiModelType,
+  string,
+][];
+
 const typeTag: Record<AiModelType, { label: string; type: TagType }> = {
-  chat: { label: "对话", type: "primary" },
-  embedding: { label: "向量", type: "success" },
-  rerank: { label: "重排", type: "warning" },
+  chat: { label: modelTypeLabels.chat, type: "primary" },
+  embedding: { label: modelTypeLabels.embedding, type: "success" },
+  rerank: { label: modelTypeLabels.rerank, type: "warning" },
+  image_gen: { label: modelTypeLabels.image_gen, type: "primary" },
+  image_edit: { label: modelTypeLabels.image_edit, type: "success" },
+  video_gen: { label: modelTypeLabels.video_gen, type: "warning" },
+  asr: { label: modelTypeLabels.asr, type: "primary" },
+  tts: { label: modelTypeLabels.tts, type: "success" },
+  music_gen: { label: modelTypeLabels.music_gen, type: "warning" },
+  "3d_gen": { label: modelTypeLabels["3d_gen"], type: "info" },
 };
 const vipLabel = ["所有用户", "VIP1+", "VIP2+"];
 const speedLabel: Record<string, string> = {
@@ -661,6 +838,7 @@ const emptyForm = () => ({
   providerId: undefined as number | undefined,
   modelId: "",
   modelType: "chat" as AiModelType,
+  taskTags: [] as string[],
   dimension: undefined as number | undefined,
   displayName: "",
   maxContextTokens: 4096,
@@ -677,6 +855,22 @@ const emptyForm = () => ({
 });
 const form = reactive(emptyForm());
 
+/** 文本类模型：上下文/输出 Token 字段仅对 chat/embedding/rerank 有意义，其它类型保持默认 */
+const isTextModel = computed(() =>
+  ["chat", "embedding", "rerank"].includes(form.modelType)
+);
+
+/** 当前价格弹窗模型的计费单位（由 model_type 推导，与后端 billing_unit 同口径） */
+const currentBillingUnit = computed<ModelPriceBillingUnit | null>(() =>
+  priceDialog.value.model
+    ? billingUnitByType[priceDialog.value.model.modelType]
+    : null
+);
+/** token 单位走三维档位矩阵，其余单位走单一 unit 档 */
+const isTokenBilling = computed(
+  () => currentBillingUnit.value === "million_tokens"
+);
+
 const rules = {
   providerId: [
     { required: true, message: "供应商不能为空", trigger: "change" },
@@ -687,14 +881,19 @@ const rules = {
   ],
 };
 
-watch(formDialog, ({ visible, model }) => {
-  if (!visible) return;
-  Object.assign(form, emptyForm());
-  if (model) {
+// 必须显式声明依赖：store 的 openFormDialog 是原地改 formDialog 属性，
+// 监听 computed 本身只会拿到同一个代理引用，回调永不触发（表单无法回显）
+watch(
+  () => [formDialog.value.visible, formDialog.value.model] as const,
+  ([visible, model]) => {
+    if (!visible) return;
+    Object.assign(form, emptyForm());
+    if (!model) return;
     Object.assign(form, {
       providerId: model.providerId,
       modelId: model.modelId,
       modelType: model.modelType,
+      taskTags: model.taskTags ?? [],
       dimension: model.dimension ?? undefined,
       displayName: model.displayName,
       maxContextTokens: model.maxContextTokens,
@@ -710,7 +909,7 @@ watch(formDialog, ({ visible, model }) => {
       status: model.status,
     });
   }
-});
+);
 
 function resetForm() {
   Object.assign(form, emptyForm());
@@ -724,7 +923,12 @@ function openEdit(row: AiModelVO) {
 }
 
 async function submit() {
-  await formRef.value.validate();
+  try {
+    await formRef.value.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
 
   // embedding 模型的维度决定向量索引映射，创建时必须明确
   if (form.modelType === "embedding" && !form.dimension) {
@@ -738,6 +942,7 @@ async function submit() {
       providerId: form.providerId!,
       modelId: form.modelId,
       modelType: form.modelType,
+      taskTags: form.taskTags.length ? form.taskTags : null,
       dimension: form.modelType === "embedding" ? form.dimension : undefined,
       displayName: form.displayName,
       maxContextTokens: form.maxContextTokens,
@@ -778,13 +983,25 @@ async function handleStatusChange(row: AiModelVO) {
 }
 
 async function handleDelete(row: AiModelVO) {
-  await ElMessageBox.confirm(
-    `确认下线模型「${row.displayName}」？model_id 不可复用，历史会话引用将失效。`,
-    "下线确认",
-    { type: "warning" }
-  );
+  try {
+    await ElMessageBox.confirm(
+      `确认下线模型「${row.displayName}」？model_id 不可复用，历史会话引用将失效。`,
+      "下线确认",
+      { type: "warning" }
+    );
+  } catch {
+    // 用户取消：不抛未捕获异常，直接返回
+    return;
+  }
   await modelStore.deleteModel(row);
   ElMessage.success("已下线");
+}
+
+/** 行内「···」菜单分发（破坏性操作集中在此，避免与常规操作同级误触） */
+function handleRowAction(command: string, row: AiModelVO) {
+  if (command === "delete") {
+    void handleDelete(row);
+  }
 }
 
 // ==================== 模型可用性测试 ====================
@@ -816,6 +1033,7 @@ async function handleTest(row: AiModelVO) {
 
 function addPriceRow() {
   modelStore.priceRows.push({
+    usageKind: "token",
     tokenType: "input",
     timeSlot: "peak",
     minTokens: 0,

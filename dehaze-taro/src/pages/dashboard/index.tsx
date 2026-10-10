@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Loading, Tag } from "@taroify/core";
-import { AlgorithmAPI, DatasetAPI, TaskAPI, UserAPI } from "dehaze-sdk-js";
+import { AiModelAPI, DatasetAPI, TaskAPI, UserAPI } from "dehaze-sdk-js";
 import type { TaskVO } from "dehaze-sdk-js";
 import { useAuth } from "@/hooks/useAuth";
 import { tabBarItems } from "@/config/menu";
@@ -33,15 +33,9 @@ const WORKFLOW_ENTRIES = [
     route: "/pages/image-input/index",
   },
   {
-    icon: "💡",
-    title: "算法选择",
-    desc: "选择去雾算法",
-    route: "/pages/algorithm-select/index",
-  },
-  {
     icon: "⚙️",
     title: "去雾处理",
-    desc: "执行去雾处理",
+    desc: "选择模型并执行去雾",
     route: "/pages/processing/index",
   },
   {
@@ -75,7 +69,6 @@ const MANAGEMENT_ENTRIES: ManagementEntry[] = [
     sysModule: "role",
   },
   { icon: "📁", title: "数据集管理", route: "/pages/dataset/index" },
-  { icon: "🔧", title: "算法管理", route: "/pages/algorithm/index" },
   { icon: "📋", title: "任务中心", route: "/pages/task/index" },
   {
     icon: "🎯",
@@ -90,7 +83,7 @@ const MANAGEMENT_ENTRIES: ManagementEntry[] = [
 interface Stats {
   userCount: number | null;
   datasetCount: number | null;
-  algorithmCount: number | null;
+  modelCount: number | null;
   taskTotal: number | null;
 }
 
@@ -113,7 +106,7 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<Stats>({
     userCount: null,
     datasetCount: null,
-    algorithmCount: null,
+    modelCount: null,
     taskTotal: null,
   });
   const [recentTasks, setRecentTasks] = useState<TaskVO[]>([]);
@@ -128,14 +121,18 @@ const Dashboard: React.FC = () => {
     const results = await Promise.allSettled([
       UserAPI.getPage({ pageNum: 1, pageSize: 1 }),
       DatasetAPI.getList({ pageNum: 1, pageSize: 1 }),
-      AlgorithmAPI.getList(),
+      AiModelAPI.listModels({
+        pageNum: 1,
+        pageSize: 1,
+        modelType: "image_edit",
+      }),
       TaskAPI.getPage({ pageNum: 1, pageSize: 5 }),
     ]);
 
     const newStats: Stats = {
       userCount: null,
       datasetCount: null,
-      algorithmCount: null,
+      modelCount: null,
       taskTotal: null,
     };
 
@@ -146,14 +143,7 @@ const Dashboard: React.FC = () => {
       newStats.datasetCount = results[1].value.total ?? null;
     }
     if (results[2].status === "fulfilled") {
-      const tree = results[2].value || [];
-      // 递归统计算法节点总数
-      const countNodes = (nodes: typeof tree): number =>
-        nodes.reduce(
-          (sum, n) => sum + 1 + (n.children ? countNodes(n.children) : 0),
-          0
-        );
-      newStats.algorithmCount = countNodes(tree);
+      newStats.modelCount = results[2].value.total ?? null;
     }
     if (results[3].status === "fulfilled") {
       newStats.taskTotal = results[3].value.total ?? null;
@@ -179,11 +169,8 @@ const Dashboard: React.FC = () => {
         return;
       }
     }
-    // 算法选择和去雾处理入口：需先选择图片
-    if (
-      route === "/pages/algorithm-select/index" ||
-      route === "/pages/processing/index"
-    ) {
+    // 去雾处理入口：需先选择图片
+    if (route === "/pages/processing/index") {
       const hasImage = !!useProcessStore.getState().image;
       if (!hasImage) {
         Taro.showToast({ title: "请先选择图片", icon: "none" });
@@ -266,11 +253,7 @@ const Dashboard: React.FC = () => {
               stats.datasetCount,
               "var(--color-success)"
             )}
-            {renderStatCard(
-              "算法数",
-              stats.algorithmCount,
-              "var(--color-info)"
-            )}
+            {renderStatCard("模型数", stats.modelCount, "var(--color-info)")}
             {renderStatCard(
               "任务总数",
               stats.taskTotal,

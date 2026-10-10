@@ -35,13 +35,12 @@ Map<String, dynamic> _$DeptToJson(Dept instance) => <String, dynamic>{
   'name': instance.name,
   'sort': instance.sort,
   'status': instance.status,
-  if (instance.leader case final value?) 'leader': value,
-  if (instance.phone case final value?) 'phone': value,
-  if (instance.email case final value?) 'email': value,
-  if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-    'children': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'leader': ?instance.leader,
+  'phone': ?instance.phone,
+  'email': ?instance.email,
+  'children': ?instance.children?.map((e) => e.toJson()).toList(),
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 DeptQuery _$DeptQueryFromJson(Map<String, dynamic> json) =>
@@ -54,8 +53,8 @@ DeptQuery _$DeptQueryFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$DeptQueryToJson(DeptQuery instance) => <String, dynamic>{
-  if (instance.name case final value?) 'name': value,
-  if (instance.status case final value?) 'status': value,
+  'name': ?instance.name,
+  'status': ?instance.status,
 };
 
 DeptForm _$DeptFormFromJson(Map<String, dynamic> json) =>
@@ -74,14 +73,14 @@ DeptForm _$DeptFormFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$DeptFormToJson(DeptForm instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
+  'id': ?instance.id,
   'parentId': instance.parentId,
   'name': instance.name,
   'sort': instance.sort,
   'status': instance.status,
-  if (instance.leader case final value?) 'leader': value,
-  if (instance.phone case final value?) 'phone': value,
-  if (instance.email case final value?) 'email': value,
+  'leader': ?instance.leader,
+  'phone': ?instance.phone,
+  'email': ?instance.email,
 };
 
 DeptOption _$DeptOptionFromJson(Map<String, dynamic> json) =>
@@ -103,6 +102,5 @@ Map<String, dynamic> _$DeptOptionToJson(DeptOption instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-        'children': value,
+      'children': ?instance.children?.map((e) => e.toJson()).toList(),
     };

@@ -5,21 +5,22 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.RepositoryAdapters;
 import com.pei.dehaze.repository.RepositoryCallback;
-import com.pei.dehaze.sdk.api.AlgorithmAPI;
-import com.pei.dehaze.sdk.api.AlgorithmSelectAPI;
+import com.pei.dehaze.sdk.api.AiImageAPI;
+import com.pei.dehaze.sdk.api.AiModelAPI;
 import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.Option;
-import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmDetailVO;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.evaluation.EvalParam;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
-import com.pei.dehaze.sdk.model.prediction.PredParam;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
-import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.image_task.ImageEditForm;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskQuery;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskStatus;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskVO;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -32,14 +33,14 @@ public class CompareViewModel extends BaseViewModel {
 
     private final MutableLiveData<FileInfo> uploadedFile = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> uploadedGtFile = new MutableLiveData<>();
-    private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
-    private final MutableLiveData<PredResult> predictionResult = new MutableLiveData<>();
-    private final MutableLiveData<Map<Long, PredResult>> multiPredictionResults = new MutableLiveData<>();
+    private final MutableLiveData<List<AiModelVO>> models = new MutableLiveData<>();
+    private final MutableLiveData<ImageTaskResponse> predictionResult = new MutableLiveData<>();
+    private final MutableLiveData<Map<String, ImageTaskResponse>> multiPredictionResults = new MutableLiveData<>();
     private final MutableLiveData<EvalResult> evaluationResult = new MutableLiveData<>();
-    private final MutableLiveData<List<PredictionLogVO>> predictionLogs = new MutableLiveData<>();
+    private final MutableLiveData<List<ImageTaskVO>> predictionLogs = new MutableLiveData<>();
 
     private String originalImageUrl;
-    private Long currentAlgorithmId;
+    private String currentModelId;
 
     public void uploadImage(File imageFile) {
         FileAPI.upload(imageFile, RepositoryAdapters.wrap(withLoading(fileInfo -> {
@@ -49,11 +50,12 @@ public class CompareViewModel extends BaseViewModel {
         })));
     }
 
-    public void loadAlgorithmOptions() {
-        AlgorithmAPI.getOption(RepositoryAdapters.wrap(withLoading(algorithmOptions::postValue)));
+    public void loadModels() {
+        AiModelAPI.listEnabledModels("image_edit", null,
+                RepositoryAdapters.wrap(withLoading(models::postValue)));
     }
 
-    public void predict(long algorithmId, DehazeParams params) {
+    public void predict(String modelId, DehazeParams params) {
         if (originalImageUrl == null) {
             error.setValue("请先上传图片");
             return;
@@ -63,13 +65,13 @@ public class CompareViewModel extends BaseViewModel {
             error.setValue(invalidMsg);
             return;
         }
-        currentAlgorithmId = algorithmId;
-        PredParam param = new PredParam();
-        param.setAlgorithmId(algorithmId);
-        param.setImageUrl(originalImageUrl);
-        param.setParams(params);
-        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
-            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+        currentModelId = modelId;
+        ImageEditForm form = new ImageEditForm();
+        form.setModel(modelId);
+        form.setImageUrl(originalImageUrl);
+        form.setParams(params);
+        AiImageAPI.submitAndWait(form, RepositoryAdapters.wrap(withLoading(result -> {
+            if (result.getStatus() == ImageTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                 return;
             }
@@ -78,13 +80,13 @@ public class CompareViewModel extends BaseViewModel {
         })));
     }
 
-    public void predictMultiple(List<Long> algorithmIds, DehazeParams params) {
+    public void predictMultiple(List<String> modelIds, DehazeParams params) {
         if (originalImageUrl == null) {
             error.setValue("请先上传图片");
             return;
         }
-        if (algorithmIds == null || algorithmIds.isEmpty()) {
-            error.setValue("请至少选择一个算法");
+        if (modelIds == null || modelIds.isEmpty()) {
+            error.setValue("请至少选择一个模型");
             return;
         }
         String invalidMsg = params == null ? null : params.validate();
@@ -93,28 +95,28 @@ public class CompareViewModel extends BaseViewModel {
             return;
         }
         loading.setValue(true);
-        currentAlgorithmId = algorithmIds.get(0);
-        Map<Long, PredResult> results = new HashMap<>();
-        AtomicInteger pending = new AtomicInteger(algorithmIds.size());
-        for (Long algorithmId : algorithmIds) {
-            PredParam param = new PredParam();
-            param.setAlgorithmId(algorithmId);
-            param.setImageUrl(originalImageUrl);
-            param.setParams(params);
-            ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(new RepositoryCallback<PredResult>() {
+        currentModelId = modelIds.get(0);
+        Map<String, ImageTaskResponse> results = new HashMap<>();
+        AtomicInteger pending = new AtomicInteger(modelIds.size());
+        for (String modelId : modelIds) {
+            ImageEditForm form = new ImageEditForm();
+            form.setModel(modelId);
+            form.setImageUrl(originalImageUrl);
+            form.setParams(params);
+            AiImageAPI.submitAndWait(form, RepositoryAdapters.wrap(new RepositoryCallback<ImageTaskResponse>() {
                 @Override
-                public void onSuccess(PredResult result) {
-                    if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+                public void onSuccess(ImageTaskResponse result) {
+                    if (result.getStatus() == ImageTaskStatus.FAILED) {
                         error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                     } else {
                         synchronized (results) {
-                            results.put(algorithmId, result);
+                            results.put(modelId, result);
                         }
                     }
                     if (pending.decrementAndGet() == 0) {
                         multiPredictionResults.postValue(results);
-                        if (results.size() > 0) {
-                            operationResult.postValue("多算法处理完成");
+                        if (!results.isEmpty()) {
+                            operationResult.postValue("多模型处理完成");
                         }
                         loading.postValue(false);
                     }
@@ -132,17 +134,17 @@ public class CompareViewModel extends BaseViewModel {
         }
     }
 
-    public void evaluate(long algorithmId, String predUrl, String gtUrl) {
+    public void evaluate(String modelId, String predUrl, String gtUrl) {
         if (gtUrl == null || gtUrl.isEmpty()) {
             error.setValue("评估需要提供参考图片");
             return;
         }
         EvalParam param = new EvalParam();
-        param.setAlgorithmId(algorithmId);
+        param.setModelId(modelId);
         param.setPredUrl(predUrl);
         param.setGtUrl(gtUrl);
         ModelAPI.evaluateAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
-            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+            if (result.getStatus() == EvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
                 return;
             }
@@ -152,7 +154,10 @@ public class CompareViewModel extends BaseViewModel {
     }
 
     public void loadPredictionLogs() {
-        ModelAPI.listPredictionLogs(null, 1, 20, RepositoryAdapters.wrapPage(withLoading(logs ->
+        ImageTaskQuery query = new ImageTaskQuery();
+        query.setPageNum(1);
+        query.setPageSize(20);
+        AiImageAPI.listImageTasks(query, RepositoryAdapters.wrapPage(withLoading(logs ->
                 predictionLogs.postValue(logs != null ? logs : new ArrayList<>()))));
     }
 
@@ -166,26 +171,19 @@ public class CompareViewModel extends BaseViewModel {
         })));
     }
 
-    /**
-     * 加载算法详情（用于"算法信息"对比模式）。
-     */
-    public void loadAlgorithmDetail(long algorithmId, RepositoryCallback<AlgorithmDetailVO> callback) {
-        AlgorithmSelectAPI.getDetail(algorithmId, RepositoryAdapters.wrap(callback));
-    }
-
     public LiveData<FileInfo> getUploadedFile() {
         return uploadedFile;
     }
 
-    public LiveData<List<Option>> getAlgorithmOptions() {
-        return algorithmOptions;
+    public LiveData<List<AiModelVO>> getModels() {
+        return models;
     }
 
-    public LiveData<PredResult> getPredictionResult() {
+    public LiveData<ImageTaskResponse> getPredictionResult() {
         return predictionResult;
     }
 
-    public LiveData<Map<Long, PredResult>> getMultiPredictionResults() {
+    public LiveData<Map<String, ImageTaskResponse>> getMultiPredictionResults() {
         return multiPredictionResults;
     }
 
@@ -193,7 +191,7 @@ public class CompareViewModel extends BaseViewModel {
         return evaluationResult;
     }
 
-    public LiveData<List<PredictionLogVO>> getPredictionLogs() {
+    public LiveData<List<ImageTaskVO>> getPredictionLogs() {
         return predictionLogs;
     }
 
@@ -205,7 +203,7 @@ public class CompareViewModel extends BaseViewModel {
         return uploadedGtFile;
     }
 
-    public Long getCurrentAlgorithmId() {
-        return currentAlgorithmId;
+    public String getCurrentModelId() {
+        return currentModelId;
     }
 }

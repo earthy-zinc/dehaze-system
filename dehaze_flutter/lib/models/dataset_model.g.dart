@@ -25,9 +25,9 @@ Map<String, dynamic> _$DatasetQueryToJson(DatasetQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.keyword case final value?) 'keyword': value,
-      if (instance.type case final value?) 'type': value,
-      if (instance.status case final value?) 'status': value,
+      'keyword': ?instance.keyword,
+      'type': ?instance.type,
+      'status': ?instance.status,
     };
 
 DatasetAddForm _$DatasetAddFormFromJson(Map<String, dynamic> json) =>
@@ -46,11 +46,11 @@ DatasetAddForm _$DatasetAddFormFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$DatasetAddFormToJson(DatasetAddForm instance) =>
     <String, dynamic>{
       'parentId': instance.parentId,
-      if (instance.type case final value?) 'type': value,
-      if (instance.name case final value?) 'name': value,
-      if (instance.description case final value?) 'description': value,
-      if (instance.path case final value?) 'path': value,
-      if (instance.status case final value?) 'status': value,
+      'type': ?instance.type,
+      'name': ?instance.name,
+      'description': ?instance.description,
+      'path': ?instance.path,
+      'status': ?instance.status,
     };
 
 DatasetUpdateForm _$DatasetUpdateFormFromJson(Map<String, dynamic> json) =>
@@ -67,11 +67,11 @@ DatasetUpdateForm _$DatasetUpdateFormFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$DatasetUpdateFormToJson(DatasetUpdateForm instance) =>
     <String, dynamic>{
-      if (instance.type case final value?) 'type': value,
-      if (instance.name case final value?) 'name': value,
-      if (instance.description case final value?) 'description': value,
-      if (instance.path case final value?) 'path': value,
-      if (instance.status case final value?) 'status': value,
+      'type': ?instance.type,
+      'name': ?instance.name,
+      'description': ?instance.description,
+      'path': ?instance.path,
+      'status': ?instance.status,
     };
 
 DatasetStatistics _$DatasetStatisticsFromJson(
@@ -117,21 +117,18 @@ DatasetStatistics _$DatasetStatisticsFromJson(
   return val;
 });
 
-Map<String, dynamic> _$DatasetStatisticsToJson(
-  DatasetStatistics instance,
-) => <String, dynamic>{
-  'itemCount': instance.itemCount,
-  'fileCount': instance.fileCount,
-  'totalSize': instance.totalSize,
-  'annotatedCount': instance.annotatedCount,
-  'unannotatedCount': instance.unannotatedCount,
-  if (instance.sceneDistribution case final value?) 'sceneDistribution': value,
-  if (instance.hazeDistribution case final value?) 'hazeDistribution': value,
-  if (instance.formatDistribution case final value?)
-    'formatDistribution': value,
-  if (instance.resolutionDistribution case final value?)
-    'resolutionDistribution': value,
-};
+Map<String, dynamic> _$DatasetStatisticsToJson(DatasetStatistics instance) =>
+    <String, dynamic>{
+      'itemCount': instance.itemCount,
+      'fileCount': instance.fileCount,
+      'totalSize': instance.totalSize,
+      'annotatedCount': instance.annotatedCount,
+      'unannotatedCount': instance.unannotatedCount,
+      'sceneDistribution': ?instance.sceneDistribution,
+      'hazeDistribution': ?instance.hazeDistribution,
+      'formatDistribution': ?instance.formatDistribution,
+      'resolutionDistribution': ?instance.resolutionDistribution,
+    };
 
 Dataset _$DatasetFromJson(Map<String, dynamic> json) =>
     $checkedCreate('Dataset', json, ($checkedConvert) {
@@ -165,19 +162,18 @@ Dataset _$DatasetFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$DatasetToJson(Dataset instance) => <String, dynamic>{
   'id': instance.id,
-  if (instance.parentId case final value?) 'parentId': value,
+  'parentId': ?instance.parentId,
   'type': instance.type,
   'name': instance.name,
-  if (instance.description case final value?) 'description': value,
+  'description': ?instance.description,
   'path': instance.path,
-  if (instance.hasChildren case final value?) 'hasChildren': value,
-  if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-    'children': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.statistics?.toJson() case final value?) 'statistics': value,
-  if (instance.total case final value?) 'total': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'hasChildren': ?instance.hasChildren,
+  'children': ?instance.children?.map((e) => e.toJson()).toList(),
+  'status': ?instance.status,
+  'statistics': ?instance.statistics?.toJson(),
+  'total': ?instance.total,
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 DatasetItemQuery _$DatasetItemQueryFromJson(Map<String, dynamic> json) =>
@@ -208,18 +204,18 @@ Map<String, dynamic> _$DatasetItemQueryToJson(DatasetItemQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.datasetId case final value?) 'datasetId': value,
-      if (instance.keyword case final value?) 'keyword': value,
-      if (instance.sceneType case final value?) 'sceneType': value,
-      if (instance.hazeLevel case final value?) 'hazeLevel': value,
-      if (instance.minWidth case final value?) 'minWidth': value,
-      if (instance.maxWidth case final value?) 'maxWidth': value,
-      if (instance.minHeight case final value?) 'minHeight': value,
-      if (instance.maxHeight case final value?) 'maxHeight': value,
-      if (instance.minSize case final value?) 'minSize': value,
-      if (instance.maxSize case final value?) 'maxSize': value,
-      if (instance.sortBy case final value?) 'sortBy': value,
-      if (instance.sortOrder case final value?) 'sortOrder': value,
+      'datasetId': ?instance.datasetId,
+      'keyword': ?instance.keyword,
+      'sceneType': ?instance.sceneType,
+      'hazeLevel': ?instance.hazeLevel,
+      'minWidth': ?instance.minWidth,
+      'maxWidth': ?instance.maxWidth,
+      'minHeight': ?instance.minHeight,
+      'maxHeight': ?instance.maxHeight,
+      'minSize': ?instance.minSize,
+      'maxSize': ?instance.maxSize,
+      'sortBy': ?instance.sortBy,
+      'sortOrder': ?instance.sortOrder,
     };
 
 DatasetItemCreateForm _$DatasetItemCreateFormFromJson(
@@ -238,9 +234,9 @@ Map<String, dynamic> _$DatasetItemCreateFormToJson(
   DatasetItemCreateForm instance,
 ) => <String, dynamic>{
   'datasetId': instance.datasetId,
-  if (instance.name case final value?) 'name': value,
-  if (instance.sceneType case final value?) 'sceneType': value,
-  if (instance.description case final value?) 'description': value,
+  'name': ?instance.name,
+  'sceneType': ?instance.sceneType,
+  'description': ?instance.description,
 };
 
 DatasetItemUpdateForm _$DatasetItemUpdateFormFromJson(
@@ -256,8 +252,8 @@ DatasetItemUpdateForm _$DatasetItemUpdateFormFromJson(
 Map<String, dynamic> _$DatasetItemUpdateFormToJson(
   DatasetItemUpdateForm instance,
 ) => <String, dynamic>{
-  if (instance.name case final value?) 'name': value,
-  if (instance.sceneType case final value?) 'sceneType': value,
+  'name': ?instance.name,
+  'sceneType': ?instance.sceneType,
 };
 
 DatasetItemSimpleVO _$DatasetItemSimpleVOFromJson(Map<String, dynamic> json) =>
@@ -278,8 +274,8 @@ Map<String, dynamic> _$DatasetItemSimpleVOToJson(
   'id': instance.id,
   'datasetId': instance.datasetId,
   'name': instance.name,
-  if (instance.sceneType case final value?) 'sceneType': value,
-  if (instance.description case final value?) 'description': value,
+  'sceneType': ?instance.sceneType,
+  'description': ?instance.description,
 };
 
 DatasetItemVO _$DatasetItemVOFromJson(Map<String, dynamic> json) =>
@@ -309,22 +305,20 @@ DatasetItemVO _$DatasetItemVOFromJson(Map<String, dynamic> json) =>
       return val;
     });
 
-Map<String, dynamic> _$DatasetItemVOToJson(
-  DatasetItemVO instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'datasetId': instance.datasetId,
-  'name': instance.name,
-  if (instance.sceneType case final value?) 'sceneType': value,
-  if (instance.description case final value?) 'description': value,
-  if (instance.usageCount case final value?) 'usageCount': value,
-  if (instance.imageCount case final value?) 'imageCount': value,
-  if (instance.clearImage?.toJson() case final value?) 'clearImage': value,
-  if (instance.hazyImages?.map((e) => e.toJson()).toList() case final value?)
-    'hazyImages': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
-};
+Map<String, dynamic> _$DatasetItemVOToJson(DatasetItemVO instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'datasetId': instance.datasetId,
+      'name': instance.name,
+      'sceneType': ?instance.sceneType,
+      'description': ?instance.description,
+      'usageCount': ?instance.usageCount,
+      'imageCount': ?instance.imageCount,
+      'clearImage': ?instance.clearImage?.toJson(),
+      'hazyImages': ?instance.hazyImages?.map((e) => e.toJson()).toList(),
+      'createTime': ?instance.createTime,
+      'updateTime': ?instance.updateTime,
+    };
 
 ItemFileUpdateForm _$ItemFileUpdateFormFromJson(Map<String, dynamic> json) =>
     $checkedCreate('ItemFileUpdateForm', json, ($checkedConvert) {
@@ -339,10 +333,10 @@ ItemFileUpdateForm _$ItemFileUpdateFormFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$ItemFileUpdateFormToJson(ItemFileUpdateForm instance) =>
     <String, dynamic>{
-      if (instance.type case final value?) 'type': value,
-      if (instance.sceneType case final value?) 'sceneType': value,
-      if (instance.hazeLevel case final value?) 'hazeLevel': value,
-      if (instance.description case final value?) 'description': value,
+      'type': ?instance.type,
+      'sceneType': ?instance.sceneType,
+      'hazeLevel': ?instance.hazeLevel,
+      'description': ?instance.description,
     };
 
 SimpleImageUrlVO _$SimpleImageUrlVOFromJson(Map<String, dynamic> json) =>
@@ -374,16 +368,16 @@ Map<String, dynamic> _$SimpleImageUrlVOToJson(SimpleImageUrlVO instance) =>
       'datasetId': instance.datasetId,
       'type': instance.type,
       'url': instance.url,
-      if (instance.thumbnailUrl case final value?) 'thumbnailUrl': value,
-      if (instance.description case final value?) 'description': value,
-      if (instance.width case final value?) 'width': value,
-      if (instance.height case final value?) 'height': value,
-      if (instance.hazeLevel case final value?) 'hazeLevel': value,
-      if (instance.fileName case final value?) 'fileName': value,
-      if (instance.sizeBytes case final value?) 'sizeBytes': value,
-      if (instance.formattedSize case final value?) 'formattedSize': value,
-      if (instance.format case final value?) 'format': value,
-      if (instance.createTime case final value?) 'createTime': value,
+      'thumbnailUrl': ?instance.thumbnailUrl,
+      'description': ?instance.description,
+      'width': ?instance.width,
+      'height': ?instance.height,
+      'hazeLevel': ?instance.hazeLevel,
+      'fileName': ?instance.fileName,
+      'sizeBytes': ?instance.sizeBytes,
+      'formattedSize': ?instance.formattedSize,
+      'format': ?instance.format,
+      'createTime': ?instance.createTime,
     };
 
 ImageUrlVO _$ImageUrlVOFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -403,7 +397,6 @@ ImageUrlVO _$ImageUrlVOFromJson(Map<String, dynamic> json) => $checkedCreate(
       ),
       type: $checkedConvert('type', (v) => v as String),
       url: $checkedConvert('url', (v) => v as String),
-      originUrl: $checkedConvert('originUrl', (v) => v as String?),
       thumbnailUrl: $checkedConvert('thumbnailUrl', (v) => v as String?),
       description: $checkedConvert('description', (v) => v as String?),
       width: $checkedConvert('width', (v) => (v as num?)?.toInt()),
@@ -430,35 +423,32 @@ ImageUrlVO _$ImageUrlVOFromJson(Map<String, dynamic> json) => $checkedCreate(
   },
 );
 
-Map<String, dynamic> _$ImageUrlVOToJson(
-  ImageUrlVO instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'itemId': instance.itemId,
-  'datasetId': instance.datasetId,
-  if (instance.datasetName case final value?) 'datasetName': value,
-  if (instance.datasetItem?.toJson() case final value?) 'datasetItem': value,
-  'type': instance.type,
-  'url': instance.url,
-  if (instance.originUrl case final value?) 'originUrl': value,
-  if (instance.thumbnailUrl case final value?) 'thumbnailUrl': value,
-  if (instance.description case final value?) 'description': value,
-  if (instance.width case final value?) 'width': value,
-  if (instance.height case final value?) 'height': value,
-  if (instance.sceneType case final value?) 'sceneType': value,
-  if (instance.hazeLevel case final value?) 'hazeLevel': value,
-  if (instance.fileName case final value?) 'fileName': value,
-  if (instance.sizeBytes case final value?) 'sizeBytes': value,
-  if (instance.formattedSize case final value?) 'formattedSize': value,
-  if (instance.format case final value?) 'format': value,
-  if (instance.md5 case final value?) 'md5': value,
-  if (instance.usageCount case final value?) 'usageCount': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.hasPairedImages case final value?) 'hasPairedImages': value,
-  if (instance.pairedFiles?.map((e) => e.toJson()).toList() case final value?)
-    'pairedFiles': value,
-  if (instance.pairedCount case final value?) 'pairedCount': value,
-};
+Map<String, dynamic> _$ImageUrlVOToJson(ImageUrlVO instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'itemId': instance.itemId,
+      'datasetId': instance.datasetId,
+      'datasetName': ?instance.datasetName,
+      'datasetItem': ?instance.datasetItem?.toJson(),
+      'type': instance.type,
+      'url': instance.url,
+      'thumbnailUrl': ?instance.thumbnailUrl,
+      'description': ?instance.description,
+      'width': ?instance.width,
+      'height': ?instance.height,
+      'sceneType': ?instance.sceneType,
+      'hazeLevel': ?instance.hazeLevel,
+      'fileName': ?instance.fileName,
+      'sizeBytes': ?instance.sizeBytes,
+      'formattedSize': ?instance.formattedSize,
+      'format': ?instance.format,
+      'md5': ?instance.md5,
+      'usageCount': ?instance.usageCount,
+      'createTime': ?instance.createTime,
+      'hasPairedImages': ?instance.hasPairedImages,
+      'pairedFiles': ?instance.pairedFiles?.map((e) => e.toJson()).toList(),
+      'pairedCount': ?instance.pairedCount,
+    };
 
 BatchDeleteForm _$BatchDeleteFormFromJson(Map<String, dynamic> json) =>
     $checkedCreate('BatchDeleteForm', json, ($checkedConvert) {
@@ -484,10 +474,7 @@ FailedItem _$FailedItemFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$FailedItemToJson(FailedItem instance) =>
-    <String, dynamic>{
-      if (instance.id case final value?) 'id': value,
-      'reason': instance.reason,
-    };
+    <String, dynamic>{'id': ?instance.id, 'reason': instance.reason};
 
 BatchDeleteResultVO _$BatchDeleteResultVOFromJson(Map<String, dynamic> json) =>
     $checkedCreate('BatchDeleteResultVO', json, ($checkedConvert) {
@@ -608,7 +595,7 @@ BatchActionFailureDetailVO _$BatchActionFailureDetailVOFromJson(
 Map<String, dynamic> _$BatchActionFailureDetailVOToJson(
   BatchActionFailureDetailVO instance,
 ) => <String, dynamic>{
-  if (instance.identifier case final value?) 'identifier': value,
+  'identifier': ?instance.identifier,
   'reason': instance.reason,
 };
 
@@ -642,8 +629,6 @@ Map<String, dynamic> _$BatchOperationResultVOToJson(
   'successCount': instance.successCount,
   'failedCount': instance.failedCount,
   'message': instance.message,
-  if (instance.successIds case final value?) 'successIds': value,
-  if (instance.failureDetails?.map((e) => e.toJson()).toList()
-      case final value?)
-    'failureDetails': value,
+  'successIds': ?instance.successIds,
+  'failureDetails': ?instance.failureDetails?.map((e) => e.toJson()).toList(),
 };

@@ -6,7 +6,7 @@ import com.pei.dehaze.sdk.model.recommendation.ImageFeatureAnalysisVO;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationFeedback;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationReport;
 import com.pei.dehaze.sdk.model.recommendation.RecommendationRule;
-import com.pei.dehaze.sdk.model.recommendation.RecommendedAlgorithmVO;
+import com.pei.dehaze.sdk.model.recommendation.RecommendedModelVO;
 
 import java.util.List;
 
@@ -30,11 +30,11 @@ public interface RecommendationApiService {
     Call<Result<ImageFeatureAnalysisVO>> analyze(@Body AnalyzeForm form);
 
     /**
-     * 获取算法推荐（分析后可基于 imageMd5 查询）
-     * GET /api/v1/recommendations/algorithms
+     * 获取模型推荐（分析后可基于 imageMd5 查询）
+     * GET /api/v1/recommendations/models
      */
-    @GET("/api/v1/recommendations/algorithms")
-    Call<Result<List<RecommendedAlgorithmVO>>> getAlgorithmRecommendations(
+    @GET("/api/v1/recommendations/models")
+    Call<Result<List<RecommendedModelVO>>> getModelRecommendations(
             @Query("analysisId") Long analysisId,
             @Query("imageMd5") String imageMd5);
 

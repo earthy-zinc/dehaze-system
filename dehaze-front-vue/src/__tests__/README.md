@@ -5,6 +5,7 @@
 ## 测试概述
 
 ### 测试技术栈
+
 - **测试框架**: Vitest
 - **组件测试**: Vue Test Utils
 - **DOM模拟**: jsdom
@@ -12,6 +13,7 @@
 - **类型检查**: TypeScript
 
 ### 测试命令
+
 ```bash
 # 运行所有单元测试
 pnpm test:unit
@@ -52,7 +54,6 @@ src/
 │       └── __tests__/              # 瀑布流组件测试（已存在）
 ├── store/modules/
 │   └── __tests__/
-│       ├── algorithm.spec.ts       # 算法模块Store测试
 │       ├── app.spec.ts             # 应用模块Store测试
 │       ├── settings.spec.ts        # 设置模块Store测试
 │       └── user.spec.ts            # 用户模块Store测试（已存在）
@@ -72,11 +73,13 @@ src/
 ## 测试规范
 
 ### 1. 测试文件命名
+
 - 组件测试: `__tests__/index.spec.ts` 或 `__tests__/<ComponentName>.spec.ts`
 - 工具函数测试: `__tests__/index.spec.ts`
 - Store测试: `__tests__/<moduleName>.spec.ts`
 
 ### 2. 测试组织结构
+
 ```typescript
 describe("被测试模块/组件名称", () => {
   describe("功能分组1", () => {
@@ -94,6 +97,7 @@ describe("被测试模块/组件名称", () => {
 ```
 
 ### 3. 测试命名规范
+
 - 使用"应该"描述期望行为
 - 明确说明测试目的
 - 一个测试用例只测试一个功能点
@@ -103,6 +107,7 @@ describe("被测试模块/组件名称", () => {
 ### 1. 组件测试
 
 #### Upload 组件 (`SingleUpload.spec.ts`)
+
 - **组件渲染**: 验证组件正确渲染、显示自定义文本、图片显示
 - **文件上传验证**: 文件大小限制、边界值测试
 - **文件上传功能**: 成功上传、失败处理、网络错误
@@ -111,6 +116,7 @@ describe("被测试模块/组件名称", () => {
 - **边界情况**: 空文件、超大文件、无效类型
 
 #### Loading 组件 (`index.spec.ts`)
+
 - **组件渲染**: 默认状态、自定义文本验证
 - **加载动画**: 动画元素数量、顺序验证
 - **Props验证**: loadingText属性测试
@@ -119,6 +125,7 @@ describe("被测试模块/组件名称", () => {
 - **边界情况**: 超长文本、特殊字符、HTML转义
 
 #### Pagination 组件 (`index.spec.ts`)
+
 - **组件渲染**: 默认props、自定义props验证
 - **双向绑定**: page和limit的双向绑定
 - **事件处理**: 页码改变、每页条数改变事件
@@ -127,6 +134,7 @@ describe("被测试模块/组件名称", () => {
 - **响应式更新**: props动态更新
 
 #### Hamburger 组件 (`index.spec.ts`)
+
 - **组件渲染**: 正确渲染、CSS类应用
 - **事件处理**: 点击事件触发、多次点击
 - **Props验证**: isActive必需性、布尔类型验证
@@ -137,6 +145,7 @@ describe("被测试模块/组件名称", () => {
 ### 2. Store 模块测试
 
 #### App Store (`app.spec.ts`)
+
 - **初始化状态**: 默认设备类型、尺寸、语言、侧边栏状态
 - **locale计算属性**: 中英文语言包切换
 - **侧边栏操作**: 切换、打开、关闭功能
@@ -145,6 +154,7 @@ describe("被测试模块/组件名称", () => {
 - **边界情况**: 无效值处理、组合操作
 
 #### Settings Store (`settings.spec.ts`)
+
 - **初始化状态**: 默认设置值验证
 - **设置修改**: 各项设置的动态修改
 - **主题切换**: 亮色/暗色主题切换、DOM更新
@@ -153,17 +163,10 @@ describe("被测试模块/组件名称", () => {
 - **监听器**: 主题和颜色变化的DOM更新
 - **边界情况**: 无效值、空值处理
 
-#### Algorithm Store (`algorithm.spec.ts`)
-- **初始化状态**: 空列表状态
-- **获取数据**: 算法列表、选项列表获取
-- **CRUD操作**: 添加、更新、删除算法
-- **错误处理**: API调用失败、网络错误
-- **边界情况**: 空参数、无效ID、不存在数据
-- **完整工作流**: 完整的CRUD操作流程
-
 ### 3. 工具函数测试
 
 #### 通用工具函数 (`index.spec.ts`)
+
 - **DOM类操作**: hasClass、addClass、removeClass
 - **CSS样式**: prefixStyle浏览器兼容性
 - **环境检测**: inBrowser、IntersectionObserver支持
@@ -177,6 +180,7 @@ describe("被测试模块/组件名称", () => {
 - **边界情况**: null/undefined处理、错误情况
 
 #### 国际化工具 (`i18n.spec.ts`)
+
 - **标题翻译**: 存在/不存在国际化配置
 - **特殊情况**: 空字符串、特殊字符、数字标题
 - **API交互**: i18n方法调用验证
@@ -187,6 +191,7 @@ describe("被测试模块/组件名称", () => {
 ## 测试策略
 
 ### 1. 组件测试策略
+
 - **渲染测试**: 验证组件正确渲染
 - **Props测试**: 验证属性传递和默认值
 - **事件测试**: 验证事件触发和参数
@@ -195,6 +200,7 @@ describe("被测试模块/组件名称", () => {
 - **边界测试**: 验证极端情况处理
 
 ### 2. Store 测试策略
+
 - **状态初始化**: 验证初始状态正确性
 - **Action测试**: 验证状态变更操作
 - **Getter测试**: 验证计算属性正确性
@@ -202,6 +208,7 @@ describe("被测试模块/组件名称", () => {
 - **状态持久化**: 验证localStorage集成
 
 ### 3. 工具函数测试策略
+
 - **功能正确性**: 验证函数基本功能
 - **边界情况**: 验证极端输入处理
 - **错误处理**: 验证异常情况处理
@@ -211,11 +218,12 @@ describe("被测试模块/组件名称", () => {
 ## Mock 策略
 
 ### 1. 外部依赖Mock
+
 ```typescript
 // Mock SDK
 vi.mock("dehaze-sdk-js", () => ({
   FileAPI: { upload: vi.fn() },
-  AlgorithmAPI: { getList: vi.fn() },
+  AiImageAPI: { submitImageTask: vi.fn() },
 }));
 
 // Mock Element Plus
@@ -225,6 +233,7 @@ vi.mock("element-plus", async () => ({
 ```
 
 ### 2. DOM API Mock
+
 ```typescript
 // Mock window and document
 Object.defineProperty(window, "location", {
@@ -237,6 +246,7 @@ global.Image = vi.fn(() => ({ src: "", onload: null }));
 ```
 
 ### 3. 时间Mock
+
 ```typescript
 beforeEach(() => {
   vi.useFakeTimers();
@@ -250,6 +260,7 @@ afterEach(() => {
 ## 运行测试
 
 ### 本地开发
+
 ```bash
 # 安装依赖
 pnpm install
@@ -262,7 +273,9 @@ pnpm test:coverage
 ```
 
 ### CI/CD 集成
+
 测试已配置为在以下情况下自动运行：
+
 - 提交代码前（通过 husky）
 - Pull Request 创建时
 - 定时任务（每日）
@@ -270,12 +283,14 @@ pnpm test:coverage
 ## 贡献指南
 
 ### 添加新测试
+
 1. 在对应目录创建 `__tests__` 文件夹
 2. 编写符合规范的测试文件
 3. 确保测试覆盖率达到80%以上
 4. 运行测试确保通过
 
 ### 测试审查清单
+
 - [ ] 测试命名清晰明确
 - [ ] 每个测试只验证一个功能点
 - [ ] 包含成功和失败场景
@@ -287,15 +302,19 @@ pnpm test:coverage
 ## 常见问题
 
 ### Q: 如何测试异步操作？
+
 A: 使用 `async/await` 或 `Promise.then()` 处理异步操作，使用 `vi.useFakeTimers()` 模拟时间。
 
 ### Q: 如何Mock第三方库？
+
 A: 使用 `vi.mock()` 在测试文件顶部Mock第三方库。
 
 ### Q: 如何测试组件的DOM操作？
+
 A: 使用 Vue Test Utils 提供的 `find()`, `trigger()` 等方法。
 
 ### Q: 如何验证覆盖率？
+
 A: 运行 `pnpm test:coverage` 查看详细覆盖率报告。
 
 ---

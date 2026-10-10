@@ -16,7 +16,7 @@ const dismissed = ref(false);
 </script>
 
 <template>
-  <div v-if="!dismissed" class="suggestion-list">
+  <div v-if="!dismissed && questions.length > 0" class="suggestion-list">
     <span class="suggestion-list__label">相关问题：</span>
     <el-tag
       v-for="question in questions"

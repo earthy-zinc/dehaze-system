@@ -14,6 +14,7 @@ import { useChatVmBinding } from "@/composables/useChatVmBinding";
 import { useChatStore } from "@/store/modules/chat";
 import { useChatUserStore } from "@/store/modules/chatUser";
 import ArtifactDetailDialog from "@/components/ArtifactDetailDialog.vue";
+import { copyText } from "@/utils/clipboard";
 
 defineOptions({ name: "ChatPage" });
 
@@ -63,8 +64,11 @@ function handleOpenArtifact(artifact: ChatArtifactVM) {
 // 复制：剪贴板写入与提示由组件内移到页面层
 async function handleCopy(message: ChatMessageVM) {
   const content = message.role === "assistant" ? message.text : message.content;
-  await navigator.clipboard.writeText(content);
-  ElMessage.success("已复制");
+  if (await copyText(content)) {
+    ElMessage.success("已复制");
+  } else {
+    ElMessage.error("复制失败，请手动选择复制");
+  }
 }
 
 const LAST_CONVERSATION_KEY = "dehaze.chat.lastConversationId";
@@ -115,7 +119,8 @@ onMounted(async () => {
   chatStore.initScope("self");
   chatUserStore.ensureModels().catch(() => {});
   chatUserStore.fetchQuota().catch(() => {});
-  await chatStore.fetchConversations();
+  // joinInflight：ChatSidebar 挂载（子组件先于本页 onMounted）已发起同一请求时复用之，避免首屏重复请求
+  await chatStore.fetchConversations(true);
   // 等待加载期间用户已发起对话（流式进行中）：跳过默认跳转/消息加载，
   // 避免 fetchMessages 覆盖占位消息或路由切换打断当前流（否则界面永久"正在思考"）
   if (chatStore.isStreaming) return;

@@ -19,19 +19,25 @@ final imageInputServiceProvider = Provider<ImageInputService>((ref) {
 // ==================== 状态 Provider ====================
 
 /// 当前输入方式
-final inputMethodProvider = StateProvider<InputMethod>((ref) => InputMethod.upload);
+final inputMethodProvider = StateProvider<InputMethod>(
+  (ref) => InputMethod.upload,
+);
 
 /// 选中的图片
 final selectedImageProvider = StateProvider<SelectedImageModel?>((ref) => null);
 
 /// 上传进度状态
-final uploadProgressProvider = StateProvider<UploadProgress>((ref) => UploadProgress.idle);
+final uploadProgressProvider = StateProvider<UploadProgress>(
+  (ref) => UploadProgress.idle,
+);
 
 // ==================== 图片输入 Notifier ====================
 
 /// 图片输入状态管理
-class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> {
-  ImageInputNotifier(this._service, this._ref) : super(const AsyncValue.data(null));
+class ImageInputNotifier
+    extends StateNotifier<AsyncValue<SelectedImageModel?>> {
+  ImageInputNotifier(this._service, this._ref)
+    : super(const AsyncValue.data(null));
 
   final ImageInputService _service;
   final Ref _ref;
@@ -213,7 +219,9 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
 
 /// 图片输入 Provider
 final imageInputProvider =
-    StateNotifierProvider<ImageInputNotifier, AsyncValue<SelectedImageModel?>>((ref) {
-  final service = ref.watch(imageInputServiceProvider);
-  return ImageInputNotifier(service, ref);
-});
+    StateNotifierProvider<ImageInputNotifier, AsyncValue<SelectedImageModel?>>((
+      ref,
+    ) {
+      final service = ref.watch(imageInputServiceProvider);
+      return ImageInputNotifier(service, ref);
+    });

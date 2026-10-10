@@ -5,6 +5,7 @@ import { Gift } from "@taroify/icons";
 import { PackageAPI } from "dehaze-sdk-js";
 import type { PackageDetailVO } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
+import { fenToYuan } from "@/utils/format";
 import "./index.less";
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -93,7 +94,9 @@ const PackagePage: React.FC = () => {
                   <View className="package-price">
                     <View className="price-row">
                       <Text className="price-currency">¥</Text>
-                      <Text className="price-amount">{pkg.salePrice || 0}</Text>
+                      <Text className="price-amount">
+                        {fenToYuan(pkg.salePrice)}
+                      </Text>
                       <Text className="price-period">
                         /{PERIOD_LABELS[pkg.period || ""] || "月"}
                       </Text>
@@ -101,7 +104,7 @@ const PackagePage: React.FC = () => {
                     {pkg.originalPrice &&
                       pkg.originalPrice > (pkg.salePrice || 0) && (
                         <Text className="original-price">
-                          原价 ¥{pkg.originalPrice}
+                          原价 ¥{fenToYuan(pkg.originalPrice)}
                         </Text>
                       )}
                   </View>

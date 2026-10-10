@@ -249,8 +249,8 @@ export function toInterruptVM(interrupt: InterruptEvent): ChatInterruptVM {
     ...(data.recommendation
       ? {
           recommendation: {
-            algorithmId: data.recommendation.algorithmId,
-            algorithmName: data.recommendation.algorithmName,
+            modelId: data.recommendation.modelId,
+            modelName: data.recommendation.modelName,
             reason: data.recommendation.reason,
           },
         }
@@ -258,8 +258,8 @@ export function toInterruptVM(interrupt: InterruptEvent): ChatInterruptVM {
     ...(data.alternatives && data.alternatives.length > 0
       ? {
           alternatives: data.alternatives.map((alt) => ({
-            algorithmId: alt.algorithmId,
-            algorithmName: alt.algorithmName,
+            modelId: alt.modelId,
+            modelName: alt.modelName,
             matchScore: alt.matchScore,
             reason: alt.reason,
           })),

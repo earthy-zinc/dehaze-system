@@ -65,11 +65,11 @@ const SliderControl: React.FC<SliderControlProps> = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => !disabledRef.current,
       onMoveShouldSetPanResponder: () => !disabledRef.current,
-      onPanResponderGrant: (evt) => {
+      onPanResponderGrant: evt => {
         const next = calcValue(evt.nativeEvent.locationX);
         if (next !== valueRef.current) onChangeRef.current(next);
       },
-      onPanResponderMove: (evt) => {
+      onPanResponderMove: evt => {
         const next = calcValue(evt.nativeEvent.locationX);
         if (next !== valueRef.current) onChangeRef.current(next);
       },

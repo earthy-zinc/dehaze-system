@@ -6,7 +6,7 @@
         <SvgIcon name="search" size="18" color="#9ca3af" />
         <input
           class="tools-search-input"
-          placeholder="搜索算法、功能、文档..."
+          placeholder="搜索功能..."
           :value="searchKeyword"
           @input="onSearchInput"
           @confirm="onSearchConfirm"
@@ -29,7 +29,7 @@
               v-for="entry in quickEntries"
               :key="entry.label"
               class="tools-quick-item"
-              @click="handleQuickClick(entry)"
+              @click="openEntry(entry)"
             >
               <view class="tools-quick-icon">
                 <SvgIcon :name="entry.icon" size="22" color="#3b82f6" />
@@ -48,7 +48,7 @@
             v-for="entry in gridEntries"
             :key="entry.label"
             class="tools-grid-item"
-            @click="handleGridClick(entry)"
+            @click="openEntry(entry)"
           >
             <view class="tools-grid-icon">
               <SvgIcon :name="entry.icon" size="24" color="#3b82f6" />
@@ -84,50 +84,52 @@ const searchKeyword = ref("");
 /** 快捷入口（高频功能横滑直达） */
 const quickEntries: QuickEntry[] = [
   { label: "处理历史", icon: "clock", target: "/pages/task-history/index" },
-  { label: "我的收藏", icon: "star", target: "/pages/task-history/index" },
-  { label: "批量处理", icon: "car", target: "/pages/task-history/index" },
-  { label: "算法选择", icon: "grid", target: "/pages/algorithm-select/index" },
+  {
+    label: "我的收藏",
+    icon: "star",
+    target: "/pages/personal/favorites/index",
+  },
+  { label: "批量处理", icon: "car", target: "/pages/batch/index" },
 ];
 
 /** 功能网格（工具/浏览类功能，管理类归「我的」） */
 const gridEntries: GridEntry[] = [
   { label: "图像输入", icon: "camera", target: "/pages/image-input/index" },
-  { label: "算法库", icon: "gift", target: "/pages/algorithm/index" },
   { label: "数据集", icon: "server-fill", target: "/pages/dataset/index" },
-  { label: "批量处理", icon: "car", target: "/pages/task-history/index" },
+  { label: "批量处理", icon: "car", target: "/pages/batch/index" },
   { label: "指标管理", icon: "integral", target: "/pages/metrics/index" },
   { label: "API 文档", icon: "file-text", target: "" },
 ];
+
+/** 入口跳转：无目标地址的为占位功能 */
+const openEntry = (entry: QuickEntry | GridEntry) => {
+  if (!entry.target) {
+    uni.showToast({ title: "API 文档功能开发中，敬请期待", icon: "none" });
+    return;
+  }
+  uni.navigateTo({ url: entry.target });
+};
 
 const onSearchInput = (e: any) => {
   searchKeyword.value = e.detail.value;
 };
 
+/** 搜索命中功能入口后直接跳转 */
 const onSearchConfirm = () => {
-  if (!searchKeyword.value) return;
-  uni.navigateTo({
-    url: `/pages/algorithm-select/index?keyword=${encodeURIComponent(searchKeyword.value)}`,
-  });
+  const keyword = searchKeyword.value.trim().toLowerCase();
+  if (!keyword) return;
+  const match = [...quickEntries, ...gridEntries].find((entry) =>
+    entry.label.toLowerCase().includes(keyword)
+  );
+  if (!match) {
+    uni.showToast({ title: "未找到匹配的功能", icon: "none" });
+    return;
+  }
+  openEntry(match);
 };
 
 const clearSearch = () => {
   searchKeyword.value = "";
-};
-
-const handleQuickClick = (entry: QuickEntry) => {
-  uni.navigateTo({ url: entry.target });
-};
-
-const handleGridClick = (entry: GridEntry) => {
-  if (entry.label === "API 文档") {
-    uni.showToast({ title: "API 文档功能开发中，敬请期待", icon: "none" });
-    return;
-  }
-  if (entry.isTab) {
-    uni.switchTab({ url: entry.target });
-  } else {
-    uni.navigateTo({ url: entry.target });
-  }
 };
 </script>
 

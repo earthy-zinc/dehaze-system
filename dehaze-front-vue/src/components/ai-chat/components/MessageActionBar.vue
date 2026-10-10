@@ -1,4 +1,5 @@
-<!-- 消息操作栏（悬停出现）：复制/引用/重新生成/朗读/删除/反馈；管理端审计不提供内容操作（纯展示） -->
+<!-- 消息操作栏（悬停出现）：默认只露「复制」，其余操作收进「···」菜单
+     （7 个按钮平铺会让操作栏比正文更抢眼）；管理端审计不提供内容操作（纯展示） -->
 <script lang="ts" setup>
 import { computed } from "vue";
 import type { ChatMessageStatusVM, ChatMessageVM, ChatScopeVM } from "../types";
@@ -32,32 +33,35 @@ const interactive = computed(
     isAssistant.value &&
     assistantStatus.value !== "streaming"
 );
+
+/** 「···」菜单项 → 事件映射（按事件分别 emit，保留 emit 的类型检查） */
+function handleCommand(command: string): void {
+  const handlers: Record<string, () => void> = {
+    quote: () => emit("quote", props.message),
+    regenerate: () => emit("regenerate", props.message),
+    speak: () => emit("speak", props.message),
+    feedback: () => emit("feedback", props.message),
+    delete: () => emit("delete", props.message),
+  };
+  handlers[command]?.();
+}
 </script>
 
 <template>
   <div v-if="scope === 'self'" class="message-action-bar">
     <el-button link size="small" @click="emit('copy', message)">复制</el-button>
-    <template v-if="isAssistant && interactive">
-      <el-button link size="small" @click="emit('quote', message)"
-        >引用</el-button
-      >
-      <el-button link size="small" @click="emit('regenerate', message)"
-        >重新生成</el-button
-      >
-      <el-button link size="small" @click="emit('speak', message)"
-        >朗读</el-button
-      >
-      <el-button
-        link
-        size="small"
-        type="danger"
-        @click="emit('delete', message)"
-        >删除</el-button
-      >
-      <el-button link size="small" @click="emit('feedback', message)"
-        >反馈</el-button
-      >
-    </template>
+    <el-dropdown v-if="interactive" trigger="click" @command="handleCommand">
+      <el-button link size="small" class="more-actions">···</el-button>
+      <template #dropdown>
+        <el-dropdown-menu>
+          <el-dropdown-item command="quote">引用</el-dropdown-item>
+          <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
+          <el-dropdown-item command="speak">朗读</el-dropdown-item>
+          <el-dropdown-item command="feedback">反馈</el-dropdown-item>
+          <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
   </div>
 </template>
 
@@ -71,6 +75,10 @@ const interactive = computed(
 
   .message-block:hover & {
     opacity: 1;
+  }
+
+  .more-actions {
+    letter-spacing: 1px;
   }
 }
 </style>

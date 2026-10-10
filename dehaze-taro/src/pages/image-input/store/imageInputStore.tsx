@@ -230,7 +230,7 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
     });
     if (!confirmed) return;
     try {
-      await clearAllHistory(true);
+      await clearAllHistory();
       set({ historyRecords: [] });
       Taro.showToast({ title: "已清空", icon: "success" });
     } catch (error: unknown) {
@@ -243,7 +243,7 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
     set({ currentImage: null, previewVisible: false });
   },
 
-  // 确认选择，跳转算法选择页
+  // 确认选择，跳转去雾处理页（模型在处理页内联选择）
   confirmAndNavigate: () => {
     const currentImage = get().currentImage;
     if (!currentImage) {
@@ -254,13 +254,12 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
     // 保存当前图片到全局状态
     useProcessStore.getState().setImage(currentImage);
 
-    // 跳转到算法选择页面
     Taro.navigateTo({
-      url: "/pages/algorithm-select/index",
+      url: "/pages/processing/index",
     });
   },
 
-  // 重新处理历史记录（设计文档：历史记录 → 更换算法 → 重新处理）
+  // 重新处理历史记录（设计文档：历史记录 → 更换模型 → 重新处理）
   reprocessHistoryRecord: (record) => {
     const url = record.originalImageUrl || "";
     if (!url) {
@@ -275,7 +274,7 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
       size: 0,
       name: filename,
     });
-    Taro.navigateTo({ url: "/pages/algorithm-select/index" });
+    Taro.navigateTo({ url: "/pages/processing/index" });
   },
 }));
 
@@ -286,6 +285,8 @@ export const useImageInputStore = create<ImageInputStore>()((set, get) => ({
 export function useImageInput() {
   const state = useImageInputStore();
   const actions = useImageInputStore.getState();
+  // 副作用只依赖具体 action 的局部引用：整个 actions 对象每次 store 更新都会换身份
+  const { loadSampleImages, setCurrentImage } = actions;
 
   // 用 ref 跟踪已加载过的样例分类，避免重复请求
   const loadedSampleCategoryRef = useRef<SampleCategory | null>(null);
@@ -296,9 +297,9 @@ export function useImageInput() {
       state.activeMethod === "sample" &&
       loadedSampleCategoryRef.current !== state.sampleCategory
     ) {
-      actions.loadSampleImages(state.sampleCategory);
+      loadSampleImages(state.sampleCategory);
     }
-  }, [state.sampleCategory, state.activeMethod, actions.loadSampleImages]);
+  }, [state.sampleCategory, state.activeMethod, loadSampleImages]);
 
   // 获取当前分类的样例图片（从 state 读取）
   const getSampleImages = useCallback(
@@ -315,7 +316,7 @@ export function useImageInput() {
       // 从历史记录加载原图（后端 VO 未返回尺寸/大小，仅传递 URL 与名称）
       const url = record.originalImageUrl || "";
       const filename = extractFilenameFromUrl(url);
-      actions.setCurrentImage({
+      setCurrentImage({
         url,
         path: url,
         width: 0,
@@ -324,7 +325,7 @@ export function useImageInput() {
         name: filename,
       });
     },
-    [actions.setCurrentImage]
+    [setCurrentImage]
   );
 
   return {

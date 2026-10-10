@@ -30,7 +30,9 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const renderButtonContent = () => {
     if (loading) {
-      return <ActivityIndicator color={theme.colors.text.inverse} size="small" />;
+      return (
+        <ActivityIndicator color={theme.colors.text.inverse} size="small" />
+      );
     }
 
     return (
@@ -46,7 +48,12 @@ const Button: React.FC<ButtonProps> = ({
   if (variant === 'primary' || variant === 'large') {
     return (
       <TouchableOpacity
-        style={[styles.button, styles[variant], style, disabled && styles.disabled]}
+        style={[
+          styles.button,
+          styles[variant],
+          style,
+          disabled && styles.disabled,
+        ]}
         onPress={onPress}
         disabled={disabled || loading}
         activeOpacity={0.8}
@@ -60,7 +67,12 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.button, styles[variant], style, disabled && styles.disabled]}
+      style={[
+        styles.button,
+        styles[variant],
+        style,
+        disabled && styles.disabled,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}

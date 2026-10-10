@@ -96,9 +96,9 @@
           <SvgIcon name="refresh" size="18" color="rgba(255,255,255,0.7)" />
           <text>重新处理</text>
         </view>
-        <view class="action-item" @click="handleChangeAlgorithm">
+        <view class="action-item" @click="handleChangeModel">
           <SvgIcon name="swap" size="18" color="rgba(255,255,255,0.7)" />
-          <text>换算法</text>
+          <text>换模型</text>
         </view>
         <view class="action-item" @click="handleFavorite">
           <SvgIcon
@@ -137,7 +137,7 @@ const hasImages = computed(() => !!resultUrl.value);
 const currentPreviewUrl = computed(() =>
   showOrigin.value ? originUrl.value : resultUrl.value
 );
-const resultId = computed(() => store.result?.logId);
+const resultId = computed(() => store.result?.taskId);
 
 interface FilterItem {
   key: string;
@@ -417,8 +417,8 @@ function handleReprocess() {
   uni.redirectTo({ url: "/pages/processing/index" });
 }
 
-function handleChangeAlgorithm() {
-  uni.redirectTo({ url: "/pages/algorithm-select/index" });
+function handleChangeModel() {
+  uni.redirectTo({ url: "/pages/processing/index" });
 }
 
 async function handleFavorite() {

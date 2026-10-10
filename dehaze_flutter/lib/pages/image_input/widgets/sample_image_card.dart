@@ -7,11 +7,7 @@ import '../models/image_input_model.dart';
 ///
 /// 显示样例图片缩略图、名称和难度标签
 class SampleImageCard extends StatefulWidget {
-  const SampleImageCard({
-    required this.sample,
-    super.key,
-    this.onTap,
-  });
+  const SampleImageCard({required this.sample, super.key, this.onTap});
 
   final SampleImageModel sample;
   final VoidCallback? onTap;
@@ -50,7 +46,10 @@ class _SampleImageCardState extends State<SampleImageCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           transform: Matrix4.diagonal3Values(
-              _isPressed ? 0.95 : 1.0, _isPressed ? 0.95 : 1.0, 1.0),
+            _isPressed ? 0.95 : 1.0,
+            _isPressed ? 0.95 : 1.0,
+            1.0,
+          ),
           transformAlignment: Alignment.center,
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,

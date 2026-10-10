@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class PriceResult {
-    private Double originalPrice;
-    private Double discountAmount;
-    private Double couponAmount;
-    private Double payableAmount;
+    private Long originalPrice;
+    private Long discountAmount;
+    private Long couponAmount;
+    private Long payableAmount;
 }

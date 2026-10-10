@@ -53,24 +53,6 @@
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
 
-        <!-- 算法列表 Activity -->
-        <activity
-            android:name=".ui.algorithm.AlgorithmListActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Dehaze" />
-
-        <!-- 算法详情 Activity -->
-        <activity
-            android:name=".ui.algorithm.AlgorithmDetailActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Dehaze" />
-
-        <!-- 算法选择 Activity -->
-        <activity
-            android:name=".ui.algorithm_select.AlgorithmSelectActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Dehaze" />
-
         <!-- 部门管理 Activity -->
         <activity
             android:name=".ui.system.DeptListActivity"
@@ -145,12 +127,6 @@
 
         <!-- ========== 管理模块 Activity（sys:* 权限控制） ========== -->
 
-        <!-- 算法管理 Activity -->
-        <activity
-            android:name=".ui.system.AlgorithmManageActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Dehaze" />
-
         <!-- 数据集管理 Activity -->
         <activity
             android:name=".ui.system.DatasetManageActivity"
@@ -211,7 +187,7 @@
             android:theme="@style/Theme.Dehaze" />
 
         <activity
-            android:name=".ui.personal.QuotaActivity"
+            android:name=".ui.personal.CreditsActivity"
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
 

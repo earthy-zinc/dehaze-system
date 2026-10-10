@@ -72,54 +72,83 @@ const PersonalSettingsScreen: React.FC = () => {
 
   const rows: SettingRow[] = [
     { icon: 'trash-outline', title: '清理缓存', onPress: handleClearCache },
-    { icon: 'shield-checkmark-outline', title: '隐私政策', onPress: handleOpenPrivacy },
-    { icon: 'document-text-outline', title: '用户协议', onPress: handleOpenTerms },
+    {
+      icon: 'shield-checkmark-outline',
+      title: '隐私政策',
+      onPress: handleOpenPrivacy,
+    },
+    {
+      icon: 'document-text-outline',
+      title: '用户协议',
+      onPress: handleOpenTerms,
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <AppHeader title="系统设置" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="系统设置"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView contentContainerStyle={styles.content}>
-      {/* 设置项 */}
-      <View style={styles.card}>
-        {rows.map((row, idx) => (
-          <React.Fragment key={row.title}>
-            {idx > 0 && <View style={styles.divider} />}
-            <TouchableOpacity
-              style={styles.row}
-              onPress={row.onPress}
-              activeOpacity={0.6}
-            >
-              <Ionicons
-                name={row.icon}
-                size={20}
-                color={row.destructive ? theme.colors.status.error : theme.colors.text.secondary}
-              />
-              <Text style={[styles.rowTitle, row.destructive && { color: theme.colors.status.error }]}>
-                {row.title}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
-          </React.Fragment>
-        ))}
-      </View>
+        {/* 设置项 */}
+        <View style={styles.card}>
+          {rows.map((row, idx) => (
+            <React.Fragment key={row.title}>
+              {idx > 0 && <View style={styles.divider} />}
+              <TouchableOpacity
+                style={styles.row}
+                onPress={row.onPress}
+                activeOpacity={0.6}
+              >
+                <Ionicons
+                  name={row.icon}
+                  size={20}
+                  color={
+                    row.destructive
+                      ? theme.colors.status.error
+                      : theme.colors.text.secondary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.rowTitle,
+                    row.destructive && { color: theme.colors.status.error },
+                  ]}
+                >
+                  {row.title}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={theme.colors.text.tertiary}
+                />
+              </TouchableOpacity>
+            </React.Fragment>
+          ))}
+        </View>
 
-      {/* 版本号 */}
-      <View style={styles.versionWrap}>
-        <Text style={styles.versionText}>图像去雾系统 v1.0</Text>
-        <Text style={styles.versionText}>React Native 0.81</Text>
-      </View>
+        {/* 版本号 */}
+        <View style={styles.versionWrap}>
+          <Text style={styles.versionText}>图像去雾系统 v1.0</Text>
+          <Text style={styles.versionText}>React Native 0.81</Text>
+        </View>
 
-      {/* 退出登录 */}
-      <TouchableOpacity
-        style={styles.logoutBtn}
-        onPress={handleLogout}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
-        <Text style={styles.logoutText}>退出登录</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* 退出登录 */}
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="log-out-outline"
+            size={20}
+            color={theme.colors.status.error}
+          />
+          <Text style={styles.logoutText}>退出登录</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 };

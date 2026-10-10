@@ -6,7 +6,9 @@ import 'image_input_provider.dart';
 // ==================== 状态 Provider ====================
 
 /// 样例分类筛选
-final sampleCategoryProvider = StateProvider<SampleCategory>((ref) => SampleCategory.all);
+final sampleCategoryProvider = StateProvider<SampleCategory>(
+  (ref) => SampleCategory.all,
+);
 
 // ==================== 样例图片 Notifier ====================
 
@@ -17,7 +19,10 @@ class SampleNotifier extends StateNotifier<AsyncValue<List<SampleImageModel>>> {
   final Ref _ref;
 
   /// 加载样例图片
-  Future<void> loadSamples({SampleCategory? category, bool refresh = false}) async {
+  Future<void> loadSamples({
+    SampleCategory? category,
+    bool refresh = false,
+  }) async {
     if (!refresh && state is AsyncData) {
       // 如果已有数据且不需要刷新，只进行筛选
       if (category != null) {
@@ -73,41 +78,43 @@ class SampleNotifier extends StateNotifier<AsyncValue<List<SampleImageModel>>> {
 
 /// 样例图片 Provider
 final sampleProvider =
-    StateNotifierProvider<SampleNotifier, AsyncValue<List<SampleImageModel>>>((ref) {
-  return SampleNotifier(ref);
-});
+    StateNotifierProvider<SampleNotifier, AsyncValue<List<SampleImageModel>>>((
+      ref,
+    ) {
+      return SampleNotifier(ref);
+    });
 
 /// 按分类分组的样例图片
-final groupedSamplesProvider = Provider<Map<SampleCategory, List<SampleImageModel>>>((ref) {
-  final samplesAsync = ref.watch(sampleProvider);
+final groupedSamplesProvider =
+    Provider<Map<SampleCategory, List<SampleImageModel>>>((ref) {
+      final samplesAsync = ref.watch(sampleProvider);
 
-  return samplesAsync.when(
-    data: (samples) {
-      final grouped = <SampleCategory, List<SampleImageModel>>{};
+      return samplesAsync.when(
+        data: (samples) {
+          final grouped = <SampleCategory, List<SampleImageModel>>{};
 
-      for (final sample in samples) {
-        grouped.putIfAbsent(sample.category, () => []).add(sample);
-      }
+          for (final sample in samples) {
+            grouped.putIfAbsent(sample.category, () => []).add(sample);
+          }
 
-      return grouped;
-    },
-    loading: () => {},
-    error: (_, _) => {},
-  );
-});
+          return grouped;
+        },
+        loading: () => {},
+        error: (_, _) => {},
+      );
+    });
 
 /// 各分类的数量统计
 final sampleCountsProvider = Provider<Map<SampleCategory, int>>((ref) {
   final grouped = ref.watch(groupedSamplesProvider);
 
-  final counts = <SampleCategory, int>{
-    SampleCategory.all: 0,
-  };
+  final counts = <SampleCategory, int>{SampleCategory.all: 0};
 
   for (final category in SampleCategory.values) {
     if (category != SampleCategory.all) {
       counts[category] = grouped[category]?.length ?? 0;
-      counts[SampleCategory.all] = counts[SampleCategory.all]! + counts[category]!;
+      counts[SampleCategory.all] =
+          counts[SampleCategory.all]! + counts[category]!;
     }
   }
 

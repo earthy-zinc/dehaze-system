@@ -7,6 +7,7 @@ import type { PackagePageVO, PackageQuery, PackageStatus } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";
+import { fenToYuan, yuanToFen } from "@/utils/format";
 import "./index.less";
 
 const PERIOD_LABELS: Record<string, string> = {
@@ -23,7 +24,7 @@ const LEVEL_LABELS: Record<string, string> = {
 
 const PackageManagePage: React.FC = () => {
   const { hasPermission } = usePermission();
-  const canEdit = hasPermission("sys:package:edit");
+  const canEdit = hasPermission("package:edit");
 
   const [packages, setPackages] = useState<PackagePageVO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,8 +103,8 @@ const PackageManagePage: React.FC = () => {
   const openEdit = (pkg: PackagePageVO) => {
     setEditingPkg(pkg);
     setFormName(pkg.name);
-    setFormSalePrice(String(pkg.salePrice));
-    setFormOriginalPrice(String(pkg.originalPrice));
+    setFormSalePrice(fenToYuan(pkg.salePrice));
+    setFormOriginalPrice(fenToYuan(pkg.originalPrice));
     setFormSort("");
     setFormDesc("");
     setEditPopupVisible(true);
@@ -115,11 +116,12 @@ const PackageManagePage: React.FC = () => {
     try {
       await PackageAPI.update(editingPkg.id, {
         name: formName || editingPkg.name,
+        packageType: editingPkg.packageType,
         levelCode: editingPkg.levelCode,
         period: editingPkg.period,
         periodDays: editingPkg.periodDays,
-        originalPrice: Number(formOriginalPrice) || editingPkg.originalPrice,
-        salePrice: Number(formSalePrice) || editingPkg.salePrice,
+        originalPrice: yuanToFen(formOriginalPrice) || editingPkg.originalPrice,
+        salePrice: yuanToFen(formSalePrice) || editingPkg.salePrice,
         description: formDesc || undefined,
         sort: Number(formSort) || 0,
       });
@@ -212,18 +214,26 @@ const PackageManagePage: React.FC = () => {
                   <Text className="meta-item">
                     等级:{" "}
                     {pkg.levelName ||
-                      LEVEL_LABELS[pkg.levelCode] ||
+                      (pkg.levelCode ? LEVEL_LABELS[pkg.levelCode] : "") ||
                       pkg.levelCode}
                   </Text>
                   <Text className="meta-item">
-                    周期: {PERIOD_LABELS[pkg.period] || pkg.period} (
-                    {pkg.periodDays}天)
+                    周期:{" "}
+                    {(pkg.period ? PERIOD_LABELS[pkg.period] : "") ||
+                      pkg.period}{" "}
+                    ({pkg.periodDays}天)
                   </Text>
                 </View>
                 <View className="card-pricing">
-                  <Text className="sale-price">¥{pkg.salePrice}</Text>
-                  <Text className="original-price">¥{pkg.originalPrice}</Text>
-                  <Text className="daily-price">日均 ¥{pkg.dailyPrice}</Text>
+                  <Text className="sale-price">
+                    ¥{fenToYuan(pkg.salePrice)}
+                  </Text>
+                  <Text className="original-price">
+                    ¥{fenToYuan(pkg.originalPrice)}
+                  </Text>
+                  <Text className="daily-price">
+                    日均 ¥{fenToYuan(pkg.dailyPrice)}
+                  </Text>
                 </View>
                 <View className="card-meta">
                   <Text className="meta-item">销量: {pkg.salesCount}</Text>

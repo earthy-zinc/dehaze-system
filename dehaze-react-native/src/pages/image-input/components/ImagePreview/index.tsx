@@ -113,7 +113,11 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Icon name="resize" size={16} color={theme.colors.status.success} />
+              <Icon
+                name="resize"
+                size={16}
+                color={theme.colors.status.success}
+              />
               <Text style={styles.infoText}>{formattedDimensions}</Text>
             </View>
 
@@ -129,7 +133,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
           <View style={styles.sampleInfoContainer}>
             <View style={styles.sampleInfoItem}>
               <Text style={styles.sampleInfoLabel}>场景类型</Text>
-              <Text style={styles.sampleInfoValue}>{image.sampleInfo.sceneType}</Text>
+              <Text style={styles.sampleInfoValue}>
+                {image.sampleInfo.sceneType}
+              </Text>
             </View>
           </View>
         )}

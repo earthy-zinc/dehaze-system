@@ -6,58 +6,92 @@ part of 'package_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-BenefitVO _$BenefitVOFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate('BenefitVO', json, ($checkedConvert) {
-  final val = BenefitVO(
-    levelCode: $checkedConvert('levelCode', (v) => v as String),
-    levelName: $checkedConvert('levelName', (v) => v as String),
-    growthMin: $checkedConvert('growthMin', (v) => (v as num).toInt()),
-    growthMax: $checkedConvert('growthMax', (v) => (v as num).toInt()),
-    monthlyDehazeQuota: $checkedConvert(
-      'monthlyDehazeQuota',
-      (v) => (v as num).toInt(),
-    ),
-    monthlyEvaluateQuota: $checkedConvert(
-      'monthlyEvaluateQuota',
-      (v) => (v as num).toInt(),
-    ),
-    historyRetention: $checkedConvert(
-      'historyRetention',
-      (v) => (v as num).toInt(),
-    ),
-    batchLimit: $checkedConvert('batchLimit', (v) => (v as num).toInt()),
-    priority: $checkedConvert('priority', (v) => (v as num).toInt()),
-    advancedParams: $checkedConvert(
-      'advancedParams',
-      (v) => (v as num).toInt(),
-    ),
-    hdExport: $checkedConvert('hdExport', (v) => (v as num).toInt()),
-    reportExport: $checkedConvert('reportExport', (v) => (v as num).toInt()),
-    batchDownload: $checkedConvert('batchDownload', (v) => (v as num).toInt()),
-    sort: $checkedConvert('sort', (v) => (v as num).toInt()),
-    status: $checkedConvert('status', (v) => (v as num).toInt()),
-  );
-  return val;
-});
+BenefitOverrides _$BenefitOverridesFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('BenefitOverrides', json, ($checkedConvert) {
+      final val = BenefitOverrides(
+        monthlyDehazeQuota: $checkedConvert(
+          'monthlyDehazeQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyDerainQuota: $checkedConvert(
+          'monthlyDerainQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyDesnowQuota: $checkedConvert(
+          'monthlyDesnowQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyLowlightQuota: $checkedConvert(
+          'monthlyLowlightQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlySuperResolutionQuota: $checkedConvert(
+          'monthlySuperResolutionQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyDenoiseQuota: $checkedConvert(
+          'monthlyDenoiseQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyInpaintQuota: $checkedConvert(
+          'monthlyInpaintQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyEvaluateQuota: $checkedConvert(
+          'monthlyEvaluateQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        aiCreditsDaily: $checkedConvert(
+          'aiCreditsDaily',
+          (v) => (v as num?)?.toInt(),
+        ),
+        aiCreditsMonthly: $checkedConvert(
+          'aiCreditsMonthly',
+          (v) => (v as num?)?.toInt(),
+        ),
+        historyRetention: $checkedConvert(
+          'historyRetention',
+          (v) => (v as num?)?.toInt(),
+        ),
+        batchLimit: $checkedConvert('batchLimit', (v) => (v as num?)?.toInt()),
+        priority: $checkedConvert('priority', (v) => (v as num?)?.toInt()),
+        advancedParams: $checkedConvert(
+          'advancedParams',
+          (v) => (v as num?)?.toInt(),
+        ),
+        hdExport: $checkedConvert('hdExport', (v) => (v as num?)?.toInt()),
+        reportExport: $checkedConvert(
+          'reportExport',
+          (v) => (v as num?)?.toInt(),
+        ),
+        batchDownload: $checkedConvert(
+          'batchDownload',
+          (v) => (v as num?)?.toInt(),
+        ),
+      );
+      return val;
+    });
 
-Map<String, dynamic> _$BenefitVOToJson(BenefitVO instance) => <String, dynamic>{
-  'levelCode': instance.levelCode,
-  'levelName': instance.levelName,
-  'growthMin': instance.growthMin,
-  'growthMax': instance.growthMax,
-  'monthlyDehazeQuota': instance.monthlyDehazeQuota,
-  'monthlyEvaluateQuota': instance.monthlyEvaluateQuota,
-  'historyRetention': instance.historyRetention,
-  'batchLimit': instance.batchLimit,
-  'priority': instance.priority,
-  'advancedParams': instance.advancedParams,
-  'hdExport': instance.hdExport,
-  'reportExport': instance.reportExport,
-  'batchDownload': instance.batchDownload,
-  'sort': instance.sort,
-  'status': instance.status,
-};
+Map<String, dynamic> _$BenefitOverridesToJson(BenefitOverrides instance) =>
+    <String, dynamic>{
+      'monthlyDehazeQuota': ?instance.monthlyDehazeQuota,
+      'monthlyDerainQuota': ?instance.monthlyDerainQuota,
+      'monthlyDesnowQuota': ?instance.monthlyDesnowQuota,
+      'monthlyLowlightQuota': ?instance.monthlyLowlightQuota,
+      'monthlySuperResolutionQuota': ?instance.monthlySuperResolutionQuota,
+      'monthlyDenoiseQuota': ?instance.monthlyDenoiseQuota,
+      'monthlyInpaintQuota': ?instance.monthlyInpaintQuota,
+      'monthlyEvaluateQuota': ?instance.monthlyEvaluateQuota,
+      'aiCreditsDaily': ?instance.aiCreditsDaily,
+      'aiCreditsMonthly': ?instance.aiCreditsMonthly,
+      'historyRetention': ?instance.historyRetention,
+      'batchLimit': ?instance.batchLimit,
+      'priority': ?instance.priority,
+      'advancedParams': ?instance.advancedParams,
+      'hdExport': ?instance.hdExport,
+      'reportExport': ?instance.reportExport,
+      'batchDownload': ?instance.batchDownload,
+    };
 
 PackageForm _$PackageFormFromJson(
   Map<String, dynamic> json,
@@ -65,39 +99,41 @@ PackageForm _$PackageFormFromJson(
   final val = PackageForm(
     id: $checkedConvert('id', (v) => (v as num?)?.toInt()),
     name: $checkedConvert('name', (v) => v as String),
-    level: $checkedConvert('level', (v) => v as String),
-    period: $checkedConvert('period', (v) => v as String),
-    originalPrice: $checkedConvert(
-      'originalPrice',
-      (v) => (v as num).toDouble(),
-    ),
-    currentPrice: $checkedConvert('currentPrice', (v) => (v as num).toDouble()),
+    packageType: $checkedConvert('packageType', (v) => v as String),
+    originalPrice: $checkedConvert('originalPrice', (v) => (v as num).toInt()),
+    salePrice: $checkedConvert('salePrice', (v) => (v as num).toInt()),
+    levelCode: $checkedConvert('levelCode', (v) => v as String?),
+    period: $checkedConvert('period', (v) => v as String?),
+    periodDays: $checkedConvert('periodDays', (v) => (v as num?)?.toInt()),
+    creditAmount: $checkedConvert('creditAmount', (v) => (v as num?)?.toInt()),
     description: $checkedConvert('description', (v) => v as String?),
-    features: $checkedConvert(
-      'features',
-      (v) =>
-          (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
+    benefitOverrides: $checkedConvert(
+      'benefitOverrides',
+      (v) => v == null
+          ? null
+          : BenefitOverrides.fromJson(v as Map<String, dynamic>),
     ),
-    status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
     sort: $checkedConvert('sort', (v) => (v as num?)?.toInt()),
-    benefits: $checkedConvert('benefits', (v) => v as Map<String, dynamic>?),
+    status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
   );
   return val;
 });
 
 Map<String, dynamic> _$PackageFormToJson(PackageForm instance) =>
     <String, dynamic>{
-      if (instance.id case final value?) 'id': value,
+      'id': ?instance.id,
       'name': instance.name,
-      'level': instance.level,
-      'period': instance.period,
+      'packageType': instance.packageType,
+      'levelCode': ?instance.levelCode,
+      'period': ?instance.period,
+      'periodDays': ?instance.periodDays,
+      'creditAmount': ?instance.creditAmount,
       'originalPrice': instance.originalPrice,
-      'currentPrice': instance.currentPrice,
-      if (instance.description case final value?) 'description': value,
-      'features': instance.features,
-      if (instance.status case final value?) 'status': value,
-      if (instance.sort case final value?) 'sort': value,
-      if (instance.benefits case final value?) 'benefits': value,
+      'salePrice': instance.salePrice,
+      'description': ?instance.description,
+      'benefitOverrides': ?instance.benefitOverrides?.toJson(),
+      'sort': ?instance.sort,
+      'status': ?instance.status,
     };
 
 PackagePageVO _$PackagePageVOFromJson(
@@ -106,24 +142,22 @@ PackagePageVO _$PackagePageVOFromJson(
   final val = PackagePageVO(
     id: $checkedConvert('id', (v) => (v as num).toInt()),
     name: $checkedConvert('name', (v) => v as String),
-    level: $checkedConvert('level', (v) => v as String),
-    levelName: $checkedConvert('levelName', (v) => v as String),
-    period: $checkedConvert('period', (v) => v as String),
-    periodName: $checkedConvert('periodName', (v) => v as String),
-    originalPrice: $checkedConvert(
-      'originalPrice',
-      (v) => (v as num).toDouble(),
-    ),
-    currentPrice: $checkedConvert('currentPrice', (v) => (v as num).toDouble()),
-    description: $checkedConvert('description', (v) => v as String?),
-    features: $checkedConvert(
-      'features',
-      (v) =>
-          (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-    ),
+    packageType: $checkedConvert('packageType', (v) => v as String),
+    originalPrice: $checkedConvert('originalPrice', (v) => (v as num).toInt()),
+    salePrice: $checkedConvert('salePrice', (v) => (v as num).toInt()),
+    dailyPrice: $checkedConvert('dailyPrice', (v) => (v as num).toInt()),
     status: $checkedConvert('status', (v) => (v as num).toInt()),
-    sort: $checkedConvert('sort', (v) => (v as num?)?.toInt()),
     createTime: $checkedConvert('createTime', (v) => v as String),
+    levelCode: $checkedConvert('levelCode', (v) => v as String?),
+    levelName: $checkedConvert('levelName', (v) => v as String?),
+    period: $checkedConvert('period', (v) => v as String?),
+    periodDays: $checkedConvert('periodDays', (v) => (v as num?)?.toInt()),
+    creditAmount: $checkedConvert('creditAmount', (v) => (v as num?)?.toInt()),
+    creditUnitPrice: $checkedConvert(
+      'creditUnitPrice',
+      (v) => (v as num?)?.toInt(),
+    ),
+    salesCount: $checkedConvert('salesCount', (v) => (v as num?)?.toInt()),
   );
   return val;
 });
@@ -132,16 +166,18 @@ Map<String, dynamic> _$PackagePageVOToJson(PackagePageVO instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'level': instance.level,
-      'levelName': instance.levelName,
-      'period': instance.period,
-      'periodName': instance.periodName,
+      'packageType': instance.packageType,
+      'levelCode': ?instance.levelCode,
+      'levelName': ?instance.levelName,
+      'period': ?instance.period,
+      'periodDays': ?instance.periodDays,
+      'creditAmount': ?instance.creditAmount,
       'originalPrice': instance.originalPrice,
-      'currentPrice': instance.currentPrice,
-      if (instance.description case final value?) 'description': value,
-      'features': instance.features,
+      'salePrice': instance.salePrice,
+      'dailyPrice': instance.dailyPrice,
+      'creditUnitPrice': ?instance.creditUnitPrice,
+      'salesCount': ?instance.salesCount,
       'status': instance.status,
-      if (instance.sort case final value?) 'sort': value,
       'createTime': instance.createTime,
     };
 
@@ -151,28 +187,29 @@ PackageDetailVO _$PackageDetailVOFromJson(
   final val = PackageDetailVO(
     id: $checkedConvert('id', (v) => (v as num).toInt()),
     name: $checkedConvert('name', (v) => v as String),
-    level: $checkedConvert('level', (v) => v as String),
-    levelName: $checkedConvert('levelName', (v) => v as String),
-    period: $checkedConvert('period', (v) => v as String),
-    periodName: $checkedConvert('periodName', (v) => v as String),
-    originalPrice: $checkedConvert(
-      'originalPrice',
-      (v) => (v as num).toDouble(),
-    ),
-    currentPrice: $checkedConvert('currentPrice', (v) => (v as num).toDouble()),
-    description: $checkedConvert('description', (v) => v as String?),
-    features: $checkedConvert(
-      'features',
-      (v) =>
-          (v as List<dynamic>?)?.map((e) => e as String).toList() ?? const [],
-    ),
-    status: $checkedConvert('status', (v) => (v as num).toInt()),
-    sort: $checkedConvert('sort', (v) => (v as num?)?.toInt()),
-    createTime: $checkedConvert('createTime', (v) => v as String),
+    packageType: $checkedConvert('packageType', (v) => v as String),
+    originalPrice: $checkedConvert('originalPrice', (v) => (v as num).toInt()),
+    salePrice: $checkedConvert('salePrice', (v) => (v as num).toInt()),
+    dailyPrice: $checkedConvert('dailyPrice', (v) => (v as num).toInt()),
     benefits: $checkedConvert(
       'benefits',
+      (v) => Map<String, int>.from(v as Map),
+    ),
+    salesCount: $checkedConvert('salesCount', (v) => (v as num).toInt()),
+    levelCode: $checkedConvert('levelCode', (v) => v as String?),
+    levelName: $checkedConvert('levelName', (v) => v as String?),
+    period: $checkedConvert('period', (v) => v as String?),
+    periodDays: $checkedConvert('periodDays', (v) => (v as num?)?.toInt()),
+    creditAmount: $checkedConvert('creditAmount', (v) => (v as num?)?.toInt()),
+    creditUnitPrice: $checkedConvert(
+      'creditUnitPrice',
+      (v) => (v as num?)?.toInt(),
+    ),
+    description: $checkedConvert('description', (v) => v as String?),
+    activePromotions: $checkedConvert(
+      'activePromotions',
       (v) => (v as List<dynamic>?)
-          ?.map((e) => BenefitVO.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => PromotionVO.fromJson(e as Map<String, dynamic>))
           .toList(),
     ),
   );
@@ -183,19 +220,22 @@ Map<String, dynamic> _$PackageDetailVOToJson(PackageDetailVO instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'level': instance.level,
-      'levelName': instance.levelName,
-      'period': instance.period,
-      'periodName': instance.periodName,
+      'packageType': instance.packageType,
+      'levelCode': ?instance.levelCode,
+      'levelName': ?instance.levelName,
+      'period': ?instance.period,
+      'periodDays': ?instance.periodDays,
       'originalPrice': instance.originalPrice,
-      'currentPrice': instance.currentPrice,
-      if (instance.description case final value?) 'description': value,
-      'features': instance.features,
-      'status': instance.status,
-      if (instance.sort case final value?) 'sort': value,
-      'createTime': instance.createTime,
-      if (instance.benefits?.map((e) => e.toJson()).toList() case final value?)
-        'benefits': value,
+      'salePrice': instance.salePrice,
+      'dailyPrice': instance.dailyPrice,
+      'creditAmount': ?instance.creditAmount,
+      'creditUnitPrice': ?instance.creditUnitPrice,
+      'description': ?instance.description,
+      'benefits': instance.benefits,
+      'activePromotions': ?instance.activePromotions
+          ?.map((e) => e.toJson())
+          .toList(),
+      'salesCount': instance.salesCount,
     };
 
 PackageQuery _$PackageQueryFromJson(Map<String, dynamic> json) =>
@@ -203,209 +243,214 @@ PackageQuery _$PackageQueryFromJson(Map<String, dynamic> json) =>
       final val = PackageQuery(
         pageNum: $checkedConvert('pageNum', (v) => (v as num?)?.toInt()),
         pageSize: $checkedConvert('pageSize', (v) => (v as num?)?.toInt()),
-        level: $checkedConvert('level', (v) => v as String?),
+        name: $checkedConvert('name', (v) => v as String?),
+        packageType: $checkedConvert('packageType', (v) => v as String?),
+        levelCode: $checkedConvert('levelCode', (v) => v as String?),
+        period: $checkedConvert('period', (v) => v as String?),
         status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
-        keyword: $checkedConvert('keyword', (v) => v as String?),
       );
       return val;
     });
 
 Map<String, dynamic> _$PackageQueryToJson(PackageQuery instance) =>
     <String, dynamic>{
-      if (instance.pageNum case final value?) 'pageNum': value,
-      if (instance.pageSize case final value?) 'pageSize': value,
-      if (instance.level case final value?) 'level': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.keyword case final value?) 'keyword': value,
+      'pageNum': ?instance.pageNum,
+      'pageSize': ?instance.pageSize,
+      'name': ?instance.name,
+      'packageType': ?instance.packageType,
+      'levelCode': ?instance.levelCode,
+      'period': ?instance.period,
+      'status': ?instance.status,
     };
 
-PriceResult _$PriceResultFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('PriceResult', json, ($checkedConvert) {
-      final val = PriceResult(
-        originalPrice: $checkedConvert(
-          'originalPrice',
-          (v) => (v as num).toDouble(),
-        ),
-        currentPrice: $checkedConvert(
-          'currentPrice',
-          (v) => (v as num).toDouble(),
-        ),
-        discount: $checkedConvert('discount', (v) => (v as num).toDouble()),
-        couponDiscount: $checkedConvert(
-          'couponDiscount',
-          (v) => (v as num).toDouble(),
-        ),
-        finalPrice: $checkedConvert('finalPrice', (v) => (v as num).toDouble()),
-        appliedCoupons: $checkedConvert(
-          'appliedCoupons',
-          (v) => (v as List<dynamic>?)
-              ?.map((e) => UserCouponVO.fromJson(e as Map<String, dynamic>))
-              .toList(),
-        ),
-      );
-      return val;
-    });
+PriceResult _$PriceResultFromJson(
+  Map<String, dynamic> json,
+) => $checkedCreate('PriceResult', json, ($checkedConvert) {
+  final val = PriceResult(
+    originalPrice: $checkedConvert('originalPrice', (v) => (v as num).toInt()),
+    discountAmount: $checkedConvert(
+      'discountAmount',
+      (v) => (v as num).toInt(),
+    ),
+    couponAmount: $checkedConvert('couponAmount', (v) => (v as num).toInt()),
+    payableAmount: $checkedConvert('payableAmount', (v) => (v as num).toInt()),
+  );
+  return val;
+});
 
 Map<String, dynamic> _$PriceResultToJson(PriceResult instance) =>
     <String, dynamic>{
       'originalPrice': instance.originalPrice,
-      'currentPrice': instance.currentPrice,
-      'discount': instance.discount,
-      'couponDiscount': instance.couponDiscount,
-      'finalPrice': instance.finalPrice,
-      if (instance.appliedCoupons?.map((e) => e.toJson()).toList()
-          case final value?)
-        'appliedCoupons': value,
+      'discountAmount': instance.discountAmount,
+      'couponAmount': instance.couponAmount,
+      'payableAmount': instance.payableAmount,
     };
 
-PromotionVO _$PromotionVOFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('PromotionVO', json, ($checkedConvert) {
-      final val = PromotionVO(
-        title: $checkedConvert('title', (v) => v as String),
-        description: $checkedConvert('description', (v) => v as String?),
-        startDate: $checkedConvert('startDate', (v) => v as String),
-        endDate: $checkedConvert('endDate', (v) => v as String),
-        discount: $checkedConvert('discount', (v) => (v as num).toDouble()),
-        active: $checkedConvert('active', (v) => v as bool),
-      );
-      return val;
-    });
+PromotionVO _$PromotionVOFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'PromotionVO',
+  json,
+  ($checkedConvert) {
+    final val = PromotionVO(
+      id: $checkedConvert('id', (v) => (v as num).toInt()),
+      name: $checkedConvert('name', (v) => v as String),
+      type: $checkedConvert('type', (v) => v as String),
+      startTime: $checkedConvert('startTime', (v) => v as String),
+      endTime: $checkedConvert('endTime', (v) => v as String),
+      description: $checkedConvert('description', (v) => v as String?),
+      activityRules: $checkedConvert(
+        'activityRules',
+        (v) => v as Map<String, dynamic>?,
+      ),
+      newUserOnly: $checkedConvert('newUserOnly', (v) => (v as num?)?.toInt()),
+      status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$PromotionVOToJson(PromotionVO instance) =>
     <String, dynamic>{
-      'title': instance.title,
-      if (instance.description case final value?) 'description': value,
-      'startDate': instance.startDate,
-      'endDate': instance.endDate,
-      'discount': instance.discount,
-      'active': instance.active,
+      'id': instance.id,
+      'name': instance.name,
+      'type': instance.type,
+      'description': ?instance.description,
+      'startTime': instance.startTime,
+      'endTime': instance.endTime,
+      'activityRules': ?instance.activityRules,
+      'newUserOnly': ?instance.newUserOnly,
+      'status': ?instance.status,
     };
 
-CouponForm _$CouponFormFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('CouponForm', json, ($checkedConvert) {
-      final val = CouponForm(
-        code: $checkedConvert('code', (v) => v as String?),
-        name: $checkedConvert('name', (v) => v as String),
-        type: $checkedConvert('type', (v) => v as String),
-        value: $checkedConvert('value', (v) => (v as num).toDouble()),
-        validType: $checkedConvert('validType', (v) => v as String),
-        validDays: $checkedConvert('validDays', (v) => (v as num?)?.toInt()),
-        validStart: $checkedConvert('validStart', (v) => v as String?),
-        validEnd: $checkedConvert('validEnd', (v) => v as String?),
-        minAmount: $checkedConvert('minAmount', (v) => (v as num?)?.toDouble()),
-        maxDiscount: $checkedConvert(
-          'maxDiscount',
-          (v) => (v as num?)?.toDouble(),
-        ),
-        total: $checkedConvert('total', (v) => (v as num).toInt()),
-        perUser: $checkedConvert('perUser', (v) => (v as num).toInt()),
-        description: $checkedConvert('description', (v) => v as String?),
-        status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
-        scope: $checkedConvert('scope', (v) => (v as num?)?.toInt()),
-        packageIds: $checkedConvert(
-          'packageIds',
-          (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
-        ),
-      );
-      return val;
-    });
+CouponForm _$CouponFormFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'CouponForm',
+  json,
+  ($checkedConvert) {
+    final val = CouponForm(
+      id: $checkedConvert('id', (v) => (v as num?)?.toInt()),
+      name: $checkedConvert('name', (v) => v as String),
+      type: $checkedConvert('type', (v) => $enumDecode(_$CouponTypeEnumMap, v)),
+      faceValue: $checkedConvert('faceValue', (v) => (v as num).toInt()),
+      validType: $checkedConvert(
+        'validType',
+        (v) => $enumDecode(_$CouponValidTypeEnumMap, v),
+      ),
+      totalQty: $checkedConvert('totalQty', (v) => (v as num).toInt()),
+      perUserLimit: $checkedConvert('perUserLimit', (v) => (v as num).toInt()),
+      threshold: $checkedConvert('threshold', (v) => (v as num?)?.toInt()),
+      validStart: $checkedConvert('validStart', (v) => v as String?),
+      validEnd: $checkedConvert('validEnd', (v) => v as String?),
+      validDays: $checkedConvert('validDays', (v) => (v as num?)?.toInt()),
+      applicableScope: $checkedConvert(
+        'applicableScope',
+        (v) => v as List<dynamic>?,
+      ),
+      status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$CouponFormToJson(CouponForm instance) =>
     <String, dynamic>{
-      if (instance.code case final value?) 'code': value,
+      'id': ?instance.id,
       'name': instance.name,
-      'type': instance.type,
-      'value': instance.value,
-      'validType': instance.validType,
-      if (instance.validDays case final value?) 'validDays': value,
-      if (instance.validStart case final value?) 'validStart': value,
-      if (instance.validEnd case final value?) 'validEnd': value,
-      if (instance.minAmount case final value?) 'minAmount': value,
-      if (instance.maxDiscount case final value?) 'maxDiscount': value,
-      'total': instance.total,
-      'perUser': instance.perUser,
-      if (instance.description case final value?) 'description': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.scope case final value?) 'scope': value,
-      if (instance.packageIds case final value?) 'packageIds': value,
+      'type': _$CouponTypeEnumMap[instance.type]!,
+      'faceValue': instance.faceValue,
+      'threshold': ?instance.threshold,
+      'validType': _$CouponValidTypeEnumMap[instance.validType]!,
+      'validStart': ?instance.validStart,
+      'validEnd': ?instance.validEnd,
+      'validDays': ?instance.validDays,
+      'totalQty': instance.totalQty,
+      'perUserLimit': instance.perUserLimit,
+      'applicableScope': ?instance.applicableScope,
+      'status': ?instance.status,
     };
 
-CouponQuery _$CouponQueryFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('CouponQuery', json, ($checkedConvert) {
-      final val = CouponQuery(
-        pageNum: $checkedConvert('pageNum', (v) => (v as num?)?.toInt()),
-        pageSize: $checkedConvert('pageSize', (v) => (v as num?)?.toInt()),
-        type: $checkedConvert('type', (v) => v as String?),
-        status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
-        keyword: $checkedConvert('keyword', (v) => v as String?),
-      );
-      return val;
-    });
+const _$CouponTypeEnumMap = {
+  CouponType.fullReduction: 'full_reduction',
+  CouponType.discount: 'discount',
+  CouponType.noThreshold: 'no_threshold',
+  CouponType.trial: 'trial',
+};
+
+const _$CouponValidTypeEnumMap = {
+  CouponValidType.fixed: 'fixed',
+  CouponValidType.relative: 'relative',
+};
+
+CouponQuery _$CouponQueryFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'CouponQuery',
+  json,
+  ($checkedConvert) {
+    final val = CouponQuery(
+      pageNum: $checkedConvert('pageNum', (v) => (v as num?)?.toInt() ?? 1),
+      pageSize: $checkedConvert('pageSize', (v) => (v as num?)?.toInt() ?? 10),
+      name: $checkedConvert('name', (v) => v as String?),
+      type: $checkedConvert('type', (v) => v as String?),
+      status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$CouponQueryToJson(CouponQuery instance) =>
     <String, dynamic>{
-      if (instance.pageNum case final value?) 'pageNum': value,
-      if (instance.pageSize case final value?) 'pageSize': value,
-      if (instance.type case final value?) 'type': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.keyword case final value?) 'keyword': value,
+      'pageNum': instance.pageNum,
+      'pageSize': instance.pageSize,
+      'name': ?instance.name,
+      'type': ?instance.type,
+      'status': ?instance.status,
     };
 
-CouponVO _$CouponVOFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('CouponVO', json, ($checkedConvert) {
-      final val = CouponVO(
-        id: $checkedConvert('id', (v) => (v as num).toInt()),
-        code: $checkedConvert('code', (v) => v as String),
-        name: $checkedConvert('name', (v) => v as String),
-        type: $checkedConvert('type', (v) => v as String),
-        typeName: $checkedConvert('typeName', (v) => v as String),
-        value: $checkedConvert('value', (v) => (v as num).toDouble()),
-        validType: $checkedConvert('validType', (v) => v as String),
-        validDays: $checkedConvert('validDays', (v) => (v as num?)?.toInt()),
-        validStart: $checkedConvert('validStart', (v) => v as String?),
-        validEnd: $checkedConvert('validEnd', (v) => v as String?),
-        minAmount: $checkedConvert('minAmount', (v) => (v as num?)?.toDouble()),
-        maxDiscount: $checkedConvert(
-          'maxDiscount',
-          (v) => (v as num?)?.toDouble(),
-        ),
-        total: $checkedConvert('total', (v) => (v as num).toInt()),
-        issued: $checkedConvert('issued', (v) => (v as num).toInt()),
-        remaining: $checkedConvert('remaining', (v) => (v as num).toInt()),
-        perUser: $checkedConvert('perUser', (v) => (v as num).toInt()),
-        description: $checkedConvert('description', (v) => v as String?),
-        status: $checkedConvert('status', (v) => (v as num).toInt()),
-        scope: $checkedConvert('scope', (v) => (v as num?)?.toInt()),
-        packageIds: $checkedConvert(
-          'packageIds',
-          (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
-        ),
-        createTime: $checkedConvert('createTime', (v) => v as String),
-      );
-      return val;
-    });
+CouponVO _$CouponVOFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'CouponVO',
+  json,
+  ($checkedConvert) {
+    final val = CouponVO(
+      id: $checkedConvert('id', (v) => (v as num).toInt()),
+      name: $checkedConvert('name', (v) => v as String),
+      type: $checkedConvert('type', (v) => $enumDecode(_$CouponTypeEnumMap, v)),
+      faceValue: $checkedConvert('faceValue', (v) => (v as num).toInt()),
+      validType: $checkedConvert(
+        'validType',
+        (v) => $enumDecode(_$CouponValidTypeEnumMap, v),
+      ),
+      totalQty: $checkedConvert('totalQty', (v) => (v as num).toInt()),
+      issuedQty: $checkedConvert('issuedQty', (v) => (v as num).toInt()),
+      usedQty: $checkedConvert('usedQty', (v) => (v as num).toInt()),
+      perUserLimit: $checkedConvert('perUserLimit', (v) => (v as num).toInt()),
+      status: $checkedConvert('status', (v) => (v as num).toInt()),
+      createTime: $checkedConvert('createTime', (v) => v as String),
+      threshold: $checkedConvert('threshold', (v) => (v as num?)?.toInt()),
+      validStart: $checkedConvert('validStart', (v) => v as String?),
+      validEnd: $checkedConvert('validEnd', (v) => v as String?),
+      validDays: $checkedConvert('validDays', (v) => (v as num?)?.toInt()),
+      applicableScope: $checkedConvert(
+        'applicableScope',
+        (v) => v as List<dynamic>?,
+      ),
+    );
+    return val;
+  },
+);
 
 Map<String, dynamic> _$CouponVOToJson(CouponVO instance) => <String, dynamic>{
   'id': instance.id,
-  'code': instance.code,
   'name': instance.name,
-  'type': instance.type,
-  'typeName': instance.typeName,
-  'value': instance.value,
-  'validType': instance.validType,
-  if (instance.validDays case final value?) 'validDays': value,
-  if (instance.validStart case final value?) 'validStart': value,
-  if (instance.validEnd case final value?) 'validEnd': value,
-  if (instance.minAmount case final value?) 'minAmount': value,
-  if (instance.maxDiscount case final value?) 'maxDiscount': value,
-  'total': instance.total,
-  'issued': instance.issued,
-  'remaining': instance.remaining,
-  'perUser': instance.perUser,
-  if (instance.description case final value?) 'description': value,
+  'type': _$CouponTypeEnumMap[instance.type]!,
+  'faceValue': instance.faceValue,
+  'threshold': ?instance.threshold,
+  'validType': _$CouponValidTypeEnumMap[instance.validType]!,
+  'validStart': ?instance.validStart,
+  'validEnd': ?instance.validEnd,
+  'validDays': ?instance.validDays,
+  'totalQty': instance.totalQty,
+  'issuedQty': instance.issuedQty,
+  'usedQty': instance.usedQty,
+  'perUserLimit': instance.perUserLimit,
+  'applicableScope': ?instance.applicableScope,
   'status': instance.status,
-  if (instance.scope case final value?) 'scope': value,
-  if (instance.packageIds case final value?) 'packageIds': value,
   'createTime': instance.createTime,
 };
 
@@ -416,16 +461,18 @@ UserCouponVO _$UserCouponVOFromJson(
     id: $checkedConvert('id', (v) => (v as num).toInt()),
     couponId: $checkedConvert('couponId', (v) => (v as num).toInt()),
     couponName: $checkedConvert('couponName', (v) => v as String),
-    couponType: $checkedConvert('couponType', (v) => v as String),
-    couponValue: $checkedConvert('couponValue', (v) => (v as num).toDouble()),
-    status: $checkedConvert('status', (v) => (v as num).toInt()),
-    validStart: $checkedConvert('validStart', (v) => v as String),
-    validEnd: $checkedConvert('validEnd', (v) => v as String),
-    minAmount: $checkedConvert('minAmount', (v) => (v as num?)?.toDouble()),
-    maxDiscount: $checkedConvert('maxDiscount', (v) => (v as num?)?.toDouble()),
+    type: $checkedConvert('type', (v) => $enumDecode(_$CouponTypeEnumMap, v)),
+    faceValue: $checkedConvert('faceValue', (v) => (v as num).toInt()),
+    status: $checkedConvert('status', (v) => _userCouponStatusFromJson(v)),
+    receiveTime: $checkedConvert('receiveTime', (v) => v as String),
+    threshold: $checkedConvert('threshold', (v) => (v as num?)?.toInt()),
+    expireTime: $checkedConvert('expireTime', (v) => v as String?),
     usedTime: $checkedConvert('usedTime', (v) => v as String?),
-    orderId: $checkedConvert('orderId', (v) => (v as num?)?.toInt()),
-    createTime: $checkedConvert('createTime', (v) => v as String),
+    usedOrderId: $checkedConvert('usedOrderId', (v) => (v as num?)?.toInt()),
+    applicableScope: $checkedConvert(
+      'applicableScope',
+      (v) => v as List<dynamic>?,
+    ),
   );
   return val;
 });
@@ -435,16 +482,15 @@ Map<String, dynamic> _$UserCouponVOToJson(UserCouponVO instance) =>
       'id': instance.id,
       'couponId': instance.couponId,
       'couponName': instance.couponName,
-      'couponType': instance.couponType,
-      'couponValue': instance.couponValue,
-      'status': instance.status,
-      'validStart': instance.validStart,
-      'validEnd': instance.validEnd,
-      if (instance.minAmount case final value?) 'minAmount': value,
-      if (instance.maxDiscount case final value?) 'maxDiscount': value,
-      if (instance.usedTime case final value?) 'usedTime': value,
-      if (instance.orderId case final value?) 'orderId': value,
-      'createTime': instance.createTime,
+      'type': _$CouponTypeEnumMap[instance.type]!,
+      'faceValue': instance.faceValue,
+      'threshold': ?instance.threshold,
+      'status': _userCouponStatusToJson(instance.status),
+      'receiveTime': instance.receiveTime,
+      'expireTime': ?instance.expireTime,
+      'usedTime': ?instance.usedTime,
+      'usedOrderId': ?instance.usedOrderId,
+      'applicableScope': ?instance.applicableScope,
     };
 
 CouponBatchDistributeForm _$CouponBatchDistributeFormFromJson(
@@ -452,11 +498,15 @@ CouponBatchDistributeForm _$CouponBatchDistributeFormFromJson(
 ) => $checkedCreate('CouponBatchDistributeForm', json, ($checkedConvert) {
   final val = CouponBatchDistributeForm(
     couponId: $checkedConvert('couponId', (v) => (v as num).toInt()),
+    targetScope: $checkedConvert('targetScope', (v) => v as String),
+    levelCodes: $checkedConvert(
+      'levelCodes',
+      (v) => (v as List<dynamic>?)?.map((e) => e as String).toList(),
+    ),
     userIds: $checkedConvert(
       'userIds',
-      (v) => (v as List<dynamic>).map((e) => (e as num).toInt()).toList(),
+      (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
     ),
-    count: $checkedConvert('count', (v) => (v as num).toInt()),
   );
   return val;
 });
@@ -465,8 +515,9 @@ Map<String, dynamic> _$CouponBatchDistributeFormToJson(
   CouponBatchDistributeForm instance,
 ) => <String, dynamic>{
   'couponId': instance.couponId,
-  'userIds': instance.userIds,
-  'count': instance.count,
+  'targetScope': instance.targetScope,
+  'levelCodes': ?instance.levelCodes,
+  'userIds': ?instance.userIds,
 };
 
 MonthlyRevenue _$MonthlyRevenueFromJson(Map<String, dynamic> json) =>

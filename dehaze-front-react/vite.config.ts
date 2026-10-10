@@ -52,6 +52,27 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         },
       },
     },
+    /**
+     * 预览服务：页面级功能测试走构建产物（见 .env.test 与 e2e/），避开 dev server 在源码或
+     * SDK 产物变动时的整页 reload。端口与 dev 错开（VITE_PREVIEW_PORT），两者可并存。
+     * 以 `vite preview --mode test` 启动：代理目标与端口定义在 .env.test（生产由 nginx
+     * 同源反代 /api、没有 VITE_API_URL，按默认 production 模式读 config 会拿到空代理目标）。
+     */
+    preview: {
+      host: "0.0.0.0",
+      port: Number(env.VITE_PREVIEW_PORT),
+      proxy: {
+        [env.VITE_BASE_API]: {
+          changeOrigin: true,
+          target: env.VITE_API_URL,
+        },
+        "/ws": {
+          target: env.VITE_API_URL,
+          ws: true,
+          changeOrigin: true,
+        },
+      },
+    },
     plugins: [
       react(),
       // MOCK 服务
@@ -74,8 +95,10 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       terserOptions: {
         compress: {
           keep_infinity: true, // 防止 Infinity 被压缩成 1/0，这可能会导致 Chrome 上的性能问题
-          drop_console: true, // 生产环境去除 console
-          drop_debugger: true, // 生产环境去除 debugger
+          // 生产构建去除 console/debugger；mode=test（页面测试基座，.env.test）保留它们，
+          // 页面级断言依赖应用自身打印的控制台报错
+          drop_console: mode !== "test",
+          drop_debugger: mode !== "test",
         },
         format: {
           comments: false, // 删除注释

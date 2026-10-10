@@ -20,15 +20,30 @@ const Badge: React.FC<BadgeProps> = ({
       case 'primary':
         return { backgroundColor: colors.primary, color: colors.text.inverse };
       case 'secondary':
-        return { backgroundColor: colors.background.tertiary, color: colors.text.secondary };
+        return {
+          backgroundColor: colors.background.tertiary,
+          color: colors.text.secondary,
+        };
       case 'success':
-        return { backgroundColor: colors.badge.success.bg, color: colors.badge.success.text };
+        return {
+          backgroundColor: colors.badge.success.bg,
+          color: colors.badge.success.text,
+        };
       case 'warning':
-        return { backgroundColor: colors.badge.warning.bg, color: colors.badge.warning.text };
+        return {
+          backgroundColor: colors.badge.warning.bg,
+          color: colors.badge.warning.text,
+        };
       case 'info':
-        return { backgroundColor: colors.badge.info.bg, color: colors.badge.info.text };
+        return {
+          backgroundColor: colors.badge.info.bg,
+          color: colors.badge.info.text,
+        };
       case 'foggy':
-        return { backgroundColor: colors.text.secondary, color: colors.text.inverse };
+        return {
+          backgroundColor: colors.text.secondary,
+          color: colors.text.inverse,
+        };
       default:
         return { backgroundColor: colors.primary, color: colors.text.inverse };
     }
@@ -73,13 +88,7 @@ const Badge: React.FC<BadgeProps> = ({
         rounded && styles.rounded,
       ]}
     >
-      <Text
-        style={[
-          styles.text,
-          textStyle,
-          { color: variantStyle.color },
-        ]}
-      >
+      <Text style={[styles.text, textStyle, { color: variantStyle.color }]}>
         {text}
       </Text>
     </View>

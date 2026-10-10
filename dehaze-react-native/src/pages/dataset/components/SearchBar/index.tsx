@@ -1,10 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
 
@@ -23,10 +18,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const [showClear, setShowClear] = useState(false);
 
-  const handleTextChange = useCallback((text: string) => {
-    onChangeText(text);
-    setShowClear(text.length > 0);
-  }, [onChangeText]);
+  const handleTextChange = useCallback(
+    (text: string) => {
+      onChangeText(text);
+      setShowClear(text.length > 0);
+    },
+    [onChangeText],
+  );
 
   const handleClear = useCallback(() => {
     onChangeText('');
@@ -40,7 +38,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   return (
     <View style={styles.container}>
-      <Icon name="search-plus" size={20} color={theme.colors.text.tertiary} style={styles.searchIcon} />
+      <Icon
+        name="search-plus"
+        size={20}
+        color={theme.colors.text.tertiary}
+        style={styles.searchIcon}
+      />
       <TextInput
         style={styles.input}
         value={value}

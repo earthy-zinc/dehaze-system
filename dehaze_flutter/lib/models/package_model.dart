@@ -4,130 +4,158 @@ part 'package_model.g.dart';
 
 // ==================== 枚举 ====================
 
-/// 套餐等级编码
-enum PackageLevelCode {
-  @JsonValue('bronze')
-  bronze,
-  @JsonValue('silver')
-  silver,
-  @JsonValue('gold')
-  gold,
-  @JsonValue('platinum')
-  platinum,
-  @JsonValue('diamond')
-  diamond,
-}
-
-/// 套餐计费周期
-enum PackagePeriod {
-  @JsonValue(1)
-  monthly,
-  @JsonValue(3)
-  quarterly,
-  @JsonValue(12)
-  yearly,
-  @JsonValue(0)
-  lifetime,
-}
-
-/// 套餐状态
-enum PackageStatus {
-  @JsonValue(0)
-  draft,
-  @JsonValue(1)
-  active,
-  @JsonValue(2)
-  inactive,
-}
-
 /// 优惠券类型
 enum CouponType {
-  @JsonValue('fixed')
-  fixed,
-  @JsonValue('percentage')
-  percentage,
+  @JsonValue('full_reduction')
+  fullReduction,
+  @JsonValue('discount')
+  discount,
+  @JsonValue('no_threshold')
+  noThreshold,
+  @JsonValue('trial')
+  trial,
 }
 
 /// 优惠券有效期类型
 enum CouponValidType {
-  @JsonValue('days')
-  days,
-  @JsonValue('dateRange')
-  dateRange,
+  @JsonValue('fixed')
+  fixed,
+  @JsonValue('relative')
+  relative,
 }
 
-/// 用户优惠券状态
+/// 用户优惠券状态（1 未使用 / 2 已使用 / 3 已过期 / 4 已锁定）
 enum UserCouponStatus {
-  @JsonValue(0)
-  unused,
-  @JsonValue(1)
-  used,
-  @JsonValue(2)
-  expired,
+  unused(1, '未使用'),
+  used(2, '已使用'),
+  expired(3, '已过期'),
+  locked(4, '已锁定');
+
+  const UserCouponStatus(this.value, this.displayName);
+
+  final int value;
+  final String displayName;
 }
 
-// ==================== 权益 VO ====================
+// ==================== JSON 转换辅助函数 ====================
 
-/// 权益配置 VO（与 member_model.dart 中 BenefitVO 一致）
-@JsonSerializable()
-class BenefitVO {
-  const BenefitVO({
-    required this.levelCode,
-    required this.levelName,
-    required this.growthMin,
-    required this.growthMax,
-    required this.monthlyDehazeQuota,
-    required this.monthlyEvaluateQuota,
-    required this.historyRetention,
-    required this.batchLimit,
-    required this.priority,
-    required this.advancedParams,
-    required this.hdExport,
-    required this.reportExport,
-    required this.batchDownload,
-    required this.sort,
-    required this.status,
-  });
-
-  factory BenefitVO.fromJson(Map<String, dynamic> json) =>
-      _$BenefitVOFromJson(json);
-
-  final String levelCode;
-  final String levelName;
-  final int growthMin;
-  final int growthMax;
-  final int monthlyDehazeQuota;
-  final int monthlyEvaluateQuota;
-  final int historyRetention;
-  final int batchLimit;
-  final int priority;
-  final int advancedParams;
-  final int hdExport;
-  final int reportExport;
-  final int batchDownload;
-  final int sort;
-  final int status;
-
-  Map<String, dynamic> toJson() => _$BenefitVOToJson(this);
+UserCouponStatus _userCouponStatusFromJson(dynamic value) {
+  final code = value is num ? value.toInt() : null;
+  return UserCouponStatus.values.firstWhere(
+    (e) => e.value == code,
+    orElse: () => UserCouponStatus.unused,
+  );
 }
+
+int _userCouponStatusToJson(UserCouponStatus status) => status.value;
 
 // ==================== 套餐 ====================
 
-/// 套餐表单
+/// 计费周期中文标签（与 Vue package/shop 一致）
+const Map<String, String> packagePeriodLabels = {
+  'monthly': '月卡',
+  'quarterly': '季卡',
+  'yearly': '年卡',
+};
+
+/// 权益字段中文标签（与 Vue package/shop 一致）
+const Map<String, String> packageBenefitLabels = {
+  'monthlyDehazeQuota': '去雾配额',
+  'monthlyDerainQuota': '去雨配额',
+  'monthlyDesnowQuota': '去雪配额',
+  'monthlyLowlightQuota': '低光增强配额',
+  'monthlySuperResolutionQuota': '超分辨率配额',
+  'monthlyDenoiseQuota': '去噪配额',
+  'monthlyInpaintQuota': '图像修复配额',
+  'monthlyEvaluateQuota': '评估配额',
+  'aiCreditsDaily': 'AI对话日限额',
+  'aiCreditsMonthly': 'AI对话月限额',
+  'historyRetention': '历史保留',
+  'batchLimit': '批量上限',
+  'priority': '优先级',
+  'advancedParams': '高级参数',
+  'hdExport': '高清导出',
+  'reportExport': '报告导出',
+  'batchDownload': '批量下载',
+};
+
+/// 商品类型中文
+String packageTypeLabel(String packageType) =>
+    packageType == 'credit' ? '积分卡' : '会员卡';
+
+/// 套餐规格副标题（积分卡展示积分，会员卡展示周期与有效期）
+String packageSpecLabel(PackageDetailVO pkg) {
+  if (pkg.packageType == 'credit') {
+    return '${pkg.creditAmount ?? 0} 积分';
+  }
+  final period = packagePeriodLabels[pkg.period] ?? pkg.period ?? '';
+  return pkg.periodDays != null ? '$period · ${pkg.periodDays} 天' : period;
+}
+
+/// 权益覆盖项（套餐表单 benefitOverrides）
+@JsonSerializable()
+class BenefitOverrides {
+  const BenefitOverrides({
+    this.monthlyDehazeQuota,
+    this.monthlyDerainQuota,
+    this.monthlyDesnowQuota,
+    this.monthlyLowlightQuota,
+    this.monthlySuperResolutionQuota,
+    this.monthlyDenoiseQuota,
+    this.monthlyInpaintQuota,
+    this.monthlyEvaluateQuota,
+    this.aiCreditsDaily,
+    this.aiCreditsMonthly,
+    this.historyRetention,
+    this.batchLimit,
+    this.priority,
+    this.advancedParams,
+    this.hdExport,
+    this.reportExport,
+    this.batchDownload,
+  });
+
+  factory BenefitOverrides.fromJson(Map<String, dynamic> json) =>
+      _$BenefitOverridesFromJson(json);
+
+  final int? monthlyDehazeQuota;
+  final int? monthlyDerainQuota;
+  final int? monthlyDesnowQuota;
+  final int? monthlyLowlightQuota;
+  final int? monthlySuperResolutionQuota;
+  final int? monthlyDenoiseQuota;
+  final int? monthlyInpaintQuota;
+  final int? monthlyEvaluateQuota;
+  final int? aiCreditsDaily;
+  final int? aiCreditsMonthly;
+  final int? historyRetention;
+  final int? batchLimit;
+  final int? priority;
+  final int? advancedParams;
+  final int? hdExport;
+  final int? reportExport;
+  final int? batchDownload;
+
+  Map<String, dynamic> toJson() => _$BenefitOverridesToJson(this);
+}
+
+/// 套餐表单（vip 卡需 levelCode/period/periodDays；credit 卡需 creditAmount）
 @JsonSerializable()
 class PackageForm {
   const PackageForm({
     this.id,
     required this.name,
-    required this.level,
-    required this.period,
+    required this.packageType,
     required this.originalPrice,
-    required this.currentPrice,
+    required this.salePrice,
+    this.levelCode,
+    this.period,
+    this.periodDays,
+    this.creditAmount,
     this.description,
-    this.features = const [],
-    this.status,
+    this.benefitOverrides,
     this.sort,
-    this.benefits,
+    this.status,
   });
 
   factory PackageForm.fromJson(Map<String, dynamic> json) =>
@@ -135,38 +163,44 @@ class PackageForm {
 
   final int? id;
   final String name;
-  final String level;
-  final String period;
-  final double originalPrice;
-  final double currentPrice;
-  final String? description;
-  final List<String> features;
-  final int? status;
-  final int? sort;
 
-  /// JSON 字段，权益覆盖配置
-  final Map<String, dynamic>? benefits;
+  /// vip | credit
+  final String packageType;
+  final String? levelCode;
+  final String? period;
+  final int? periodDays;
+  final int? creditAmount;
+
+  /// 金额单位：分
+  final int originalPrice;
+  final int salePrice;
+  final String? description;
+  final BenefitOverrides? benefitOverrides;
+  final int? sort;
+  final int? status;
 
   Map<String, dynamic> toJson() => _$PackageFormToJson(this);
 }
 
-/// 套餐分页项
+/// 套餐分页项（积分卡的等级/周期/有效期字段为 null）
 @JsonSerializable()
 class PackagePageVO {
   const PackagePageVO({
     required this.id,
     required this.name,
-    required this.level,
-    required this.levelName,
-    required this.period,
-    required this.periodName,
+    required this.packageType,
     required this.originalPrice,
-    required this.currentPrice,
-    this.description,
-    this.features = const [],
+    required this.salePrice,
+    required this.dailyPrice,
     required this.status,
-    this.sort,
     required this.createTime,
+    this.levelCode,
+    this.levelName,
+    this.period,
+    this.periodDays,
+    this.creditAmount,
+    this.creditUnitPrice,
+    this.salesCount,
   });
 
   factory PackagePageVO.fromJson(Map<String, dynamic> json) =>
@@ -174,39 +208,49 @@ class PackagePageVO {
 
   final int id;
   final String name;
-  final String level;
-  final String levelName;
-  final String period;
-  final String periodName;
-  final double originalPrice;
-  final double currentPrice;
-  final String? description;
-  final List<String> features;
+
+  /// vip | credit
+  final String packageType;
+  final String? levelCode;
+  final String? levelName;
+  final String? period;
+  final int? periodDays;
+  final int? creditAmount;
+
+  /// 金额单位：分
+  final int originalPrice;
+  final int salePrice;
+  final int dailyPrice;
+  final int? creditUnitPrice;
+  final int? salesCount;
+
+  /// 1:上架;0:下架
   final int status;
-  final int? sort;
   final String createTime;
 
   Map<String, dynamic> toJson() => _$PackagePageVOToJson(this);
 }
 
-/// 套餐详情
+/// 套餐详情（用户端；列表接口不返回 activePromotions）
 @JsonSerializable()
 class PackageDetailVO {
   const PackageDetailVO({
     required this.id,
     required this.name,
-    required this.level,
-    required this.levelName,
-    required this.period,
-    required this.periodName,
+    required this.packageType,
     required this.originalPrice,
-    required this.currentPrice,
+    required this.salePrice,
+    required this.dailyPrice,
+    required this.benefits,
+    required this.salesCount,
+    this.levelCode,
+    this.levelName,
+    this.period,
+    this.periodDays,
+    this.creditAmount,
+    this.creditUnitPrice,
     this.description,
-    this.features = const [],
-    required this.status,
-    this.sort,
-    required this.createTime,
-    this.benefits,
+    this.activePromotions,
   });
 
   factory PackageDetailVO.fromJson(Map<String, dynamic> json) =>
@@ -214,18 +258,26 @@ class PackageDetailVO {
 
   final int id;
   final String name;
-  final String level;
-  final String levelName;
-  final String period;
-  final String periodName;
-  final double originalPrice;
-  final double currentPrice;
+
+  /// vip | credit
+  final String packageType;
+  final String? levelCode;
+  final String? levelName;
+  final String? period;
+  final int? periodDays;
+
+  /// 金额单位：分
+  final int originalPrice;
+  final int salePrice;
+  final int dailyPrice;
+  final int? creditAmount;
+  final int? creditUnitPrice;
   final String? description;
-  final List<String> features;
-  final int status;
-  final int? sort;
-  final String createTime;
-  final List<BenefitVO>? benefits;
+
+  /// 实际生效权益，key → 数值
+  final Map<String, int> benefits;
+  final List<PromotionVO>? activePromotions;
+  final int salesCount;
 
   Map<String, dynamic> toJson() => _$PackageDetailVOToJson(this);
 }
@@ -236,9 +288,11 @@ class PackageQuery {
   const PackageQuery({
     this.pageNum,
     this.pageSize,
-    this.level,
+    this.name,
+    this.packageType,
+    this.levelCode,
+    this.period,
     this.status,
-    this.keyword,
   });
 
   factory PackageQuery.fromJson(Map<String, dynamic> json) =>
@@ -246,9 +300,11 @@ class PackageQuery {
 
   final int? pageNum;
   final int? pageSize;
-  final String? level;
+  final String? name;
+  final String? packageType;
+  final String? levelCode;
+  final String? period;
   final int? status;
-  final String? keyword;
 
   Map<String, dynamic> toJson() => _$PackageQueryToJson(this);
 
@@ -257,59 +313,63 @@ class PackageQuery {
     final map = <String, dynamic>{};
     if (pageNum != null) map['pageNum'] = pageNum;
     if (pageSize != null) map['pageSize'] = pageSize;
-    if (level != null) map['level'] = level;
+    if (name != null) map['name'] = name;
+    if (packageType != null) map['packageType'] = packageType;
+    if (levelCode != null) map['levelCode'] = levelCode;
+    if (period != null) map['period'] = period;
     if (status != null) map['status'] = status;
-    if (keyword != null) map['keyword'] = keyword;
     return map;
   }
 }
 
-/// 价格计算结果
+/// 价格计算结果（金额单位：分）
 @JsonSerializable()
 class PriceResult {
   const PriceResult({
     required this.originalPrice,
-    required this.currentPrice,
-    required this.discount,
-    required this.couponDiscount,
-    required this.finalPrice,
-    this.appliedCoupons,
+    required this.discountAmount,
+    required this.couponAmount,
+    required this.payableAmount,
   });
 
   factory PriceResult.fromJson(Map<String, dynamic> json) =>
       _$PriceResultFromJson(json);
 
-  final double originalPrice;
-  final double currentPrice;
-  final double discount;
-  final double couponDiscount;
-  final double finalPrice;
-  final List<UserCouponVO>? appliedCoupons;
+  final int originalPrice;
+  final int discountAmount;
+  final int couponAmount;
+  final int payableAmount;
 
   Map<String, dynamic> toJson() => _$PriceResultToJson(this);
 }
 
-/// 促销信息
+/// 促销活动 VO
 @JsonSerializable()
 class PromotionVO {
   const PromotionVO({
-    required this.title,
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.startTime,
+    required this.endTime,
     this.description,
-    required this.startDate,
-    required this.endDate,
-    required this.discount,
-    required this.active,
+    this.activityRules,
+    this.newUserOnly,
+    this.status,
   });
 
   factory PromotionVO.fromJson(Map<String, dynamic> json) =>
       _$PromotionVOFromJson(json);
 
-  final String title;
+  final int id;
+  final String name;
+  final String type;
   final String? description;
-  final String startDate;
-  final String endDate;
-  final double discount;
-  final bool active;
+  final String startTime;
+  final String endTime;
+  final Map<String, dynamic>? activityRules;
+  final int? newUserOnly;
+  final int? status;
 
   Map<String, dynamic> toJson() => _$PromotionVOToJson(this);
 }
@@ -320,43 +380,43 @@ class PromotionVO {
 @JsonSerializable()
 class CouponForm {
   const CouponForm({
-    this.code,
+    this.id,
     required this.name,
     required this.type,
-    required this.value,
+    required this.faceValue,
     required this.validType,
-    this.validDays,
+    required this.totalQty,
+    required this.perUserLimit,
+    this.threshold,
     this.validStart,
     this.validEnd,
-    this.minAmount,
-    this.maxDiscount,
-    required this.total,
-    required this.perUser,
-    this.description,
+    this.validDays,
+    this.applicableScope,
     this.status,
-    this.scope,
-    this.packageIds,
   });
 
   factory CouponForm.fromJson(Map<String, dynamic> json) =>
       _$CouponFormFromJson(json);
 
-  final String? code;
+  final int? id;
   final String name;
-  final String type;
-  final double value;
-  final String validType;
-  final int? validDays;
+  final CouponType type;
+
+  /// 面额（分）
+  final int faceValue;
+
+  /// 使用门槛（分），满减类型必填
+  final int? threshold;
+  final CouponValidType validType;
   final String? validStart;
   final String? validEnd;
-  final double? minAmount;
-  final double? maxDiscount;
-  final int total;
-  final int perUser;
-  final String? description;
+  final int? validDays;
+  final int totalQty;
+  final int perUserLimit;
+
+  /// 适用商品：商品 ID 或商品类型（NULL / 空表示全部适用）
+  final List<dynamic>? applicableScope;
   final int? status;
-  final int? scope;
-  final List<int>? packageIds;
 
   Map<String, dynamic> toJson() => _$CouponFormToJson(this);
 }
@@ -365,85 +425,79 @@ class CouponForm {
 @JsonSerializable()
 class CouponQuery {
   const CouponQuery({
-    this.pageNum,
-    this.pageSize,
+    this.pageNum = 1,
+    this.pageSize = 10,
+    this.name,
     this.type,
     this.status,
-    this.keyword,
   });
 
   factory CouponQuery.fromJson(Map<String, dynamic> json) =>
       _$CouponQueryFromJson(json);
 
-  final int? pageNum;
-  final int? pageSize;
+  final int pageNum;
+  final int pageSize;
+  final String? name;
   final String? type;
   final int? status;
-  final String? keyword;
 
   Map<String, dynamic> toJson() => _$CouponQueryToJson(this);
 
   Map<String, dynamic> toQueryParameters() {
-    final map = <String, dynamic>{};
-    if (pageNum != null) map['pageNum'] = pageNum;
-    if (pageSize != null) map['pageSize'] = pageSize;
+    final map = <String, dynamic>{'pageNum': pageNum, 'pageSize': pageSize};
+    if (name != null) map['name'] = name;
     if (type != null) map['type'] = type;
     if (status != null) map['status'] = status;
-    if (keyword != null) map['keyword'] = keyword;
     return map;
   }
 }
 
-/// 优惠券 VO
+/// 优惠券模板 VO
 @JsonSerializable()
 class CouponVO {
   const CouponVO({
     required this.id,
-    required this.code,
     required this.name,
     required this.type,
-    required this.typeName,
-    required this.value,
+    required this.faceValue,
     required this.validType,
-    this.validDays,
+    required this.totalQty,
+    required this.issuedQty,
+    required this.usedQty,
+    required this.perUserLimit,
+    required this.status,
+    required this.createTime,
+    this.threshold,
     this.validStart,
     this.validEnd,
-    this.minAmount,
-    this.maxDiscount,
-    required this.total,
-    required this.issued,
-    required this.remaining,
-    required this.perUser,
-    this.description,
-    required this.status,
-    this.scope,
-    this.packageIds,
-    required this.createTime,
+    this.validDays,
+    this.applicableScope,
   });
 
   factory CouponVO.fromJson(Map<String, dynamic> json) =>
       _$CouponVOFromJson(json);
 
   final int id;
-  final String code;
   final String name;
-  final String type;
-  final String typeName;
-  final double value;
-  final String validType;
-  final int? validDays;
+  final CouponType type;
+
+  /// 面额（分）
+  final int faceValue;
+
+  /// 使用门槛（分）
+  final int? threshold;
+  final CouponValidType validType;
   final String? validStart;
   final String? validEnd;
-  final double? minAmount;
-  final double? maxDiscount;
-  final int total;
-  final int issued;
-  final int remaining;
-  final int perUser;
-  final String? description;
+  final int? validDays;
+  final int totalQty;
+  final int issuedQty;
+  final int usedQty;
+  final int perUserLimit;
+
+  /// 适用商品：商品 ID 或商品类型（NULL / 空表示全部适用）
+  final List<dynamic>? applicableScope;
   final int status;
-  final int? scope;
-  final List<int>? packageIds;
   final String createTime;
 
   Map<String, dynamic> toJson() => _$CouponVOToJson(this);
@@ -456,16 +510,15 @@ class UserCouponVO {
     required this.id,
     required this.couponId,
     required this.couponName,
-    required this.couponType,
-    required this.couponValue,
+    required this.type,
+    required this.faceValue,
     required this.status,
-    required this.validStart,
-    required this.validEnd,
-    this.minAmount,
-    this.maxDiscount,
+    required this.receiveTime,
+    this.threshold,
+    this.expireTime,
     this.usedTime,
-    this.orderId,
-    required this.createTime,
+    this.usedOrderId,
+    this.applicableScope,
   });
 
   factory UserCouponVO.fromJson(Map<String, dynamic> json) =>
@@ -474,16 +527,21 @@ class UserCouponVO {
   final int id;
   final int couponId;
   final String couponName;
-  final String couponType;
-  final double couponValue;
-  final int status;
-  final String validStart;
-  final String validEnd;
-  final double? minAmount;
-  final double? maxDiscount;
+  final CouponType type;
+
+  /// 面额（分）
+  final int faceValue;
+  final int? threshold;
+
+  @JsonKey(fromJson: _userCouponStatusFromJson, toJson: _userCouponStatusToJson)
+  final UserCouponStatus status;
+  final String receiveTime;
+  final String? expireTime;
   final String? usedTime;
-  final int? orderId;
-  final String createTime;
+  final int? usedOrderId;
+
+  /// 适用商品：商品 ID 或商品类型（NULL / 空表示全部适用）
+  final List<dynamic>? applicableScope;
 
   Map<String, dynamic> toJson() => _$UserCouponVOToJson(this);
 }
@@ -493,16 +551,20 @@ class UserCouponVO {
 class CouponBatchDistributeForm {
   const CouponBatchDistributeForm({
     required this.couponId,
-    required this.userIds,
-    required this.count,
+    required this.targetScope,
+    this.levelCodes,
+    this.userIds,
   });
 
   factory CouponBatchDistributeForm.fromJson(Map<String, dynamic> json) =>
       _$CouponBatchDistributeFormFromJson(json);
 
   final int couponId;
-  final List<int> userIds;
-  final int count;
+
+  /// 发放范围（all 全部 / level 按等级 / users 指定用户）
+  final String targetScope;
+  final List<String>? levelCodes;
+  final List<int>? userIds;
 
   Map<String, dynamic> toJson() => _$CouponBatchDistributeFormToJson(this);
 }

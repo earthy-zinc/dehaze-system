@@ -23,6 +23,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { fenToYuan, yuanToFen } from "@/utils/format";
 
 const FORM_TIME_FMT = "YYYY-MM-DD HH:mm:ss";
 
@@ -96,8 +97,9 @@ const CouponFormDialog = forwardRef<CouponFormDialogRef, CouponFormDialogProps>(
                 id: row.id,
                 name: row.name,
                 type: row.type,
-                faceValue: row.faceValue,
-                threshold: row.threshold,
+                faceValue:
+                  row.type === "discount" ? row.faceValue : row.faceValue / 100,
+                threshold: (row.threshold ?? 0) / 100,
                 validType: row.validType,
                 validStart: row.validStart,
                 validEnd: row.validEnd,
@@ -126,13 +128,22 @@ const CouponFormDialog = forwardRef<CouponFormDialogRef, CouponFormDialogProps>(
     const handleSubmit = useCallback(async () => {
       try {
         const values = await form.validateFields();
+        // 后端口径：满减/无门槛的面值与门槛单位为分；折扣券面值为 0-100 支付百分比
+        const payload: CouponForm = {
+          ...values,
+          faceValue:
+            values.type === "discount"
+              ? values.faceValue
+              : yuanToFen(values.faceValue),
+          threshold: yuanToFen(values.threshold ?? 0),
+        };
         setConfirmLoading(true);
         if (dialogType === "edit") {
           const id = form.getFieldValue("id");
-          await CouponAPI.update(id, values);
+          await CouponAPI.update(id, payload);
           message.success("修改优惠券成功");
         } else {
-          await CouponAPI.add(values);
+          await CouponAPI.add(payload);
           message.success("新增优惠券成功");
         }
         handleCancel();
@@ -195,20 +206,20 @@ const CouponFormDialog = forwardRef<CouponFormDialogRef, CouponFormDialogProps>(
 
           <Form.Item
             name="faceValue"
-            label="面值"
+            label={watchType === "discount" ? "折扣（85=8.5折）" : "面值（元）"}
             rules={[{ required: true, message: "请输入面值" }]}
           >
             <InputNumber
               min={0}
               precision={2}
               style={{ width: "100%" }}
-              placeholder="请输入面值"
+              placeholder={watchType === "discount" ? "85=8.5折" : "单位：元"}
             />
           </Form.Item>
 
           <Form.Item
             name="threshold"
-            label="门槛"
+            label="门槛（元）"
             rules={[
               {
                 validator: (_, value: number) => {

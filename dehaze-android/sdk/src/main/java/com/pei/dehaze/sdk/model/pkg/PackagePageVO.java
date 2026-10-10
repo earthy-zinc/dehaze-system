@@ -10,9 +10,9 @@ public class PackagePageVO {
     private String levelName;
     private String period;
     private Integer periodDays;
-    private Double originalPrice;
-    private Double salePrice;
-    private Double dailyPrice;
+    private Long originalPrice;
+    private Long salePrice;
+    private Long dailyPrice;
     private Integer salesCount;
     private Integer status;
     private String createTime;

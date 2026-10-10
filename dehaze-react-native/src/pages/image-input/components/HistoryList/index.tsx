@@ -23,9 +23,7 @@ interface HistoryListProps {
   onSelectRecord: (image: SelectedImage) => void;
 }
 
-const HistoryList: React.FC<HistoryListProps> = ({
-  onSelectRecord,
-}) => {
+const HistoryList: React.FC<HistoryListProps> = ({ onSelectRecord }) => {
   const [historyGroups, setHistoryGroups] = useState<HistoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,26 +46,27 @@ const HistoryList: React.FC<HistoryListProps> = ({
   }, [loadHistory]);
 
   // 处理记录选择
-  const handleRecordPress = useCallback((record: HistoryRecord) => {
-    const selectedImage: SelectedImage = {
-      id: record.id.toString(),
-      url: record.originalImageUrl || '',
-      thumbUrl: record.originalThumbnailUrl,
-      name: record.algorithmName || '历史图片',
-      source: 'history',
-      algorithmId: record.algorithmId,
-      algorithmParams: record.algorithmParams,
-    };
+  const handleRecordPress = useCallback(
+    (record: HistoryRecord) => {
+      const selectedImage: SelectedImage = {
+        id: record.id.toString(),
+        url: record.originalImageUrl || '',
+        thumbUrl: record.originalThumbnailUrl,
+        name: record.modelName || '历史图片',
+        source: 'history',
+        modelId: record.modelId,
+        modelParams: record.modelParams,
+      };
 
-    onSelectRecord(selectedImage);
-  }, [onSelectRecord]);
+      onSelectRecord(selectedImage);
+    },
+    [onSelectRecord],
+  );
 
   // 处理删除记录
-  const handleDeleteRecord = useCallback((id: number) => {
-    Alert.alert(
-      '删除记录',
-      '确定要删除这条历史记录吗？',
-      [
+  const handleDeleteRecord = useCallback(
+    (id: number) => {
+      Alert.alert('删除记录', '确定要删除这条历史记录吗？', [
         { text: '取消', style: 'cancel' },
         {
           text: '删除',
@@ -81,31 +80,28 @@ const HistoryList: React.FC<HistoryListProps> = ({
             }
           },
         },
-      ]
-    );
-  }, [loadHistory]);
+      ]);
+    },
+    [loadHistory],
+  );
 
   // 处理清空历史
   const handleClearHistory = useCallback(() => {
-    Alert.alert(
-      '清空历史记录',
-      '确定要清空所有历史记录吗？此操作不可恢复。',
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '清空',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await historyStorage.clearHistory(true);
-              setHistoryGroups([]);
-            } catch (error) {
-              Alert.alert('错误', '清空失败，请重试');
-            }
-          },
+    Alert.alert('清空历史记录', '确定要清空所有历史记录吗？此操作不可恢复。', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '清空',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await historyStorage.clearHistory();
+            setHistoryGroups([]);
+          } catch (error) {
+            Alert.alert('错误', '清空失败，请重试');
+          }
         },
-      ]
-    );
+      },
+    ]);
   }, []);
 
   // 渲染分组标题
@@ -136,7 +132,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   // 计算总记录数
   const totalRecords = historyGroups.reduce(
     (sum, group) => sum + group.data.length,
-    0
+    0,
   );
 
   return (
@@ -145,9 +141,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Icon name="time" size={18} color={theme.colors.text.secondary} />
-          <Text style={styles.headerText}>
-            最近处理的图片 ({totalRecords})
-          </Text>
+          <Text style={styles.headerText}>最近处理的图片 ({totalRecords})</Text>
         </View>
 
         {totalRecords > 0 && (

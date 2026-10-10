@@ -1,7 +1,6 @@
 import {
-  AlgorithmAPI,
+  AiModelAPI,
   RecommendationAPI,
-  type OptionType,
   type RecommendationRule,
 } from "dehaze-sdk-js";
 import {
@@ -36,7 +35,9 @@ import "./index.module.scss";
 export default function RecommendationRules() {
   const [loading, setLoading] = useState(false);
   const [rules, setRules] = useState<RecommendationRule[]>([]);
-  const [algorithmOptions, setAlgorithmOptions] = useState<OptionType[]>([]);
+  const [modelOptions, setModelOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingRule, setEditingRule] = useState<RecommendationRule | null>(
     null
@@ -46,12 +47,14 @@ export default function RecommendationRules() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [ruleData, algoData] = await Promise.all([
+      const [ruleData, modelData] = await Promise.all([
         RecommendationAPI.getRules(),
-        AlgorithmAPI.getOption(),
+        AiModelAPI.listEnabledModels("image_edit"),
       ]);
       setRules(ruleData || []);
-      setAlgorithmOptions(algoData || []);
+      setModelOptions(
+        modelData.map((m) => ({ value: m.modelId, label: m.displayName }))
+      );
     } catch (err: unknown) {
       const messageErr = err as { message?: string };
       message.error(messageErr.message || "加载推荐规则失败");
@@ -73,7 +76,7 @@ export default function RecommendationRules() {
       form.setFieldsValue({
         ruleName: "",
         sceneType: "",
-        algorithmIds: [],
+        modelIds: [],
         weight: 50,
         enabled: true,
       });
@@ -145,15 +148,15 @@ export default function RecommendationRules() {
         render: (text: string) => <Tag color="blue">{text}</Tag>,
       },
       {
-        title: "推荐算法",
-        dataIndex: "algorithmIds",
-        key: "algorithmIds",
+        title: "推荐模型",
+        dataIndex: "modelIds",
+        key: "modelIds",
         width: 200,
-        render: (ids: number[]) => (
+        render: (ids: string[]) => (
           <Space wrap>
             {(ids || []).map((id) => {
-              const algo = algorithmOptions.find((a) => a.value === id);
-              return algo ? <Tag key={id}>{algo.label}</Tag> : null;
+              const model = modelOptions.find((m) => m.value === id);
+              return model ? <Tag key={id}>{model.label}</Tag> : null;
             })}
           </Space>
         ),
@@ -234,7 +237,7 @@ export default function RecommendationRules() {
         ),
       },
     ],
-    [algorithmOptions, handleDelete]
+    [modelOptions, handleDelete]
   );
 
   return (
@@ -301,14 +304,14 @@ export default function RecommendationRules() {
           </Form.Item>
 
           <Form.Item
-            name="algorithmIds"
-            label="推荐算法"
-            rules={[{ required: true, message: "请至少选择一个算法" }]}
+            name="modelIds"
+            label="推荐模型"
+            rules={[{ required: true, message: "请至少选择一个模型" }]}
           >
             <Select
               mode="multiple"
-              placeholder="选择推荐算法"
-              options={algorithmOptions}
+              placeholder="选择推荐模型"
+              options={modelOptions}
               allowClear
             />
           </Form.Item>

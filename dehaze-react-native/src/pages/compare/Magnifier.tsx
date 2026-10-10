@@ -22,7 +22,10 @@ import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import ImageLoader from '@/components/ImageLoader';
 import CompareEmptyState from '@/components/CompareEmptyState';
-import { controlBarStyles, controlButtonStyles } from './styles/compareControls';
+import {
+  controlBarStyles,
+  controlButtonStyles,
+} from './styles/compareControls';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<DehazeStackParamList, 'CompareMagnifier'>;
@@ -32,7 +35,10 @@ type DisplayMode = 'original' | 'processed' | 'compare';
 const MAGNIFIER_SIZE = 150;
 
 const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, modelId } = route.params ?? {
+    originalUrl: '',
+    processedUrl: '',
+  };
   const { height: screenHeight } = useWindowDimensions();
   const [zoom, setZoom] = useState<2 | 3 | 5>(2);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('compare');
@@ -47,7 +53,10 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
     const { width, height } = e.nativeEvent.layout;
     layoutRef.current = { width, height };
     // 居中放大镜
-    const center = { x: (width - MAGNIFIER_SIZE) / 2, y: (height - MAGNIFIER_SIZE) / 2 };
+    const center = {
+      x: (width - MAGNIFIER_SIZE) / 2,
+      y: (height - MAGNIFIER_SIZE) / 2,
+    };
     setMagnifierPos(center);
   };
 
@@ -59,8 +68,20 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
       },
       onPanResponderMove: (evt, gestureState) => {
         const { width, height } = layoutRef.current;
-        const newX = Math.max(0, Math.min(width - MAGNIFIER_SIZE, startRef.current.x + gestureState.dx));
-        const newY = Math.max(0, Math.min(height - MAGNIFIER_SIZE, startRef.current.y + gestureState.dy));
+        const newX = Math.max(
+          0,
+          Math.min(
+            width - MAGNIFIER_SIZE,
+            startRef.current.x + gestureState.dx,
+          ),
+        );
+        const newY = Math.max(
+          0,
+          Math.min(
+            height - MAGNIFIER_SIZE,
+            startRef.current.y + gestureState.dy,
+          ),
+        );
         setMagnifierPos({ x: newX, y: newY });
       },
     }),
@@ -71,7 +92,13 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const cycleDisplayMode = () => {
-    setDisplayMode(m => (m === 'original' ? 'processed' : m === 'processed' ? 'compare' : 'original'));
+    setDisplayMode(m =>
+      m === 'original'
+        ? 'processed'
+        : m === 'processed'
+        ? 'compare'
+        : 'original',
+    );
   };
 
   // 缺少必要参数时显示空状态（例如从底部 Tab 直接进入）
@@ -90,25 +117,38 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="CompareMagnifier"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, modelId }}
       />
 
       {/* 控制栏 */}
       <View style={controlBarStyles.bar}>
-        <TouchableOpacity style={controlButtonStyles.button} onPress={cycleZoom}>
+        <TouchableOpacity
+          style={controlButtonStyles.button}
+          onPress={cycleZoom}
+        >
           <Icon name="search-plus" size={14} color={theme.colors.primary} />
           <Text style={controlButtonStyles.text}>{zoom}x 放大</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={controlButtonStyles.button} onPress={cycleDisplayMode}>
+        <TouchableOpacity
+          style={controlButtonStyles.button}
+          onPress={cycleDisplayMode}
+        >
           <Icon name="refresh" size={14} color={theme.colors.text.secondary} />
           <Text style={controlButtonStyles.text}>
-            {displayMode === 'original' ? '仅原图' : displayMode === 'processed' ? '仅去雾后' : '对比模式'}
+            {displayMode === 'original'
+              ? '仅原图'
+              : displayMode === 'processed'
+              ? '仅去雾后'
+              : '对比模式'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* 图片区域 */}
-      <View style={[styles.imageContainer, { minHeight: screenHeight * 0.55 }]} onLayout={handleLayout}>
+      <View
+        style={[styles.imageContainer, { minHeight: screenHeight * 0.55 }]}
+        onLayout={handleLayout}
+      >
         <ImageLoader
           source={{ uri: processedUrl }}
           style={styles.baseImage}
@@ -156,7 +196,9 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
               />
             </View>
           )}
-          {displayMode === 'compare' && <View style={styles.magnifierDivider} />}
+          {displayMode === 'compare' && (
+            <View style={styles.magnifierDivider} />
+          )}
         </View>
       </View>
 

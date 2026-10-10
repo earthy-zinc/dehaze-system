@@ -1,5 +1,10 @@
 import { setupDirective } from "@/directive";
-import { setupElIcons, setupI18n, setupPermission } from "@/plugins";
+import {
+  preloadDynamicRoutes,
+  setupElIcons,
+  setupI18n,
+  setupPermission,
+} from "@/plugins";
 import router from "@/router";
 import { setupStore } from "@/store";
 import setupRequest from "@/utils/request";
@@ -51,26 +56,34 @@ setupElIcons(app);
 setupI18n(app);
 // 注册动态路由
 setupPermission();
-app
-  .use(router)
-  .use(VueLazyLoad, {
-    // options...
-  })
-  .use(VueViewer, {
-    defaultOptions: {
-      inline: true,
-      button: true, //右上角按钮
-      navbar: true, //底部缩略图
-      title: true, //当前图片标题
-      toolbar: true, //底部工具栏
-      tooltip: true, //显示缩放百分比
-      movable: true, //是否可以移动
-      zoomable: true, //是否可以缩放
-      rotatable: true, //是否可旋转
-      scalable: true, //是否可翻转
-      transition: true, //使用 CSS3 过度
-      fullscreen: true, //播放时是否全屏
-      keyboard: true, //是否支持键盘
-    },
-  })
-  .mount("#app");
+
+function mountApp() {
+  app
+    .use(router)
+    .use(VueLazyLoad, {
+      // options...
+    })
+    .use(VueViewer, {
+      defaultOptions: {
+        inline: true,
+        button: true, //右上角按钮
+        navbar: true, //底部缩略图
+        title: true, //当前图片标题
+        toolbar: true, //底部工具栏
+        tooltip: true, //显示缩放百分比
+        movable: true, //是否可以移动
+        zoomable: true, //是否可以缩放
+        rotatable: true, //是否可旋转
+        scalable: true, //是否可翻转
+        transition: true, //使用 CSS3 过度
+        fullscreen: true, //播放时是否全屏
+        keyboard: true, //是否支持键盘
+      },
+    })
+    .mount("#app");
+}
+
+// 动态路由必须在 app.use(router)（首帧解析）前注册好，否则首帧解析深链时路由表里
+// 还没有这些路由，会先报「No match found for location」再靠守卫重导航兜底（首页闪烁）。
+// 未登录时不做任何事，交由路由守卫跳登录。
+void preloadDynamicRoutes().finally(mountApp);

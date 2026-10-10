@@ -38,9 +38,9 @@ const TaskScreen: React.FC = () => {
   const navigation = useNavigation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<
-    'ALL' | TaskCategory
-  >('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<'ALL' | TaskCategory>(
+    'ALL',
+  );
   const [isLoading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -156,13 +156,10 @@ const TaskScreen: React.FC = () => {
     }
   }, [hasMore, refreshing, currentPage, loadTasks]);
 
-  const handleStatusFilterChange = useCallback(
-    (status: TaskStatus | 'ALL') => {
-      setStatusFilter(status);
-      setCurrentPage(1);
-    },
-    [],
-  );
+  const handleStatusFilterChange = useCallback((status: TaskStatus | 'ALL') => {
+    setStatusFilter(status);
+    setCurrentPage(1);
+  }, []);
 
   const handleCategoryFilterChange = useCallback(
     (category: 'ALL' | TaskCategory) => {
@@ -173,31 +170,32 @@ const TaskScreen: React.FC = () => {
   );
 
   const handleCancel = useCallback((task: Task) => {
-    Alert.alert('取消任务', `确认取消任务 ${task.taskId} 吗？此操作不可恢复。`, [
-      { text: '返回', style: 'cancel' },
-      {
-        text: '确认取消',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await taskApi.cancel(task.taskId);
-            setTasks(prev =>
-              prev.map(t =>
-                t.taskId === task.taskId
-                  ? { ...t, status: TaskStatusEnum.CANCELLED }
-                  : t,
-              ),
-            );
-          } catch (err: unknown) {
-            const e = err as { msg?: string; message?: string };
-            Alert.alert(
-              '取消失败',
-              e?.msg || e?.message || '请稍后重试',
-            );
-          }
+    Alert.alert(
+      '取消任务',
+      `确认取消任务 ${task.taskId} 吗？此操作不可恢复。`,
+      [
+        { text: '返回', style: 'cancel' },
+        {
+          text: '确认取消',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await taskApi.cancel(task.taskId);
+              setTasks(prev =>
+                prev.map(t =>
+                  t.taskId === task.taskId
+                    ? { ...t, status: TaskStatusEnum.CANCELLED }
+                    : t,
+                ),
+              );
+            } catch (err: unknown) {
+              const e = err as { msg?: string; message?: string };
+              Alert.alert('取消失败', e?.msg || e?.message || '请稍后重试');
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   }, []);
 
   const handleDownload = useCallback(async (task: Task) => {
@@ -226,8 +224,10 @@ const TaskScreen: React.FC = () => {
 
   const renderItem = useCallback(
     ({ item }: { item: Task }) => {
-      const statusInfo = TASK_STATUS_MAP[item.status] || TASK_STATUS_MAP[TaskStatusEnum.PENDING];
-      const typeLabel = TASK_TYPE_MAP[item.taskType || ''] || item.taskType || '任务';
+      const statusInfo =
+        TASK_STATUS_MAP[item.status] || TASK_STATUS_MAP[TaskStatusEnum.PENDING];
+      const typeLabel =
+        TASK_TYPE_MAP[item.taskType || ''] || item.taskType || '任务';
       const isActive = !isTerminal(item);
       const canCancel = isCancellable(item);
       const canDownload = item.status === TaskStatusEnum.COMPLETED;
@@ -241,7 +241,10 @@ const TaskScreen: React.FC = () => {
               <Text style={styles.typeText}>{typeLabel}</Text>
             </View>
             <View
-              style={[styles.statusBadge, { backgroundColor: statusInfo.bgColor }]}
+              style={[
+                styles.statusBadge,
+                { backgroundColor: statusInfo.bgColor },
+              ]}
             >
               <Text style={[styles.statusText, { color: statusInfo.color }]}>
                 {statusInfo.label}
@@ -262,7 +265,10 @@ const TaskScreen: React.FC = () => {
                   style={[
                     styles.progressFill,
                     {
-                      width: `${Math.min(100, Math.max(0, item.progress || 0))}%`,
+                      width: `${Math.min(
+                        100,
+                        Math.max(0, item.progress || 0),
+                      )}%`,
                       backgroundColor: statusInfo.color,
                     },
                   ]}
@@ -315,7 +321,11 @@ const TaskScreen: React.FC = () => {
                 onPress={() => handleCancel(item)}
                 activeOpacity={0.8}
               >
-                <Icon name="cancel" size={14} color={theme.colors.status.error} />
+                <Icon
+                  name="cancel"
+                  size={14}
+                  color={theme.colors.status.error}
+                />
                 <Text style={styles.cancelBtnText}>取消</Text>
               </TouchableOpacity>
             ) : null}
@@ -325,7 +335,11 @@ const TaskScreen: React.FC = () => {
                 onPress={() => handleDownload(item)}
                 activeOpacity={0.8}
               >
-                <Icon name="download" size={14} color={theme.colors.text.inverse} />
+                <Icon
+                  name="download"
+                  size={14}
+                  color={theme.colors.text.inverse}
+                />
                 <Text style={styles.downloadBtnText}>下载</Text>
               </TouchableOpacity>
             ) : null}
@@ -348,7 +362,11 @@ const TaskScreen: React.FC = () => {
 
   return (
     <View style={styles.screenContainer}>
-      <AppHeader title="任务中心" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="任务中心"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.container}>
         {/* 任务类别筛选 */}
         <View style={styles.categoryBar}>
@@ -362,12 +380,14 @@ const TaskScreen: React.FC = () => {
                   isActive && styles.activeCategoryChip,
                 ]}
                 onPress={() => handleCategoryFilterChange(f.value)}
-                activeOpacity={0.8}>
+                activeOpacity={0.8}
+              >
                 <Text
                   style={[
                     styles.categoryChipText,
                     isActive && styles.activeCategoryChipText,
-                  ]}>
+                  ]}
+                >
                   {f.label}
                 </Text>
               </TouchableOpacity>
@@ -382,10 +402,7 @@ const TaskScreen: React.FC = () => {
             return (
               <TouchableOpacity
                 key={f.key}
-                style={[
-                  styles.filterChip,
-                  isActive && styles.activeFilterChip,
-                ]}
+                style={[styles.filterChip, isActive && styles.activeFilterChip]}
                 onPress={() => handleStatusFilterChange(f.key)}
                 activeOpacity={0.8}
               >

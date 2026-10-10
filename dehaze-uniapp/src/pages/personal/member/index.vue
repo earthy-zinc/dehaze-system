@@ -20,17 +20,19 @@
       </view>
 
       <view class="usage-card">
-        <text class="section-title">本月用量</text>
+        <text class="section-title">积分用量</text>
         <view class="usage-row">
           <view class="usage-item">
-            <text class="usage-num">{{ summary?.imageCategory?.remaining ?? 0 }}</text>
-            <text class="usage-label">图像处理剩余</text>
+            <text class="usage-num">{{
+              summary?.aiCategory?.creditsBalance ?? 0
+            }}</text>
+            <text class="usage-label">积分余额</text>
           </view>
           <view class="usage-item">
             <text class="usage-num">{{
-              summary?.evaluateCategory?.remaining ?? 0
+              summary?.aiCategory?.todayUsed ?? 0
             }}</text>
-            <text class="usage-label">评估剩余</text>
+            <text class="usage-label">今日已用</text>
           </view>
         </view>
       </view>
@@ -82,8 +84,9 @@ const profile = ref<MemberProfileVO>({
 const summary = ref<BenefitSummaryVO>();
 
 const BENEFIT_LABELS: Record<string, string> = {
-  monthlyDehazeQuota: "每月去雾次数",
-  monthlyEvaluateQuota: "每月评估次数",
+  aiCreditsMonthly: "每月赠送积分",
+  aiCreditsDaily: "每日积分上限",
+  vipGiftCredits: "开通赠送积分",
   historyRetention: "历史保留(天)",
   batchLimit: "批量上限",
   priority: "优先级",

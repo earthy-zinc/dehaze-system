@@ -6,21 +6,22 @@ import '../models/favorite_model.dart';
 
 /// 收藏管理服务
 ///
-/// 为算法、数据集等业务实体提供统一的收藏能力。
+/// 为模型、数据集等业务实体提供统一的收藏能力。
 /// 对齐 JS SDK FavoriteAPI 全部方法。
 class FavoriteService {
   const FavoriteService(this._dio);
 
   final Dio _dio;
 
-  /// 收藏列表分页查询（支持类型筛选、排序）
-  Future<PageResult<FavoriteVO>> getPage(FavoriteQuery query) async {
+  /// 收藏列表分页查询（支持类型筛选、关键词搜索、排序）
+  Future<PageResult<FavoriteVO>> getPage([FavoriteQuery? query]) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.favoritesPage,
-      queryParameters: query.toQuery(),
+      queryParameters: query?.toQuery(),
     );
     final data = response.data!['data'] as Map<String, dynamic>;
-    final list = (data['list'] as List<dynamic>?)
+    final list =
+        (data['list'] as List<dynamic>?)
             ?.map((e) => FavoriteVO.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
@@ -38,53 +39,40 @@ class FavoriteService {
     );
   }
 
-  /// 取消收藏
-  Future<void> remove(int targetId, String targetType) async {
+  /// 批量取消收藏（入参为收藏记录 ID，非业务对象 ID）
+  Future<void> deleteByIds(List<int> ids) async {
     await _dio.delete<Map<String, dynamic>>(
-      ApiConstants.favorites,
-      queryParameters: {
-        'targetId': targetId,
-        'targetType': targetType,
-      },
+      '${ApiConstants.favorites}/${ids.join(',')}',
     );
   }
 
   /// 检查指定对象是否已收藏（用于前端图标状态判断）
-  Future<FavoriteStatus> check(int targetId, String targetType) async {
+  Future<FavoriteStatus> getStatus(
+    int targetId,
+    FavoriteTargetType targetType,
+  ) async {
     final response = await _dio.get<Map<String, dynamic>>(
-      '${ApiConstants.favorites}/check',
-      queryParameters: {
-        'targetId': targetId,
-        'targetType': targetType,
-      },
+      '${ApiConstants.favorites}/$targetId/status',
+      queryParameters: {'targetType': targetType.wireValue},
     );
     return FavoriteStatus.fromJson(
       response.data!['data'] as Map<String, dynamic>,
     );
   }
 
-  /// 收藏数量统计
-  Future<FavoriteCount> count(int targetId, String targetType) async {
+  /// 收藏数量统计（按类型分组）
+  ///
+  /// 不传 [targetType] 时返回全部类型的计数，求和即为当前用户收藏总数。
+  Future<List<FavoriteCount>> count([FavoriteTargetType? targetType]) async {
     final response = await _dio.get<Map<String, dynamic>>(
       ApiConstants.favoritesCount,
-      queryParameters: {
-        'targetId': targetId,
-        'targetType': targetType,
-      },
+      queryParameters: targetType == null
+          ? null
+          : {'targetType': targetType.wireValue},
     );
-    return FavoriteCount.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
-  }
-
-  /// 切换收藏状态（已收藏则取消，未收藏则添加）
-  Future<void> toggle(int targetId, String targetType) async {
-    await _dio.post<Map<String, dynamic>>(
-      '${ApiConstants.favorites}/toggle',
-      data: {
-        'targetId': targetId,
-        'targetType': targetType,
-      },
-    );
+    final list = response.data!['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => FavoriteCount.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

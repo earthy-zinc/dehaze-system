@@ -17,3 +17,15 @@ export function formatDuration(ms: number): string {
   const remSec = sec % 60;
   return `${min}m${remSec}s`;
 }
+
+/**
+ * 将秒数格式化为人类可读的耗时字符串
+ *
+ * 后端图像任务与评估的 `time` 字段统一为秒，直接展示无需换算。
+ */
+export function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const min = Math.floor(seconds / 60);
+  const remSec = Math.floor(seconds % 60);
+  return `${min}m${remSec}s`;
+}

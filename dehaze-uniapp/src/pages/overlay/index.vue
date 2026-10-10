@@ -74,12 +74,12 @@
         </view>
       </view>
 
-      <!-- 算法信息 -->
-      <view v-if="algorithm" class="info-card">
-        <text class="card-title">算法信息</text>
+      <!-- 模型信息 -->
+      <view v-if="model" class="info-card">
+        <text class="card-title">模型信息</text>
         <view class="info-row">
-          <text class="info-label">算法名称</text>
-          <text class="info-value">{{ algorithm.name }}</text>
+          <text class="info-label">模型名称</text>
+          <text class="info-value">{{ model.displayName }}</text>
         </view>
         <view v-if="result?.time !== undefined" class="info-row">
           <text class="info-label">处理耗时</text>
@@ -112,9 +112,9 @@
           <SvgIcon name="refresh" size="18" color="rgba(255,255,255,0.7)" />
           <text>重新处理</text>
         </view>
-        <view class="action-item" @click="handleChangeAlgorithm">
+        <view class="action-item" @click="handleChangeModel">
           <SvgIcon name="swap" size="18" color="rgba(255,255,255,0.7)" />
-          <text>换算法</text>
+          <text>换模型</text>
         </view>
         <view class="action-item" @click="handleFavorite">
           <SvgIcon
@@ -152,10 +152,10 @@ let playDirection = 1;
 
 const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
-const algorithm = computed(() => store.selectedAlgorithm);
+const model = computed(() => store.selectedModel);
 const result = computed(() => store.result);
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
-const resultId = computed(() => store.result?.logId);
+const resultId = computed(() => store.result?.taskId);
 
 const clipStyle = computed(() => {
   if (isVertical.value) {
@@ -294,8 +294,8 @@ function handleReprocess() {
   uni.redirectTo({ url: "/pages/processing/index" });
 }
 
-function handleChangeAlgorithm() {
-  uni.redirectTo({ url: "/pages/algorithm-select/index" });
+function handleChangeModel() {
+  uni.redirectTo({ url: "/pages/processing/index" });
 }
 
 async function handleFavorite() {

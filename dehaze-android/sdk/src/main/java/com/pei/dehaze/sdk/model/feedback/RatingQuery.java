@@ -8,7 +8,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class RatingQuery extends PageQuery {
     private String keywords;
-    private Long algorithmId;
+    private String modelId;
     private Integer ratingMin;
     private Integer ratingMax;
     private Boolean hasComment;

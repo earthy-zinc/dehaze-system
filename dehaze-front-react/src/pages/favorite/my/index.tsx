@@ -1,5 +1,6 @@
 import {
   FavoriteAPI,
+  type FavoriteQuery,
   type FavoriteTargetType,
   type FavoriteVO,
 } from "dehaze-sdk-js";
@@ -9,7 +10,6 @@ import {
   EyeOutlined,
   HeartOutlined,
   SearchOutlined,
-  SortAscendingOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -21,7 +21,6 @@ import {
   Pagination as AntPagination,
   Popconfirm,
   Row,
-  Select,
   Space,
   Tag,
   Tabs,
@@ -41,7 +40,7 @@ const TARGET_TYPE_MAP: Record<
   FavoriteTargetType,
   { label: string; color: string }
 > = {
-  algorithm: { label: "算法", color: "blue" },
+  model: { label: "模型", color: "blue" },
   result: { label: "结果", color: "green" },
   dataset: { label: "数据集", color: "orange" },
   image: { label: "图片", color: "purple" },
@@ -51,7 +50,7 @@ const TARGET_TYPE_MAP: Record<
 const TABS: { key: string; label: string; targetType?: FavoriteTargetType }[] =
   [
     { key: "all", label: "全部" },
-    { key: "algorithm", label: "算法", targetType: "algorithm" },
+    { key: "model", label: "模型", targetType: "model" },
     { key: "result", label: "结果", targetType: "result" },
     { key: "dataset", label: "数据集", targetType: "dataset" },
     { key: "image", label: "图片", targetType: "image" },
@@ -65,64 +64,41 @@ export default function MyFavorites() {
   const [total, setTotal] = useState(0);
   const [currentTab, setCurrentTab] = useState("all");
   const [keywords, setKeywords] = useState("");
-  const [sortBy, setSortBy] = useState("createTime");
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
-  const loadData = useCallback(
-    async (params: {
-      page: number;
-      pageSize: number;
-      sortBy?: "createTime" | "rating" | "usageCount";
-      sortOrder?: "asc" | "desc";
-      targetType?: FavoriteTargetType;
-      keywords?: string;
-    }) => {
-      setLoading(true);
-      try {
-        const result = await FavoriteAPI.getPage(params);
-        const items: FavoriteItem[] = (result.list || []).map((item) => ({
-          ...item,
-          isInvalid: !item.targetId,
-        }));
-        setFavorites(items);
-        setTotal(result.total || 0);
-      } catch (err: unknown) {
-        const messageErr = err as { message?: string };
-        message.error(messageErr.message || "加载收藏列表失败");
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+  const loadData = useCallback(async (params: FavoriteQuery) => {
+    setLoading(true);
+    try {
+      const result = await FavoriteAPI.getPage(params);
+      const items: FavoriteItem[] = (result.list || []).map((item) => ({
+        ...item,
+        isInvalid: !item.targetId,
+      }));
+      setFavorites(items);
+      setTotal(result.total || 0);
+    } catch (err: unknown) {
+      const messageErr = err as { message?: string };
+      message.error(messageErr.message || "加载收藏列表失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   const loadFavorites = useCallback(
     (p = 1) => {
-      const params: {
-        page: number;
-        pageSize: number;
-        sortBy: "createTime" | "rating" | "usageCount";
-        sortOrder: "asc" | "desc";
-        targetType?: FavoriteTargetType;
-        keywords?: string;
-      } = {
-        page: p,
-        pageSize,
-        sortBy: sortBy as "createTime" | "rating" | "usageCount",
-        sortOrder: "desc" as const,
-      };
       const targetType = TABS.find((t) => t.key === currentTab)?.targetType;
-      if (targetType) {
-        params.targetType = targetType;
-      }
-      if (keywords.trim()) {
-        params.keywords = keywords.trim();
-      }
-      loadData(params);
+      loadData({
+        pageNum: p,
+        pageSize,
+        sortBy: "createTime",
+        sortOrder: "desc",
+        targetType,
+        keywords: keywords.trim() || undefined,
+      });
       setPage(p);
     },
-    [currentTab, keywords, sortBy, loadData]
+    [currentTab, keywords, loadData]
   );
 
   useEffect(() => {
@@ -147,7 +123,7 @@ export default function MyFavorites() {
   const handleCardClick = (item: FavoriteItem) => {
     if (item.isInvalid) return;
     const routeMap: Record<FavoriteTargetType, string> = {
-      algorithm: `/algorithm/${item.targetId}`,
+      model: "/presentation/dehaze",
       result: `/task/result/${item.targetId}`,
       dataset: `/dataset/${item.targetId}`,
       image: `/image/${item.targetId}`,
@@ -169,19 +145,6 @@ export default function MyFavorites() {
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               allowClear
-            />
-          </Col>
-          <Col span={6}>
-            <Select
-              value={sortBy}
-              onChange={setSortBy}
-              options={[
-                { label: "最新收藏", value: "createTime" },
-                { label: "评分最高", value: "rating" },
-                { label: "使用最多", value: "usageCount" },
-              ]}
-              style={{ width: "100%" }}
-              prefix={<SortAscendingOutlined />}
             />
           </Col>
         </Row>

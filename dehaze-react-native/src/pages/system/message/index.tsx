@@ -1,9 +1,15 @@
 /**
  * 消息管理（管理侧）- 公告/模板/群发
- * 权限：sys:notify:*
+ * 权限：notify:*
  */
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -21,9 +27,24 @@ interface EntryItem {
 }
 
 const ENTRIES: EntryItem[] = [
-  { label: '公告管理', icon: 'megaphone-outline', route: 'SystemMessageAnnouncement', desc: '创建和管理系统公告' },
-  { label: '消息模板', icon: 'document-text-outline', route: 'SystemMessageTemplate', desc: '管理消息模板' },
-  { label: '群发消息', icon: 'send-outline', route: 'SystemMessageSend', desc: '向用户群发消息' },
+  {
+    label: '公告管理',
+    icon: 'megaphone-outline',
+    route: 'SystemMessageAnnouncement',
+    desc: '创建和管理系统公告',
+  },
+  {
+    label: '消息模板',
+    icon: 'document-text-outline',
+    route: 'SystemMessageTemplate',
+    desc: '管理消息模板',
+  },
+  {
+    label: '群发消息',
+    icon: 'send-outline',
+    route: 'SystemMessageSend',
+    desc: '向用户群发消息',
+  },
 ];
 
 const SystemMessageScreen: React.FC<Props> = ({ navigation }) => {
@@ -33,9 +54,16 @@ const SystemMessageScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AppHeader title="消息管理" showBack onBackPress={() => navigation.goBack()} />
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {ENTRIES.map((entry) => (
+      <AppHeader
+        title="消息管理"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        {ENTRIES.map(entry => (
           <TouchableOpacity
             key={entry.route}
             style={styles.card}
@@ -43,13 +71,21 @@ const SystemMessageScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => handleEntryPress(entry.route)}
           >
             <View style={styles.iconWrap}>
-              <Ionicons name={entry.icon} size={28} color={theme.colors.primary} />
+              <Ionicons
+                name={entry.icon}
+                size={28}
+                color={theme.colors.primary}
+              />
             </View>
             <View style={styles.info}>
               <Text style={styles.label}>{entry.label}</Text>
               <Text style={styles.desc}>{entry.desc}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.text.tertiary}
+            />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -79,8 +115,16 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
   },
   info: { flex: 1 },
-  label: { fontSize: theme.typography.sizes.medium, fontWeight: theme.typography.weights.semibold, color: theme.colors.text.primary },
-  desc: { fontSize: theme.typography.sizes.small, color: theme.colors.text.tertiary, marginTop: 2 },
+  label: {
+    fontSize: theme.typography.sizes.medium,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  desc: {
+    fontSize: theme.typography.sizes.small,
+    color: theme.colors.text.tertiary,
+    marginTop: 2,
+  },
 });
 
 export default SystemMessageScreen;

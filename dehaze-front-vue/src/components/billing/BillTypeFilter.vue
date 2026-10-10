@@ -10,6 +10,7 @@ export const BILL_TYPE_OPTIONS: { value: BillingType | ""; label: string }[] = [
   { value: "asr", label: "语音识别" },
   { value: "tts", label: "语音合成" },
   { value: "tool_llm", label: "工具" },
+  { value: "image", label: "图像处理" },
 ];
 </script>
 

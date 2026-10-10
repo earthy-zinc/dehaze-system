@@ -4,20 +4,21 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.pei.dehaze.repository.RepositoryAdapters;
-import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.AiImageAPI;
+import com.pei.dehaze.sdk.api.AiModelAPI;
 import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.ui.common.BaseViewModel;
-import com.pei.dehaze.sdk.model.Option;
-import com.pei.dehaze.sdk.model.algorithm.Algorithm;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.evaluation.EvalParam;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
 import com.pei.dehaze.sdk.model.evaluation.EvaluationLogVO;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
-import com.pei.dehaze.sdk.model.prediction.PredParam;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.image_task.ImageEditForm;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskStatus;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -27,10 +28,9 @@ public class EvaluationViewModel extends BaseViewModel {
 
     private final MutableLiveData<FileInfo> hazyFile = new MutableLiveData<>();
     private final MutableLiveData<FileInfo> clearFile = new MutableLiveData<>();
-    private final MutableLiveData<List<Option>> algorithmOptions = new MutableLiveData<>();
-    private final MutableLiveData<PredResult> predictionResult = new MutableLiveData<>();
+    private final MutableLiveData<List<AiModelVO>> models = new MutableLiveData<>();
+    private final MutableLiveData<ImageTaskResponse> predictionResult = new MutableLiveData<>();
     private final MutableLiveData<EvalResult> evaluationResult = new MutableLiveData<>();
-    private final MutableLiveData<Algorithm> algorithmInfo = new MutableLiveData<>();
     private final MutableLiveData<List<EvaluationLogVO>> evaluationLogs = new MutableLiveData<>();
 
     public void uploadHazyImage(File imageFile) {
@@ -47,11 +47,12 @@ public class EvaluationViewModel extends BaseViewModel {
         })));
     }
 
-    public void loadAlgorithmOptions() {
-        AlgorithmAPI.getOption(RepositoryAdapters.wrap(withLoading(algorithmOptions::postValue)));
+    public void loadModels() {
+        AiModelAPI.listEnabledModels("image_edit", null,
+                RepositoryAdapters.wrap(withLoading(models::postValue)));
     }
 
-    public void predict(long algorithmId, DehazeParams params) {
+    public void predict(String modelId, DehazeParams params) {
         FileInfo hazy = hazyFile.getValue();
         if (hazy == null || hazy.getUrl() == null) {
             error.setValue("请先上传有雾图片");
@@ -63,12 +64,12 @@ public class EvaluationViewModel extends BaseViewModel {
             error.setValue(invalidMsg);
             return;
         }
-        PredParam param = new PredParam();
-        param.setAlgorithmId(algorithmId);
-        param.setImageUrl(hazy.getUrl());
-        param.setParams(actualParams);
-        ModelAPI.predictAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
-            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+        ImageEditForm form = new ImageEditForm();
+        form.setModel(modelId);
+        form.setImageUrl(hazy.getUrl());
+        form.setParams(actualParams);
+        AiImageAPI.submitAndWait(form, RepositoryAdapters.wrap(withLoading(result -> {
+            if (result.getStatus() == ImageTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "去雾处理失败");
                 return;
             }
@@ -77,8 +78,8 @@ public class EvaluationViewModel extends BaseViewModel {
         })));
     }
 
-    public void evaluate(long algorithmId) {
-        PredResult pred = predictionResult.getValue();
+    public void evaluate(String modelId) {
+        ImageTaskResponse pred = predictionResult.getValue();
         FileInfo clear = clearFile.getValue();
         if (pred == null || pred.getResultUrl() == null) {
             error.setValue("请先执行去雾处理");
@@ -89,11 +90,11 @@ public class EvaluationViewModel extends BaseViewModel {
             return;
         }
         EvalParam param = new EvalParam();
-        param.setAlgorithmId(algorithmId);
+        param.setModelId(modelId);
         param.setPredUrl(pred.getResultUrl());
         param.setGtUrl(clear.getUrl());
         ModelAPI.evaluateAndWait(param, RepositoryAdapters.wrap(withLoading(result -> {
-            if (result.getStatus() == PredEvalTaskStatus.FAILED) {
+            if (result.getStatus() == EvalTaskStatus.FAILED) {
                 error.postValue(result.getErrorMessage() != null ? result.getErrorMessage() : "评估失败");
                 return;
             }
@@ -101,10 +102,6 @@ public class EvaluationViewModel extends BaseViewModel {
             operationResult.postValue("评估完成");
             loadEvaluationLogs();
         })));
-    }
-
-    public void getAlgorithmInfo(int id) {
-        AlgorithmAPI.getAlgorithmInfoById(id, RepositoryAdapters.wrap(withLoading(algorithmInfo::postValue)));
     }
 
     public void loadEvaluationLogs() {
@@ -120,20 +117,16 @@ public class EvaluationViewModel extends BaseViewModel {
         return clearFile;
     }
 
-    public LiveData<List<Option>> getAlgorithmOptions() {
-        return algorithmOptions;
+    public LiveData<List<AiModelVO>> getModels() {
+        return models;
     }
 
-    public LiveData<PredResult> getPredictionResult() {
+    public LiveData<ImageTaskResponse> getPredictionResult() {
         return predictionResult;
     }
 
     public LiveData<EvalResult> getEvaluationResult() {
         return evaluationResult;
-    }
-
-    public LiveData<Algorithm> getAlgorithmInfo() {
-        return algorithmInfo;
     }
 
     public LiveData<List<EvaluationLogVO>> getEvaluationLogs() {

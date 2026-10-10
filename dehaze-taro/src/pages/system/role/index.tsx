@@ -170,7 +170,7 @@ const RoleListPage: React.FC = () => {
           roles.map((role) => (
             <SwipeCell key={role.id} className="role-swipe-cell">
               <SwipeCell.Actions side="right">
-                {hasPermission("sys:role:permission") && (
+                {hasPermission("sys:role:edit") && (
                   <Button
                     className="action-btn permission-btn"
                     size="small"

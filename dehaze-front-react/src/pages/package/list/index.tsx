@@ -240,7 +240,8 @@ const PackageManagement: React.FC = () => {
         key: "period",
         width: 100,
         align: "center",
-        render: (period: string) => (period ? PERIOD_LABEL[period] || period : "—"),
+        render: (period: string) =>
+          period ? PERIOD_LABEL[period] || period : "—",
       },
       {
         title: "原价",

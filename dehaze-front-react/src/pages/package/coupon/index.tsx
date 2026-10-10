@@ -5,6 +5,7 @@ import {
   type CouponVO,
 } from "dehaze-sdk-js";
 import { useHasPerm } from "@/hooks/usePermission";
+import { fenToYuan } from "@/utils/format";
 import {
   Button,
   Card,
@@ -69,9 +70,10 @@ const TYPE_LABEL: Record<string, string> = {
 
 const formatFaceValue = (coupon: CouponVO) => {
   if (coupon.type === "discount") {
-    return `${coupon.faceValue}折`;
+    // 折扣券 faceValue 为用户支付百分比（85 = 8.5 折）
+    return `${parseFloat((coupon.faceValue / 10).toFixed(1))}折`;
   }
-  return `¥${(coupon.faceValue ?? 0).toFixed(2)}`;
+  return `¥${fenToYuan(coupon.faceValue)}`;
 };
 
 const formatValidRange = (coupon: CouponVO) => {
@@ -203,7 +205,7 @@ const CouponManagement: React.FC = () => {
         align: "right",
         render: (threshold?: number) =>
           threshold ? (
-            `满¥${(threshold ?? 0).toFixed(2)}`
+            `满¥${fenToYuan(threshold)}`
           ) : (
             <span className="text-secondary">无门槛</span>
           ),

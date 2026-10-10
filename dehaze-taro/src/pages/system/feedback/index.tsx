@@ -1,7 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
-import { Tag, Loading, Empty, Tabs, Popup, Input, Textarea } from "@taroify/core";
+import {
+  Tag,
+  Loading,
+  Empty,
+  Tabs,
+  Popup,
+  Input,
+  Textarea,
+} from "@taroify/core";
 import { FeedbackAPI } from "dehaze-sdk-js";
 import type {
   FeedbackPageVO,
@@ -31,7 +39,7 @@ const FEEDBACK_TYPE_LABELS: Record<string, string> = {
 
 const FeedbackManagePage: React.FC = () => {
   const { hasPermission } = usePermission();
-  const canManage = hasPermission("sys:feedback:*");
+  const canManage = hasPermission("feedback:*");
 
   const [tab, setTab] = useState(0);
   const [feedbacks, setFeedbacks] = useState<FeedbackPageVO[]>([]);
@@ -340,7 +348,7 @@ const FeedbackManagePage: React.FC = () => {
                 <View key={r.id} className="list-card">
                   <View className="card-header">
                     <View className="card-title-row">
-                      <Text className="card-name">{r.algorithmName}</Text>
+                      <Text className="card-name">{r.modelName}</Text>
                       <Tag size="small" color="warning">
                         {"★".repeat(r.rating)}
                       </Tag>
@@ -421,9 +429,7 @@ const FeedbackManagePage: React.FC = () => {
                   className="form-textarea"
                   placeholder="请输入回复内容"
                   value={replyContent}
-                  onChange={(e) =>
-                    setReplyContent(e.detail?.value || "")
-                  }
+                  onChange={(e) => setReplyContent(e.detail?.value || "")}
                   maxlength={2000}
                 />
               </View>
@@ -458,9 +464,7 @@ const FeedbackManagePage: React.FC = () => {
                   className="form-textarea"
                   placeholder="请填写关闭原因（必填）"
                   value={closeReason}
-                  onChange={(e) =>
-                    setCloseReason(e.detail?.value || "")
-                  }
+                  onChange={(e) => setCloseReason(e.detail?.value || "")}
                   maxlength={500}
                 />
               </View>

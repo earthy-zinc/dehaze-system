@@ -61,10 +61,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
       activeOpacity={1}
     >
       <Animated.View
-        style={[
-          styles.container,
-          { transform: [{ scale: scaleAnim }] },
-        ]}
+        style={[styles.container, { transform: [{ scale: scaleAnim }] }]}
       >
         {/* 缩略图 */}
         <View style={styles.thumbnailContainer}>
@@ -97,10 +94,10 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
 
           <Text style={styles.time}>{formattedTime}</Text>
 
-          {record.algorithmName && (
-            <View style={styles.algorithmTag}>
+          {record.modelName && (
+            <View style={styles.modelTag}>
               <Icon name="code" size={12} color={theme.colors.primary} />
-              <Text style={styles.algorithmText}>{record.algorithmName}</Text>
+              <Text style={styles.modelText}>{record.modelName}</Text>
             </View>
           )}
         </View>
@@ -181,12 +178,12 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     marginBottom: 4,
   },
-  algorithmTag: {
+  modelTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  algorithmText: {
+  modelText: {
     fontSize: theme.typography.sizes.small,
     color: theme.colors.primary,
   },

@@ -14,6 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { fenToYuan } from "@/utils/format";
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: "待支付",
@@ -139,7 +140,7 @@ const OrderStatsDrawer = forwardRef<OrderStatsDrawerRef>((_, ref) => {
             {
               name: "收入",
               type: "bar",
-              data: stats.packageDistribution.map((p) => p.revenue),
+              data: stats.packageDistribution.map((p) => p.revenue / 100),
             },
             {
               name: "订单数",
@@ -174,7 +175,7 @@ const OrderStatsDrawer = forwardRef<OrderStatsDrawerRef>((_, ref) => {
               name: "收入",
               type: "line",
               yAxisIndex: 0,
-              data: stats.dailyStats.map((d) => d.revenue),
+              data: stats.dailyStats.map((d) => d.revenue / 100),
             },
             {
               name: "订单数",
@@ -259,7 +260,7 @@ const OrderStatsDrawer = forwardRef<OrderStatsDrawerRef>((_, ref) => {
                 <Card size="small">
                   <div className="stats-label">总收入</div>
                   <div className="stats-value">
-                    ¥{data.totalRevenue.toFixed(2)}
+                    ¥{fenToYuan(data.totalRevenue)}
                   </div>
                 </Card>
               </Col>
@@ -267,7 +268,7 @@ const OrderStatsDrawer = forwardRef<OrderStatsDrawerRef>((_, ref) => {
                 <Card size="small">
                   <div className="stats-label">总退款</div>
                   <div className="stats-value">
-                    ¥{data.totalRefund.toFixed(2)}
+                    ¥{fenToYuan(data.totalRefund)}
                   </div>
                 </Card>
               </Col>

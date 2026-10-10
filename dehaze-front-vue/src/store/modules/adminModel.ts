@@ -5,12 +5,49 @@ import {
   AiModelType,
   AiModelVO,
   AiProviderAPI,
+  ModelPriceBillingUnit,
   ModelPriceDetailForm,
   ModelPriceQuery,
   ModelPriceVO,
   ProviderVO,
   UsageStatsVO,
 } from "dehaze-sdk-js";
+
+/** model_type → 计价单位（价格版本维度化口径，与后端 billing_unit 同步） */
+export const billingUnitByType: Record<AiModelType, ModelPriceBillingUnit> = {
+  chat: "million_tokens",
+  embedding: "million_tokens",
+  rerank: "million_tokens",
+  image_gen: "image",
+  image_edit: "image",
+  video_gen: "frame",
+  asr: "second",
+  tts: "ten_thousand_chars",
+  // music_gen/3d_gen 计量口径尚未标定，暂复用 image（次/张），接入时再定
+  music_gen: "image",
+  "3d_gen": "image",
+};
+
+/** 计价单位中文标签（积分/xxx） */
+export const billingUnitLabels: Record<ModelPriceBillingUnit, string> = {
+  million_tokens: "百万token",
+  image: "张",
+  second: "秒",
+  ten_thousand_chars: "万字符",
+  frame: "帧",
+};
+
+/** 非 token 计量（张/秒/万字符/帧）的单一档位行 */
+export function createUnitPriceRow(): ModelPriceDetailForm {
+  return {
+    usageKind: "unit",
+    tokenType: "input",
+    timeSlot: "peak",
+    minTokens: 0,
+    maxTokens: null,
+    unitPrice: 0,
+  };
+}
 
 // 管理端模型 Store：模型列表/类型筛选/类型化表单/价格版本/运营视图
 export const useAdminModelStore = defineStore("adminModel", () => {
@@ -124,6 +161,7 @@ export const useAdminModelStore = defineStore("adminModel", () => {
     if (latest) {
       priceRows.push(
         ...latest.details.map((d) => ({
+          usageKind: d.usageKind,
           tokenType: d.tokenType,
           timeSlot: d.timeSlot,
           minTokens: d.minTokens,
@@ -131,6 +169,9 @@ export const useAdminModelStore = defineStore("adminModel", () => {
           unitPrice: Number(d.unitPrice),
         }))
       );
+    } else if (billingUnitByType[model.modelType] !== "million_tokens") {
+      // 非 token 模型无历史版本：预置单一 unit 档
+      priceRows.push(createUnitPriceRow());
     }
   }
 
@@ -151,9 +192,10 @@ export const useAdminModelStore = defineStore("adminModel", () => {
     if (!model) return;
     priceSubmitting.value = true;
     try {
-      await AiModelAPI.createPrice(model.modelId, {
+      await AiModelAPI.createPrice({
         modelId: model.modelId,
         providerId: model.providerId,
+        billingUnit: billingUnitByType[model.modelType],
         details: priceRows.map((row) => ({ ...row })),
       });
       ElMessage.success("价格新版本已保存");

@@ -7,6 +7,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from "react";
+import { fenToYuan } from "@/utils/format";
 
 const PAY_METHOD_OPTIONS: { label: string; value: PayMethod }[] = [
   { label: "微信支付", value: "wechat" },
@@ -125,7 +126,7 @@ const PaymentDialog = forwardRef<PaymentDialogRef, PaymentDialogProps>(
           </div>
           <div className="payment-row">
             <span className="label">应付金额：</span>
-            <span className="pay-amount">¥{payableAmount.toFixed(2)}</span>
+            <span className="pay-amount">¥{fenToYuan(payableAmount)}</span>
           </div>
         </div>
 

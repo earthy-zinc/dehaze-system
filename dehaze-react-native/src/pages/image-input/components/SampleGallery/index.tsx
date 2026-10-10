@@ -22,9 +22,7 @@ interface SampleGalleryProps {
   onSelectSample: (image: SelectedImage) => void;
 }
 
-const SampleGallery: React.FC<SampleGalleryProps> = ({
-  onSelectSample,
-}) => {
+const SampleGallery: React.FC<SampleGalleryProps> = ({ onSelectSample }) => {
   const { columns } = useResponsive();
   const [category, setCategory] = useState<SampleCategory>('all');
   const [samples, setSamples] = useState<SampleImage[]>([]);
@@ -54,41 +52,44 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
   }, []);
 
   // 处理样例选择
-  const handleSamplePress = useCallback(async (sample: SampleImage) => {
-    setLoadingImage(true);
-    try {
-      const width = sample.width || 1920;
-      const height = sample.height || 1080;
+  const handleSamplePress = useCallback(
+    async (sample: SampleImage) => {
+      setLoadingImage(true);
+      try {
+        const width = sample.width || 1920;
+        const height = sample.height || 1080;
 
-      const selectedImage: SelectedImage = {
-        id: sample.id.toString(),
-        url: sample.url,
-        cleanUrl: sample.cleanUrl,
-        thumbUrl: sample.thumbUrl,
-        name: sample.name,
-        width,
-        height,
-        source: 'sample',
-        sampleInfo: {
-          sceneType: sample.sceneType,
-        },
-      };
+        const selectedImage: SelectedImage = {
+          id: sample.id.toString(),
+          url: sample.url,
+          cleanUrl: sample.cleanUrl,
+          thumbUrl: sample.thumbUrl,
+          name: sample.name,
+          width,
+          height,
+          source: 'sample',
+          sampleInfo: {
+            sceneType: sample.sceneType,
+          },
+        };
 
-      onSelectSample(selectedImage);
-    } catch {
-      // 选图失败时仅停止 loading，不弹错误（用户可重试）
-    } finally {
-      setLoadingImage(false);
-    }
-  }, [onSelectSample]);
+        onSelectSample(selectedImage);
+      } catch {
+        // 选图失败时仅停止 loading，不弹错误（用户可重试）
+      } finally {
+        setLoadingImage(false);
+      }
+    },
+    [onSelectSample],
+  );
 
   // 渲染样例卡片
-  const renderSampleCard = useCallback(({ item }: { item: SampleImage }) => (
-    <SampleImageCard
-      sample={item}
-      onPress={handleSamplePress}
-    />
-  ), [handleSamplePress]);
+  const renderSampleCard = useCallback(
+    ({ item }: { item: SampleImage }) => (
+      <SampleImageCard sample={item} onPress={handleSamplePress} />
+    ),
+    [handleSamplePress],
+  );
 
   // 渲染空状态
   const renderEmpty = () => (

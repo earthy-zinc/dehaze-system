@@ -11,7 +11,9 @@
           <view class="pkg-header">
             <text class="pkg-name">{{ pkg.name }}</text>
             <text class="pkg-price"
-              >¥{{ pkg.salePrice }}/{{ periodText(pkg.periodDays) }}</text
+              >¥{{ fenToYuan(pkg.salePrice) }}/{{
+                periodText(pkg.periodDays)
+              }}</text
             >
           </view>
           <text class="pkg-desc" v-if="pkg.description">{{
@@ -44,6 +46,7 @@ import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { PackageAPI } from "dehaze-sdk-js";
 import type { PackageDetailVO } from "dehaze-sdk-js";
+import { fenToYuan } from "@/utils/format";
 
 const loading = ref(false);
 const packages = ref<PackageDetailVO[]>([]);
@@ -88,6 +91,7 @@ onMounted(async () => {
   min-height: 100vh;
   background: $color-bg-primary;
 }
+
 .main-content {
   padding: $spacing-md;
 }
@@ -97,60 +101,70 @@ onMounted(async () => {
   flex-direction: column;
   gap: 16rpx;
 }
+
 .package-card {
+  position: relative;
+  padding: 28rpx;
+  overflow: hidden;
   background: $color-white;
   border-radius: $radius-xl;
-  padding: 28rpx;
   box-shadow: $shadow-sm;
-  position: relative;
-  overflow: hidden;
 }
+
 .pkg-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 12rpx;
 }
+
 .pkg-name {
   font-size: $font-lg;
   font-weight: 700;
   color: $color-text-primary;
 }
+
 .pkg-price {
   font-size: $font-lg;
   font-weight: 700;
   color: $color-warning;
 }
+
 .pkg-desc {
-  font-size: $font-sm;
-  color: $color-text-secondary;
   display: block;
   margin-bottom: 16rpx;
+  font-size: $font-sm;
+  color: $color-text-secondary;
 }
+
 .pkg-features {
   display: flex;
   flex-wrap: wrap;
   gap: 8rpx;
   margin-bottom: 20rpx;
 }
+
 .feature {
+  padding: 6rpx 16rpx;
   font-size: $font-xs;
   color: $color-primary;
   background: $color-primary-bg;
-  padding: 6rpx 16rpx;
   border-radius: 8rpx;
 }
+
 .pkg-action {
   display: flex;
   justify-content: flex-end;
 }
+
 .buy-btn {
+  padding: 16rpx 40rpx;
   font-size: $font-sm;
   font-weight: 600;
   color: $color-white;
   background: $gradient-primary;
-  padding: 16rpx 40rpx;
   border-radius: 12rpx;
+
   &:active {
     opacity: 0.8;
   }
@@ -162,23 +176,27 @@ onMounted(async () => {
   align-items: center;
   padding: 120rpx 0;
 }
+
 .loading-text {
   margin-top: 24rpx;
   font-size: $font-md;
   color: $color-text-placeholder;
 }
+
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 80rpx 0;
 }
+
 .empty-tip {
   font-size: $font-md;
 }
+
 .empty-hint {
+  margin-top: 16rpx;
   font-size: $font-sm;
   color: $color-text-placeholder;
-  margin-top: 16rpx;
 }
 </style>

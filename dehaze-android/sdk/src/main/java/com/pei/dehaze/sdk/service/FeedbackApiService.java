@@ -47,7 +47,7 @@ public interface FeedbackApiService {
             @Query("pageNum") int pageNum,
             @Query("pageSize") int pageSize,
             @Query("keywords") String keywords,
-            @Query("algorithmId") Long algorithmId,
+            @Query("modelId") String modelId,
             @Query("ratingMin") Integer ratingMin,
             @Query("ratingMax") Integer ratingMax,
             @Query("hasComment") Boolean hasComment,

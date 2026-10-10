@@ -8,13 +8,9 @@
  * 注意：导出/下载任务已迁移至统一任务接口 /api/v1/tasks，
  * 请使用 taskApi.create({ type: 'dataset_export' | 'item_download' | 'batch_download', ... }) 创建任务。
  */
-import {
-  DatasetAPI,
-  DatasetItemAPI,
-  ItemFileAPI,
-} from 'dehaze-sdk-js';
+import { DatasetAPI, DatasetItemAPI, ItemFileAPI } from 'dehaze-sdk-js';
 import type {
-  Dataset,
+  DatasetVO,
   DatasetItem,
   DatasetImage,
   DatasetQuery,
@@ -23,7 +19,7 @@ import type {
 import type { PageResult } from 'dehaze-sdk-js';
 
 /** 分页结果 */
-export type DatasetPage = PageResult<Dataset[]>;
+export type DatasetPage = PageResult<DatasetVO[]>;
 export type DatasetItemPage = PageResult<DatasetItem[]>;
 
 export const datasetApi = {
@@ -35,7 +31,7 @@ export const datasetApi = {
   },
 
   /** 懒加载子数据集 */
-  fetchChildren(parentId: number): Promise<Dataset[]> {
+  fetchChildren(parentId: number): Promise<DatasetVO[]> {
     return DatasetAPI.getChildren(parentId);
   },
 
@@ -45,7 +41,7 @@ export const datasetApi = {
   },
 
   /** 获取数据集详情 */
-  fetchDatasetDetail(id: number): Promise<Dataset> {
+  fetchDatasetDetail(id: number): Promise<DatasetVO> {
     return DatasetAPI.getDatasetInfoById(id);
   },
 

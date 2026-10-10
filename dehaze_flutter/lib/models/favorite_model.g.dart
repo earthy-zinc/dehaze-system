@@ -14,7 +14,6 @@ FavoriteForm _$FavoriteFormFromJson(Map<String, dynamic> json) =>
           (v) => $enumDecode(_$FavoriteTargetTypeEnumMap, v),
         ),
         targetId: $checkedConvert('targetId', (v) => (v as num).toInt()),
-        remark: $checkedConvert('remark', (v) => v as String?),
       );
       return val;
     });
@@ -23,73 +22,82 @@ Map<String, dynamic> _$FavoriteFormToJson(FavoriteForm instance) =>
     <String, dynamic>{
       'targetType': _$FavoriteTargetTypeEnumMap[instance.targetType]!,
       'targetId': instance.targetId,
-      if (instance.remark case final value?) 'remark': value,
     };
 
 const _$FavoriteTargetTypeEnumMap = {
-  FavoriteTargetType.algorithm: 'algorithm',
+  FavoriteTargetType.model: 'model',
+  FavoriteTargetType.result: 'result',
   FavoriteTargetType.dataset: 'dataset',
-  FavoriteTargetType.datasetItem: 'datasetItem',
-  FavoriteTargetType.predictionLog: 'predictionLog',
+  FavoriteTargetType.image: 'image',
+  FavoriteTargetType.preset: 'preset',
 };
 
-FavoriteVO _$FavoriteVOFromJson(Map<String, dynamic> json) =>
-    $checkedCreate('FavoriteVO', json, ($checkedConvert) {
-      final val = FavoriteVO(
-        id: $checkedConvert('id', (v) => (v as num).toInt()),
-        userId: $checkedConvert('userId', (v) => (v as num).toInt()),
-        targetType: $checkedConvert('targetType', (v) => v as String),
-        targetId: $checkedConvert('targetId', (v) => (v as num).toInt()),
-        targetName: $checkedConvert('targetName', (v) => v as String?),
-        targetDescription: $checkedConvert(
-          'targetDescription',
-          (v) => v as String?,
-        ),
-        targetImage: $checkedConvert('targetImage', (v) => v as String?),
-        remark: $checkedConvert('remark', (v) => v as String?),
-        createTime: $checkedConvert('createTime', (v) => v as String),
-      );
-      return val;
-    });
+FavoriteVO _$FavoriteVOFromJson(Map<String, dynamic> json) => $checkedCreate(
+  'FavoriteVO',
+  json,
+  ($checkedConvert) {
+    final val = FavoriteVO(
+      id: $checkedConvert('id', (v) => (v as num).toInt()),
+      userId: $checkedConvert('userId', (v) => (v as num).toInt()),
+      targetType: $checkedConvert('targetType', (v) => v as String),
+      targetId: $checkedConvert('targetId', (v) => (v as num).toInt()),
+      createTime: $checkedConvert('createTime', (v) => v as String),
+      targetName: $checkedConvert('targetName', (v) => v as String?),
+      targetSummary: $checkedConvert('targetSummary', (v) => v as String?),
+      targetThumbnail: $checkedConvert('targetThumbnail', (v) => v as String?),
+      isInvalid: $checkedConvert('isInvalid', (v) => v as bool? ?? false),
+    );
+    return val;
+  },
+);
 
-Map<String, dynamic> _$FavoriteVOToJson(
-  FavoriteVO instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'userId': instance.userId,
-  'targetType': instance.targetType,
-  'targetId': instance.targetId,
-  if (instance.targetName case final value?) 'targetName': value,
-  if (instance.targetDescription case final value?) 'targetDescription': value,
-  if (instance.targetImage case final value?) 'targetImage': value,
-  if (instance.remark case final value?) 'remark': value,
-  'createTime': instance.createTime,
-};
+Map<String, dynamic> _$FavoriteVOToJson(FavoriteVO instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'userId': instance.userId,
+      'targetType': instance.targetType,
+      'targetId': instance.targetId,
+      'targetName': ?instance.targetName,
+      'targetSummary': ?instance.targetSummary,
+      'targetThumbnail': ?instance.targetThumbnail,
+      'isInvalid': instance.isInvalid,
+      'createTime': instance.createTime,
+    };
 
 FavoriteStatus _$FavoriteStatusFromJson(Map<String, dynamic> json) =>
     $checkedCreate('FavoriteStatus', json, ($checkedConvert) {
       final val = FavoriteStatus(
         favorited: $checkedConvert('favorited', (v) => v as bool),
+        targetType: $checkedConvert('targetType', (v) => v as String?),
+        targetId: $checkedConvert('targetId', (v) => (v as num?)?.toInt()),
       );
       return val;
     });
 
 Map<String, dynamic> _$FavoriteStatusToJson(FavoriteStatus instance) =>
-    <String, dynamic>{'favorited': instance.favorited};
+    <String, dynamic>{
+      'targetType': ?instance.targetType,
+      'targetId': ?instance.targetId,
+      'favorited': instance.favorited,
+    };
 
 FavoriteCount _$FavoriteCountFromJson(Map<String, dynamic> json) =>
     $checkedCreate('FavoriteCount', json, ($checkedConvert) {
       final val = FavoriteCount(
+        targetType: $checkedConvert('targetType', (v) => v as String),
         count: $checkedConvert('count', (v) => (v as num).toInt()),
       );
       return val;
     });
 
 Map<String, dynamic> _$FavoriteCountToJson(FavoriteCount instance) =>
-    <String, dynamic>{'count': instance.count};
+    <String, dynamic>{
+      'targetType': instance.targetType,
+      'count': instance.count,
+    };
 
 const _$FavoriteSortByEnumMap = {
   FavoriteSortBy.createTime: 'createTime',
-  FavoriteSortBy.name: 'name',
+  FavoriteSortBy.rating: 'rating',
   FavoriteSortBy.usageCount: 'usageCount',
 };

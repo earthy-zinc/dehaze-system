@@ -2,43 +2,43 @@ import React from "react";
 import { View, ScrollView } from "@tarojs/components";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
-import type { Dataset } from "../../services/types";
+import type { DatasetVO } from "../../services/types";
 import DatasetCard from "../DatasetCard";
 import "./DatasetList.less";
 
 interface DatasetListProps {
-  datasets: Dataset[];
+  datasets: DatasetVO[];
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
-  onDatasetClick?: (dataset: Dataset) => void;
+  onDatasetClick?: (dataset: DatasetVO) => void;
   // 树形结构相关
   expandedIds: number[];
-  childrenMap: Record<number, Dataset[]>;
+  childrenMap: Record<number, DatasetVO[]>;
   childrenLoading: Record<number, boolean>;
   onToggleExpand?: (id: number) => void;
   // CRUD 相关
-  onAddChild?: (parent: Dataset) => void;
-  onEdit?: (dataset: Dataset) => void;
-  onDelete?: (dataset: Dataset) => void;
+  onAddChild?: (parent: DatasetVO) => void;
+  onEdit?: (dataset: DatasetVO) => void;
+  onDelete?: (dataset: DatasetVO) => void;
   className?: string;
   browseMode?: boolean;
 }
 
 // 递归树节点渲染
 const TreeNode: React.FC<{
-  dataset: Dataset;
+  dataset: DatasetVO;
   depth: number;
   expandedIds: number[];
-  childrenMap: Record<number, Dataset[]>;
+  childrenMap: Record<number, DatasetVO[]>;
   childrenLoading: Record<number, boolean>;
-  onDatasetClick?: (dataset: Dataset) => void;
+  onDatasetClick?: (dataset: DatasetVO) => void;
   onToggleExpand?: (id: number) => void;
-  onAddChild?: (parent: Dataset) => void;
-  onEdit?: (dataset: Dataset) => void;
-  onDelete?: (dataset: Dataset) => void;
+  onAddChild?: (parent: DatasetVO) => void;
+  onEdit?: (dataset: DatasetVO) => void;
+  onDelete?: (dataset: DatasetVO) => void;
 }> = ({
   dataset,
   depth,

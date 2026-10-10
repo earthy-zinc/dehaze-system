@@ -16,7 +16,7 @@ interface FavoriteState {
 
 const initialState: FavoriteState = {
   status: {
-    algorithm: {},
+    model: {},
     result: {},
     dataset: {},
     image: {},
@@ -85,7 +85,7 @@ const favoriteSlice = createSlice({
     /** 清除所有收藏状态 */
     clearFavorites: (state) => {
       state.status = {
-        algorithm: {},
+        model: {},
         result: {},
         dataset: {},
         image: {},

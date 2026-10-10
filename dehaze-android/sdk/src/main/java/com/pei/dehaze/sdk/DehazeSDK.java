@@ -1,7 +1,8 @@
 package com.pei.dehaze.sdk;
 
-import com.pei.dehaze.sdk.service.AlgorithmApiService;
-import com.pei.dehaze.sdk.service.AlgorithmSelectApiService;
+import com.pei.dehaze.sdk.service.AiBillingApiService;
+import com.pei.dehaze.sdk.service.AiImageApiService;
+import com.pei.dehaze.sdk.service.AiModelApiService;
 import com.pei.dehaze.sdk.service.AnnouncementApiService;
 import com.pei.dehaze.sdk.service.ApiKeyApiService;
 import com.pei.dehaze.sdk.service.AuthApiService;
@@ -27,12 +28,12 @@ import com.pei.dehaze.sdk.service.UserApiService;
 import com.pei.dehaze.sdk.network.TraceInterceptor;
 import com.pei.dehaze.sdk.network.TrackedCallAdapterFactory;
 import com.pei.dehaze.sdk.utils.TokenManager;
-import com.pei.dehaze.sdk.model.algorithm.AlgorithmStatus;
 import com.pei.dehaze.sdk.model.EnableStatus;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskStatus;
 import com.pei.dehaze.sdk.model.input_history.InputSource;
 import com.pei.dehaze.sdk.model.input_history.ProcessStatus;
 import com.pei.dehaze.sdk.model.menu.MenuType;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskStatus;
 import com.pei.dehaze.sdk.model.task.TaskType;
 import com.pei.dehaze.sdk.model.user.Gender;
@@ -67,8 +68,9 @@ public class DehazeSDK {
     private final AuthApiService authApiService;
     private final ApiKeyApiService apiKeyApiService;
     private final UserApiService userApiService;
-    private final AlgorithmApiService algorithmApiService;
-    private final AlgorithmSelectApiService algorithmSelectApiService;
+    private final AiImageApiService aiImageApiService;
+    private final AiModelApiService aiModelApiService;
+    private final AiBillingApiService aiBillingApiService;
     private final FavoriteApiService favoriteApiService;
     private final RecommendationApiService recommendationApiService;
     private final DatasetApiService datasetApiService;
@@ -158,12 +160,6 @@ public class DehazeSDK {
         };
         GsonBuilder gsonBuilder = new GsonBuilder()
                 .registerTypeAdapter(Date.class, dateDeserializer)
-                .registerTypeAdapter(AlgorithmStatus.class,
-                        (JsonDeserializer<AlgorithmStatus>) (json, type, ctx) ->
-                                json.isJsonNull() ? null : AlgorithmStatus.fromValue(json.getAsInt()))
-                .registerTypeAdapter(AlgorithmStatus.class,
-                        (JsonSerializer<AlgorithmStatus>) (src, type, ctx) ->
-                                new JsonPrimitive(src.getValue()))
                 .registerTypeAdapter(TaskStatus.class,
                         (JsonDeserializer<TaskStatus>) (json, type, ctx) ->
                                 json.isJsonNull() ? null : TaskStatus.fromValue(json.getAsString()))
@@ -206,11 +202,17 @@ public class DehazeSDK {
                 .registerTypeAdapter(MenuType.class,
                         (JsonSerializer<MenuType>) (src, type, ctx) ->
                                 new JsonPrimitive(src.getValue()))
-                .registerTypeAdapter(PredEvalTaskStatus.class,
-                        (JsonDeserializer<PredEvalTaskStatus>) (json, type, ctx) ->
-                                json.isJsonNull() ? null : PredEvalTaskStatus.fromValue(json.getAsString()))
-                .registerTypeAdapter(PredEvalTaskStatus.class,
-                        (JsonSerializer<PredEvalTaskStatus>) (src, type, ctx) ->
+                .registerTypeAdapter(ImageTaskStatus.class,
+                        (JsonDeserializer<ImageTaskStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : ImageTaskStatus.fromValue(json.getAsInt()))
+                .registerTypeAdapter(ImageTaskStatus.class,
+                        (JsonSerializer<ImageTaskStatus>) (src, type, ctx) ->
+                                new JsonPrimitive(src.getValue()))
+                .registerTypeAdapter(EvalTaskStatus.class,
+                        (JsonDeserializer<EvalTaskStatus>) (json, type, ctx) ->
+                                json.isJsonNull() ? null : EvalTaskStatus.fromValue(json.getAsInt()))
+                .registerTypeAdapter(EvalTaskStatus.class,
+                        (JsonSerializer<EvalTaskStatus>) (src, type, ctx) ->
                                 new JsonPrimitive(src.getValue()));
         retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -222,8 +224,9 @@ public class DehazeSDK {
         this.authApiService = retrofit.create(AuthApiService.class);
         this.apiKeyApiService = retrofit.create(ApiKeyApiService.class);
         this.userApiService = retrofit.create(UserApiService.class);
-        this.algorithmApiService = retrofit.create(AlgorithmApiService.class);
-        this.algorithmSelectApiService = retrofit.create(AlgorithmSelectApiService.class);
+        this.aiImageApiService = retrofit.create(AiImageApiService.class);
+        this.aiModelApiService = retrofit.create(AiModelApiService.class);
+        this.aiBillingApiService = retrofit.create(AiBillingApiService.class);
         this.favoriteApiService = retrofit.create(FavoriteApiService.class);
         this.recommendationApiService = retrofit.create(RecommendationApiService.class);
         this.datasetApiService = retrofit.create(DatasetApiService.class);

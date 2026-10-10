@@ -1,6 +1,5 @@
 package com.pei.dehaze.ui.dehaze;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,18 +15,17 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.viewpager2.widget.ViewPager2;
 
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentDehazeBinding;
 import com.pei.dehaze.repository.RepositoryAdapters;
+import com.pei.dehaze.sdk.api.AiImageAPI;
 import com.pei.dehaze.sdk.api.FileAPI;
-import com.pei.dehaze.sdk.api.ModelAPI;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredParam;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
-import com.pei.dehaze.ui.algorithm_select.AlgorithmSelectActivity;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.image_task.ImageEditForm;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskStatus;
 import com.pei.dehaze.ui.compare.CompareActivity;
 import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.utils.UriUtils;
@@ -37,7 +35,7 @@ import java.io.File;
 public class DehazeFragment extends Fragment {
 
     private static final int STEP_UPLOAD = 0;
-    private static final int STEP_ALGORITHM = 1;
+    private static final int STEP_MODEL = 1;
     private static final int STEP_PARAMS = 2;
     private static final int STEP_PROCESS = 3;
     private static final int STEP_COMPARE = 4;
@@ -49,19 +47,6 @@ public class DehazeFragment extends Fragment {
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) uploadImage(uri);
-            });
-
-    private final ActivityResultLauncher<Intent> algorithmSelectLauncher =
-            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Intent data = result.getData();
-                    long id = data.getLongExtra(AlgorithmSelectActivity.EXTRA_ALGORITHM_ID, 0L);
-                    String name = data.getStringExtra(AlgorithmSelectActivity.EXTRA_ALGORITHM_NAME);
-                    if (id > 0) {
-                        dehazeViewModel.setSelectedAlgorithm(id, name != null ? name : "未知算法");
-                        goToStep(STEP_PARAMS);
-                    }
-                }
             });
 
     @Nullable
@@ -84,6 +69,7 @@ public class DehazeFragment extends Fragment {
 
         initViews();
         setupObservers();
+        dehazeViewModel.loadModels();
     }
 
     private void initViews() {
@@ -105,9 +91,9 @@ public class DehazeFragment extends Fragment {
             }
         });
 
-        dehazeViewModel.getSelectedAlgorithmName().observe(getViewLifecycleOwner(), name -> {
+        dehazeViewModel.getSelectedModelName().observe(getViewLifecycleOwner(), name -> {
             if (name != null) {
-                ToastUtils.showShort(getContext(), "已选择算法：" + name);
+                ToastUtils.showShort(getContext(), "已选择模型：" + name);
             }
         });
 
@@ -154,8 +140,12 @@ public class DehazeFragment extends Fragment {
             case STEP_UPLOAD:
                 pickImageLauncher.launch("image/*");
                 break;
-            case STEP_ALGORITHM:
-                launchAlgorithmSelect();
+            case STEP_MODEL:
+                if (dehazeViewModel.getSelectedModelId().getValue() == null) {
+                    ToastUtils.showShort(getContext(), "请先选择去雾模型");
+                    return;
+                }
+                goToStep(STEP_PARAMS);
                 break;
             case STEP_PARAMS:
                 goToStep(STEP_PROCESS);
@@ -181,14 +171,6 @@ public class DehazeFragment extends Fragment {
 
     private void goToStep(int step) {
         dehazeViewModel.setCurrentStep(step);
-        binding.viewPager.setCurrentItem(step, true);
-    }
-
-    /**
-     * 供 StepPagerAdapter 中算法选择按钮调用
-     */
-    public void launchAlgorithmSelect() {
-        algorithmSelectLauncher.launch(new Intent(getActivity(), AlgorithmSelectActivity.class));
     }
 
     private void uploadImage(Uri uri) {
@@ -204,7 +186,7 @@ public class DehazeFragment extends Fragment {
                     public void onSuccess(FileInfo data) {
                         dehazeViewModel.setUploadedFile(data);
                         dehazeViewModel.setProcessing(false);
-                        goToStep(STEP_ALGORITHM);
+                        goToStep(STEP_MODEL);
                     }
 
                     @Override
@@ -216,10 +198,16 @@ public class DehazeFragment extends Fragment {
     }
 
     private void startProcessing() {
-        Long algorithmId = dehazeViewModel.getSelectedAlgorithmId().getValue();
-        if (algorithmId == null) {
-            ToastUtils.showShort(getContext(), "请先选择算法");
-            goToStep(STEP_ALGORITHM);
+        String modelId = dehazeViewModel.getSelectedModelId().getValue();
+        FileInfo uploaded = dehazeViewModel.getUploadedFile().getValue();
+        if (modelId == null) {
+            ToastUtils.showShort(getContext(), "请先选择去雾模型");
+            goToStep(STEP_MODEL);
+            return;
+        }
+        if (uploaded == null || uploaded.getId() == null) {
+            ToastUtils.showShort(getContext(), "请先上传图片");
+            goToStep(STEP_UPLOAD);
             return;
         }
 
@@ -228,24 +216,39 @@ public class DehazeFragment extends Fragment {
                 .setMessage("确认开始去雾处理？")
                 .setPositiveButton("确定", (d, w) -> {
                     dehazeViewModel.setProcessing(true);
-                    // 使用实际参数值（DehazeParams 字段为 int 类型，范围 0-100 / 0-200）
+                    // 滑块为 0-1 归一化值，映射到参数实际范围：强度 0-100、饱和度/对比度 0-200
                     DehazeParams params = new DehazeParams();
                     Float strength = dehazeViewModel.getStrength().getValue();
                     Float brightness = dehazeViewModel.getBrightness().getValue();
                     Float contrast = dehazeViewModel.getContrast().getValue();
-                    params.setStrength(strength != null ? Math.round(strength) : 50);
+                    params.setStrength(strength != null ? Math.round(strength * 100) : 50);
                     params.setSaturation(brightness != null ? Math.round(brightness * 200) : 100);
                     params.setContrast(contrast != null ? Math.round(contrast * 200) : 100);
 
-                    PredParam predParam = new PredParam();
-                    predParam.setAlgorithmId(algorithmId);
-                    predParam.setParams(params);
-                    ModelAPI.predictAndWait(predParam, RepositoryAdapters.wrap(
-                            new com.pei.dehaze.repository.RepositoryCallback<PredResult>() {
+                    ImageEditForm form = new ImageEditForm();
+                    form.setModel(modelId);
+                    form.setFileId(uploaded.getId());
+                    form.setParams(params);
+
+                    AiImageAPI.submitAndWait(form, RepositoryAdapters.wrap(
+                            new com.pei.dehaze.repository.RepositoryCallback<ImageTaskResponse>() {
                                 @Override
-                                public void onSuccess(PredResult result) {
+                                public void onSuccess(ImageTaskResponse result) {
                                     dehazeViewModel.setProcessing(false);
                                     dehazeViewModel.setPredictionResult(result);
+                                    if (result == null || result.getStatus() == null) {
+                                        ToastUtils.showShort(getContext(), "处理结果异常，请稍后重试");
+                                        return;
+                                    }
+                                    if (result.getStatus() == ImageTaskStatus.FAILED) {
+                                        ToastUtils.showShort(getContext(), "处理失败: "
+                                                + (result.getErrorMessage() == null ? "未知错误" : result.getErrorMessage()));
+                                        return;
+                                    }
+                                    if (result.getStatus() == ImageTaskStatus.CANCELED) {
+                                        ToastUtils.showShort(getContext(), "任务已取消");
+                                        return;
+                                    }
                                     ToastUtils.showShort(getContext(), "处理完成！");
                                     goToStep(STEP_COMPARE);
                                 }

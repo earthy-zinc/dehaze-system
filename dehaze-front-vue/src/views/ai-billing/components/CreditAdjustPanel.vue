@@ -272,7 +272,12 @@ function handleUserChange() {
 }
 
 async function submit() {
-  await formRef.value?.validate();
+  try {
+    await formRef.value?.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
   submitting.value = true;
   try {
     await billingStore.submitCreditAdjust({

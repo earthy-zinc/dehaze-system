@@ -6,8 +6,7 @@ import {
   BulbOutlined,
   ChartTrendingOutlined,
 } from "@taroify/icons";
-import { AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
+import { AiModelAPI } from "dehaze-sdk-js";
 
 import "./TechSpecs.less";
 
@@ -36,27 +35,23 @@ const SpecCard: React.FC<SpecCardProps> = ({
   );
 };
 
-/** 递归统计算法树节点总数 */
-function countAlgorithmNodes(nodes: Algorithm[]): number {
-  return nodes.reduce(
-    (sum, n) => sum + 1 + (n.children ? countAlgorithmNodes(n.children) : 0),
-    0
-  );
-}
-
 const TechSpecs: React.FC = () => {
-  const [algorithmCount, setAlgorithmCount] = useState<number | null>(null);
+  const [modelCount, setModelCount] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchAlgorithmCount = async () => {
+    const fetchModelCount = async () => {
       try {
-        const tree = await AlgorithmAPI.getList();
-        setAlgorithmCount(countAlgorithmNodes(tree || []));
+        const res = await AiModelAPI.listModels({
+          pageNum: 1,
+          pageSize: 1,
+          modelType: "image_edit",
+        });
+        setModelCount(res.total ?? null);
       } catch {
-        setAlgorithmCount(null);
+        setModelCount(null);
       }
     };
-    fetchAlgorithmCount();
+    fetchModelCount();
   }, []);
 
   const specs = [
@@ -74,9 +69,9 @@ const TechSpecs: React.FC = () => {
     },
     {
       icon: <BulbOutlined size="28" color="#ffffff" />,
-      title: "智能算法",
-      value: algorithmCount === null ? "-" : `${algorithmCount}`,
-      description: "支持多种先进去雾算法",
+      title: "智能模型",
+      value: modelCount === null ? "-" : `${modelCount}`,
+      description: "支持多种先进去雾模型",
     },
     {
       icon: <ChartTrendingOutlined size="28" color="#ffffff" />,

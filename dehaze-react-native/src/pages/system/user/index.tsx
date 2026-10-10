@@ -24,15 +24,18 @@ import type { ProfileStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
 import { useAuthStore } from '@/store';
 import { theme } from '@/theme';
-import { UserAPI } from 'dehaze-sdk-js'
-import type { UserPageVO } from 'dehaze-sdk-js'
+import { UserAPI } from 'dehaze-sdk-js';
+import type { UserPageVO } from 'dehaze-sdk-js';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemUser'>;
 
 const PAGE_SIZE = 15;
 
 const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
-  const hasPerm = useCallback((p: string) => (useAuthStore.getState().userInfo?.perms ?? []).includes(p), []);
+  const hasPerm = useCallback(
+    (p: string) => (useAuthStore.getState().userInfo?.perms ?? []).includes(p),
+    [],
+  );
 
   const [list, setList] = useState<UserPageVO[]>([]);
   const [total, setTotal] = useState(0);
@@ -59,7 +62,7 @@ const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
       if (pn === 1) {
         setList(fetched);
       } else {
-        setList((prev) => [...prev, ...fetched]);
+        setList(prev => [...prev, ...fetched]);
       }
       setTotal(fetchedTotal);
       setPageNum(pn);
@@ -183,34 +186,82 @@ const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.cardName}>{item.nickname}</Text>
           <Text style={styles.cardUsername}>@{item.username}</Text>
         </View>
-        <View style={[styles.statusBadge, item.status === 1 ? styles.statusEnabled : styles.statusDisabled]}>
-          <Text style={[styles.statusText, item.status === 1 ? styles.statusTextEnabled : styles.statusTextDisabled]}>
+        <View
+          style={[
+            styles.statusBadge,
+            item.status === 1 ? styles.statusEnabled : styles.statusDisabled,
+          ]}
+        >
+          <Text
+            style={[
+              styles.statusText,
+              item.status === 1
+                ? styles.statusTextEnabled
+                : styles.statusTextDisabled,
+            ]}
+          >
             {item.status === 1 ? '启用' : '禁用'}
           </Text>
         </View>
       </View>
       {(item.deptName || item.roleNames) && (
         <View style={styles.cardMeta}>
-          {item.deptName && <Text style={styles.metaText}>🏢 {item.deptName}</Text>}
-          {item.roleNames && <Text style={styles.metaText}>🎭 {item.roleNames}</Text>}
+          {item.deptName && (
+            <Text style={styles.metaText}>🏢 {item.deptName}</Text>
+          )}
+          {item.roleNames && (
+            <Text style={styles.metaText}>🎭 {item.roleNames}</Text>
+          )}
         </View>
       )}
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleEdit(item.id!)}>
-          <Ionicons name="create-outline" size={18} color={theme.colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleResetPassword(item)}>
-          <Ionicons name="key-outline" size={18} color={theme.colors.secondary} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleToggleStatus(item)}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => handleEdit(item.id!)}
+        >
           <Ionicons
-            name={item.status === 1 ? 'close-circle-outline' : 'checkmark-circle-outline'}
+            name="create-outline"
             size={18}
-            color={item.status === 1 ? theme.colors.status.warning : theme.colors.status.success}
+            color={theme.colors.primary}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>
-          <Ionicons name="trash-outline" size={18} color={theme.colors.status.error} />
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => handleResetPassword(item)}
+        >
+          <Ionicons
+            name="key-outline"
+            size={18}
+            color={theme.colors.secondary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => handleToggleStatus(item)}
+        >
+          <Ionicons
+            name={
+              item.status === 1
+                ? 'close-circle-outline'
+                : 'checkmark-circle-outline'
+            }
+            size={18}
+            color={
+              item.status === 1
+                ? theme.colors.status.warning
+                : theme.colors.status.success
+            }
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => handleDelete(item)}
+        >
+          <Ionicons
+            name="trash-outline"
+            size={18}
+            color={theme.colors.status.error}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -229,19 +280,33 @@ const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
     if (loading) return null;
     return (
       <View style={styles.empty}>
-        <Ionicons name="people-outline" size={48} color={theme.colors.text.tertiary} />
-        <Text style={styles.emptyText}>{keyword ? '未找到匹配的用户' : '暂无用户数据'}</Text>
+        <Ionicons
+          name="people-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
+        <Text style={styles.emptyText}>
+          {keyword ? '未找到匹配的用户' : '暂无用户数据'}
+        </Text>
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <AppHeader title="用户管理" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="用户管理"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <View style={styles.container}>
         <View style={styles.searchBar}>
           <View style={styles.searchInputWrap}>
-            <Ionicons name="search-outline" size={18} color={theme.colors.text.tertiary} />
+            <Ionicons
+              name="search-outline"
+              size={18}
+              color={theme.colors.text.tertiary}
+            />
             <TextInput
               style={styles.searchInput}
               placeholder="搜索用户名/昵称/手机号"
@@ -261,7 +326,7 @@ const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
         <FlatList
           data={list}
           renderItem={renderItem}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={item => String(item.id)}
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
@@ -288,7 +353,8 @@ const SystemUserScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>重置密码</Text>
               <Text style={styles.modalSubtitle}>
-                为用户 {passwordTarget?.nickname || passwordTarget?.username} 设置新密码
+                为用户 {passwordTarget?.nickname || passwordTarget?.username}{' '}
+                设置新密码
               </Text>
               <TextInput
                 style={styles.modalInput}
@@ -428,8 +494,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footer: { paddingVertical: theme.spacing.md, alignItems: 'center' },
-  empty: { paddingVertical: theme.spacing.xxxl, alignItems: 'center', gap: theme.spacing.sm },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary },
+  empty: {
+    paddingVertical: theme.spacing.xxxl,
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+  },
   // 密码重置 Modal
   modalOverlay: {
     flex: 1,

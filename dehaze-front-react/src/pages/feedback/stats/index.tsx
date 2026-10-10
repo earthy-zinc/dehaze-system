@@ -308,13 +308,11 @@ const FeedbackStats: React.FC = () => {
   const keywordFontSize = (count: number) =>
     Math.round(14 + (count / keywordMax) * 10);
 
-  const algorithmColumns: TableColumnsType<
-    RatingStatsVO["algorithmStats"][number]
-  > = [
+  const modelColumns: TableColumnsType<RatingStatsVO["modelStats"][number]> = [
     {
-      title: "算法",
-      dataIndex: "algorithmName",
-      key: "algorithmName",
+      title: "模型",
+      dataIndex: "modelName",
+      key: "modelName",
       minWidth: 160,
     },
     {
@@ -499,15 +497,15 @@ const FeedbackStats: React.FC = () => {
                   className="section-card"
                   title={
                     <span className="card-title">
-                      <BarChartOutlined /> 算法维度统计
+                      <BarChartOutlined /> 模型维度统计
                     </span>
                   }
                 >
                   <Table
                     size="small"
-                    columns={algorithmColumns}
-                    dataSource={ratingStats?.algorithmStats || []}
-                    rowKey={(record) => record.algorithmId}
+                    columns={modelColumns}
+                    dataSource={ratingStats?.modelStats || []}
+                    rowKey={(record) => record.modelId}
                     pagination={false}
                     bordered
                   />

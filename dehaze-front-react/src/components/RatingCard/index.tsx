@@ -37,7 +37,7 @@ const MAX_IMAGES = 3;
 
 interface RatingCardProps {
   predLogId: number;
-  algorithmName: string;
+  modelName: string;
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
@@ -51,7 +51,7 @@ interface RatingFormValues {
 
 const RatingCard: React.FC<RatingCardProps> = ({
   predLogId,
-  algorithmName,
+  modelName,
   visible,
   onClose,
   onSuccess,
@@ -172,7 +172,7 @@ const RatingCard: React.FC<RatingCardProps> = ({
     >
       <div className="algorithm-tip">
         <PictureOutlined />
-        <span>{algorithmName}</span>
+        <span>{modelName}</span>
       </div>
 
       <Form

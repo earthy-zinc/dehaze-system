@@ -118,8 +118,18 @@
                 {{ detail.judgePassed ? "判分通过" : "判分失败" }}
               </el-tag>
             </el-descriptions-item>
-            <el-descriptions-item label="可用工具">
-              {{ detail.tools?.length ? detail.tools.join("、") : "-" }}
+            <el-descriptions-item label="期望工具调用">
+              {{
+                detail.tools?.length
+                  ? detail.tools
+                      .map((tool) =>
+                        tool.args
+                          ? `${tool.name}(${JSON.stringify(tool.args)})`
+                          : tool.name
+                      )
+                      .join("、")
+                  : "-"
+              }}
             </el-descriptions-item>
           </el-descriptions>
 

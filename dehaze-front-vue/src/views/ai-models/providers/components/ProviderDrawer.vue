@@ -29,9 +29,17 @@
         />
       </el-form-item>
       <el-form-item label="协议类型" prop="protocolType">
-        <el-select v-model="form.protocolType" class="!w-[200px]">
+        <!-- 选项须覆盖 sys_ai_provider.protocol_type 的全部取值（8 个协议族，见该列注释与
+             需求规格「协议类型」），漏项会让既有供应商显示为裸文本，一旦保存即把协议改写为其它值 -->
+        <el-select v-model="form.protocolType" class="!w-[230px]">
           <el-option label="openai_compat" value="openai_compat" />
           <el-option label="anthropic" value="anthropic" />
+          <el-option label="openai_image" value="openai_image" />
+          <el-option label="openai_audio" value="openai_audio" />
+          <el-option label="cohere" value="cohere" />
+          <el-option label="dashscope_realtime" value="dashscope_realtime" />
+          <el-option label="volc_realtime" value="volc_realtime" />
+          <el-option label="dashscope_async" value="dashscope_async" />
         </el-select>
       </el-form-item>
       <el-form-item label="认证方式" prop="authType">
@@ -350,7 +358,12 @@ function resetForm() {
 }
 
 async function submit() {
-  await formRef.value.validate();
+  try {
+    await formRef.value.validate();
+  } catch {
+    // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+    return;
+  }
 
   // 请求头 JSON 在前端先校验，避免保存后才暴露格式错误
   let defaultHeaders: Record<string, unknown> | null = null;
@@ -440,7 +453,12 @@ function openKeyEdit(row: ProviderKeyVO) {
 
 async function submitKey() {
   if (keyDialog.mode === "create") {
-    await keyFormRef.value.validate();
+    try {
+      await keyFormRef.value.validate();
+    } catch {
+      // 校验未通过：表单已就地提示；捕获 reject，避免冒泡到全局 errorHandler 记未捕获异常
+      return;
+    }
   }
   const providerId = props.provider!.id;
   keySubmitting.value = true;

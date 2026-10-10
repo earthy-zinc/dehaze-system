@@ -82,11 +82,11 @@
       <el-card shadow="never" class="section-card">
         <template #header>
           <div class="card-title">
-            <el-icon><DataAnalysis /></el-icon>算法维度统计
+            <el-icon><DataAnalysis /></el-icon>模型维度统计
           </div>
         </template>
-        <el-table :data="ratingStats?.algorithmStats || []" border>
-          <el-table-column label="算法" prop="algorithmName" min-width="160" />
+        <el-table :data="ratingStats?.modelStats || []" border>
+          <el-table-column label="模型" prop="modelName" min-width="160" />
           <el-table-column label="平均评分" width="180" align="center">
             <template #default="scope">
               <el-rate

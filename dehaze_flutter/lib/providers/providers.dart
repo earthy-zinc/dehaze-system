@@ -5,22 +5,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/auth/auth_error_handler.dart';
 import '../core/network/api_client.dart';
 import '../core/storage/token_storage.dart';
-import '../services/algorithm_service.dart';
+import '../services/ai_model_service.dart';
 import '../services/auth_service.dart';
+import '../services/billing_service.dart';
 import '../services/evaluation_service.dart';
 import '../services/file_service.dart';
 
 import '../services/message_service.dart';
 import '../services/dataset_service.dart';
+import '../services/image_task_service.dart';
 import '../services/member_service.dart';
 import '../services/order_service.dart';
-import '../services/prediction_service.dart';
 import '../services/package_service.dart';
 import '../services/favorite_service.dart';
 import '../services/feedback_service.dart';
 import '../services/recommendation_service.dart';
 import '../services/dict_service.dart';
-import '../services/image_input_service.dart';
 import '../services/import_export_service.dart';
 import '../services/api_key_service.dart';
 import '../services/announcement_service.dart';
@@ -72,8 +72,16 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.watch(dioClientProvider));
 });
 
-final predictionServiceProvider = Provider<PredictionService>((ref) {
-  return PredictionService(ref.watch(dioClientProvider));
+final imageTaskServiceProvider = Provider<ImageTaskService>((ref) {
+  return ImageTaskService(ref.watch(dioClientProvider));
+});
+
+final aiModelServiceProvider = Provider<AiModelService>((ref) {
+  return AiModelService(ref.watch(dioClientProvider));
+});
+
+final billingServiceProvider = Provider<BillingService>((ref) {
+  return BillingService(ref.watch(dioClientProvider));
 });
 
 final evaluationServiceProvider = Provider<EvaluationService>((ref) {
@@ -82,10 +90,6 @@ final evaluationServiceProvider = Provider<EvaluationService>((ref) {
 
 final fileServiceProvider = Provider<FileService>((ref) {
   return FileService(ref.watch(dioClientProvider));
-});
-
-final algorithmServiceProvider = Provider<AlgorithmService>((ref) {
-  return AlgorithmService(ref.watch(dioClientProvider));
 });
 
 final favoriteServiceProvider = Provider<FavoriteService>((ref) {
@@ -152,9 +156,10 @@ final messageTemplateServiceProvider = Provider<MessageTemplateService>((ref) {
   return MessageTemplateService(ref.watch(dioClientProvider));
 });
 
-final notificationSettingsServiceProvider = Provider<NotificationSettingsService>((ref) {
-  return NotificationSettingsService(ref.watch(dioClientProvider));
-});
+final notificationSettingsServiceProvider =
+    Provider<NotificationSettingsService>((ref) {
+      return NotificationSettingsService(ref.watch(dioClientProvider));
+    });
 
 // ==================== 数据集服务 Providers ====================
 
@@ -168,12 +173,6 @@ final datasetItemServiceProvider = Provider<DatasetItemService>((ref) {
 
 final itemFileServiceProvider = Provider<ItemFileService>((ref) {
   return ItemFileService(ref.watch(dioClientProvider));
-});
-
-// ==================== 图片输入历史服务 Provider ====================
-
-final imageInputServiceProvider = Provider<ImageInputService>((ref) {
-  return ImageInputService(ref.watch(dioClientProvider));
 });
 
 // ==================== 导入导出服务 Provider ====================

@@ -66,7 +66,11 @@ const LoginScreen: React.FC = () => {
       Alert.alert('提示', '请输入用户名和密码');
       return;
     }
-    if (captcha && !captchaCode) {
+    if (!captcha) {
+      Alert.alert('提示', '验证码加载失败，请点击验证码区域重试');
+      return;
+    }
+    if (!captchaCode) {
       Alert.alert('提示', '请输入验证码');
       return;
     }
@@ -76,8 +80,8 @@ const LoginScreen: React.FC = () => {
       await login({
         username,
         password,
-        captchaKey: captcha?.captchaKey,
-        captchaCode: captcha ? captchaCode : undefined,
+        captchaKey: captcha.captchaKey,
+        captchaCode,
         rememberMe,
       });
     } catch (e: unknown) {
@@ -219,7 +223,11 @@ const LoginScreen: React.FC = () => {
                         />
                       ) : (
                         <View style={styles.captchaRetry}>
-                          <Ionicons name="refresh-outline" size={16} color={colors.text.tertiary} />
+                          <Ionicons
+                            name="refresh-outline"
+                            size={16}
+                            color={colors.text.tertiary}
+                          />
                           <Text style={styles.captchaRetryText}>重试</Text>
                         </View>
                       )}
@@ -249,7 +257,11 @@ const LoginScreen: React.FC = () => {
                   activeOpacity={0.9}
                 >
                   <LinearGradient
-                    colors={loading ? ['#93c5fd', '#a5b4fc'] : [colors.primary, colors.gradient.primary[1]]}
+                    colors={
+                      loading
+                        ? ['#93c5fd', '#a5b4fc']
+                        : [colors.primary, colors.gradient.primary[1]]
+                    }
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.button}
@@ -275,7 +287,9 @@ const LoginScreen: React.FC = () => {
                   onPress={() => navigation.replace('Register')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.registerLinkText}>没有账号？立即注册</Text>
+                  <Text style={styles.registerLinkText}>
+                    没有账号？立即注册
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>

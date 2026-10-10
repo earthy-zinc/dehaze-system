@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, Text, Image, Slider, ScrollView } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
-import { ModelAPI } from "dehaze-sdk-js";
-import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
-import { formatFileSize, formatDuration } from "@/utils/format";
+import { AiImageAPI, ModelAPI } from "dehaze-sdk-js";
+import type { AiModelVO, ImageTaskResponse, PresetVO } from "dehaze-sdk-js";
+import { formatFileSize, formatDuration, formatSeconds } from "@/utils/format";
 import { getErrorMessage } from "@/utils/error";
 import { saveImageToAlbum } from "@/utils/saveImage";
 import { uploadImage } from "@/config/upload";
 import { useProcessStore } from "@/stores/process";
+import { loadImageEditModels } from "@/utils/imageModel";
 import "./index.less";
 
 interface ImageData {
@@ -40,35 +41,12 @@ const DEFAULT_PARAMS: ProcessParams = {
 const RETRY_DELAYS = [2000, 5000, 10000];
 const MAX_RETRIES = 3;
 
-// 根据算法类型预估处理时间（秒）
-function estimateTime(algorithm: Algorithm | null): number {
-  if (!algorithm) return 5;
-  const type = (algorithm.type || "").toLowerCase();
-  if (
-    type.includes("cnn") ||
-    type.includes("gan") ||
-    type.includes("transformer") ||
-    type.includes("深度")
-  ) {
-    return 6;
-  }
-  if (
-    type.includes("传统") ||
-    type.includes("dcp") ||
-    type.includes("retinex")
-  ) {
-    return 2;
-  }
-  return 4;
-}
-
 const ProcessingPage: React.FC = () => {
   const [currentImage, setCurrentImage] = useState<ImageData | null>(null);
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState<Algorithm | null>(
-    null
-  );
+  const [models, setModels] = useState<AiModelVO[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [status, setStatus] = useState<ProcessStatus>("idle");
-  const [result, setResult] = useState<PredictionResultVO | null>(null);
+  const [result, setResult] = useState<ImageTaskResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [params, setParams] = useState<ProcessParams>(DEFAULT_PARAMS);
   const [showParams, setShowParams] = useState(false);
@@ -107,9 +85,9 @@ const ProcessingPage: React.FC = () => {
       .finally(() => setPresetsLoaded(true));
   }, [presetsLoaded]);
 
-  // 加载当前图片和算法
+  // 加载当前图片与模型（未指定时按历史最近使用 → 启用列表首项预选）
   useEffect(() => {
-    const { image, algorithm } = useProcessStore.getState();
+    const { image, model } = useProcessStore.getState();
     if (!image) {
       Taro.showToast({ title: "请先选择图片", icon: "none" });
       setTimeout(() => Taro.navigateBack(), 1500);
@@ -123,13 +101,36 @@ const ProcessingPage: React.FC = () => {
       });
     }
 
-    if (!algorithm) {
-      Taro.showToast({ title: "请先选择算法", icon: "none" });
-      setTimeout(() => Taro.navigateBack(), 1500);
-    } else {
-      setSelectedAlgorithm(algorithm);
-    }
+    loadImageEditModels()
+      .then(({ models: enabled, preselected }) => {
+        setModels(enabled);
+        if (enabled.length === 0) {
+          Taro.showToast({ title: "暂无可用模型", icon: "none" });
+          return;
+        }
+        const resolved =
+          enabled.find((m) => m.modelId === model?.modelId) ?? preselected;
+        if (!resolved) return;
+        setSelectedModelId(resolved.modelId);
+        useProcessStore.getState().setModel({
+          modelId: resolved.modelId,
+          displayName: resolved.displayName,
+          recommendedBy: model?.recommendedBy,
+        });
+      })
+      .catch(() => Taro.showToast({ title: "加载模型失败", icon: "none" }));
   }, []);
+
+  // 切换模型
+  const handleSelectModel = useCallback((model: AiModelVO) => {
+    setSelectedModelId(model.modelId);
+    useProcessStore.getState().setModel({
+      modelId: model.modelId,
+      displayName: model.displayName,
+    });
+  }, []);
+
+  const selectedModel = models.find((m) => m.modelId === selectedModelId);
 
   // 启动已用时间计时（真实计时，非模拟进度）
   const startElapsedTimer = useCallback(() => {
@@ -141,7 +142,7 @@ const ProcessingPage: React.FC = () => {
 
   // 实际执行处理（含递增重试）
   const handleProcess = useCallback(async () => {
-    if (!currentImage || !selectedAlgorithm) return;
+    if (!currentImage || !selectedModelId) return;
 
     setStatus("processing");
     setErrorMsg("");
@@ -162,8 +163,8 @@ const ProcessingPage: React.FC = () => {
           uploadedFileIdRef.current = fileInfo.id;
         }
 
-        const res = await ModelAPI.predictAndWait({
-          algorithmId: selectedAlgorithm.id,
+        const res = await AiImageAPI.submitAndWait({
+          model: selectedModelId,
           fileId: uploadedFileIdRef.current,
           params: JSON.stringify(params),
         });
@@ -215,40 +216,19 @@ const ProcessingPage: React.FC = () => {
     await attempt(0);
   }, [
     currentImage,
-    selectedAlgorithm,
+    selectedModelId,
     params,
     startElapsedTimer,
     clearAllTimers,
   ]);
 
-  // 执行去雾处理（带确认对话框 + 配额检查）
+  // 执行去雾处理（带确认对话框）
   const handleStartProcess = useCallback(async () => {
-    if (!currentImage || !selectedAlgorithm) return;
+    if (!currentImage || !selectedModel) return;
 
-    try {
-      const quota = await ModelAPI.getQuota();
-      if (quota.remaining === 0) {
-        Taro.showModal({
-          title: "预测次数不足",
-          content: `当前剩余预测次数为 0（已使用 ${quota.used}/${quota.total}），请及时充值。`,
-          confirmText: "去充值",
-          cancelText: "取消",
-          success: (res) => {
-            if (res.confirm) {
-              Taro.navigateTo({ url: "/pages/user-center/index" });
-            }
-          },
-        });
-        return;
-      }
-    } catch {
-      // 配额查询失败也允许继续处理
-    }
-
-    const estimatedSec = estimateTime(selectedAlgorithm);
     Taro.showModal({
       title: "确认开始去雾处理",
-      content: `图片：${currentImage.name}\n尺寸：${currentImage.width}×${currentImage.height}\n算法：${selectedAlgorithm.name}\n预估耗时：约 ${estimatedSec} 秒`,
+      content: `图片：${currentImage.name}\n尺寸：${currentImage.width}×${currentImage.height}\n模型：${selectedModel.displayName}`,
       confirmText: "开始处理",
       cancelText: "取消",
       success: (res) => {
@@ -258,7 +238,7 @@ const ProcessingPage: React.FC = () => {
         }
       },
     });
-  }, [currentImage, selectedAlgorithm, handleProcess]);
+  }, [currentImage, selectedModel, handleProcess]);
 
   // 取消处理
   const handleCancel = useCallback(() => {
@@ -279,8 +259,7 @@ const ProcessingPage: React.FC = () => {
     retryCountRef.current = 0;
   }, []);
 
-  // 返回算法选择
-  const handleBackToAlgorithm = useCallback(() => {
+  const handleBack = useCallback(() => {
     Taro.navigateBack();
   }, []);
 
@@ -309,8 +288,6 @@ const ProcessingPage: React.FC = () => {
       Taro.showToast({ title: "预设参数解析失败", icon: "none" });
     }
   }, []);
-
-  const estimatedTime = estimateTime(selectedAlgorithm);
 
   return (
     <View className="processing-page">
@@ -342,35 +319,22 @@ const ProcessingPage: React.FC = () => {
           </View>
         )}
 
-        {/* 算法信息 */}
-        {selectedAlgorithm && (
-          <View className="info-section">
-            <Text className="section-label">使用算法</Text>
-            <View className="algorithm-info">
-              <View className="algo-name-row">
-                <Text className="algo-name">{selectedAlgorithm.name}</Text>
-                <View className="algo-type-tag">
-                  <Text>{selectedAlgorithm.type || "算法"}</Text>
-                </View>
+        {/* 模型选择 */}
+        <View className="info-section">
+          <Text className="section-label">使用模型</Text>
+          <View className="algo-list">
+            {models.map((model) => (
+              <View
+                key={model.id}
+                className={`algo-card ${selectedModelId === model.modelId ? "selected" : ""}`}
+                onClick={() => handleSelectModel(model)}
+              >
+                <Text className="algo-name">{model.displayName}</Text>
+                <Text className="algo-desc">{model.modelId}</Text>
               </View>
-              {selectedAlgorithm.description && (
-                <Text className="algo-desc">
-                  {selectedAlgorithm.description}
-                </Text>
-              )}
-              <View className="algo-meta-row">
-                {selectedAlgorithm.version && (
-                  <Text className="algo-version">
-                    版本: {selectedAlgorithm.version}
-                  </Text>
-                )}
-                <Text className="algo-estimate">
-                  预估耗时: 约 {estimatedTime} 秒
-                </Text>
-              </View>
-            </View>
+            ))}
           </View>
-        )}
+        </View>
 
         {/* 参数调节面板（idle 状态可用）*/}
         {status === "idle" && (
@@ -518,8 +482,7 @@ const ProcessingPage: React.FC = () => {
             </View>
             <Text className="status-text">处理完成</Text>
             <Text className="status-hint">
-              耗时 {formatDuration(result.time ?? 0)}
-              {result.fromCache ? " · 缓存命中" : ""}
+              耗时 {formatSeconds(result.time ?? 0)}
             </Text>
 
             {/* 结果预览 */}
@@ -570,11 +533,8 @@ const ProcessingPage: React.FC = () => {
               <View className="btn btn-primary" onClick={handleProcess}>
                 <Text>重试</Text>
               </View>
-              <View
-                className="btn btn-secondary"
-                onClick={handleBackToAlgorithm}
-              >
-                <Text>更换算法</Text>
+              <View className="btn btn-secondary" onClick={handleBack}>
+                <Text>更换模型</Text>
               </View>
             </View>
           </View>
@@ -584,13 +544,13 @@ const ProcessingPage: React.FC = () => {
         {status === "idle" && (
           <View className="action-section">
             <View
-              className={`start-btn ${!currentImage || !selectedAlgorithm ? "disabled" : ""}`}
+              className={`start-btn ${!currentImage || !selectedModelId ? "disabled" : ""}`}
               onClick={handleStartProcess}
             >
               <Text>开始去雾</Text>
             </View>
-            <View className="back-link" onClick={handleBackToAlgorithm}>
-              <Text>← 重新选择算法</Text>
+            <View className="back-link" onClick={handleBack}>
+              <Text>← 返回</Text>
             </View>
           </View>
         )}

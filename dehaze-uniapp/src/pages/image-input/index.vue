@@ -143,7 +143,7 @@ const handleRemoveImage = () => {
   processingStore.reset();
 };
 
-/** 下一步：跳转到算法选择 */
+/** 下一步：跳转到去雾处理（模型在处理页内联选择） */
 const handleNextStep = () => {
   if (!currentImage.value) {
     uni.showToast({
@@ -153,9 +153,9 @@ const handleNextStep = () => {
     return;
   }
 
-  // 跳转到算法选择页面
+  // 跳转到去雾处理页面
   uni.navigateTo({
-    url: "/pages/algorithm-select/index",
+    url: "/pages/processing/index",
     fail: () => {
       uni.showToast({
         title: "页面跳转失败",

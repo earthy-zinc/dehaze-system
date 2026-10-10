@@ -34,11 +34,11 @@
             <text class="meta-tag">权重: {{ rule.weight }}</text>
           </view>
           <view
-            v-if="rule.algorithmIds && rule.algorithmIds.length > 0"
-            class="rule-algos"
+            v-if="rule.modelIds && rule.modelIds.length > 0"
+            class="rule-models"
           >
-            <text class="algo-label">关联算法: </text>
-            <text>{{ rule.algorithmIds.join(", ") }}</text>
+            <text class="model-label">关联模型: </text>
+            <text>{{ rule.modelIds.join(", ") }}</text>
           </view>
           <view v-if="canEdit" class="rule-actions">
             <text class="action-btn" @click="editRule(rule)">编辑</text>
@@ -73,11 +73,11 @@
           />
         </view>
         <view class="form-item">
-          <text class="form-label">关联算法ID</text>
+          <text class="form-label">关联模型</text>
           <input
             class="form-input"
-            v-model="form.algorithmIds"
-            placeholder="逗号分隔, 如: 1,2,3"
+            v-model="form.modelIds"
+            placeholder="逗号分隔模型标识，如: wpxnet-aecrnet"
           />
         </view>
         <view class="form-item">
@@ -133,7 +133,7 @@ const saving = ref(false);
 const form = ref({
   ruleName: "",
   sceneType: "",
-  algorithmIds: "",
+  modelIds: "",
   weight: "1",
   enabled: true,
 });
@@ -158,7 +158,7 @@ function editRule(rule: RecommendationRule) {
   form.value = {
     ruleName: rule.ruleName,
     sceneType: rule.sceneType || "",
-    algorithmIds: rule.algorithmIds?.join(",") || "",
+    modelIds: rule.modelIds?.join(",") || "",
     weight: String(rule.weight ?? 1),
     enabled: rule.enabled ?? true,
   };
@@ -172,17 +172,17 @@ async function handleSave() {
   }
   saving.value = true;
   try {
-    const algoIds = form.value.algorithmIds
-      ? form.value.algorithmIds
+    const modelIds = form.value.modelIds
+      ? form.value.modelIds
           .split(",")
-          .map((s: string) => Number(s.trim()))
-          .filter((n: number) => !isNaN(n))
+          .map((s: string) => s.trim())
+          .filter(Boolean)
       : [];
     await RecommendationAPI.updateRule(editingRule.value.id, {
       id: editingRule.value.id,
       ruleName: form.value.ruleName,
       sceneType: form.value.sceneType,
-      algorithmIds: algoIds,
+      modelIds,
       weight: Number(form.value.weight) || 1,
       enabled: form.value.enabled,
     });
@@ -303,12 +303,12 @@ fetchRules();
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
 }
-.rule-algos {
+.rule-models {
   margin-bottom: 12rpx;
   font-size: $font-xs;
   color: $color-text-secondary;
 }
-.algo-label {
+.model-label {
   font-weight: 500;
 }
 

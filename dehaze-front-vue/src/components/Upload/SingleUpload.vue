@@ -31,7 +31,6 @@
 </template>
 
 <script lang="ts" setup>
-import { useImageShowStore } from "@/store/modules/imageShow";
 import { computeFileMd5 } from "@/utils";
 import { FileAPI } from "dehaze-sdk-js";
 import { Close, Plus } from "@element-plus/icons-vue";
@@ -50,7 +49,6 @@ const props = defineProps({
 
 const emit = defineEmits(["update:modelValue", "onChange"]);
 const imgUrl = useVModel(props, "modelValue", emit);
-const imageShowStore = useImageShowStore();
 const fileId = ref<number | null>(null);
 
 /**
@@ -68,7 +66,7 @@ async function uploadFile(options: UploadRequestOptions): Promise<any> {
     emit("onChange", existing.url);
     return;
   }
-  const data = await FileAPI.upload(options.file, imageShowStore.modelId);
+  const data = await FileAPI.upload(options.file);
   imgUrl.value = data.url;
   fileId.value = data.id;
   emit("onChange", data.url);

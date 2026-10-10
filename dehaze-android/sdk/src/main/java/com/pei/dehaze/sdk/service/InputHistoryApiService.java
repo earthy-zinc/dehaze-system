@@ -26,7 +26,7 @@ public interface InputHistoryApiService {
     @GET("/api/v1/image-input/history")
     Call<Result<PageResult<InputHistoryVO>>> listHistory(
             @Query("inputSource") String inputSource,
-            @Query("favoriteOnly") Boolean favoriteOnly,
+            @Query("status") Integer status,
             @Query("keywords") String keywords,
             @Query("pageNum") int pageNum,
             @Query("pageSize") int pageSize);

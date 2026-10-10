@@ -15,12 +15,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityEvaluationBinding;
-import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.ai_model.AiModelVO;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
-import com.pei.dehaze.sdk.model.prediction.DehazeParams;
-import com.pei.dehaze.sdk.model.prediction.PredEvalTaskStatus;
-import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.image_task.DehazeParams;
+import com.pei.dehaze.sdk.model.evaluation.EvalTaskStatus;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskResponse;
 import com.pei.dehaze.ui.evaluation.adapter.EvaluationLogAdapter;
 import com.pei.dehaze.ui.evaluation.adapter.MetricAdapter;
 import com.pei.dehaze.ui.evaluation.viewmodel.EvaluationViewModel;
@@ -41,7 +41,7 @@ public class EvaluationActivity extends BaseActivity {
     private ActivityEvaluationBinding binding;
     private StatePlaceholder statePlaceholder;
 
-    private final List<Option> algorithmOptions = new ArrayList<>();
+    private final List<AiModelVO> modelOptions = new ArrayList<>();
     private MetricAdapter metricAdapter;
     private EvaluationLogAdapter evaluationLogAdapter;
 
@@ -91,38 +91,37 @@ public class EvaluationActivity extends BaseActivity {
     }
 
     private void onPredictClick() {
-        Long algorithmId = getCurrentAlgorithmId();
-        if (algorithmId == null) {
-            ToastUtils.showShort(this, "请先选择算法");
+        String modelId = getCurrentModelId();
+        if (modelId == null) {
+            ToastUtils.showShort(this, "请先选择模型");
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle("确认处理")
                 .setMessage("确认开始去雾处理？")
-                .setPositiveButton("确定", (d, w) -> evaluationViewModel.predict(algorithmId, new DehazeParams()))
+                .setPositiveButton("确定", (d, w) -> evaluationViewModel.predict(modelId, new DehazeParams()))
                 .setNegativeButton("取消", null)
                 .show();
     }
 
     private void onEvaluateClick() {
-        Long algorithmId = getCurrentAlgorithmId();
-        if (algorithmId == null) {
-            ToastUtils.showShort(this, "请先选择算法");
+        String modelId = getCurrentModelId();
+        if (modelId == null) {
+            ToastUtils.showShort(this, "请先选择模型");
             return;
         }
         new AlertDialog.Builder(this)
                 .setTitle("确认评估")
                 .setMessage("确认开始指标评估？")
-                .setPositiveButton("确定", (d, w) -> evaluationViewModel.evaluate(algorithmId))
+                .setPositiveButton("确定", (d, w) -> evaluationViewModel.evaluate(modelId))
                 .setNegativeButton("取消", null)
                 .show();
     }
 
-    private Long getCurrentAlgorithmId() {
-        int pos = binding.spinnerAlgorithm.getSelectedItemPosition();
-        if (pos < 0 || pos >= algorithmOptions.size()) return null;
-        Option option = algorithmOptions.get(pos);
-        return option.getValue() == null ? null : StringUtils.safeParseLong(option.getValue(), 0L);
+    private String getCurrentModelId() {
+        int pos = binding.spinnerModel.getSelectedItemPosition();
+        if (pos < 0 || pos >= modelOptions.size()) return null;
+        return modelOptions.get(pos).getModelId();
     }
 
     private void initViewModel() {
@@ -132,7 +131,7 @@ public class EvaluationActivity extends BaseActivity {
     private void setupObservers() {
         evaluationViewModel.getHazyFile().observe(this, this::showHazyImage);
         evaluationViewModel.getClearFile().observe(this, this::showClearImage);
-        evaluationViewModel.getAlgorithmOptions().observe(this, this::updateAlgorithmSpinner);
+        evaluationViewModel.getModels().observe(this, this::updateModelSpinner);
         evaluationViewModel.getPredictionResult().observe(this, this::onPredictionResult);
         evaluationViewModel.getEvaluationResult().observe(this, this::onEvaluationResult);
         evaluationViewModel.getEvaluationLogs().observe(this, logs -> {
@@ -168,15 +167,15 @@ public class EvaluationActivity extends BaseActivity {
                 .into(binding.ivClear);
     }
 
-    private void updateAlgorithmSpinner(List<Option> options) {
-        algorithmOptions.clear();
-        if (options != null) {
-            algorithmOptions.addAll(options);
+    private void updateModelSpinner(List<AiModelVO> models) {
+        modelOptions.clear();
+        if (models != null) {
+            modelOptions.addAll(models);
         }
-        ViewUtils.updateAlgorithmSpinner(binding.spinnerAlgorithm, algorithmOptions);
+        ViewUtils.updateModelSpinner(binding.spinnerModel, modelOptions);
     }
 
-    private void onPredictionResult(PredResult result) {
+    private void onPredictionResult(ImageTaskResponse result) {
         if (result == null) return;
         statePlaceholder.hide();
         binding.btnEvaluate.setEnabled(true);
@@ -190,11 +189,11 @@ public class EvaluationActivity extends BaseActivity {
 
     private void onEvaluationResult(EvalResult result) {
         if (result == null) return;
-        PredEvalTaskStatus status = result.getStatus();
-        if (status == PredEvalTaskStatus.FAILED) {
+        EvalTaskStatus status = result.getStatus();
+        if (status == EvalTaskStatus.FAILED) {
             binding.tvStatus.setText("评估结论：失败 - " + (result.getErrorMessage() != null ? result.getErrorMessage() : ""));
             binding.tvStatus.setTextColor(getResources().getColor(android.R.color.holo_red_dark));
-        } else if (status == PredEvalTaskStatus.COMPLETED) {
+        } else if (status == EvalTaskStatus.COMPLETED) {
             binding.tvStatus.setText("评估结论：完成");
             binding.tvStatus.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
         } else {
@@ -211,7 +210,7 @@ public class EvaluationActivity extends BaseActivity {
     }
 
     private void loadData() {
-        evaluationViewModel.loadAlgorithmOptions();
+        evaluationViewModel.loadModels();
         evaluationViewModel.loadEvaluationLogs();
     }
 

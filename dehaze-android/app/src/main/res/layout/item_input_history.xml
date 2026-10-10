@@ -53,7 +53,7 @@
         </LinearLayout>
 
         <TextView
-            android:id="@+id/tv_algorithm_name"
+            android:id="@+id/tv_model_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"

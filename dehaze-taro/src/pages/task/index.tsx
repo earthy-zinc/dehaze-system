@@ -2,7 +2,7 @@
  * 处理历史页面
  *
  * 展示去雾处理历史记录，支持查看对比和重新处理。
- * 对接 ModelAPI.getPredLogs（分页查询处理日志）
+ * 对接 AiImageAPI.listImageTasks（分页查询图像任务）
  */
 import React, { useState, useCallback } from "react";
 import { View, Text, Image, ScrollView } from "@tarojs/components";
@@ -13,8 +13,8 @@ import Taro, {
 } from "@tarojs/taro";
 import { Navbar, Loading, Empty } from "@taroify/core";
 import { ArrowLeft } from "@taroify/icons";
-import { ModelAPI, AlgorithmAPI } from "dehaze-sdk-js";
-import type { PredLogVO } from "dehaze-sdk-js";
+import { AiImageAPI } from "dehaze-sdk-js";
+import type { ImageTaskVO } from "dehaze-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
 import { formatDateTime } from "@/utils/format";
@@ -24,7 +24,7 @@ import "./index.less";
 const PAGE_SIZE = 15;
 
 const TaskPage: React.FC = () => {
-  const [records, setRecords] = useState<PredLogVO[]>([]);
+  const [records, setRecords] = useState<ImageTaskVO[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pageNum, setPageNum] = useState(1);
@@ -37,7 +37,7 @@ const TaskPage: React.FC = () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await ModelAPI.getPredLogs({
+        const res = await AiImageAPI.listImageTasks({
           pageNum: page,
           pageSize: PAGE_SIZE,
         });
@@ -73,7 +73,7 @@ const TaskPage: React.FC = () => {
   });
 
   /** 查看对比：跳转对比页面 */
-  const handleCompare = useCallback((record: PredLogVO) => {
+  const handleCompare = useCallback((record: ImageTaskVO) => {
     if (!record.predUrl || !record.originUrl) {
       Taro.showToast({ title: "缺少原图或结果图", icon: "none" });
       return;
@@ -86,30 +86,25 @@ const TaskPage: React.FC = () => {
     Taro.navigateTo({ url: "/pages/side-by-side/index" });
   }, []);
 
-  /** 重新处理：加载算法详情后跳转处理页 */
-  const handleReprocess = useCallback(async (record: PredLogVO) => {
+  /** 重新处理：携带原图与模型跳转处理页 */
+  const handleReprocess = useCallback((record: ImageTaskVO) => {
     if (!record.originUrl) {
       Taro.showToast({ title: "缺少原图", icon: "none" });
       return;
     }
-    if (!record.algorithmId) {
-      Taro.showToast({ title: "缺少算法信息", icon: "none" });
+    if (!record.model) {
+      Taro.showToast({ title: "缺少模型信息", icon: "none" });
       return;
     }
-    Taro.showLoading({ title: "准备中..." });
-    try {
-      const algorithm = await AlgorithmAPI.getAlgorithmInfoById(record.algorithmId);
-      Taro.hideLoading();
-      useProcessStore.getState().setImage({
-        url: record.originUrl,
-        name: record.originUrl.split("/").pop() || "历史图片",
-      });
-      useProcessStore.getState().setAlgorithm(algorithm);
-      Taro.navigateTo({ url: "/pages/processing/index" });
-    } catch (e) {
-      Taro.hideLoading();
-      Taro.showToast({ title: getErrorMessage(e, "加载失败"), icon: "none" });
-    }
+    useProcessStore.getState().setImage({
+      url: record.originUrl,
+      name: record.originUrl.split("/").pop() || "历史图片",
+    });
+    useProcessStore.getState().setModel({
+      modelId: record.model,
+      displayName: record.model,
+    });
+    Taro.navigateTo({ url: "/pages/processing/index" });
   }, []);
 
   /** 预览结果图 */
@@ -154,7 +149,7 @@ const TaskPage: React.FC = () => {
                 )}
                 <View className="record-body">
                   <Text className="record-algo ellipsis">
-                    {record.algorithmName || "未知算法"}
+                    {record.model || "未知模型"}
                   </Text>
                   <Text className="record-time">
                     耗时 {record.time != null ? `${record.time}s` : "-"}

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/package_model.dart';
 import '../../providers/providers.dart';
+import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format_utils.dart';
 
 /// 我的套餐 — L2 页面
 ///
@@ -49,16 +52,12 @@ class _PackagePageState extends ConsumerState<PackagePage> {
   }
 
   void _onBuyPackage(PackageDetailVO pkg) {
-    // TODO: 跳转到订单创建页面
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('即将购买: ${pkg.name}')),
-    );
+    context.push(AppRouterConfig.orderCreate, extra: pkg);
   }
 
   void _onViewDetail(PackageDetailVO pkg) {
-    // TODO: 跳转到套餐详情页面
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('查看详情: ${pkg.name}')),
+    context.push(
+      AppRouterConfig.packageDetail.replaceFirst(':id', '${pkg.id}'),
     );
   }
 
@@ -70,17 +69,17 @@ class _PackagePageState extends ConsumerState<PackagePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : _packages.isEmpty
-                  ? _buildEmpty(theme)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _packages.length,
-                      itemBuilder: (context, index) {
-                        final pkg = _packages[index];
-                        return _buildPackageCard(theme, pkg);
-                      },
-                    ),
+          ? _buildError(theme)
+          : _packages.isEmpty
+          ? _buildEmpty(theme)
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _packages.length,
+              itemBuilder: (context, index) {
+                final pkg = _packages[index];
+                return _buildPackageCard(theme, pkg);
+              },
+            ),
     );
   }
 
@@ -112,7 +111,7 @@ class _PackagePageState extends ConsumerState<PackagePage> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    pkg.levelName,
+                    pkg.levelName ?? packageTypeLabel(pkg.packageType),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: AppTheme.brandBlue,
                       fontWeight: FontWeight.w600,
@@ -123,7 +122,7 @@ class _PackagePageState extends ConsumerState<PackagePage> {
             ),
             const SizedBox(height: 4),
             Text(
-              pkg.periodName,
+              packageSpecLabel(pkg),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -137,18 +136,24 @@ class _PackagePageState extends ConsumerState<PackagePage> {
                 ),
               ),
             ],
-            if (pkg.features.isNotEmpty) ...[
+            if (pkg.benefits.isNotEmpty) ...[
               const SizedBox(height: 8),
-              ...pkg.features.map(
-                (f) => Padding(
+              ...pkg.benefits.entries.map(
+                (e) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline,
-                          size: 16, color: AppTheme.techGreen),
+                      const Icon(
+                        Icons.check_circle_outline,
+                        size: 16,
+                        color: AppTheme.techGreen,
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text(f, style: theme.textTheme.bodySmall),
+                        child: Text(
+                          '${packageBenefitLabels[e.key] ?? e.key}：${e.value}',
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                     ],
                   ),
@@ -162,11 +167,11 @@ class _PackagePageState extends ConsumerState<PackagePage> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (pkg.originalPrice > pkg.currentPrice)
+                    if (pkg.originalPrice > pkg.salePrice)
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: Text(
-                          '¥${pkg.originalPrice.toStringAsFixed(2)}',
+                          formatYuan(pkg.originalPrice),
                           style: theme.textTheme.bodySmall?.copyWith(
                             decoration: TextDecoration.lineThrough,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -174,7 +179,7 @@ class _PackagePageState extends ConsumerState<PackagePage> {
                         ),
                       ),
                     Text(
-                      '¥${pkg.currentPrice.toStringAsFixed(2)}',
+                      formatYuan(pkg.salePrice),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.errorColor,
@@ -204,35 +209,35 @@ class _PackagePageState extends ConsumerState<PackagePage> {
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(_error!, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(_error!, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inventory_2_outlined,
-              size: 64,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '暂无可用套餐',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.inventory_2_outlined,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无可用套餐',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }

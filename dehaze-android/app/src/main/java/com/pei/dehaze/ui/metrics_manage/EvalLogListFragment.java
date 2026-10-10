@@ -36,7 +36,7 @@ public class EvalLogListFragment extends Fragment {
     private MetricsManageViewModel viewModel;
     private EvalLogAdapter adapter;
     private FragmentEvalLogListBinding binding;
-    private Long filterAlgorithmId;
+    private String filterModelId;
 
     @Nullable
     @Override
@@ -70,8 +70,8 @@ public class EvalLogListFragment extends Fragment {
         setupObservers();
     }
 
-    public void setFilterAlgorithmId(Long id) {
-        this.filterAlgorithmId = id;
+    public void setFilterModelId(String modelId) {
+        this.filterModelId = modelId;
         loadData();
     }
 
@@ -82,7 +82,7 @@ public class EvalLogListFragment extends Fragment {
     }
 
     private void loadData() {
-        viewModel.loadEvalLogs(filterAlgorithmId);
+        viewModel.loadEvalLogs(filterModelId);
     }
 
     private void setupObservers() {
@@ -153,7 +153,7 @@ public class EvalLogListFragment extends Fragment {
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.addView(createCell("#" + log.getId(), false));
 
-            Map<String, Double> metrics = log.getResult() != null ? log.getResult().getMetrics() : null;
+            Map<String, Double> metrics = log.getMetrics();
             for (String name : metricNames) {
                 String value = "--";
                 if (metrics != null && metrics.containsKey(name)) {

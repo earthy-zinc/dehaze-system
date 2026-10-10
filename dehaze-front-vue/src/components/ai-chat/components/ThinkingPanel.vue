@@ -16,7 +16,8 @@ const props = defineProps<{
   answerStarted: boolean;
 }>();
 
-const open = ref(true);
+// 初始态：答案未开始（思考中）展开，答案已产出（历史回放/已完成）收起
+const open = ref(!props.answerStarted);
 const userToggled = ref(false);
 
 // 正文出现自动收起思考区；用户手动操作过则不再干预

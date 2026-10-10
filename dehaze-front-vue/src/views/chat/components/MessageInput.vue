@@ -94,6 +94,7 @@ async function handleFileChange(event: Event) {
         <el-button
           circle
           :icon="Picture"
+          aria-label="图片附件"
           :loading="uploading"
           :disabled="chatStore.isStreaming"
           @click="handleAttachClick"

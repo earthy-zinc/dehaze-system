@@ -16,6 +16,7 @@
         circle
         :type="recording ? 'danger' : 'default'"
         :icon="Microphone"
+        aria-label="语音输入"
         :disabled="disabled || finishing"
         @click="handleToggle"
       />

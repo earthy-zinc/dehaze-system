@@ -1,15 +1,9 @@
 <template>
-  <PageLayout
-    level="L1"
-    title="首页"
-    :is-home="true"
-    :show-search="true"
-    class="home-page"
-  >
+  <PageLayout level="L1" title="首页" :is-home="true" class="home-page">
     <view class="main-content">
       <!-- Hero Section - 英雄区 -->
       <HeroSection
-        :algorithm-count="displayAlgorithmCount"
+        :model-count="displayModelCount"
         @primary-click="handleStartClick"
         @secondary-click="handleDatasetClick"
       />
@@ -17,10 +11,10 @@
       <!-- 效果展示区 -->
       <ShowcaseSection />
 
-      <!-- 算法推荐区 -->
-      <AlgorithmRecommendSection
+      <!-- 模型推荐区 -->
+      <ModelRecommendSection
         @select="handleRecommendSelect"
-        @more="handleAlgorithmClick"
+        @more="handleModelClick"
       />
 
       <!-- 核心功能区 - 工作流程 -->
@@ -29,8 +23,8 @@
       <!-- 工具网格 -->
       <ToolsSection @tool-click="handleToolClick" />
 
-      <!-- 算法优势区 -->
-      <AlgorithmSection @learn-more="handleAlgorithmClick" />
+      <!-- 模型优势区 -->
+      <ModelSection @learn-more="handleModelClick" />
 
       <!-- 技术特性区 -->
       <view class="tech-specs-section">
@@ -59,50 +53,37 @@ import HeroSection from "./components/HeroSection.vue";
 import ShowcaseSection from "./components/ShowcaseSection.vue";
 import WorkflowSection from "./components/WorkflowSection.vue";
 import ToolsSection from "./components/ToolsSection.vue";
-import AlgorithmSection from "./components/AlgorithmSection.vue";
-import AlgorithmRecommendSection from "./components/AlgorithmRecommendSection.vue";
+import ModelSection from "./components/ModelSection.vue";
+import ModelRecommendSection from "./components/ModelRecommendSection.vue";
 import CTASection from "./components/CTASection.vue";
 import SpecCard from "@/components/business/SpecCard.vue";
 import type { ToolItem } from "./data/homeData";
 import { homeData } from "./data/homeData";
-import { AlgorithmAPI } from "dehaze-sdk-js";
-import type { Algorithm } from "dehaze-sdk-js";
+import { AiModelAPI } from "dehaze-sdk-js";
 
 // 技术规格数据
 const specData = ref(homeData.specs);
 
-// 算法数量（动态获取）
-const algorithmCount = ref(0);
-const algorithmLoading = ref(true);
+// 模型数量（动态获取）
+const modelCount = ref(0);
+const modelLoading = ref(true);
 
-/** Hero 区展示用算法数量：加载中显示 "..."，完成后显示实际数量 */
-const displayAlgorithmCount = computed(() =>
-  algorithmLoading.value ? "..." : algorithmCount.value
+/** Hero 区展示用模型数量：加载中显示 "..."，完成后显示实际数量 */
+const displayModelCount = computed(() =>
+  modelLoading.value ? "..." : modelCount.value
 );
-
-/** 统计算法树中的叶子节点数（实际可执行算法数） */
-function countLeafAlgorithms(list: Algorithm[]): number {
-  let count = 0;
-  for (const algo of list) {
-    if (algo.children && algo.children.length > 0) {
-      count += countLeafAlgorithms(algo.children);
-    } else {
-      count += 1;
-    }
-  }
-  return count;
-}
 
 onMounted(async () => {
   try {
-    const list = await AlgorithmAPI.getList();
-    algorithmCount.value = countLeafAlgorithms(list);
-    const algoSpec = specData.value.find((s) => s.title === "智能算法");
-    if (algoSpec) algoSpec.value = `${algorithmCount.value}+`;
+    // 普通用户可见范围是启用列表（listModels 为管理端接口）
+    const list = await AiModelAPI.listEnabledModels("image_edit");
+    modelCount.value = list.length;
+    const modelSpec = specData.value.find((s) => s.title === "智能模型");
+    if (modelSpec) modelSpec.value = `${modelCount.value}+`;
   } catch {
     // 获取失败时保持空值，不影响页面其他部分
   } finally {
-    algorithmLoading.value = false;
+    modelLoading.value = false;
   }
 });
 
@@ -119,8 +100,7 @@ const handleDatasetClick = () => {
 const handleStepClick = (target: string) => {
   const routeMap: Record<string, string> = {
     "image-input": "/pages/image-input/index",
-    "algorithm-select": "/pages/algorithm-select/index",
-    // 处理步骤需先选图选算法，引导到图像输入
+    // 处理步骤需先选图，引导到图像输入
     processing: "/pages/image-input/index",
   };
 
@@ -132,11 +112,10 @@ const handleStepClick = (target: string) => {
   }
 };
 
-/** 工具网格跳转：指向 L2 功能页（image-input/algorithm/dataset/metrics） */
+/** 工具网格跳转：指向 L2 功能页（image-input/dataset/metrics） */
 const handleToolClick = (tool: ToolItem) => {
   const toolRoutes: Record<string, string> = {
     "image-input": "/pages/image-input/index",
-    algorithm: "/pages/algorithm/index",
     dataset: "/pages/dataset/index",
     metrics: "/pages/metrics/index",
   };
@@ -149,13 +128,13 @@ const handleToolClick = (tool: ToolItem) => {
   }
 };
 
-const handleAlgorithmClick = () => {
-  uni.navigateTo({ url: "/pages/algorithm-select/index" });
+/** 模型推荐/模型优势区入口 → 去雾 Tab（模型在选择页内联选择） */
+const handleModelClick = () => {
+  uni.switchTab({ url: "/pages/dehaze/index" });
 };
 
-/** 算法推荐：点击具体算法 → 跳转算法选择页 */
 function handleRecommendSelect() {
-  uni.navigateTo({ url: "/pages/algorithm-select/index" });
+  uni.switchTab({ url: "/pages/dehaze/index" });
 }
 </script>
 

@@ -24,10 +24,10 @@ Map<String, dynamic> _$DictTypeToJson(DictType instance) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
   'code': instance.code,
-  if (instance.status case final value?) 'status': value,
-  if (instance.remark case final value?) 'remark': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'status': ?instance.status,
+  'remark': ?instance.remark,
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 DictTypeQuery _$DictTypeQueryFromJson(Map<String, dynamic> json) =>
@@ -42,9 +42,9 @@ DictTypeQuery _$DictTypeQueryFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$DictTypeQueryToJson(DictTypeQuery instance) =>
     <String, dynamic>{
-      if (instance.pageNum case final value?) 'pageNum': value,
-      if (instance.pageSize case final value?) 'pageSize': value,
-      if (instance.keywords case final value?) 'keywords': value,
+      'pageNum': ?instance.pageNum,
+      'pageSize': ?instance.pageSize,
+      'keywords': ?instance.keywords,
     };
 
 DictTypeForm _$DictTypeFormFromJson(Map<String, dynamic> json) =>
@@ -61,11 +61,11 @@ DictTypeForm _$DictTypeFormFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$DictTypeFormToJson(DictTypeForm instance) =>
     <String, dynamic>{
-      if (instance.id case final value?) 'id': value,
-      if (instance.name case final value?) 'name': value,
-      if (instance.code case final value?) 'code': value,
+      'id': ?instance.id,
+      'name': ?instance.name,
+      'code': ?instance.code,
       'status': instance.status,
-      if (instance.remark case final value?) 'remark': value,
+      'remark': ?instance.remark,
     };
 
 Dict _$DictFromJson(Map<String, dynamic> json) =>
@@ -89,19 +89,19 @@ Dict _$DictFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$DictToJson(Dict instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
-  if (instance.typeId case final value?) 'typeId': value,
-  if (instance.typeCode case final value?) 'typeCode': value,
-  if (instance.label case final value?) 'label': value,
-  if (instance.value case final value?) 'value': value,
-  if (instance.sort case final value?) 'sort': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.remark case final value?) 'remark': value,
-  if (instance.cssClass case final value?) 'cssClass': value,
-  if (instance.listClass case final value?) 'listClass': value,
-  if (instance.isDefault case final value?) 'isDefault': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'id': ?instance.id,
+  'typeId': ?instance.typeId,
+  'typeCode': ?instance.typeCode,
+  'label': ?instance.label,
+  'value': ?instance.value,
+  'sort': ?instance.sort,
+  'status': ?instance.status,
+  'remark': ?instance.remark,
+  'cssClass': ?instance.cssClass,
+  'listClass': ?instance.listClass,
+  'isDefault': ?instance.isDefault,
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 DictQuery _$DictQueryFromJson(Map<String, dynamic> json) =>
@@ -116,10 +116,10 @@ DictQuery _$DictQueryFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$DictQueryToJson(DictQuery instance) => <String, dynamic>{
-  if (instance.pageNum case final value?) 'pageNum': value,
-  if (instance.pageSize case final value?) 'pageSize': value,
-  if (instance.typeCode case final value?) 'typeCode': value,
-  if (instance.keywords case final value?) 'keywords': value,
+  'pageNum': ?instance.pageNum,
+  'pageSize': ?instance.pageSize,
+  'typeCode': ?instance.typeCode,
+  'keywords': ?instance.keywords,
 };
 
 DictForm _$DictFormFromJson(Map<String, dynamic> json) =>
@@ -141,17 +141,17 @@ DictForm _$DictFormFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$DictFormToJson(DictForm instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
-  if (instance.typeId case final value?) 'typeId': value,
-  if (instance.typeCode case final value?) 'typeCode': value,
-  if (instance.label case final value?) 'label': value,
-  if (instance.value case final value?) 'value': value,
-  if (instance.sort case final value?) 'sort': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.remark case final value?) 'remark': value,
-  if (instance.cssClass case final value?) 'cssClass': value,
-  if (instance.listClass case final value?) 'listClass': value,
-  if (instance.isDefault case final value?) 'isDefault': value,
+  'id': ?instance.id,
+  'typeId': ?instance.typeId,
+  'typeCode': ?instance.typeCode,
+  'label': ?instance.label,
+  'value': ?instance.value,
+  'sort': ?instance.sort,
+  'status': ?instance.status,
+  'remark': ?instance.remark,
+  'cssClass': ?instance.cssClass,
+  'listClass': ?instance.listClass,
+  'isDefault': ?instance.isDefault,
 };
 
 DictOption _$DictOptionFromJson(Map<String, dynamic> json) =>
@@ -173,6 +173,5 @@ Map<String, dynamic> _$DictOptionToJson(DictOption instance) =>
     <String, dynamic>{
       'value': instance.value,
       'label': instance.label,
-      if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-        'children': value,
+      'children': ?instance.children?.map((e) => e.toJson()).toList(),
     };

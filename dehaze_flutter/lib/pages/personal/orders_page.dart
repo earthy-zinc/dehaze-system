@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/api_result.dart';
 import '../../models/order_model.dart';
 import '../../providers/providers.dart';
 
@@ -73,24 +74,27 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
         _pageNum = nextPage;
         _total = result.total;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isLoadingMore = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
     }
   }
 
   Future<void> _viewDetail(MyOrderVO item) async {
     try {
-      final detail = await ref.read(orderServiceProvider).getMyOrderDetail(
-            item.id,
-          );
+      final detail = await ref
+          .read(orderServiceProvider)
+          .getDetail(item.orderNo);
       if (!mounted) return;
       _showDetailDialog(detail);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('获取订单详情失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('获取订单详情失败: $e')));
     }
   }
 
@@ -114,17 +118,17 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     );
     if (confirmed != true) return;
     try {
-      await ref.read(orderServiceProvider).cancelOrder(item.id);
+      await ref.read(orderServiceProvider).cancelOrder(item.orderNo, '用户主动取消');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('订单已取消')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('订单已取消')));
       _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('取消订单失败: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('取消订单失败: $e')));
     }
   }
 
@@ -140,16 +144,18 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
             children: [
               _detailRow('订单编号', detail.orderNo),
               _detailRow('套餐名称', detail.packageName),
-              _detailRow('套餐等级', detail.packageLevel),
-              _detailRow('时长', '${detail.period}天'),
-              _detailRow('原价', '¥${detail.originalPrice.toStringAsFixed(2)}'),
-              _detailRow('折扣', '¥${detail.discount.toStringAsFixed(2)}'),
-              _detailRow('实付', '¥${detail.amount.toStringAsFixed(2)}'),
-              _detailRow('状态', detail.statusName),
+              if (detail.packageLevel != null)
+                _detailRow('套餐等级', detail.packageLevel!),
+              _detailRow('原价', '¥${_formatAmount(detail.originalPrice)}'),
+              if (detail.couponAmount != null && detail.couponAmount! > 0)
+                _detailRow('优惠券', '-¥${_formatAmount(detail.couponAmount!)}'),
+              _detailRow('应付', '¥${_formatAmount(detail.payableAmount)}'),
+              _detailRow('实付', '¥${_formatAmount(detail.paidAmount)}'),
+              _detailRow('状态', detail.status.displayName),
               _detailRow('创建时间', detail.createTime),
-              if (detail.payTime != null) _detailRow('支付时间', detail.payTime!),
-              if (detail.expireTime != null)
-                _detailRow('过期时间', detail.expireTime!),
+              if (detail.paidTime != null) _detailRow('支付时间', detail.paidTime!),
+              if (detail.packageExpireTime != null)
+                _detailRow('套餐到期', detail.packageExpireTime!),
             ],
           ),
         ),
@@ -171,10 +177,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
         children: [
           SizedBox(
             width: 72,
-            child: Text(
-              '$label:',
-              style: const TextStyle(color: Colors.grey),
-            ),
+            child: Text('$label:', style: const TextStyle(color: Colors.grey)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -182,19 +185,17 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     );
   }
 
-  Color _statusColor(int status) {
+  Color _statusColor(OrderStatus status) {
     switch (status) {
-      case 1: // paid
+      case OrderStatus.paid:
+      case OrderStatus.completed:
         return Colors.green;
-      case 2: // cancelled
+      case OrderStatus.cancelled:
         return Colors.grey;
-      case 3: // refunded
+      case OrderStatus.refunding:
+      case OrderStatus.refunded:
         return Colors.orange;
-      case 4: // expired
-        return Colors.brown;
-      case 5: // failed
-        return Colors.red;
-      default: // pending
+      case OrderStatus.pending:
         return Colors.blue;
     }
   }
@@ -204,6 +205,9 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     return time;
   }
 
+  /// 金额展示：后端以分存储
+  String _formatAmount(int cents) => (cents / 100).toStringAsFixed(2);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -212,37 +216,36 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : _items.isEmpty
-                  ? _buildEmpty(theme)
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: NotificationListener<ScrollNotification>(
-                        onNotification: (notification) {
-                          if (notification is ScrollEndNotification &&
-                              notification.metrics.pixels >=
-                                  notification.metrics.maxScrollExtent - 100) {
-                            _loadMore();
-                          }
-                          return false;
-                        },
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _items.length + (_hasMore ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index >= _items.length) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            final item = _items[index];
-                            return _buildOrderCard(item, theme);
-                          },
-                        ),
-                      ),
-                    ),
+          ? _buildError(theme)
+          : _items.isEmpty
+          ? _buildEmpty(theme)
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollEndNotification &&
+                      notification.metrics.pixels >=
+                          notification.metrics.maxScrollExtent - 100) {
+                    _loadMore();
+                  }
+                  return false;
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length + (_hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index >= _items.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final item = _items[index];
+                    return _buildOrderCard(item, theme);
+                  },
+                ),
+              ),
+            ),
     );
   }
 
@@ -276,7 +279,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      item.statusName,
+                      item.status.displayName,
                       style: TextStyle(
                         color: _statusColor(item.status),
                         fontSize: 12,
@@ -297,7 +300,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '¥${item.amount.toStringAsFixed(2)}',
+                    '¥${_formatAmount(item.paidAmount > 0 ? item.paidAmount : item.payableAmount)}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,
@@ -311,7 +314,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                   ),
                 ],
               ),
-              if (item.status == 0) ...[
+              if (item.status == OrderStatus.pending) ...[
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
@@ -332,30 +335,35 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(_error!, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(_error!, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 
   Widget _buildEmpty(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('暂无订单',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.receipt_long,
+          size: 64,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
         ),
-      );
+        const SizedBox(height: 16),
+        Text(
+          '暂无订单',
+          style: theme.textTheme.titleMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
 }

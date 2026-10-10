@@ -4,14 +4,14 @@ import Taro from "@tarojs/taro";
 import { Photograph, Star } from "@taroify/icons";
 import { Button, Tag, Progress, Skeleton } from "@taroify/core";
 import { RecommendationAPI } from "dehaze-sdk-js";
-import type { ImageFeatureAnalysis, RecommendedAlgorithm } from "dehaze-sdk-js";
+import type { ImageFeatureAnalysis, RecommendedModelVO } from "dehaze-sdk-js";
 import "./index.less";
 
 interface RecommendationWidgetProps {
   /** 初始图片 URL（可选） */
   imageUrl?: string;
-  /** 选择算法后的回调 */
-  onSelect?: (algorithm: RecommendedAlgorithm) => void;
+  /** 选择模型后的回调 */
+  onSelect?: (model: RecommendedModelVO) => void;
   /** 容器宽度，用于图片缩放 */
   containerWidth?: number;
 }
@@ -67,9 +67,9 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
   );
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<ImageFeatureAnalysis | null>(null);
-  const [recommendations, setRecommendations] = useState<
-    RecommendedAlgorithm[]
-  >([]);
+  const [recommendations, setRecommendations] = useState<RecommendedModelVO[]>(
+    []
+  );
 
   // 选择图片
   const handleChooseImage = async () => {
@@ -88,7 +88,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
     }
   };
 
-  // 分析图像并推荐算法
+  // 分析图像并推荐模型
   const handleAnalyze = async () => {
     if (!selectedImageUri) return;
     setAnalyzing(true);
@@ -99,7 +99,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
         imageUrl: selectedImageUri,
       });
       setAnalysis(result);
-      const recs = await RecommendationAPI.getAlgorithmRecommendations({
+      const recs = await RecommendationAPI.getModelRecommendations({
         imageMd5: result.imageMd5,
       });
       setRecommendations(recs || []);
@@ -117,11 +117,11 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
     setRecommendations([]);
   };
 
-  // 处理选择算法
-  const handleSelectAlgorithm = (rec: RecommendedAlgorithm) => {
+  // 处理选择模型
+  const handleSelectModel = (rec: RecommendedModelVO) => {
     onSelect?.(rec);
     Taro.showToast({
-      title: `已选择「${rec.algorithmName}」`,
+      title: `已选择「${rec.modelName}」`,
       icon: "success",
     });
   };
@@ -131,9 +131,9 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
     return (
       <View className="rec-widget">
         <View className="rec-header">
-          <Text className="rec-title">智能算法推荐</Text>
+          <Text className="rec-title">智能模型推荐</Text>
           <Text className="rec-desc">
-            上传一张图片，AI 自动分析并推荐最佳去雾算法
+            上传一张图片，AI 自动分析并推荐最佳去雾模型
           </Text>
         </View>
         <View className="rec-empty-area" onClick={handleChooseImage}>
@@ -244,18 +244,18 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
             </View>
           </View>
 
-          {/* 推荐算法列表 */}
+          {/* 推荐模型列表 */}
           {recommendations.length > 0 && (
             <View className="rec-rec-section">
               <Text className="rec-section-title">
-                推荐算法 Top {recommendations.length}
+                推荐模型 Top {recommendations.length}
               </Text>
 
               {recommendations.slice(0, 5).map((rec) => (
-                <View key={rec.algorithmId} className="rec-algo-card">
+                <View key={rec.modelId} className="rec-algo-card">
                   <View className="rec-algo-header">
                     <View className="rec-algo-name-row">
-                      <Text className="rec-algo-name">{rec.algorithmName}</Text>
+                      <Text className="rec-algo-name">{rec.modelName}</Text>
                       <View className="rec-match-badge">
                         <Text className="rec-match-score">
                           {(rec.matchScore * 100).toFixed(0)}%
@@ -273,7 +273,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => handleSelectAlgorithm(rec)}
+                      onClick={() => handleSelectModel(rec)}
                     >
                       选择
                     </Button>

@@ -26,6 +26,10 @@ class AuthState {
   /// 检查当前用户是否拥有指定权限
   bool hasPerm(String perm) => user?.hasPermission(perm) ?? false;
 
+  /// 检查当前用户是否命中指定模块的任一权限（模块级入口显隐 / 路由守卫用）
+  bool hasModulePerm(String modulePrefix) =>
+      user?.hasModulePerm(modulePrefix) ?? false;
+
   /// 检查当前用户是否拥有指定角色
   bool hasRole(String role) => user?.hasRole(role) ?? false;
 
@@ -36,26 +40,19 @@ class AuthState {
     String? errorMessage,
     bool clearUser = false,
     bool clearSessionId = false,
-  }) =>
-      AuthState(
-        user: clearUser ? null : (user ?? this.user),
-        sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
-        status: status ?? this.status,
-        errorMessage: errorMessage,
-      );
+  }) => AuthState(
+    user: clearUser ? null : (user ?? this.user),
+    sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
+    status: status ?? this.status,
+    errorMessage: errorMessage,
+  );
 }
 
-enum AuthStatus {
-  initial,
-  loading,
-  authenticated,
-  unauthenticated,
-  error,
-}
+enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._authService, this._tokenStorage)
-      : super(const AuthState());
+    : super(const AuthState());
 
   final AuthService _authService;
   final TokenStorage _tokenStorage;
@@ -68,10 +65,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       try {
         final user = await _authService.getCurrentUser();
-        state = state.copyWith(
-          user: user,
-          status: AuthStatus.authenticated,
-        );
+        state = state.copyWith(user: user, status: AuthStatus.authenticated);
       } catch (_) {
         await _tokenStorage.clearTokens();
         state = const AuthState(status: AuthStatus.unauthenticated);
@@ -142,8 +136,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     try {
       await _authService.logout();
-    } catch (_) {
-    }
+    } catch (_) {}
 
     await _tokenStorage.clearTokens();
     state = const AuthState(status: AuthStatus.unauthenticated);

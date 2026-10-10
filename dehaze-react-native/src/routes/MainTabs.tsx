@@ -26,9 +26,6 @@ import DehazeScreen from '@/pages/dehaze';
 import MessagesScreen from '@/pages/messages';
 import ProfileScreen from '@/pages/profile';
 import ImageInputScreen from '@/pages/image-input';
-import AlgorithmSelectScreen from '@/pages/algorithm-select';
-import AlgorithmBrowseScreen from '@/pages/algorithm-browse';
-import AlgorithmScreen from '@/pages/algorithm';
 import DatasetScreen from '@/pages/dataset';
 import DatasetDetailScreen from '@/pages/dataset/detail';
 import DatasetBrowseScreen from '@/pages/dataset-browse';
@@ -58,7 +55,13 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 const makeTabBarIcon = (activeIcon: string, inactiveIcon: string) =>
   function TabBarIcon({ color, focused }: { color: string; focused: boolean }) {
-    return <Ionicons name={focused ? activeIcon : inactiveIcon} size={22} color={color} />;
+    return (
+      <Ionicons
+        name={focused ? activeIcon : inactiveIcon}
+        size={22}
+        color={color}
+      />
+    );
   };
 
 // ============================================================
@@ -80,9 +83,6 @@ function ToolsStackNavigator() {
     <ToolsStack.Navigator screenOptions={{ headerShown: false }}>
       <ToolsStack.Screen name="Index" component={ToolsScreen} />
       <ToolsStack.Screen name="ImageInput" component={ImageInputScreen} />
-      <ToolsStack.Screen name="AlgorithmSelect" component={AlgorithmSelectScreen} />
-      <ToolsStack.Screen name="AlgorithmBrowse" component={AlgorithmBrowseScreen} />
-      <ToolsStack.Screen name="Algorithm" component={AlgorithmScreen} />
       <ToolsStack.Screen name="Dataset" component={DatasetScreen} />
       <ToolsStack.Screen name="DatasetBrowse" component={DatasetBrowseScreen} />
       <ToolsStack.Screen name="DatasetDetail" component={DatasetDetailScreen} />
@@ -99,9 +99,6 @@ function DehazeStackNavigator() {
   return (
     <DehazeStack.Navigator screenOptions={{ headerShown: false }}>
       <DehazeStack.Screen name="Index" component={DehazeScreen} />
-      <DehazeStack.Screen name="AlgorithmSelect" component={AlgorithmSelectScreen} />
-      <DehazeStack.Screen name="AlgorithmBrowse" component={AlgorithmBrowseScreen} />
-      <DehazeStack.Screen name="Algorithm" component={AlgorithmScreen} />
       <DehazeStack.Screen name="Processing" component={ProcessingScreen} />
       <DehazeStack.Screen name="Batch" component={BatchScreen} />
       <DehazeStack.Screen
@@ -157,9 +154,6 @@ import SystemDictScreen from '@/pages/system/dict';
 import SystemDictTypeFormScreen from '@/pages/system/dict/type-form';
 import SystemDictItemScreen from '@/pages/system/dict/items';
 import SystemDictItemFormScreen from '@/pages/system/dict/item-form';
-import SystemAlgorithmScreen from '@/pages/system/algorithm';
-import SystemAlgorithmFormScreen from '@/pages/system/algorithm/form';
-import SystemAlgorithmAuditScreen from '@/pages/system/algorithm/audit';
 import SystemDatasetScreen from '@/pages/system/dataset';
 import SystemDatasetFormScreen from '@/pages/system/dataset/form';
 import SystemTaskScreen from '@/pages/system/task';
@@ -188,60 +182,168 @@ function ProfileStackNavigator() {
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen name="Index" component={ProfileScreen} />
       {/* ===== 个人 L2 (dev-personal) ===== */}
-      <ProfileStack.Screen name="PersonalFiles" component={PersonalFilesScreen} />
-      <ProfileStack.Screen name="PersonalOrders" component={PersonalOrdersScreen} />
-      <ProfileStack.Screen name="PersonalQuota" component={PersonalQuotaScreen} />
-      <ProfileStack.Screen name="PersonalMember" component={PersonalMemberScreen} />
-      <ProfileStack.Screen name="PersonalPackage" component={PersonalPackageScreen} />
-      <ProfileStack.Screen name="PersonalFeedback" component={PersonalFeedbackScreen} />
-      <ProfileStack.Screen name="PersonalFavorites" component={PersonalFavoritesScreen} />
-      <ProfileStack.Screen name="PersonalSettings" component={PersonalSettingsScreen} />
+      <ProfileStack.Screen
+        name="PersonalFiles"
+        component={PersonalFilesScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalOrders"
+        component={PersonalOrdersScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalQuota"
+        component={PersonalQuotaScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalMember"
+        component={PersonalMemberScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalPackage"
+        component={PersonalPackageScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalFeedback"
+        component={PersonalFeedbackScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalFavorites"
+        component={PersonalFavoritesScreen}
+      />
+      <ProfileStack.Screen
+        name="PersonalSettings"
+        component={PersonalSettingsScreen}
+      />
       <ProfileStack.Screen name="PersonalHelp" component={PersonalHelpScreen} />
-      <ProfileStack.Screen name="PersonalAbout" component={PersonalAboutScreen} />
+      <ProfileStack.Screen
+        name="PersonalAbout"
+        component={PersonalAboutScreen}
+      />
       <ProfileStack.Screen name="Notify" component={NotifyScreen} />
       {/* Task + Dataset 归位 */}
       <ProfileStack.Screen name="Task" component={TaskScreen} />
       <ProfileStack.Screen name="Dataset" component={DatasetScreen} />
-      <ProfileStack.Screen name="DatasetDetail" component={DatasetDetailScreen} />
+      <ProfileStack.Screen
+        name="DatasetDetail"
+        component={DatasetDetailScreen}
+      />
       {/* ===== 管理入口 (dev-admin) ===== */}
-      <ProfileStack.Screen name="SystemDashboard" component={SystemDashboardScreen} />
+      <ProfileStack.Screen
+        name="SystemDashboard"
+        component={SystemDashboardScreen}
+      />
       <ProfileStack.Screen name="SystemUser" component={SystemUserScreen} />
-      <ProfileStack.Screen name="SystemUserForm" component={SystemUserFormScreen} />
+      <ProfileStack.Screen
+        name="SystemUserForm"
+        component={SystemUserFormScreen}
+      />
       <ProfileStack.Screen name="SystemRole" component={SystemRoleScreen} />
-      <ProfileStack.Screen name="SystemRoleForm" component={SystemRoleFormScreen} />
-      <ProfileStack.Screen name="SystemRolePerm" component={SystemRolePermScreen} />
+      <ProfileStack.Screen
+        name="SystemRoleForm"
+        component={SystemRoleFormScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemRolePerm"
+        component={SystemRolePermScreen}
+      />
       <ProfileStack.Screen name="SystemMenu" component={SystemMenuScreen} />
-      <ProfileStack.Screen name="SystemMenuForm" component={SystemMenuFormScreen} />
+      <ProfileStack.Screen
+        name="SystemMenuForm"
+        component={SystemMenuFormScreen}
+      />
       <ProfileStack.Screen name="SystemDept" component={SystemDeptScreen} />
-      <ProfileStack.Screen name="SystemDeptForm" component={SystemDeptFormScreen} />
+      <ProfileStack.Screen
+        name="SystemDeptForm"
+        component={SystemDeptFormScreen}
+      />
       <ProfileStack.Screen name="SystemDict" component={SystemDictScreen} />
-      <ProfileStack.Screen name="SystemDictTypeForm" component={SystemDictTypeFormScreen} />
-      <ProfileStack.Screen name="SystemDictItem" component={SystemDictItemScreen} />
-      <ProfileStack.Screen name="SystemDictItemForm" component={SystemDictItemFormScreen} />
-      <ProfileStack.Screen name="SystemAlgorithm" component={SystemAlgorithmScreen} />
-      <ProfileStack.Screen name="SystemAlgorithmForm" component={SystemAlgorithmFormScreen} />
-      <ProfileStack.Screen name="SystemAlgorithmAudit" component={SystemAlgorithmAuditScreen} />
-      <ProfileStack.Screen name="SystemDataset" component={SystemDatasetScreen} />
-      <ProfileStack.Screen name="SystemDatasetForm" component={SystemDatasetFormScreen} />
+      <ProfileStack.Screen
+        name="SystemDictTypeForm"
+        component={SystemDictTypeFormScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemDictItem"
+        component={SystemDictItemScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemDictItemForm"
+        component={SystemDictItemFormScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemDataset"
+        component={SystemDatasetScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemDatasetForm"
+        component={SystemDatasetFormScreen}
+      />
       <ProfileStack.Screen name="SystemTask" component={SystemTaskScreen} />
       <ProfileStack.Screen name="SystemMember" component={SystemMemberScreen} />
-      <ProfileStack.Screen name="SystemMemberDetail" component={SystemMemberDetailScreen} />
-      <ProfileStack.Screen name="SystemMemberGrowthLog" component={SystemMemberGrowthLogScreen} />
-      <ProfileStack.Screen name="SystemPackage" component={SystemPackageScreen} />
-      <ProfileStack.Screen name="SystemPackageForm" component={SystemPackageFormScreen} />
+      <ProfileStack.Screen
+        name="SystemMemberDetail"
+        component={SystemMemberDetailScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMemberGrowthLog"
+        component={SystemMemberGrowthLogScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemPackage"
+        component={SystemPackageScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemPackageForm"
+        component={SystemPackageFormScreen}
+      />
       <ProfileStack.Screen name="SystemOrder" component={SystemOrderScreen} />
-      <ProfileStack.Screen name="SystemOrderDetail" component={SystemOrderDetailScreen} />
-      <ProfileStack.Screen name="SystemOrderRefund" component={SystemOrderRefundScreen} />
-      <ProfileStack.Screen name="SystemFeedback" component={SystemFeedbackScreen} />
-      <ProfileStack.Screen name="SystemFeedbackDetail" component={SystemFeedbackDetailScreen} />
-      <ProfileStack.Screen name="SystemMessage" component={SystemMessageScreen} />
-      <ProfileStack.Screen name="SystemMessageAnnouncement" component={SystemMessageAnnouncementScreen} />
-      <ProfileStack.Screen name="SystemMessageAnnouncementForm" component={SystemMessageAnnouncementFormScreen} />
-      <ProfileStack.Screen name="SystemMessageTemplate" component={SystemMessageTemplateScreen} />
-      <ProfileStack.Screen name="SystemMessageTemplateForm" component={SystemMessageTemplateFormScreen} />
-      <ProfileStack.Screen name="SystemMessageSend" component={SystemMessageSendScreen} />
-      <ProfileStack.Screen name="SystemRecommend" component={SystemRecommendScreen} />
-      <ProfileStack.Screen name="SystemRecommendRuleForm" component={SystemRecommendRuleFormScreen} />
+      <ProfileStack.Screen
+        name="SystemOrderDetail"
+        component={SystemOrderDetailScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemOrderRefund"
+        component={SystemOrderRefundScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemFeedback"
+        component={SystemFeedbackScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemFeedbackDetail"
+        component={SystemFeedbackDetailScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessage"
+        component={SystemMessageScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessageAnnouncement"
+        component={SystemMessageAnnouncementScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessageAnnouncementForm"
+        component={SystemMessageAnnouncementFormScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessageTemplate"
+        component={SystemMessageTemplateScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessageTemplateForm"
+        component={SystemMessageTemplateFormScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemMessageSend"
+        component={SystemMessageSendScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemRecommend"
+        component={SystemRecommendScreen}
+      />
+      <ProfileStack.Screen
+        name="SystemRecommendRuleForm"
+        component={SystemRecommendRuleFormScreen}
+      />
     </ProfileStack.Navigator>
   );
 }
@@ -258,7 +360,10 @@ export default function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.text.tertiary,
         tabBarLabelStyle: { fontSize: 11 },
-        tabBarStyle: { backgroundColor: colors.background.primary, borderTopColor: colors.border.light },
+        tabBarStyle: {
+          backgroundColor: colors.background.primary,
+          borderTopColor: colors.border.light,
+        },
       }}
     >
       <Tab.Screen
@@ -274,12 +379,16 @@ export default function MainTabs() {
       <Tab.Screen
         name="Dehaze"
         component={DehazeStackNavigator}
-        options={{ tabBarIcon: makeTabBarIcon('color-wand', 'color-wand-outline') }}
+        options={{
+          tabBarIcon: makeTabBarIcon('color-wand', 'color-wand-outline'),
+        }}
       />
       <Tab.Screen
         name="Messages"
         component={MessagesStackNavigator}
-        options={{ tabBarIcon: makeTabBarIcon('notifications', 'notifications-outline') }}
+        options={{
+          tabBarIcon: makeTabBarIcon('notifications', 'notifications-outline'),
+        }}
       />
       <Tab.Screen
         name="Profile"

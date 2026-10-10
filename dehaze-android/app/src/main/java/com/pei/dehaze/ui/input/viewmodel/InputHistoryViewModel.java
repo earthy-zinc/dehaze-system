@@ -31,7 +31,7 @@ public class InputHistoryViewModel extends BaseViewModel {
     private final int pageSize = 10;
     private String keywords = "";
     private InputSource inputSource;
-    private Boolean favoriteOnly = false;
+    private Integer status;
 
     public LiveData<List<InputHistoryVO>> getHistoryList() {
         return historyList;
@@ -63,21 +63,21 @@ public class InputHistoryViewModel extends BaseViewModel {
         query.setPageSize(pageSize);
         query.setKeywords(keywords);
         query.setInputSource(inputSource);
-        query.setFavoriteOnly(favoriteOnly);
+        query.setStatus(status);
         return query;
     }
 
-    public void setQueryParams(String keywords, InputSource inputSource, Boolean favoriteOnly) {
+    public void setQueryParams(String keywords, InputSource inputSource, Integer status) {
         this.keywords = keywords == null ? "" : keywords.trim();
         this.inputSource = inputSource;
-        this.favoriteOnly = favoriteOnly;
+        this.status = status;
         this.pageNum = 1;
     }
 
     public void resetQuery() {
         this.keywords = "";
         this.inputSource = null;
-        this.favoriteOnly = false;
+        this.status = null;
         this.pageNum = 1;
     }
 

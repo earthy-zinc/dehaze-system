@@ -13,3 +13,6 @@ class FormatUtils {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 }
+
+/// 金额展示：后端金额单位统一为分，展示转元
+String formatYuan(int fen) => '¥${(fen / 100).toStringAsFixed(2)}';

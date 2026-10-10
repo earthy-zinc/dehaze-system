@@ -15,7 +15,13 @@ import {
 } from '../types/imageInput';
 
 // 支持的图片格式
-const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const SUPPORTED_FORMATS = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+];
 
 // 文件大小限制
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -29,7 +35,11 @@ interface RnFormDataFile {
 
 /** hazeLevel 到 SampleCategory 的映射 */
 function hazeLevelToCategory(hazeLevel?: string): SampleCategory {
-  if (hazeLevel === 'light' || hazeLevel === 'medium' || hazeLevel === 'heavy') {
+  if (
+    hazeLevel === 'light' ||
+    hazeLevel === 'medium' ||
+    hazeLevel === 'heavy'
+  ) {
     return hazeLevel;
   }
   return 'medium';
@@ -120,7 +130,7 @@ export const imageInputApi = {
       Image.getSize(
         uri,
         (width, height) => resolve({ width, height }),
-        (error) => reject(error)
+        error => reject(error),
       );
     });
   },

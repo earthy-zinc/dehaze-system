@@ -6,7 +6,6 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
-import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -53,19 +52,17 @@ public class InputHistoryFormDialog {
 
         MaterialButton btnPickImage = view.findViewById(R.id.btn_pick_image);
         tvOriginalUrl = view.findViewById(R.id.tv_original_url);
-        TextInputEditText etAlgorithmId = view.findViewById(R.id.et_algorithm_id);
-        TextInputEditText etAlgorithmName = view.findViewById(R.id.et_algorithm_name);
-        TextInputEditText etAlgorithmParams = view.findViewById(R.id.et_algorithm_params);
+        TextInputEditText etModelId = view.findViewById(R.id.et_model_id);
+        TextInputEditText etModelName = view.findViewById(R.id.et_model_name);
+        TextInputEditText etModelParams = view.findViewById(R.id.et_model_params);
         TextInputEditText etProcessingTime = view.findViewById(R.id.et_processing_time);
         Spinner spinnerStatus = view.findViewById(R.id.spinner_status);
         Spinner spinnerSource = view.findViewById(R.id.spinner_source);
-        RadioGroup rgFavorite = view.findViewById(R.id.rg_favorite);
 
         setupSpinner(spinnerStatus, labelsOf(STATUS_VALUES));
         setupSpinner(spinnerSource, labelsOf(FORM_SOURCE_VALUES));
         spinnerStatus.setSelection(0);
         spinnerSource.setSelection(0);
-        rgFavorite.check(R.id.rb_favorite_no);
 
         btnPickImage.setOnClickListener(v -> {
             if (callback != null) callback.onPickImage();
@@ -75,8 +72,8 @@ public class InputHistoryFormDialog {
                 .setTitle("新增历史记录")
                 .setView(view)
                 .setPositiveButton("确定", (d, which) -> submit(
-                        etAlgorithmId, etAlgorithmName, etAlgorithmParams,
-                        etProcessingTime, spinnerStatus, spinnerSource, rgFavorite))
+                        etModelId, etModelName, etModelParams,
+                        etProcessingTime, spinnerStatus, spinnerSource))
                 .setNegativeButton("取消", null)
                 .setOnDismissListener(d -> resetState())
                 .show();
@@ -101,18 +98,16 @@ public class InputHistoryFormDialog {
         spinner.setAdapter(adapter);
     }
 
-    private void submit(TextInputEditText etAlgorithmId,
-                        TextInputEditText etAlgorithmName, TextInputEditText etAlgorithmParams,
+    private void submit(TextInputEditText etModelId,
+                        TextInputEditText etModelName, TextInputEditText etModelParams,
                         TextInputEditText etProcessingTime, Spinner spinnerStatus,
-                        Spinner spinnerSource, RadioGroup rgFavorite) {
-        String algorithmIdStr = StringUtils.getText(etAlgorithmId);
-        String algorithmName = StringUtils.getText(etAlgorithmName);
-        String algorithmParams = StringUtils.getText(etAlgorithmParams);
+                        Spinner spinnerSource) {
+        String modelId = StringUtils.getText(etModelId);
+        String modelName = StringUtils.getText(etModelName);
+        String modelParams = StringUtils.getText(etModelParams);
         String processingTimeStr = StringUtils.getText(etProcessingTime);
         ProcessStatus status = STATUS_VALUES[spinnerStatus.getSelectedItemPosition()];
         InputSource source = FORM_SOURCE_VALUES[spinnerSource.getSelectedItemPosition()];
-        Integer isFavorite = rgFavorite.getCheckedRadioButtonId() == R.id.rb_favorite_yes ? 1 : 0;
-        Long algorithmId = parseLongOrNull(algorithmIdStr);
         Integer processingTime = parseIntOrNull(processingTimeStr);
 
         if (TextUtils.isEmpty(currentOriginalUrl)) {
@@ -121,13 +116,12 @@ public class InputHistoryFormDialog {
         }
         InputHistoryForm form = new InputHistoryForm();
         form.setOriginalImageUrl(currentOriginalUrl);
-        form.setAlgorithmId(algorithmId);
-        form.setAlgorithmName(algorithmName);
-        form.setAlgorithmParams(algorithmParams);
+        form.setModelId(TextUtils.isEmpty(modelId) ? null : modelId);
+        form.setModelName(TextUtils.isEmpty(modelName) ? null : modelName);
+        form.setModelParams(TextUtils.isEmpty(modelParams) ? null : modelParams);
         form.setProcessingTime(processingTime);
         form.setStatus(status);
         form.setInputSource(source);
-        form.setIsFavorite(isFavorite);
         callback.onCreate(form);
     }
 
@@ -151,15 +145,6 @@ public class InputHistoryFormDialog {
             labels[i] = values[i].getLabel();
         }
         return labels;
-    }
-
-    private static Long parseLongOrNull(String s) {
-        if (TextUtils.isEmpty(s)) return null;
-        try {
-            return Long.parseLong(s);
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 
     private static Integer parseIntOrNull(String s) {

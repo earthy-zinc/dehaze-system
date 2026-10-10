@@ -81,12 +81,12 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="算法与参数"
+                        android:text="模型与参数"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
                     <Spinner
-                        android:id="@+id/spinner_algorithm"
+                        android:id="@+id/spinner_model"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp" />
@@ -178,7 +178,7 @@
                     </FrameLayout>
 
                     <TextView
-                        android:id="@+id/tv_algorithm_info"
+                        android:id="@+id/tv_model_info"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"

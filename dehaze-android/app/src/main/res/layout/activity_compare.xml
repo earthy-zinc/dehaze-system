@@ -85,30 +85,30 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="算法选择（可多选）"
+                        android:text="模型选择（可多选）"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
                     <Spinner
-                        android:id="@+id/spinner_algorithm"
+                        android:id="@+id/spinner_model"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp" />
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_add_algorithm"
+                        android:id="@+id/btn_add_model"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="添加算法到对比列表" />
+                        android:text="添加模型到对比列表" />
 
                     <TextView
-                        android:id="@+id/tv_selected_algorithms"
+                        android:id="@+id/tv_selected_models"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="已选算法：无"
+                        android:text="已选模型：无"
                         android:textSize="14sp" />
 
                 </LinearLayout>

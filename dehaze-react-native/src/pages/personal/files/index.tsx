@@ -65,31 +65,30 @@ const PersonalFilesScreen: React.FC = () => {
     if (hasMore && !refreshing) loadFiles(page + 1);
   }, [hasMore, refreshing, page, loadFiles]);
 
-  const handleDelete = useCallback(
-    (fileId: number) => {
-      Alert.alert('删除文件', '确认删除此文件？', [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await FileAPI.deleteById(fileId);
-              setFiles(prev => prev.filter(f => f.id !== fileId));
-            } catch {
-              Alert.alert('删除失败', '请稍后重试');
-            }
-          },
+  const handleDelete = useCallback((fileId: number) => {
+    Alert.alert('删除文件', '确认删除此文件？', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await FileAPI.deleteById(fileId);
+            setFiles(prev => prev.filter(f => f.id !== fileId));
+          } catch {
+            Alert.alert('删除失败', '请稍后重试');
+          }
         },
-      ]);
-    },
-    [],
-  );
+      },
+    ]);
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: FileInfo }) => {
       const ext = (item.name || '').split('.').pop()?.toLowerCase() || '';
-      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
+      const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(
+        ext,
+      );
 
       return (
         <View style={styles.fileRow}>
@@ -101,17 +100,25 @@ const PersonalFilesScreen: React.FC = () => {
             />
           </View>
           <View style={styles.fileInfo}>
-            <Text style={styles.fileName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.fileName} numberOfLines={1}>
+              {item.name}
+            </Text>
             <Text style={styles.fileMeta}>
               {item.size || formatFileSize(item.sizeBytes)}
-              {item.createTime ? ` · ${new Date(item.createTime).toLocaleDateString('zh-CN')}` : ''}
+              {item.createTime
+                ? ` · ${new Date(item.createTime).toLocaleDateString('zh-CN')}`
+                : ''}
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => handleDelete(item.id)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash-outline" size={18} color={theme.colors.text.tertiary} />
+            <Ionicons
+              name="trash-outline"
+              size={18}
+              color={theme.colors.text.tertiary}
+            />
           </TouchableOpacity>
         </View>
       );
@@ -122,21 +129,34 @@ const PersonalFilesScreen: React.FC = () => {
   const renderEmpty = () =>
     !loading ? (
       <View style={styles.empty}>
-        <Ionicons name="document-outline" size={48} color={theme.colors.text.tertiary} />
+        <Ionicons
+          name="document-outline"
+          size={48}
+          color={theme.colors.text.tertiary}
+        />
         <Text style={styles.emptyText}>暂无文件</Text>
       </View>
     ) : null;
 
   return (
     <View style={styles.container}>
-      <AppHeader title="我的文件" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="我的文件"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <FlatList
         data={files}
         renderItem={renderItem}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} tintColor={theme.colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
         }
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -175,9 +195,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     marginTop: 2,
   },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border.light },
+  sep: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.light,
+  },
   empty: { alignItems: 'center', paddingVertical: theme.spacing.xxxl },
-  emptyText: { fontSize: theme.typography.sizes.bodySmall, color: theme.colors.text.tertiary, marginTop: theme.spacing.sm },
+  emptyText: {
+    fontSize: theme.typography.sizes.bodySmall,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.sm,
+  },
 });
 
 const ItemSeparator = () => <View style={styles.sep} />;

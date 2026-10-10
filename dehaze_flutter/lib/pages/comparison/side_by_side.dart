@@ -22,14 +22,16 @@ class SideBySidePage extends ConsumerWidget {
 
     final originalUrl = state.selectedImage?.fileUrl;
     final originalBytes = state.selectedImage?.bytes;
-    final resultUrl = state.predictionResult?.resultUrl;
+    final resultUrl = state.taskResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
       return ComparisonScaffold(
         icon: Icons.view_column_outlined,
         title: '并排对比',
         subtitle: '滑动分割线对比效果',
-        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
+        body: CompareEmptyState(
+          onAction: () => context.go(AppRouterConfig.processing),
+        ),
         currentRoute: AppRouterConfig.sideBySide,
       );
     }
@@ -73,7 +75,10 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
       onHorizontalDragUpdate: (details) {
         final box = context.findRenderObject() as RenderBox;
         setState(() {
-          _position = (details.localPosition.dx / box.size.width).clamp(0.0, 1.0);
+          _position = (details.localPosition.dx / box.size.width).clamp(
+            0.0,
+            1.0,
+          );
         });
       },
       child: Stack(
@@ -113,7 +118,12 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                        ),
+                      ],
                     ),
                     child: const Icon(Icons.drag_indicator, size: 18),
                   ),
@@ -123,16 +133,8 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
           ),
 
           // 标签
-          Positioned(
-            top: 12,
-            left: 12,
-            child: _Label('原图'),
-          ),
-          Positioned(
-            top: 12,
-            right: 12,
-            child: _Label('去雾结果'),
-          ),
+          Positioned(top: 12, left: 12, child: _Label('原图')),
+          Positioned(top: 12, right: 12, child: _Label('去雾结果')),
         ],
       ),
     );
@@ -144,7 +146,8 @@ class _LeftClipper extends CustomClipper<Rect> {
   final double position;
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * position, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * position, size.height);
 
   @override
   bool shouldReclip(_LeftClipper oldClipper) => position != oldClipper.position;
@@ -156,11 +159,18 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.6),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
 }

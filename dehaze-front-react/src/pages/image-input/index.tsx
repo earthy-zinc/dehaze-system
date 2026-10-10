@@ -169,7 +169,7 @@ const UploadPanel: React.FC<UploadPanelProps> = ({ onImageSelected }) => {
   const handleUpload = (file: File) => {
     setUploading(true);
     setProgress(0);
-    FileAPI.upload(file, undefined, (progressEvent) => {
+    FileAPI.upload(file, (progressEvent) => {
       const percent = progressEvent.total
         ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
         : 0;

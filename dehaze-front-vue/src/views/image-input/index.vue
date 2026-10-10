@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import Camera from "@/components/Camera/index.vue";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
-import { useImageShowStore } from "@/store/modules/imageShow";
 import { computeFileMd5 } from "@/utils";
 import examples from "@/views/presentation/dehaze/exampleImages";
 import { FileAPI } from "dehaze-sdk-js";
@@ -13,7 +12,6 @@ defineOptions({
 });
 
 const router = useRouter();
-const imageShowStore = useImageShowStore();
 
 // 历史记录存储 key
 const HISTORY_KEY = "dehaze:image-history";
@@ -185,15 +183,11 @@ async function handleUploadRequest(options: UploadRequestOptions) {
       handleImageSelected(existing.url, "upload");
       return;
     }
-    const res = await FileAPI.upload(
-      options.file,
-      imageShowStore.modelId,
-      (e) => {
-        if (e.total) {
-          uploadProgress.value = Math.round((e.loaded / e.total) * 100);
-        }
+    const res = await FileAPI.upload(options.file, (e) => {
+      if (e.total) {
+        uploadProgress.value = Math.round((e.loaded / e.total) * 100);
       }
-    );
+    });
     uploadProgress.value = 100;
     ElMessage.success("上传成功");
     const url = res.url;
@@ -214,9 +208,7 @@ async function handleCameraSave(file: File) {
   try {
     const md5 = await computeFileMd5(file);
     const existing = await FileAPI.uploadCheck(md5);
-    const url = existing
-      ? existing.url
-      : (await FileAPI.upload(file, imageShowStore.modelId)).url;
+    const url = existing ? existing.url : (await FileAPI.upload(file)).url;
     handleImageSelected(url, "camera");
   } catch {
   } finally {

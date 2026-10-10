@@ -110,7 +110,7 @@ function deriveTraceSteps(message: ChatAssistantMessageVM): ChatTraceStepVM[] {
     steps.push({
       id: `${message.id}:billing`,
       kind: "billing",
-      label: "计费",
+      label: "本轮消耗",
       status: "ok",
       detail: `输入 ${usage.inputTokens} / 输出 ${usage.outputTokens} tokens${cached} · 积分 ${usage.credits}`,
     });

@@ -234,9 +234,9 @@ public class OrdersActivity extends BaseActivity {
             return bg;
         }
 
-        private static String formatAmount(Double amount) {
+        private static String formatAmount(Long amount) {
             if (amount == null) return "";
-            return "¥" + String.format("%.2f", amount);
+            return "¥" + String.format("%.2f", amount / 100.0);
         }
 
         static class VH extends RecyclerView.ViewHolder {

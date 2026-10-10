@@ -33,11 +33,8 @@
             {{ memberProfile.levelName }} · 成长值
             {{ memberProfile.growthValue }}
           </text>
-          <text class="vip-title" v-else>开通 VIP 畅享更多次数</text>
-          <text class="vip-subtitle" v-if="isVip">
-            本月已用 {{ memberProfile.monthlyUsed }} 次
-          </text>
-          <text class="vip-subtitle" v-else>解锁全部高级功能</text>
+          <text class="vip-title" v-else>开通 VIP 畅享更多积分</text>
+          <text class="vip-subtitle" v-if="!isVip">解锁全部高级功能</text>
         </view>
         <view class="vip-action">
           <text>{{ isVip ? "查看权益" : "去开通" }}</text>
@@ -47,13 +44,13 @@
 
       <!-- 数据统计 -->
       <view class="stats-row">
-        <view class="stat-item" @click="handleQuota">
-          <text class="stat-value">{{ quota.remaining }}</text>
-          <text class="stat-label">剩余额度</text>
+        <view class="stat-item" @click="handleCredits">
+          <text class="stat-value">{{ creditsBalance }}</text>
+          <text class="stat-label">积分余额</text>
         </view>
         <view class="stat-item" @click="handleTaskHistory">
-          <text class="stat-value">{{ quota.used }}</text>
-          <text class="stat-label">本月处理</text>
+          <text class="stat-value">{{ monthlyUsed }}</text>
+          <text class="stat-label">本月已用</text>
         </view>
         <view class="stat-item" @click="handleFavorite">
           <text class="stat-value">{{ favCount }}</text>
@@ -117,8 +114,8 @@
           <MenuItem
             icon="calendar"
             icon-color="#8b5cf6"
-            label="我的额度"
-            @click="goPersonal('quota')"
+            label="积分余额"
+            @click="goPersonal('credits')"
           />
           <MenuItem
             icon="edit-pen"
@@ -160,19 +157,20 @@
         </view>
       </view>
 
-      <!-- 管理入口（权限过滤） -->
-      <view v-if="hasAnyAdminPerm" class="menu-group">
+      <!-- 管理入口（各子模块按权限过滤） -->
+      <view class="menu-group">
         <text class="group-title">管理入口</text>
         <view class="menu-card">
-          <template v-if="hasPermGroup('algorithm') || hasPermGroup('dataset')">
-            <text class="sub-group-title">算法与数据</text>
-            <MenuItem
-              v-if="auth.hasPerm('sys:algorithm:*')"
-              icon="cpu"
-              icon-color="#3b82f6"
-              label="算法管理"
-              @click="goPage('/pages/system/algorithm/index')"
-            />
+          <!-- 任务管理：任务域后端无接口级权限校验（仅登录态 + create_by 归属校验），不按权限控制 -->
+          <MenuItem
+            icon="play-circle"
+            icon-color="#f97316"
+            label="任务管理"
+            @click="goPage('/pages/system/task/index')"
+          />
+
+          <template v-if="hasPermGroup('dataset')">
+            <text class="sub-group-title">数据</text>
             <MenuItem
               v-if="auth.hasPerm('sys:dataset:*')"
               icon="database"
@@ -219,40 +217,33 @@
               label="字典管理"
               @click="goPage('/pages/system/dict/index')"
             />
-            <MenuItem
-              v-if="auth.hasPerm('sys:task:*')"
-              icon="play-circle"
-              icon-color="#f97316"
-              label="任务管理"
-              @click="goPage('/pages/system/task/index')"
-            />
           </template>
 
           <template v-if="hasPermGroup('biz')">
             <text class="sub-group-title">运营管理</text>
             <MenuItem
-              v-if="auth.hasPerm('sys:member:*')"
+              v-if="auth.hasPerm('member:*')"
               icon="man-delete"
               icon-color="#3b82f6"
               label="会员管理"
               @click="goPage('/pages/system/member/index')"
             />
             <MenuItem
-              v-if="auth.hasPerm('sys:package:*')"
+              v-if="auth.hasPerm('package:*')"
               icon="rmb-circle"
               icon-color="#f59e0b"
               label="套餐管理"
               @click="goPage('/pages/system/package/index')"
             />
             <MenuItem
-              v-if="auth.hasPerm('sys:order:*')"
+              v-if="auth.hasPerm('order:*')"
               icon="order"
               icon-color="#10b981"
               label="订单管理"
               @click="goPage('/pages/system/order/index')"
             />
             <MenuItem
-              v-if="auth.hasPerm('sys:feedback:*')"
+              v-if="auth.hasPerm('feedback:*')"
               icon="edit-pen"
               icon-color="#ec4899"
               label="反馈评价管理"
@@ -266,7 +257,7 @@
               @click="goPage('/pages/system/recommend/index')"
             />
             <MenuItem
-              v-if="auth.hasPerm('sys:notify:*')"
+              v-if="auth.hasPerm('notify:*')"
               icon="bell"
               icon-color="#f97316"
               label="消息管理"
@@ -294,7 +285,7 @@ import PageLayout from "@/layout/index.vue";
 import MenuItem from "./components/MenuItem.vue";
 import { useAuthStore } from "@/store/auth";
 import { LOGIN_PATH } from "@/routers/guard";
-import { MemberAPI, ModelAPI, FavoriteAPI } from "dehaze-sdk-js";
+import { AiBillingAPI, MemberAPI, FavoriteAPI } from "dehaze-sdk-js";
 
 const auth = useAuthStore();
 
@@ -316,8 +307,9 @@ const isVip = computed(
     memberProfile.value.levelCode !== "level_1"
 );
 
-// 配额
-const quota = ref({ remaining: 0, used: 0, total: 0 });
+// 积分余额（后端按字符串下发以免精度丢失，计算前 Number()）
+const creditsBalance = ref("0");
+const monthlyUsed = ref(0);
 
 // 收藏数
 const favCount = ref(0);
@@ -331,8 +323,9 @@ onMounted(async () => {
   }
 
   try {
-    const q = await ModelAPI.getQuota();
-    quota.value = q;
+    const balance = await AiBillingAPI.getBalance();
+    creditsBalance.value = balance.creditsBalance ?? "0";
+    monthlyUsed.value = balance.monthlyUsed ?? 0;
   } catch {
     // 无数据
   }
@@ -362,8 +355,8 @@ function handleMember() {
   uni.navigateTo({ url: "/pages/personal/member/index" });
 }
 
-function handleQuota() {
-  uni.navigateTo({ url: "/pages/personal/quota/index" });
+function handleCredits() {
+  uni.navigateTo({ url: "/pages/personal/credits/index" });
 }
 
 function handleTaskHistory() {
@@ -374,31 +367,11 @@ function handleFavorite() {
   uni.navigateTo({ url: "/pages/personal/favorites/index" });
 }
 
-// 管理权限分组判断
-const hasAnyAdminPerm = computed(() => {
-  const adminPerms = [
-    "sys:algorithm:*",
-    "sys:dataset:*",
-    "sys:user:*",
-    "sys:role:*",
-    "sys:menu:*",
-    "sys:dept:*",
-    "sys:dict:*",
-    "sys:task:*",
-    "sys:member:*",
-    "sys:package:*",
-    "sys:order:*",
-    "sys:feedback:*",
-    "sys:recommendation:*",
-    "sys:notify:*",
-  ];
-  return adminPerms.some((p) => auth.hasPerm(p));
-});
-
+// 管理权限分组判断（任务管理为登录态功能，不参与权限分组）
 function hasPermGroup(group: string) {
   switch (group) {
-    case "algorithm":
-      return auth.hasPerm("sys:algorithm:*") || auth.hasPerm("sys:dataset:*");
+    case "data":
+      return auth.hasPerm("sys:dataset:*");
     case "sys":
       return [
         "sys:user:*",
@@ -406,16 +379,15 @@ function hasPermGroup(group: string) {
         "sys:menu:*",
         "sys:dept:*",
         "sys:dict:*",
-        "sys:task:*",
       ].some((p) => auth.hasPerm(p));
     case "biz":
       return [
-        "sys:member:*",
-        "sys:package:*",
-        "sys:order:*",
-        "sys:feedback:*",
+        "member:*",
+        "package:*",
+        "order:*",
+        "feedback:*",
         "sys:recommendation:*",
-        "sys:notify:*",
+        "notify:*",
       ].some((p) => auth.hasPerm(p));
     default:
       return false;
@@ -448,6 +420,7 @@ async function handleLogout() {
   min-height: 100vh;
   background: $color-bg-primary;
 }
+
 .main-content {
   padding: $spacing-md;
   padding-bottom: calc(100rpx + constant(safe-area-inset-bottom));
@@ -456,71 +429,81 @@ async function handleLogout() {
 
 // 用户卡
 .user-card {
-  background: #fff;
-  border-radius: $radius-xl;
   padding: $spacing-lg;
   margin-bottom: $spacing-md;
+  background: #fff;
+  border-radius: $radius-xl;
   box-shadow: $shadow-sm;
 }
+
 .user-info {
   display: flex;
-  align-items: center;
   gap: 24rpx;
+  align-items: center;
 }
+
 .avatar-img {
-  width: 112rpx;
-  height: 112rpx;
-  border-radius: 50%;
   flex-shrink: 0;
-}
-.avatar-placeholder {
   width: 112rpx;
   height: 112rpx;
   border-radius: 50%;
-  background: $color-bg-secondary;
+}
+
+.avatar-placeholder {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  width: 112rpx;
+  height: 112rpx;
+  background: $color-bg-secondary;
+  border-radius: 50%;
 }
+
 .avatar-text {
   font-size: $font-xl;
   font-weight: 700;
   color: $color-text-secondary;
 }
+
 .user-text {
   flex: 1;
   min-width: 0;
 }
+
 .user-name-row {
   display: flex;
-  align-items: center;
-  gap: 12rpx;
   flex-wrap: wrap;
+  gap: 12rpx;
+  align-items: center;
 }
+
 .nickname {
   font-size: $font-lg;
   font-weight: 700;
   color: $color-text-primary;
 }
+
 .username {
   display: block;
+  margin-top: 4rpx;
   font-size: $font-sm;
   color: $color-text-placeholder;
-  margin-top: 4rpx;
 }
+
 .role-tags {
   display: flex;
-  gap: 8rpx;
   flex-wrap: wrap;
+  gap: 8rpx;
 }
+
 .role-tag {
+  padding: 4rpx 12rpx;
   font-size: 20rpx;
+  font-weight: 500;
   color: $color-secondary;
   background: #e0e7ff;
-  padding: 4rpx 12rpx;
   border-radius: 8rpx;
-  font-weight: 500;
 }
 
 // VIP 横幅
@@ -528,114 +511,129 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: $gradient-primary;
-  border-radius: $radius-lg;
   padding: 28rpx;
   margin-bottom: $spacing-md;
+  background: $gradient-primary;
+  border-radius: $radius-lg;
 }
+
 .vip-info {
   flex: 1;
 }
+
 .vip-title {
+  display: block;
   font-size: $font-md;
   font-weight: 600;
   color: #fff;
-  display: block;
 }
+
 .vip-subtitle {
-  font-size: $font-xs;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 4rpx;
   display: block;
+  margin-top: 4rpx;
+  font-size: $font-xs;
+  color: rgb(255 255 255 / 80%);
 }
+
 .vip-action {
   display: flex;
-  align-items: center;
+  flex-shrink: 0;
   gap: 4rpx;
-  background: rgba(255, 255, 255, 0.2);
+  align-items: center;
   padding: 12rpx 24rpx;
-  border-radius: 12rpx;
   font-size: $font-sm;
   color: #fff;
-  flex-shrink: 0;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 12rpx;
 }
 
 // 统计
 .stats-row {
   display: flex;
+  margin-bottom: $spacing-md;
   background: #fff;
   border-radius: $radius-xl;
-  margin-bottom: $spacing-md;
   box-shadow: $shadow-sm;
 }
+
 .stat-item {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   padding: 28rpx 16rpx;
+
   &:active {
     background: #f9fafb;
   }
+
   & + & {
     border-left: 1rpx solid $color-border-light;
   }
 }
+
 .stat-value {
   font-size: $font-lg;
   font-weight: 700;
   color: $color-text-primary;
 }
+
 .stat-label {
+  margin-top: 4rpx;
   font-size: $font-xs;
   color: $color-text-placeholder;
-  margin-top: 4rpx;
 }
 
 // 菜单分组
 .menu-group {
   margin-bottom: $spacing-md;
 }
+
 .group-title {
   display: block;
+  padding: 0 4rpx 12rpx;
   font-size: $font-xs;
   font-weight: 500;
   color: $color-text-placeholder;
   text-transform: uppercase;
-  padding: 0 4rpx 12rpx;
 }
+
 .menu-card {
+  overflow: hidden;
   background: #fff;
   border-radius: $radius-xl;
-  overflow: hidden;
   box-shadow: $shadow-sm;
 }
+
 .sub-group-title {
   display: block;
+  padding: 20rpx 28rpx 8rpx;
   font-size: $font-xs;
   color: $color-text-placeholder;
-  padding: 20rpx 28rpx 8rpx;
 }
 
 // 退出
 .logout-area {
-  margin-top: 48rpx;
-  padding: $spacing-md 0;
   display: flex;
   justify-content: center;
+  padding: $spacing-md 0;
+  margin-top: 48rpx;
 }
+
 .logout-btn {
   display: flex;
-  align-items: center;
   gap: 12rpx;
+  align-items: center;
   padding: 20rpx 48rpx;
   background: #fff;
   border-radius: 16rpx;
   box-shadow: $shadow-sm;
+
   &:active {
     background: #f9fafb;
   }
 }
+
 .logout-text {
   font-size: $font-md;
   color: $color-danger;

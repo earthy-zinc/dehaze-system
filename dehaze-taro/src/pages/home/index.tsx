@@ -6,7 +6,7 @@ import HeroSection from "./components/HeroSection";
 import ShowcaseSection from "./components/ShowcaseSection";
 import WorkflowSection from "./components/WorkflowSection";
 import ToolsGrid from "./components/ToolsGrid";
-import AlgorithmSection from "./components/AlgorithmSection";
+import ModelSection from "./components/ModelSection";
 import TechSpecs from "./components/TechSpecs";
 import CTASection from "./components/CTASection";
 
@@ -20,7 +20,7 @@ const HomePage: React.FC = () => {
         <ShowcaseSection />
         <WorkflowSection />
         <ToolsGrid />
-        <AlgorithmSection />
+        <ModelSection />
         <TechSpecs />
         <CTASection />
       </View>

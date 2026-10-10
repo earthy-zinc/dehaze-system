@@ -22,7 +22,9 @@ class MainLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWide = MediaQuery.sizeOf(context).width >= 768;
-    return isWide ? _DesktopLayout(shell: navigationShell) : _MobileLayout(shell: navigationShell);
+    return isWide
+        ? _DesktopLayout(shell: navigationShell)
+        : _MobileLayout(shell: navigationShell);
   }
 }
 
@@ -51,7 +53,11 @@ class _MobileLayout extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: AppTheme.shadowLevel1,
                     ),
-                    child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.cloud_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   const Text('图像去雾系统'),
@@ -77,10 +83,7 @@ class _MobileLayout extends ConsumerWidget {
   }
 
   void _goBranch(int index) {
-    shell.goBranch(
-      index,
-      initialLocation: index == shell.currentIndex,
-    );
+    shell.goBranch(index, initialLocation: index == shell.currentIndex);
   }
 }
 
@@ -133,16 +136,16 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
       width: width,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(
-          right: BorderSide(color: theme.dividerColor, width: 1),
-        ),
+        border: Border(right: BorderSide(color: theme.dividerColor, width: 1)),
       ),
       child: Column(
         children: [
           // Logo 区
           Container(
             height: 64,
-            padding: EdgeInsets.symmetric(horizontal: _sidebarCollapsed ? 0 : 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: _sidebarCollapsed ? 0 : 16,
+            ),
             decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: theme.dividerColor)),
             ),
@@ -155,7 +158,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                         gradient: AppTheme.getPrimaryGradient(),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.cloud_outlined,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   )
                 : Row(
@@ -167,13 +174,20 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                           gradient: AppTheme.getPrimaryGradient(),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.cloud_outlined, color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.cloud_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
                           '图像去雾',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -185,7 +199,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
                 for (int i = 0; i < MenuConfig.tabs.length; i++)
-                  _buildSidebarItem(theme, MenuConfig.tabs[i], isActive: i == currentIndex),
+                  _buildSidebarItem(
+                    theme,
+                    MenuConfig.tabs[i],
+                    isActive: i == currentIndex,
+                  ),
               ],
             ),
           ),
@@ -212,7 +230,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
     );
   }
 
-  Widget _buildSidebarItem(ThemeData theme, MenuItemData item, {bool isActive = false}) {
+  Widget _buildSidebarItem(
+    ThemeData theme,
+    MenuItemData item, {
+    bool isActive = false,
+  }) {
     final colorScheme = theme.colorScheme;
 
     return Padding(
@@ -221,7 +243,9 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
         vertical: 2,
       ),
       child: Material(
-        color: isActive ? colorScheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+        color: isActive
+            ? colorScheme.primary.withValues(alpha: 0.1)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         child: InkWell(
           onTap: () {
@@ -239,26 +263,37 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                     child: Icon(
                       isActive ? item.selectedIcon : item.icon,
                       size: 24,
-                      color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                      color: isActive
+                          ? colorScheme.primary
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   child: Row(
                     children: [
                       Icon(
                         isActive ? item.selectedIcon : item.icon,
                         size: 20,
-                        color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                        color: isActive
+                            ? colorScheme.primary
+                            : colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           item.title,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isActive ? colorScheme.primary : colorScheme.onSurface,
-                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                            color: isActive
+                                ? colorScheme.primary
+                                : colorScheme.onSurface,
+                            fontWeight: isActive
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
                         ),
                       ),
@@ -315,7 +350,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                   child: Center(
                     child: Text(
                       user.avatarInitials,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -333,7 +372,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                   child: Center(
                     child: Text(
                       user.avatarInitials,
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -345,7 +388,9 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                     children: [
                       Text(
                         user.nickname ?? user.username,
-                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -385,7 +430,9 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
           // 面包屑
           Text(
             currentTab.title,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const Spacer(),
           // 通知按钮
@@ -409,7 +456,11 @@ class _DesktopLayoutState extends ConsumerState<_DesktopLayout> {
                 child: Center(
                   child: Text(
                     user.avatarInitials,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

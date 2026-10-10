@@ -121,7 +121,8 @@ const MessageManagePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchAnnouncements(1, "", annStatusFilter);
+    // 仅挂载时加载首屏：此时筛选必为未选中，切换筛选由 setAnnStatusFilter 的处理函数自行重新拉取
+    fetchAnnouncements(1, "");
     fetchTemplates(1);
   }, [fetchAnnouncements, fetchTemplates]);
 

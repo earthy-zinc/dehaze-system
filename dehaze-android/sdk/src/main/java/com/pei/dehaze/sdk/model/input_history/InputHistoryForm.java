@@ -16,18 +16,16 @@ public class InputHistoryForm {
     private String resultImageUrl;
     /** 结果缩略图URL */
     private String resultThumbnailUrl;
-    /** 算法ID */
-    private Long algorithmId;
-    /** 算法名称（冗余） */
-    private String algorithmName;
-    /** 算法参数（JSON） */
-    private String algorithmParams;
+    /** 图像模型标识（统一模型规范 slug） */
+    private String modelId;
+    /** 模型名称（冗余） */
+    private String modelName;
+    /** 模型参数（JSON 字符串） */
+    private String modelParams;
     /** 处理耗时（毫秒） */
     private Integer processingTime;
-    /** 处理状态 */
+    /** 处理状态（1=成功，2=失败，3=处理中） */
     private ProcessStatus status = ProcessStatus.PROCESSING;
     /** 图片来源 */
     private InputSource inputSource;
-    /** 是否收藏 */
-    private Integer isFavorite = 0;
 }

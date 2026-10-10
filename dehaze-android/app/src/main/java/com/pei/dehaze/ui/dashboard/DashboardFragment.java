@@ -17,9 +17,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.ActivityDashboardBinding;
 import com.pei.dehaze.repository.DashboardRepository;
-import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.model.image_task.ImageTaskVO;
 import com.pei.dehaze.sdk.model.user.UserInfo;
-import com.pei.dehaze.ui.common.adapter.PredictionLogAdapter;
+import com.pei.dehaze.ui.common.adapter.ImageTaskAdapter;
 import com.pei.dehaze.ui.dashboard.adapter.StatAdapter;
 import com.pei.dehaze.ui.dashboard.viewmodel.DashboardViewModel;
 import com.pei.dehaze.utils.ToastUtils;
@@ -34,7 +34,7 @@ public class DashboardFragment extends Fragment {
     private DashboardViewModel dashboardViewModel;
     private ActivityDashboardBinding binding;
     private StatAdapter statAdapter;
-    private PredictionLogAdapter activityAdapter;
+    private ImageTaskAdapter activityAdapter;
 
     @Nullable
     @Override
@@ -59,7 +59,7 @@ public class DashboardFragment extends Fragment {
         binding.rvStatistics.setLayoutManager(new GridLayoutManager(requireContext(), 2));
         binding.rvStatistics.setAdapter(statAdapter);
 
-        activityAdapter = new PredictionLogAdapter();
+        activityAdapter = new ImageTaskAdapter();
         binding.rvActivities.setLayoutManager(new LinearLayoutManager(requireContext()));
         binding.rvActivities.setAdapter(activityAdapter);
 
@@ -69,7 +69,6 @@ public class DashboardFragment extends Fragment {
         binding.btnCompare.setOnClickListener(v -> navigateTo(R.id.action_global_compareActivity));
         binding.btnEvaluation.setOnClickListener(v -> navigateTo(R.id.action_global_evaluationActivity));
         binding.btnDataset.setOnClickListener(v -> navigateTo(R.id.datasetFragment));
-        binding.btnAlgorithm.setOnClickListener(v -> navigateTo(R.id.algorithmFragment));
     }
 
     private void navigateTo(int destinationId) {
@@ -134,13 +133,13 @@ public class DashboardFragment extends Fragment {
         if (stats == null) return;
         List<StatAdapter.StatItem> items = new ArrayList<>();
         items.add(new StatAdapter.StatItem(STAT_IDS[0], "数据集", (int) stats.getDatasetCount(), "已上传数据集数量"));
-        items.add(new StatAdapter.StatItem(STAT_IDS[1], "算法", (int) stats.getAlgorithmCount(), "已注册算法数量"));
+        items.add(new StatAdapter.StatItem(STAT_IDS[1], "图像模型", (int) stats.getModelCount(), "可用图像模型数量"));
         items.add(new StatAdapter.StatItem(STAT_IDS[2], "任务", (int) stats.getTaskCount(), "处理任务总数"));
-        items.add(new StatAdapter.StatItem(STAT_IDS[3], "历史记录", (int) stats.getHistoryCount(), "去雾历史记录数"));
+        items.add(new StatAdapter.StatItem(STAT_IDS[3], "去雾任务", (int) stats.getImageTaskCount(), "去雾任务记录数"));
         statAdapter.submitList(items);
     }
 
-    private void updateRecentActivities(List<PredictionLogVO> activities) {
+    private void updateRecentActivities(List<ImageTaskVO> activities) {
         activityAdapter.submitList(activities);
     }
 

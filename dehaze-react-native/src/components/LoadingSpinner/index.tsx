@@ -19,9 +19,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     <View style={styles.container}>
       <ActivityIndicator size={size} color={color} />
       {showText && (
-        <Text style={[styles.text, { color }]}>
-          {text || '加载中...'}
-        </Text>
+        <Text style={[styles.text, { color }]}>{text || '加载中...'}</Text>
       )}
     </View>
   );

@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,11 +18,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentToolsBinding;
-import com.pei.dehaze.ui.algorithm.AlgorithmFragment;
-import com.pei.dehaze.ui.algorithm_select.AlgorithmSelectActivity;
 import com.pei.dehaze.ui.batch.BatchActivity;
 import com.pei.dehaze.ui.input.InputHistoryActivity;
-import com.pei.dehaze.utils.ToastUtils;
+import com.pei.dehaze.ui.metrics_manage.MetricsManageActivity;
+import com.pei.dehaze.ui.personal.CreditsActivity;
+import com.pei.dehaze.ui.personal.FavoritesActivity;
 
 public class ToolsFragment extends Fragment {
 
@@ -49,32 +48,19 @@ public class ToolsFragment extends Fragment {
     }
 
     private void initViews() {
-        // 搜索栏：对接算法搜索 API，结果跳转到 AlgorithmFragment 展示
-        binding.etSearch.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                String keyword = binding.etSearch.getText() == null ? "" : binding.etSearch.getText().toString().trim();
-                if (!keyword.isEmpty()) {
-                    toolsViewModel.search(keyword);
-                }
-                return true;
-            }
-            return false;
-        });
-
-        // 快捷入口横滑区
         QuickEntryAdapter quickAdapter = new QuickEntryAdapter(entry -> {
             switch (entry.getId()) {
-                case 1: // 处理历史
-                    startActivity(new Intent(getActivity(), InputHistoryActivity.class));
+                case 1:
+                    open(InputHistoryActivity.class);
                     break;
-                case 2: // 我的收藏 -> profileFragment（后续 dev-personal 细化到收藏子页）
-                    navigateTo(R.id.profileFragment);
+                case 2:
+                    open(FavoritesActivity.class);
                     break;
-                case 3: // 批量处理 -> BatchActivity
-                    startActivity(new Intent(getActivity(), BatchActivity.class));
+                case 3:
+                    open(BatchActivity.class);
                     break;
-                case 4: // 算法选择 -> AlgorithmSelectActivity
-                    startActivity(new Intent(getActivity(), AlgorithmSelectActivity.class));
+                case 4:
+                    open(CreditsActivity.class);
                     break;
                 default:
                     break;
@@ -84,28 +70,28 @@ public class ToolsFragment extends Fragment {
                 new LinearLayoutManager(requireContext(), RecyclerView.HORIZONTAL, false));
         binding.rvQuickEntries.setAdapter(quickAdapter);
 
-        // 功能网格
         FeatureGridAdapter featureAdapter = new FeatureGridAdapter(item -> {
             switch (item.getAction()) {
                 case "upload":
-                    startActivity(new Intent(getActivity(), InputHistoryActivity.class));
+                    open(InputHistoryActivity.class);
                     break;
-                case "algorithm_list":
-                    startActivity(new Intent(getActivity(), AlgorithmSelectActivity.class));
+                case "dehaze":
+                    navigateTo(R.id.dehazeFragment);
+                    break;
+                case "batch":
+                    open(BatchActivity.class);
                     break;
                 case "dataset":
                     navigateTo(R.id.datasetFragment);
                     break;
-                case "batch":
-                    startActivity(new Intent(getActivity(), BatchActivity.class));
-                    break;
-                case "metrics":
+                case "evaluation":
                     navigateTo(R.id.action_global_evaluationActivity);
                     break;
-                case "api_doc":
-                    // API文档：暂无独立页面，跳转到算法列表作为参考入口
-                    startActivity(new Intent(getActivity(), AlgorithmSelectActivity.class));
-                    ToastUtils.showShort(getContext(), "API文档请查看算法详情页的接口说明");
+                case "metrics":
+                    open(MetricsManageActivity.class);
+                    break;
+                case "credits":
+                    open(CreditsActivity.class);
                     break;
                 default:
                     break;
@@ -113,6 +99,10 @@ public class ToolsFragment extends Fragment {
         });
         binding.rvFeatureGrid.setLayoutManager(new GridLayoutManager(requireContext(), 3));
         binding.rvFeatureGrid.setAdapter(featureAdapter);
+    }
+
+    private void open(Class<?> activityClass) {
+        startActivity(new Intent(getActivity(), activityClass));
     }
 
     private void navigateTo(int destinationId) {
@@ -133,24 +123,6 @@ public class ToolsFragment extends Fragment {
             RecyclerView.Adapter<?> adapter = binding.rvFeatureGrid.getAdapter();
             if (adapter instanceof FeatureGridAdapter) {
                 ((FeatureGridAdapter) adapter).submitList(items);
-            }
-        });
-
-        // 搜索结果监听：跳转到 AlgorithmFragment 展示
-        toolsViewModel.getSearchResults().observe(getViewLifecycleOwner(), results -> {
-            if (results != null && !results.isEmpty()) {
-                // 将搜索结果带入 AlgorithmFragment 展示
-                Intent intent = new Intent(getActivity(), AlgorithmSelectActivity.class);
-                intent.putExtra(AlgorithmSelectActivity.EXTRA_SEARCH_KEYWORD,
-                        binding.etSearch.getText() != null ? binding.etSearch.getText().toString().trim() : "");
-                startActivity(intent);
-            }
-        });
-
-        toolsViewModel.getError().observe(getViewLifecycleOwner(), errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                ToastUtils.showShort(getContext(), errorMessage);
-                toolsViewModel.clearError();
             }
         });
     }

@@ -62,8 +62,8 @@
                 <text class="item-time">{{
                   formatTimestamp(record.createTime)
                 }}</text>
-                <text v-if="record.algorithmName" class="item-algorithm">{{
-                  record.algorithmName
+                <text v-if="record.modelName" class="item-model">{{
+                  record.modelName
                 }}</text>
               </view>
               <view class="item-arrow">
@@ -164,7 +164,7 @@ const handleReprocess = (record: InputHistoryVO) => {
     "current_image",
     JSON.stringify({ url, path: url, name: extractFilename(url) })
   );
-  uni.navigateTo({ url: "/pages/algorithm-select/index" });
+  uni.navigateTo({ url: "/pages/processing/index" });
 };
 
 const handleDelete = (id: number) => {
@@ -194,7 +194,7 @@ const handleClear = () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await clearAllHistory(true);
+          await clearAllHistory();
           records.value = [];
           uni.showToast({ title: "已清空", icon: "success" });
         } catch {
@@ -366,7 +366,7 @@ defineExpose({
   margin-bottom: 4rpx;
 }
 
-.item-algorithm {
+.item-model {
   font-size: 22rpx;
   color: $color-primary;
 }

@@ -1,10 +1,10 @@
 import React from "react";
 import { View, Text } from "@tarojs/components";
-import type { Dataset } from "../../services/types";
+import type { DatasetVO } from "../../services/types";
 import "./DatasetInfo.less";
 
 interface DatasetInfoProps {
-  dataset: Dataset;
+  dataset: DatasetVO;
   className?: string;
 }
 

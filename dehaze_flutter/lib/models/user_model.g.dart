@@ -24,35 +24,35 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) =>
               [],
         ),
         roleNames: $checkedConvert(
-          'roleNames',
+          'roles',
           (v) => (v as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
         ),
         dataScope: $checkedConvert('dataScope', (v) => (v as num?)?.toInt()),
         status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
         permissions: $checkedConvert(
-          'permissions',
+          'perms',
           (v) => (v as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
         ),
         createTime: $checkedConvert('createTime', (v) => v as String?),
       );
       return val;
-    });
+    }, fieldKeyMap: const {'roleNames': 'roles', 'permissions': 'perms'});
 
 Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
   'userId': instance.userId,
   'username': instance.username,
-  if (instance.nickname case final value?) 'nickname': value,
-  if (instance.avatar case final value?) 'avatar': value,
-  if (instance.email case final value?) 'email': value,
-  if (instance.phone case final value?) 'phone': value,
-  if (instance.deptId case final value?) 'deptId': value,
-  if (instance.deptName case final value?) 'deptName': value,
+  'nickname': ?instance.nickname,
+  'avatar': ?instance.avatar,
+  'email': ?instance.email,
+  'phone': ?instance.phone,
+  'deptId': ?instance.deptId,
+  'deptName': ?instance.deptName,
   'roleIds': instance.roleIds,
-  'roleNames': instance.roleNames,
-  if (instance.dataScope case final value?) 'dataScope': value,
-  if (instance.status case final value?) 'status': value,
-  'permissions': instance.permissions,
-  if (instance.createTime case final value?) 'createTime': value,
+  'roles': instance.roleNames,
+  'dataScope': ?instance.dataScope,
+  'status': ?instance.status,
+  'perms': instance.permissions,
+  'createTime': ?instance.createTime,
 };
 
 UserDetail _$UserDetailFromJson(Map<String, dynamic> json) =>
@@ -88,18 +88,18 @@ Map<String, dynamic> _$UserDetailToJson(UserDetail instance) =>
     <String, dynamic>{
       'id': instance.id,
       'username': instance.username,
-      if (instance.nickname case final value?) 'nickname': value,
-      if (instance.avatar case final value?) 'avatar': value,
-      if (instance.email case final value?) 'email': value,
-      if (instance.phone case final value?) 'phone': value,
-      if (instance.gender case final value?) 'gender': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.deptId case final value?) 'deptId': value,
-      if (instance.deptName case final value?) 'deptName': value,
+      'nickname': ?instance.nickname,
+      'avatar': ?instance.avatar,
+      'email': ?instance.email,
+      'phone': ?instance.phone,
+      'gender': ?instance.gender,
+      'status': ?instance.status,
+      'deptId': ?instance.deptId,
+      'deptName': ?instance.deptName,
       'roleIds': instance.roleIds,
       'roleNames': instance.roleNames,
-      if (instance.createTime case final value?) 'createTime': value,
-      if (instance.updateTime case final value?) 'updateTime': value,
+      'createTime': ?instance.createTime,
+      'updateTime': ?instance.updateTime,
     };
 
 UserQuery _$UserQueryFromJson(Map<String, dynamic> json) => $checkedCreate(
@@ -122,11 +122,11 @@ UserQuery _$UserQueryFromJson(Map<String, dynamic> json) => $checkedCreate(
 Map<String, dynamic> _$UserQueryToJson(UserQuery instance) => <String, dynamic>{
   'pageNum': instance.pageNum,
   'pageSize': instance.pageSize,
-  if (instance.keywords case final value?) 'keywords': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.deptId case final value?) 'deptId': value,
-  if (instance.startTime case final value?) 'startTime': value,
-  if (instance.endTime case final value?) 'endTime': value,
+  'keywords': ?instance.keywords,
+  'status': ?instance.status,
+  'deptId': ?instance.deptId,
+  'startTime': ?instance.startTime,
+  'endTime': ?instance.endTime,
 };
 
 UserPageVO _$UserPageVOFromJson(Map<String, dynamic> json) =>
@@ -150,16 +150,16 @@ UserPageVO _$UserPageVOFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$UserPageVOToJson(UserPageVO instance) =>
     <String, dynamic>{
       'id': instance.id,
-      if (instance.username case final value?) 'username': value,
-      if (instance.nickname case final value?) 'nickname': value,
-      if (instance.avatar case final value?) 'avatar': value,
-      if (instance.email case final value?) 'email': value,
-      if (instance.phone case final value?) 'mobile': value,
-      if (instance.genderLabel case final value?) 'genderLabel': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.deptName case final value?) 'deptName': value,
-      if (instance.roleNames case final value?) 'roleNames': value,
-      if (instance.createTime case final value?) 'createTime': value,
+      'username': ?instance.username,
+      'nickname': ?instance.nickname,
+      'avatar': ?instance.avatar,
+      'email': ?instance.email,
+      'mobile': ?instance.phone,
+      'genderLabel': ?instance.genderLabel,
+      'status': ?instance.status,
+      'deptName': ?instance.deptName,
+      'roleNames': ?instance.roleNames,
+      'createTime': ?instance.createTime,
     };
 
 UserForm _$UserFormFromJson(Map<String, dynamic> json) =>
@@ -184,15 +184,15 @@ UserForm _$UserFormFromJson(Map<String, dynamic> json) =>
     }, fieldKeyMap: const {'phone': 'mobile'});
 
 Map<String, dynamic> _$UserFormToJson(UserForm instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
+  'id': ?instance.id,
   'username': instance.username,
-  if (instance.nickname case final value?) 'nickname': value,
-  if (instance.avatar case final value?) 'avatar': value,
-  if (instance.email case final value?) 'email': value,
-  if (instance.phone case final value?) 'mobile': value,
-  if (instance.password case final value?) 'password': value,
-  if (instance.gender case final value?) 'gender': value,
-  if (instance.deptId case final value?) 'deptId': value,
-  if (instance.roleIds case final value?) 'roleIds': value,
-  if (instance.status case final value?) 'status': value,
+  'nickname': ?instance.nickname,
+  'avatar': ?instance.avatar,
+  'email': ?instance.email,
+  'mobile': ?instance.phone,
+  'password': ?instance.password,
+  'gender': ?instance.gender,
+  'deptId': ?instance.deptId,
+  'roleIds': ?instance.roleIds,
+  'status': ?instance.status,
 };

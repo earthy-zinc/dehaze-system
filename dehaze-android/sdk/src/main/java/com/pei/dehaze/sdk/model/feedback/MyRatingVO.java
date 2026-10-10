@@ -6,7 +6,7 @@ import lombok.Data;
 public class MyRatingVO {
     private Long id;
     private Long predLogId;
-    private String algorithmName;
+    private String modelName;
     private Integer rating;
     private String comment;
     private String[] tags;

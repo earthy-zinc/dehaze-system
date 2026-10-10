@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { AuthAPI, SESSION_KEY } from "dehaze-sdk-js";
+import { AuthAPI, UserAPI, SESSION_KEY } from "dehaze-sdk-js";
 import type {
   AuthUserInfo,
   LoginData,
@@ -28,9 +28,16 @@ export const useAuthStore = defineStore("auth", () => {
   /** 登录/注册成功后拉取用户信息并持久化 */
   async function fetchUserInfo() {
     try {
-      const user = await AuthAPI.getCurrentUser();
-      userInfo.value = user;
-      uni.setStorageSync(USER_INFO_KEY, JSON.stringify(user));
+      const user = await UserAPI.getInfo();
+      userInfo.value = {
+        userId: user.userId ?? 0,
+        username: user.username ?? "",
+        nickname: user.nickname ?? "",
+        avatar: user.avatar,
+        roles: user.roles,
+        perms: user.perms,
+      };
+      uni.setStorageSync(USER_INFO_KEY, JSON.stringify(userInfo.value));
     } catch {
       // 用户信息拉取失败不阻塞进入首页，首页会以匿名态渲染或提示
       userInfo.value = null;
@@ -90,8 +97,22 @@ export const useAuthStore = defineStore("auth", () => {
     clearAuthState();
   }
 
+  /**
+   * 权限判定。
+   *
+   * - 具体码（`sys:user:add`）：精确匹配。
+   * - 模块前缀（`sys:user:*`，以 `:*` 结尾）：命中该模块任一具体权限即可 —— 后端
+   *   下发的权限全是具体码（不存在通配符），入口显隐只能按模块前缀判定，
+   *   与 Flutter `matchModulePerm` / Android `hasModulePerm` 口径一致。
+   */
   function hasPerm(perm: string): boolean {
     if (!perms.value || perms.value.length === 0) return false;
+    if (perm.endsWith(":*")) {
+      const prefix = perm.slice(0, -1); // "sys:user:"
+      return perms.value.some(
+        (p) => p === prefix.slice(0, -1) || p.startsWith(prefix)
+      );
+    }
     return perms.value.includes(perm);
   }
 

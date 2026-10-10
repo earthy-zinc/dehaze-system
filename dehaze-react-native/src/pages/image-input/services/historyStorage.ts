@@ -37,8 +37,8 @@ export const historyStorage = {
   /**
    * 清空所有历史记录
    */
-  clearHistory: async (confirm: boolean): Promise<void> => {
-    await ImageInputHistoryAPI.clearAll(confirm);
+  clearHistory: async (): Promise<void> => {
+    await ImageInputHistoryAPI.clearAll();
   },
 
   /**
@@ -51,10 +51,10 @@ export const historyStorage = {
     const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const groups: { [key: string]: HistoryRecord[] } = {
-      '今天': [],
-      '昨天': [],
-      '最近7天': [],
-      '更早': [],
+      今天: [],
+      昨天: [],
+      最近7天: [],
+      更早: [],
     };
 
     history.forEach(record => {

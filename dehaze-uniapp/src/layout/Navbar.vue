@@ -28,14 +28,6 @@
 
       <!-- 右侧操作区 -->
       <view class="navbar-actions">
-        <!-- L1 首页：搜索按钮 -->
-        <view
-          v-if="level === 'L1' && showSearch"
-          class="action-btn"
-          @click="handleSearch"
-        >
-          <SvgIcon name="search" size="22" color="#374151" />
-        </view>
         <!-- 自定义右侧操作插槽（L2 或 L1 非首页） -->
         <slot name="actions" />
       </view>
@@ -55,15 +47,12 @@ interface Props {
   title?: string;
   /** 是否为首页（L1 时品牌 logo 仅在首页显示） */
   isHome?: boolean;
-  /** 是否显示搜索按钮（L1 时默认 false，仅首页开启） */
-  showSearch?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   level: "L1",
   title: "",
   isHome: false,
-  showSearch: false,
 });
 
 /** 状态栏高度 */
@@ -91,11 +80,6 @@ const goBack = () => {
 /** 跳转首页 */
 const goHome = () => {
   uni.switchTab({ url: HOME_PATH });
-};
-
-/** 搜索按钮点击 - 跳转到算法选择页 */
-const handleSearch = () => {
-  uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };
 </script>
 
@@ -177,19 +161,5 @@ const handleSearch = () => {
   display: flex;
   align-items: center;
   gap: 8rpx;
-}
-
-.action-btn {
-  width: 72rpx;
-  height: 72rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16rpx;
-  transition: background 0.2s;
-
-  &:active {
-    background: #f3f4f6;
-  }
 }
 </style>

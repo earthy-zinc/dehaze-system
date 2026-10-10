@@ -203,7 +203,9 @@
           </el-col>
           <el-col :span="12">
             <el-form-item
-              :label="formData.type === 'discount' ? '折扣率(%)' : '面值(元)'"
+              :label="
+                formData.type === 'discount' ? '折扣（85=8.5折）' : '面值(元)'
+              "
               prop="faceValue"
             >
               <el-input-number
@@ -216,7 +218,7 @@
                 style="width: 100%"
               />
               <div v-if="formData.type === 'discount'" class="form-tip">
-                减免百分比，如 20 表示 8 折
+                用户支付百分比，如 85 表示 8.5 折（与后端折扣计算一致）
               </div>
             </el-form-item>
           </el-col>
@@ -588,10 +590,10 @@ function couponTypeTag(type: string): TagType {
   return couponTypeOptions.find((o) => o.value === type)?.tag ?? "info";
 }
 
-/** 面值：满减/无门槛为金额(分)，折扣为减免百分比，体验券无面值 */
+/** 面值：满减/无门槛为金额(分)，折扣为支付百分比（85 = 8.5 折），体验券无面值 */
 function formatFaceValue(coupon: CouponVO) {
   if (coupon.type === "discount") {
-    return `减${coupon.faceValue}%`;
+    return `${parseFloat((coupon.faceValue / 10).toFixed(1))}折`;
   }
   if (coupon.type === "trial") {
     return "体验";

@@ -58,7 +58,8 @@ class ImagePreview extends ConsumerWidget {
                 ),
                 const Spacer(),
                 IconButton(
-                  onPressed: () => ref.read(imageInputProvider.notifier).clearSelection(),
+                  onPressed: () =>
+                      ref.read(imageInputProvider.notifier).clearSelection(),
                   icon: const Icon(Icons.close),
                   iconSize: 20,
                   tooltip: '移除',
@@ -94,7 +95,7 @@ class ImagePreview extends ConsumerWidget {
             child: FilledButton.icon(
               onPressed: onNextStep,
               icon: const Icon(Icons.arrow_forward),
-              label: const Text('下一步：选择算法'),
+              label: const Text('下一步：选择模型'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -110,11 +111,7 @@ class ImagePreview extends ConsumerWidget {
 
   Widget _buildImage(SelectedImageModel image) {
     // 跨平台渲染：字节流优先（本地选择/拍摄），网络地址次之（样例图片）
-    return DehazeImage(
-      bytes: image.bytes,
-      url: image.url,
-      fit: BoxFit.contain,
-    );
+    return DehazeImage(bytes: image.bytes, url: image.url, fit: BoxFit.contain);
   }
 
   Widget _buildImageInfo(BuildContext context, SelectedImageModel image) {

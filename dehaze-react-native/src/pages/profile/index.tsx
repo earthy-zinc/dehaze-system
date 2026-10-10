@@ -19,7 +19,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { IoniconName } from '@/components/Icon';
-import { MemberAPI, ModelAPI, FavoriteAPI, TaskAPI } from 'dehaze-sdk-js';
+import { MemberAPI, AiBillingAPI, FavoriteAPI, TaskAPI } from 'dehaze-sdk-js';
 import type { MemberProfileVO } from 'dehaze-sdk-js';
 
 import type { ProfileStackParamList } from '@/routes/types';
@@ -61,14 +61,18 @@ const BUSINESS_ENTRIES: EntryItem[] = [
   { icon: 'diamond-outline', title: '我的会员', route: 'PersonalMember' },
   { icon: 'cube-outline', title: '我的套餐', route: 'PersonalPackage' },
   { icon: 'cart-outline', title: '我的订单', route: 'PersonalOrders' },
-  { icon: 'wallet-outline', title: '我的额度', route: 'PersonalQuota' },
+  { icon: 'wallet-outline', title: '积分余额', route: 'PersonalQuota' },
   { icon: 'chatbox-outline', title: '反馈评价', route: 'PersonalFeedback' },
 ];
 
 const OTHER_ENTRIES: EntryItem[] = [
   { icon: 'settings-outline', title: '系统设置', route: 'PersonalSettings' },
   { icon: 'help-circle-outline', title: '帮助中心', route: 'PersonalHelp' },
-  { icon: 'information-circle-outline', title: '关于我们', route: 'PersonalAbout' },
+  {
+    icon: 'information-circle-outline',
+    title: '关于我们',
+    route: 'PersonalAbout',
+  },
   { icon: 'notifications-outline', title: '消息设置', route: 'Notify' },
 ];
 
@@ -77,36 +81,104 @@ const ADMIN_GROUPS: EntryGroup[] = [
   {
     title: '工作台',
     entries: [
-      { icon: 'speedometer-outline', title: '工作台', route: 'SystemDashboard' },
+      {
+        icon: 'speedometer-outline',
+        title: '工作台',
+        route: 'SystemDashboard',
+      },
     ],
   },
   {
-    title: '算法与数据',
+    title: '数据管理',
     entries: [
-      { icon: 'git-network-outline', title: '算法管理', route: 'SystemAlgorithm', permission: 'sys:algorithm:*' },
-      { icon: 'server-outline', title: '数据集管理', route: 'SystemDataset', permission: 'sys:dataset:*' },
+      {
+        icon: 'server-outline',
+        title: '数据集管理',
+        route: 'SystemDataset',
+        permission: 'sys:dataset:*',
+      },
     ],
   },
   {
     title: '系统管理',
     entries: [
-      { icon: 'people-outline', title: '用户管理', route: 'SystemUser', permission: 'sys:user:*' },
-      { icon: 'shield-checkmark-outline', title: '角色管理', route: 'SystemRole', permission: 'sys:role:*' },
-      { icon: 'list-outline', title: '菜单管理', route: 'SystemMenu', permission: 'sys:menu:*' },
-      { icon: 'business-outline', title: '部门管理', route: 'SystemDept', permission: 'sys:dept:*' },
-      { icon: 'book-outline', title: '字典管理', route: 'SystemDict', permission: 'sys:dict:*' },
-      { icon: 'timer-outline', title: '任务管理', route: 'SystemTask', permission: 'sys:task:*' },
+      {
+        icon: 'people-outline',
+        title: '用户管理',
+        route: 'SystemUser',
+        permission: 'sys:user:*',
+      },
+      {
+        icon: 'shield-checkmark-outline',
+        title: '角色管理',
+        route: 'SystemRole',
+        permission: 'sys:role:*',
+      },
+      {
+        icon: 'list-outline',
+        title: '菜单管理',
+        route: 'SystemMenu',
+        permission: 'sys:menu:*',
+      },
+      {
+        icon: 'business-outline',
+        title: '部门管理',
+        route: 'SystemDept',
+        permission: 'sys:dept:*',
+      },
+      {
+        icon: 'book-outline',
+        title: '字典管理',
+        route: 'SystemDict',
+        permission: 'sys:dict:*',
+      },
+      {
+        icon: 'timer-outline',
+        title: '任务管理',
+        route: 'SystemTask',
+        // 任务域后端无接口级权限校验（仅登录态 + create_by 归属校验），不按权限控制
+      },
     ],
   },
   {
     title: '运营管理',
     entries: [
-      { icon: 'diamond-outline', title: '会员管理', route: 'SystemMember', permission: 'sys:member:*' },
-      { icon: 'cube-outline', title: '套餐管理', route: 'SystemPackage', permission: 'sys:package:*' },
-      { icon: 'cart-outline', title: '订单管理', route: 'SystemOrder', permission: 'sys:order:*' },
-      { icon: 'chatbox-outline', title: '反馈评价管理', route: 'SystemFeedback', permission: 'sys:feedback:*' },
-      { icon: 'trending-up-outline', title: '推荐管理', route: 'SystemRecommend', permission: 'sys:recommendation:*' },
-      { icon: 'notifications-outline', title: '消息管理', route: 'SystemMessage', permission: 'sys:notify:*' },
+      {
+        icon: 'diamond-outline',
+        title: '会员管理',
+        route: 'SystemMember',
+        permission: 'member:*',
+      },
+      {
+        icon: 'cube-outline',
+        title: '套餐管理',
+        route: 'SystemPackage',
+        permission: 'package:*',
+      },
+      {
+        icon: 'cart-outline',
+        title: '订单管理',
+        route: 'SystemOrder',
+        permission: 'order:*',
+      },
+      {
+        icon: 'chatbox-outline',
+        title: '反馈评价管理',
+        route: 'SystemFeedback',
+        permission: 'feedback:*',
+      },
+      {
+        icon: 'trending-up-outline',
+        title: '推荐管理',
+        route: 'SystemRecommend',
+        permission: 'sys:recommendation:*',
+      },
+      {
+        icon: 'notifications-outline',
+        title: '消息管理',
+        route: 'SystemMessage',
+        permission: 'notify:*',
+      },
     ],
   },
 ];
@@ -120,7 +192,7 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   const hasPerm = useAuthStore(s => s.hasPerm);
 
   const [member, setMember] = useState<MemberProfileVO | null>(null);
-  const [quotaRemaining, setQuotaRemaining] = useState<number | null>(null);
+  const [creditsBalance, setCreditsBalance] = useState<string | null>(null);
   const [favoriteCount, setFavoriteCount] = useState<number | null>(null);
   const [taskCount, setTaskCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -138,10 +210,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // 加载统计数据
   const loadStats = useCallback(async () => {
     try {
-      const quota = await ModelAPI.getQuota();
-      setQuotaRemaining(quota.remaining ?? null);
+      const balance = await AiBillingAPI.getBalance();
+      setCreditsBalance(balance.creditsBalance ?? null);
     } catch {
-      setQuotaRemaining(null);
+      setCreditsBalance(null);
     }
     try {
       const fav = await FavoriteAPI.getCount();
@@ -184,7 +256,9 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
     () =>
       ADMIN_GROUPS.map(g => ({
         ...g,
-        entries: g.entries.filter(e => (e.permission ? hasPerm(e.permission) : true)),
+        entries: g.entries.filter(e =>
+          e.permission ? hasPerm(e.permission) : true,
+        ),
       })).filter(g => g.entries.length > 0),
     [hasPerm],
   );
@@ -192,16 +266,33 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
   // 数据统计
   const stats: StatItem[] = useMemo(
     () => [
-      { label: '剩余额度', value: quotaRemaining !== null ? `${quotaRemaining} 次` : '-', route: 'PersonalQuota' },
-      { label: '处理次数', value: taskCount !== null ? `${taskCount}` : '-', route: 'Task' },
-      { label: '我的收藏', value: favoriteCount !== null ? `${favoriteCount}` : '-', route: 'PersonalFavorites' },
+      {
+        label: '积分余额',
+        value: creditsBalance !== null ? `${creditsBalance}` : '-',
+        route: 'PersonalQuota',
+      },
+      {
+        label: '处理次数',
+        value: taskCount !== null ? `${taskCount}` : '-',
+        route: 'Task',
+      },
+      {
+        label: '我的收藏',
+        value: favoriteCount !== null ? `${favoriteCount}` : '-',
+        route: 'PersonalFavorites',
+      },
     ],
-    [quotaRemaining, taskCount, favoriteCount],
+    [creditsBalance, taskCount, favoriteCount],
   );
 
   // VIP 判断
-  const isVip = !!member && member.levelCode !== 'level_0' && member.levelCode !== 'level_1';
-  const avatarLetter = (userInfo?.nickname || userInfo?.username || 'U').charAt(0).toUpperCase();
+  const isVip =
+    !!member &&
+    member.levelCode !== 'level_0' &&
+    member.levelCode !== 'level_1';
+  const avatarLetter = (userInfo?.nickname || userInfo?.username || 'U')
+    .charAt(0)
+    .toUpperCase();
   const nickname = userInfo?.nickname || '未登录';
   const roles = userInfo?.roles ?? [];
 
@@ -222,10 +313,18 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       activeOpacity={0.6}
     >
       <View style={styles.entryIconWrap}>
-        <Ionicons name={entry.icon} size={20} color={theme.colors.text.secondary} />
+        <Ionicons
+          name={entry.icon}
+          size={20}
+          color={theme.colors.text.secondary}
+        />
       </View>
       <Text style={styles.entryTitle}>{entry.title}</Text>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
+      <Ionicons
+        name="chevron-forward"
+        size={16}
+        color={theme.colors.text.tertiary}
+      />
     </TouchableOpacity>
   );
 
@@ -268,13 +367,18 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.userCardInner}>
             <View style={styles.avatarWrap}>
               {userInfo?.avatar ? (
-                <Image source={{ uri: userInfo.avatar }} style={styles.avatarImg} />
+                <Image
+                  source={{ uri: userInfo.avatar }}
+                  style={styles.avatarImg}
+                />
               ) : (
                 <Text style={styles.avatarLetter}>{avatarLetter}</Text>
               )}
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.nickname} numberOfLines={1}>{nickname}</Text>
+              <Text style={styles.nickname} numberOfLines={1}>
+                {nickname}
+              </Text>
               <View style={styles.roleRow}>
                 {roles.length > 0 ? (
                   roles.slice(0, 2).map(role => (
@@ -299,10 +403,16 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           activeOpacity={0.8}
         >
           <View style={styles.vipLeft}>
-            <Ionicons name="diamond" size={22} color={theme.colors.status.warning} />
+            <Ionicons
+              name="diamond"
+              size={22}
+              color={theme.colors.status.warning}
+            />
             <View style={styles.vipTextWrap}>
               <Text style={styles.vipTitle}>
-                {isVip ? `${member?.levelName || '会员'}专属权益` : '开通 VIP 畅享更多次数'}
+                {isVip
+                  ? `${member?.levelName || '会员'}专属权益`
+                  : '开通 VIP 畅享更多次数'}
               </Text>
               <Text style={styles.vipDesc}>
                 {isVip
@@ -312,8 +422,14 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           </View>
           <View style={styles.vipAction}>
-            <Text style={styles.vipActionText}>{isVip ? '详情' : '去开通'}</Text>
-            <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
+            <Text style={styles.vipActionText}>
+              {isVip ? '详情' : '去开通'}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={14}
+              color={theme.colors.primary}
+            />
           </View>
         </TouchableOpacity>
 
@@ -322,7 +438,10 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           {stats.map((stat, idx) => (
             <TouchableOpacity
               key={stat.label}
-              style={[styles.statItem, idx < stats.length - 1 && styles.statDivider]}
+              style={[
+                styles.statItem,
+                idx < stats.length - 1 && styles.statDivider,
+              ]}
               onPress={() => navigateTo(stat.route)}
               activeOpacity={0.6}
             >
@@ -380,7 +499,11 @@ const ProfileScreen: React.FC<Props> = ({ navigation }) => {
           onPress={handleLogout}
           activeOpacity={0.7}
         >
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.status.error} />
+          <Ionicons
+            name="log-out-outline"
+            size={20}
+            color={theme.colors.status.error}
+          />
           <Text style={styles.logoutText}>退出登录</Text>
         </TouchableOpacity>
 

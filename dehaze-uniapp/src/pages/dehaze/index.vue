@@ -57,41 +57,29 @@
               :class="{ disabled: !currentImage }"
               @click="currentImage && goStep(1)"
             >
-              <text>下一步：选择算法</text>
+              <text>下一步：选择模型</text>
               <SvgIcon name="arrow-right" size="16" color="#fff" />
             </view>
           </view>
         </view>
 
-        <!-- 步骤2：选择算法 -->
+        <!-- 步骤2：选择模型 -->
         <view v-if="currentStep === 1" class="dehaze-step-content">
-          <view class="dehaze-algo-search">
-            <SvgIcon name="search" size="16" color="#9ca3af" />
-            <input
-              class="dehaze-algo-search-input"
-              placeholder="搜索算法..."
-              :value="algoSearch"
-              @input="(e: any) => (algoSearch = e.detail.value)"
-            />
+          <view v-if="modelLoading" class="dehaze-loading">
+            <text>加载模型中...</text>
           </view>
-          <view v-if="algoLoading" class="dehaze-loading">
-            <text>加载算法中...</text>
-          </view>
-          <view v-else class="dehaze-algo-list">
+          <view v-else class="dehaze-model-list">
             <view
-              v-for="algo in filteredAlgorithms"
-              :key="algo.id"
-              class="dehaze-algo-card"
-              :class="{ selected: selectedAlgorithm?.id === algo.id }"
-              @click="handleSelectAlgorithm(algo)"
+              v-for="model in models"
+              :key="model.modelId"
+              class="dehaze-model-card"
+              :class="{ selected: selectedModel?.modelId === model.modelId }"
+              @click="handleSelectModel(model)"
             >
-              <text class="dehaze-algo-name">{{ algo.name }}</text>
-              <view v-if="algo.type" class="dehaze-algo-type">
-                <text>{{ algo.type }}</text>
+              <text class="dehaze-model-name">{{ model.displayName }}</text>
+              <view class="dehaze-model-type">
+                <text>{{ model.modelId }}</text>
               </view>
-              <text v-if="algo.description" class="dehaze-algo-desc">
-                {{ algo.description }}
-              </text>
             </view>
           </view>
           <view class="dehaze-step-action">
@@ -100,8 +88,8 @@
             </view>
             <view
               class="dehaze-btn dehaze-btn-primary"
-              :class="{ disabled: !selectedAlgorithm }"
-              @click="selectedAlgorithm && goStep(2)"
+              :class="{ disabled: !selectedModel }"
+              @click="selectedModel && goStep(2)"
             >
               <text>下一步：调节参数</text>
               <SvgIcon name="arrow-right" size="16" color="#fff" />
@@ -195,10 +183,10 @@
               <text>恢复默认</text>
             </view>
           </view>
-          <view v-if="selectedAlgorithm" class="dehaze-algo-summary">
-            <text class="dehaze-summary-label">已选算法：</text>
+          <view v-if="selectedModel" class="dehaze-model-summary">
+            <text class="dehaze-summary-label">已选模型：</text>
             <text class="dehaze-summary-value">{{
-              selectedAlgorithm.name
+              selectedModel.displayName
             }}</text>
           </view>
           <view class="dehaze-step-action">
@@ -239,8 +227,7 @@
             <view class="dehaze-success-icon">✓</view>
             <text class="dehaze-status-text">处理完成</text>
             <text class="dehaze-status-hint">
-              耗时 {{ formatDuration(result.time ?? 0) }}
-              <text v-if="result.fromCache"> · 缓存命中</text>
+              耗时 {{ result.time ?? 0 }}s
             </text>
             <view v-if="result.resultUrl" class="dehaze-result-preview">
               <image
@@ -316,10 +303,10 @@
 import { ref, computed, onMounted } from "vue";
 import SvgIcon from "@/components/SvgIcon/index.vue";
 import PageLayout from "@/layout/index.vue";
-import { AlgorithmAPI, ModelAPI } from "dehaze-sdk-js";
-import type { Algorithm, PredictionResultVO, PresetVO } from "dehaze-sdk-js";
+import { ModelAPI } from "dehaze-sdk-js";
+import type { ImageTaskResponse, PresetVO } from "dehaze-sdk-js";
 import { uploadImage } from "@/api/file";
-import { useProcessingStore } from "@/store/processing";
+import { useProcessingStore, type ImageModelOption } from "@/store/processing";
 
 interface StepDef {
   key: string;
@@ -343,7 +330,7 @@ interface ProcessParams {
 
 const steps: StepDef[] = [
   { key: "upload", label: "上传图像" },
-  { key: "algorithm", label: "选择算法" },
+  { key: "model", label: "选择模型" },
   { key: "params", label: "调节参数" },
   { key: "processing", label: "处理" },
   { key: "compare", label: "效果对比" },
@@ -361,20 +348,19 @@ type ProcessStatus = "idle" | "processing" | "success" | "error";
 const store = useProcessingStore();
 const currentStep = ref(0);
 const currentImage = ref<ImageData | null>(null);
-const algorithms = ref<Algorithm[]>([]);
-const algoLoading = ref(false);
-const algoSearch = ref("");
-const selectedAlgorithm = ref<Algorithm | null>(null);
+const models = computed(() => store.imageModels);
+const modelLoading = ref(false);
+const selectedModel = computed(() => store.selectedModel);
 const params = ref<ProcessParams>({ ...DEFAULT_PARAMS });
 const processStatus = ref<ProcessStatus>("idle");
-const result = ref<PredictionResultVO | null>(null);
+const result = ref<ImageTaskResponse | null>(null);
 const errorMsg = ref("");
 const uploadedFileId = ref<number | null>(null);
 const presets = ref<PresetVO[]>([]);
 
 onMounted(() => {
-  if (currentStep.value === 1 && algorithms.value.length === 0) {
-    loadAlgorithms();
+  if (currentStep.value === 1 && models.value.length === 0) {
+    loadModels();
   }
   ModelAPI.getPresets({ pageNum: 1, pageSize: 50 })
     .then((res) => {
@@ -385,47 +371,16 @@ onMounted(() => {
     });
 });
 
-const loadAlgorithms = async () => {
-  algoLoading.value = true;
+const loadModels = async () => {
+  modelLoading.value = true;
   try {
-    const list = await AlgorithmAPI.getList();
-    algorithms.value = list || [];
+    await store.loadImageModels();
   } catch {
-    uni.showToast({ title: "加载算法失败", icon: "none" });
+    uni.showToast({ title: "加载模型失败", icon: "none" });
   } finally {
-    algoLoading.value = false;
+    modelLoading.value = false;
   }
 };
-
-/** 收集叶子算法 */
-const collectLeaves = (nodes: Algorithm[]): Algorithm[] => {
-  const leaves: Algorithm[] = [];
-  const walk = (list: Algorithm[]) => {
-    for (const node of list) {
-      if (node.children && node.children.length > 0) {
-        walk(node.children);
-      } else {
-        leaves.push(node);
-      }
-    }
-  };
-  walk(nodes);
-  return leaves;
-};
-
-const leafAlgorithms = computed(() =>
-  collectLeaves(algorithms.value).filter((a) => a.status === 4)
-);
-
-const filteredAlgorithms = computed(() => {
-  if (!algoSearch.value) return leafAlgorithms.value;
-  const kw = algoSearch.value.toLowerCase();
-  return leafAlgorithms.value.filter(
-    (a) =>
-      a.name?.toLowerCase().includes(kw) ||
-      a.description?.toLowerCase().includes(kw)
-  );
-});
 
 const goStep = (step: number) => {
   if (step < 0 || step >= steps.length) return;
@@ -434,14 +389,14 @@ const goStep = (step: number) => {
       uni.showToast({ title: "请先上传图片", icon: "none" });
       return;
     }
-    if (step >= 2 && !selectedAlgorithm.value) {
-      uni.showToast({ title: "请先选择算法", icon: "none" });
+    if (step >= 2 && !selectedModel.value) {
+      uni.showToast({ title: "请先选择模型", icon: "none" });
       return;
     }
   }
-  // 切换到算法选择步骤时加载算法
-  if (step === 1 && algorithms.value.length === 0 && !algoLoading.value) {
-    loadAlgorithms();
+  // 切换到模型选择步骤时加载模型
+  if (step === 1 && models.value.length === 0 && !modelLoading.value) {
+    loadModels();
   }
   currentStep.value = step;
 };
@@ -481,19 +436,19 @@ const handleChooseImage = () => {
   });
 };
 
-const handleSelectAlgorithm = (algorithm: Algorithm) => {
-  selectedAlgorithm.value = algorithm;
+const handleSelectModel = (model: ImageModelOption) => {
+  store.setModel(model);
   goStep(2);
 };
 
 const handleProcess = async () => {
-  if (!currentImage.value || !selectedAlgorithm.value) return;
+  if (!currentImage.value || !selectedModel.value) return;
 
   // 确认对话框
   const confirmResult = await new Promise<boolean>((resolve) => {
     uni.showModal({
       title: "确认开始去雾处理",
-      content: `图片：${currentImage.value!.name}\n尺寸：${currentImage.value!.width}×${currentImage.value!.height}\n算法：${selectedAlgorithm.value!.name}`,
+      content: `图片：${currentImage.value!.name}\n尺寸：${currentImage.value!.width}×${currentImage.value!.height}\n模型：${selectedModel.value!.displayName}`,
       confirmText: "开始处理",
       cancelText: "取消",
       success: (res) => resolve(res.confirm),
@@ -517,36 +472,21 @@ const handleProcess = async () => {
   errorMsg.value = "";
   result.value = null;
 
-  const res = await store.runPrediction({
-    algorithmId: selectedAlgorithm.value.id,
+  const res = await store.runImageTask({
     fileId: uploadedFileId.value!,
     params: JSON.stringify(params.value),
-    onQuotaExhausted: ({ used, total }) => {
-      uni.showModal({
-        title: "预测次数不足",
-        content: `当前剩余预测次数为 0（已使用 ${used}/${total}），请及时充值。`,
-        confirmText: "去充值",
-        cancelText: "取消",
-        success: (r) => {
-          if (r.confirm) {
-            uni.navigateTo({ url: "/pages/personal/quota/index" });
-          }
-        },
-      });
-    },
   });
 
   if (res.ok && res.result) {
     result.value = res.result;
     processStatus.value = "success";
-    uni.setStorageSync("prediction_result", JSON.stringify(res.result));
     uni.showToast({ title: "处理完成", icon: "success" });
     goStep(4);
   } else if (!res.ok && res.error) {
     processStatus.value = "error";
     errorMsg.value = res.error;
   } else {
-    // 已取消或配额耗尽
+    // 已取消
     processStatus.value = "idle";
   }
 };
@@ -583,7 +523,7 @@ const handleCancelProcess = () => {
 const handleReset = () => {
   currentStep.value = 0;
   currentImage.value = null;
-  selectedAlgorithm.value = null;
+  store.reset();
   params.value = { ...DEFAULT_PARAMS };
   processStatus.value = "idle";
   result.value = null;
@@ -725,8 +665,8 @@ const formatDuration = (ms: number): string => {
   }
 }
 
-/* 算法搜索 */
-.dehaze-algo-search {
+/* 模型搜索 */
+.dehaze-model-search {
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -736,7 +676,7 @@ const formatDuration = (ms: number): string => {
   border-radius: 16rpx;
   margin-bottom: 16rpx;
 
-  .dehaze-algo-search-input {
+  .dehaze-model-search-input {
     flex: 1;
     height: 100%;
     font-size: $font-sm;
@@ -750,12 +690,12 @@ const formatDuration = (ms: number): string => {
   color: $color-text-secondary;
 }
 
-.dehaze-algo-list {
+.dehaze-model-list {
   max-height: 500rpx;
   overflow-y: auto;
 }
 
-.dehaze-algo-card {
+.dehaze-model-card {
   padding: 20rpx;
   border-radius: 16rpx;
   background: $color-bg-secondary;
@@ -766,13 +706,13 @@ const formatDuration = (ms: number): string => {
     border: 2rpx solid $color-primary;
   }
 
-  .dehaze-algo-name {
+  .dehaze-model-name {
     font-size: $font-md;
     font-weight: 600;
     color: $color-text-primary;
   }
 
-  .dehaze-algo-type {
+  .dehaze-model-type {
     display: inline-block;
     padding: 2rpx 12rpx;
     background: $color-primary-bg;
@@ -782,7 +722,7 @@ const formatDuration = (ms: number): string => {
     margin-top: 6rpx;
   }
 
-  .dehaze-algo-desc {
+  .dehaze-model-desc {
     display: block;
     font-size: $font-xs;
     color: $color-text-secondary;
@@ -850,7 +790,7 @@ const formatDuration = (ms: number): string => {
   }
 }
 
-.dehaze-algo-summary {
+.dehaze-model-summary {
   padding: 16rpx 20rpx;
   background: $color-primary-bg;
   border-radius: 12rpx;

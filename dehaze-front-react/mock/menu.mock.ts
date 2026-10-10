@@ -371,7 +371,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict_type:add",
+                  perm: "sys:dict:type:add",
                   children: [],
                 },
                 {
@@ -385,7 +385,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict_type:edit",
+                  perm: "sys:dict:type:edit",
                   children: [],
                 },
                 {
@@ -399,7 +399,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict_type:delete",
+                  perm: "sys:dict:type:delete",
                   children: [],
                 },
                 {
@@ -413,7 +413,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict:add",
+                  perm: "sys:dict:data:add",
                   children: [],
                 },
                 {
@@ -427,7 +427,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict:edit",
+                  perm: "sys:dict:data:edit",
                   children: [],
                 },
                 {
@@ -441,7 +441,7 @@ export default defineMock([
                   visible: 1,
                   icon: "",
                   redirect: null,
-                  perm: "sys:dict:delete",
+                  perm: "sys:dict:data:delete",
                   children: [],
                 },
               ],

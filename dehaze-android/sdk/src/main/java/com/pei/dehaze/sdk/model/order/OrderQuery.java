@@ -11,8 +11,8 @@ public class OrderQuery extends PageQuery {
     private String keywords;
     private String status;
     private String payMethod;
-    private Double amountMin;
-    private Double amountMax;
+    private Long amountMin;
+    private Long amountMax;
     private String paidTimeStart;
     private String paidTimeEnd;
 }

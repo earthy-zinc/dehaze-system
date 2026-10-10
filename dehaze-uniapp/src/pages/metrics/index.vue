@@ -1,18 +1,17 @@
 <template>
   <ImmersiveLayout title="指标评估">
     <scroll-view v-if="hasImages" class="main-content" scroll-y>
-      <!-- 算法处理信息 -->
+      <!-- 模型处理信息 -->
       <view class="info-card">
         <text class="card-title">处理信息</text>
         <view class="info-row">
-          <text class="info-label">算法</text>
-          <text class="info-value">{{ algorithmName }}</text>
+          <text class="info-label">模型</text>
+          <text class="info-value">{{ modelName }}</text>
         </view>
         <view v-if="result?.time !== undefined" class="info-row">
           <text class="info-label">耗时</text>
           <text class="info-value">{{ result.time }}s</text>
         </view>
-        <view v-if="result?.fromCache" class="cache-tag">缓存命中</view>
       </view>
 
       <!-- 评估操作 -->
@@ -70,7 +69,7 @@
 
         <!-- 评估耗时 -->
         <view v-if="evalResult.time" class="eval-time">
-          <text>评估耗时: {{ (evalResult.time / 1000).toFixed(2) }}s</text>
+          <text>评估耗时: {{ evalResult.time }}s</text>
         </view>
       </view>
 
@@ -100,9 +99,9 @@
           <SvgIcon name="refresh" size="18" color="rgba(255,255,255,0.7)" />
           <text>重新处理</text>
         </view>
-        <view class="action-item" @click="handleChangeAlgorithm">
+        <view class="action-item" @click="handleChangeModel">
           <SvgIcon name="swap" size="18" color="rgba(255,255,255,0.7)" />
-          <text>换算法</text>
+          <text>换模型</text>
         </view>
       </view>
     </template>
@@ -125,7 +124,7 @@ const evalResult = ref<EvaluationResultVO | null>(null);
 const hasImages = computed(() => !!store.result?.resultUrl);
 const gtUrl = computed(() => store.currentImage?.sampleInfo?.cleanUrl || "");
 const canEvaluate = computed(() => hasImages.value);
-const algorithmName = computed(() => store.selectedAlgorithm?.name || "-");
+const modelName = computed(() => store.selectedModel?.displayName || "-");
 const result = computed(() => store.result);
 
 interface MetricDisplay {
@@ -246,16 +245,18 @@ const modes = [
 ];
 
 async function handleEvaluate() {
-  if (!store.selectedAlgorithm?.id) {
-    uni.showToast({ title: "缺少算法信息", icon: "none" });
+  const model = store.selectedModel;
+  const predUrl = store.result?.resultUrl;
+  if (!model?.modelId || !predUrl || !gtUrl.value) {
+    uni.showToast({ title: "缺少模型、结果图或参考图", icon: "none" });
     return;
   }
   evaluating.value = true;
   try {
     const result = await ModelAPI.evaluateAndWait({
-      algorithmId: store.selectedAlgorithm.id,
-      predUrl: store.result?.resultUrl,
-      gtUrl: gtUrl.value || undefined,
+      modelId: model.modelId,
+      predUrl,
+      gtUrl: gtUrl.value,
     });
     if (result.status === 3) {
       throw new Error(result.errorMessage || "评估失败");
@@ -277,8 +278,8 @@ function handleReprocess() {
   uni.redirectTo({ url: "/pages/processing/index" });
 }
 
-function handleChangeAlgorithm() {
-  uni.redirectTo({ url: "/pages/algorithm-select/index" });
+function handleChangeModel() {
+  uni.redirectTo({ url: "/pages/processing/index" });
 }
 
 onMounted(() => {

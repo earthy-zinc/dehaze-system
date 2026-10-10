@@ -138,9 +138,9 @@ describe("ImportDialog", () => {
     expect(wrapper.text()).toContain("导入角色");
   });
 
-  it("module 为 algorithm 时标题为导入算法", () => {
-    const wrapper = mountDialog({ module: "algorithm" });
-    expect(wrapper.text()).toContain("导入算法");
+  it("module 为 dict 时标题为导入字典", () => {
+    const wrapper = mountDialog({ module: "dict" });
+    expect(wrapper.text()).toContain("导入字典");
   });
 
   it("传入 extraImportParams 时作为 prop 接收", () => {

@@ -80,25 +80,23 @@ class _MemberPageState extends ConsumerState<MemberPage> {
   void _showSignInResult(SignInResultVO result) {
     showDialog<void>(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            title: const Text('签到成功'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('获得成长值: +${result.growthValue}'),
-                if (result.bonusGrowth > 0)
-                  Text('连续签到奖励: +${result.bonusGrowth}'),
-                Text('已连续签到 ${result.continuousDays} 天'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('确定'),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: const Text('签到成功'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('获得成长值: +${result.growthValue}'),
+            if (result.bonusGrowth > 0) Text('连续签到奖励: +${result.bonusGrowth}'),
+            Text('已连续签到 ${result.continuousDays} 天'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('确定'),
           ),
+        ],
+      ),
     );
   }
 
@@ -110,41 +108,41 @@ class _MemberPageState extends ConsumerState<MemberPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(theme)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildLevelCard(theme),
-                      const SizedBox(height: 20),
-                      _buildSignInSection(theme),
-                      const SizedBox(height: 20),
-                      Text(
-                        '会员权益',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ..._benefits.map(
-                        (b) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              _benefitIcon(b.levelCode),
-                              color: AppTheme.brandBlue,
-                            ),
-                            title: Text(b.levelName),
-                            subtitle: Text(
-                              '去雾配额: ${b.monthlyDehazeQuota}次/月 | 评估配额: ${b.monthlyEvaluateQuota}次/月',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+          ? _buildError(theme)
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildLevelCard(theme),
+                  const SizedBox(height: 20),
+                  _buildSignInSection(theme),
+                  const SizedBox(height: 20),
+                  Text(
+                    '会员权益',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  ..._benefits.map(
+                    (b) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: Icon(
+                          _benefitIcon(b.levelCode),
+                          color: AppTheme.brandBlue,
+                        ),
+                        title: Text(b.levelName),
+                        subtitle: Text(
+                          '去雾配额: ${b.monthlyDehazeQuota}次/月 | 评估配额: ${b.monthlyEvaluateQuota}次/月',
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
@@ -278,15 +276,15 @@ class _MemberPageState extends ConsumerState<MemberPage> {
   }
 
   Widget _buildError(ThemeData theme) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-            const SizedBox(height: 12),
-            Text(_error!, style: theme.textTheme.bodyMedium),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
-      );
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+        const SizedBox(height: 12),
+        Text(_error!, style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        ElevatedButton(onPressed: _load, child: const Text('重试')),
+      ],
+    ),
+  );
 }

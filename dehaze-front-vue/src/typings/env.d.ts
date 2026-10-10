@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   VITE_APP_PORT: number;
   /** 是否开启 Mock 服务 */
   VITE_MOCK_DEV_SERVER: boolean;
+  /** 数据集静态文件服务地址（nginx-dataset，URL 前缀 /datasets） */
+  VITE_DATASET_HOST: string;
 }
 
 interface ImportMeta {

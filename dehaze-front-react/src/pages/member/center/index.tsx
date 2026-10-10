@@ -1,6 +1,7 @@
 import {
+  AiBillingAPI,
   MemberAPI,
-  type BenefitSummaryVO,
+  type BalanceVO,
   type MemberLevelCode,
   type MemberProfileVO,
   type SignInCalendarVO,
@@ -46,9 +47,7 @@ const MemberCenter: React.FC = () => {
   const [profile, setProfile] = useState<MemberProfileVO | undefined>(
     undefined
   );
-  const [summary, setSummary] = useState<BenefitSummaryVO | undefined>(
-    undefined
-  );
+  const [balance, setBalance] = useState<BalanceVO | undefined>(undefined);
   const [calendar, setCalendar] = useState<SignInCalendarVO | undefined>(
     undefined
   );
@@ -75,6 +74,10 @@ const MemberCenter: React.FC = () => {
       });
   }, []);
 
+  const loadBalance = useCallback(() => {
+    AiBillingAPI.getBalance().then(setBalance);
+  }, []);
+
   const loadCalendar = useCallback((year: number, month: number) => {
     MemberAPI.getSignInCalendar(year, month).then((data) => {
       setCalendar(data);
@@ -83,16 +86,17 @@ const MemberCenter: React.FC = () => {
 
   useEffect(() => {
     loadProfile();
+    loadBalance();
     loadCalendar(calendarYear, calendarMonth);
-  }, [loadProfile, loadCalendar, calendarYear, calendarMonth]);
+  }, [loadProfile, loadBalance, loadCalendar, calendarYear, calendarMonth]);
 
   const isMaxLevel = profile?.levelCode === "level_3";
   const growthToNext =
     profile?.nextLevelGrowth != null
       ? Math.max(0, profile.nextLevelGrowth - profile.growthValue)
       : 0;
-  const imageRemaining = summary?.imageCategory?.remaining ?? 0;
-  const evaluateRemaining = summary?.evaluateCategory?.remaining ?? 0;
+  const creditsBalance = balance?.creditsBalance ?? 0;
+  const monthlyUsed = balance?.monthlyUsed ?? 0;
 
   const hasAnyUnlockedFeature = profile?.benefits
     ? !!(
@@ -226,16 +230,18 @@ const MemberCenter: React.FC = () => {
           <Row gutter={20}>
             <Col sm={6} xs={12}>
               <div className="benefit-item">
-                <div className="benefit-label">图像处理剩余</div>
-                <div className="benefit-value">{imageRemaining}</div>
-                <div className="benefit-sub">7 类图像任务取最低剩余</div>
+                <div className="benefit-label">积分余额</div>
+                <div className="benefit-value">{creditsBalance}</div>
+                <div className="benefit-sub">
+                  图像处理与语音等按实际用量扣除
+                </div>
               </div>
             </Col>
             <Col sm={6} xs={12}>
               <div className="benefit-item">
-                <div className="benefit-label">评估剩余</div>
-                <div className="benefit-value">{evaluateRemaining}</div>
-                <div className="benefit-sub">本月剩余评估次数</div>
+                <div className="benefit-label">本月已用积分</div>
+                <div className="benefit-value">{monthlyUsed}</div>
+                <div className="benefit-sub">本月累计消耗</div>
               </div>
             </Col>
             <Col sm={6} xs={12}>

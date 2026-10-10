@@ -8,7 +8,13 @@ import IconsResolver from "unplugin-icons/resolver";
 import Icons from "unplugin-icons/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
-import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
+import {
+  ConfigEnv,
+  defineConfig,
+  loadEnv,
+  PluginOption,
+  UserConfig,
+} from "vite";
 import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
 
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
@@ -30,8 +36,14 @@ const __APP_INFO__ = {
 
 const pathSrc = resolve(__dirname, "src");
 //  https://cn.vitejs.dev/config
-export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
+export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
   const env = loadEnv(mode, process.cwd());
+  // 样张静态基址随环境而异，由部署侧注入：生产构建缺失即失败，避免打包出指向不存在域名的页面
+  if (command === "build" && !env.VITE_DATASET_HOST) {
+    throw new Error(
+      "缺少 VITE_DATASET_HOST：请在构建环境注入数据集静态服务地址（如 VITE_DATASET_HOST=https://cdn.<域名>:19000），否则样张图片不可用"
+    );
+  }
   return {
     resolve: {
       alias: {
@@ -56,6 +68,16 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       port: Number(env.VITE_APP_PORT),
       // 运行是否自动打开浏览器
       open: false,
+      watch: {
+        /**
+         * 链接的工作区包 dehaze-sdk-js 通过 dist 产物被引入（node_modules 软链），
+         * 其重建会触发 vite 整页 reload（日志形如 `page reload .../dehaze-sdk-js/dist/index.js`），
+         * 打断正在做页面评审/测试的同学（评估期间曾多次整页刷新）。
+         * 该目录是构建产物而非应用源码，dev 下不监听：SDK 改动后手动刷新页面即可。
+         * 如需恢复监听，删除本 watch 配置项即可。
+         */
+        ignored: ["**/dehaze-sdk-js/**"],
+      },
       proxy: {
         /** 代理前缀为 /api 的请求  */
         [env.VITE_BASE_API]: {
@@ -71,6 +93,35 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         },
       },
     },
+    /**
+     * 预览服务：页面级功能测试走构建产物，避开 dev server 的整页 reload——SDK（软链引入）
+     * 的 dist 重建会让 optimizeDeps 重新预构建并全量刷新，`server.watch.ignored` 只作用于
+     * 文件监听、覆盖不到该路径。代理口径与 dev 保持一致，便于同一套页面用例切换。
+     *
+     * 端口与 dev 错开（VITE_PREVIEW_PORT），两者可并存：测试期间无需停掉别人的 dev server。
+     * 以 `vite preview --mode test` 启动：代理目标与端口定义在 .env.test（生产由 nginx
+     * 同源反代 /api、没有 VITE_API_URL，按默认 production 模式读 config 会拿到空代理目标）。
+     */
+    preview: {
+      host: "0.0.0.0",
+      port: Number(env.VITE_PREVIEW_PORT),
+      proxy: {
+        [env.VITE_BASE_API]: {
+          changeOrigin: true,
+          target: env.VITE_API_URL,
+        },
+        "/ws": {
+          target: env.VITE_API_URL,
+          ws: true,
+          changeOrigin: true,
+        },
+      },
+    },
+    /**
+     * unocss 与 unplugin 系插件的类型来自各自依赖树里的旧 vite 副本，与本项目 vite 的结构化
+     * Plugin 类型不能互相赋值；以下 4 处仅做类型对齐，插件实例与运行行为不受影响
+     *（依赖去重属独立任务）。
+     */
     plugins: [
       vue(),
       // jsx、tsx语法支持
@@ -79,7 +130,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       env.VITE_MOCK_DEV_SERVER === "true" ? mockDevServerPlugin() : null,
       UnoCSS({
         hmrTopLevelAwait: false,
-      }),
+      }) as PluginOption,
       // 自动导入参考： https://github.com/sxzz/element-plus-best-practices/blob/main/vite.config.ts
       AutoImport({
         // 自动导入 Vue 相关函数，如：ref, reactive, toRef 等
@@ -102,7 +153,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         // 指定自动导入函数TS类型声明文件路径 (false:关闭自动生成)
         dts: false,
         // dts: "src/typings/auto-imports.d.ts",
-      }),
+      }) as PluginOption,
       Components({
         resolvers: [
           // 自动导入 Element Plus 组件
@@ -118,11 +169,11 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         // 指定自动导入组件TS类型声明文件路径 (false:关闭自动生成)
         dts: false,
         // dts: "src/typings/components.d.ts",
-      }),
+      }) as PluginOption,
       Icons({
         // 自动安装图标库
         autoInstall: true,
-      }),
+      }) as PluginOption,
       createSvgIconsPlugin({
         // 指定需要缓存的图标文件夹
         iconDirs: [resolve(pathSrc, "assets/icons")],
@@ -210,8 +261,10 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       terserOptions: {
         compress: {
           keep_infinity: true, // 防止 Infinity 被压缩成 1/0，这可能会导致 Chrome 上的性能问题
-          drop_console: true, // 生产环境去除 console
-          drop_debugger: true, // 生产环境去除 debugger
+          // 生产构建去除 console/debugger；mode=test（页面测试基座，.env.test）保留它们，
+          // 页面级断言依赖应用自身打印的控制台报错
+          drop_console: mode !== "test",
+          drop_debugger: mode !== "test",
         },
         format: {
           comments: false, // 删除注释

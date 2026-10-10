@@ -16,6 +16,10 @@ module.exports = {
       excludedFiles: ['metro.config.cjs', '.eslintrc.js'],
     },
     {
+      files: ['jest.setup.js'],
+      env: { jest: true },
+    },
+    {
       files: ['metro.config.js'],
       parserOptions: {
         requireConfigFile: false,

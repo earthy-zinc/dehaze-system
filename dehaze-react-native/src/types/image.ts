@@ -27,16 +27,16 @@ export interface SelectedImage {
   /** 来源 */
   source?: 'upload' | 'camera' | 'sample' | 'history';
   /**
-   * 历史记录复用：原处理任务使用的算法 ID
-   * 仅 source='history' 且该历史记录有 algorithmId 时有值；
-   * 用于复用历史记录时直接进入处理页，跳过算法选择。
+   * 历史记录复用：原处理任务使用的图像模型标识（统一模型规范 slug）
+   * 仅 source='history' 且该历史记录有 modelId 时有值；
+   * 用于复用历史记录时直接进入处理页，跳过模型选择。
    */
-  algorithmId?: number;
+  modelId?: string;
   /**
-   * 历史记录复用：原处理任务使用的算法参数（JSON 字符串）
-   * 与 algorithmId 同时存在，用于复用历史参数。
+   * 历史记录复用：原处理任务使用的图像模型参数（JSON 字符串）
+   * 与 modelId 同时存在，用于复用历史参数。
    */
-  algorithmParams?: string;
+  modelParams?: string;
   /** 样例图片附加信息（仅 source='sample' 时存在） */
   sampleInfo?: {
     sceneType?: string;

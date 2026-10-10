@@ -66,7 +66,7 @@ defineOptions({
 const features = [
   {
     icon: MagicStick,
-    title: "智能算法推荐",
+    title: "智能模型推荐",
     desc: "根据场景自动匹配最佳去雾模型，无需专业知识。",
     tags: ["场景识别", "自动选模型", "零配置"],
   },
@@ -84,16 +84,16 @@ const features = [
   },
   {
     icon: Cpu,
-    title: "算法实验室",
-    desc: "内置多种 SOTA 去雾算法，支持自定义上传与测评。",
-    tags: ["30+ SOTA", "自定义上传", "A/B 测评"],
+    title: "统一模型库",
+    desc: "内置多种 SOTA 去雾模型，按任务类型分组选择，支持量化评估与对比。",
+    tags: ["30+ SOTA", "多模型对比", "量化指标"],
   },
 ];
 
 // 流程步骤：icon 为 Element Plus 图标，svgIcon 为项目内置 SVG 图标
 const flowSteps = [
   { icon: Upload, title: "上传图像", desc: "单张/批量/数据集" },
-  { svgIcon: "bulb", title: "场景识别", desc: "自动匹配算法" },
+  { svgIcon: "bulb", title: "选择模型", desc: "按任务类型分组" },
   { icon: Lightning, title: "智能去雾", desc: "深度学习还原" },
   { icon: DataAnalysis, title: "效果对比", desc: "量化指标评估" },
   { icon: Download, title: "导出结果", desc: "原图/报告导出" },

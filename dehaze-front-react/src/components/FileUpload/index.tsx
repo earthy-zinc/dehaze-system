@@ -16,8 +16,6 @@ export interface FileUploadProps {
   accept?: string;
   /** 最大上传数量，默认 1 */
   maxCount?: number;
-  /** 模型ID，上传时关联模型 */
-  modelId?: number;
   /** 受控值：已上传的文件信息列表 */
   value?: FileInfo[];
   /** 文件列表变化回调 */
@@ -39,7 +37,6 @@ interface UploadingItem {
 const FileUpload: React.FC<FileUploadProps> = ({
   accept,
   maxCount = 1,
-  modelId,
   value = [],
   onChange,
 }) => {
@@ -101,7 +98,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         message.success("文件秒传成功");
       } else {
         // 未命中，执行实际上传
-        fileInfo = await FileAPI.upload(rawFile, modelId, (progressEvent) => {
+        fileInfo = await FileAPI.upload(rawFile, (progressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round(
               (progressEvent.loaded / progressEvent.total) * 100

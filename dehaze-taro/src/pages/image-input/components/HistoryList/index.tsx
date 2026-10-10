@@ -110,10 +110,8 @@ const HistoryList: React.FC<HistoryListProps> = ({
                       <Text className="item-time">
                         {formatTimestamp(record.createTime)}
                       </Text>
-                      {record.algorithmName && (
-                        <Text className="item-algorithm">
-                          {record.algorithmName}
-                        </Text>
+                      {record.modelName && (
+                        <Text className="item-model">{record.modelName}</Text>
                       )}
                     </View>
                     <View className="item-arrow">

@@ -4,7 +4,7 @@ import Taro from "@tarojs/taro";
 import { Loading, Empty } from "@taroify/core";
 import { Add } from "@taroify/icons";
 import { DatasetAPI } from "dehaze-sdk-js";
-import type { Dataset } from "dehaze-sdk-js";
+import type { DatasetVO } from "dehaze-sdk-js";
 import PageLayout from "@/layout";
 import ErrorState from "@/components/common/ErrorState";
 import { getErrorMessage } from "@/utils/error";
@@ -20,7 +20,7 @@ import "./index.less";
 interface DialogState {
   visible: boolean;
   mode: "create" | "edit";
-  dataset: Dataset | null;
+  dataset: DatasetVO | null;
   defaultParentId: number;
 }
 
@@ -30,14 +30,16 @@ const DatasetManagePage: React.FC = () => {
   const canEdit = hasPermission("sys:dataset:edit");
   const canDelete = hasPermission("sys:dataset:delete");
 
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasets, setDatasets] = useState<DatasetVO[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
-  const [childrenMap, setChildrenMap] = useState<Record<number, Dataset[]>>({});
+  const [childrenMap, setChildrenMap] = useState<Record<number, DatasetVO[]>>(
+    {}
+  );
   const [childrenLoading, setChildrenLoading] = useState<
     Record<number, boolean>
   >({});
@@ -117,7 +119,7 @@ const DatasetManagePage: React.FC = () => {
     });
   };
 
-  const handleAddChild = (parent: Dataset) => {
+  const handleAddChild = (parent: DatasetVO) => {
     if (!canAdd) return;
     setDialog({
       visible: true,
@@ -127,7 +129,7 @@ const DatasetManagePage: React.FC = () => {
     });
   };
 
-  const handleEdit = (dataset: Dataset) => {
+  const handleEdit = (dataset: DatasetVO) => {
     if (!canEdit) return;
     setDialog({
       visible: true,
@@ -137,7 +139,7 @@ const DatasetManagePage: React.FC = () => {
     });
   };
 
-  const handleDelete = async (dataset: Dataset) => {
+  const handleDelete = async (dataset: DatasetVO) => {
     if (!canDelete) return;
     const confirmed = await confirmDialog({
       title: "确认删除",
@@ -164,7 +166,7 @@ const DatasetManagePage: React.FC = () => {
           type: data.type,
           name: data.name,
           description: data.description,
-          status: data.status,
+          status: Number(data.status),
         });
         Taro.showToast({ title: "创建成功", icon: "success" });
       } else {
@@ -173,7 +175,7 @@ const DatasetManagePage: React.FC = () => {
           type: data.type,
           name: data.name,
           description: data.description,
-          status: data.status,
+          status: Number(data.status),
         });
         Taro.showToast({ title: "更新成功", icon: "success" });
       }

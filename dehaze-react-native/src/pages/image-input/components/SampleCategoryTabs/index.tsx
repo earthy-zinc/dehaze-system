@@ -44,18 +44,10 @@ const SampleCategoryTabs: React.FC<SampleCategoryTabsProps> = ({
             <TouchableOpacity
               key={category.key}
               onPress={() => onCategoryChange(category.key)}
-              style={[
-                styles.tab,
-                isActive && styles.tabActive,
-              ]}
+              style={[styles.tab, isActive && styles.tabActive]}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  styles.tabText,
-                  isActive && styles.tabTextActive,
-                ]}
-              >
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
                 {category.label}
               </Text>
             </TouchableOpacity>

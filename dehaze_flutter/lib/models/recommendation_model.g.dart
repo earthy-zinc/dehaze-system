@@ -35,8 +35,8 @@ AnalyzeRequest _$AnalyzeRequestFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AnalyzeRequestToJson(AnalyzeRequest instance) =>
     <String, dynamic>{
-      if (instance.imageId case final value?) 'imageId': value,
-      if (instance.imageUrl case final value?) 'imageUrl': value,
+      'imageId': ?instance.imageId,
+      'imageUrl': ?instance.imageUrl,
     };
 
 ImageFeatureAnalysis _$ImageFeatureAnalysisFromJson(
@@ -84,7 +84,7 @@ ImageFeatureAnalysis _$ImageFeatureAnalysisFromJson(
 Map<String, dynamic> _$ImageFeatureAnalysisToJson(
   ImageFeatureAnalysis instance,
 ) => <String, dynamic>{
-  if (instance.imageMd5 case final value?) 'imageMd5': value,
+  'imageMd5': ?instance.imageMd5,
   'hazeLevel': _$HazeLevelEnumMap[instance.hazeLevel]!,
   'hazeConfidence': instance.hazeConfidence,
   'sceneType': _$SceneTypeEnumMap[instance.sceneType]!,
@@ -131,43 +131,41 @@ const _$NoiseLevelEnumMap = {
   NoiseLevel.high: 'high',
 };
 
-RecommendedAlgorithm _$RecommendedAlgorithmFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate('RecommendedAlgorithm', json, ($checkedConvert) {
-  final val = RecommendedAlgorithm(
-    recommendationId: $checkedConvert(
-      'recommendationId',
-      (v) => (v as num?)?.toInt(),
-    ),
-    algorithmId: $checkedConvert('algorithmId', (v) => (v as num).toInt()),
-    algorithmName: $checkedConvert('algorithmName', (v) => v as String),
-    matchScore: $checkedConvert('matchScore', (v) => (v as num).toInt()),
-    reason: $checkedConvert('reason', (v) => v as String),
-    rating: $checkedConvert('rating', (v) => (v as num).toInt()),
-    estimatedTime: $checkedConvert(
-      'estimatedTime',
-      (v) => (v as num?)?.toInt(),
-    ),
-    effectDescription: $checkedConvert(
-      'effectDescription',
-      (v) => v as String?,
-    ),
-  );
-  return val;
-});
+RecommendedModel _$RecommendedModelFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('RecommendedModel', json, ($checkedConvert) {
+      final val = RecommendedModel(
+        recommendationId: $checkedConvert(
+          'recommendationId',
+          (v) => (v as num?)?.toInt(),
+        ),
+        modelId: $checkedConvert('modelId', (v) => v as String),
+        modelName: $checkedConvert('modelName', (v) => v as String),
+        matchScore: $checkedConvert('matchScore', (v) => (v as num).toInt()),
+        reason: $checkedConvert('reason', (v) => v as String),
+        rating: $checkedConvert('rating', (v) => (v as num).toInt()),
+        estimatedTime: $checkedConvert(
+          'estimatedTime',
+          (v) => (v as num?)?.toInt(),
+        ),
+        effectDescription: $checkedConvert(
+          'effectDescription',
+          (v) => v as String?,
+        ),
+      );
+      return val;
+    });
 
-Map<String, dynamic> _$RecommendedAlgorithmToJson(
-  RecommendedAlgorithm instance,
-) => <String, dynamic>{
-  if (instance.recommendationId case final value?) 'recommendationId': value,
-  'algorithmId': instance.algorithmId,
-  'algorithmName': instance.algorithmName,
-  'matchScore': instance.matchScore,
-  'reason': instance.reason,
-  'rating': instance.rating,
-  if (instance.estimatedTime case final value?) 'estimatedTime': value,
-  if (instance.effectDescription case final value?) 'effectDescription': value,
-};
+Map<String, dynamic> _$RecommendedModelToJson(RecommendedModel instance) =>
+    <String, dynamic>{
+      'recommendationId': ?instance.recommendationId,
+      'modelId': instance.modelId,
+      'modelName': instance.modelName,
+      'matchScore': instance.matchScore,
+      'reason': instance.reason,
+      'rating': instance.rating,
+      'estimatedTime': ?instance.estimatedTime,
+      'effectDescription': ?instance.effectDescription,
+    };
 
 RecommendationResult _$RecommendationResultFromJson(
   Map<String, dynamic> json,
@@ -180,7 +178,7 @@ RecommendationResult _$RecommendationResultFromJson(
     recommendations: $checkedConvert(
       'recommendations',
       (v) => (v as List<dynamic>)
-          .map((e) => RecommendedAlgorithm.fromJson(e as Map<String, dynamic>))
+          .map((e) => RecommendedModel.fromJson(e as Map<String, dynamic>))
           .toList(),
     ),
   );
@@ -220,9 +218,9 @@ RecommendationRule _$RecommendationRuleFromJson(Map<String, dynamic> json) =>
         id: $checkedConvert('id', (v) => (v as num?)?.toInt()),
         ruleName: $checkedConvert('ruleName', (v) => v as String),
         sceneType: $checkedConvert('sceneType', (v) => v as String),
-        algorithmIds: $checkedConvert(
-          'algorithmIds',
-          (v) => (v as List<dynamic>).map((e) => (e as num).toInt()).toList(),
+        modelIds: $checkedConvert(
+          'modelIds',
+          (v) => (v as List<dynamic>).map((e) => e as String).toList(),
         ),
         weight: $checkedConvert('weight', (v) => (v as num).toInt()),
         enabled: $checkedConvert('enabled', (v) => v as bool),
@@ -232,10 +230,10 @@ RecommendationRule _$RecommendationRuleFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$RecommendationRuleToJson(RecommendationRule instance) =>
     <String, dynamic>{
-      if (instance.id case final value?) 'id': value,
+      'id': ?instance.id,
       'ruleName': instance.ruleName,
       'sceneType': instance.sceneType,
-      'algorithmIds': instance.algorithmIds,
+      'modelIds': instance.modelIds,
       'weight': instance.weight,
       'enabled': instance.enabled,
     };

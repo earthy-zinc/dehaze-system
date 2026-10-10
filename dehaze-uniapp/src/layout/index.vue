@@ -6,7 +6,6 @@
       :level="level"
       :title="title"
       :is-home="isHome"
-      :show-search="showSearch"
     >
       <!-- L2 右侧操作区 -->
       <template v-if="level === 'L2'" #actions>
@@ -38,15 +37,12 @@ interface Props {
   title?: string;
   /** 是否为首页（L1 时品牌 logo 仅首页显示） */
   isHome?: boolean;
-  /** 是否显示搜索按钮（L1 时默认 false，仅首页开启） */
-  showSearch?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
   level: "L1",
   title: "",
   isHome: false,
-  showSearch: false,
 });
 </script>
 

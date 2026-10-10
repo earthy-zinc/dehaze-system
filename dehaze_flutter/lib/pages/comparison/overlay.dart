@@ -29,13 +29,15 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
     final theme = Theme.of(context);
     final originalUrl = state.selectedImage?.fileUrl;
     final originalBytes = state.selectedImage?.bytes;
-    final resultUrl = state.predictionResult?.resultUrl;
+    final resultUrl = state.taskResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
       return ComparisonScaffold(
         icon: Icons.layers_outlined,
         title: '重叠对比',
-        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
+        body: CompareEmptyState(
+          onAction: () => context.go(AppRouterConfig.processing),
+        ),
         currentRoute: AppRouterConfig.overlay,
       );
     }
@@ -53,67 +55,75 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
     String originalUrl,
     String resultUrl,
     Uint8List? originalBytes,
-  ) =>
-      Stack(
-        children: [
-          // 底层：结果图
-          Positioned.fill(
-            child: DehazeImage(url: resultUrl, fit: BoxFit.contain),
+  ) => Stack(
+    children: [
+      // 底层：结果图
+      Positioned.fill(
+        child: DehazeImage(url: resultUrl, fit: BoxFit.contain),
+      ),
+      // 上层：原图，带透明度
+      Positioned.fill(
+        child: Opacity(
+          opacity: _opacity,
+          child: DehazeImage(
+            bytes: originalBytes,
+            url: originalUrl,
+            fit: BoxFit.contain,
           ),
-          // 上层：原图，带透明度
-          Positioned.fill(
-            child: Opacity(
-              opacity: _opacity,
-              child: DehazeImage(
-                bytes: originalBytes,
-                url: originalUrl,
-                fit: BoxFit.contain,
-              ),
-            ),
+        ),
+      ),
+      // 标签
+      Positioned(
+        top: 12,
+        right: 12,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(12),
           ),
-          // 标签
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '透明度: ${(_opacity * 100).toInt()}%',
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ),
+          child: Text(
+            '透明度: ${(_opacity * 100).toInt()}%',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 
   Widget _buildControls(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      children: [
+        Slider(
+          value: _opacity,
+          min: 0,
+          max: 1,
+          divisions: 100,
+          label: '${(_opacity * 100).toInt()}%',
+          onChanged: (v) => setState(() => _opacity = v),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Slider(
-              value: _opacity,
-              min: 0,
-              max: 1,
-              divisions: 100,
-              label: '${(_opacity * 100).toInt()}%',
-              onChanged: (v) => setState(() => _opacity = v),
+            _PresetButton(
+              label: '仅原图',
+              onTap: () => setState(() => _opacity = 1),
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _PresetButton(label: '仅原图', onTap: () => setState(() => _opacity = 1)),
-                _PresetButton(label: '半透明', onTap: () => setState(() => _opacity = 0.5)),
-                _PresetButton(label: '仅结果', onTap: () => setState(() => _opacity = 0)),
-              ],
+            _PresetButton(
+              label: '半透明',
+              onTap: () => setState(() => _opacity = 0.5),
+            ),
+            _PresetButton(
+              label: '仅结果',
+              onTap: () => setState(() => _opacity = 0),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _PresetButton extends StatelessWidget {
@@ -122,5 +132,6 @@ class _PresetButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton(onPressed: onTap, child: Text(label));
+  Widget build(BuildContext context) =>
+      OutlinedButton(onPressed: onTap, child: Text(label));
 }

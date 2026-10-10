@@ -1,10 +1,5 @@
 import React, { useCallback } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  RefreshControl,
-  View,
-} from 'react-native';
+import { FlatList, StyleSheet, RefreshControl, View } from 'react-native';
 import ImageCard from '../ImageCard';
 import { DatasetImage } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -26,22 +21,26 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   onRefresh,
   refreshing = false,
 }) => {
-  const { width, isMobile, isTablet, containerPadding, spacing } = useResponsive();
+  const { width, isMobile, isTablet, containerPadding, spacing } =
+    useResponsive();
 
   // 响应式列数
   const numColumns = isMobile ? 2 : isTablet ? 3 : 4;
-  const availableWidth = width - containerPadding * 2 - spacing * (numColumns - 1);
+  const availableWidth =
+    width - containerPadding * 2 - spacing * (numColumns - 1);
   const imageWidth = Math.floor(availableWidth / numColumns);
 
-  const renderItem = useCallback(({ item }: { item: DatasetImage }) => (
-    <ImageCard
-      image={item}
-      onPress={onImagePress}
-      imageWidth={imageWidth}
-    />
-  ), [onImagePress, imageWidth]);
+  const renderItem = useCallback(
+    ({ item }: { item: DatasetImage }) => (
+      <ImageCard image={item} onPress={onImagePress} imageWidth={imageWidth} />
+    ),
+    [onImagePress, imageWidth],
+  );
 
-  const keyExtractor = useCallback((item: DatasetImage) => item.id.toString(), []);
+  const keyExtractor = useCallback(
+    (item: DatasetImage) => item.id.toString(),
+    [],
+  );
 
   const getItemLayout = useCallback(
     (_data: ArrayLike<DatasetImage> | null | undefined, index: number) => ({
@@ -54,9 +53,10 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   const renderEmpty = useCallback(() => null, []);
 
-  const ItemSeparator = useCallback(() => (
-    <View style={{ height: spacing }} />
-  ), [spacing]);
+  const ItemSeparator = useCallback(
+    () => <View style={{ height: spacing }} />,
+    [spacing],
+  );
 
   return (
     <FlatList
@@ -69,7 +69,9 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         styles.container,
         { paddingHorizontal: containerPadding },
       ]}
-      columnWrapperStyle={numColumns > 1 ? [styles.row, { gap: spacing }] : undefined}
+      columnWrapperStyle={
+        numColumns > 1 ? [styles.row, { gap: spacing }] : undefined
+      }
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       refreshControl={

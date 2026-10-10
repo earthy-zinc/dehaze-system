@@ -40,22 +40,21 @@ Map<String, dynamic> _$MenuToJson(Menu instance) => <String, dynamic>{
   'id': instance.id,
   'parentId': instance.parentId,
   'name': instance.name,
-  if (_menuTypeToJson(instance.type) case final value?) 'type': value,
-  if (instance.icon case final value?) 'icon': value,
-  if (instance.path case final value?) 'path': value,
-  if (instance.component case final value?) 'component': value,
-  if (instance.perm case final value?) 'perm': value,
+  'type': ?_menuTypeToJson(instance.type),
+  'icon': ?instance.icon,
+  'path': ?instance.path,
+  'component': ?instance.component,
+  'perm': ?instance.perm,
   'sort': instance.sort,
-  if (_visibleToJson(instance.visible) case final value?) 'visible': value,
+  'visible': ?_visibleToJson(instance.visible),
   'status': instance.status,
-  if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-    'children': value,
-  if (instance.redirect case final value?) 'redirect': value,
-  if (instance.alwaysShow case final value?) 'alwaysShow': value,
-  if (instance.breadcrumb case final value?) 'breadcrumb': value,
-  if (instance.meta case final value?) 'meta': value,
-  if (instance.createTime case final value?) 'createTime': value,
-  if (instance.updateTime case final value?) 'updateTime': value,
+  'children': ?instance.children?.map((e) => e.toJson()).toList(),
+  'redirect': ?instance.redirect,
+  'alwaysShow': ?instance.alwaysShow,
+  'breadcrumb': ?instance.breadcrumb,
+  'meta': ?instance.meta,
+  'createTime': ?instance.createTime,
+  'updateTime': ?instance.updateTime,
 };
 
 MenuQuery _$MenuQueryFromJson(Map<String, dynamic> json) =>
@@ -69,9 +68,9 @@ MenuQuery _$MenuQueryFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$MenuQueryToJson(MenuQuery instance) => <String, dynamic>{
-  if (instance.name case final value?) 'name': value,
-  if (instance.status case final value?) 'status': value,
-  if (instance.visible case final value?) 'visible': value,
+  'name': ?instance.name,
+  'status': ?instance.status,
+  'visible': ?instance.visible,
 };
 
 MenuForm _$MenuFormFromJson(Map<String, dynamic> json) =>
@@ -95,19 +94,19 @@ MenuForm _$MenuFormFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$MenuFormToJson(MenuForm instance) => <String, dynamic>{
-  if (instance.id case final value?) 'id': value,
+  'id': ?instance.id,
   'parentId': instance.parentId,
   'name': instance.name,
-  if (_menuTypeToJson(instance.type) case final value?) 'type': value,
-  if (instance.icon case final value?) 'icon': value,
-  if (instance.path case final value?) 'path': value,
-  if (instance.component case final value?) 'component': value,
-  if (instance.perm case final value?) 'perm': value,
+  'type': ?_menuTypeToJson(instance.type),
+  'icon': ?instance.icon,
+  'path': ?instance.path,
+  'component': ?instance.component,
+  'perm': ?instance.perm,
   'sort': instance.sort,
-  if (_visibleToJson(instance.visible) case final value?) 'visible': value,
+  'visible': ?_visibleToJson(instance.visible),
   'status': instance.status,
-  if (instance.redirect case final value?) 'redirect': value,
-  if (instance.alwaysShow case final value?) 'alwaysShow': value,
+  'redirect': ?instance.redirect,
+  'alwaysShow': ?instance.alwaysShow,
 };
 
 MenuOption _$MenuOptionFromJson(Map<String, dynamic> json) =>
@@ -129,8 +128,7 @@ Map<String, dynamic> _$MenuOptionToJson(MenuOption instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-        'children': value,
+      'children': ?instance.children?.map((e) => e.toJson()).toList(),
     };
 
 RouteMeta _$RouteMetaFromJson(Map<String, dynamic> json) =>
@@ -151,16 +149,16 @@ RouteMeta _$RouteMetaFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$RouteMetaToJson(RouteMeta instance) => <String, dynamic>{
-  if (instance.title case final value?) 'title': value,
-  if (instance.icon case final value?) 'icon': value,
-  if (instance.hidden case final value?) 'hidden': value,
-  if (instance.keepAlive case final value?) 'keepAlive': value,
-  if (instance.alwaysShow case final value?) 'alwaysShow': value,
-  if (instance.breadcrumb case final value?) 'breadcrumb': value,
-  if (instance.noCache case final value?) 'noCache': value,
-  if (instance.affix case final value?) 'affix': value,
-  if (instance.activeMenu case final value?) 'activeMenu': value,
-  if (instance.params case final value?) 'params': value,
+  'title': ?instance.title,
+  'icon': ?instance.icon,
+  'hidden': ?instance.hidden,
+  'keepAlive': ?instance.keepAlive,
+  'alwaysShow': ?instance.alwaysShow,
+  'breadcrumb': ?instance.breadcrumb,
+  'noCache': ?instance.noCache,
+  'affix': ?instance.affix,
+  'activeMenu': ?instance.activeMenu,
+  'params': ?instance.params,
 };
 
 RouteVO _$RouteVOFromJson(Map<String, dynamic> json) =>
@@ -186,11 +184,10 @@ RouteVO _$RouteVOFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$RouteVOToJson(RouteVO instance) => <String, dynamic>{
-  if (instance.name case final value?) 'name': value,
-  if (instance.path case final value?) 'path': value,
-  if (instance.component case final value?) 'component': value,
-  if (instance.redirect case final value?) 'redirect': value,
-  if (instance.meta?.toJson() case final value?) 'meta': value,
-  if (instance.children?.map((e) => e.toJson()).toList() case final value?)
-    'children': value,
+  'name': ?instance.name,
+  'path': ?instance.path,
+  'component': ?instance.component,
+  'redirect': ?instance.redirect,
+  'meta': ?instance.meta?.toJson(),
+  'children': ?instance.children?.map((e) => e.toJson()).toList(),
 };

@@ -41,9 +41,7 @@ class TaskService {
       ApiConstants.tasks,
       data: data,
     );
-    return TaskVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return TaskVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 查询我的任务列表
@@ -82,9 +80,7 @@ class TaskService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.tasks}/$taskId',
     );
-    return TaskVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return TaskVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 查询任务状态（与 getById 同路由，语义别名）
@@ -110,9 +106,7 @@ class TaskService {
     final response = await _dio.post<Map<String, dynamic>>(
       '${ApiConstants.tasks}/$taskId/retry',
     );
-    return TaskVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return TaskVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   /// 下载任务结果（返回 Response 流）

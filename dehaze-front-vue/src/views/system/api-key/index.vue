@@ -197,6 +197,7 @@
 import { ApiKeyAPI, ApiKeyCreateForm, ApiKeyVO } from "dehaze-sdk-js";
 import { CopyDocument, Delete, Plus } from "@element-plus/icons-vue";
 import type { FormInstance } from "element-plus";
+import { copyText } from "@/utils/clipboard";
 
 defineOptions({ name: "SystemApiKey" });
 
@@ -274,10 +275,12 @@ function handleCreate() {
   });
 }
 
-function copyKey() {
-  navigator.clipboard.writeText(revealedKey.value).then(() => {
+async function copyKey() {
+  if (await copyText(revealedKey.value)) {
     ElMessage.success("已复制到剪贴板");
-  });
+  } else {
+    ElMessage.error("复制失败，请手动选择复制");
+  }
 }
 
 function handleDelete(row: ApiKeyVO) {

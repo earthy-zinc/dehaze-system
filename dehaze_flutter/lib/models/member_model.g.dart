@@ -29,13 +29,13 @@ Map<String, dynamic> _$MemberQueryToJson(MemberQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.keywords case final value?) 'keywords': value,
-      if (instance.levelCode case final value?) 'levelCode': value,
-      if (instance.status case final value?) 'status': value,
-      if (instance.expireTimeStart case final value?) 'expireTimeStart': value,
-      if (instance.expireTimeEnd case final value?) 'expireTimeEnd': value,
-      if (instance.growthMin case final value?) 'growthMin': value,
-      if (instance.growthMax case final value?) 'growthMax': value,
+      'keywords': ?instance.keywords,
+      'levelCode': ?instance.levelCode,
+      'status': ?instance.status,
+      'expireTimeStart': ?instance.expireTimeStart,
+      'expireTimeEnd': ?instance.expireTimeEnd,
+      'growthMin': ?instance.growthMin,
+      'growthMax': ?instance.growthMax,
     };
 
 GrowthLogQuery _$GrowthLogQueryFromJson(Map<String, dynamic> json) =>
@@ -57,9 +57,9 @@ Map<String, dynamic> _$GrowthLogQueryToJson(GrowthLogQuery instance) =>
     <String, dynamic>{
       'pageNum': instance.pageNum,
       'pageSize': instance.pageSize,
-      if (instance.changeType case final value?) 'changeType': value,
-      if (instance.startTime case final value?) 'startTime': value,
-      if (instance.endTime case final value?) 'endTime': value,
+      'changeType': ?instance.changeType,
+      'startTime': ?instance.startTime,
+      'endTime': ?instance.endTime,
     };
 
 MemberLevelAdjustForm _$MemberLevelAdjustFormFromJson(
@@ -77,7 +77,7 @@ Map<String, dynamic> _$MemberLevelAdjustFormToJson(
   MemberLevelAdjustForm instance,
 ) => <String, dynamic>{
   'levelCode': instance.levelCode,
-  if (instance.expireTime case final value?) 'expireTime': value,
+  'expireTime': ?instance.expireTime,
   'reason': instance.reason,
 };
 
@@ -108,10 +108,7 @@ MemberStatusForm _$MemberStatusFormFromJson(Map<String, dynamic> json) =>
     });
 
 Map<String, dynamic> _$MemberStatusFormToJson(MemberStatusForm instance) =>
-    <String, dynamic>{
-      'status': instance.status,
-      if (instance.reason case final value?) 'reason': value,
-    };
+    <String, dynamic>{'status': instance.status, 'reason': ?instance.reason};
 
 BenefitForm _$BenefitFormFromJson(Map<String, dynamic> json) =>
     $checkedCreate('BenefitForm', json, ($checkedConvert) {
@@ -123,8 +120,49 @@ BenefitForm _$BenefitFormFromJson(Map<String, dynamic> json) =>
           'monthlyDehazeQuota',
           (v) => (v as num?)?.toInt(),
         ),
+        monthlyDerainQuota: $checkedConvert(
+          'monthlyDerainQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyDesnowQuota: $checkedConvert(
+          'monthlyDesnowQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyLowlightQuota: $checkedConvert(
+          'monthlyLowlightQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlySuperResolutionQuota: $checkedConvert(
+          'monthlySuperResolutionQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyDenoiseQuota: $checkedConvert(
+          'monthlyDenoiseQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        monthlyInpaintQuota: $checkedConvert(
+          'monthlyInpaintQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
         monthlyEvaluateQuota: $checkedConvert(
           'monthlyEvaluateQuota',
+          (v) => (v as num?)?.toInt(),
+        ),
+        aiCreditsDaily: $checkedConvert(
+          'aiCreditsDaily',
+          (v) => (v as num?)?.toInt(),
+        ),
+        aiCreditsMonthly: $checkedConvert(
+          'aiCreditsMonthly',
+          (v) => (v as num?)?.toInt(),
+        ),
+        multimodalLimit: $checkedConvert(
+          'multimodalLimit',
+          (v) => (v as num?)?.toInt(),
+        ),
+        maxDevices: $checkedConvert('maxDevices', (v) => (v as num?)?.toInt()),
+        vipGiftCredits: $checkedConvert(
+          'vipGiftCredits',
           (v) => (v as num?)?.toInt(),
         ),
         historyRetention: $checkedConvert(
@@ -152,26 +190,34 @@ BenefitForm _$BenefitFormFromJson(Map<String, dynamic> json) =>
       return val;
     });
 
-Map<String, dynamic> _$BenefitFormToJson(
-  BenefitForm instance,
-) => <String, dynamic>{
-  if (instance.levelName case final value?) 'levelName': value,
-  if (instance.growthMin case final value?) 'growthMin': value,
-  if (instance.growthMax case final value?) 'growthMax': value,
-  if (instance.monthlyDehazeQuota case final value?)
-    'monthlyDehazeQuota': value,
-  if (instance.monthlyEvaluateQuota case final value?)
-    'monthlyEvaluateQuota': value,
-  if (instance.historyRetention case final value?) 'historyRetention': value,
-  if (instance.batchLimit case final value?) 'batchLimit': value,
-  if (instance.priority case final value?) 'priority': value,
-  if (instance.advancedParams case final value?) 'advancedParams': value,
-  if (instance.hdExport case final value?) 'hdExport': value,
-  if (instance.reportExport case final value?) 'reportExport': value,
-  if (instance.batchDownload case final value?) 'batchDownload': value,
-  if (instance.sort case final value?) 'sort': value,
-  if (instance.status case final value?) 'status': value,
-};
+Map<String, dynamic> _$BenefitFormToJson(BenefitForm instance) =>
+    <String, dynamic>{
+      'levelName': ?instance.levelName,
+      'growthMin': ?instance.growthMin,
+      'growthMax': ?instance.growthMax,
+      'monthlyDehazeQuota': ?instance.monthlyDehazeQuota,
+      'monthlyDerainQuota': ?instance.monthlyDerainQuota,
+      'monthlyDesnowQuota': ?instance.monthlyDesnowQuota,
+      'monthlyLowlightQuota': ?instance.monthlyLowlightQuota,
+      'monthlySuperResolutionQuota': ?instance.monthlySuperResolutionQuota,
+      'monthlyDenoiseQuota': ?instance.monthlyDenoiseQuota,
+      'monthlyInpaintQuota': ?instance.monthlyInpaintQuota,
+      'monthlyEvaluateQuota': ?instance.monthlyEvaluateQuota,
+      'aiCreditsDaily': ?instance.aiCreditsDaily,
+      'aiCreditsMonthly': ?instance.aiCreditsMonthly,
+      'multimodalLimit': ?instance.multimodalLimit,
+      'maxDevices': ?instance.maxDevices,
+      'vipGiftCredits': ?instance.vipGiftCredits,
+      'historyRetention': ?instance.historyRetention,
+      'batchLimit': ?instance.batchLimit,
+      'priority': ?instance.priority,
+      'advancedParams': ?instance.advancedParams,
+      'hdExport': ?instance.hdExport,
+      'reportExport': ?instance.reportExport,
+      'batchDownload': ?instance.batchDownload,
+      'sort': ?instance.sort,
+      'status': ?instance.status,
+    };
 
 BenefitVO _$BenefitVOFromJson(
   Map<String, dynamic> json,
@@ -185,8 +231,49 @@ BenefitVO _$BenefitVOFromJson(
       'monthlyDehazeQuota',
       (v) => (v as num).toInt(),
     ),
+    monthlyDerainQuota: $checkedConvert(
+      'monthlyDerainQuota',
+      (v) => (v as num).toInt(),
+    ),
+    monthlyDesnowQuota: $checkedConvert(
+      'monthlyDesnowQuota',
+      (v) => (v as num).toInt(),
+    ),
+    monthlyLowlightQuota: $checkedConvert(
+      'monthlyLowlightQuota',
+      (v) => (v as num).toInt(),
+    ),
+    monthlySuperResolutionQuota: $checkedConvert(
+      'monthlySuperResolutionQuota',
+      (v) => (v as num).toInt(),
+    ),
+    monthlyDenoiseQuota: $checkedConvert(
+      'monthlyDenoiseQuota',
+      (v) => (v as num).toInt(),
+    ),
+    monthlyInpaintQuota: $checkedConvert(
+      'monthlyInpaintQuota',
+      (v) => (v as num).toInt(),
+    ),
     monthlyEvaluateQuota: $checkedConvert(
       'monthlyEvaluateQuota',
+      (v) => (v as num).toInt(),
+    ),
+    aiCreditsDaily: $checkedConvert(
+      'aiCreditsDaily',
+      (v) => (v as num).toInt(),
+    ),
+    aiCreditsMonthly: $checkedConvert(
+      'aiCreditsMonthly',
+      (v) => (v as num).toInt(),
+    ),
+    multimodalLimit: $checkedConvert(
+      'multimodalLimit',
+      (v) => (v as num).toInt(),
+    ),
+    maxDevices: $checkedConvert('maxDevices', (v) => (v as num).toInt()),
+    vipGiftCredits: $checkedConvert(
+      'vipGiftCredits',
       (v) => (v as num).toInt(),
     ),
     historyRetention: $checkedConvert(
@@ -214,7 +301,18 @@ Map<String, dynamic> _$BenefitVOToJson(BenefitVO instance) => <String, dynamic>{
   'growthMin': instance.growthMin,
   'growthMax': instance.growthMax,
   'monthlyDehazeQuota': instance.monthlyDehazeQuota,
+  'monthlyDerainQuota': instance.monthlyDerainQuota,
+  'monthlyDesnowQuota': instance.monthlyDesnowQuota,
+  'monthlyLowlightQuota': instance.monthlyLowlightQuota,
+  'monthlySuperResolutionQuota': instance.monthlySuperResolutionQuota,
+  'monthlyDenoiseQuota': instance.monthlyDenoiseQuota,
+  'monthlyInpaintQuota': instance.monthlyInpaintQuota,
   'monthlyEvaluateQuota': instance.monthlyEvaluateQuota,
+  'aiCreditsDaily': instance.aiCreditsDaily,
+  'aiCreditsMonthly': instance.aiCreditsMonthly,
+  'multimodalLimit': instance.multimodalLimit,
+  'maxDevices': instance.maxDevices,
+  'vipGiftCredits': instance.vipGiftCredits,
   'historyRetention': instance.historyRetention,
   'batchLimit': instance.batchLimit,
   'priority': instance.priority,
@@ -235,6 +333,7 @@ MemberProfileVO _$MemberProfileVOFromJson(Map<String, dynamic> json) =>
         avatar: $checkedConvert('avatar', (v) => v as String?),
         levelCode: $checkedConvert('levelCode', (v) => v as String),
         levelName: $checkedConvert('levelName', (v) => v as String),
+        levelSource: $checkedConvert('levelSource', (v) => v as String?),
         growthValue: $checkedConvert('growthValue', (v) => (v as num).toInt()),
         nextLevelGrowth: $checkedConvert(
           'nextLevelGrowth',
@@ -275,13 +374,14 @@ Map<String, dynamic> _$MemberProfileVOToJson(MemberProfileVO instance) =>
       'userId': instance.userId,
       'username': instance.username,
       'nickname': instance.nickname,
-      if (instance.avatar case final value?) 'avatar': value,
+      'avatar': ?instance.avatar,
       'levelCode': instance.levelCode,
       'levelName': instance.levelName,
+      'levelSource': ?instance.levelSource,
       'growthValue': instance.growthValue,
-      if (instance.nextLevelGrowth case final value?) 'nextLevelGrowth': value,
+      'nextLevelGrowth': ?instance.nextLevelGrowth,
       'progressPercent': instance.progressPercent,
-      if (instance.expireTime case final value?) 'expireTime': value,
+      'expireTime': ?instance.expireTime,
       'monthlyDehazeQuota': instance.monthlyDehazeQuota,
       'monthlyDehazeUsed': instance.monthlyDehazeUsed,
       'monthlyEvaluateQuota': instance.monthlyEvaluateQuota,
@@ -349,32 +449,31 @@ MemberDetailVO _$MemberDetailVOFromJson(Map<String, dynamic> json) =>
       return val;
     });
 
-Map<String, dynamic> _$MemberDetailVOToJson(
-  MemberDetailVO instance,
-) => <String, dynamic>{
-  'userId': instance.userId,
-  'username': instance.username,
-  'nickname': instance.nickname,
-  if (instance.avatar case final value?) 'avatar': value,
-  'levelCode': instance.levelCode,
-  'levelName': instance.levelName,
-  'growthValue': instance.growthValue,
-  if (instance.nextLevelGrowth case final value?) 'nextLevelGrowth': value,
-  'progressPercent': instance.progressPercent,
-  if (instance.expireTime case final value?) 'expireTime': value,
-  'monthlyDehazeQuota': instance.monthlyDehazeQuota,
-  'monthlyDehazeUsed': instance.monthlyDehazeUsed,
-  'monthlyEvaluateQuota': instance.monthlyEvaluateQuota,
-  'monthlyEvaluateUsed': instance.monthlyEvaluateUsed,
-  'benefits': instance.benefits.toJson(),
-  'status': instance.status,
-  'levelSource': instance.levelSource,
-  'totalConsumption': instance.totalConsumption,
-  if (instance.becomeMemberTime case final value?) 'becomeMemberTime': value,
-  if (instance.frozenReason case final value?) 'frozenReason': value,
-  if (instance.frozenTime case final value?) 'frozenTime': value,
-  if (instance.quotaResetMonth case final value?) 'quotaResetMonth': value,
-};
+Map<String, dynamic> _$MemberDetailVOToJson(MemberDetailVO instance) =>
+    <String, dynamic>{
+      'userId': instance.userId,
+      'username': instance.username,
+      'nickname': instance.nickname,
+      'avatar': ?instance.avatar,
+      'levelCode': instance.levelCode,
+      'levelName': instance.levelName,
+      'growthValue': instance.growthValue,
+      'nextLevelGrowth': ?instance.nextLevelGrowth,
+      'progressPercent': instance.progressPercent,
+      'expireTime': ?instance.expireTime,
+      'monthlyDehazeQuota': instance.monthlyDehazeQuota,
+      'monthlyDehazeUsed': instance.monthlyDehazeUsed,
+      'monthlyEvaluateQuota': instance.monthlyEvaluateQuota,
+      'monthlyEvaluateUsed': instance.monthlyEvaluateUsed,
+      'benefits': instance.benefits.toJson(),
+      'status': instance.status,
+      'levelSource': instance.levelSource,
+      'totalConsumption': instance.totalConsumption,
+      'becomeMemberTime': ?instance.becomeMemberTime,
+      'frozenReason': ?instance.frozenReason,
+      'frozenTime': ?instance.frozenTime,
+      'quotaResetMonth': ?instance.quotaResetMonth,
+    };
 
 MemberPageVO _$MemberPageVOFromJson(Map<String, dynamic> json) =>
     $checkedCreate('MemberPageVO', json, ($checkedConvert) {
@@ -396,20 +495,19 @@ MemberPageVO _$MemberPageVOFromJson(Map<String, dynamic> json) =>
       return val;
     });
 
-Map<String, dynamic> _$MemberPageVOToJson(
-  MemberPageVO instance,
-) => <String, dynamic>{
-  'userId': instance.userId,
-  'username': instance.username,
-  'nickname': instance.nickname,
-  'levelCode': instance.levelCode,
-  'levelName': instance.levelName,
-  'growthValue': instance.growthValue,
-  'monthlyUsed': instance.monthlyUsed,
-  if (instance.expireTime case final value?) 'expireTime': value,
-  'status': instance.status,
-  if (instance.becomeMemberTime case final value?) 'becomeMemberTime': value,
-};
+Map<String, dynamic> _$MemberPageVOToJson(MemberPageVO instance) =>
+    <String, dynamic>{
+      'userId': instance.userId,
+      'username': instance.username,
+      'nickname': instance.nickname,
+      'levelCode': instance.levelCode,
+      'levelName': instance.levelName,
+      'growthValue': instance.growthValue,
+      'monthlyUsed': instance.monthlyUsed,
+      'expireTime': ?instance.expireTime,
+      'status': instance.status,
+      'becomeMemberTime': ?instance.becomeMemberTime,
+    };
 
 GrowthLogVO _$GrowthLogVOFromJson(Map<String, dynamic> json) =>
     $checkedCreate('GrowthLogVO', json, ($checkedConvert) {
@@ -432,9 +530,9 @@ Map<String, dynamic> _$GrowthLogVOToJson(GrowthLogVO instance) =>
       'changeType': instance.changeType,
       'changeValue': instance.changeValue,
       'balance': instance.balance,
-      if (instance.relatedId case final value?) 'relatedId': value,
-      if (instance.reason case final value?) 'reason': value,
-      if (instance.operatorId case final value?) 'operatorId': value,
+      'relatedId': ?instance.relatedId,
+      'reason': ?instance.reason,
+      'operatorId': ?instance.operatorId,
       'createTime': instance.createTime,
     };
 

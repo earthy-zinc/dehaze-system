@@ -17,7 +17,8 @@ export interface LabelType {
 
 export interface ImageShowState {
   loading: boolean;
-  modelId: number;
+  /** 当前选中图像模型标识（统一模型规范 slug），空串表示未选择 */
+  modelId: string;
   urls: ImageUrlType[];
   naturalWidth: number;
   naturalHeight: number;
@@ -40,7 +41,7 @@ export interface ImageShowState {
 
 const initialState: ImageShowState = {
   loading: false,
-  modelId: 0,
+  modelId: "",
   urls: [
     {
       id: 1,
@@ -78,7 +79,7 @@ export const imageShowSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
-    setModelId: (state, action: PayloadAction<number>) => {
+    setModelId: (state, action: PayloadAction<string>) => {
       state.modelId = action.payload;
     },
     // 图片 URL 相关

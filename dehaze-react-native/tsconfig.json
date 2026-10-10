@@ -2,21 +2,10 @@
   "extends": "@react-native/typescript-config",
   "compilerOptions": {
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "dehaze-sdk-js": [
-        "../dehaze-sdk-js/dist/index.d.ts"
-      ]
+      "@/*": ["./src/*"],
+      "dehaze-sdk-js": ["../dehaze-sdk-js/dist/index.d.ts"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "index.js"
-  ],
-  "exclude": [
-    "**/node_modules",
-    "**/Pods"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", "index.js"],
+  "exclude": ["**/node_modules", "**/Pods"]
 }

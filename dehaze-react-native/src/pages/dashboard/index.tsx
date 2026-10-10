@@ -21,8 +21,9 @@ import LinearGradient from 'react-native-linear-gradient';
 import type { ProfileStackParamList } from '@/routes/types';
 import { AppHeader } from '@/layout';
 import { useAuthStore } from '@/store';
+import { matchPerm } from '@/utils/permission';
 import { theme } from '@/theme';
-import { AlgorithmAPI, DatasetAPI, TaskAPI, OrderAPI } from 'dehaze-sdk-js';
+import { AiModelAPI, DatasetAPI, TaskAPI, OrderAPI } from 'dehaze-sdk-js';
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'SystemDashboard'>;
 
@@ -37,25 +38,102 @@ interface QuickEntry {
   label: string;
   icon: string;
   route: keyof ProfileStackParamList;
-  perm: string;
+  /** 模块权限（支持 `xx:*` 模块前缀）；不填表示仅需登录态 */
+  perm?: string;
   color: string;
 }
 
 const QUICK_ENTRIES: QuickEntry[] = [
-  { label: '用户管理', icon: 'people-outline', route: 'SystemUser', perm: 'sys:user:*', color: '#3b82f6' },
-  { label: '角色管理', icon: 'shield-checkmark-outline', route: 'SystemRole', perm: 'sys:role:*', color: '#6366f1' },
-  { label: '菜单管理', icon: 'menu-outline', route: 'SystemMenu', perm: 'sys:menu:*', color: '#8b5cf6' },
-  { label: '部门管理', icon: 'business-outline', route: 'SystemDept', perm: 'sys:dept:*', color: '#06b6d4' },
-  { label: '字典管理', icon: 'book-outline', route: 'SystemDict', perm: 'sys:dict:*', color: '#14b8a6' },
-  { label: '算法管理', icon: 'git-network-outline', route: 'SystemAlgorithm', perm: 'sys:algorithm:*', color: '#f59e0b' },
-  { label: '数据集管理', icon: 'folder-open-outline', route: 'SystemDataset', perm: 'sys:dataset:*', color: '#ef4444' },
-  { label: '任务管理', icon: 'timer-outline', route: 'SystemTask', perm: 'sys:task:*', color: '#ec4899' },
-  { label: '会员管理', icon: 'diamond-outline', route: 'SystemMember', perm: 'sys:member:*', color: '#f97316' },
-  { label: '套餐管理', icon: 'cube-outline', route: 'SystemPackage', perm: 'sys:package:*', color: '#84cc16' },
-  { label: '订单管理', icon: 'receipt-outline', route: 'SystemOrder', perm: 'sys:order:*', color: '#0ea5e9' },
-  { label: '反馈评价', icon: 'chatbox-ellipses-outline', route: 'SystemFeedback', perm: 'sys:feedback:*', color: '#a855f7' },
-  { label: '消息管理', icon: 'notifications-outline', route: 'SystemMessage', perm: 'sys:notify:*', color: '#22c55e' },
-  { label: '推荐管理', icon: 'bulb-outline', route: 'SystemRecommend', perm: 'sys:recommendation:*', color: '#eab308' },
+  {
+    label: '用户管理',
+    icon: 'people-outline',
+    route: 'SystemUser',
+    perm: 'sys:user:*',
+    color: '#3b82f6',
+  },
+  {
+    label: '角色管理',
+    icon: 'shield-checkmark-outline',
+    route: 'SystemRole',
+    perm: 'sys:role:*',
+    color: '#6366f1',
+  },
+  {
+    label: '菜单管理',
+    icon: 'menu-outline',
+    route: 'SystemMenu',
+    perm: 'sys:menu:*',
+    color: '#8b5cf6',
+  },
+  {
+    label: '部门管理',
+    icon: 'business-outline',
+    route: 'SystemDept',
+    perm: 'sys:dept:*',
+    color: '#06b6d4',
+  },
+  {
+    label: '字典管理',
+    icon: 'book-outline',
+    route: 'SystemDict',
+    perm: 'sys:dict:*',
+    color: '#14b8a6',
+  },
+  {
+    label: '数据集管理',
+    icon: 'folder-open-outline',
+    route: 'SystemDataset',
+    perm: 'sys:dataset:*',
+    color: '#ef4444',
+  },
+  {
+    label: '任务管理',
+    icon: 'timer-outline',
+    route: 'SystemTask',
+    color: '#ec4899',
+  },
+  {
+    label: '会员管理',
+    icon: 'diamond-outline',
+    route: 'SystemMember',
+    perm: 'member:*',
+    color: '#f97316',
+  },
+  {
+    label: '套餐管理',
+    icon: 'cube-outline',
+    route: 'SystemPackage',
+    perm: 'package:*',
+    color: '#84cc16',
+  },
+  {
+    label: '订单管理',
+    icon: 'receipt-outline',
+    route: 'SystemOrder',
+    perm: 'order:*',
+    color: '#0ea5e9',
+  },
+  {
+    label: '反馈评价',
+    icon: 'chatbox-ellipses-outline',
+    route: 'SystemFeedback',
+    perm: 'feedback:*',
+    color: '#a855f7',
+  },
+  {
+    label: '消息管理',
+    icon: 'notifications-outline',
+    route: 'SystemMessage',
+    perm: 'notify:*',
+    color: '#22c55e',
+  },
+  {
+    label: '推荐管理',
+    icon: 'bulb-outline',
+    route: 'SystemRecommend',
+    perm: 'sys:recommendation:*',
+    color: '#eab308',
+  },
 ];
 
 const DashboardScreen: React.FC<Props> = ({ navigation }) => {
@@ -67,27 +145,54 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [statsError, setStatsError] = useState(false);
 
   const perms = useAuthStore(s => s.userInfo?.perms ?? []);
-  const hasPerm = useCallback((perm: string) => perms.includes(perm), [perms]);
+  const hasPerm = useCallback(
+    (perm?: string) => (perm ? matchPerm(perms, perm) : true),
+    [perms]
+  );
 
   const loadStats = useCallback(async () => {
     try {
-      const [algoRes, dsRes, taskRes, orderRes] = await Promise.allSettled([
-        AlgorithmAPI.getList(),
+      const [modelRes, dsRes, taskRes, orderRes] = await Promise.allSettled([
+        AiModelAPI.listModels({ pageNum: 1, pageSize: 1 }),
         DatasetAPI.getList({ pageNum: 1, pageSize: 1 }),
         TaskAPI.getPage({ pageNum: 1, pageSize: 1 }),
         OrderAPI.getStats(),
       ]);
 
-      const algoCount = algoRes.status === 'fulfilled' ? algoRes.value?.length ?? 0 : 0;
-      const dsTotal = dsRes.status === 'fulfilled' ? dsRes.value?.total ?? 0 : 0;
-      const taskTotal = taskRes.status === 'fulfilled' ? taskRes.value?.total ?? 0 : 0;
-      const orderTotal = orderRes.status === 'fulfilled' ? orderRes.value?.totalOrders ?? 0 : 0;
+      const modelTotal =
+        modelRes.status === 'fulfilled' ? modelRes.value?.total ?? 0 : 0;
+      const dsTotal =
+        dsRes.status === 'fulfilled' ? dsRes.value?.total ?? 0 : 0;
+      const taskTotal =
+        taskRes.status === 'fulfilled' ? taskRes.value?.total ?? 0 : 0;
+      const orderTotal =
+        orderRes.status === 'fulfilled' ? orderRes.value?.totalOrders ?? 0 : 0;
 
       setStats([
-        { label: '算法总数', value: String(algoCount), icon: 'git-network-outline', color: '#f59e0b' },
-        { label: '数据集', value: String(dsTotal), icon: 'folder-open-outline', color: '#ef4444' },
-        { label: '任务总数', value: String(taskTotal), icon: 'timer-outline', color: '#ec4899' },
-        { label: '订单总数', value: String(orderTotal), icon: 'receipt-outline', color: '#0ea5e9' },
+        {
+          label: '模型总数',
+          value: String(modelTotal),
+          icon: 'cube-outline',
+          color: '#f59e0b',
+        },
+        {
+          label: '数据集',
+          value: String(dsTotal),
+          icon: 'folder-open-outline',
+          color: '#ef4444',
+        },
+        {
+          label: '任务总数',
+          value: String(taskTotal),
+          icon: 'timer-outline',
+          color: '#ec4899',
+        },
+        {
+          label: '订单总数',
+          value: String(orderTotal),
+          icon: 'receipt-outline',
+          color: '#0ea5e9',
+        },
       ]);
     } catch {
       setStatsError(true);
@@ -108,17 +213,23 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleEntry = useCallback(
     (entry: QuickEntry) => {
-      (navigation as { navigate: (route: string) => void }).navigate(entry.route);
+      (navigation as { navigate: (route: string) => void }).navigate(
+        entry.route,
+      );
     },
     [navigation],
   );
 
   // 过滤无权限入口
-  const visibleEntries = QUICK_ENTRIES.filter((e) => hasPerm(e.perm));
+  const visibleEntries = QUICK_ENTRIES.filter(e => hasPerm(e.perm));
 
   return (
     <View style={styles.screenContainer}>
-      <AppHeader title="工作台" showBack onBackPress={() => navigation.goBack()} />
+      <AppHeader
+        title="工作台"
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -153,9 +264,14 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         ) : (
           <>
             <View style={styles.statRow}>
-              {stats.map((stat) => (
+              {stats.map(stat => (
                 <View key={stat.label} style={styles.statCard}>
-                  <View style={[styles.statIconWrap, { backgroundColor: stat.color + '20' }]}>
+                  <View
+                    style={[
+                      styles.statIconWrap,
+                      { backgroundColor: stat.color + '20' },
+                    ]}
+                  >
                     <Ionicons name={stat.icon} size={20} color={stat.color} />
                   </View>
                   <Text style={styles.statValue}>{stat.value}</Text>
@@ -174,14 +290,19 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>管理功能</Text>
           {visibleEntries.length > 0 ? (
             <View style={styles.entryGrid}>
-              {visibleEntries.map((entry) => (
+              {visibleEntries.map(entry => (
                 <TouchableOpacity
                   key={entry.route}
                   style={styles.entryCard}
                   activeOpacity={0.7}
                   onPress={() => handleEntry(entry)}
                 >
-                  <View style={[styles.entryIconWrap, { backgroundColor: entry.color + '18' }]}>
+                  <View
+                    style={[
+                      styles.entryIconWrap,
+                      { backgroundColor: entry.color + '18' },
+                    ]}
+                  >
                     <Ionicons name={entry.icon} size={24} color={entry.color} />
                   </View>
                   <Text style={styles.entryLabel} numberOfLines={1}>
@@ -200,7 +321,10 @@ const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  screenContainer: { flex: 1, backgroundColor: theme.colors.background.secondary },
+  screenContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background.secondary,
+  },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: theme.spacing.xxxl },
   hero: {

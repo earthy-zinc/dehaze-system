@@ -66,7 +66,7 @@ public class MyApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        
+
         // 初始化 Dehaze SDK
         DehazeSDK.initialize(new DehazeSDK.Builder()
                 .setBaseUrl("https://api.dehaze.com/")
@@ -219,16 +219,17 @@ UserAPI.add(userForm, new ApiCallback<Void>() {
 });
 ```
 
-### 算法相关API
+### 图像模型相关API
+
+> 原 `AlgorithmAPI`（算法列表/详情/审核/回滚）已随「统一 AI 模型管理」改造退役（阶段 3）：
+> 图像模型并入统一模型体系，按 `modelType` / `taskTags` 查询；图像任务提交见 `AiImageAPI`。
 
 ```java
-// 获取算法列表
-AlgorithmQuery query = new AlgorithmQuery();
-query.setKeywords("test");
-AlgorithmAPI.getList(query, new ApiCallback<List<Algorithm>>() {
+// 获取启用的图像编辑模型（modelType=image_edit；taskTags 传 "dehaze" 可只看去雾模型，null 为不过滤）
+AiModelAPI.listEnabledModels("image_edit", null, new ApiCallback<List<AiModelVO>>() {
     @Override
-    public void onSuccess(List<Algorithm> data) {
-        // 处理算法列表
+    public void onSuccess(List<AiModelVO> data) {
+        // 处理模型列表（每项含 modelId / displayName / modelType / taskTags）
     }
 
     @Override
@@ -458,7 +459,9 @@ RoleAPI.getPage(query, new ApiCallback<PageResult<RolePageVO>>() {
 
 - AuthAPI - 认证相关接口
 - UserAPI - 用户相关接口
-- AlgorithmAPI - 算法相关接口
+- AiModelAPI - 图像模型相关接口
+- AiImageAPI - 图像任务相关接口（提交/轮询/取消）
+- AiBillingAPI - 积分与计费相关接口
 - DatasetAPI - 数据集相关接口
 - DeptAPI - 部门相关接口
 - DictAPI - 字典相关接口

@@ -79,7 +79,7 @@ public class ProfileFragment extends Fragment {
                 {R.drawable.ic_member, R.string.entry_member, 5},
                 {R.drawable.ic_package, R.string.entry_package, 6},
                 {R.drawable.ic_order, R.string.entry_orders, 7},
-                {R.drawable.ic_quota, R.string.entry_quota, 8},
+                {R.drawable.ic_credits, R.string.entry_credits, 8},
         });
 
         // 其他（反馈评价 / 帮助中心 / 关于我们）
@@ -134,7 +134,7 @@ public class ProfileFragment extends Fragment {
                 startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.OrdersActivity.class));
                 break;
             case 8: // 我的额度
-                startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.QuotaActivity.class));
+                startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.CreditsActivity.class));
                 break;
             case 9: // 反馈评价
                 startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.FeedbackActivity.class));
@@ -184,7 +184,7 @@ public class ProfileFragment extends Fragment {
 
         profileViewModel.getFavoriteCount().observe(getViewLifecycleOwner(), this::updateStats);
         profileViewModel.getTaskTotal().observe(getViewLifecycleOwner(), this::updateStats);
-        profileViewModel.getQuotaRemaining().observe(getViewLifecycleOwner(), this::updateStats);
+        profileViewModel.getCreditsBalance().observe(getViewLifecycleOwner(), this::updateCreditsBalance);
 
         profileViewModel.getError().observe(getViewLifecycleOwner(), errorMessage -> {
             if (errorMessage != null && !errorMessage.isEmpty()) {
@@ -225,7 +225,7 @@ public class ProfileFragment extends Fragment {
 
     private Long favCount = null;
     private Long taskCount = null;
-    private Long quotaRemain = null;
+    private String creditsBalance = null;
 
     private void updateStats(Long value) {
         // 缓存最新值
@@ -235,8 +235,12 @@ public class ProfileFragment extends Fragment {
         if (profileViewModel.getTaskTotal().getValue() != null) {
             taskCount = profileViewModel.getTaskTotal().getValue();
         }
-        if (profileViewModel.getQuotaRemaining().getValue() != null) {
-            quotaRemain = profileViewModel.getQuotaRemaining().getValue();
+        renderStats();
+    }
+
+    private void updateCreditsBalance(String value) {
+        if (value != null) {
+            creditsBalance = value;
         }
         renderStats();
     }
@@ -244,8 +248,8 @@ public class ProfileFragment extends Fragment {
     private void renderStats() {
         binding.layoutStats.removeAllViews();
 
-        addStatItem("剩余额度", quotaRemain != null ? String.valueOf(quotaRemain) : "-",
-                v -> startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.QuotaActivity.class)));
+        addStatItem("积分余额", creditsBalance != null ? creditsBalance : "-",
+                v -> startActivity(new Intent(getActivity(), com.pei.dehaze.ui.personal.CreditsActivity.class)));
         addStatItem("本月处理", taskCount != null ? String.valueOf(taskCount) : "-",
                 v -> startActivity(new Intent(getActivity(), TaskListActivity.class)));
         addStatItem("我的收藏", favCount != null ? String.valueOf(favCount) : "-",
@@ -278,14 +282,13 @@ public class ProfileFragment extends Fragment {
         if (perms == null || perms.isEmpty()) return;
 
         // 工作台（有任意管理权限即显示）
-        boolean hasDashboard = hasPerm(perms, "sys:user:*");
+        boolean hasDashboard = hasModulePerm(perms, "sys:user");
         if (hasDashboard) {
             addAdminGroup("工作台", new int[][]{{R.string.entry_dashboard, 100}}, perms);
         }
 
-        // 算法与数据
-        addAdminGroup("算法与数据", new int[][]{
-                {R.string.entry_admin_algorithm, 101},
+        // 数据管理
+        addAdminGroup("数据管理", new int[][]{
                 {R.string.entry_admin_dataset, 102},
         }, perms);
 
@@ -320,7 +323,7 @@ public class ProfileFragment extends Fragment {
         boolean hasAny = false;
         for (int[] entry : entries) {
             String perm = getPermForEntry(entry[0]);
-            if (perm == null || hasPerm(perms, perm)) {
+            if (perm == null || hasModulePerm(perms, perm)) {
                 hasAny = true;
                 View itemView = LayoutInflater.from(requireContext())
                         .inflate(R.layout.item_profile_entry, entryContainer, false);
@@ -336,22 +339,24 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    /** 返回该入口所需的权限模块前缀（与后端 sys_menu.perm 的真实前缀一致） */
     private String getPermForEntry(int resId) {
         if (resId == R.string.entry_dashboard) return null; // 工作台用任意权限
-        if (resId == R.string.entry_admin_algorithm) return "sys:algorithm:*";
-        if (resId == R.string.entry_admin_dataset) return "sys:dataset:*";
-        if (resId == R.string.entry_admin_user) return "sys:user:*";
-        if (resId == R.string.entry_admin_role) return "sys:role:*";
-        if (resId == R.string.entry_admin_menu) return "sys:menu:*";
-        if (resId == R.string.entry_admin_dept) return "sys:dept:*";
-        if (resId == R.string.entry_admin_dict) return "sys:dict:*";
-        if (resId == R.string.entry_admin_task) return "sys:task:*";
-        if (resId == R.string.entry_admin_member) return "sys:member:*";
-        if (resId == R.string.entry_admin_package) return "sys:package:*";
-        if (resId == R.string.entry_admin_order) return "sys:order:*";
-        if (resId == R.string.entry_admin_feedback) return "sys:feedback:*";
-        if (resId == R.string.entry_admin_recommend) return "sys:recommendation:*";
-        if (resId == R.string.entry_admin_notify) return "sys:notify:*";
+        if (resId == R.string.entry_admin_dataset) return "sys:dataset";
+        if (resId == R.string.entry_admin_user) return "sys:user";
+        if (resId == R.string.entry_admin_role) return "sys:role";
+        if (resId == R.string.entry_admin_menu) return "sys:menu";
+        if (resId == R.string.entry_admin_dept) return "sys:dept";
+        if (resId == R.string.entry_admin_dict) return "sys:dict";
+        // 任务管理：任务域后端无接口级权限校验（仅登录态 + create_by 归属校验），
+        // 返回 null 表示不按权限控制（与 dashboard 入口同口径）
+        if (resId == R.string.entry_admin_task) return null;
+        if (resId == R.string.entry_admin_member) return "member";
+        if (resId == R.string.entry_admin_package) return "package";
+        if (resId == R.string.entry_admin_order) return "order";
+        if (resId == R.string.entry_admin_feedback) return "feedback";
+        if (resId == R.string.entry_admin_recommend) return "sys:recommendation";
+        if (resId == R.string.entry_admin_notify) return "notify";
         return null;
     }
 
@@ -361,9 +366,6 @@ public class ProfileFragment extends Fragment {
             case 100: // 工作台 → DashboardFragment
                 navigateTo(R.id.dashboardFragment);
                 return;
-            case 101: // 算法管理
-                intent = new Intent(getActivity(), com.pei.dehaze.ui.system.AlgorithmManageActivity.class);
-                break;
             case 102: // 数据集管理
                 intent = new Intent(getActivity(), com.pei.dehaze.ui.system.DatasetManageActivity.class);
                 break;
@@ -383,9 +385,20 @@ public class ProfileFragment extends Fragment {
         if (intent != null) startActivity(intent);
     }
 
-    private boolean hasPerm(List<String> perms, String perm) {
-        if (perms == null || perm == null) return false;
-        return perms.contains(perm);
+    /**
+     * 模块级权限判定：命中该模块任一具体权限即视为可见。
+     *
+     * 后端权限为按钮级细粒度串（如 sys:user:add、order:list），且多数模块没有
+     * 列表/查看权限，故入口显隐按模块前缀判定（与 Flutter 口径一致）。
+     */
+    private boolean hasModulePerm(List<String> perms, String modulePrefix) {
+        if (perms == null || modulePrefix == null) return false;
+        String prefix = modulePrefix.endsWith(":") ? modulePrefix : modulePrefix + ":";
+        for (String perm : perms) {
+            if (perm == null) continue;
+            if (perm.equals(modulePrefix) || perm.startsWith(prefix)) return true;
+        }
+        return false;
     }
 
     // ==================== 工具方法 ====================

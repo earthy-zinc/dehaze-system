@@ -19,8 +19,8 @@ class MessageService {
       queryParameters: {
         'pageNum': pageNum,
         'pageSize': pageSize,
-        if (type != null) 'type': type,
-        if (readStatus != null) 'readStatus': readStatus,
+        'type': ?type,
+        'readStatus': ?readStatus,
       },
     );
     return response.data!;
@@ -39,13 +39,13 @@ class MessageService {
     final response = await _dio.get<Map<String, dynamic>>(
       '${ApiConstants.messages}/$id',
     );
-    return MessageVO.fromJson(
-      response.data!['data'] as Map<String, dynamic>,
-    );
+    return MessageVO.fromJson(response.data!['data'] as Map<String, dynamic>);
   }
 
   Future<void> markRead(int id) async {
-    await _dio.patch<Map<String, dynamic>>('${ApiConstants.messages}/$id/_read');
+    await _dio.patch<Map<String, dynamic>>(
+      '${ApiConstants.messages}/$id/_read',
+    );
   }
 
   Future<ReadAllResult> markAllRead({String? type}) async {
@@ -79,6 +79,9 @@ class MessageService {
   }
 
   Future<void> send(Map<String, dynamic> data) async {
-    await _dio.post<Map<String, dynamic>>(ApiConstants.messagesSend, data: data);
+    await _dio.post<Map<String, dynamic>>(
+      ApiConstants.messagesSend,
+      data: data,
+    );
   }
 }

@@ -63,7 +63,10 @@ const ImageCard: React.FC<ImageCardProps> = ({
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <Card padding={0} margin={0} borderRadius={12}>
           <View
-            style={[styles.imageContainer, { width: imageWidth, height: imageHeight }]}
+            style={[
+              styles.imageContainer,
+              { width: imageWidth, height: imageHeight },
+            ]}
           >
             <ImageLoader
               source={{ uri: displayUrl }}

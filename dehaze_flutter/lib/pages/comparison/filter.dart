@@ -29,13 +29,15 @@ class _FilterPageState extends ConsumerState<FilterPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(processingProvider);
     final theme = Theme.of(context);
-    final resultUrl = state.predictionResult?.resultUrl;
+    final resultUrl = state.taskResult?.resultUrl;
 
     if (resultUrl == null) {
       return ComparisonScaffold(
         icon: Icons.tune_outlined,
         title: '滤镜调节',
-        body: CompareEmptyState(onAction: () => context.go(AppRouterConfig.processing)),
+        body: CompareEmptyState(
+          onAction: () => context.go(AppRouterConfig.processing),
+        ),
         currentRoute: AppRouterConfig.filter,
       );
     }
@@ -50,14 +52,11 @@ class _FilterPageState extends ConsumerState<FilterPage> {
   }
 
   Widget _buildImageWithFilter(String url) => Center(
-        child: ColorFiltered(
-          colorFilter: ui.ColorFilter.matrix(_buildColorMatrix()),
-          child: DehazeImage(
-            url: url,
-            fit: BoxFit.contain,
-          ),
-        ),
-      );
+    child: ColorFiltered(
+      colorFilter: ui.ColorFilter.matrix(_buildColorMatrix()),
+      child: DehazeImage(url: url, fit: BoxFit.contain),
+    ),
+  );
 
   List<double> _buildColorMatrix() {
     // Luminance weights for RGB grayscale conversion.
@@ -78,37 +77,57 @@ class _FilterPageState extends ConsumerState<FilterPage> {
     final bOffset = _brightness * 255;
 
     return <double>[
-      c * (sr + s), c * sg,       c * sb,       0, bOffset,
-      c * sr,       c * (sg + s), c * sb,       0, bOffset,
-      c * sr,       c * sg,       c * (sb + s), 0, bOffset,
-      0,            0,            0,            1, 0,
+      c * (sr + s),
+      c * sg,
+      c * sb,
+      0,
+      bOffset,
+      c * sr,
+      c * (sg + s),
+      c * sb,
+      0,
+      bOffset,
+      c * sr,
+      c * sg,
+      c * (sb + s),
+      0,
+      bOffset,
+      0,
+      0,
+      0,
+      1,
+      0,
     ];
   }
 
   Widget _buildControls(ThemeData theme) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+    padding: const EdgeInsets.all(16),
+    child: Column(
+      children: [
+        _buildSlider('亮度', _brightness, (v) => setState(() => _brightness = v)),
+        _buildSlider('对比度', _contrast, (v) => setState(() => _contrast = v)),
+        _buildSlider(
+          '饱和度',
+          _saturation,
+          (v) => setState(() => _saturation = v),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
           children: [
-            _buildSlider('亮度', _brightness, (v) => setState(() => _brightness = v)),
-            _buildSlider('对比度', _contrast, (v) => setState(() => _contrast = v)),
-            _buildSlider('饱和度', _saturation, (v) => setState(() => _saturation = v)),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _PresetChip('原图', () => _applyPreset(0, 0, 0)),
-                _PresetChip('提亮', () => _applyPreset(0.15, 0, 0)),
-                _PresetChip('增强', () => _applyPreset(0.1, 0.15, 0.2)),
-                _PresetChip('柔和', () => _applyPreset(-0.05, -0.1, -0.15)),
-                _PresetChip('鲜艳', () => _applyPreset(0, 0.1, 0.4)),
-                _PresetChip('黑白', () => _applyPreset(0, 0, -1)),
-              ],
-            ),
+            _PresetChip('原图', () => _applyPreset(0, 0, 0)),
+            _PresetChip('提亮', () => _applyPreset(0.15, 0, 0)),
+            _PresetChip('增强', () => _applyPreset(0.1, 0.15, 0.2)),
+            _PresetChip('柔和', () => _applyPreset(-0.05, -0.1, -0.15)),
+            _PresetChip('鲜艳', () => _applyPreset(0, 0.1, 0.4)),
+            _PresetChip('黑白', () => _applyPreset(0, 0, -1)),
           ],
         ),
-      );
+      ],
+    ),
+  );
 
   void _applyPreset(double b, double c, double s) {
     setState(() {
@@ -118,28 +137,32 @@ class _FilterPageState extends ConsumerState<FilterPage> {
     });
   }
 
-  Widget _buildSlider(String label, double value, ValueChanged<double> onChanged) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(width: 60, child: Text(label)),
-            Expanded(
-              child: Slider(
-                value: value,
-                min: -1,
-                max: 1,
-                divisions: 20,
-                label: value.toStringAsFixed(1),
-                onChanged: onChanged,
-              ),
-            ),
-            SizedBox(
-              width: 40,
-              child: Text(value.toStringAsFixed(1), textAlign: TextAlign.right),
-            ),
-          ],
+  Widget _buildSlider(
+    String label,
+    double value,
+    ValueChanged<double> onChanged,
+  ) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        SizedBox(width: 60, child: Text(label)),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: -1,
+            max: 1,
+            divisions: 20,
+            label: value.toStringAsFixed(1),
+            onChanged: onChanged,
+          ),
         ),
-      );
+        SizedBox(
+          width: 40,
+          child: Text(value.toStringAsFixed(1), textAlign: TextAlign.right),
+        ),
+      ],
+    ),
+  );
 }
 
 class _PresetChip extends StatelessWidget {
@@ -148,5 +171,6 @@ class _PresetChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ActionChip(label: Text(label), onPressed: onTap);
+  Widget build(BuildContext context) =>
+      ActionChip(label: Text(label), onPressed: onTap);
 }

@@ -34,13 +34,13 @@ Map<String, dynamic> _$SelectedImageModelToJson(SelectedImageModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'url': instance.url,
-      if (instance.localPath case final value?) 'localPath': value,
+      'localPath': ?instance.localPath,
       'filename': instance.filename,
       'width': instance.width,
       'height': instance.height,
       'fileSize': instance.fileSize,
       'source': _$ImageSourceEnumMap[instance.source]!,
-      if (instance.sampleInfo?.toJson() case final value?) 'sampleInfo': value,
+      'sampleInfo': ?instance.sampleInfo?.toJson(),
     };
 
 const _$ImageSourceEnumMap = {
@@ -64,8 +64,8 @@ SampleImageModel _$SampleImageModelFromJson(Map<String, dynamic> json) =>
           (v) => $enumDecode(_$DifficultyLevelEnumMap, v),
         ),
         sceneType: $checkedConvert('sceneType', (v) => v as String?),
-        recommendedAlgorithm: $checkedConvert(
-          'recommendedAlgorithm',
+        recommendedModel: $checkedConvert(
+          'recommendedModel',
           (v) => v as String?,
         ),
         cleanUrl: $checkedConvert('cleanUrl', (v) => v as String?),
@@ -80,10 +80,9 @@ Map<String, dynamic> _$SampleImageModelToJson(SampleImageModel instance) =>
       'url': instance.url,
       'category': _$SampleCategoryEnumMap[instance.category]!,
       'difficulty': _$DifficultyLevelEnumMap[instance.difficulty]!,
-      if (instance.sceneType case final value?) 'sceneType': value,
-      if (instance.recommendedAlgorithm case final value?)
-        'recommendedAlgorithm': value,
-      if (instance.cleanUrl case final value?) 'cleanUrl': value,
+      'sceneType': ?instance.sceneType,
+      'recommendedModel': ?instance.recommendedModel,
+      'cleanUrl': ?instance.cleanUrl,
     };
 
 const _$SampleCategoryEnumMap = {

@@ -1,5 +1,5 @@
 <template>
-  <PageLayout level="L1" title="工作台" :is-home="true" :show-search="false">
+  <PageLayout level="L1" title="工作台" :is-home="true">
     <view class="page-body">
       <view class="stats-section">
         <view class="section-title">数据概览</view>
@@ -53,12 +53,6 @@ const statsItems = ref([
     path: "/pages/system/order/index",
   },
   {
-    key: "algorithms",
-    label: "算法数",
-    value: "-",
-    path: "/pages/system/algorithm/index",
-  },
-  {
     key: "feedbacks",
     label: "反馈数",
     value: "-",
@@ -72,7 +66,6 @@ const shortcuts = ref([
   { label: "菜单管理", icon: "list", path: "/pages/system/menu/index" },
   { label: "部门管理", icon: "grid", path: "/pages/system/dept/index" },
   { label: "字典管理", icon: "file-text", path: "/pages/system/dict/index" },
-  { label: "算法管理", icon: "setting", path: "/pages/system/algorithm/index" },
   { label: "数据集管理", icon: "folder", path: "/pages/system/dataset/index" },
   { label: "任务管理", icon: "hourglass", path: "/pages/system/task/index" },
   { label: "会员管理", icon: "man", path: "/pages/system/member/index" },

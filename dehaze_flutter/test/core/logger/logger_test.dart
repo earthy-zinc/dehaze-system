@@ -4,13 +4,9 @@ import 'package:dehaze_flutter/core/logger/log_entry.dart';
 import 'package:dehaze_flutter/core/logger/logger.dart';
 import 'package:dehaze_flutter/core/logger/transports.dart';
 import 'package:fake_async/fake_async.dart';
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// ERROR 去重 + 次数汇总测试。使用 fakeAsync 控制时间推进，验证 10s 窗口行为。
-///
-/// 注：使用 package:test 而非 flutter_test，绕过 Flutter 3.35.7 工具链
-/// `package:flutter_test/flutter_test.yaml` 解析 bug。Logger 逻辑为纯 Dart，
-/// 不依赖 Flutter binding，可独立测试。
 ///
 /// Logger.init 在 fakeAsync 内部调用，确保 flush 定时器与去重定时器
 /// 都被 fakeAsync 捕获，避免真实 timer 泄漏到测试外。
@@ -24,12 +20,21 @@ void main() {
       final transport = CaptureTransport();
       Logger.init(app: 'flutter', appVersion: '1.0.0', transports: [transport]);
       final logger = Logger.instance;
-      logger.error('RenderFlex overflowed',
-          errorStack: 'stack-A', errorType: 'dart');
-      logger.error('RenderFlex overflowed',
-          errorStack: 'stack-A', errorType: 'dart');
-      logger.error('RenderFlex overflowed',
-          errorStack: 'stack-A', errorType: 'dart');
+      logger.error(
+        'RenderFlex overflowed',
+        errorStack: 'stack-A',
+        errorType: 'dart',
+      );
+      logger.error(
+        'RenderFlex overflowed',
+        errorStack: 'stack-A',
+        errorType: 'dart',
+      );
+      logger.error(
+        'RenderFlex overflowed',
+        errorStack: 'stack-A',
+        errorType: 'dart',
+      );
 
       final real = transport.logs.where((l) => l.dedupCount == null).toList();
       expect(real.length, 1);
@@ -49,15 +54,19 @@ void main() {
         errorSource: 'flutter_error',
       );
       for (var i = 0; i < 5; i++) {
-        logger.error('RenderFlex overflowed',
-            errorStack: 'stack-A', errorType: 'dart');
+        logger.error(
+          'RenderFlex overflowed',
+          errorStack: 'stack-A',
+          errorType: 'dart',
+        );
       }
 
       // 推进时间超过 10s 窗口，触发定时器补发汇总
       async.elapse(const Duration(seconds: 10, milliseconds: 1));
 
-      final summaries =
-          transport.logs.where((l) => l.dedupCount != null).toList();
+      final summaries = transport.logs
+          .where((l) => l.dedupCount != null)
+          .toList();
       expect(summaries.length, 1);
       expect(summaries.first.dedupCount, 6);
       expect(summaries.first.message, 'RenderFlex overflowed (10s 内重复 5 次)');
@@ -105,8 +114,9 @@ void main() {
       async.elapse(const Duration(seconds: 10, milliseconds: 1));
       logger.error('recurring-error', errorStack: 'stack-A');
 
-      final summaries =
-          transport.logs.where((l) => l.dedupCount != null).toList();
+      final summaries = transport.logs
+          .where((l) => l.dedupCount != null)
+          .toList();
       expect(summaries.length, 1);
       expect(summaries.first.dedupCount, 2);
 
@@ -127,8 +137,9 @@ void main() {
       // 不同 fingerprint 到来：先补发 A 的汇总，再输出 B
       logger.error('error-B', errorStack: 'stack-B');
 
-      final summaries =
-          transport.logs.where((l) => l.dedupCount != null).toList();
+      final summaries = transport.logs
+          .where((l) => l.dedupCount != null)
+          .toList();
       expect(summaries.length, 1);
       expect(summaries.first.dedupCount, 3);
       expect(summaries.first.message, contains('error-A'));
@@ -165,8 +176,9 @@ void main() {
       }
       async.elapse(const Duration(seconds: 10, milliseconds: 1));
 
-      final summaries =
-          transport.logs.where((l) => l.dedupCount != null).toList();
+      final summaries = transport.logs
+          .where((l) => l.dedupCount != null)
+          .toList();
       expect(summaries.length, 1);
       expect(summaries.first.dedupCount, 10);
 

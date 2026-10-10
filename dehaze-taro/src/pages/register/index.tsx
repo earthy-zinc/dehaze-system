@@ -3,11 +3,12 @@ import { Button, Image, Input, Text, View } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { AuthAPI, CaptchaResult, RegisterData } from "dehaze-sdk-js";
 import { useAuthStore } from "@/stores/global";
+import { storage } from "@/utils/storage";
 import { getErrorMessage } from "@/utils/error";
 import "./index.less";
 
 const Register: React.FC = () => {
-  const login = useAuthStore((s) => s.login);
+  const initAuth = useAuthStore((s) => s.initAuth);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -72,7 +73,10 @@ const Register: React.FC = () => {
       return;
     }
     if (!agreed) {
-      Taro.showToast({ title: "请先阅读并同意用户协议和隐私政策", icon: "none" });
+      Taro.showToast({
+        title: "请先阅读并同意用户协议和隐私政策",
+        icon: "none",
+      });
       return;
     }
 
@@ -87,9 +91,10 @@ const Register: React.FC = () => {
     try {
       // 注册接口返回 LoginResult，包含 sessionId
       const result = await AuthAPI.register(data);
-      // 注册成功后自动登录：保存会话并跳转首页
-      if (result && result.sessionId) {
-        await login({ username: u, password: p });
+      // 注册成功：直接采用注册接口返回的会话恢复登录态
+      if (result?.sessionId) {
+        storage.setSessionId(result.sessionId);
+        await initAuth();
       }
       Taro.showToast({ title: "注册成功", icon: "success" });
       setTimeout(() => {

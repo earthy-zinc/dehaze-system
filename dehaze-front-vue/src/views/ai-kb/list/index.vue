@@ -6,6 +6,7 @@ import { useRouter } from "vue-router";
 import { Plus, Refresh } from "@element-plus/icons-vue";
 import { useAdminKbStore } from "@/store/modules/adminKb";
 import { useKbDataStore } from "@/store/modules/kbData";
+import { formatTokens } from "@/utils/format";
 
 defineOptions({ name: "AiKbList" });
 
@@ -33,7 +34,6 @@ const kbFormDialog = reactive({
     enableRerank: false,
     rerankModel: "",
   },
-  submitting: false,
 });
 
 function openCreateDialog() {
@@ -76,28 +76,24 @@ function openEditDialog(kb: KnowledgeBaseVO) {
 }
 
 async function submitKbForm(form: typeof kbFormDialog.form) {
-  kbFormDialog.submitting = true;
-  try {
-    if (kbFormDialog.mode === "create") {
-      await AiKnowledgeBaseAPI.create(form);
-      ElMessage.success("知识库创建成功");
-    } else {
-      await AiKnowledgeBaseAPI.update(kbFormDialog.kbId, {
-        name: form.name,
-        description: form.description,
-        searchStrategy: form.searchStrategy,
-        hybridWeight: form.hybridWeight,
-        topK: form.topK,
-        scoreThreshold: form.scoreThreshold,
-        enableRerank: form.enableRerank,
-        rerankModel: form.rerankModel,
-      });
-      ElMessage.success("知识库配置已更新");
-    }
-    kbFormDialog.visible = false;
-  } finally {
-    kbFormDialog.submitting = false;
+  if (kbFormDialog.mode === "create") {
+    await AiKnowledgeBaseAPI.create(form);
+    ElMessage.success("知识库创建成功");
+  } else {
+    await AiKnowledgeBaseAPI.update(kbFormDialog.kbId, {
+      name: form.name,
+      description: form.description,
+      searchStrategy: form.searchStrategy,
+      hybridWeight: form.hybridWeight,
+      topK: form.topK,
+      scoreThreshold: form.scoreThreshold,
+      enableRerank: form.enableRerank,
+      rerankModel: form.rerankModel,
+    });
+    ElMessage.success("知识库配置已更新");
   }
+  kbFormDialog.visible = false;
+  await refreshList();
 }
 
 function handleCardClick(kb: KnowledgeBaseVO) {
@@ -116,6 +112,7 @@ async function handleCardDelete(kb: KnowledgeBaseVO) {
   }
   await AiKnowledgeBaseAPI.delete(kb.id);
   ElMessage.success("知识库已删除");
+  await refreshList();
 }
 
 async function refreshList() {
@@ -166,24 +163,64 @@ onMounted(() => {
           </el-button>
         </div>
       </div>
-      <div
+      <!-- 与「私有库监控」统一为表格：同一页面两个 Tab 布局语言一致，切换不跳戏 -->
+      <el-table
         v-loading="kbDataStore.loading"
-        class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+        :data="kbDataStore.kbList"
+        size="small"
+        @row-click="handleCardClick"
       >
-        <KbListCard
-          v-for="kb in kbDataStore.kbList"
-          :key="kb.id"
-          :kb="kb"
-          scope="admin"
-          @click="handleCardClick"
-          @edit="openEditDialog"
-          @delete="handleCardDelete"
+        <el-table-column label="知识库名称" min-width="160">
+          <template #default="{ row }">
+            <span class="font-medium">{{ row.name }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="描述" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.description || "—" }}</template>
+        </el-table-column>
+        <el-table-column
+          label="文档数"
+          prop="documentCount"
+          width="90"
+          align="center"
         />
-      </div>
-      <el-empty
-        v-if="!kbDataStore.loading && kbDataStore.kbList.length === 0"
-        description="暂无公共知识库"
-      />
+        <el-table-column
+          label="分块数"
+          prop="chunkCount"
+          width="90"
+          align="center"
+        />
+        <el-table-column label="Token" width="100" align="center">
+          <template #default="{ row }">{{
+            formatTokens(row.totalTokens)
+          }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-has-perm="['kb:manage']"
+              link
+              type="primary"
+              size="small"
+              @click.stop="openEditDialog(row as KnowledgeBaseVO)"
+            >
+              编辑
+            </el-button>
+            <el-button
+              v-has-perm="['kb:manage']"
+              link
+              type="danger"
+              size="small"
+              @click.stop="handleCardDelete(row as KnowledgeBaseVO)"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <el-empty description="暂无公共知识库" :image-size="60" />
+        </template>
+      </el-table>
     </el-card>
 
     <el-card
@@ -210,16 +247,6 @@ onMounted(() => {
         scope="admin"
         @submit="submitKbForm"
       />
-      <template #footer>
-        <el-button @click="kbFormDialog.visible = false">取消</el-button>
-        <el-button
-          type="primary"
-          :loading="kbFormDialog.submitting"
-          @click="submitKbForm(kbFormDialog.form)"
-        >
-          确定
-        </el-button>
-      </template>
     </el-dialog>
   </div>
 </template>

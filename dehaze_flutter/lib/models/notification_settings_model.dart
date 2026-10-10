@@ -2,134 +2,109 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'notification_settings_model.g.dart';
 
-// ==================== 通知设置 ====================
-
+/// 通知偏好设置
+///
+/// 契约字段固定为 5 个（pushEnabled / dndEnabled / dndStart / dndEnd / preferences），
+/// GET 响应与 PATCH 请求体同构，故共用一个模型，不再单独定义 Form。
 @JsonSerializable()
 class NotificationSettings {
   const NotificationSettings({
-    this.id,
-    this.userId,
-    required this.systemEnabled,
-    required this.predictionEnabled,
-    required this.activityEnabled,
-    required this.announcementEnabled,
-    required this.emailEnabled,
-    required this.smsEnabled,
     required this.pushEnabled,
-    required this.digestEnabled,
-    this.digestFrequency,
-    required this.quietHoursEnabled,
-    this.quietStart,
-    this.quietEnd,
-    this.createTime,
-    this.updateTime,
+    required this.dndEnabled,
+    required this.preferences,
+    this.dndStart,
+    this.dndEnd,
   });
 
   factory NotificationSettings.fromJson(Map<String, dynamic> json) =>
       _$NotificationSettingsFromJson(json);
 
-  final int? id;
-  final int? userId;
-
-  @JsonKey(name: 'systemEnabled')
-  final bool systemEnabled;
-
-  @JsonKey(name: 'predictionEnabled')
-  final bool predictionEnabled;
-
-  @JsonKey(name: 'activityEnabled')
-  final bool activityEnabled;
-
-  @JsonKey(name: 'announcementEnabled')
-  final bool announcementEnabled;
-
-  @JsonKey(name: 'emailEnabled')
-  final bool emailEnabled;
-
-  @JsonKey(name: 'smsEnabled')
-  final bool smsEnabled;
-
-  @JsonKey(name: 'pushEnabled')
+  /// APP 推送总开关
   final bool pushEnabled;
 
-  @JsonKey(name: 'digestEnabled')
-  final bool digestEnabled;
+  /// 免打扰开关
+  final bool dndEnabled;
 
-  @JsonKey(name: 'digestFrequency')
-  final String? digestFrequency;
+  /// 免打扰开始时间（HH:mm:ss）
+  final String? dndStart;
 
-  @JsonKey(name: 'quietHoursEnabled')
-  final bool quietHoursEnabled;
+  /// 免打扰结束时间（HH:mm:ss）
+  final String? dndEnd;
 
-  @JsonKey(name: 'quietStart')
-  final String? quietStart;
+  final NotificationPreferences preferences;
 
-  @JsonKey(name: 'quietEnd')
-  final String? quietEnd;
-
-  final String? createTime;
-  final String? updateTime;
+  NotificationSettings copyWith({
+    bool? pushEnabled,
+    bool? dndEnabled,
+    String? dndStart,
+    String? dndEnd,
+    NotificationPreferences? preferences,
+  }) {
+    return NotificationSettings(
+      pushEnabled: pushEnabled ?? this.pushEnabled,
+      dndEnabled: dndEnabled ?? this.dndEnabled,
+      dndStart: dndStart ?? this.dndStart,
+      dndEnd: dndEnd ?? this.dndEnd,
+      preferences: preferences ?? this.preferences,
+    );
+  }
 
   Map<String, dynamic> toJson() => _$NotificationSettingsToJson(this);
 }
 
-// ==================== 通知设置表单 ====================
-
+/// 细粒度偏好设置
 @JsonSerializable()
-class NotificationSettingsForm {
-  const NotificationSettingsForm({
-    required this.systemEnabled,
-    required this.predictionEnabled,
-    required this.activityEnabled,
-    required this.announcementEnabled,
-    required this.emailEnabled,
-    required this.smsEnabled,
-    required this.pushEnabled,
-    required this.digestEnabled,
-    this.digestFrequency,
-    required this.quietHoursEnabled,
-    this.quietStart,
-    this.quietEnd,
+class NotificationPreferences {
+  const NotificationPreferences({
+    this.typeChannels = const {},
+    this.moduleSwitches = const {},
   });
 
-  factory NotificationSettingsForm.fromJson(Map<String, dynamic> json) =>
-      _$NotificationSettingsFormFromJson(json);
+  factory NotificationPreferences.fromJson(Map<String, dynamic> json) =>
+      _$NotificationPreferencesFromJson(json);
 
-  @JsonKey(name: 'systemEnabled')
-  final bool systemEnabled;
+  /// 消息类型 → 推送渠道开关，key 取 announcement / business / member
+  final Map<String, NotificationTypeChannel> typeChannels;
 
-  @JsonKey(name: 'predictionEnabled')
-  final bool predictionEnabled;
+  /// 业务模块开关，key 取 prediction / feedback / announcement
+  final Map<String, bool> moduleSwitches;
 
-  @JsonKey(name: 'activityEnabled')
-  final bool activityEnabled;
+  /// 指定消息类型的推送开关，缺失时按开启处理（与新用户默认值一致）
+  bool isTypeChannelPushEnabled(String type) =>
+      typeChannels[type]?.push ?? true;
 
-  @JsonKey(name: 'announcementEnabled')
-  final bool announcementEnabled;
+  /// 指定业务模块是否开启通知，缺失时按开启处理
+  bool isModuleEnabled(String module) => moduleSwitches[module] ?? true;
 
-  @JsonKey(name: 'emailEnabled')
-  final bool emailEnabled;
+  NotificationPreferences withTypeChannel(String type, bool push) {
+    return NotificationPreferences(
+      typeChannels: {
+        ...typeChannels,
+        type: NotificationTypeChannel(push: push),
+      },
+      moduleSwitches: moduleSwitches,
+    );
+  }
 
-  @JsonKey(name: 'smsEnabled')
-  final bool smsEnabled;
+  NotificationPreferences withModuleSwitch(String module, bool enabled) {
+    return NotificationPreferences(
+      typeChannels: typeChannels,
+      moduleSwitches: {...moduleSwitches, module: enabled},
+    );
+  }
 
-  @JsonKey(name: 'pushEnabled')
-  final bool pushEnabled;
+  Map<String, dynamic> toJson() => _$NotificationPreferencesToJson(this);
+}
 
-  @JsonKey(name: 'digestEnabled')
-  final bool digestEnabled;
+/// 单条消息类型的推送渠道开关
+@JsonSerializable()
+class NotificationTypeChannel {
+  const NotificationTypeChannel({required this.push});
 
-  @JsonKey(name: 'digestFrequency')
-  final String? digestFrequency;
+  factory NotificationTypeChannel.fromJson(Map<String, dynamic> json) =>
+      _$NotificationTypeChannelFromJson(json);
 
-  @JsonKey(name: 'quietHoursEnabled')
-  final bool quietHoursEnabled;
+  final bool push;
 
-  @JsonKey(name: 'quietStart')
-  final String? quietStart;
-
-  @JsonKey(name: 'quietEnd')
-  final String? quietEnd;
-
-  Map<String, dynamic> toJson() => _$NotificationSettingsFormToJson(this);
+  Map<String, dynamic> toJson() => _$NotificationTypeChannelToJson(this);
 }

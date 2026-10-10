@@ -12,8 +12,8 @@ import '../../theme/app_theme.dart';
 
 final deptManageProvider =
     StateNotifierProvider<DeptManageNotifier, AsyncValue<PagedList<Dept>>>(
-  (ref) => DeptManageNotifier(ref.watch(deptServiceProvider)),
-);
+      (ref) => DeptManageNotifier(ref.watch(deptServiceProvider)),
+    );
 
 class DeptManageNotifier extends PagedListNotifier<Dept> {
   DeptManageNotifier(this._service) : super();
@@ -41,12 +41,24 @@ class DeptManagePage extends ConsumerWidget {
     Future<void> deleteDept(int id) async {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (c) => AlertDialog(title: const Text('确认删除'), content: const Text('删除部门将同时删除子部门，确定？'), actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('确定')),
-        ]),
+        builder: (c) => AlertDialog(
+          title: const Text('确认删除'),
+          content: const Text('删除部门将同时删除子部门，确定？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
       );
-      if (confirmed != true) { return; }
+      if (confirmed != true) {
+        return;
+      }
       try {
         await ref.read(deptServiceProvider).delete(id);
         ref.read(deptManageProvider.notifier).refresh();
@@ -63,7 +75,14 @@ class DeptManagePage extends ConsumerWidget {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (c) => _DeptFormSheet(deptId: deptId, parentId: parentId, onSaved: () { ref.read(deptManageProvider.notifier).refresh(); Navigator.pop(c); }),
+        builder: (c) => _DeptFormSheet(
+          deptId: deptId,
+          parentId: parentId,
+          onSaved: () {
+            ref.read(deptManageProvider.notifier).refresh();
+            Navigator.pop(c);
+          },
+        ),
       );
     }
 
@@ -75,16 +94,46 @@ class DeptManagePage extends ConsumerWidget {
         widgets.add(
           Card(
             child: ListTile(
-              contentPadding: EdgeInsets.only(left: 16.0 + depth * 24.0, right: 8),
-              leading: Icon(Icons.business, size: 20, color: status == 1 ? AppTheme.successColor : AppTheme.errorColor),
-              title: Text(item.name, style: TextStyle(fontWeight: depth == 0 ? FontWeight.w600 : FontWeight.w400)),
+              contentPadding: EdgeInsets.only(
+                left: 16.0 + depth * 24.0,
+                right: 8,
+              ),
+              leading: Icon(
+                Icons.business,
+                size: 20,
+                color: status == 1
+                    ? AppTheme.successColor
+                    : AppTheme.errorColor,
+              ),
+              title: Text(
+                item.name,
+                style: TextStyle(
+                  fontWeight: depth == 0 ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
               subtitle: Text('排序: ${item.sort}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(icon: const Icon(Icons.add, size: 20), tooltip: '添加子部门', onPressed: () => showForm(parentId: item.id)),
-                  IconButton(icon: const Icon(Icons.edit, size: 20), tooltip: '编辑', onPressed: () => showForm(deptId: item.id)),
-                  IconButton(icon: Icon(Icons.delete, size: 20, color: AppTheme.errorColor), tooltip: '删除', onPressed: () => deleteDept(item.id)),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 20),
+                    tooltip: '添加子部门',
+                    onPressed: () => showForm(parentId: item.id),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    tooltip: '编辑',
+                    onPressed: () => showForm(deptId: item.id),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete,
+                      size: 20,
+                      color: AppTheme.errorColor,
+                    ),
+                    tooltip: '删除',
+                    onPressed: () => deleteDept(item.id),
+                  ),
                 ],
               ),
             ),
@@ -101,31 +150,53 @@ class DeptManagePage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('部门管理'),
         actions: [
-          if (auth.hasPerm('sys:dept:add')) IconButton(icon: const Icon(Icons.add), tooltip: '新增部门', onPressed: () => showForm()),
+          if (auth.hasPerm('sys:dept:add'))
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: '新增部门',
+              onPressed: () => showForm(),
+            ),
         ],
       ),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(extractErrorMessage(e), style: TextStyle(color: theme.colorScheme.error)), SizedBox(height: AppTheme.spacingM),
-          FilledButton(onPressed: () => ref.read(deptManageProvider.notifier).refresh(), child: const Text('重试')),
-        ])),
-        data: (page) => page.items.isEmpty
-          ? const Center(child: Text('暂无数据'))
-          : RefreshIndicator(
-            onRefresh: () => ref.read(deptManageProvider.notifier).refresh(),
-            child: LoadMoreListener(
-              onLoadMore: () => ref.read(deptManageProvider.notifier).loadMore(),
-              child: ListView(children: buildTree(page.items, 0)),
-            ),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                extractErrorMessage(e),
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+              SizedBox(height: AppTheme.spacingM),
+              FilledButton(
+                onPressed: () =>
+                    ref.read(deptManageProvider.notifier).refresh(),
+                child: const Text('重试'),
+              ),
+            ],
           ),
+        ),
+        data: (page) => page.items.isEmpty
+            ? const Center(child: Text('暂无数据'))
+            : RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(deptManageProvider.notifier).refresh(),
+                child: LoadMoreListener(
+                  onLoadMore: () =>
+                      ref.read(deptManageProvider.notifier).loadMore(),
+                  child: ListView(children: buildTree(page.items, 0)),
+                ),
+              ),
       ),
     );
   }
 }
 
 void _showSnack(BuildContext context, String msg) {
-  if (!context.mounted) { return; }
+  if (!context.mounted) {
+    return;
+  }
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
 
@@ -148,12 +219,15 @@ class _DeptFormSheetState extends ConsumerState<_DeptFormSheet> {
   @override
   void initState() {
     super.initState();
-    if (widget.deptId != null) { _loadData(); }
+    if (widget.deptId != null) {
+      _loadData();
+    }
   }
 
   @override
   void dispose() {
-    _nameCtrl.dispose(); _sortCtrl.dispose();
+    _nameCtrl.dispose();
+    _sortCtrl.dispose();
     super.dispose();
   }
 
@@ -167,11 +241,19 @@ class _DeptFormSheetState extends ConsumerState<_DeptFormSheet> {
           _status = data.status;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('部门信息加载失败')));
+      }
+    }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) { return; }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     setState(() => _loading = true);
     try {
       final form = DeptForm(
@@ -187,9 +269,15 @@ class _DeptFormSheetState extends ConsumerState<_DeptFormSheet> {
       }
       widget.onSaved();
     } catch (e) {
-      if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractErrorMessage(e)))); }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(extractErrorMessage(e))));
+      }
     } finally {
-      if (mounted) { setState(() => _loading = false); }
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -197,18 +285,44 @@ class _DeptFormSheetState extends ConsumerState<_DeptFormSheet> {
   Widget build(BuildContext context) {
     final isNew = widget.deptId == null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: EdgeInsets.all(AppTheme.spacingL),
-        child: Form(key: _formKey, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(isNew ? '新增部门' : '编辑部门', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: AppTheme.spacingL),
-          TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: '部门名称'), validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null),
-          SizedBox(height: AppTheme.spacingM),
-          TextFormField(controller: _sortCtrl, decoration: const InputDecoration(labelText: '排序'), keyboardType: TextInputType.number),
-          SizedBox(height: AppTheme.spacingL),
-          SizedBox(height: 44, child: FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? '提交中...' : '保存'))),
-        ])),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                isNew ? '新增部门' : '编辑部门',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              SizedBox(height: AppTheme.spacingL),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(labelText: '部门名称'),
+                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
+              ),
+              SizedBox(height: AppTheme.spacingM),
+              TextFormField(
+                controller: _sortCtrl,
+                decoration: const InputDecoration(labelText: '排序'),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: AppTheme.spacingL),
+              SizedBox(
+                height: 44,
+                child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  child: Text(_loading ? '提交中...' : '保存'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

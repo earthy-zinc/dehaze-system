@@ -1,7 +1,11 @@
-<!-- 会话设置弹窗：标题/模型/智能体/系统提示词，会话级配置收敛于弹窗，变更下一条消息生效 -->
+<!-- 会话设置弹窗：标题/模型/智能体/系统提示词 + 我的默认模型，会话级配置变更下一条消息生效 -->
 <script lang="ts" setup>
 import { ElMessage } from "element-plus";
-import { AiAgentAPI, type AgentListItem } from "dehaze-sdk-js";
+import {
+  AiAgentAPI,
+  AiUserPreferenceAPI,
+  type AgentListItem,
+} from "dehaze-sdk-js";
 import { computed, reactive, ref, watch } from "vue";
 import { useChatStore } from "@/store/modules/chat";
 import { useChatUserStore } from "@/store/modules/chatUser";
@@ -30,6 +34,38 @@ const currentConversation = computed(() =>
 
 const enabledAgents = ref<AgentListItem[]>([]);
 
+// 「我的默认模型」是用户级偏好，与上方会话级模型相互独立：本项只决定新建会话的模型
+const defaultModel = ref<string | null>(null);
+const preferenceModel = ref("");
+
+const defaultModelLabel = computed(() => {
+  const modelId = defaultModel.value;
+  if (!modelId) return "跟随平台默认";
+  return (
+    chatUserStore.availableModels.find((model) => model.modelId === modelId)
+      ?.displayName ?? modelId
+  );
+});
+
+async function loadDefaultModel() {
+  const preference = await AiUserPreferenceAPI.get();
+  defaultModel.value = preference.defaultModel ?? null;
+  preferenceModel.value = preference.defaultModel ?? "";
+}
+
+async function saveDefaultModel() {
+  await AiUserPreferenceAPI.update({ defaultModel: preferenceModel.value });
+  defaultModel.value = preferenceModel.value;
+  ElMessage.success("默认模型已保存，仅对新建会话生效");
+}
+
+async function resetDefaultModel() {
+  await AiUserPreferenceAPI.update({ defaultModel: null });
+  defaultModel.value = null;
+  preferenceModel.value = "";
+  ElMessage.success("已恢复跟随平台默认模型");
+}
+
 watch(visible, (value) => {
   if (!value) return;
   form.title = currentConversation.value?.title ?? "";
@@ -41,6 +77,7 @@ watch(visible, (value) => {
   AiAgentAPI.listEnabled()
     .then((agents) => (enabledAgents.value = agents))
     .catch(() => {});
+  loadDefaultModel().catch(() => {});
 });
 
 async function handleSave() {
@@ -77,6 +114,38 @@ async function handleSave() {
             :value="model.modelId"
           />
         </el-select>
+      </el-form-item>
+      <el-form-item label="我的默认模型">
+        <div class="w-full">
+          <div class="flex items-center gap-2">
+            <el-select
+              v-model="preferenceModel"
+              placeholder="跟随平台默认"
+              style="width: 200px"
+            >
+              <el-option
+                v-for="model in chatUserStore.availableModels"
+                :key="model.modelId"
+                :label="model.displayName"
+                :value="model.modelId"
+              />
+            </el-select>
+            <el-button
+              type="primary"
+              plain
+              :disabled="!preferenceModel"
+              @click="saveDefaultModel"
+            >
+              保存为默认
+            </el-button>
+            <el-button :disabled="!defaultModel" @click="resetDefaultModel">
+              恢复平台默认
+            </el-button>
+          </div>
+          <div class="mt-1 text-xs text-gray-400">
+            当前：{{ defaultModelLabel }}。仅对新建会话生效，已有会话保持原模型
+          </div>
+        </div>
       </el-form-item>
       <el-form-item label="智能体">
         <el-select

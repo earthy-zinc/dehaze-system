@@ -8,7 +8,7 @@
 PRODUCT_NAME = dehaze_flutter
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.dehazeFlutter
+PRODUCT_BUNDLE_IDENTIFIER = com.pei.flutter.dehaze
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.pei. All rights reserved.

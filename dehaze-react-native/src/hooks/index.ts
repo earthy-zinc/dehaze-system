@@ -1,7 +1,4 @@
-export {
-  useResponsive,
-  BREAKPOINTS,
-} from './useResponsive';
+export { useResponsive, BREAKPOINTS } from './useResponsive';
 
 export { useProcessing } from './useProcessing';
 

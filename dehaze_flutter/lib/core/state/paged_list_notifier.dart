@@ -30,7 +30,8 @@ class PagedList<T> {
 /// - 所有筛选字段必须通过字段初始化器赋默认值（不要在构造体中赋值），
 ///   以保证构造时自动触发的首次加载能读到正确值；
 /// - service 通过构造参数注入。
-abstract class PagedListNotifier<T> extends StateNotifier<AsyncValue<PagedList<T>>> {
+abstract class PagedListNotifier<T>
+    extends StateNotifier<AsyncValue<PagedList<T>>> {
   PagedListNotifier({this.pageSize = 10}) : super(const AsyncValue.loading()) {
     refresh();
   }
@@ -59,7 +60,12 @@ abstract class PagedListNotifier<T> extends StateNotifier<AsyncValue<PagedList<T
       final result = await fetchPage(1);
       if (!mounted) return;
       state = AsyncValue.data(
-        PagedList<T>(items: result.list, total: result.total, pageNum: 1, pageSize: pageSize),
+        PagedList<T>(
+          items: result.list,
+          total: result.total,
+          pageNum: 1,
+          pageSize: pageSize,
+        ),
       );
     } catch (e, st) {
       if (!mounted) return;

@@ -34,6 +34,30 @@ function handleExport(format: "markdown" | "json") {
   if (!currentConversation.value) return;
   chatStore.exportConversation(currentConversation.value.id, format);
 }
+
+/**
+ * 顶栏「···」菜单分发：顶栏只留高频的会话标题与模型选择，
+ * 导出/定时任务/长期记忆/会话设置均为低频操作，统一收进菜单（设计评审 #4）
+ */
+function handleAction(command: string) {
+  switch (command) {
+    case "settings":
+      emit("open-settings");
+      break;
+    case "memory":
+      emit("open-memory");
+      break;
+    case "task":
+      emit("open-task");
+      break;
+    case "export-markdown":
+      handleExport("markdown");
+      break;
+    case "export-json":
+      handleExport("json");
+      break;
+  }
+}
 </script>
 
 <template>
@@ -62,34 +86,36 @@ function handleExport(format: "markdown" | "json") {
     </el-select>
 
     <div class="chat-header__actions">
-      <el-dropdown trigger="click" @command="handleExport">
-        <el-button size="small" :disabled="!currentConversation"
-          >导出</el-button
-        >
+      <el-dropdown trigger="click" @command="handleAction">
+        <el-button size="small" class="chat-header__more">···</el-button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="markdown">Markdown</el-dropdown-item>
-            <el-dropdown-item command="json">JSON</el-dropdown-item>
+            <el-dropdown-item command="memory">长期记忆</el-dropdown-item>
+            <el-dropdown-item
+              command="settings"
+              :disabled="!currentConversation"
+            >
+              会话设置
+            </el-dropdown-item>
+            <el-dropdown-item command="task" :disabled="!currentConversation">
+              保存为定时任务
+            </el-dropdown-item>
+            <el-dropdown-item
+              command="export-markdown"
+              :disabled="!currentConversation"
+              divided
+            >
+              导出 Markdown
+            </el-dropdown-item>
+            <el-dropdown-item
+              command="export-json"
+              :disabled="!currentConversation"
+            >
+              导出 JSON
+            </el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
-      <el-button
-        size="small"
-        :disabled="!currentConversation"
-        @click="emit('open-task')"
-      >
-        保存为定时任务
-      </el-button>
-      <el-button size="small" @click="emit('open-memory')">长期记忆</el-button>
-      <el-button
-        size="small"
-        type="primary"
-        plain
-        :disabled="!currentConversation"
-        @click="emit('open-settings')"
-      >
-        会话设置
-      </el-button>
     </div>
   </div>
 </template>
@@ -121,6 +147,10 @@ function handleExport(format: "markdown" | "json") {
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+
+  &__more {
+    letter-spacing: 1px;
   }
 }
 </style>

@@ -21,7 +21,10 @@ interface SampleImageCardProps {
 }
 
 // 难度配置
-const DIFFICULTY_CONFIG: Record<DifficultyLevel, { label: string; color: string; bgColor: string }> = {
+const DIFFICULTY_CONFIG: Record<
+  DifficultyLevel,
+  { label: string; color: string; bgColor: string }
+> = {
   easy: {
     label: '简单',
     color: theme.colors.status.success,
@@ -74,10 +77,7 @@ const SampleImageCard: React.FC<SampleImageCardProps> = ({
       style={styles.container}
     >
       <Animated.View
-        style={[
-          styles.card,
-          { transform: [{ scale: scaleAnim }] },
-        ]}
+        style={[styles.card, { transform: [{ scale: scaleAnim }] }]}
       >
         {/* 图片 */}
         <View style={styles.imageContainer}>
@@ -120,11 +120,7 @@ const SampleImageCard: React.FC<SampleImageCardProps> = ({
             </View>
 
             {/* 箭头 */}
-            <Icon
-              name="arrow-forward"
-              size={16}
-              color={theme.colors.primary}
-            />
+            <Icon name="arrow-forward" size={16} color={theme.colors.primary} />
           </View>
         </View>
       </Animated.View>
