@@ -2,20 +2,20 @@
 
 > 本文档聚焦 dehaze-go 在**代码架构层面**的实际问题与改造方向，供后续重构参考。文档失真问题（服务虚构、路径错误、配额机制描述失实等）已在 [02-Go架构文档.md](../04-项目实现/后端/02-Go架构文档.md) 修复中处理，本文不重复。
 >
-> 三端对照结论：dehaze-go 与 dehaze-java 在 XxlJob 覆盖上接近对齐（Go 14 个、Java 15 个，Java 多 `processDelayedPush`——该 Job 绑定 Java 独有的 DND 延迟推送架构，Go/Python 仅简单 WebSocket 推送无此机制）、MQ 拓扑（`task.export` + `feedback.low_rating` + DLX）、错误码体系上已对齐；dehaze-python 业务 Job 已补齐（17 个，含 Python 专属的模型健康检查/孤儿文件/临时文件清理）。三端 handler 命名已统一（`autoRenew`/`resetMonthlyQuota`）。推荐模块伪特征原为 **Java + Go 共有** 债务，现已改造完成（Java/Go 均通过 HTTP 调用 Python 图像特征分析服务）。
+> 三端对照结论：dehaze-go 与 dehaze-java 在 XxlJob 覆盖上接近对齐（Go 14 个、Java 15 个，Java 多 `processDelayedPush`——该 Job 绑定 Java 独有的 DND 延迟推送架构，Go/Python 仅简单 WebSocket 推送无此机制）、MQ 拓扑（`task.export` + `feedback.low_rating` + DLX）、错误码体系上已对齐；dehaze-python 业务 Job 已补齐（17 个，含 Python 专属的模型健康检查/孤儿文件/临时文件清理）。三端 handler 命名已统一（`autoRenew`/`grantVipMonthlyGift`）。推荐模块特征分析原为 **Java + Go 共有** 债务，现三端口径已收敛且逐字段一致：Java 经 HTTP 调用 Python `/api/v1/recommendations/analyze`，Go 在 `pkg/algorithm/analysis.go` 本地复刻同一确定性算法（不经该端点——它要求用户态鉴权，内部调用必然 A0230）。
 
 ## 一、问题总览
 
-| # | 问题 | 类别 | 优先级 | 三端是否共有 | 状态 |
-|---|------|------|:------:|:----------:|:----:|
-| 1 | 核心业务逻辑零测试覆盖 | 质量 | P1 | Go 独有 | 资金/权益链路测试已落地（2026-08-23，见 [Go后端测试规范化改造计划](./Go后端测试规范化改造计划.md)），其余域仍待补 |
-| 2 | 定时任务逻辑内嵌业务 Service（关注点未分离） | 可维护性 | P2 | 需核实 Java |
-| 3 | 异步 goroutine 无 context 取消，优雅关闭可能丢数据 | 可靠性 | P2 | Go 独有 |
-| 4 | Repository 分层泄漏，9+ 服务直接使用 gorm.DB | 分层 | P2 | Go 独有 |
-| 5 | 缓存键散落为字面量，失效逻辑重复 | 可维护性 | P2 | Go 独有 |
-| 6 | Algorithm 配置无 validate 标签，启动时不校验 ServiceURL | 健壮性 | P2 | Go 独有 |
-| 7 | 去雾预测状态表与 Java 端不一致（sys_pred_log vs sys_input_history） | 跨端一致性 | P3 | Java + Go 分歧 |
-| 8 | CancelExpiredOrders 订单+优惠券更新无事务 | 数据一致性 | P3 | Go 独有 |
+| #   | 问题                                                                | 类别       | 优先级 |  三端是否共有  |                                                       状态                                                        |
+| --- | ------------------------------------------------------------------- | ---------- | :----: | :------------: | :---------------------------------------------------------------------------------------------------------------: |
+| 1   | 核心业务逻辑零测试覆盖                                              | 质量       |   P1   |    Go 独有     | 资金/权益链路测试已落地（2026-08-23，见 [Go后端测试规范化改造计划](./Go后端测试规范化改造计划.md)），其余域仍待补 |
+| 2   | 定时任务逻辑内嵌业务 Service（关注点未分离）                        | 可维护性   |   P2   |  需核实 Java   |
+| 3   | 异步 goroutine 无 context 取消，优雅关闭可能丢数据                  | 可靠性     |   P2   |    Go 独有     |
+| 4   | Repository 分层泄漏，9+ 服务直接使用 gorm.DB                        | 分层       |   P2   |    Go 独有     |
+| 5   | 缓存键散落为字面量，失效逻辑重复                                    | 可维护性   |   P2   |    Go 独有     |
+| 6   | Algorithm 配置无 validate 标签，启动时不校验 ServiceURL             | 健壮性     |   P2   |    Go 独有     |
+| 7   | 去雾预测状态表与 Java 端不一致（sys_pred_log vs sys_input_history） | 跨端一致性 |   P3   | Java + Go 分歧 |
+| 8   | CancelExpiredOrders 订单+优惠券更新无事务                           | 数据一致性 |   P3   |    Go 独有     |
 
 ## 二、P1：核心业务逻辑零测试覆盖（方案已升级至测试规范化改造计划）
 
@@ -25,13 +25,13 @@
 
 全项目仅 7 个测试文件，集中在 auth、import_export、database、client_log，**核心业务零覆盖**：
 
-| 服务 | 行数 | 测试 |
-|------|------|:---:|
-| `member_service.go`（配额/签到/成长值/等级） | 1233 | 无 |
-| `order_service.go`（支付/退款/自动续费） | 1382 | 无 |
-| `prediction_service.go`（异步轮询/配额扣减/缓存） | - | 无 |
-| `recommendation_service.go`（伪特征/规则匹配） | - | 无 |
-| `payment/`（支付宝/微信/余额） | - | 无 |
+| 服务                                                   | 行数 | 测试 |
+| ------------------------------------------------------ | ---- | :--: |
+| `member_service.go`（配额/签到/成长值/等级）           | 1233 |  无  |
+| `order_service.go`（支付/退款/自动续费）               | 1382 |  无  |
+| `prediction_service.go`（异步轮询/配额扣减/缓存）      | -    |  无  |
+| `recommendation_service.go`（确定性特征派生/规则匹配） | -    |  无  |
+| `payment/`（支付宝/微信/余额）                         | -    |  无  |
 
 ### 2.2 影响
 
@@ -65,11 +65,11 @@
 
 ### 4.1 现状
 
-| 异步任务 | 位置 | context |
-|---------|------|---------|
-| 预测执行 | `prediction_service.go:114` `go s.executeAsync(...)` | `context.Background()`（行 124） |
+| 异步任务     | 位置                                                      | context                          |
+| ------------ | --------------------------------------------------------- | -------------------------------- |
+| 预测执行     | `prediction_service.go:114` `go s.executeAsync(...)`      | `context.Background()`（行 124） |
 | 配额异步落库 | `member_service.go:840` `go s.asyncPersistQuotaUsed(...)` | `context.Background()`（行 861） |
-| 审计日志 | `audit_log_service.go:42` `go func(){...}()` | 无 |
+| 审计日志     | `audit_log_service.go:42` `go func(){...}()`              | 无                               |
 
 均无 context 取消机制，无 goroutine 数量上限。
 
@@ -98,14 +98,13 @@ Java 用线程池 + `@PreDestroy` 优雅关闭；Python 端已通过 TaskTracker
 
 Go 有完整 Repository 层（`internal/repository/` 按域组织），但多个服务直接注入 `*gorm.DB` 绕过 Repository：
 
-| 服务 | 泄漏处 | 说明 |
-|------|--------|------|
-| `algorithm_select_service.go` | 9 处 `s.db.WithContext` | 复杂聚合查询未走 Repository |
-| `recommendation_service.go` | 行 106-110,140-142,355 | 直接查 sys_recommendation/sys_algorithm |
-| `auth_service.go` | 行 195,216,221,225,229 | 注册流程直接 Create/Where，绕过 UserService/MemberService |
-| `favorite_service.go` | 行 79,87,95 | 直接 Count 做存在性校验 |
-| `order_service.go` | 行 1324-1328 | 直接查 sys_user |
-| `feedback_service.go` / `low_rating_alert_service.go` / `pkgsale/coupon_service.go` | 多处 | 直接 `s.db` 查询 |
+| 服务                                                                                | 泄漏处                 | 说明                                                      |
+| ----------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------- |
+| `recommendation_service.go`                                                         | 行 106-110,140-142,355 | 直接查 sys_recommendation，绕过 Repository                |
+| `auth_service.go`                                                                   | 行 195,216,221,225,229 | 注册流程直接 Create/Where，绕过 UserService/MemberService |
+| `favorite_service.go`                                                               | 行 79,87,95            | 直接 Count 做存在性校验                                   |
+| `order_service.go`                                                                  | 行 1324-1328           | 直接查 sys_user                                           |
+| `feedback_service.go` / `low_rating_alert_service.go` / `pkgsale/coupon_service.go` | 多处                   | 直接 `s.db` 查询                                          |
 
 ### 5.2 影响
 
@@ -171,9 +170,9 @@ Go 有完整 Repository 层（`internal/repository/` 按域组织），但多个
 ### 8.1 现状
 
 - **Go**：预测状态存于 `sys_pred_log.status`（`prediction_service.go` 写入 processing/completed/failed），`sys_input_history` 仅做输入历史 CRUD，`sys_task` 仅用于导入导出异步任务。
-- **Java**：预测状态存于 `sys_input_history.status`（Java 改造计划 §1.2 记录此分歧），`SysInputHistoryService` 同时承载历史 CRUD 与状态机。
+- **Java**：预测状态存于 `sys_input_history.status`（Java 改造计划记录此分歧），`SysInputHistoryService` 同时承载历史 CRUD 与状态机。
 
-Java 改造计划 §1.2 原曾错误声称"Go 端存在同样分叉"，经核实 Go 端 `input_history_service.go` 仅做输入历史 CRUD、不承载预测状态，该描述已修正；Java 端为独立债务。
+Java 改造计划原曾错误声称"Go 端存在同样分叉"，经核实 Go 端 `input_history_service.go` 仅做输入历史 CRUD、不承载预测状态，该描述已修正；Java 端为独立债务。
 
 ### 8.2 影响
 
@@ -181,28 +180,28 @@ Java 改造计划 §1.2 原曾错误声称"Go 端存在同样分叉"，经核实
 
 ### 8.3 改造方案
 
-- 评估统一状态存储表：建议 Java 端向 Go 端设计靠拢（状态归 sys_pred_log，sys_input_history 退化为纯历史视图），即 Java 改造计划 §1.2 方案 A 的目标态。
-- 同步修正 Java 改造计划 §1.2 对 Go 的失实描述。
+- 评估统一状态存储表：建议 Java 端向 Go 端设计靠拢（状态归 sys_pred_log，sys_input_history 退化为纯历史视图），即 Java 改造计划方案 A 的目标态。
+- 同步修正 Java 改造计划对 Go 的失实描述。
 - 此项主体在 Java 端改造，Go 端无需代码变更，但需在三端对照中如实标注当前分歧。
 
 ## 九、P3：其他
 
-| 问题 | 现状 | 改造 |
-|------|------|------|
+| 问题                       | 现状                                                          | 改造                                 |
+| -------------------------- | ------------------------------------------------------------- | ------------------------------------ |
 | CancelExpiredOrders 无事务 | `order_service.go:916-925` 订单状态更新与优惠券恢复未包裹事务 | 用 `db.Transaction` 包裹，保证一致性 |
 
 ## 十、改造优先级与建议时序
 
-| 优先级 | 改造项 | 主体端 | 建议时序 | 依赖 |
-|--------|--------|--------|----------|------|
-| P1 | §二 核心业务测试覆盖（由 [测试规范化改造计划](./Go后端测试规范化改造计划.md) 承接） | Go | 最先，为后续重构提供安全网 | 无 |
-| P2 | §四 异步 goroutine 生命周期 | Go | 近期，可靠性收益高 | 无 |
-| P2 | §七 Algorithm 配置校验 | Go | 立即，改动小、低风险 | 无 |
-| P2 | §六 缓存键集中管理 | Go | 立即，纯重构、低风险 | 无 |
-| P2 | §五 Repository 分层泄漏 | Go | 中期，需测试覆盖保护 | §二 |
-| P2 | §三 定时任务内嵌 | Go | 中期，需测试覆盖保护 | §二 |
-| P3 | §八 预测状态表统一 | Java（Go 无需改） | 与 Java §1.2 协同 | - |
-| P3 | §九 事务补齐 | Go | 随 §三 一并处理 | §三 |
+| 优先级 | 改造项                                                                              | 主体端            | 建议时序                   | 依赖 |
+| ------ | ----------------------------------------------------------------------------------- | ----------------- | -------------------------- | ---- |
+| P1     | §二 核心业务测试覆盖（由 [测试规范化改造计划](./Go后端测试规范化改造计划.md) 承接） | Go                | 最先，为后续重构提供安全网 | 无   |
+| P2     | §四 异步 goroutine 生命周期                                                         | Go                | 近期，可靠性收益高         | 无   |
+| P2     | §七 Algorithm 配置校验                                                              | Go                | 立即，改动小、低风险       | 无   |
+| P2     | §六 缓存键集中管理                                                                  | Go                | 立即，纯重构、低风险       | 无   |
+| P2     | §五 Repository 分层泄漏                                                             | Go                | 中期，需测试覆盖保护       | §二  |
+| P2     | §三 定时任务内嵌                                                                    | Go                | 中期，需测试覆盖保护       | §二  |
+| P3     | §八 预测状态表统一                                                                  | Java（Go 无需改） | 与 Java 协同               | -    |
+| P3     | §九 事务补齐                                                                        | Go                | 随 §三 一并处理            | §三  |
 
 ```mermaid
 flowchart LR
@@ -214,12 +213,12 @@ flowchart LR
 ## 十一、不纳入本计划的事项
 
 - **文档失真修复**：已在 [02-Go架构文档.md](../04-项目实现/后端/02-Go架构文档.md) 修复中完成
-- **Java/Python 端代码架构问题**：Java 端见 [Java 后端架构改造计划](./Java后端架构改造计划.md)；Python 端治理已完成并沉淀至 [Python算法服务架构文档](../04-项目实现/后端/03-Python算法服务架构文档.md)，本计划仅在影响三端一致性时提及
+- **Python 端代码架构问题**：见 [Python算法服务架构文档](../04-项目实现/后端/03-Python算法服务架构文档.md)，本计划仅在影响三端一致性时提及
 - **业务功能扩展**：见 [产品拓展升级规划](./产品拓展升级规划.md)
 
 ## 十二、文档同步清单
 
-| 改造项 | 同步文档 |
-|--------|---------|
-| §八 预测状态表统一 | [Java 改造计划 §1.2](./Java后端架构改造计划.md)（修正对 Go 的失实描述）、[去雾处理/后端实现](../03-模块设计/核心模块/去雾处理/后端实现.md) |
-| §四 goroutine 生命周期 | [02-Go架构文档 §五应用生命周期](../04-项目实现/后端/02-Go架构文档.md) |
+| 改造项                 | 同步文档                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| §八 预测状态表统一     | [去雾处理/后端实现](../03-模块设计/核心模块/去雾处理/后端实现.md)                                                                          |
+| §四 goroutine 生命周期 | [02-Go架构文档](../04-项目实现/后端/02-Go架构文档.md)                                                                      |

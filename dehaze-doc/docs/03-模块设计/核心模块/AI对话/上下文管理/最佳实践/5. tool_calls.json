@@ -1,0 +1,17 @@
+[
+  {
+    "id": "call_00_jsix0FLIGmMeRSQZdZ5m5047",
+    "name": "Read",
+    "arguments": "{\"file_path\": \"/data/workspace/dehaze-system/dehaze-python/app/service/ai/strategies/prompt_composer.py\"}"
+  },
+  {
+    "id": "call_01_D3mrvyL0PuXTCi7wOlqa2219",
+    "name": "Read",
+    "arguments": "{\"file_path\": \"/data/workspace/dehaze-system/dehaze-python/app/service/ai/builders/dehaze_tools_builder.py\"}"
+  },
+  {
+    "id": "call_02_daAoLk4p9I1cLMsQM0SJ3440",
+    "name": "Read",
+    "arguments": "{\"file_path\": \"/data/workspace/dehaze-system/dehaze-python/app/infrastructure/sse/sse_event_converter.py\", \"offset\": 280, \"limit\": 120}"
+  }
+]
