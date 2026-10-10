@@ -1,0 +1,8 @@
+# 依赖与运行期产物由镜像内 uv sync / 挂载卷提供，不进构建上下文
+.venv/
+logs/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc

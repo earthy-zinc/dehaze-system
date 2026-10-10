@@ -17,3 +17,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["server.py"]
+
+[tool.pytest.ini_options]
+# 只收集单测：tests/live_test.py 是手动运行的 live 校验脚本（连真实网关 8082），
+# 名字虽匹配 pytest 默认的 `*_test.py`，但 import 期连网/依赖 live 环境 ⇒ 显式收窄收集口径。
+testpaths = ["tests"]
+python_files = ["test_*.py"]

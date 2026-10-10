@@ -5,7 +5,7 @@
 ```bash
     ./make.sh         # build
     python testcpu.py    # run examples and gradient check on cpu
-    python testcuda.py   # run examples and gradient check on gpu 
+    python testcuda.py   # run examples and gradient check on gpu
 ```
 
 ### Note

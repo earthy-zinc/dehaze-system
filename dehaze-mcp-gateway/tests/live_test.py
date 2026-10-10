@@ -33,8 +33,8 @@ def _load_gateway_key() -> str:
     return key
 
 
-_KEY = _load_gateway_key()
-
+# 注意：密钥**不在模块级解析**——import 期调用 _load_gateway_key() 会在缺 key 时 sys.exit(1)，
+# 使 `pytest tests` 收集阶段直接报错；改由 main() 内解析，手动运行行为不变。
 PASS, FAIL = 0, 0
 
 
@@ -57,17 +57,20 @@ async def call(session, tool, args):
 
 
 async def main():
+    # 网关共享密钥（手动运行入口内解析，import 期零副作用：pytest 收集不再触发 sys.exit/连真实网关）
+    key = _load_gateway_key()
+
     # 0. 网关共享密钥鉴权（原始 HTTP 层，无需 MCP 会话）
     async with httpx.AsyncClient(timeout=10) as client:
         r = await client.post(GW_URL, headers={}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-        check("无 X-MCP-Key 被拒 401", r.status_code == 401, str(r.status_code))
-        r = await client.post(GW_URL, headers={"X-MCP-Key": "wrong-key"}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-        check("错误 X-MCP-Key 被拒 401", r.status_code == 401, str(r.status_code))
-        r = await client.post(GW_URL, headers={"X-MCP-Key": _KEY}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-        check("正确 X-MCP-Key 通过鉴权", r.status_code != 401, str(r.status_code))
+        check("无 Authorization 被拒 401", r.status_code == 401, str(r.status_code))
+        r = await client.post(GW_URL, headers={"Authorization": "Bearer wrong-key"}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        check("错误 Bearer 密钥被拒 401", r.status_code == 401, str(r.status_code))
+        r = await client.post(GW_URL, headers={"Authorization": f"Bearer {key}"}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        check("正确 Bearer 密钥通过鉴权", r.status_code != 401, str(r.status_code))
 
     t0 = time.perf_counter()
-    async with streamablehttp_client(GW_URL, headers={"X-MCP-Key": _KEY}) as (read, write, _):
+    async with streamablehttp_client(GW_URL, headers={"Authorization": f"Bearer {key}"}) as (read, write, _):
         connect_ms = (time.perf_counter() - t0) * 1000
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -80,15 +83,15 @@ async def main():
                   names == {"lookup_tool", "lookup_tool_param_schema", "execute_tool"},
                   str(sorted(names)))
 
-            # 1.1 写操作白名单：非白名单 POST/PUT/PATCH 不注册，POST 仅限去雾预测
+            # 1.1 写操作白名单：非白名单 POST/PUT/PATCH 不注册，POST 仅限图像编辑
             write_tools = [n for n in names if n.startswith(("post_", "put_", "patch_"))]
             check("写工具仅白名单内可见",
-                  all(n in {"post_api_v1_prediction"} for n in write_tools),
+                  all(n in {"post_api_v1_images_edits"} for n in write_tools),
                   str(write_tools))
 
             # 2. lookup_tool：中文检索
-            out = await call(session, "lookup_tool", {"query": "去雾预测"})
-            check("lookup_tool 中文检索命中", "prediction" in out.lower(), out.splitlines()[0] if out else "空")
+            out = await call(session, "lookup_tool", {"query": "图像编辑"})
+            check("lookup_tool 中文检索命中", "edits" in out.lower(), out.splitlines()[0] if out else "空")
 
             # 3. lookup_tool 空查询 / 无匹配
             out = await call(session, "lookup_tool", {"query": "   "})
@@ -97,7 +100,7 @@ async def main():
             check("lookup_tool 无匹配给出候选提示", "无匹配工具" in out)
 
             # 4. lookup_tool_param_schema
-            tool_name = "get_api_v1_prediction_by_taskid"
+            tool_name = "get_api_v1_images_tasks_by_taskid"
             out = await call(session, "lookup_tool_param_schema", {"tool_name": tool_name})
             ok = tool_name in out and "taskId" in out
             check("param_schema 返回参数定义", ok, "含 method/path/params" if ok else out[:120])
@@ -111,7 +114,7 @@ async def main():
             check("execute 非法 JSON 拒绝", "不是合法 JSON" in out)
             out = await call(session, "execute_tool", {"tool_name": tool_name, "arguments": "[1,2]"})
             check("execute 非 JSON 对象拒绝", "必须是 JSON 对象" in out)
-            out = await call(session, "execute_tool", {"tool_name": "post_api_v1_prediction", "arguments": "{}"})
+            out = await call(session, "execute_tool", {"tool_name": "post_api_v1_images_edits", "arguments": "{}"})
             check("execute 缺必填参数提示", "缺少必填参数" in out)
             # 写白名单：非白名单 PUT 工具不注册，LLM 不可见
             out = await call(session, "execute_tool", {"tool_name": "put_api_v1_presets_by_id", "arguments": "{}"})
@@ -134,7 +137,7 @@ async def main():
 
             # 8. 真实只读调用：预测日志列表（M2M key 认证 + 业务信封透传）
             out = await call(session, "execute_tool",
-                             {"tool_name": "get_api_v1_prediction_logs",
+                             {"tool_name": "get_api_v1_images_tasks",
                               "arguments": json.dumps({"pageNum": 1, "pageSize": 1})})
             ok = '"00000"' in out or "错误(" in out
             check("execute 真实后端调用", ok, out[:120].replace("\n", " "))
@@ -142,13 +145,13 @@ async def main():
             # 9. 性能烟测：20 次串行 lookup
             t0 = time.perf_counter()
             for _ in range(20):
-                await call(session, "lookup_tool", {"query": "算法列表"})
+                await call(session, "lookup_tool", {"query": "图像任务"})
             avg_ms = (time.perf_counter() - t0) / 20 * 1000
             check("性能：lookup 平均延迟 < 200ms", avg_ms < 200, f"{avg_ms:.1f}ms/次")
 
     # 10. dehaze-python 生产客户端路径（McpGatewayClient）联通：会话装配含 initialize 前置
     os.environ.setdefault("MCP_GATEWAY_URL", GW_URL)
-    os.environ.setdefault("MCP_GATEWAY_KEY", _KEY)
+    os.environ.setdefault("MCP_GATEWAY_KEY", key)
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "dehaze-python"))
     from app.infrastructure.clients.mcp_gateway_client import mcp_gateway_client
 
@@ -157,15 +160,16 @@ async def main():
     check("McpGatewayClient.list_tools 返回 3 个元 tool",
           names == ["execute_tool", "lookup_tool", "lookup_tool_param_schema"], str(names))
 
-    out = await mcp_gateway_client.lookup_tool("去雾预测")
+    out = await mcp_gateway_client.lookup_tool("图像编辑")
     check("McpGatewayClient.lookup_tool 元工具 call 命中",
-          "prediction" in out.lower(), out.splitlines()[0] if out else "空")
+          "edits" in out.lower(), out.splitlines()[0] if out else "空")
 
-    out = await mcp_gateway_client.lookup_tool_param_schema("get_api_v1_prediction_by_taskid")
+    out = await mcp_gateway_client.lookup_tool_param_schema("get_api_v1_images_tasks_by_taskid")
     check("McpGatewayClient 参数 schema 元工具 call", "taskId" in out, out[:80] if out else "空")
 
     print(f"\n结果: {PASS} pass / {FAIL} fail")
     sys.exit(1 if FAIL else 0)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

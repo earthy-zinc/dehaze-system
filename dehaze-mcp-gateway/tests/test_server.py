@@ -34,15 +34,15 @@ def _make_spec():
             }
         },
         "paths": {
-            "/api/v1/prediction": {
+            "/api/v1/images/edits": {
                 "post": {
                     "tags": ["去雾处理"],
-                    "summary": "执行模型预测（去雾处理，异步）",
+                    "summary": "提交图像编辑任务（去雾等，异步）",
                     "requestBody": {
                         "content": {"application/json": {"schema": {
                             "type": "object",
-                            "properties": {"algorithmId": {"type": "integer"}, "fileId": {"type": "string"}},
-                            "required": ["algorithmId"],
+                            "properties": {"model": {"type": "string"}, "fileId": {"type": "string"}},
+                            "required": ["model"],
                         }}}
                     },
                 }
@@ -64,10 +64,10 @@ def _make_spec():
                     },
                 }
             },
-            "/api/v1/prediction/{taskId}": {
+            "/api/v1/images/tasks/{taskId}": {
                 "get": {
                     "tags": ["去雾处理"],
-                    "summary": "获取预测任务",
+                    "summary": "获取图像任务",
                     "parameters": [
                         {"name": "taskId", "in": "path", "required": True, "schema": {"type": "string"}}
                     ],
@@ -120,7 +120,7 @@ def _make_spec():
 
 @pytest.fixture()
 def apis(monkeypatch):
-    # 默认写白名单仅放行去雾预测；参数映射类用例需要 PUT 工具，临时扩充
+    # 默认写白名单仅放行图像编辑；参数映射类用例需要 PUT 工具，临时扩充
     monkeypatch.setattr(
         server, "_WRITE_TOOLS", server._DEFAULT_WRITE_TOOLS | {"put_api_v1_presets_by_id"}
     )
@@ -132,12 +132,12 @@ def apis(monkeypatch):
 
 # ---------- 写操作白名单 ----------
 
-def test_default_whitelist_keeps_documented_prediction_write(monkeypatch):
-    """发起去雾预测是文档定义的唯一常规 LLM 写场景，默认白名单必须放行。"""
+def test_default_whitelist_keeps_documented_image_edit_write(monkeypatch):
+    """发起图像编辑是文档定义的唯一常规 LLM 写场景，默认白名单必须放行。"""
     monkeypatch.setattr(server, "_WRITE_TOOLS", server._DEFAULT_WRITE_TOOLS)
     apis = server._parse_spec(_make_spec())
-    assert "post_api_v1_prediction" in apis
-    assert apis["post_api_v1_prediction"]["method"] == "POST"
+    assert "post_api_v1_images_edits" in apis
+    assert apis["post_api_v1_images_edits"]["method"] == "POST"
 
 
 def test_default_whitelist_filters_other_writes(monkeypatch):
@@ -146,7 +146,7 @@ def test_default_whitelist_filters_other_writes(monkeypatch):
     apis = server._parse_spec(_make_spec())
     assert "put_api_v1_presets_by_id" not in apis
     # GET 不受白名单约束
-    assert "get_api_v1_prediction_by_taskid" in apis
+    assert "get_api_v1_images_tasks_by_taskid" in apis
 
 
 def test_write_whitelist_extensible(monkeypatch):
@@ -157,7 +157,7 @@ def test_write_whitelist_extensible(monkeypatch):
     assert "put_api_v1_presets_by_id" in apis
 
 
-# ---------- 网关共享密钥鉴权（X-MCP-Key） ----------
+# ---------- 网关共享密钥鉴权（Authorization: Bearer） ----------
 
 def _http_scope(headers: dict):
     return {
@@ -190,14 +190,23 @@ def test_auth_missing_header_rejected(gateway_key):
 
 
 def test_auth_wrong_key_rejected(gateway_key):
-    sent = _call_asgi(server._auth_asgi_app, _http_scope({"X-MCP-Key": "wrong"}))
+    sent = _call_asgi(server._auth_asgi_app, _http_scope({"Authorization": "Bearer wrong"}))
+    assert sent[0]["status"] == 401
+
+
+def test_auth_custom_header_no_longer_accepted(gateway_key):
+    """自定义请求头不再是鉴权载体：旧 X-MCP-Key 用法必须被拒。"""
+    sent = _call_asgi(server._auth_asgi_app, _http_scope({"X-MCP-Key": "test-key-123"}))
+    assert sent[0]["status"] == 401
+    # 缺 Bearer 前缀同样拒绝
+    sent = _call_asgi(server._auth_asgi_app, _http_scope({"Authorization": "test-key-123"}))
     assert sent[0]["status"] == 401
 
 
 def test_auth_no_gateway_key_configured_rejects_all(monkeypatch):
     """密钥未配置时全部拒绝（fail closed），不因空密钥退化为无鉴权。"""
     monkeypatch.setattr(server, "MCP_GATEWAY_KEY", "")
-    sent = _call_asgi(server._auth_asgi_app, _http_scope({"X-MCP-Key": "anything"}))
+    sent = _call_asgi(server._auth_asgi_app, _http_scope({"Authorization": "Bearer anything"}))
     assert sent[0]["status"] == 401
 
 
@@ -210,7 +219,7 @@ def test_auth_correct_key_passthrough(gateway_key, monkeypatch):
         await send({"type": "http.response.body", "body": b"ok"})
 
     monkeypatch.setattr(server, "_mcp_asgi", stub_asgi)
-    sent = _call_asgi(server._auth_asgi_app, _http_scope({"X-MCP-Key": "test-key-123"}))
+    sent = _call_asgi(server._auth_asgi_app, _http_scope({"Authorization": "Bearer test-key-123"}))
     assert sent[0]["status"] == 200
     assert passed == ["/mcp"]
 
@@ -218,7 +227,7 @@ def test_auth_correct_key_passthrough(gateway_key, monkeypatch):
 # ---------- 过滤管道 ----------
 
 def test_skip_delete_method(apis):
-    assert "delete_api_v1_prediction_by_taskid" not in apis
+    assert "delete_api_v1_images_tasks_by_taskid" not in apis
 
 
 def test_skip_login_path(apis):
@@ -277,13 +286,13 @@ def test_circular_ref_resolve_terminates():
 
 def test_tool_name_rules():
     assert server._tool_name("put", "/api/v1/presets/{id}") == "put_api_v1_presets_by_id"
-    assert server._tool_name("get", "/api/v1/prediction/{taskId}") == "get_api_v1_prediction_by_taskid"
+    assert server._tool_name("get", "/api/v1/images/tasks/{taskId}") == "get_api_v1_images_tasks_by_taskid"
     assert server._tool_name("get", "/api/v1/a-b/c.d") == "get_api_v1_a_b_c_d"
 
 
 def test_search_chinese_bigram(apis):
-    names = [n for _, n, _ in server._search_apis("预测任务")]
-    assert "get_api_v1_prediction_by_taskid" in names
+    names = [n for _, n, _ in server._search_apis("图像任务")]
+    assert "get_api_v1_images_tasks_by_taskid" in names
 
 
 def test_search_path_style_query(apis):
@@ -325,7 +334,7 @@ def test_execute_unknown_tool(apis):
 
 @pytest.mark.parametrize("bad", ["not-json", "[1,2]", '"str"', "42"])
 def test_execute_rejects_non_object_arguments(apis, bad):
-    out = asyncio.run(server.execute_tool("get_api_v1_prediction_by_taskid", bad))
+    out = asyncio.run(server.execute_tool("get_api_v1_images_tasks_by_taskid", bad))
     assert ("不是合法 JSON" in out) or ("必须是 JSON 对象" in out)
 
 
@@ -349,11 +358,11 @@ def test_execute_path_traversal_encoded(apis, http_capture):
     """路径参数含 / 与 .. 必须整体编码，不能注入额外路径段。"""
     evil = "../../api/v1/admin/users"
     asyncio.run(server.execute_tool(
-        "get_api_v1_prediction_by_taskid", json.dumps({"taskId": evil})))
+        "get_api_v1_images_tasks_by_taskid", json.dumps({"taskId": evil})))
     url = http_capture["url"]
     assert "../" not in url
     assert "%2F" in url.upper()  # 整体编码，未注入额外路径段
-    assert http_capture["url"].startswith(server.BACKEND_URL + "/api/v1/prediction/")
+    assert http_capture["url"].startswith(server.BACKEND_URL + "/api/v1/images/tasks/")
 
 
 @pytest.mark.parametrize("status,frag", [
@@ -367,7 +376,7 @@ def test_execute_backend_error_passthrough(apis, monkeypatch, status, frag):
         return _FakeResp(status, '{"msg":"boom"}')
 
     monkeypatch.setattr(server._http, "request", fake_request)
-    out = asyncio.run(server.execute_tool("get_api_v1_prediction_by_taskid", '{"taskId": "t1"}'))
+    out = asyncio.run(server.execute_tool("get_api_v1_images_tasks_by_taskid", '{"taskId": "t1"}'))
     assert frag in out and "boom" in out
 
 
@@ -376,7 +385,7 @@ def test_execute_long_response_truncated(apis, monkeypatch):
         return _FakeResp(200, "x" * 9000)
 
     monkeypatch.setattr(server._http, "request", fake_request)
-    out = asyncio.run(server.execute_tool("get_api_v1_prediction_by_taskid", '{"taskId": "t1"}'))
+    out = asyncio.run(server.execute_tool("get_api_v1_images_tasks_by_taskid", '{"taskId": "t1"}'))
     assert "响应过长已截断" in out and len(out) < 9000
 
 
@@ -396,6 +405,6 @@ def test_load_apis_success_parses(monkeypatch):
     old = (server._apis, server._SPEC)
     try:
         assert server._load_apis() is True
-        assert "post_api_v1_prediction" in server._apis  # 默认写白名单内
+        assert "post_api_v1_images_edits" in server._apis  # 默认写白名单内
     finally:
         server._apis, server._SPEC = old

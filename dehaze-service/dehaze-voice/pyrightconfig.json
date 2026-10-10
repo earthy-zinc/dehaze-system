@@ -1,0 +1,6 @@
+{
+  "extends": "../../pyright.base.json",
+  "include": ["app", "tests"],
+  "venvPath": ".",
+  "venv": ".venv"
+}

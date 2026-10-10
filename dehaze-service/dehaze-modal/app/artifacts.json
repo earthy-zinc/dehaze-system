@@ -1,0 +1,512 @@
+{
+ "aecrnet": {
+  "import_path": "algorithm.AECRNet.run",
+  "weights_path": "AECR-Net/NH_train.pk",
+  "name": "AECR-NET",
+  "enabled": true
+ },
+ "aodnet": {
+  "import_path": "algorithm.AODNet.run",
+  "weights_path": "AODNet/dehazer.pth",
+  "name": "AODNet",
+  "enabled": true
+ },
+ "c2pnet-its": {
+  "import_path": "algorithm.C2PNet.run",
+  "weights_path": "C2PNet/ITS.pkl",
+  "name": "室内去雾（ITS）",
+  "enabled": true
+ },
+ "c2pnet-ots": {
+  "import_path": "algorithm.C2PNet.run",
+  "weights_path": "C2PNet/OTS.pkl",
+  "name": "室外去雾（OTS）",
+  "enabled": true
+ },
+ "cmfnet-dehaze-i-ohaze-cmfnet": {
+  "import_path": "algorithm.CMFNet.run",
+  "weights_path": "CMFNet/dehaze_I_OHaze_CMFNet.pth",
+  "name": "去雾模型",
+  "enabled": true
+ },
+ "cmfnet-deblur-gopro-cmfnet": {
+  "import_path": "algorithm.CMFNet.run",
+  "weights_path": "CMFNet/deblur_GoPro_CMFNet.pth",
+  "name": "去模糊模型",
+  "enabled": true
+ },
+ "cmfnet-deraindrop-deraindrop-cmfnet": {
+  "import_path": "algorithm.CMFNet.run",
+  "weights_path": "CMFNet/deraindrop_DeRainDrop_CMFNet.pth",
+  "name": "去雨模型",
+  "enabled": true
+ },
+ "d4": {
+  "import_path": "algorithm.D4.run",
+  "weights_path": "D4/weights_reconstruct.pth",
+  "name": "D4",
+  "enabled": true
+ },
+ "daclipuir": {
+  "import_path": "algorithm.DaclipUir.run",
+  "weights_path": "daclip-uir/daclip_ViT-B-32.pt",
+  "name": "DaclipUir",
+  "enabled": false
+ },
+ "dcpdn": {
+  "import_path": "algorithm.DCPDN.run",
+  "weights_path": "DCPDN/netG_epoch_8.pth",
+  "name": "DCPDN",
+  "enabled": false
+ },
+ "deanet-haze4k-psnr3426-ssim9885": {
+  "import_path": "algorithm.DEANet.run",
+  "weights_path": "DEA-Net/HAZE4K/PSNR3426_SSIM9885.pth",
+  "name": "HAZE4k模型",
+  "enabled": true
+ },
+ "deanet-its-psnr4131-ssim9945": {
+  "import_path": "algorithm.DEANet.run",
+  "weights_path": "DEA-Net/ITS/PSNR4131_SSIM9945.pth",
+  "name": "ITS模型",
+  "enabled": true
+ },
+ "deanet-ots-psnr3659-ssim9897": {
+  "import_path": "algorithm.DEANet.run",
+  "weights_path": "DEA-Net/OTS/PSNR3659_SSIM9897.pth",
+  "name": "OTS模型",
+  "enabled": true
+ },
+ "dehamer-dense-psnr1662-ssim05602": {
+  "import_path": "algorithm.Dehamer.run",
+  "weights_path": "Dehamer/dense/PSNR1662_SSIM05602.pt",
+  "name": "dense-haze模型",
+  "enabled": true
+ },
+ "dehamer-indoor-psnr3663-ssim09881": {
+  "import_path": "algorithm.Dehamer.run",
+  "weights_path": "Dehamer/indoor/PSNR3663_ssim09881.pt",
+  "name": "indoor",
+  "enabled": true
+ },
+ "dehamer-nh-psnr2066-ssim06844": {
+  "import_path": "algorithm.Dehamer.run",
+  "weights_path": "Dehamer/NH/PSNR2066_SSIM06844.pt",
+  "name": "NH-HAZE-模型",
+  "enabled": true
+ },
+ "dehamer-outdoor-psnr3518-ssim09860": {
+  "import_path": "algorithm.Dehamer.run",
+  "weights_path": "Dehamer/outdoor/PSNR3518_SSIM09860.pt",
+  "name": "outdoor",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-b": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-b.pth",
+  "name": "indoor-b",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-d": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-d.pth",
+  "name": "indoor-d",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-l": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-l.pth",
+  "name": "indoor-l",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-m": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-m.pth",
+  "name": "indoor-m",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-s": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-s.pth",
+  "name": "indoor-s",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-t": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-t.pth",
+  "name": "indoor-t",
+  "enabled": true
+ },
+ "dehazeformer-indoor-dehazeformer-w": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/indoor/dehazeformer-w.pth",
+  "name": "indoor-w",
+  "enabled": true
+ },
+ "dehazeformer-outdoor-dehazeformer-b": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/outdoor/dehazeformer-b.pth",
+  "name": "outdoor-b",
+  "enabled": true
+ },
+ "dehazeformer-outdoor-dehazeformer-m": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/outdoor/dehazeformer-m.pth",
+  "name": "outdoor-m",
+  "enabled": true
+ },
+ "dehazeformer-outdoor-dehazeformer-s": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/outdoor/dehazeformer-s.pth",
+  "name": "outdoor-s",
+  "enabled": true
+ },
+ "dehazeformer-outdoor-dehazeformer-t": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/outdoor/dehazeformer-t.pth",
+  "name": "outdoor-t",
+  "enabled": true
+ },
+ "dehazeformer-reside6k-dehazeformer-b": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/reside6k/dehazeformer-b.pth",
+  "name": "reside6k-b",
+  "enabled": true
+ },
+ "dehazeformer-rshaze-dehazeformer-b": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/rshaze/dehazeformer-b.pth",
+  "name": "rshaze-b",
+  "enabled": true
+ },
+ "dehazeformer-rshaze-dehazeformer-m": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/rshaze/dehazeformer-m.pth",
+  "name": "rshaze-m",
+  "enabled": true
+ },
+ "dehazeformer-rshaze-dehazeformer-s": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/rshaze/dehazeformer-s.pth",
+  "name": "rshaze-s",
+  "enabled": true
+ },
+ "dehazeformer-rshaze-dehazeformer-t": {
+  "import_path": "algorithm.DehazeFormer.run",
+  "weights_path": "DehazeFormer/rshaze/dehazeformer-t.pth",
+  "name": "rshaze-t",
+  "enabled": true
+ },
+ "fcd": {
+  "import_path": "algorithm.FCD.run",
+  "weights_path": "FCD/framework_da_230221_121802_gen.pth",
+  "name": "FCD",
+  "enabled": false
+ },
+ "ffanet-its-train-ffa-3-19": {
+  "import_path": "algorithm.FFANet.run",
+  "weights_path": "FFA-Net/its_train_ffa_3_19.pk",
+  "name": "its",
+  "enabled": true
+ },
+ "ffanet-ots-train-ffa-3-19": {
+  "import_path": "algorithm.FFANet.run",
+  "weights_path": "FFA-Net/ots_train_ffa_3_19.pk",
+  "name": "ots",
+  "enabled": true
+ },
+ "fogremoval": {
+  "import_path": "algorithm.FogRemoval.run",
+  "weights_path": "FogRemoval/NH-HAZE_params_0100000.pt",
+  "name": "FogRemoval",
+  "enabled": true
+ },
+ "gcanet": {
+  "import_path": "algorithm.GCANet.run",
+  "weights_path": "GCANet/wacv_gcanet_dehaze.pth",
+  "name": "GCANet",
+  "enabled": true
+ },
+ "griddehazenet-indoor-haze-best-3-6": {
+  "import_path": "algorithm.GridDehazeNet.run",
+  "weights_path": "GridDehazeNet/indoor_haze_best_3_6",
+  "name": "indoor",
+  "enabled": true
+ },
+ "griddehazenet-outdoor-haze-best-3-6": {
+  "import_path": "algorithm.GridDehazeNet.run",
+  "weights_path": "GridDehazeNet/outdoor_haze_best_3_6",
+  "name": "outdoor",
+  "enabled": true
+ },
+ "imgrestorationsde-deblurring-ir-sde-deblurring": {
+  "import_path": "algorithm.ImgRestorationSde.run",
+  "weights_path": "image-restoration-sde/deblurring/ir-sde-deblurring.pth",
+  "name": "deblurring",
+  "enabled": false
+ },
+ "imgrestorationsde-denoising-ir-sde-denoising": {
+  "import_path": "algorithm.ImgRestorationSde.run",
+  "weights_path": "image-restoration-sde/denoising/ir-sde-denoising.pth",
+  "name": "denoising",
+  "enabled": false
+ },
+ "imgrestorationsde-deraining-ir-sde-derainh100": {
+  "import_path": "algorithm.ImgRestorationSde.run",
+  "weights_path": "image-restoration-sde/deraining/ir-sde-derainH100.pth",
+  "name": "deraining-H100",
+  "enabled": false
+ },
+ "imgrestorationsde-deraining-ir-sde-derainl100": {
+  "import_path": "algorithm.ImgRestorationSde.run",
+  "weights_path": "image-restoration-sde/deraining/ir-sde-derainL100.pth",
+  "name": "deraining-L100",
+  "enabled": false
+ },
+ "itbdehaze": {
+  "import_path": "algorithm.ITBdehaze.run",
+  "weights_path": "ITBdehaze/best.pkl",
+  "name": "ITBDehaze",
+  "enabled": true
+ },
+ "lightdehazenet": {
+  "import_path": "algorithm.LightDehazeNet.run",
+  "weights_path": "LightDehazeNet/trained_LDNet.pth",
+  "name": "LightDehazeNet",
+  "enabled": true
+ },
+ "lkdnet-its-lkd-b-lkd-b": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/ITS/LKD-b/LKD-b.pth",
+  "name": "ITS-b",
+  "enabled": true
+ },
+ "lkdnet-its-lkd-l-lkd-l": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/ITS/LKD-l/LKD-l.pth",
+  "name": "ITS-l",
+  "enabled": true
+ },
+ "lkdnet-its-lkd-s-lkd-s": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/ITS/LKD-s/LKD-s.pth",
+  "name": "ITS-s",
+  "enabled": true
+ },
+ "lkdnet-its-lkd-t-lkd-t": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/ITS/LKD-t/LKD-t.pth",
+  "name": "ITS-t",
+  "enabled": true
+ },
+ "lkdnet-ots-lkd-b-lkd-b": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/OTS/LKD-b/LKD-b.pth",
+  "name": "OTS-b",
+  "enabled": true
+ },
+ "lkdnet-ots-lkd-l-lkd-l": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/OTS/LKD-l/LKD-l.pth",
+  "name": "OTS-l",
+  "enabled": true
+ },
+ "lkdnet-ots-lkd-s-lkd-s": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/OTS/LKD-s/LKD-s.pth",
+  "name": "OTS-s",
+  "enabled": true
+ },
+ "lkdnet-ots-lkd-t-lkd-t": {
+  "import_path": "algorithm.LKDNet.run",
+  "weights_path": "LKDNet/OTS/LKD-t/LKD-t.pth",
+  "name": "OTS-t",
+  "enabled": true
+ },
+ "madn": {
+  "import_path": "algorithm.MADN.run",
+  "weights_path": "MADN/model.pth",
+  "name": "MADN",
+  "enabled": true
+ },
+ "mb-taylorformer-densehaze-mb-taylorformer-b": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/densehaze-MB-TaylorFormer-B.pth",
+  "name": "dense-haze-b",
+  "enabled": true
+ },
+ "mb-taylorformer-densehaze-mb-taylorformer-l": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/densehaze-MB-TaylorFormer-L.pth",
+  "name": "dense-haze-l",
+  "enabled": true
+ },
+ "mb-taylorformer-its-mb-taylorformer-l": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/ITS-MB-TaylorFormer-L.pth",
+  "name": "its",
+  "enabled": true
+ },
+ "mb-taylorformer-ohaze-mb-taylorformer-b": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/ohaze-MB-TaylorFormer-B.pth",
+  "name": "ohaze",
+  "enabled": true
+ },
+ "mb-taylorformer-ots-mb-taylorformer-b": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/OTS-MB-TaylorFormer-B.pth",
+  "name": "ots-b",
+  "enabled": true
+ },
+ "mb-taylorformer-ots-mb-taylorformer-l": {
+  "import_path": "algorithm.MB-TaylorFormer.run",
+  "weights_path": "MB-TaylorFormer/OTS-MB-TaylorFormer-L.pth",
+  "name": "ots-l",
+  "enabled": true
+ },
+ "mixdehazenet-haze4k-mixdehazenet-l": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/haze4k/MixDehazeNet-l.pth",
+  "name": "haze4k-l",
+  "enabled": true
+ },
+ "mixdehazenet-indoor-mixdehazenet-b": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/indoor/MixDehazeNet-b.pth",
+  "name": "indoor-b",
+  "enabled": true
+ },
+ "mixdehazenet-indoor-mixdehazenet-l": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/indoor/MixDehazeNet-l.pth",
+  "name": "indoor-l",
+  "enabled": true
+ },
+ "mixdehazenet-outdoor-mixdehazenet-b": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/outdoor/MixDehazeNet-b.pth",
+  "name": "outdoor-b",
+  "enabled": true
+ },
+ "mixdehazenet-outdoor-mixdehazenet-l": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/outdoor/MixDehazeNet-l.pth",
+  "name": "outdoor-b",
+  "enabled": true
+ },
+ "mixdehazenet-outdoor-mixdehazenet-s": {
+  "import_path": "algorithm.MixDehazeNet.run",
+  "weights_path": "MixDehazeNet/outdoor/MixDehazeNet-s.pth",
+  "name": "outdoor-b",
+  "enabled": true
+ },
+ "msfnet-indoor": {
+  "import_path": "algorithm.MSFNet.run",
+  "weights_path": "MSFNet/indoor.pth",
+  "name": "indoor",
+  "enabled": true
+ },
+ "msfnet-outdoor": {
+  "import_path": "algorithm.MSFNet.run",
+  "weights_path": "MSFNet/outdoor.pth",
+  "name": "outdoor",
+  "enabled": true
+ },
+ "psd-psb-msbdn": {
+  "import_path": "algorithm.PSD.run",
+  "weights_path": "PSD/PSB-MSBDN",
+  "name": "PSD-MSBDN",
+  "enabled": true
+ },
+ "psd-psd-ffanet": {
+  "import_path": "algorithm.PSD.run",
+  "weights_path": "PSD/PSD-FFANET",
+  "name": "PSD-FFANET",
+  "enabled": true
+ },
+ "psd-psd-gcanet": {
+  "import_path": "algorithm.PSD.run",
+  "weights_path": "PSD/PSD-GCANET",
+  "name": "PSD-GCANET",
+  "enabled": true
+ },
+ "ridcp": {
+  "import_path": "algorithm.RIDCP.run",
+  "weights_path": "RIDCP/pretrained_RIDCP.pth",
+  "name": "RIDCP",
+  "enabled": true
+ },
+ "scanet-gmodel-40": {
+  "import_path": "algorithm.SCANet.run",
+  "weights_path": "SCANet/Gmodel_40.tar",
+  "name": "SCANet-40",
+  "enabled": true
+ },
+ "scanet-gmodel-105": {
+  "import_path": "algorithm.SCANet.run",
+  "weights_path": "SCANet/Gmodel_105.tar",
+  "name": "SCANet-105",
+  "enabled": true
+ },
+ "scanet-gmodel-120": {
+  "import_path": "algorithm.SCANet.run",
+  "weights_path": "SCANet/Gmodel_120.tar",
+  "name": "SCANet-120",
+  "enabled": true
+ },
+ "sgidpff-sots-indoor": {
+  "import_path": "algorithm.SGIDPFF.run",
+  "weights_path": "SGID-PFF/SOTS_indoor.pt",
+  "name": "indoor",
+  "enabled": true
+ },
+ "sgidpff-sots-outdoor": {
+  "import_path": "algorithm.SGIDPFF.run",
+  "weights_path": "SGID-PFF/SOTS_outdoor.pt",
+  "name": "SGIDPFF",
+  "enabled": true
+ },
+ "tsdnet": {
+  "import_path": "algorithm.TSDNet.run",
+  "weights_path": "TSDNet/GNet.tar",
+  "name": "TSDNet",
+  "enabled": true
+ },
+ "wpxnet-dense-haze": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/dense-haze.pth",
+  "name": "DENSE-HAZE",
+  "enabled": true
+ },
+ "wpxnet-i-haze": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/i-haze.pth",
+  "name": "I-HAZE",
+  "enabled": true
+ },
+ "wpxnet-o-haze": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/o-haze.pth",
+  "name": "O-HAZE",
+  "enabled": true
+ },
+ "wpxnet-nh-haze-20": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/nh-haze-20.pth",
+  "name": "NH-HAZE-20",
+  "enabled": true
+ },
+ "wpxnet-nh-haze-21": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/nh-haze-21.pth",
+  "name": "NH-HAZE-21",
+  "enabled": true
+ },
+ "wpxnet-nh-haze-23": {
+  "import_path": "algorithm.WPXNet.run",
+  "weights_path": "WPXNet/nh-haze-23.pth",
+  "name": "NH-HAZE-23",
+  "enabled": true
+ }
+}

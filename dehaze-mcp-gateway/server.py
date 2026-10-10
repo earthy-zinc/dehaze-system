@@ -5,9 +5,9 @@
 - MCP_BACKEND_URL / M2M_API_KEY / MCP_GATEWAY_KEY / MCP_WRITE_TOOLS / MCP_BIND_HOST
 
 安全：
-- 网关持有后端 M2M 凭证，HTTP 访问必须携带 X-MCP-Key 共享密钥（缺失/错误一律 401），
-  MCP_GATEWAY_KEY 未配置时拒绝启动
-- LLM 可用写操作收敛为白名单（默认仅 GET + post_api_v1_prediction），可用
+- 网关持有后端 M2M 凭证，HTTP 访问必须携带 Authorization: Bearer 共享密钥
+  （缺失/错误一律 401），MCP_GATEWAY_KEY 未配置时拒绝启动
+- LLM 可用写操作收敛为白名单（默认仅 GET + post_api_v1_images_edits），可用
   MCP_WRITE_TOOLS 扩充
 
 三个 tool：
@@ -46,7 +46,7 @@ API_KEY = os.getenv("M2M_API_KEY")
 PORT = int(os.getenv("MCP_PORT", "8082"))
 # 网关持有后端 M2M 凭证，默认仅监听回环地址；跨机部署时显式设置 MCP_BIND_HOST
 BIND_HOST = os.getenv("MCP_BIND_HOST", "127.0.0.1")
-# 客户端访问网关的共享密钥（X-MCP-Key 请求头），未配置时 HTTP 服务拒绝启动
+# 客户端访问网关的共享密钥（Authorization: Bearer），未配置时 HTTP 服务拒绝启动
 MCP_GATEWAY_KEY = os.getenv("MCP_GATEWAY_KEY", "")
 
 mcp = FastMCP("dehaze", host=BIND_HOST)
@@ -58,10 +58,10 @@ _load_lock = asyncio.Lock()
 _SKIP_PATHS = ("/login", "/register", "/logout", "/upload", "/api-docs")
 _SKIP_METHODS = {"delete", "head", "options"}
 
-# LLM 可用的写操作白名单（工具名粒度）：发起去雾预测是文档定义的唯一常规写场景
+# LLM 可用的写操作白名单（工具名粒度）：发起图像编辑（去雾等）是文档定义的唯一常规写场景
 # （需求规格 §2.3.1 示例流程），其余 POST/PUT 一律收敛为只读，防止提示注入场景下
 # LLM 借 admin 身份的 M2M 凭证篡改管理数据。可用 MCP_WRITE_TOOLS（逗号分隔）扩充。
-_DEFAULT_WRITE_TOOLS = frozenset({"post_api_v1_prediction"})
+_DEFAULT_WRITE_TOOLS = frozenset({"post_api_v1_images_edits"})
 _WRITE_TOOLS = _DEFAULT_WRITE_TOOLS | {
     t.strip() for t in os.getenv("MCP_WRITE_TOOLS", "").split(",") if t.strip()
 }
@@ -422,17 +422,23 @@ for _i in range(3):
 _mcp_asgi = mcp.streamable_http_app()
 
 
-async def _auth_asgi_app(scope, receive, send):
-    """网关共享密钥鉴权：校验 X-MCP-Key 请求头，缺失/错误一律 401。
+def _bearer_matches(authorization: str, key: str) -> bool:
+    """Authorization: Bearer <密钥> 是否匹配（常量时间比较防时序攻击逐位猜测）。"""
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer":
+        return False
+    return hmac.compare_digest(token.encode("utf-8"), key.encode("utf-8"))
 
-    网关持有后端 M2M 凭证，不能裸奔；常量时间比较防时序攻击逐位猜测。
+
+async def _auth_asgi_app(scope, receive, send):
+    """网关共享密钥鉴权：校验 Authorization: Bearer，缺失/错误一律 401。
+
+    网关持有后端 M2M 凭证，不能裸奔；密钥未配置时一律拒绝（fail closed）。
     """
     if scope["type"] == "http":
         headers = dict(scope.get("headers", []))
-        provided = headers.get(b"x-mcp-key", b"").decode("latin-1")
-        if not MCP_GATEWAY_KEY or not hmac.compare_digest(
-            provided.encode("utf-8"), MCP_GATEWAY_KEY.encode("utf-8")
-        ):
+        provided = headers.get(b"authorization", b"").decode("latin-1")
+        if not MCP_GATEWAY_KEY or not _bearer_matches(provided, MCP_GATEWAY_KEY):
             resp = JSONResponse(
                 {"code": "A0231", "msg": "未授权：网关共享密钥缺失或错误", "data": None},
                 status_code=401,
