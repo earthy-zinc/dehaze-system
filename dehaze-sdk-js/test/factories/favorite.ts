@@ -4,7 +4,7 @@ import { pageQuery } from "./common";
 /** 创建添加收藏表单 */
 export function createFavoriteForm(overrides: Partial<FavoriteForm> = {}): FavoriteForm {
   return {
-    targetType: "algorithm",
+    targetType: "model",
     targetId: 1,
     ...overrides,
   };
@@ -21,7 +21,7 @@ export function createFavoriteQuery(overrides: Partial<FavoriteQuery> = {}): Fav
 
 /** 所有收藏对象类型（用于遍历测试） */
 export const ALL_TARGET_TYPES: FavoriteTargetType[] = [
-  "algorithm",
+  "model",
   "result",
   "dataset",
   "image",

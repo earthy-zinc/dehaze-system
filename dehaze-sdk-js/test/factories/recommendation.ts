@@ -31,7 +31,7 @@ export function createRule(overrides: Partial<RecommendationRule> = {}): Recomme
   return {
     ruleName: uniqueName("测试规则"),
     sceneType: "urban",
-    algorithmIds: [1, 2, 3],
+    modelIds: ["aecrnet"],
     weight: 50,
     enabled: true,
     ...overrides,

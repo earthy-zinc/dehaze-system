@@ -1,30 +1,37 @@
-import { AlgorithmAPI, DatasetAPI, FavoriteAPI } from "../../../index";
+import { AiModelAPI, AiProviderAPI, DatasetAPI, FavoriteAPI } from "../../../index";
 import { FavoriteTargetType } from "@/api/favorite/model";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
-import { createAlgorithmForm } from "#/factories/algorithm";
 import { createFavoriteForm, createFavoriteQuery } from "#/factories/favorite";
+import { uniqueName } from "#/factories/common";
 import { USERS } from "#/factories/constants";
 
 /**
  * 收藏管理接口测试
  *
  * 测试策略：
- * - 收藏目标对象使用动态创建的算法（targetType=algorithm），避免依赖预置数据
+ * - 收藏目标对象使用已启用的图像模型（targetType=model），避免依赖预置算法数据
  * - result/dataset 类型仅做接口契约验证（创建+清理），依赖后端是否支持该类型收藏
- * - 每个测试用例独立创建并清理自己的收藏记录和算法目标
+ * - 每个测试用例独立创建并清理自己的收藏记录
  */
 describe("收藏管理接口测试", () => {
-  // 收集所有需要清理的收藏记录 ID 和算法 ID
+  // 收集所有需要清理的收藏记录 ID 和临时模型 slug
   const favoriteIds: number[] = [];
-  const algorithmIds: number[] = [];
+  const createdModelSlugs: string[] = [];
 
   // 动态获取 result/dataset 类型的目标 ID（避免硬编码预置数据依赖）
   let datasetTargetId: number;
   let resultTargetId: number;
   let datasetCreated = false;
 
+  // 已启用的图像模型行 ID（sys_ai_model.id），轮转使用
+  let modelTargetIds: number[] = [];
+  let modelCursor = 0;
+  let providerId: number | undefined;
+
   beforeAll(async () => {
+    await login(USERS.ADMIN.username);
+
     // 动态获取一个已存在的数据集 ID
     const datasetPage = await DatasetAPI.getList({ pageNum: 1, pageSize: 1 });
     if (datasetPage.list.length > 0) {
@@ -40,12 +47,19 @@ describe("收藏管理接口测试", () => {
       });
       datasetCreated = true;
     }
-    // result 类型查 sys_prediction_log 表，校验较宽松，保留默认值
+    // result 类型查 sys_pred_log 表，校验较宽松，保留默认值
     resultTargetId = 1;
+
+    // 已启用图像模型作为 model 目标
+    const models = await AiModelAPI.listEnabledModels("image_edit");
+    modelTargetIds = models.map((m) => m.id);
+
+    const providers = await AiProviderAPI.listEnabledProviders();
+    providerId = providers[0]?.id;
   });
 
   afterAll(async () => {
-    // 先清理收藏记录，再清理算法，最后清理临时数据集
+    // 先清理收藏记录，再清理临时模型，最后清理临时数据集
     if (favoriteIds.length > 0) {
       try {
         await FavoriteAPI.deleteByIds(favoriteIds);
@@ -53,9 +67,9 @@ describe("收藏管理接口测试", () => {
         console.warn(`清理失败:`, e);
       }
     }
-    for (const id of algorithmIds) {
+    for (const slug of createdModelSlugs) {
       try {
-        await AlgorithmAPI.deleteByIds([id.toString()]);
+        await AiModelAPI.deleteModel(slug);
       } catch (e) {
         console.warn(`清理失败:`, e);
       }
@@ -69,20 +83,38 @@ describe("收藏管理接口测试", () => {
     }
   });
 
-  /** 创建一个算法作为收藏目标，并返回算法 ID */
-  async function createAlgorithmTarget(): Promise<number> {
-    const form = createAlgorithmForm({ parentId: 0 });
-    const id = (await AlgorithmAPI.add(form)) as number;
-    algorithmIds.push(id);
+  /** 取一个已启用的图像模型行 ID 作为收藏目标（轮转，避免同目标重复收藏） */
+  function nextModelTarget(): number {
+    if (modelTargetIds.length === 0) {
+      throw new Error("无已启用的图像模型可作为收藏目标");
+    }
+    const id = modelTargetIds[modelCursor % modelTargetIds.length]!;
+    modelCursor++;
     return id;
+  }
+
+  /** 创建临时图像模型作为收藏目标（用于失效联动测试），返回行 ID */
+  async function createModelTarget(): Promise<{ id: number; slug: string }> {
+    if (providerId === undefined) {
+      throw new Error("无已启用供应商，无法创建图像模型");
+    }
+    const slug = uniqueName("favmodel").slice(0, 64);
+    const created = await AiModelAPI.createModel({
+      providerId,
+      modelId: slug,
+      modelType: "image_edit",
+      displayName: uniqueName("收藏失效模型"),
+    });
+    createdModelSlugs.push(created.modelId);
+    return { id: created.id, slug: created.modelId };
   }
 
   /** 创建收藏并记录 ID 以便统一清理 */
   async function createFavorite(
-    targetType: "algorithm" | "result" | "dataset" = "algorithm",
+    targetType: FavoriteTargetType = "model",
     targetId?: number
   ): Promise<{ favoriteId: number; targetId: number }> {
-    const actualTargetId = targetId ?? (await createAlgorithmTarget());
+    const actualTargetId = targetId ?? nextModelTarget();
     const form = createFavoriteForm({ targetType, targetId: actualTargetId });
     const favoriteId = (await FavoriteAPI.add(form)) as number;
     favoriteIds.push(favoriteId);
@@ -111,9 +143,9 @@ describe("收藏管理接口测试", () => {
   }
 
   describe("POST /api/v1/favorites - 添加收藏", () => {
-    test("正向测试：收藏算法（targetType=algorithm）", async () => {
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+    test("正向测试：收藏模型（targetType=model）", async () => {
+      const targetId = nextModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
 
       const favoriteId = await FavoriteAPI.add(form);
 
@@ -148,8 +180,8 @@ describe("收藏管理接口测试", () => {
     });
 
     test("边界测试：重复收藏同一对象幂等，返回原行 id", async () => {
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      const targetId = nextModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
 
       const firstId = await FavoriteAPI.add(form);
       favoriteIds.push(firstId as number);
@@ -160,8 +192,8 @@ describe("收藏管理接口测试", () => {
     });
 
     test("边界测试：取消后重新收藏生成新行", async () => {
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      const targetId = nextModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
 
       const firstId = await FavoriteAPI.add(form);
       await FavoriteAPI.deleteByIds([firstId as number]);
@@ -170,21 +202,21 @@ describe("收藏管理接口测试", () => {
       const secondId = await FavoriteAPI.add(form);
       expect(secondId).toBeGreaterThan(firstId as number);
 
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
       expect(status.favorited).toBe(true);
       favoriteIds.push(secondId as number);
     });
 
     test("边界测试：收藏不存在的对象应返回业务错误 A0401", async () => {
-      const form = createFavoriteForm({ targetType: "algorithm", targetId: 99999999 });
+      const form = createFavoriteForm({ targetType: "model", targetId: 99999999 });
 
       await expectBizError(FavoriteAPI.add(form), ["A0401", "A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
 
     test("边界测试：收藏容量已满应返回业务错误 A0500", async () => {
       // 此场景难以在集成测试中真实触发（需先填满容量），真实容量上限由后端单测覆盖
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      const targetId = nextModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
 
       const favoriteId = await FavoriteAPI.add(form);
       expect(favoriteId).toBeGreaterThan(0);
@@ -197,14 +229,14 @@ describe("收藏管理接口测试", () => {
     });
 
     test("参数校验：缺少必需字段 targetId 应抛出业务错误", async () => {
-      const form = { targetType: "algorithm" } as any;
+      const form = { targetType: "model" } as any;
       await expectBizError(FavoriteAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
   });
 
   describe("DELETE /api/v1/favorites/{ids} - 批量取消收藏", () => {
     test("正向测试：取消单个收藏", async () => {
-      const { favoriteId } = await createFavorite("algorithm");
+      const { favoriteId } = await createFavorite("model");
 
       await FavoriteAPI.deleteByIds([favoriteId]);
       removeFavoriteIds([favoriteId]);
@@ -215,9 +247,9 @@ describe("收藏管理接口测试", () => {
     });
 
     test("正向测试：批量取消多个收藏", async () => {
-      const fav1 = await createFavorite("algorithm");
-      const fav2 = await createFavorite("algorithm");
-      const fav3 = await createFavorite("algorithm");
+      const fav1 = await createFavorite("model");
+      const fav2 = await createFavorite("model");
+      const fav3 = await createFavorite("model");
       const idsToDelete = [fav1.favoriteId, fav2.favoriteId, fav3.favoriteId];
 
       await FavoriteAPI.deleteByIds(idsToDelete);
@@ -254,16 +286,16 @@ describe("收藏管理接口测试", () => {
       }
     });
 
-    test("正向测试：按类型筛选 algorithm", async () => {
-      await createFavorite("algorithm");
+    test("正向测试：按类型筛选 model", async () => {
+      await createFavorite("model");
 
-      const query = createFavoriteQuery({ targetType: "algorithm" });
+      const query = createFavoriteQuery({ targetType: "model" });
       const result = await FavoriteAPI.getPage(query);
 
       expect(Array.isArray(result.list)).toBe(true);
-      // 验证所有返回项都是 algorithm 类型
+      // 验证所有返回项都是 model 类型
       result.list.forEach((item) => {
-        expect(item.targetType).toBe("algorithm");
+        expect(item.targetType).toBe("model");
       });
     });
 
@@ -288,12 +320,23 @@ describe("收藏管理接口测试", () => {
     });
 
     test("正向测试：按关键词搜索收藏对象名称", async () => {
-      const targetId = await createAlgorithmTarget();
-      const algoInfo = await AlgorithmAPI.getAlgorithmInfoById(targetId);
-      await createFavorite("algorithm", targetId);
+      // 创建带唯一 displayName 的临时模型，用其名称子串搜索
+      if (providerId === undefined) {
+        throw new Error("无已启用供应商，无法创建图像模型");
+      }
+      const slug = uniqueName("favmodel").slice(0, 64);
+      const displayName = uniqueName("收藏关键词模型");
+      const created = await AiModelAPI.createModel({
+        providerId,
+        modelId: slug,
+        modelType: "image_edit",
+        displayName,
+      });
+      createdModelSlugs.push(created.modelId);
+      await createFavorite("model", created.id);
 
-      // 用算法名称的子串作为关键词搜索
-      const keyword = algoInfo.name.substring(0, Math.min(3, algoInfo.name.length));
+      // 用模型名称的子串作为关键词搜索
+      const keyword = displayName.substring(0, Math.min(3, displayName.length));
       const query = createFavoriteQuery({ keywords: keyword });
       const result = await FavoriteAPI.getPage(query);
 
@@ -354,7 +397,7 @@ describe("收藏管理接口测试", () => {
     });
 
     test("边界测试：分页参数 pageNum=1, pageSize=1", async () => {
-      await createFavorite("algorithm");
+      await createFavorite("model");
 
       const query = createFavoriteQuery({ pageNum: 1, pageSize: 1 });
       const result = await FavoriteAPI.getPage(query);
@@ -375,19 +418,19 @@ describe("收藏管理接口测试", () => {
 
   describe("GET /api/v1/favorites/{id}/status - 检查是否已收藏", () => {
     test("正向测试：已收藏的对象返回 favorited=true", async () => {
-      const { targetId } = await createFavorite("algorithm");
+      const { targetId } = await createFavorite("model");
 
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
 
-      expect(status.targetType).toBe("algorithm");
+      expect(status.targetType).toBe("model");
       expect(status.targetId).toBe(targetId);
       expect(status.favorited).toBe(true);
     });
 
     test("正向测试：未收藏的对象返回 favorited=false", async () => {
-      const targetId = await createAlgorithmTarget(); // 创建但未收藏
+      const targetId = nextModelTarget(); // 取一个目标但未收藏
 
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
 
       expect(status.targetId).toBe(targetId);
       expect(status.favorited).toBe(false);
@@ -397,7 +440,7 @@ describe("收藏管理接口测试", () => {
   describe("数据隔离 - 越权校验", () => {
     test("边界：越权取消他人收藏应更新0行无报错", async () => {
       // admin 创建收藏
-      const { favoriteId } = await createFavorite("algorithm");
+      const { favoriteId } = await createFavorite("model");
 
       // 切换到 user 尝试取消 admin 的收藏
       await login(USERS.USER.username);
@@ -417,7 +460,7 @@ describe("收藏管理接口测试", () => {
 
     test("验证：用户仅能查询到自己的收藏（数据隔离）", async () => {
       // admin 创建收藏并捕获其 id
-      const { favoriteId } = await createFavorite("algorithm");
+      const { favoriteId } = await createFavorite("model");
 
       // 切换到 user 查询收藏列表
       await login(USERS.USER.username);
@@ -431,7 +474,7 @@ describe("收藏管理接口测试", () => {
 
   describe("GET /api/v1/favorites/count - 收藏数量统计", () => {
     test("正向测试：获取所有类型收藏数量", async () => {
-      await createFavorite("algorithm");
+      await createFavorite("model");
 
       const result = await FavoriteAPI.getCount();
 
@@ -444,16 +487,16 @@ describe("收藏管理接口测试", () => {
     });
 
     test("正向测试：按类型获取收藏数量", async () => {
-      await createFavorite("algorithm");
+      await createFavorite("model");
 
-      const result = await FavoriteAPI.getCount("algorithm");
+      const result = await FavoriteAPI.getCount("model");
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
 
-      const algorithmCount = result.find((item) => item.targetType === "algorithm");
-      expect(algorithmCount).toBeDefined();
-      expect(algorithmCount!.count).toBeGreaterThan(0);
+      const modelCount = result.find((item) => item.targetType === "model");
+      expect(modelCount).toBeDefined();
+      expect(modelCount!.count).toBeGreaterThan(0);
     });
   });
 
@@ -468,16 +511,16 @@ describe("收藏管理接口测试", () => {
   });
 
   describe("失效联动（对象删除 → is_invalid）", () => {
-    test("完整联动：算法删除后收藏标记 isInvalid=true，且该对象不可再次收藏", async () => {
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+    test("完整联动：模型删除后收藏标记 isInvalid=true，且该对象不可再次收藏", async () => {
+      const { id: targetId, slug } = await createModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
       const favoriteId = (await FavoriteAPI.add(form)) as number;
       favoriteIds.push(favoriteId);
 
-      await AlgorithmAPI.deleteByIds([targetId.toString()]);
+      await AiModelAPI.deleteModel(slug);
 
       const page = await FavoriteAPI.getPage(
-        createFavoriteQuery({ targetType: "algorithm", pageSize: 100 })
+        createFavoriteQuery({ targetType: "model", pageSize: 100 })
       );
       const found = page.list.find((item) => item.id === favoriteId);
       expect(found).toBeDefined();
@@ -489,7 +532,7 @@ describe("收藏管理接口测试", () => {
       // 失效收藏仍可正常取消
       await FavoriteAPI.deleteByIds([favoriteId]);
       removeFavoriteIds([favoriteId]);
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
       expect(status.favorited).toBe(false);
     });
 
@@ -556,26 +599,26 @@ describe("收藏管理接口测试", () => {
 
   describe("集成场景：完整业务流程", () => {
     test("完整流程：添加收藏 → 查询列表验证 → 取消收藏 → 验证已取消", async () => {
-      const targetId = await createAlgorithmTarget();
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      const targetId = nextModelTarget();
+      const form = createFavoriteForm({ targetType: "model", targetId });
       const favoriteId = (await FavoriteAPI.add(form)) as number;
       expect(favoriteId).toBeGreaterThan(0);
 
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
       expect(status.favorited).toBe(true);
 
-      const page = await FavoriteAPI.getPage(createFavoriteQuery({ targetType: "algorithm" }));
+      const page = await FavoriteAPI.getPage(createFavoriteQuery({ targetType: "model" }));
       const found = page.list.find((item) => item.id === favoriteId);
       expect(found).toBeDefined();
       expect(found!.targetId).toBe(targetId);
-      expect(found!.targetType).toBe("algorithm");
+      expect(found!.targetType).toBe("model");
 
       await FavoriteAPI.deleteByIds([favoriteId]);
 
-      const statusAfter = await FavoriteAPI.getStatus("algorithm", targetId);
+      const statusAfter = await FavoriteAPI.getStatus("model", targetId);
       expect(statusAfter.favorited).toBe(false);
 
-      const pageAfter = await FavoriteAPI.getPage(createFavoriteQuery({ targetType: "algorithm" }));
+      const pageAfter = await FavoriteAPI.getPage(createFavoriteQuery({ targetType: "model" }));
       const stillExists = pageAfter.list.some((item) => item.id === favoriteId);
       expect(stillExists).toBe(false);
 
@@ -584,14 +627,14 @@ describe("收藏管理接口测试", () => {
     });
 
     test("完整流程：添加多个类型收藏 → 按类型筛选验证", async () => {
-      const fav1 = await createFavorite("algorithm");
-      const fav2 = await createFavorite("algorithm");
+      const fav1 = await createFavorite("model");
+      const fav2 = await createFavorite("model");
 
-      const algoPage = await FavoriteAPI.getPage(
-        createFavoriteQuery({ targetType: "algorithm", pageSize: 100 })
+      const modelPage = await FavoriteAPI.getPage(
+        createFavoriteQuery({ targetType: "model", pageSize: 100 })
       );
-      const hasFav1 = algoPage.list.some((item) => item.id === fav1.favoriteId);
-      const hasFav2 = algoPage.list.some((item) => item.id === fav2.favoriteId);
+      const hasFav1 = modelPage.list.some((item) => item.id === fav1.favoriteId);
+      const hasFav2 = modelPage.list.some((item) => item.id === fav2.favoriteId);
       expect(hasFav1).toBe(true);
       expect(hasFav2).toBe(true);
 
@@ -603,10 +646,10 @@ describe("收藏管理接口测试", () => {
       expect(datasetHasFav1).toBe(false);
       expect(datasetHasFav2).toBe(false);
 
-      const counts = await FavoriteAPI.getCount("algorithm");
-      const algoCount = counts.find((c) => c.targetType === "algorithm");
-      expect(algoCount).toBeDefined();
-      expect(algoCount!.count).toBeGreaterThanOrEqual(2);
+      const counts = await FavoriteAPI.getCount("model");
+      const modelCount = counts.find((c) => c.targetType === "model");
+      expect(modelCount).toBeDefined();
+      expect(modelCount!.count).toBeGreaterThanOrEqual(2);
     });
   });
 });

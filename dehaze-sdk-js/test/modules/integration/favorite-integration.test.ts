@@ -1,10 +1,9 @@
-import { AlgorithmAPI, ModelAPI, FileAPI, DatasetAPI } from "../../../index";
+import { AiImageAPI, AiModelAPI, FileAPI, DatasetAPI } from "../../../index";
 import FavoriteAPI from "@/api/favorite";
 import type { FavoriteTargetType } from "@/api/favorite/model";
 import { createFavoriteForm } from "#/factories/favorite";
-import { createPredictionForm } from "#/factories/model";
+import { createImageEditForm } from "#/factories/model";
 import { login, logout } from "#/utils/auth";
-import { ensureDehazeQuota } from "#/utils/quota";
 import { USERS } from "#/factories/constants";
 import * as fs from "fs";
 import * as path from "path";
@@ -12,15 +11,15 @@ import * as path from "path";
 /**
  * 收藏跨模块集成测试
  *
- * 验证收藏管理模块与算法管理、去雾处理、数据集模块之间的协作，
- * 覆盖 algorithm/result/dataset 三种 targetType 的完整收藏生命周期。
- * 收藏目标使用已存在的预置算法/数据集，避免需要管理员权限创建目标。
+ * 验证收藏管理模块与模型管理、去雾处理、数据集模块之间的协作，
+ * 覆盖 model/result/dataset 三种 targetType 的完整收藏生命周期。
+ * 收藏目标使用已启用的图像模型/数据集，避免需要管理员权限创建目标。
  */
 
 describe("收藏跨模块集成测试", () => {
   const favoriteIds: number[] = [];
   let uploadedFileId: number;
-  let algorithmTargetId: number;
+  let modelTargetId: number;
   let datasetTargetId: number;
   /** dataset 由本套件创建才在 afterAll 清理，避免误删并行套件的数据 */
   let datasetCreated = false;
@@ -64,7 +63,6 @@ describe("收藏跨模块集成测试", () => {
   }
 
   beforeAll(async () => {
-    await ensureDehazeQuota();
     await login(USERS.USER.username);
 
     const uploadFile = async (relativePath: string): Promise<{ id: number; url: string }> => {
@@ -106,11 +104,11 @@ describe("收藏跨模块集成测试", () => {
     const hazyInfo = await uploadFile("../../resources/test/model/hazy.jpg");
     uploadedFileId = hazyInfo.id;
 
-    // 预取算法目标并清理其残留收藏
-    const algorithms = await AlgorithmAPI.listAll();
-    if (algorithms.length > 0) {
-      algorithmTargetId = algorithms[0]!.id;
-      await cleanupResidualFavorites("algorithm", algorithmTargetId);
+    // 预取已启用图像模型作为目标并清理其残留收藏
+    const models = await AiModelAPI.listEnabledModels("image_edit");
+    if (models.length > 0) {
+      modelTargetId = models[0]!.id;
+      await cleanupResidualFavorites("model", modelTargetId);
     }
 
     // 始终创建专用数据集（复用列表中的可能被并行套件误删）；创建需 admin 权限
@@ -150,38 +148,38 @@ describe("收藏跨模块集成测试", () => {
   });
 
   // ============================================================
-  // 场景1：算法收藏完整流程
+  // 场景1：模型收藏完整流程
   // ============================================================
-  describe("场景1：算法收藏完整流程", () => {
-    test("正向流程：收藏算法→验证状态→验证列表→取消收藏", async () => {
-      const targetId = requireTargetId(algorithmTargetId, "算法");
+  describe("场景1：模型收藏完整流程", () => {
+    test("正向流程：收藏模型→验证状态→验证列表→取消收藏", async () => {
+      const targetId = requireTargetId(modelTargetId, "模型");
 
-      await cleanupResidualFavorites("algorithm", targetId);
-      const form = createFavoriteForm({ targetType: "algorithm", targetId });
+      await cleanupResidualFavorites("model", targetId);
+      const form = createFavoriteForm({ targetType: "model", targetId });
       const favoriteId = (await FavoriteAPI.add(form)) as number;
       expect(favoriteId).toBeGreaterThan(0);
       trackFavorite(favoriteId);
 
-      const status = await FavoriteAPI.getStatus("algorithm", targetId);
+      const status = await FavoriteAPI.getStatus("model", targetId);
       expect(status.favorited).toBe(true);
-      expect(status.targetType).toBe("algorithm");
+      expect(status.targetType).toBe("model");
       expect(status.targetId).toBe(targetId);
 
-      const found = await findFavoriteInPage("algorithm", favoriteId);
+      const found = await findFavoriteInPage("model", favoriteId);
       expect(found).toBeDefined();
       expect(found!.targetId).toBe(targetId);
-      expect(found!.targetType).toBe("algorithm");
+      expect(found!.targetType).toBe("model");
 
       await FavoriteAPI.deleteByIds([favoriteId]);
       untrackFavorite(favoriteId);
 
-      const statusAfter = await FavoriteAPI.getStatus("algorithm", targetId);
+      const statusAfter = await FavoriteAPI.getStatus("model", targetId);
       expect(statusAfter.favorited).toBe(false);
 
       const pageAfter = await FavoriteAPI.getPage({
         pageNum: 1,
         pageSize: 100,
-        targetType: "algorithm",
+        targetType: "model",
       });
       const stillExists = pageAfter.list.some((item) => item.id === favoriteId);
       expect(stillExists).toBe(false);
@@ -193,20 +191,19 @@ describe("收藏跨模块集成测试", () => {
   // ============================================================
   describe("场景2：处理结果收藏完整流程", () => {
     test("正向流程：去雾处理→收藏结果→验证列表→取消收藏", async () => {
-      const predForm = createPredictionForm({
-        algorithmId: 13,
-        fileId: uploadedFileId,
-      });
-      const predResult = await ModelAPI.predictAndWait(predForm, {
-        intervalMs: 2000,
-        timeoutMs: 120000,
-      });
+      const predResult = await AiImageAPI.submitAndWait(
+        createImageEditForm({ fileId: uploadedFileId }),
+        {
+          intervalMs: 2000,
+          timeoutMs: 120000,
+        }
+      );
       expect(predResult.status).toBe(2);
-      expect(predResult.logId).toBeDefined();
+      expect(predResult.taskId).toBeDefined();
 
       const form = createFavoriteForm({
         targetType: "result",
-        targetId: predResult.logId!,
+        targetId: predResult.taskId!,
       });
       const favoriteId = (await FavoriteAPI.add(form)) as number;
       expect(favoriteId).toBeGreaterThan(0);
@@ -216,13 +213,13 @@ describe("收藏跨模块集成测试", () => {
       expect(found).toBeDefined();
       expect(found!.targetType).toBe("result");
 
-      const status = await FavoriteAPI.getStatus("result", predResult.logId!);
+      const status = await FavoriteAPI.getStatus("result", predResult.taskId!);
       expect(status.favorited).toBe(true);
 
       await FavoriteAPI.deleteByIds([favoriteId]);
       untrackFavorite(favoriteId);
 
-      const statusAfter = await FavoriteAPI.getStatus("result", predResult.logId!);
+      const statusAfter = await FavoriteAPI.getStatus("result", predResult.taskId!);
       expect(statusAfter.favorited).toBe(false);
     });
   });

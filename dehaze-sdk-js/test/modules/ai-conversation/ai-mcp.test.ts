@@ -1,4 +1,4 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, afterAll } from "vitest";
 import { AiAgentAPI, AiMCPAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
@@ -13,14 +13,33 @@ import {
 /**
  * MCP Server 管理（F-M08-006 §2.6.13，管理端需 ai:mcp:manage）。
  *
- * 断言依据 dehaze-doc API接口.md §2.11；数据前缀 test_mcp_，普通用户 403（A0301）。
+ * 断言依据 dehaze-doc API接口.md §2.11；数据前缀 test_mcp_，普通用户 403（A0301），afterAll 清理。
+ *
+ * 注册的 Server 必须随用例清理：后端 10 分钟周期巡检会把所有启用中 Server 探一遍，
+ * 残留的启用 Server 会持续拖慢后端（每轮巡检耗时随残留条数线性增长）。
  */
 describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
+  const cleanupServers: number[] = [];
+
+  /** 注册 Server 并登记清理（afterAll 统一删除） */
+  const registerServer = async (form = createMcpServerForm()) => {
+    const server = await AiMCPAPI.createServer(form);
+    cleanupServers.push(server.id);
+    return server;
+  };
+
+  afterAll(async () => {
+    await login(USERS.ADMIN.username).catch(() => {});
+    for (const id of [...cleanupServers].reverse()) {
+      await AiMCPAPI.deleteServer(id).catch(() => {});
+    }
+  });
+
   describe("Server 注册表", () => {
     test("T-MF-180 正向：注册外部 MCP Server 返回完整结构", async () => {
       await login(USERS.ADMIN.username);
       const form = createMcpServerForm();
-      const result = await AiMCPAPI.createServer(form);
+      const result = await registerServer(form);
       expect(result.id).toBeGreaterThan(0);
       expect(result.name).toBe(form.name);
       expect(result.protocolType).toBe(form.protocolType);
@@ -42,7 +61,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-004 正向：更新 Server 配置", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       const updated = await AiMCPAPI.updateServer(created.id, {
         ...createMcpServerForm(),
         description: "updated-desc",
@@ -53,7 +72,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-005 正向：启停 Server", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       const disabled = await AiMCPAPI.switchServerStatus(created.id, 0);
       expect(disabled.status).toBe(0);
       const enabled = await AiMCPAPI.switchServerStatus(created.id, 1);
@@ -64,14 +83,14 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
   describe("工具 / 命名空间 / 凭据 / 健康", () => {
     test("T-MF-181 正向：Server 工具清单", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       const tools = await AiMCPAPI.getTools(created.id);
       expect(Array.isArray(tools)).toBe(true);
     });
 
     test("T-MF-183 正向：命名空间配置覆盖式更新", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       // 测试 Server 无真实 MCP 端点，工具清单为空——空工具名数组合法（命名空间仅作分组声明）
       const namespaces = await AiMCPAPI.updateNamespaces(created.id, [
         { name: "ns_a", toolNames: [] },
@@ -81,7 +100,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-183b 负向：清单外工具名 → A0400（防拼错静默失效）", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       // 工具名必须在已拉取清单内；测试 Server 清单为空，任何非空工具名均拒绝并提示
       await expectBizError(
         AiMCPAPI.updateNamespaces(created.id, [{ name: "ns_b", toolNames: ["tool_a"] }]),
@@ -91,7 +110,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-184 正向：凭据加密存储（仅录入不回显）", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       await AiMCPAPI.updateCredentials(created.id, createMcpCredentialForm());
       const detail = await AiMCPAPI.getServer(created.id);
       expect(detail.id).toBe(created.id);
@@ -100,7 +119,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-183a 负向：命名空间非法名 → A0400", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       // 中文+空格（工具运行时命名须为合法片段）
       await expectBizError(
         AiMCPAPI.updateNamespaces(created.id, [{ name: "ns 中文", toolNames: [] }]),
@@ -128,7 +147,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-184a 正向：凭据合并式更新（仅提交 extra 不清空 api_key）", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       await AiMCPAPI.updateCredentials(created.id, createMcpCredentialForm());
       // 仅更新 extra：后端合并语义保留原 api_key（密文不可回显，此处验证受理且标记不丢）
       await AiMCPAPI.updateCredentials(created.id, { extra: { oauth_token: "tok2" } });
@@ -138,7 +157,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
 
     test("T-MF-185 正向：Server 健康探测", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       const health = await AiMCPAPI.probeHealth(created.id);
       expect(["online", "offline"]).toContain(health.status);
     });
@@ -167,7 +186,7 @@ describe("MCP Server 管理 - AiMCPAPI (T-MF-180~189)", () => {
   describe("删除关联校验", () => {
     test("T-MF-188 负向：删除被 Agent 命名空间关联的 Server → A0504", async () => {
       await login(USERS.ADMIN.username);
-      const created = await AiMCPAPI.createServer(createMcpServerForm());
+      const created = await registerServer();
       const nsName = `ns_bind_${Date.now()}`;
       await AiMCPAPI.updateNamespaces(created.id, [{ name: nsName, toolNames: [] }]);
       const agent = await AiAgentAPI.create(createAgentForm());

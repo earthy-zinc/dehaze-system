@@ -57,7 +57,8 @@ describe("套餐管理模块接口测试", () => {
     );
     cleanup.registerIds(
       () => createdPromotionIds,
-      (id) => PromotionAPI.delete(id)
+      // registerIds 回调回传 string，PromotionAPI.delete 契约是 number；id 本就是数字字符串，转换不改变 URL
+      (id) => PromotionAPI.delete(Number(id))
     );
     await cleanup.executeAll();
     // 切回 admin，避免影响后续测试文件
@@ -1022,8 +1023,10 @@ describe("套餐管理模块接口测试", () => {
     test("正向测试：详情返回进行中促销活动", async () => {
       const detail = await PackageAPI.getDetail(vipId);
       expect(Array.isArray(detail.activePromotions)).toBe(true);
-      const matched = detail.activePromotions.find((p: any) => p.id === promotionId);
+      const promotions = detail.activePromotions ?? [];
+      const matched = promotions.find((p) => p.id === promotionId);
       expect(matched).toBeDefined();
+      if (!matched) throw new Error("套餐详情应返回进行中的促销活动");
       // 时间格式 yyyy-MM-dd HH:mm:ss
       expect(matched.startTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     });

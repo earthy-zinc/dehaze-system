@@ -297,6 +297,14 @@ export interface EvalDatasetResult {
   createTime?: string | null;
 }
 
+/** 评测样本的期望工具调用（依据 name 校验工具选择，依据 args 键值子集校验参数正确性） */
+export interface EvalToolCall {
+  /** 工具名称 */
+  name: string;
+  /** 期望参数键值子集（实际调用参数包含这些键值即通过；省略表示只校验该工具被调用） */
+  args?: Record<string, unknown> | null;
+}
+
 /** 创建评测样本表单 */
 export interface EvalSampleCreateForm {
   /** 关联评测集 ID */
@@ -305,8 +313,8 @@ export interface EvalSampleCreateForm {
   taskGoal: string;
   /** 允许输入 */
   allowedInput?: string | null;
-  /** 可用工具 */
-  tools?: string[] | null;
+  /** 期望工具调用序列（有序） */
+  tools?: EvalToolCall[] | null;
   /** 期望过程 */
   expectedProcess?: string | null;
   /** 期望结果 */
@@ -321,7 +329,7 @@ export interface EvalSampleCreateForm {
 export interface EvalSampleUpdateForm {
   taskGoal?: string;
   allowedInput?: string | null;
-  tools?: string[] | null;
+  tools?: EvalToolCall[] | null;
   expectedProcess?: string | null;
   expectedResult?: string | null;
   forbiddenBehavior?: string | null;
@@ -335,7 +343,7 @@ export interface EvalSampleResult {
   datasetId: number;
   taskGoal: string;
   allowedInput?: string | null;
-  tools?: string[] | null;
+  tools?: EvalToolCall[] | null;
   expectedProcess?: string | null;
   expectedResult?: string | null;
   forbiddenBehavior?: string | null;

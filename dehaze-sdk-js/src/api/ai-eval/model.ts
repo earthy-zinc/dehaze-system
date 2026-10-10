@@ -1,3 +1,5 @@
+import type { EvalToolCall } from "../ai-agent/model";
+
 // ==================== 枚举类型 ====================
 
 /** 评测门禁状态 */
@@ -206,7 +208,7 @@ export interface AiEvalReviewDetail {
   expectedResult?: string | null;
   expectedProcess?: string | null;
   forbiddenBehavior?: string | null;
-  tools?: string[] | null;
+  tools?: EvalToolCall[] | null;
   riskLevel: string;
   judgePassed: boolean;
   /** 本次评测的智能体实际输出 */

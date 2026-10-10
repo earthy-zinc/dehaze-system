@@ -1,6 +1,5 @@
 import request, { service } from "@/utils/request";
 import { createWebSocket, type WSClient } from "@/utils/websocket";
-import { PageResult } from "@/types";
 import {
   AsrResultVO,
   AsrStreamHandlers,
@@ -14,18 +13,6 @@ import {
   StreamAsrSessionVO,
   TtsForm,
   TtsResultVO,
-  VoiceModelCreateForm,
-  VoiceModelPageQuery,
-  VoiceModelUpdateForm,
-  VoiceModelVO,
-  VoiceProviderCreateForm,
-  VoiceProviderKeyCreateForm,
-  VoiceProviderKeyUpdateForm,
-  VoiceProviderKeyVO,
-  VoiceProviderPageQuery,
-  VoiceProviderTestResultVO,
-  VoiceProviderUpdateForm,
-  VoiceProviderVO,
   VoiceVO,
 } from "./model";
 
@@ -224,129 +211,6 @@ class VoiceAPI {
   static deleteGlobalHotword(id: number) {
     return request({
       url: `/api/v1/voice/hotwords/global/${id}`,
-      method: "delete",
-    });
-  }
-
-  // ===== 引擎注册表管理（管理端，voice:engine:manage）=====
-
-  /** 引擎分页列表 */
-  static listProviders(params: VoiceProviderPageQuery) {
-    return request<PageResult<VoiceProviderVO[]>>({
-      url: "/api/v1/voice/providers",
-      method: "get",
-      params,
-    });
-  }
-
-  /** 指定能力维度的启用引擎列表 */
-  static listEnabledProviders(engineType: string) {
-    return request<VoiceProviderVO[]>({
-      url: "/api/v1/voice/providers/enabled",
-      method: "get",
-      params: { engineType },
-    });
-  }
-
-  /** 新增引擎（provider_code 唯一，删除后不可复用） */
-  static createProvider(data: VoiceProviderCreateForm) {
-    return request<VoiceProviderVO>({
-      url: "/api/v1/voice/providers",
-      method: "post",
-      data,
-    });
-  }
-
-  /** 更新引擎（provider_code 与 engine_type 不可变更） */
-  static updateProvider(providerId: number, data: VoiceProviderUpdateForm) {
-    return request<VoiceProviderVO>({
-      url: `/api/v1/voice/providers/${providerId}`,
-      method: "put",
-      data,
-    });
-  }
-
-  /** 删除引擎（存在启用模型引用时后端拒绝） */
-  static deleteProvider(providerId: number) {
-    return request({
-      url: `/api/v1/voice/providers/${providerId}`,
-      method: "delete",
-    });
-  }
-
-  /** 引擎连通性测试（结果仅提示不阻断） */
-  static testProviderConnection(providerId: number) {
-    return request<VoiceProviderTestResultVO>({
-      url: `/api/v1/voice/providers/${providerId}/test-connection`,
-      method: "post",
-    });
-  }
-
-  /** 查询引擎 API Key 列表 */
-  static listProviderKeys(providerId: number) {
-    return request<VoiceProviderKeyVO[]>({
-      url: `/api/v1/voice/providers/${providerId}/keys`,
-      method: "get",
-    });
-  }
-
-  /** 新增引擎 API Key（key 明文，加密存储后不再返回） */
-  static createProviderKey(providerId: number, data: VoiceProviderKeyCreateForm) {
-    return request<VoiceProviderKeyVO>({
-      url: `/api/v1/voice/providers/${providerId}/keys`,
-      method: "post",
-      data,
-    });
-  }
-
-  /** 更新引擎 API Key（状态/优先级/权重/限额等） */
-  static updateProviderKey(providerId: number, keyId: number, data: VoiceProviderKeyUpdateForm) {
-    return request<VoiceProviderKeyVO>({
-      url: `/api/v1/voice/providers/${providerId}/keys/${keyId}`,
-      method: "put",
-      data,
-    });
-  }
-
-  /** 删除引擎 API Key（物理删除） */
-  static deleteProviderKey(providerId: number, keyId: number) {
-    return request({
-      url: `/api/v1/voice/providers/${providerId}/keys/${keyId}`,
-      method: "delete",
-    });
-  }
-
-  /** 模型/音色列表（按 engine_type 筛选） */
-  static listVoiceModels(params?: VoiceModelPageQuery) {
-    return request<VoiceModelVO[]>({
-      url: "/api/v1/voice/models",
-      method: "get",
-      params,
-    });
-  }
-
-  /** 新增模型/音色（同一引擎下 model_id 唯一，删除后不可复用） */
-  static createVoiceModel(data: VoiceModelCreateForm) {
-    return request<VoiceModelVO>({
-      url: "/api/v1/voice/models",
-      method: "post",
-      data,
-    });
-  }
-
-  /** 更新模型/音色（model_id 不可变更） */
-  static updateVoiceModel(modelId: number, data: VoiceModelUpdateForm) {
-    return request<VoiceModelVO>({
-      url: `/api/v1/voice/models/${modelId}`,
-      method: "put",
-      data,
-    });
-  }
-
-  /** 删除模型/音色（model_id 保留） */
-  static deleteVoiceModel(modelId: number) {
-    return request({
-      url: `/api/v1/voice/models/${modelId}`,
       method: "delete",
     });
   }

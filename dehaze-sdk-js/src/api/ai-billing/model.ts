@@ -3,7 +3,7 @@ import { PageQuery } from "@/types";
 // ==================== 枚举类型 ====================
 
 /** 计费记录类型 */
-export type BillingType = "chat" | "tool_llm" | "kb_inject" | "asr" | "tts";
+export type BillingType = "chat" | "tool_llm" | "kb_inject" | "asr" | "tts" | "image";
 
 /** 流水来源 */
 export type CreditLogSource =
@@ -21,8 +21,8 @@ export type BillingStatGroupBy = "user" | "model" | "billType" | "day";
 export interface BalanceVO {
   /** 用户 ID */
   userId: number;
-  /** 积分余额 */
-  creditsBalance: number;
+  /** 积分余额（后端 Decimal 防精度丢失按字符串下发，如 "100"，计算前需 Number()） */
+  creditsBalance: string;
   /** 是否欠费 */
   arrearsStatus: boolean;
   /** 今日已用积分 */
@@ -64,6 +64,10 @@ export interface BillingRecordVO {
   /** 缓存命中的输入 Token */
   cachedInputTokens: number;
   outputTokens: number;
+  /** 非 token 计量数量（张/秒/万字符；token 类模型为 null）；python Decimal 序列化为字符串 */
+  quantity?: string | null;
+  /** 非 token 计量单位（image:张;second:秒;ten_thousand_chars:万字符;frame:帧） */
+  quantityUnit?: string | null;
   /** 本次计费积分消耗 */
   credits: number;
   /** 缓存节省的积分 */
@@ -95,10 +99,10 @@ export interface CreditLogVO {
   id: number;
   userId: number;
   source: CreditLogSource;
-  /** 变动金额（正为增加，负为扣减） */
-  amount: number;
-  /** 变动后余额 */
-  balanceAfter: number;
+  /** 变动金额（正为增加，负为扣减）。后端 Decimal 按字符串下发，如 "100000.00"，计算前需 Number() */
+  amount: string;
+  /** 变动后余额（同上，字符串） */
+  balanceAfter: string;
   /** 关联业务 ID（如计费记录 ID、退款 ID） */
   relatedId?: number;
   reason: string;
@@ -119,10 +123,10 @@ export interface BillVO {
   totalRecharge: number;
   /** 总退款积分 */
   totalRefund: number;
-  /** 月初余额 */
-  balanceStart: number;
-  /** 月末余额 */
-  balanceEnd: number;
+  /** 月初余额（后端 Decimal 防精度丢失按字符串下发，如 "3000.00"，计算前需 Number()） */
+  balanceStart: string;
+  /** 月末余额（同上，字符串） */
+  balanceEnd: string;
   /** 按 bill_type 维度细分的消耗汇总 */
   itemSummary: Record<BillingType, number>;
 }
@@ -329,11 +333,28 @@ export interface ModelCostUpdateForm {
   status?: 0 | 1;
 }
 
-/** 模型成本配置（价格版本） */
-export interface ModelCostVO extends ModelCostForm {
+/** 成本单价档位明细视图对象（出参：后端 Decimal 序列化为字符串，如 "1.0000"，计算前需自行转 Number） */
+export interface ModelCostDetailVO {
+  id: number;
+  /** 关联价格版本 ID */
+  priceId: number;
+  /** token 类型：input/cached/output */
+  tokenType: "input" | "cached" | "output";
+  /** 时段：peak-高峰 / idle-空闲 */
+  timeSlot: "peak" | "idle";
+  minTokens: number;
+  maxTokens?: number | null;
+  /** 单位价格（元/百万 token），字符串，计算前需 Number() */
+  unitPrice: string;
+}
+
+/** 模型成本配置（价格版本）。details 出参为视图对象（unitPrice 字符串），入参表单用 ModelCostForm */
+export interface ModelCostVO extends Omit<ModelCostForm, "details"> {
   id: number;
   /** 价格版本号（同模型同供应商内递增） */
   priceVersion: number;
+  /** 档位明细（出参，unitPrice 为字符串） */
+  details?: ModelCostDetailVO[];
   createTime?: string;
   updateTime?: string;
 }

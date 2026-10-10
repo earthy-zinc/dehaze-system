@@ -97,7 +97,7 @@ export const createEvalSampleForm = (
   datasetId: 0, // 由调用方回填
   taskGoal: "对测试输入给出合理的去雾处理方案",
   allowedInput: "text",
-  tools: ["file_read"],
+  tools: [{ name: "file_read" }],
   expectedResult: "返回处理方案",
   riskLevel: "low",
   ...overrides,

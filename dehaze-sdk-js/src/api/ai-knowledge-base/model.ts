@@ -254,8 +254,8 @@ export interface SearchFilters {
   /** 按时间范围过滤 */
   dateStart?: string;
   dateEnd?: string;
-  /** 关联算法 ID */
-  algorithmId?: number;
+  /** 关联图像模型标识（统一模型规范 slug） */
+  modelId?: string;
 }
 
 /** 知识库检索请求 */

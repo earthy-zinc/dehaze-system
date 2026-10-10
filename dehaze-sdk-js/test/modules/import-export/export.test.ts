@@ -68,14 +68,6 @@ describe("通用导出接口测试 - ImportExportAPI.export", () => {
     });
   });
 
-  describe("GET /api/v1/algorithm/_export - 算法模块导出", () => {
-    test("导出算法列表 Excel 返回 Blob 或 taskId", async () => {
-      const result = await ImportExportAPI.export("algorithm", createExportRequest());
-
-      expect(isBlobLike(result) || isTaskResultLike(result)).toBe(true);
-    });
-  });
-
   describe("格式切换 - format 参数", () => {
     test("导出用户 Excel 格式", async () => {
       const result = await ImportExportAPI.export("user", createExportRequest({ format: "excel" }));

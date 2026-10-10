@@ -90,7 +90,7 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
     });
   });
 
-  describe("PUT /api/v1/ai/models/{modelId} - 更新模型（管理员）", () => {
+  describe("PUT /api/v1/ai/models?modelId= - 更新模型（管理员）", () => {
     let modelId: string;
 
     beforeAll(async () => {
@@ -154,7 +154,7 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
     });
   });
 
-  describe("DELETE /api/v1/ai/models/{modelId} - 删除模型（管理员）", () => {
+  describe("DELETE /api/v1/ai/models?modelId= - 删除模型（管理员）", () => {
     test("T-MF-008 负向：存在活跃会话使用该模型 → A0504", async () => {
       await login(USERS.ADMIN.username);
       const form = createAiModelForm({ providerId });
@@ -205,6 +205,83 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
     });
   });
 
+  describe("全模态扩展（model_type 新值 / taskTags / billing_unit，T-MF-210~214）", () => {
+    // 唯一标签，避免与库内既有模型的 task_tags 撞车导致断言失真
+    const tag = `test_tag_${Date.now()}`;
+
+    test("T-MF-210 正向：创建 image_edit 模型（taskTags 往返）", async () => {
+      await login(USERS.ADMIN.username);
+      const form = createAiModelForm({
+        providerId,
+        modelType: "image_edit",
+        taskTags: [tag],
+      });
+      const result = await AiModelAPI.createModel(form);
+      expect(result.modelType).toBe("image_edit");
+      expect(result.taskTags).toEqual([tag]);
+      await cleanupModel(result.modelId);
+    });
+
+    test("T-MF-211 正向：listModels 按 taskTags 过滤（含任一即命中）", async () => {
+      await login(USERS.ADMIN.username);
+      const tagged = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelType: "image_edit", taskTags: [tag] })
+      );
+      const other = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelType: "image_edit", taskTags: ["unrelated_tag_xyz"] })
+      );
+      const result = await AiModelAPI.listModels(createAiModelQuery({ taskTags: tag }));
+      const ids = result.list.map((m) => m.modelId);
+      expect(ids).toContain(tagged.modelId);
+      expect(ids).not.toContain(other.modelId);
+      await cleanupModel(tagged.modelId);
+      await cleanupModel(other.modelId);
+    });
+
+    test("T-MF-212 正向：listEnabledModels 按 taskTags 过滤", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelType: "image_edit", taskTags: [tag] })
+      );
+      const enabled = await AiModelAPI.listEnabledModels("image_edit", tag);
+      const ids = enabled.map((m) => m.modelId);
+      expect(ids).toContain(created.modelId);
+      await cleanupModel(created.modelId);
+    });
+
+    test("T-MF-213 正向：非 token 价格版本（billingUnit/usageKind 单档）", async () => {
+      await login(USERS.ADMIN.username);
+      const form = createAiModelForm({ providerId, modelType: "image_edit", taskTags: [tag] });
+      const created = await AiModelAPI.createModel(form);
+      const price = await AiModelAPI.createPrice(
+        createModelPriceForm(created.modelId, providerId, {
+          billingUnit: "image",
+          unit: "credits_per_image",
+          details: [
+            { usageKind: "unit", tokenType: "unit", timeSlot: "idle", minTokens: 0, unitPrice: 1 },
+          ],
+        })
+      );
+      expect(price.billingUnit).toBe("image");
+      expect(price.details).toHaveLength(1);
+      expect(price.details[0]!.usageKind).toBe("unit");
+      expect(price.details[0]!.tokenType).toBe("unit");
+      expect(Number(price.details[0]!.unitPrice)).toBe(1);
+      await cleanupPrices(created.modelId);
+      await cleanupModel(created.modelId);
+    });
+
+    test("T-MF-214 边界：无 Key 供应商按类型连通性测试 → A0503", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelType: "image_edit", taskTags: [tag] })
+      );
+      // 测试供应商未登记 API Key：按类型探测在选 Key 阶段即被拒（image_edit 走 /models 探测的前提是有 Key）
+      await expectBizError(AiModelAPI.testModel(created.modelId), ["A0503"]);
+      await cleanupModel(created.modelId);
+    });
+  });
+
   describe("模型用户售价版本（/prices）", () => {
     let modelId: string;
 
@@ -224,7 +301,7 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
     test("T-MF-197/203 正向：新增价格版本返回版本号与档位明细", async () => {
       await login(USERS.ADMIN.username);
       const form = createModelPriceForm(modelId, providerId);
-      const result = await AiModelAPI.createPrice(modelId, form);
+      const result = await AiModelAPI.createPrice(form);
       expect(result.id).toBeGreaterThan(0);
       expect(result.modelId).toBe(modelId);
       expect(result.providerId).toBe(providerId);
@@ -240,7 +317,6 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
     test("T-MF-198 正向：同模型再新增生成新版本（版本号递增）", async () => {
       await login(USERS.ADMIN.username);
       const result = await AiModelAPI.createPrice(
-        modelId,
         createModelPriceForm(modelId, providerId, { unit: "credits_per_million" })
       );
       expect(result.priceVersion).toBe(2);
@@ -258,29 +334,23 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
       await login(USERS.ADMIN.username);
       const prices = await AiModelAPI.listPrices(modelId, createModelPriceQuery());
       const target = prices.list[0]!;
-      const updated = await AiModelAPI.updatePrice(
-        modelId,
-        target.id,
-        createModelPriceUpdateForm()
-      );
+      const updated = await AiModelAPI.updatePrice(target.id, createModelPriceUpdateForm());
       expect(updated.id).toBe(target.id);
       expect(updated.status).toBe(0);
     });
 
     test("T-MF-202 负向：更新不存在的价格版本 → A0401", async () => {
       await login(USERS.ADMIN.username);
-      await expectBizError(
-        AiModelAPI.updatePrice(modelId, 99999999, createModelPriceUpdateForm()),
-        ["A0401"]
-      );
+      await expectBizError(AiModelAPI.updatePrice(99999999, createModelPriceUpdateForm()), [
+        "A0401",
+      ]);
     });
 
     test("T-MF-204 负向：普通用户新增价格版本 → A0301", async () => {
       await login(USERS.USER.username);
-      await expectBizError(
-        AiModelAPI.createPrice(modelId, createModelPriceForm(modelId, providerId)),
-        ["A0301"]
-      );
+      await expectBizError(AiModelAPI.createPrice(createModelPriceForm(modelId, providerId)), [
+        "A0301",
+      ]);
       await login(USERS.ADMIN.username);
     });
 
@@ -289,6 +359,56 @@ describe("AI 模型管理 - AiModelAPI (T-MF-001~008,197~209)", () => {
       await cleanupPrices(modelId);
       const prices = await AiModelAPI.listPrices(modelId, createModelPriceQuery());
       expect(prices.total).toBe(0);
+    });
+  });
+
+  describe("含 `/` 的 model_id 路由（回归：厂商模型名含斜杠不再 404）", () => {
+    const slashModelId = `test_org/model_${Date.now()}`;
+
+    afterAll(async () => {
+      await login(USERS.ADMIN.username).catch(() => {});
+      await cleanupModel(slashModelId);
+    });
+
+    test("创建/更新/查价/新增价/改价/删价/删除全链路可用", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelId: slashModelId })
+      );
+      expect(created.modelId).toBe(slashModelId);
+
+      const updated = await AiModelAPI.updateModel(
+        slashModelId,
+        createAiModelUpdateForm({ maxContextTokens: 4096 })
+      );
+      expect(updated.modelId).toBe(slashModelId);
+
+      const listed = await AiModelAPI.listPrices(slashModelId, createModelPriceQuery());
+      expect(Array.isArray(listed.list)).toBe(true);
+
+      const price = await AiModelAPI.createPrice(createModelPriceForm(slashModelId, providerId));
+      expect(price.modelId).toBe(slashModelId);
+
+      const updatedPrice = await AiModelAPI.updatePrice(price.id, createModelPriceUpdateForm());
+      expect(updatedPrice.id).toBe(price.id);
+
+      await AiModelAPI.deletePrice(price.id);
+      const afterDelete = await AiModelAPI.listPrices(slashModelId, createModelPriceQuery());
+      expect(afterDelete.total).toBe(0);
+
+      await AiModelAPI.deleteModel(slashModelId);
+      const models = await AiModelAPI.listModels(createAiModelQuery());
+      expect(models.list.find((m) => m.modelId === slashModelId)).toBeUndefined();
+    });
+
+    test("可用性测试抵达业务逻辑（无 Key 供应商 → A0503，而非路由 404）", async () => {
+      await login(USERS.ADMIN.username);
+      const created = await AiModelAPI.createModel(
+        createAiModelForm({ providerId, modelId: slashModelId })
+      );
+      expect(created.id).toBeGreaterThan(0);
+      await expectBizError(AiModelAPI.testModel(slashModelId), ["A0503"]);
+      await cleanupModel(slashModelId);
     });
   });
 });
@@ -312,6 +432,6 @@ async function cleanupModel(modelId: string): Promise<void> {
 async function cleanupPrices(modelId: string): Promise<void> {
   const prices = await AiModelAPI.listPrices(modelId, createModelPriceQuery()).catch(() => null);
   for (const p of prices?.list ?? []) {
-    await AiModelAPI.deletePrice(modelId, p.id).catch(() => {});
+    await AiModelAPI.deletePrice(p.id).catch(() => {});
   }
 }

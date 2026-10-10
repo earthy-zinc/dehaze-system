@@ -205,16 +205,18 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
     test("验证：会话列表按置顶+最后消息时间倒序", async () => {
       // 置顶会话 B 并验证其排在未置顶会话 A 之前；keyword 限定到本次创建的两个会话，
       // 避免历史测试数据把新会话挤出第一页（全文检索按分词匹配，marker 用空格分隔）
-      const marker = `sdksort ${Date.now()}`;
+      // 标题带可读中文前缀（集测被中断残留时在会话列表里能一眼认出是测试数据），
+      // 后缀保留 latin token 供 keyword 检索精确定位本次创建的两个会话
+      const marker = `sdksort-${Date.now()}`;
       const convA = await createTestConversation();
       const convB = await createTestConversation();
       await AiConversationAPI.updateConversation(
         convA.id,
-        createConversationUpdateForm({ title: `${marker} A` })
+        createConversationUpdateForm({ title: `会话排序测试 ${marker} A` })
       );
       await AiConversationAPI.updateConversation(
         convB.id,
-        createConversationUpdateForm({ title: `${marker} B` })
+        createConversationUpdateForm({ title: `会话排序测试 ${marker} B` })
       );
       await AiConversationAPI.pinConversation(convB.id);
 

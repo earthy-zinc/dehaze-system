@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { AuthAPI, service } from "../../index";
 import { USERS } from "#/factories/constants";
 import { SEED_PASSWORD } from "#/config/constant";
-import { clearLoginFailCounters } from "#/utils/auth";
+import { clearLoginFailCounters, getCaptchaCode } from "#/utils/auth";
 import { getRedis, disconnectRedis } from "#/utils/redis";
 
 const SWITCH_ON = process.env.SESSION_MULTI_POINT === "true";
@@ -26,9 +26,7 @@ const SWITCH_ON = process.env.SESSION_MULTI_POINT === "true";
 /** 直连登录（不走 utils/auth 的会话缓存，便于同时持有多个会话） */
 async function rawLogin(username: string): Promise<string> {
   const captcha = await AuthAPI.getCaptcha();
-  const redis = getRedis();
-  const code = await redis.get(`captcha_code:${captcha.captchaKey}`);
-  if (!code) throw new Error(`验证码已过期或不存在: ${captcha.captchaKey}`);
+  const code = await getCaptchaCode(captcha.captchaKey);
   const result = await AuthAPI.login({
     username,
     password: SEED_PASSWORD,

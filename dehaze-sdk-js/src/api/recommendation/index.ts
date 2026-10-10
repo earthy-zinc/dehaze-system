@@ -10,10 +10,10 @@ import {
 /**
  * 推荐管理 API
  *
- * 根据图像特征分析结果为用户推荐最合适的图像处理算法。
+ * 根据图像特征分析结果为用户推荐最合适的图像处理模型。
  * 接口契约参见：03-模块设计/基础模块/推荐管理/API接口.md
  *
- * - analyze / algorithms / feedback：仅需登录用户身份，无特殊权限标识
+ * - analyze / models / feedback：仅需登录用户身份，无特殊权限标识
  * - rules / report：管理员接口，需 sys:recommendation:rule:view / edit / report 权限
  */
 class RecommendationAPI {
@@ -33,14 +33,14 @@ class RecommendationAPI {
   }
 
   /**
-   * 获取算法推荐（F-REC-002）
-   * GET /api/v1/recommendations/algorithms
+   * 获取模型推荐（F-REC-002）
+   * GET /api/v1/recommendations/models
    *
-   * 基于分析结果返回 Top 3 推荐算法及匹配度和理由。
+   * 基于分析结果返回 Top 3 推荐模型及匹配度和理由。
    */
-  static getAlgorithmRecommendations(params: { analysisId?: number; imageMd5?: string }) {
+  static getModelRecommendations(params: { analysisId?: number; imageMd5?: string }) {
     return request<RecommendationResult["recommendations"]>({
-      url: "/api/v1/recommendations/algorithms",
+      url: "/api/v1/recommendations/models",
       method: "get",
       params,
     });

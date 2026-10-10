@@ -70,9 +70,9 @@ export interface ImportError {
 /**
  * 支持导出的模块
  */
-export type ExportModule = "user" | "role" | "dept" | "menu" | "dict" | "dataset" | "algorithm";
+export type ExportModule = "user" | "role" | "dept" | "menu" | "dict" | "dataset";
 
 /**
  * 支持导入的模块（数据集不支持导入）
  */
-export type ImportModule = "user" | "role" | "dept" | "menu" | "dict" | "algorithm";
+export type ImportModule = "user" | "role" | "dept" | "menu" | "dict";

@@ -3,9 +3,6 @@
  * 对应 API 接口文档：03-模块设计/基础模块/推荐管理/API接口.md
  */
 
-/** 推荐对象类型 */
-export type RecommendationTargetType = "algorithm" | "preset" | "dataset" | "enhance";
-
 /** 雾霾浓度 */
 export type HazeLevel = "light" | "moderate" | "heavy";
 
@@ -64,17 +61,18 @@ export interface AnalyzeRequest {
   imageUrl?: string;
 }
 
-/** 推荐算法项 */
-export interface RecommendedAlgorithm {
+/** 推荐图像模型项 */
+export interface RecommendedModelVO {
   /** 推荐记录ID（sys_recommendation.id），用于提交反馈 */
   recommendationId?: number;
-  algorithmId: number;
-  algorithmName: string;
+  /** 图像模型标识（统一模型规范 slug） */
+  modelId: string;
+  modelName: string;
   /** 匹配度 0-100 */
   matchScore: number;
   /** 推荐理由（一句话说明为什么推荐） */
   reason: string;
-  /** 算法评分 0-5；未采集时字段缺失（后端 NonNullJSONResponse 递归剔除 null） */
+  /** 模型评分 0-5；未采集时字段缺失（后端 NonNullJSONResponse 递归剔除 null） */
   rating?: number;
   /** 预估处理耗时(ms)；未采集时字段缺失（同上） */
   estimatedTime?: number;
@@ -82,12 +80,12 @@ export interface RecommendedAlgorithm {
   effectDescription?: string;
 }
 
-/** 推荐结果（分析结果 + Top N 推荐算法列表） */
+/** 推荐结果（分析结果 + Top N 推荐模型列表） */
 export interface RecommendationResult {
   /** 图像特征分析结果 */
   analysis: ImageFeatureAnalysis;
-  /** Top N 推荐算法列表（默认 Top 3） */
-  recommendations: RecommendedAlgorithm[];
+  /** Top N 推荐模型列表（默认 Top 3） */
+  recommendations: RecommendedModelVO[];
 }
 
 /** 推荐反馈 */
@@ -102,7 +100,8 @@ export interface RecommendationRule {
   id?: number;
   ruleName: string;
   sceneType: string;
-  algorithmIds: number[];
+  /** 候选图像模型标识列表（统一模型规范 slug） */
+  modelIds: string[];
   /** 权重 0-100 */
   weight: number;
   enabled: boolean;

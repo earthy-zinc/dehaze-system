@@ -9,9 +9,8 @@ import { createHotwordForm, createStreamAsrSessionForm, createTtsForm } from "#/
  * 语音交互模块接口测试。
  *
  * 环境依赖说明（按需求/实现文档判定，非断言缺陷）：
- * - FunASR 语音识别引擎（进程内懒加载，需 funasr 依赖 + 模型可加载）：引擎不可用属环境故障，
- *   用例直接失败暴露问题（冷加载较慢，连接用例自带等待窗口），不做条件跳过。
- * - TTS 为本地 Piper 引擎（进程内懒加载，模型自动下载），无外部依赖，实际合成用例直接执行。
+ * - ASR/TTS 由后端按当前默认语音模型（内置本地引擎或火山语音等第三方）承接：引擎或密钥不可用
+ *   属环境故障，用例直接失败暴露问题（冷加载较慢，连接用例自带等待窗口），不做条件跳过。
  * - 语音能力计费需用户有 AI 积分余额（A0682 余额不足）。测试 beforeAll 通过 ai-billing/adjust 为
  *   admin 充值积分，使 ASR 会话创建 / TTS 参数校验等可跑通。
  * - GET /api/v1/voice/service/status（服务状态监控，权限 voice:service:monitor）：后端未实现，
@@ -171,9 +170,12 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
       });
     });
 
-    test("验证：音色列表包含默认音色 huayan（本地 Piper 音色）", async () => {
+    test("验证：音色列表非空且 id 唯一（随默认 tts 模型的供应商协议族返回）", async () => {
       const voices = await VoiceAPI.getVoices();
-      expect(voices.some((v) => v.id === "huayan")).toBe(true);
+      // 音色清单由后端按当前默认 tts 模型的供应商协议族返回（内置 Piper / 火山语音各异），
+      // 具体 id 不是稳定契约，故只校验「有可用音色且无重复」这一结构性不变量
+      expect(voices.length).toBeGreaterThan(0);
+      expect(new Set(voices.map((v) => v.id)).size).toBe(voices.length);
     });
   });
 
@@ -477,7 +479,7 @@ describe("语音交互模块接口测试 - VoiceAPI", () => {
 
     test("边界：非音频文件应失败", async () => {
       const file = makeAudioFile("not audio", "test.txt", "text/plain");
-      await expectBizError(VoiceAPI.offlineAsr({ file, model: "paraformer-zh" }), [
+      await expectBizError(VoiceAPI.offlineAsr({ file }), [
         "A0400",
         "B0001",
         "A0500",

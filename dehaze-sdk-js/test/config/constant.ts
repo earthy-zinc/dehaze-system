@@ -11,19 +11,30 @@ dotenv.config({
 // 非运行时配置：改 .env 不会改变种子口令，只能改 sql 里的哈希
 export const SEED_PASSWORD = "Dehaze2026";
 
-export const MYSQL_HOST = process.env.MYSQL_HOST || "127.0.0.1";
-export const MYSQL_PORT = Number(process.env.MYSQL_PORT || "3306");
-export const MYSQL_USERNAME = process.env.MYSQL_USERNAME || "root";
-export const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || "Dehaze2026";
-export const MYSQL_DATABASE = process.env.MYSQL_DATABASE || "dehaze";
+// 连接与凭据类变量必须由根 .env 提供：缺失即报错，避免兜底值（127.0.0.1 / 生产预留库名 dehaze）静默连到错误环境
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `缺少环境变量 ${name}：请确认仓库根 .env 已按环境模板落地（.env.dev.example / .env.pre.example）`
+    );
+  }
+  return value;
+}
 
-export const REDIS_HOST = process.env.REDIS_HOST || "127.0.0.1";
-export const REDIS_PORT = Number(process.env.REDIS_PORT || "6379");
-export const REDIS_PASSWORD = process.env.REDIS_PASSWORD || "Dehaze2026";
-export const REDIS_DATABASE = Number(process.env.REDIS_DATABASE || "0");
+export const MYSQL_HOST = required("MYSQL_HOST");
+export const MYSQL_PORT = Number(required("MYSQL_PORT"));
+export const MYSQL_USERNAME = required("MYSQL_USERNAME");
+export const MYSQL_PASSWORD = required("MYSQL_PASSWORD");
+export const MYSQL_DATABASE = required("MYSQL_DATABASE");
 
-export const NGINX_STATIC_HOST = process.env.NGINX_STATIC_HOST || "127.0.0.1";
-export const NGINX_STATIC_PORT = process.env.NGINX_STATIC_PORT || "9000";
+export const REDIS_HOST = required("REDIS_HOST");
+export const REDIS_PORT = Number(required("REDIS_PORT"));
+export const REDIS_PASSWORD = required("REDIS_PASSWORD");
+export const REDIS_DATABASE = Number(required("REDIS_DATABASE"));
+
+export const NGINX_STATIC_HOST = required("NGINX_STATIC_HOST");
+export const NGINX_STATIC_PORT = Number(required("NGINX_STATIC_PORT"));
 
 export const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8989";
 

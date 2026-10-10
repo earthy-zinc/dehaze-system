@@ -11,6 +11,7 @@ import { Logger, generateTraceId, setCurrentTraceId } from "@/logger";
 import { service } from "@/utils/request";
 import type { LogEntry, LogTransport } from "@/logger";
 import type { InternalAxiosRequestConfig } from "axios";
+import { AxiosError } from "axios";
 import {
   CaptureTransport,
   MemoryStore,
@@ -144,6 +145,52 @@ describe("trace_id 请求级绑定（并发安全）", () => {
       expect(errorLog).toBeDefined();
       // API 失败日志的 trace_id 与请求头一致（从 config.metadata.traceId 读取）
       expect(errorLog!.trace_id).toBe(requestTraceId);
+    } finally {
+      service.defaults.adapter = originalAdapter as any;
+    }
+  });
+
+  test("401 按 INFO 记录，不作为 API_ERROR 上报", async () => {
+    const transport = new MockTransport();
+    Logger.install({
+      app: "vue",
+      appVersion: "1.0.0",
+      transports: [transport],
+      storage: new MemoryStore(),
+    });
+
+    const originalAdapter = service.defaults.adapter;
+    service.defaults.adapter = (async (config: InternalAxiosRequestConfig) => {
+      const response = {
+        data: { code: "A0230", msg: "未登录或会话已失效", data: null },
+        status: 401,
+        statusText: "Unauthorized",
+        headers: {},
+        config,
+      };
+      throw new AxiosError(
+        "Request failed with status code 401",
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        null,
+        response as any
+      );
+    }) as any;
+
+    try {
+      await expect(service.get("/api/v1/auth/me")).rejects.toBeDefined();
+
+      const logs = transport.sentBatches.flat();
+      // 401 是鉴权结果（未登录冷启动探测 /auth/me 属预期），计成 ERROR 会淹没真实故障
+      expect(logs.find((l) => l.level === "ERROR")).toBeUndefined();
+      const unauthorized = logs.find((l) => l.message.startsWith("API_UNAUTHORIZED"));
+      expect(unauthorized).toMatchObject({
+        level: "INFO",
+        method: "GET",
+        path: "/api/v1/auth/me",
+        status: 401,
+        code: "A0230",
+      });
     } finally {
       service.defaults.adapter = originalAdapter as any;
     }
@@ -476,7 +523,7 @@ describe("字段截断与基础字段注入", () => {
 
     logger.error("API_ERROR", {
       method: "POST",
-      path: "/api/v1/prediction",
+      path: "/api/v1/images/edits",
       status: 500,
       duration: 1203.5,
       code: "B0500",
@@ -490,7 +537,7 @@ describe("字段截断与基础字段注入", () => {
     expect(entry.level).toBe("ERROR");
     expect(entry.message).toBe("API_ERROR");
     expect(entry.method).toBe("POST");
-    expect(entry.path).toBe("/api/v1/prediction");
+    expect(entry.path).toBe("/api/v1/images/edits");
     expect(entry.status).toBe(500);
     expect(entry.duration).toBe(1203.5);
     expect(entry.code).toBe("B0500");

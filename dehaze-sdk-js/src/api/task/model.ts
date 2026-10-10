@@ -14,13 +14,11 @@ export type TaskType =
   | "dept_export"
   | "menu_export"
   | "dict_export"
-  | "algorithm_export"
   | "user_import"
   | "role_import"
   | "dept_import"
   | "menu_import"
-  | "dict_import"
-  | "algorithm_import";
+  | "dict_import";
 
 /**
  * 任务状态（与后端 TaskStatusEnum 对齐，使用整数）

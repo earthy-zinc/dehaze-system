@@ -89,6 +89,47 @@ export interface SSEHandlers {
 }
 
 /**
+ * SSE 请求的 HTTP 错误（响应非 2xx）。
+ *
+ * 后端失败响应为标准业务信封 `{code, msg, data}`（与 axios 路径同源）。仅抛
+ * `status` 会丢掉 body，上层只能笼统提示「网络连接中断」，与真实失败原因
+ * （如参数超长 A0400）不符；故解析出的业务码/文案随错误携带，供上层映射真实提示。
+ */
+export class SSEHttpError extends Error {
+  /** HTTP 状态码 */
+  readonly status: number;
+  /** 业务错误码（响应体非业务信封时缺省） */
+  readonly code?: string;
+  /** 业务错误文案（响应体非业务信封时缺省） */
+  readonly msg?: string;
+
+  constructor(status: number, statusText: string, code?: string, msg?: string) {
+    super(msg || `SSE request failed: ${status} ${statusText}`);
+    this.name = "SSEHttpError";
+    this.status = status;
+    if (code !== undefined) this.code = code;
+    if (msg !== undefined) this.msg = msg;
+  }
+}
+
+/** 从失败响应体中提取业务码与文案（非 JSON / 非业务信封时返回空对象） */
+async function readErrorEnvelope(response: Response): Promise<{ code?: string; msg?: string }> {
+  try {
+    const parsed: unknown = JSON.parse(await response.text());
+    if (parsed && typeof parsed === "object") {
+      const { code, msg } = parsed as { code?: unknown; msg?: unknown };
+      return {
+        ...(typeof code === "string" ? { code } : {}),
+        ...(typeof msg === "string" ? { msg } : {}),
+      };
+    }
+  } catch {
+    // 网关错误页等非 JSON 响应体：无业务码，按网络错误语义向上传递
+  }
+  return {};
+}
+
+/**
  * 发起 SSE 流式请求并逐事件回调。
  *
  * 用于 AI 对话消息发送（POST 返回 SSE 流）和断线重连（GET）。
@@ -126,7 +167,9 @@ export async function fetchSSE(config: SSERequestConfig, handlers: SSEHandlers):
     const response = await (config.fetchImpl ?? fetch)(config.url, init);
 
     if (!response.ok) {
-      throw new Error(`SSE request failed: ${response.status} ${response.statusText}`);
+      // 失败响应体为标准业务信封，解析后随错误抛出，避免上层只能报「网络错误」
+      const envelope = await readErrorEnvelope(response);
+      throw new SSEHttpError(response.status, response.statusText, envelope.code, envelope.msg);
     }
 
     const contentType = response.headers.get("content-type") || "";

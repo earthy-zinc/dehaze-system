@@ -16,7 +16,6 @@
  * .env 由 #/config/constant 统一加载（经 #/utils/redis、#/utils/mysql 间接导入）
  */
 import { getRedis, disconnectRedis } from "#/utils/redis";
-import { resetMemberQuota, disconnectMysql } from "#/utils/mysql";
 import { ensureTestResources } from "./ensure-test-resources";
 
 const CACHE_PREFIXES = [
@@ -54,12 +53,5 @@ export async function setup() {
   } catch {
   } finally {
     await disconnectRedis();
-  }
-
-  try {
-    await resetMemberQuota([4, 5, 6, 7, 8]);
-  } catch {
-  } finally {
-    await disconnectMysql();
   }
 }

@@ -24,16 +24,6 @@ function getPool(): mysql.Pool {
   return pool;
 }
 
-export async function resetMemberQuota(userIds: number[]): Promise<void> {
-  const pool = getPool();
-  for (const userId of userIds) {
-    await pool.execute(
-      "UPDATE sys_member SET monthly_dehaze_used = 0, monthly_evaluate_used = 0 WHERE user_id = ?",
-      [userId]
-    );
-  }
-}
-
 /**
  * 确保用户余额账户存在且可用余额不低于 minAmount（测试套件自愈）。
  *
@@ -57,13 +47,13 @@ export async function ensureBalance(userId: number, minAmount: number): Promise<
 
 export async function createCompletedPredLog(
   userId: number,
-  algorithmId: number = 13
+  modelId: string = "aecrnet"
 ): Promise<number> {
   const pool = getPool();
   const [result] = await pool.execute(
-    `INSERT INTO sys_pred_log (algorithm_id, status, time, create_by, update_by, create_time, update_time)
+    `INSERT INTO sys_pred_log (model_id, status, time, create_by, update_by, create_time, update_time)
      VALUES (?, 2, 100, ?, ?, NOW(), NOW())`,
-    [algorithmId, userId, userId]
+    [modelId, userId, userId]
   );
   return (result as any).insertId;
 }

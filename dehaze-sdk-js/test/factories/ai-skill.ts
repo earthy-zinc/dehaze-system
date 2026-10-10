@@ -25,21 +25,30 @@ export const createSkillTestForm = (overrides?: Partial<SkillTestForm>): SkillTe
 
 let _crcTable: Int32Array | undefined;
 
+/** 惰性构建 CRC32 查找表并返回非空表（返回值必为已构建的表，调用处无需再判空） */
+function crcTable(): Int32Array {
+  if (_crcTable) {
+    return _crcTable;
+  }
+  const table = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) {
+      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    }
+    table[n] = c;
+  }
+  _crcTable = table;
+  return table;
+}
+
 /** CRC32（STORE 压缩 zip 校验，测试构造用） */
 function crc32(data: Buffer): number {
-  if (!_crcTable) {
-    _crcTable = new Int32Array(256);
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) {
-        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-      }
-      _crcTable[n] = c;
-    }
-  }
+  const table = crcTable();
   let crc = -1;
-  for (let i = 0; i < data.length; i++) {
-    crc = (crc >>> 8) ^ _crcTable[(crc ^ data[i]) & 0xff];
+  for (const byte of data) {
+    // 下标已 & 0xff 限位在 0..255，?? 0 仅为满足 noUncheckedIndexedAccess，运行时不会触发
+    crc = (crc >>> 8) ^ (table[(crc ^ byte) & 0xff] ?? 0);
   }
   return (crc ^ -1) >>> 0;
 }
@@ -91,8 +100,9 @@ export const buildSkillZip = (files?: Record<string, string>): Buffer => {
   const cdBuf = Buffer.concat(centrals);
   const eocd = Buffer.alloc(22);
   eocd.writeUInt32LE(0x06054b50, 0);
-  eocd.writeUInt16LE(entries.length, 8);
-  eocd.writeUInt16LE(entries.length, 10);
+  const entryCount = Object.keys(entries).length;
+  eocd.writeUInt16LE(entryCount, 8);
+  eocd.writeUInt16LE(entryCount, 10);
   eocd.writeUInt32LE(cdBuf.length, 12);
   eocd.writeUInt32LE(offset, 16);
   return Buffer.concat([...locals, cdBuf, eocd]);
@@ -119,5 +129,8 @@ export const createSkillZipFile = (): File => {
     [`${name}/script/extract.py`]: "print('hi')",
     [`${name}/reference/REFERENCE.md`]: "# 参考文档\n详细说明",
   };
-  return new File([buildSkillZip(files)], `${name}.zip`, { type: "application/zip" });
+  // Node Buffer 的 ArrayBufferLike 不满足 BlobPart，转成 Uint8Array（字节等价，与 ai-skill.test.ts 同法）
+  return new File([new Uint8Array(buildSkillZip(files))], `${name}.zip`, {
+    type: "application/zip",
+  });
 };

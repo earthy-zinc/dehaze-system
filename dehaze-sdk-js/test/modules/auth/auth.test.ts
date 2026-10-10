@@ -13,26 +13,13 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { AuthAPI } from "../../../index";
 import UserAPI from "@/api/user";
 import { expectBizError } from "#/utils/assertion";
-import { login, logout } from "#/utils/auth";
+import { getCaptchaCode, getWrongCaptchaCode, login, logout } from "#/utils/auth";
 import { getRedis, disconnectRedis } from "#/utils/redis";
 import { uniqueUsername } from "#/factories/common";
 import { USERS, ROLES } from "#/factories/constants";
 import { SEED_PASSWORD } from "#/config/constant";
 
-/**
- * 从 Redis 读取验证码
- * 三端验证码统一存于 Redis db0，key 前缀为 captcha_code:
- */
-async function getCaptchaCode(captchaKey: string): Promise<string> {
-  const redis = getRedis();
-  const code = await redis.get(`captcha_code:${captchaKey}`);
-  if (!code) {
-    throw new Error(`验证码已过期或不存在: ${captchaKey}`);
-  }
-  return code;
-}
-
-/** 获取验证码 Key 及对应 Redis 中的验证码值，用于携带正确验证码的登录/注册场景 */
+/** 获取验证码 Key 及对应可提交的验证码值，用于携带正确验证码的登录/注册场景 */
 async function captchaPair(): Promise<{ key: string; code: string }> {
   const captcha = await AuthAPI.getCaptcha();
   const code = await getCaptchaCode(captcha.captchaKey);
@@ -98,14 +85,16 @@ describe("POST /api/v1/auth/login - 用户登录", () => {
   });
 
   // 后端已按文档区分验证码错误（A0214）与验证码过期/不存在（A0213），详见 verify_captcha_status。
+  // 错误码不能硬编码 "0000"：math 型验证码答案可能为 0（此时 "0000" 恰好正确），须用 getWrongCaptchaCode 避开。
   test("边界：验证码错误应返回验证码错误码 A0214", async () => {
     const captcha = await AuthAPI.getCaptcha();
+    const wrongCode = await getWrongCaptchaCode(captcha.captchaKey);
     await expectBizError(
       AuthAPI.login({
         username: USERS.ADMIN.username,
         password: SEED_PASSWORD,
         captchaKey: captcha.captchaKey,
-        captchaCode: "0000",
+        captchaCode: wrongCode,
       }),
       ["A0214"]
     );
@@ -208,13 +197,14 @@ describe("POST /api/v1/auth/register - 用户注册", () => {
 
   test("边界：验证码错误应返回验证码错误", async () => {
     const captcha = await AuthAPI.getCaptcha();
+    const wrongCode = await getWrongCaptchaCode(captcha.captchaKey);
     await expectBizError(
       AuthAPI.register({
         username: uniqueUsername("testcaptcha"),
         password: SEED_PASSWORD,
         nickname: "验证码测试",
         captchaKey: captcha.captchaKey,
-        captchaCode: "0000",
+        captchaCode: wrongCode,
       }),
       ["A0214", "A0400", "B0001", "ERR_BAD_REQUEST"]
     );

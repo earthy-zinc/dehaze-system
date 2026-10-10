@@ -17,6 +17,8 @@ import type {
 export const createAiModelForm = (overrides?: Partial<AiModelForm>): AiModelForm => ({
   providerId: 1,
   modelId: uniqueCode("test_model"),
+  modelType: "chat",
+  taskTags: null,
   displayName: uniqueName("测试模型"),
   maxContextTokens: 128000,
   maxOutputTokens: 4096,
@@ -51,12 +53,13 @@ export const createModelPriceForm = (
 ): ModelPriceForm => ({
   modelId,
   providerId,
+  billingUnit: "million_tokens",
   unit: "credits_per_million",
   status: 1,
   details: [
-    { tokenType: "input", timeSlot: "peak", minTokens: 0, unitPrice: 2 },
-    { tokenType: "cached", timeSlot: "peak", minTokens: 0, unitPrice: 0.5 },
-    { tokenType: "output", timeSlot: "peak", minTokens: 0, unitPrice: 8 },
+    { usageKind: "token", tokenType: "input", timeSlot: "peak", minTokens: 0, unitPrice: 2 },
+    { usageKind: "token", tokenType: "cached", timeSlot: "peak", minTokens: 0, unitPrice: 0.5 },
+    { usageKind: "token", tokenType: "output", timeSlot: "peak", minTokens: 0, unitPrice: 8 },
   ],
   ...overrides,
 });

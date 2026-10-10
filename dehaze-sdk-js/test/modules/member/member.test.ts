@@ -429,12 +429,20 @@ describe("会员管理模块接口测试", () => {
     });
 
     test("正向测试：修改权益配置", async () => {
-      const form = createBenefitForm({ monthlyDehazeQuota: 200 });
+      const form = createBenefitForm({
+        monthlyDehazeQuota: 200,
+        aiCreditsDaily: 12345,
+        aiCreditsMonthly: 654321,
+        multimodalLimit: 7,
+      });
       await MemberAPI.updateBenefit("level_1", form);
 
       const benefits = await MemberAPI.listBenefits();
       const updated = benefits.find((b) => b.levelCode === "level_1")!;
       expect(updated.monthlyDehazeQuota).toBe(200);
+      expect(updated.aiCreditsDaily).toBe(12345);
+      expect(updated.aiCreditsMonthly).toBe(654321);
+      expect(updated.multimodalLimit).toBe(7);
     });
 
     test("异常：成长值下限大于上限", async () => {
@@ -458,13 +466,16 @@ describe("会员管理模块接口测试", () => {
     });
 
     afterAll(async () => {
-      // 恢复原始配置
+      // 恢复原始配置（含积分口径字段，避免共享 dev 库残留被改动的权益值）
       await MemberAPI.updateBenefit("level_1", {
         monthlyDehazeQuota: originalBenefit.monthlyDehazeQuota,
         monthlyEvaluateQuota: originalBenefit.monthlyEvaluateQuota,
         historyRetention: originalBenefit.historyRetention,
         batchLimit: originalBenefit.batchLimit,
         priority: originalBenefit.priority,
+        aiCreditsDaily: originalBenefit.aiCreditsDaily,
+        aiCreditsMonthly: originalBenefit.aiCreditsMonthly,
+        multimodalLimit: originalBenefit.multimodalLimit,
       });
     });
   });
@@ -550,7 +561,7 @@ describe("会员管理模块接口测试", () => {
       await login(USERS.DEPT_ADMIN.username);
       const profile = await MemberAPI.getProfile();
       expect(profile.levelCode).toBe("level_0");
-      expect(profile.benefits.monthlyDehazeQuota).toBeGreaterThan(0);
+      expect(profile.benefits.aiCreditsMonthly).toBeGreaterThan(0);
     });
 
     test("level_3(SVIP) 用户权益高于 level_0", async () => {
@@ -562,9 +573,9 @@ describe("会员管理模块接口测试", () => {
 
       expect(svipProfile.levelCode).toBe("level_3");
       expect(userProfile.levelCode).toBe("level_0");
-      // SVIP 配额应高于普通用户
-      expect(svipProfile.benefits.monthlyDehazeQuota).toBeGreaterThan(
-        userProfile.benefits.monthlyDehazeQuota
+      // SVIP 月度 AI 积分额度应高于普通用户
+      expect(svipProfile.benefits.aiCreditsMonthly).toBeGreaterThan(
+        userProfile.benefits.aiCreditsMonthly
       );
     });
   });

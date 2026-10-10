@@ -7,8 +7,8 @@ import { USERS } from "#/factories/constants";
 function buildForm(overrides: Partial<HistoryForm> = {}): HistoryForm {
   return {
     originalImageUrl: "/images/test_haze.jpg",
-    algorithmId: 1,
-    algorithmName: "DCP",
+    modelId: "aecrnet",
+    modelName: "AECR-NET",
     status: 1,
     inputSource: "upload",
     ...overrides,
@@ -55,8 +55,8 @@ describe("图像输入历史记录 API 测试", () => {
     test("正向测试：创建一条来源为 camera 的处理中记录", async () => {
       const form = buildForm({
         originalImageUrl: "/images/camera_test.jpg",
-        algorithmId: 2,
-        algorithmName: "AODNet",
+        modelId: "aodnet",
+        modelName: "AODNet",
         status: 3,
         inputSource: "camera",
       });
@@ -106,6 +106,31 @@ describe("图像输入历史记录 API 测试", () => {
       });
     });
 
+    test("正向测试：按关键词筛选历史记录（modelName/原图地址模糊匹配）", async () => {
+      const marker = `kwprobe${Date.now()}`;
+      const id = await ImageInputHistoryAPI.create(
+        buildForm({ originalImageUrl: `/images/${marker}.jpg`, modelName: marker })
+      );
+      createdIds.push(id);
+
+      const hit = await ImageInputHistoryAPI.getPage({
+        pageNum: 1,
+        pageSize: 20,
+        keywords: marker,
+      });
+      expect(hit.list.map((item) => item.id)).toContain(id);
+      hit.list.forEach((item) => {
+        expect(`${item.modelName}${item.originalImageUrl}`).toContain(marker);
+      });
+
+      const miss = await ImageInputHistoryAPI.getPage({
+        pageNum: 1,
+        pageSize: 20,
+        keywords: `${marker}-none`,
+      });
+      expect(miss.list.length).toBe(0);
+    });
+
     test("验证：历史记录按创建时间倒序排列", async () => {
       const page = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 20 });
       if (page.list.length < 2) return;
@@ -132,7 +157,7 @@ describe("图像输入历史记录 API 测试", () => {
 
       expect(detail.id).toBe(createdIds[0]);
       expect(detail.originalImageUrl).toBe("/images/test_haze.jpg");
-      expect(detail.algorithmName).toBe("DCP");
+      expect(detail.modelName).toBe("AECR-NET");
       expect(detail.status).toBe(1);
       expect(detail.inputSource).toBe("upload");
       expect(typeof detail.createTime).toBe("string");
@@ -151,7 +176,7 @@ describe("图像输入历史记录 API 测试", () => {
     test("正向测试：删除单条历史记录", async () => {
       const form = buildForm({
         originalImageUrl: "/images/delete_test.jpg",
-        algorithmName: "Test",
+        modelName: "Test",
         status: 3,
       });
       const id = await ImageInputHistoryAPI.create(form);
@@ -172,7 +197,7 @@ describe("图像输入历史记录 API 测试", () => {
       const batchIds: number[] = [];
       for (let i = 0; i < 2; i++) {
         const id = await ImageInputHistoryAPI.create(
-          buildForm({ originalImageUrl: `/images/batch_${i}.jpg`, algorithmName: "Test" })
+          buildForm({ originalImageUrl: `/images/batch_${i}.jpg`, modelName: "Test" })
         );
         batchIds.push(id);
       }
@@ -238,30 +263,29 @@ describe("图像输入历史记录 API 测试", () => {
       createdIds.push(id);
     });
 
-    test("异常测试：超长 algorithmName（101 字符，超出列宽 100）应被拒绝", async () => {
+    test("异常测试：超长 modelName（101 字符，超出列宽 100）应被拒绝", async () => {
+      await expectBizError(ImageInputHistoryAPI.create(buildForm({ modelName: "A".repeat(101) })), [
+        "A0400",
+      ]);
+    });
+
+    test("异常测试：非法 modelParams（非 JSON 字符串）应被拒绝", async () => {
       await expectBizError(
-        ImageInputHistoryAPI.create(buildForm({ algorithmName: "A".repeat(101) })),
+        ImageInputHistoryAPI.create(buildForm({ modelParams: "not-a-json{[" })),
         ["A0400"]
       );
     });
 
-    test("异常测试：非法 algorithmParams（非 JSON 字符串）应被拒绝", async () => {
-      await expectBizError(
-        ImageInputHistoryAPI.create(buildForm({ algorithmParams: "not-a-json{[" })),
-        ["A0400"]
-      );
-    });
-
-    test("边界：合法 algorithmParams（JSON 字符串）应创建成功且回读一致", async () => {
+    test("边界：合法 modelParams（JSON 字符串）应创建成功且回读一致", async () => {
       const id = await ImageInputHistoryAPI.create(
-        buildForm({ algorithmParams: '{"topK":5,"mode":"fast"}' })
+        buildForm({ modelParams: '{"topK":5,"mode":"fast"}' })
       );
       expect(id).toBeGreaterThan(0);
       createdIds.push(id);
 
       const detail = await ImageInputHistoryAPI.getById(id);
       // 回读为合法 JSON 字符串即可，key 顺序不保证，按解析后对象比较
-      expect(JSON.parse(detail.algorithmParams as string)).toEqual({
+      expect(JSON.parse(detail.modelParams as string)).toEqual({
         topK: 5,
         mode: "fast",
       });

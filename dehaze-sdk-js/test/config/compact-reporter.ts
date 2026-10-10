@@ -12,6 +12,14 @@
  *
  * 请求/响应由 test/config/vitest.setup.ts 的请求拦截器与 transformResponse 捕获，经 onTestFinished
  * 写入 task.meta（所有用例均写入），reporter 收集为 TestRecord[] 后分别由 generateBrief/generateDetailJson 处理。
+ *
+ * 运行期进度（stderr）：
+ * - 起始行、逐文件开始/结束、失败与慢用例、30s 心跳（含当前文件与"距上次进展"时长），
+ *   用于全量长跑时判断进度、定位卡在哪个用例或钩子
+ * - 进度走 stderr，stdout 保持"仅一行 brief JSON"的契约，便于脚本/大模型解析
+ *
+ * 日志分组：test/logs/<BACKEND_NAME>/，unit 测试经 SDK_TEST_LOG_GROUP 写入 test/logs/unit/，
+ * 避免 unit 运行轮转掉集成测试的报告历史。
  */
 import type {
   Reporter,
@@ -20,6 +28,7 @@ import type {
   TestModule,
   TestResultSkipped,
   TestRunEndReason,
+  TestSpecification,
 } from "vitest/node";
 import fs from "fs";
 import path from "path";
@@ -30,6 +39,11 @@ const MAX_VALUE_LENGTH = 300;
 const MAX_STACK_LINES = 5;
 const MAX_LOG_FILES = 10;
 const LOGS_DIR = path.resolve(__dirname, "../logs");
+
+// 心跳间隔；慢用例阈值（超过即逐条输出，用于定位拖慢全量的用例）；无进展时长达 testTimeout 时的告警阈值
+const HEARTBEAT_MS = 30_000;
+const SLOW_CASE_MS = 5_000;
+const STALL_HINT_MS = 120_000;
 
 type TestState = "passed" | "failed" | "skipped" | "pending";
 
@@ -95,6 +109,23 @@ function isDetailErrors(errors: unknown): errors is ReadonlyArray<SerializedErro
 // Vitest 断言失败信息按终端着色能力内嵌 ANSI 转义序列，JSON/日志输出前需剥离
 function stripAnsi(text: string): string {
   return text.replace(/\u001b\[[0-9;]*m/g, "");
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  return `${Math.floor(seconds / 60)}m${String(Math.floor(seconds % 60)).padStart(2, "0")}s`;
+}
+
+/** 进度行走 stderr：stdout 留给 brief JSON，保证脚本/大模型解析不被进度污染 */
+function progress(message: string): void {
+  process.stderr.write(`[${new Date().toTimeString().slice(0, 8)}] ${message}\n`);
+}
+
+/** 日志分组：默认按被测后端分目录，unit 配置经 SDK_TEST_LOG_GROUP 指向独立目录 */
+function logGroup(): string {
+  return process.env.SDK_TEST_LOG_GROUP || BACKEND_NAME;
 }
 
 function truncate(value: unknown, maxLength = MAX_VALUE_LENGTH): string | undefined {
@@ -412,7 +443,7 @@ function rotateFile(dir: string, base: string, ext: string): void {
 }
 
 function writeReportFiles(brief: BriefSummary, records: TestRecord[]): void {
-  const backendDir = path.join(LOGS_DIR, BACKEND_NAME);
+  const backendDir = path.join(LOGS_DIR, logGroup());
   fs.mkdirSync(backendDir, { recursive: true });
 
   // brief.json 与 detail.json 同步轮转，保留最近 MAX_LOG_FILES 份历史
@@ -427,9 +458,68 @@ function writeReportFiles(brief: BriefSummary, records: TestRecord[]): void {
 
 class CompactReporter implements Reporter {
   private startTime = 0;
+  private lastProgressTime = 0;
+  private totalFiles = 0;
+  private doneFiles = 0;
+  private passed = 0;
+  private failed = 0;
+  private skipped = 0;
+  /** 运行中的文件 → 开始时间；unit 等并行配置下可能有多个 */
+  private runningFiles = new Map<string, number>();
+  private heartbeat?: NodeJS.Timeout;
 
-  onTestRunStart() {
+  onTestRunStart(specifications: ReadonlyArray<TestSpecification>) {
     this.startTime = Date.now();
+    this.lastProgressTime = this.startTime;
+    this.totalFiles = specifications.length;
+    this.doneFiles = 0;
+    this.passed = 0;
+    this.failed = 0;
+    this.skipped = 0;
+    this.runningFiles.clear();
+    // watch 模式会重复触发 onTestRunStart，先清理上一轮定时器；unref 保证心跳不阻止进程退出
+    clearInterval(this.heartbeat);
+    this.heartbeat = setInterval(() => this.reportHeartbeat(), HEARTBEAT_MS).unref();
+    progress(`开始 ${this.totalFiles} 个测试文件（${logGroup()}）`);
+  }
+
+  // 并行配置下多个文件同时开始，序号只用于完成行，避免出现重复的 [i/N]
+  onTestModuleStart(testModule: TestModule) {
+    this.runningFiles.set(testModule.relativeModuleId, Date.now());
+    progress(`▶ ${testModule.relativeModuleId}`);
+  }
+
+  onTestModuleEnd(testModule: TestModule) {
+    const startAt = this.runningFiles.get(testModule.relativeModuleId);
+    this.runningFiles.delete(testModule.relativeModuleId);
+
+    const states = [...testModule.children.allTests()].map((testCase) => testCase.result().state);
+    const passed = states.filter((state) => state === "passed").length;
+    const failed = states.filter((state) => state === "failed").length;
+    this.passed += passed;
+    this.failed += failed;
+    this.skipped += states.length - passed - failed;
+    this.doneFiles++;
+    this.touch();
+
+    const mark = failed > 0 || testModule.state() === "failed" ? "✗" : "✓";
+    const cost = startAt === undefined ? "" : ` ${formatDuration(Date.now() - startAt)}`;
+    progress(
+      `[${this.doneFiles}/${this.totalFiles}] ${mark} ${testModule.relativeModuleId} 通过${passed} 失败${failed} 跳过${states.length - passed - failed}${cost}`
+    );
+  }
+
+  // 失败用例即时上报，不必等整轮跑完；慢用例单独标记，用于定位拖慢全量的用例
+  onTestCaseResult(testCase: TestCase) {
+    const location = `${testCase.module.relativeModuleId}:${testCase.location?.line ?? 0}`;
+    if (testCase.result().state === "failed") {
+      progress(`✗ ${location} ${testCase.fullName}`);
+    } else {
+      const duration = testCase.diagnostic()?.duration ?? 0;
+      if (duration < SLOW_CASE_MS) return;
+      progress(`⏱ 慢用例 ${formatDuration(duration)} ${location} ${testCase.fullName}`);
+    }
+    this.touch();
   }
 
   onTestRunEnd(
@@ -437,6 +527,8 @@ class CompactReporter implements Reporter {
     unhandledErrors: ReadonlyArray<SerializedError>,
     reason: TestRunEndReason
   ) {
+    clearInterval(this.heartbeat);
+
     const { records, errors } = collectAll(testModules);
     for (const error of unhandledErrors) {
       errors.push(stripAnsi(error.message));
@@ -447,6 +539,36 @@ class CompactReporter implements Reporter {
     const brief = generateBrief(records, errors, reason, testModules.length, duration);
     console.log(JSON.stringify(brief));
     writeReportFiles(brief, records);
+    progress(
+      `结束 ${reason}：通过${brief.passed} 失败${brief.failed} 跳过${brief.skipped}，耗时 ${brief.duration}`
+    );
+  }
+
+  private touch() {
+    this.lastProgressTime = Date.now();
+  }
+
+  private reportHeartbeat() {
+    const idle = Date.now() - this.lastProgressTime;
+    progress(
+      `⏱ 已运行 ${formatDuration(Date.now() - this.startTime)}｜文件 ${this.doneFiles}/${this.totalFiles}｜` +
+        `通过${this.passed} 失败${this.failed} 跳过${this.skipped}｜${this.describeRunning()}｜距上次进展 ${formatDuration(idle)}`
+    );
+    if (idle >= STALL_HINT_MS) {
+      progress(
+        `⚠️ ${formatDuration(idle)} 无进展（已达 testTimeout/hookTimeout 120s）：检查后端可用性与当前文件的钩子`
+      );
+    }
+  }
+
+  // 串行配置（fileParallelism: false）下即当前文件；并行配置下取开始最早的运行中文件
+  private describeRunning(): string {
+    if (this.runningFiles.size === 0) return "等待下一个文件";
+    const [name, startAt] = [...this.runningFiles].reduce((oldest, entry) =>
+      entry[1] < oldest[1] ? entry : oldest
+    );
+    const parallel = this.runningFiles.size > 1 ? `（+${this.runningFiles.size - 1} 并行）` : "";
+    return `当前 ${name} 已 ${formatDuration(Date.now() - startAt)}${parallel}`;
   }
 }
 

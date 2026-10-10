@@ -1,4 +1,4 @@
-import { RecommendationAPI, FileAPI, AlgorithmAPI } from "../../../index";
+import { RecommendationAPI, FileAPI, AiModelAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { createAnalyzeRequest, createFeedback, createRule } from "#/factories/recommendation";
@@ -8,6 +8,28 @@ import { USERS } from "#/factories/constants";
 import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 import * as fs from "fs";
 import * as path from "path";
+
+// 种子规则已占用「全部场景 × ["aecrnet"]」组合且 enabled=1，同场景同组合的防重语义会拒绝新建，
+// 故用例统一改用两个启用图像模型构成的未占用组合，保证可重复运行。
+async function freeRuleModelIds(): Promise<string[]> {
+  const models = await AiModelAPI.listEnabledModels("image_edit");
+  if (models.length < 2) {
+    throw new Error("开发库应至少有 2 个启用的图像模型，用于构造未被种子规则占用的规则组合");
+  }
+  return [models[0]!.modelId, models[1]!.modelId];
+}
+
+// 防重校验只跳过 enabled=0 的规则，历史运行残留的启用同组合规则会让重复运行必失败，创建前先禁用
+async function disableOwnRules(sceneType: string, modelIds: string[]): Promise<void> {
+  const key = [...modelIds].sort().join(",");
+  for (const rule of await RecommendationAPI.getRules()) {
+    const isOwnRule = !rule.ruleName.startsWith("sys_");
+    const sameCombo = rule.sceneType === sceneType && [...rule.modelIds].sort().join(",") === key;
+    if (isOwnRule && sameCombo && rule.enabled) {
+      await RecommendationAPI.updateRule(rule.id!, { ...rule, enabled: false });
+    }
+  }
+}
 
 describe("推荐管理接口测试", () => {
   const cleanup = new TestCleanupRegistry();
@@ -106,15 +128,15 @@ describe("推荐管理接口测试", () => {
     });
   });
 
-  // ============ GET /api/v1/recommendations/algorithms - 获取算法推荐（普通用户） ============
+  // ============ GET /api/v1/recommendations/models - 获取模型推荐（普通用户） ============
 
-  describe("GET /api/v1/recommendations/algorithms - 获取算法推荐", () => {
+  describe("GET /api/v1/recommendations/models - 获取模型推荐", () => {
     beforeAll(async () => {
       await login(userAccount);
     });
 
     test("正向测试：获取推荐列表并验证 Top 3 结构", async () => {
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
@@ -122,8 +144,8 @@ describe("推荐管理接口测试", () => {
 
       if (recommendations.length > 0) {
         recommendations.forEach((rec) => {
-          expect(rec.algorithmId).toBeGreaterThan(0);
-          expect(rec.algorithmName).toBeTruthy();
+          expect(rec.modelId).toBeTruthy();
+          expect(rec.modelName).toBeTruthy();
           expect(typeof rec.matchScore).toBe("number");
           expect(rec.matchScore).toBeGreaterThanOrEqual(0);
           expect(rec.matchScore).toBeLessThanOrEqual(100);
@@ -135,7 +157,7 @@ describe("推荐管理接口测试", () => {
     });
 
     test("正向测试：验证推荐结果包含匹配度和推荐理由", async () => {
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
@@ -150,7 +172,7 @@ describe("推荐管理接口测试", () => {
     });
 
     test("边界测试：无匹配算法场景返回空数组", async () => {
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         analysisId: 99999999,
       });
 
@@ -171,7 +193,7 @@ describe("推荐管理接口测试", () => {
     });
 
     test("验证：推荐理由格式为可解释文本", async () => {
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
@@ -184,7 +206,7 @@ describe("推荐管理接口测试", () => {
     });
 
     test("验证：推荐按匹配度降序排列", async () => {
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
 
@@ -197,49 +219,51 @@ describe("推荐管理接口测试", () => {
       }
     });
 
-    test("不变量：同分推荐按 algorithmId 升序（tie-breaker）", async () => {
+    test("不变量：同分推荐按 modelId 升序（tie-breaker）", async () => {
       await login(adminAccount);
-      // 动态取两个已发布算法构造同分场景（开发库算法状态不可预置假设）
-      const options = await AlgorithmAPI.getOption();
-      expect(options.length, "开发库应至少有 2 个已发布算法").toBeGreaterThanOrEqual(2);
-      const algLow = Number(options[0]!.value);
-      const algHigh = Number(options[1]!.value);
+      // 动态取两个启用的图像模型构造同分场景（开发库模型状态不可预置假设）
+      const models = await AiModelAPI.listEnabledModels("image_edit");
+      expect(models.length, "开发库应至少有 2 个启用的图像模型").toBeGreaterThanOrEqual(2);
+      const modelA = models[0]!.modelId;
+      const modelB = models[1]!.modelId;
 
-      // 单规则多算法即可构造同分（防重语义下同场景同组合禁止建第二条规则）
+      // 单规则多模型即可构造同分（防重语义下同场景同组合禁止建第二条规则）
       const ruleA = createRule({
         ruleName: uniqueName("svc同分规则A"),
         sceneType: "urban",
-        algorithmIds: [algLow, algHigh],
+        modelIds: [modelA, modelB],
         weight: 100,
       });
       const idA = await RecommendationAPI.updateRule(0, ruleA);
       cleanup.registerIds(
         () => [idA],
         async (id) => {
-          await RecommendationAPI.updateRule(id, { ...ruleA, enabled: false });
+          // registerIds 回调回传 string，updateRule 契约是 number；id 本就是数字字符串，转换不改变请求参数
+          await RecommendationAPI.updateRule(Number(id), { ...ruleA, enabled: false });
         }
       );
 
       await login(userAccount);
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "svc-tie-break-md5-0001",
       });
 
-      const minId = Math.min(algLow, algHigh);
-      const maxId = Math.max(algLow, algHigh);
-      const ids = recommendations.map((r) => r.algorithmId);
-      expect(ids).toContain(minId);
-      expect(ids).toContain(maxId);
+      const [minSlug, maxSlug] = [modelA, modelB].sort();
+      const slugs = recommendations.map((r) => r.modelId);
+      expect(slugs).toContain(minSlug);
+      expect(slugs).toContain(maxSlug);
 
-      const minIdx = ids.indexOf(minId);
-      const maxIdx = ids.indexOf(maxId);
+      const minIdx = slugs.indexOf(minSlug!);
+      const maxIdx = slugs.indexOf(maxSlug!);
       expect(minIdx).toBeLessThan(maxIdx);
 
       const scores = recommendations.map((r) => r.matchScore);
       for (let i = 1; i < scores.length; i++) {
         expect(scores[i - 1]!).toBeGreaterThanOrEqual(scores[i]!);
         if (scores[i - 1] === scores[i]) {
-          expect(recommendations[i - 1]!.algorithmId).toBeLessThan(recommendations[i]!.algorithmId);
+          expect(
+            recommendations[i - 1]!.modelId.localeCompare(recommendations[i]!.modelId)
+          ).toBeLessThan(0);
         }
       }
     });
@@ -253,7 +277,7 @@ describe("推荐管理接口测试", () => {
     beforeAll(async () => {
       await login(userAccount);
 
-      // 上传测试图片获取 url 和 md5，用于 analyze + getAlgorithmRecommendations
+      // 上传测试图片获取 url 和 md5，用于 analyze + getModelRecommendations
       const uploadFile = async (
         relativePath: string
       ): Promise<{ id: number; url: string; md5?: string }> => {
@@ -296,21 +320,21 @@ describe("推荐管理接口测试", () => {
       // 用 analyze 返回的 imageMd5 获取推荐列表，提取真实 recommendationId
       let recommendations: any[] = [];
       if (analysis.imageMd5) {
-        recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+        recommendations = await RecommendationAPI.getModelRecommendations({
           imageMd5: analysis.imageMd5,
         });
       }
       if (recommendations.length === 0 && fileInfo.id) {
         // 回退：尝试用 analysisId（某些后端版本支持）
-        recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+        recommendations = await RecommendationAPI.getModelRecommendations({
           analysisId: fileInfo.id,
         });
       }
 
       if (recommendations.length > 0) {
-        recommendationId = recommendations[0]!.recommendationId ?? recommendations[0]!.algorithmId;
+        recommendationId = recommendations[0]!.recommendationId ?? 0;
       } else {
-        // 无推荐记录时回退到 algorithmId=1（后续测试可能因 A0401 失败，这是预期行为）
+        // 无推荐记录时回退到 recommendationId=1（后续测试可能因 A0401 失败，这是预期行为）
         recommendationId = 1;
       }
     });
@@ -343,11 +367,12 @@ describe("推荐管理接口测试", () => {
     test("越权测试：不能反馈他人的推荐记录（期望 A0401）", async () => {
       // 管理员产生一条推荐记录
       await login(adminAccount);
-      const adminRecs = await RecommendationAPI.getAlgorithmRecommendations({
+      const adminRecs = await RecommendationAPI.getModelRecommendations({
         imageMd5: "svc-perm-test-md5-0001",
       });
       const adminRecId = adminRecs[0]?.recommendationId;
       expect(adminRecId, "管理员应产生推荐记录").toBeDefined();
+      if (adminRecId === undefined) throw new Error("管理员应产生推荐记录");
 
       // 普通用户反馈管理员的记录 → A0401（不泄露存在性）
       await login(userAccount);
@@ -425,7 +450,9 @@ describe("推荐管理接口测试", () => {
     });
 
     test("正向测试：新增规则", async () => {
-      const newRule = createRule();
+      const modelIds = await freeRuleModelIds();
+      await disableOwnRules("urban", modelIds);
+      const newRule = createRule({ modelIds });
       const result = await RecommendationAPI.updateRule(0, newRule);
 
       expect(result).toBeGreaterThan(0);
@@ -483,7 +510,7 @@ describe("推荐管理接口测试", () => {
     });
 
     test("边界测试：空算法列表应抛出业务错误 A0400", async () => {
-      const rule = createRule({ algorithmIds: [] });
+      const rule = createRule({ modelIds: [] });
       await expectBizError(RecommendationAPI.updateRule(0, rule), [
         "A0400",
         "B0001",
@@ -501,7 +528,9 @@ describe("推荐管理接口测试", () => {
       ];
 
       for (const { name: dirtyName, scene } of dirtyCases) {
-        const rule = createRule({ ruleName: dirtyName, sceneType: scene });
+        const modelIds = await freeRuleModelIds();
+        await disableOwnRules(scene, modelIds);
+        const rule = createRule({ ruleName: dirtyName, sceneType: scene, modelIds });
         const newId = await RecommendationAPI.updateRule(0, rule);
         expect(newId).toBeGreaterThan(0);
 
@@ -688,7 +717,7 @@ describe("推荐管理接口测试", () => {
       expect(analysis.hazeLevel).toBeTruthy();
 
       // Step 2: 获取推荐
-      const recommendations = await RecommendationAPI.getAlgorithmRecommendations({
+      const recommendations = await RecommendationAPI.getModelRecommendations({
         imageMd5: "d41d8cd98f00b204e9800998ecf8427e",
       });
       expect(Array.isArray(recommendations)).toBe(true);
@@ -696,8 +725,10 @@ describe("推荐管理接口测试", () => {
       // Step 3: 提交反馈（如果有推荐结果）
       if (recommendations.length > 0) {
         const firstRec = recommendations[0]!;
+        const { recommendationId } = firstRec;
+        if (recommendationId === undefined) throw new Error("推荐记录应含 recommendationId");
         const feedback = createFeedback({
-          recommendationId: firstRec.recommendationId,
+          recommendationId,
           useful: true,
         });
         const feedbackResult = await RecommendationAPI.submitFeedback(feedback);
@@ -712,8 +743,10 @@ describe("推荐管理接口测试", () => {
       const rulesBefore = await RecommendationAPI.getRules();
       const countBefore = rulesBefore.length;
 
-      // Step 2: 新增规则（building 场景为本用例独占，防重语义下避开其他用例的默认组合）
-      const newRule = createRule({ sceneType: "building", weight: 30 });
+      // Step 2: 新增规则（building 场景 + 未被种子规则占用的模型组合，防重语义下可重复运行）
+      const modelIds = await freeRuleModelIds();
+      await disableOwnRules("building", modelIds);
+      const newRule = createRule({ sceneType: "building", weight: 30, modelIds });
       const newRuleId = await RecommendationAPI.updateRule(0, newRule);
       expect(newRuleId).toBeGreaterThan(0);
 

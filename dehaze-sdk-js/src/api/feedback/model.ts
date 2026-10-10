@@ -25,7 +25,8 @@ export interface RatingCreateForm {
 /** 评价查询参数（后台） */
 export interface RatingQuery extends PageQuery {
   keywords?: string;
-  algorithmId?: number;
+  /** 按图像模型标识筛选 */
+  modelId?: string;
   ratingMin?: number;
   ratingMax?: number;
   hasComment?: boolean;
@@ -38,7 +39,7 @@ export interface RatingQuery extends PageQuery {
 export interface MyRatingVO {
   id: number;
   predLogId: number;
-  algorithmName: string;
+  modelName: string;
   rating: number;
   comment?: string;
   tags?: string[];
@@ -59,7 +60,8 @@ export interface RatingPageVO extends MyRatingVO {
 
 /** 评价详情VO */
 export interface RatingDetailVO extends RatingPageVO {
-  algorithmId: number;
+  /** 图像模型标识（统一模型规范 slug） */
+  modelId: string;
 }
 
 /** 反馈创建表单 */
@@ -154,9 +156,10 @@ export interface RatingStatsVO {
   ratingDistribution: Record<number, number>;
   positiveTagRanking: Array<{ tag: string; count: number }>;
   negativeTagRanking: Array<{ tag: string; count: number }>;
-  algorithmStats: Array<{
-    algorithmId: number;
-    algorithmName: string;
+  modelStats: Array<{
+    /** 图像模型标识（统一模型规范 slug） */
+    modelId: string;
+    modelName: string;
     averageRating: number;
     totalRatings: number;
     lowRatingRate: number;

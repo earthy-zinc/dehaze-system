@@ -3,14 +3,14 @@ import AiAgentAPI from "./src/api/ai-agent";
 import AiBillingAPI from "./src/api/ai-billing";
 import AiConversationAPI from "./src/api/ai-conversation";
 import AiEvalAPI from "./src/api/ai-eval";
+import AiImageAPI from "./src/api/ai-image";
 import AiKnowledgeBaseAPI from "./src/api/ai-knowledge-base";
 import AiMCPAPI from "./src/api/ai-mcp";
-import AiModelAPI from "./src/api/ai-model";
+import AiModelAPI, { AiUserPreferenceAPI } from "./src/api/ai-model";
 import AiObservabilityAPI from "./src/api/ai-observability";
 import AiProviderAPI from "./src/api/ai-provider";
 import AiScheduleAPI from "./src/api/ai-schedule";
 import AiSkillAPI from "./src/api/ai-skill";
-import AlgorithmAPI from "./src/api/algorithm";
 import ApiKeyAPI from "./src/api/api-key";
 import AuthAPI from "./src/api/auth";
 import DatasetAPI, { DatasetItemAPI, ItemFileAPI } from "./src/api/dataset";
@@ -37,12 +37,14 @@ import TaskAPI from "./src/api/task";
 import UserAPI from "./src/api/user";
 import VoiceAPI from "./src/api/voice";
 export type { AsrStreamSession } from "./src/api/voice";
+export { SSEHttpError } from "./src/utils/sse";
 
 // API 模型导出
 export * from "./src/api/ai-agent/model";
 export * from "./src/api/ai-billing/model";
 export * from "./src/api/ai-conversation/model";
 export * from "./src/api/ai-eval/model";
+export * from "./src/api/ai-image/model";
 export * from "./src/api/ai-knowledge-base/model";
 export * from "./src/api/ai-mcp/model";
 export * from "./src/api/ai-model/model";
@@ -50,7 +52,6 @@ export * from "./src/api/ai-observability/model";
 export * from "./src/api/ai-provider/model";
 export * from "./src/api/ai-schedule/model";
 export * from "./src/api/ai-skill/model";
-export * from "./src/api/algorithm/model";
 export * from "./src/api/api-key/model";
 export * from "./src/api/auth/model";
 export * from "./src/api/dataset/model";
@@ -103,6 +104,7 @@ export {
   AiBillingAPI,
   AiConversationAPI,
   AiEvalAPI,
+  AiImageAPI,
   AiKnowledgeBaseAPI,
   AiMCPAPI,
   AiModelAPI,
@@ -110,7 +112,7 @@ export {
   AiProviderAPI,
   AiScheduleAPI,
   AiSkillAPI,
-  AlgorithmAPI,
+  AiUserPreferenceAPI,
   ApiKeyAPI,
   AnnouncementAPI,
   AuthAPI,

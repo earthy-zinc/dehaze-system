@@ -1,6 +1,11 @@
 import { MenuAPI, MenuForm, MenuVO, RouteVO } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
-import { createMenuForm, createMenuQuery, createMenuChain } from "#/factories/menu";
+import {
+  createMenuForm,
+  createMenuQuery,
+  createMenuChain,
+  TEST_MENU_NAME_PREFIX,
+} from "#/factories/menu";
 import { uniqueCode } from "#/factories/common";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
@@ -62,6 +67,24 @@ describe("菜单管理接口测试", () => {
     () => createdMenuIds,
     (id) => MenuAPI.deleteByIds(id)
   );
+
+  beforeAll(async () => {
+    // 清历史残留：上一轮被中断（进程被杀/超时）的集测不会执行 afterAll，
+    // 其创建的本前缀菜单会留在开发库并泄漏到主导航（设计评审已发现）。
+    // 按《菜单管理/测试用例》"测试结束后按前缀逻辑删除"的约定，跑前先扫一遍。
+    const menus = await MenuAPI.getList(createMenuQuery({ keywords: TEST_MENU_NAME_PREFIX }));
+    const leftovers: MenuVO[] = [];
+    const collect = (list: MenuVO[]): void => {
+      for (const menu of list) {
+        if (menu.name?.startsWith(TEST_MENU_NAME_PREFIX)) leftovers.push(menu);
+        if (menu.children && menu.children.length > 0) collect(menu.children);
+      }
+    };
+    collect(menus ?? []);
+    if (leftovers.length > 0) {
+      await MenuAPI.deleteByIds(leftovers.map((m) => String(m.id)).join(","));
+    }
+  });
 
   /** 创建菜单并按名称回查 ID（MenuAPI.add 返回 void，不返回新菜单 ID） */
   async function createMenuAndGetId(form: MenuForm, track = true): Promise<number> {
@@ -468,7 +491,7 @@ describe("菜单管理接口测试", () => {
       const originalMenu = await MenuAPI.getFormData(testMenuId);
       const newForm = createMenuForm({ parentId: originalMenu.parentId ?? 0 });
 
-      await MenuAPI.update(testMenuId.toString(), newForm);
+      await MenuAPI.update(testMenuId, newForm);
 
       const menuInfo = await MenuAPI.getFormData(testMenuId);
       expect(menuInfo.name).toBe(newForm.name);
@@ -478,20 +501,20 @@ describe("菜单管理接口测试", () => {
       const originalMenu = await MenuAPI.getFormData(testMenuId);
       const updateForm = { ...originalMenu, visible: 0 };
 
-      await MenuAPI.update(testMenuId.toString(), updateForm);
+      await MenuAPI.update(testMenuId, updateForm);
 
       const menuInfo = await MenuAPI.getFormData(testMenuId);
       expect(menuInfo.visible).toBe(0);
 
       // 恢复可见性
-      await MenuAPI.update(testMenuId.toString(), { ...originalMenu, visible: 1 });
+      await MenuAPI.update(testMenuId, { ...originalMenu, visible: 1 });
       const restoredMenu = await MenuAPI.getFormData(testMenuId);
       expect(restoredMenu.visible).toBe(1);
     });
 
     test("异常测试：更新不存在的菜单应抛出业务错误", async () => {
       const form = createMenuForm();
-      await expectBizError(MenuAPI.update("99999999", form), ["A0401"]);
+      await expectBizError(MenuAPI.update(99999999, form), ["A0401"]);
     });
 
     test("参数校验：修改后菜单名称与同级菜单重复应失败", async () => {
@@ -501,7 +524,7 @@ describe("菜单管理接口测试", () => {
       const menu1Id = await createMenuAndGetId(form1);
       const menu2Id = await createMenuAndGetId(form2);
 
-      await expectBizError(MenuAPI.update(String(menu2Id), { ...form2, name: form1.name! }), [
+      await expectBizError(MenuAPI.update(menu2Id, { ...form2, name: form1.name! }), [
         "A0501",
         "A0400",
         "B0001",
@@ -512,7 +535,7 @@ describe("菜单管理接口测试", () => {
     test("参数校验：上级菜单不能设置为自己", async () => {
       const originalMenu = await MenuAPI.getFormData(testMenuId);
       await expectBizError(
-        MenuAPI.update(String(testMenuId), { ...originalMenu, parentId: testMenuId } as MenuForm),
+        MenuAPI.update(testMenuId, { ...originalMenu, parentId: testMenuId } as MenuForm),
         ["A0503", "A0400", "B0001", "ERR_BAD_REQUEST"]
       );
     });
@@ -524,7 +547,7 @@ describe("菜单管理接口测试", () => {
 
       const originalMenu = await MenuAPI.getFormData(testMenuId);
       await expectBizError(
-        MenuAPI.update(String(testMenuId), {
+        MenuAPI.update(testMenuId, {
           ...originalMenu,
           parentId: childMenuId,
         } as MenuForm),
@@ -765,7 +788,7 @@ describe("菜单管理接口测试", () => {
     test("边界：普通用户修改菜单应失败", async () => {
       // 需携带满足 MenuForm 的完整字段，使请求到达 require_permission 后返回 A0301
       const form = createMenuForm();
-      await expectBizError(MenuAPI.update("1", { ...form, name: "hacked" } as MenuForm), ["A0301"]);
+      await expectBizError(MenuAPI.update(1, { ...form, name: "hacked" } as MenuForm), ["A0301"]);
     });
 
     test("边界：普通用户删除菜单应失败", async () => {

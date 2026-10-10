@@ -153,7 +153,7 @@ export interface SendMessageForm {
 export interface MessageResumeForm {
   /** confirm 中断必填：True 接受推荐；False 拒绝 */
   confirm?: boolean;
-  /** 确认参数（如 algorithmId 表示选择了备选算法） */
+  /** 确认参数（如 modelId 表示选择了备选图像模型） */
   params?: Record<string, unknown>;
   /**
    * Plan-and-Execute 计划干预（仅计划待执行时允许）。
@@ -254,6 +254,10 @@ export interface MessageStartEvent {
 export interface ContentBlockStartEvent {
   index: number;
   type: ContentBlockType;
+  /** 工具调用 ID（仅 type=tool_use 时下发，供兼容层构造工具调用头） */
+  id?: string;
+  /** 工具名（仅 type=tool_use 时下发） */
+  name?: string;
 }
 
 /** 内容块增量 */
@@ -343,8 +347,8 @@ export interface InterruptEvent {
 /**
  * 中断数据（全 camelCase）。按中断类型出现的键：
  * - confirm(algorithm_recommend)：{confirmKind, artifactId, recommendation, alternatives, imageFeatures}
- *   - recommendation：{recommendationId, algorithmId, algorithmName, reason, effectDescription}
- *   - alternatives：[{algorithmId, algorithmName, matchScore, reason}]
+ *   - recommendation：{recommendationId, modelId, modelName, reason, effectDescription}
+ *   - alternatives：[{modelId, modelName, matchScore, reason}]
  * - confirm(dangerous_op)：{confirmKind, action, command, impact}（Shell/高风险代码执行）
  *   或 {confirmKind, action: "write_conflict", tool, resource, previousWriter, impact, reason}
  * - confirm(tool_permission)：{confirmKind, tool, reason, detail}
@@ -355,18 +359,20 @@ export interface InterruptEvent {
 export interface InterruptData {
   // confirm 子类型，决定 resume 路由
   confirmKind?: "algorithm_recommend" | "tool_permission" | "dangerous_op";
-  // confirm(algorithm_recommend)：推荐主算法与备选（对应后端 summary.algorithm 结构）
+  // confirm(algorithm_recommend)：推荐主模型与备选（对应后端 summary.model 结构）
   artifactId?: number;
   recommendation?: {
     recommendationId: number;
-    algorithmId: number;
-    algorithmName: string;
+    /** 图像模型标识（统一模型规范 slug） */
+    modelId: string;
+    modelName: string;
     reason: string;
     effectDescription?: string;
   };
   alternatives?: Array<{
-    algorithmId: number;
-    algorithmName: string;
+    /** 图像模型标识（统一模型规范 slug） */
+    modelId: string;
+    modelName: string;
     matchScore: number;
     reason: string;
   }>;

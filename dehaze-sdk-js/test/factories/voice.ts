@@ -8,10 +8,9 @@ export const createStreamAsrSessionForm = (
   ...overrides,
 });
 
-/** TTS 合成请求工厂 */
+/** TTS 合成请求工厂（不指定音色 → 由后端取当前默认 tts 模型的音色，避免与具体默认模型耦合） */
 export const createTtsForm = (overrides?: Partial<TtsForm>): TtsForm => ({
   text: "处理完成",
-  voice: "huayan",
   speed: 1.0,
   ...overrides,
 });

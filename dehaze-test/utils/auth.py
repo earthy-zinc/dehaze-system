@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+import re
+
 import httpx
 
 from . import config, redis
@@ -14,6 +16,26 @@ from . import config, redis
 
 # (backend, username) -> session_id
 _session_store: dict[tuple[str, str], str] = {}
+
+# Java 端生产 profile 的验证码字符是算式（captcha.code.type=math，Hutool MathGenerator）：
+# Redis 存的是算式本身（如 "2*4="，运算位数 >1 时数字后会补空格），校验方按算式求值再与
+# 提交值比较 ⇒ 客户端必须提交计算结果，不能直接回填 Redis 原文。dev 的 random 与 Go/Python
+# 端存的就是最终码，原样提交即可
+_ARITHMETIC = re.compile(r"^(\d+)([+\-*])(\d+)=?$")
+
+
+def _captcha_answer(raw: str) -> str:
+    """Redis 中的验证码明文 → 实际要提交的验证码。"""
+    compact = raw.replace(" ", "")
+    matched = _ARITHMETIC.match(compact)
+    if not matched:
+        return compact
+    left, operator, right = int(matched.group(1)), matched.group(2), int(matched.group(3))
+    if operator == "+":
+        return str(left + right)
+    if operator == "-":
+        return str(left - right)
+    return str(left * right)
 
 
 def login(
@@ -26,7 +48,7 @@ def login(
     流程：
     1. 命中缓存直接返回
     2. GET /api/v1/auth/captcha → 拿 captchaKey
-    3. 从 Redis 读 captcha_code:{captchaKey} → 拿明文验证码
+    3. 从 Redis 读 captcha_code:{captchaKey} → 拿验证码（算式需作答）
     4. POST /api/v1/auth/login → 拿 sessionId
     5. 缓存并设置为当前后端的默认 session
     """
@@ -44,13 +66,14 @@ def login(
         captcha_data = captcha_resp.json()["data"]
         captcha_key = captcha_data["captchaKey"]
 
-        # 2. 从 Redis 读明文验证码
-        captcha_code = redis.get_captcha(captcha_key)
-        if not captcha_code:
+        # 2. 从 Redis 读验证码明文（Java 生产 profile 为算式，需按算式作答）
+        raw_captcha = redis.get_captcha(captcha_key)
+        if not raw_captcha:
             raise RuntimeError(
                 f"无法从 Redis 读取验证码 (key=captcha_code:{captcha_key})，"
                 f"请确认后端 {backend} 已正确写入 Redis"
             )
+        captcha_code = _captcha_answer(raw_captcha)
 
         # 3. 登录
         login_resp = client.post(

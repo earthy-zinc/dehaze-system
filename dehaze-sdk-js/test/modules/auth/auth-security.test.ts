@@ -13,19 +13,16 @@ import { describe, test, expect, beforeAll, beforeEach, afterAll } from "vitest"
 import axios from "axios";
 import { AuthAPI, UserAPI, ApiKeyAPI, service } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
-import { clearLoginFailCounters, forceLogin, login, logout } from "#/utils/auth";
-import { getRedis, disconnectRedis } from "#/utils/redis";
+import { clearLoginFailCounters, forceLogin, getCaptchaCode, login, logout } from "#/utils/auth";
+import { disconnectRedis } from "#/utils/redis";
 import { disconnectMysql } from "#/utils/mysql";
 import { uniqueName, uniqueUsername } from "#/factories/common";
 import { USERS, ROLES } from "#/factories/constants";
-import { SEED_PASSWORD } from "#/config/constant";
+import { BACKEND_URL, SEED_PASSWORD } from "#/config/constant";
 
 async function captchaPair(): Promise<{ key: string; code: string }> {
   const captcha = await AuthAPI.getCaptcha();
-  const redis = getRedis();
-  const code = await redis.get(`captcha_code:${captcha.captchaKey}`);
-  if (!code) throw new Error(`验证码已过期或不存在: ${captcha.captchaKey}`);
-  return { key: captcha.captchaKey, code };
+  return { key: captcha.captchaKey, code: await getCaptchaCode(captcha.captchaKey) };
 }
 
 /**
@@ -300,7 +297,7 @@ describe("性能烟测（测试用例.md §6.1）", () => {
 describe("rememberMe Cookie 行为（T-AM-012a/012b）", () => {
   // SDK service 的响应拦截器会解包业务信封，拿不到原始响应头，
   // 这里用独立的 axios 实例直连后端读取 Set-Cookie
-  const rawHttp = axios.create({ baseURL: process.env.BACKEND_URL ?? "http://127.0.0.1:8991" });
+  const rawHttp = axios.create({ baseURL: BACKEND_URL });
 
   test("验证：rememberMe=true 设置持久化 Cookie（Max-Age=604800）", async () => {
     const { key, code } = await captchaPair();

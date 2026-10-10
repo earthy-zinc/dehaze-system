@@ -4,6 +4,7 @@ import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { USERS } from "#/factories/constants";
 import {
+  TEST_SCHEDULE_NAME_PREFIX,
   createScheduleForm,
   createScheduleQuery,
   createScheduleStatusForm,
@@ -12,7 +13,7 @@ import {
 
 /**
  * AI 定时调度（T-SC-050~064）
- * 创建需 VIP2+（A0503），普通用户/VIP1 被拒；数据前缀 test_task_，afterAll 软删除清理。
+ * 创建需 VIP2+（A0503），普通用户/VIP1 被拒；数据前缀「定时任务测试」，afterAll 软删除清理。
  */
 describe("AI 定时调度 - AiScheduleAPI (T-SC-050~064)", () => {
   let scheduleId: number;
@@ -144,7 +145,7 @@ describe("AI 定时调度 - AiScheduleAPI (T-SC-050~064)", () => {
       const updated = await AiScheduleAPI.update(scheduleId, createScheduleUpdateForm());
       expect(updated.id).toBe(scheduleId);
       expect(updated.nextTriggerTime).toBeTruthy();
-      expect(updated.name).toContain("test_task_updated");
+      expect(updated.name).toContain(TEST_SCHEDULE_NAME_PREFIX);
     });
   });
 

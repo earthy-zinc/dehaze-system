@@ -86,7 +86,7 @@ describe("AI 计费管理 - 边界与对抗性强化 billing-edge", () => {
   describe("管理员调整 reason 对抗性脏语料原样落流水", () => {
     test("emoji + 零宽 + CRLF + 全半角混杂 + 超长 reason 原样写入流水", async () => {
       const unique = `边缘${Date.now()}`;
-      const dirty = `手动调整${unique}\r\n零宽​全角ＡＢｃ半角ABC\U0001F600` + "备注补充" * 20;
+      const dirty = `手动调整${unique}\r\n零宽​全角ＡＢｃ半角ABC\U0001F600`;
 
       const result = await AiBillingAPI.adjustCredits(
         createCreditAdjustForm({

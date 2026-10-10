@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AiConversationAPI, { type MessageStreamHandlers } from "@/api/ai-conversation";
+import { SSEHttpError } from "@/utils/sse";
 import type {
   InterruptData,
   InterruptEvent,
@@ -161,7 +162,7 @@ describe("SSE 事件分发", () => {
       `id: 7\nevent: suggestions\ndata: ${JSON.stringify({ questions: [{ question: "然后呢" }] })}\n\n`,
       `id: 8\nevent: interrupt\ndata: ${JSON.stringify({
         type: "confirm",
-        data: { recommendation: { algorithm: { id: 2, name: "算法" }, reason: "原因" } },
+        data: { recommendation: { modelId: "aecrnet", modelName: "AECR-NET", reason: "原因" } },
       })}\n\n`,
       `id: 9\nevent: error\ndata: ${JSON.stringify({ code: "B0001", message: "模型超载" })}\n\n`,
       `id: 10\nevent: message.end\ndata: ${JSON.stringify({
@@ -342,12 +343,12 @@ describe("plan 事件与 plan_approve 中断的统一契约", () => {
       artifactId: 9,
       recommendation: {
         recommendationId: 1,
-        algorithmId: 9,
-        algorithmName: "DCP",
+        modelId: "aecrnet",
+        modelName: "AECR-NET",
         reason: "适合浓雾",
         effectDescription: "提升清晰度",
       },
-      alternatives: [{ algorithmId: 3, algorithmName: "AOD", matchScore: 0.8, reason: "备选" }],
+      alternatives: [{ modelId: "aodnet", modelName: "AODNet", matchScore: 0.8, reason: "备选" }],
       imageFeatures: { hazeLevel: 2, sceneType: "outdoor", lighting: "bright" },
     };
     const asyncWait: InterruptData = {
@@ -450,10 +451,61 @@ describe("resume 上行请求体键名（对外契约 camelCase）", () => {
   });
 
   it("仅 confirm/params 时不带 plan_edit 键", async () => {
-    const { fetchMock, done } = resume({ confirm: true, params: { algorithmId: 9 } });
+    const { fetchMock, done } = resume({ confirm: true, params: { modelId: "aecrnet" } });
     await done;
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
-    expect(body).toEqual({ confirm: true, params: { algorithmId: 9 } });
+    expect(body).toEqual({ confirm: true, params: { modelId: "aecrnet" } });
     expect(body).not.toHaveProperty("plan_edit");
+  });
+});
+
+describe("SSE HTTP 失败携带业务信封", () => {
+  /** 以假 fetch 驱动一次 sendMessage，返回 onNetworkError 收到的错误 */
+  function captureError(response: Response): Promise<unknown> {
+    const fetchImpl = (async () => response) as typeof fetch;
+    return new Promise((resolve) => {
+      AiConversationAPI.sendMessage(
+        1,
+        { content: "x" },
+        { onNetworkError: (error) => resolve(error) },
+        { fetchImpl }
+      );
+    });
+  }
+
+  it("非 2xx 时错误携带 status/code/msg，供上层映射真实文案", async () => {
+    const response = {
+      ok: false,
+      status: 400,
+      statusText: "Bad Request",
+      text: async () =>
+        JSON.stringify({
+          code: "A0400",
+          msg: "参数 body.content String should have at most 4000 characters",
+        }),
+    } as unknown as Response;
+
+    const error = (await captureError(response)) as SSEHttpError;
+
+    expect(error).toBeInstanceOf(SSEHttpError);
+    expect(error.status).toBe(400);
+    expect(error.code).toBe("A0400");
+    expect(error.msg).toContain("at most 4000 characters");
+  });
+
+  it("非业务信封响应体（网关错误页）不误报业务码，仅暴露状态码", async () => {
+    const response = {
+      ok: false,
+      status: 502,
+      statusText: "Bad Gateway",
+      text: async () => "<html>502 Bad Gateway</html>",
+    } as unknown as Response;
+
+    const error = (await captureError(response)) as SSEHttpError;
+
+    expect(error).toBeInstanceOf(SSEHttpError);
+    expect(error.status).toBe(502);
+    expect(error.code).toBeUndefined();
+    expect(error.msg).toBeUndefined();
   });
 });

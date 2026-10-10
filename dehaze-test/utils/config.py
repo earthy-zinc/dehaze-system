@@ -24,6 +24,21 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if load_dotenv is not None:
     load_dotenv(PROJECT_ROOT / ".env")
 
+
+def _required(name: str) -> str:
+    """读取必需的环境变量，缺失即报错。
+
+    .env 缺失时若回落到兜底值（127.0.0.1 / 生产预留库名 dehaze），会静默连到错误的环境，
+    故连接与凭据类变量一律要求根 .env 显式提供。
+    """
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(
+            f"缺少环境变量 {name}：请确认仓库根 .env 已按环境模板落地（.env.dev.example / .env.pre.example）"
+        )
+    return value
+
+
 # 种子账号（admin/root/test 等）口令明文，对应 config/sql/data/sys_user.sql 的 bcrypt；
 # 非运行时配置：改 .env 不会改变种子口令，只能改 sql 里的哈希
 SEED_PASSWORD = "Dehaze2026"
@@ -49,7 +64,7 @@ BACKENDS: dict[str, BackendConfig] = {
 DEFAULT_BACKEND = "java"
 DEFAULT_USERNAME = "admin"
 # 新用户默认口令（三端后端由根 .env 的 DEFAULT_PASSWORD 注入并用于建号）
-DEFAULT_PASSWORD = os.environ.get("DEFAULT_PASSWORD", "Dehaze2026")
+DEFAULT_PASSWORD = _required("DEFAULT_PASSWORD")
 
 # 三端统一使用 "00000" 作为成功码（对齐 dehaze-sdk-js/src/enums/ResultEnum.ts）
 SUCCESS_CODE = "00000"
@@ -64,16 +79,16 @@ def get_backend(name: str | None = None) -> BackendConfig:
 
 
 # Redis / MySQL 直连配置（与 dehaze-sdk-js/test/utils/{redis,mysql}.ts 对齐）
-REDIS_HOST = os.environ.get("REDIS_HOST", "127.0.0.1")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
-REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", "Dehaze2026")
-REDIS_DATABASE = int(os.environ.get("REDIS_DATABASE", "0"))
+REDIS_HOST = _required("REDIS_HOST")
+REDIS_PORT = int(_required("REDIS_PORT"))
+REDIS_PASSWORD = _required("REDIS_PASSWORD")
+REDIS_DATABASE = int(_required("REDIS_DATABASE"))
 
-MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
-MYSQL_USER = os.environ.get("MYSQL_USERNAME", "root")
-MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "Dehaze2026")
-MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "dehaze")
+MYSQL_HOST = _required("MYSQL_HOST")
+MYSQL_PORT = int(_required("MYSQL_PORT"))
+MYSQL_USER = _required("MYSQL_USERNAME")
+MYSQL_PASSWORD = _required("MYSQL_PASSWORD")
+MYSQL_DATABASE = _required("MYSQL_DATABASE")
 MYSQL_DATABASE_TEST = "dehaze_test"
 
 # 端口 → 后端名映射（对齐 sdk-js/test/config/constant.ts）
@@ -82,3 +97,22 @@ PORT_TO_BACKEND = {
     "8990": "dehaze-go",
     "8991": "dehaze-python",
 }
+
+# MongoDB / MinIO / Elasticsearch：环境重置（reset_env.py）按命名空间清理时使用，
+# 变量名与三端后端的配置项保持一致
+MONGODB_HOST = _required("MONGODB_HOST")
+MONGODB_PORT = int(_required("MONGODB_PORT"))
+MONGODB_USERNAME = _required("MONGODB_USERNAME")
+MONGODB_PASSWORD = _required("MONGODB_PASSWORD")
+MONGODB_DATABASE = _required("MONGODB_DATABASE")
+
+MINIO_HOST = _required("MINIO_HOST")
+MINIO_PORT = int(_required("MINIO_PORT"))
+MINIO_ACCESS_KEY = _required("MINIO_ACCESS_KEY")
+MINIO_SECRET_KEY = _required("MINIO_SECRET_KEY")
+MINIO_BUCKET = _required("MINIO_BUCKET")
+
+ES_URL = _required("ES_URL")
+ES_USERNAME = _required("ES_USERNAME")
+ES_PASSWORD = _required("ES_PASSWORD")
+ES_INDEX_PREFIX = _required("ES_INDEX_PREFIX")

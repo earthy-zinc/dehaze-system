@@ -95,7 +95,7 @@ export interface AiObservabilityContextEvent {
   plan_summary?: string;
   /** 中断类型（resume 事件） */
   interrupt_type?: string;
-  /** 用户决策摘要（confirm 的 confirmed/algorithmId、plan_approve 的 plan_edit 等） */
+  /** 用户决策摘要（confirm 的 confirmed/modelId、plan_approve 的 plan_edit 等） */
   decision?: string;
   /** 原中断链路 trace_id（resume 事件关联） */
   from_trace_id?: string;

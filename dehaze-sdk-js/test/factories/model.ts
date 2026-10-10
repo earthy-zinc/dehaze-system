@@ -1,17 +1,14 @@
-import {
-  BatchPredictionForm,
-  CompareReportForm,
-  EvaluationForm,
-  PredictionForm,
-  PresetForm,
-} from "../../index";
+import { CompareReportForm, EvaluationForm, ImageEditForm, PresetForm } from "../../index";
 import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 
 const DATASET_BASE_URL = `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets`;
 
-export function createPredictionForm(overrides: Partial<PredictionForm> = {}): PredictionForm {
+/** 默认图像模型标识（阶段1 迁移映射：算法 id=1 AECR-NET → aecrnet） */
+export const DEFAULT_IMAGE_MODEL = "aecrnet";
+
+export function createImageEditForm(overrides: Partial<ImageEditForm> = {}): ImageEditForm {
   return {
-    algorithmId: 1,
+    model: DEFAULT_IMAGE_MODEL,
     imageUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`,
     ...overrides,
   };
@@ -19,22 +16,9 @@ export function createPredictionForm(overrides: Partial<PredictionForm> = {}): P
 
 export function createEvaluationForm(overrides: Partial<EvaluationForm> = {}): EvaluationForm {
   return {
-    algorithmId: 1,
+    modelId: DEFAULT_IMAGE_MODEL,
     predUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`,
     gtUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/clean/001.JPG`,
-    ...overrides,
-  };
-}
-
-export function createBatchPredictionForm(
-  overrides: Partial<BatchPredictionForm> = {}
-): BatchPredictionForm {
-  return {
-    algorithmId: 1,
-    items: [
-      { imageUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG` },
-      { imageUrl: `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/002.JPG` },
-    ],
     ...overrides,
   };
 }
@@ -42,7 +26,7 @@ export function createBatchPredictionForm(
 export function createPresetForm(overrides: Partial<PresetForm> = {}): PresetForm {
   return {
     name: `preset_${Date.now()}`,
-    algorithmId: 1,
+    modelId: DEFAULT_IMAGE_MODEL,
     params: JSON.stringify({ gamma: 1.0, clipLimit: 2.0 }),
     ...overrides,
   };

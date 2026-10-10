@@ -1,4 +1,4 @@
-import { FeedbackAPI, ModelAPI } from "../../../index";
+import { FeedbackAPI, AiImageAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import {
@@ -8,11 +8,16 @@ import {
   createRatingForm,
   createRatingQuery,
 } from "#/factories/feedback";
-import { createPredictionForm } from "#/factories/model";
+import { createImageEditForm } from "#/factories/model";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import { getRedis } from "#/utils/redis";
 import { createCompletedPredLog } from "#/utils/mysql";
 import { USERS } from "#/factories/constants";
+import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
+
+// 截图/图片 URL 必须落在后端已配置的存储域名下（FILE_STORAGE_BASE_URLS 前缀），
+// 各环境域名不同，一律从测试配置取，禁止硬编码 host
+const STORAGE_HOST_PREFIX = `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}`;
 
 describe("反馈评价模块接口测试", () => {
   const cleanup = new TestCleanupRegistry();
@@ -24,18 +29,18 @@ describe("反馈评价模块接口测试", () => {
   async function ensurePredictionLog(): Promise<number> {
     await login(userAccount);
     try {
-      const form = createPredictionForm({ algorithmId: 13 });
-      const result = await ModelAPI.predictAndWait(form, {
+      const form = createImageEditForm();
+      const result = await AiImageAPI.submitAndWait(form, {
         intervalMs: 2000,
         timeoutMs: 30000,
       });
-      if (result.logId && result.status === 2) {
-        return result.logId;
+      if (result.taskId && result.status === 2) {
+        return result.taskId;
       }
     } catch {
       // 算法服务不可用时回退到直接创建已完成记录
     }
-    return await createCompletedPredLog(userId, 13);
+    return await createCompletedPredLog(userId);
   }
 
   // 重置反馈每日次数限制（DAILY_FEEDBACK_LIMIT=5，测试创建反馈会超限）
@@ -142,7 +147,7 @@ describe("反馈评价模块接口测试", () => {
     test("正向测试：含截图提交评价", async () => {
       const predLogId = await ensurePredictionLog();
       const form = createRatingForm(predLogId, {
-        imageUrls: ["http://127.0.0.1:9000/img1.jpg", "http://127.0.0.1:9000/img2.jpg"],
+        imageUrls: [`${STORAGE_HOST_PREFIX}/img1.jpg`, `${STORAGE_HOST_PREFIX}/img2.jpg`],
       });
       const result = await FeedbackAPI.createRating(form);
       expect(result.id).toBeGreaterThan(0);
@@ -476,7 +481,7 @@ describe("反馈评价模块接口测试", () => {
       expect(stats.ratingDistribution).toBeDefined();
       expect(Array.isArray(stats.positiveTagRanking)).toBe(true);
       expect(Array.isArray(stats.negativeTagRanking)).toBe(true);
-      expect(Array.isArray(stats.algorithmStats)).toBe(true);
+      expect(Array.isArray(stats.modelStats)).toBe(true);
     });
 
     test("正向测试：按时间范围查询统计", async () => {
@@ -491,6 +496,8 @@ describe("反馈评价模块接口测试", () => {
       const stats = await FeedbackAPI.getRatingStats();
       expect(stats.averageRating).toBeGreaterThanOrEqual(0);
       expect(stats.averageRating).toBeLessThanOrEqual(5);
+      // 契约锁：三端统一保留 2 位小数（该式对 half-even/half-up 均成立，不绑死舍入实现）
+      expect(Number(stats.averageRating.toFixed(2))).toBe(stats.averageRating);
       for (let star = 1; star <= 5; star++) {
         expect(typeof stats.ratingDistribution[star]).toBe("number");
       }
@@ -503,15 +510,18 @@ describe("反馈评价模块接口测试", () => {
 
     test("验证：按算法统计含平均分和低分率", async () => {
       const stats = await FeedbackAPI.getRatingStats();
-      for (const algoStat of stats.algorithmStats) {
-        expect(algoStat.algorithmId).toBeGreaterThan(0);
-        expect(algoStat.algorithmName).toBeTruthy();
-        expect(algoStat.averageRating).toBeGreaterThanOrEqual(0);
-        expect(algoStat.averageRating).toBeLessThanOrEqual(5);
-        expect(algoStat.totalRatings).toBeGreaterThanOrEqual(0);
-        expect(algoStat.lowRatingRate).toBeGreaterThanOrEqual(0);
-        // 后端 lowRatingRate 为百分比（0-100，保留 1 位小数），如 9.8 表示 9.8%
-        expect(algoStat.lowRatingRate).toBeLessThanOrEqual(100);
+      for (const modelStat of stats.modelStats) {
+        expect(modelStat.modelId).toBeTruthy();
+        expect(modelStat.modelName).toBeTruthy();
+        expect(modelStat.averageRating).toBeGreaterThanOrEqual(0);
+        expect(modelStat.averageRating).toBeLessThanOrEqual(5);
+        expect(modelStat.totalRatings).toBeGreaterThanOrEqual(0);
+        expect(modelStat.lowRatingRate).toBeGreaterThanOrEqual(0);
+        // 后端 lowRatingRate 为百分比（0-100，保留 2 位小数），如 6.67 表示 6.67%
+        expect(modelStat.lowRatingRate).toBeLessThanOrEqual(100);
+        // 契约锁：三端统一保留 2 位小数（该式对 half-even/half-up 均成立，不绑死舍入实现）
+        expect(Number(modelStat.averageRating.toFixed(2))).toBe(modelStat.averageRating);
+        expect(Number(modelStat.lowRatingRate.toFixed(2))).toBe(modelStat.lowRatingRate);
       }
     });
   });
@@ -566,7 +576,7 @@ describe("反馈评价模块接口测试", () => {
 
     test("正向测试：含图片反馈", async () => {
       const form = createFeedbackForm({
-        images: ["http://127.0.0.1:9000/f1.jpg", "http://127.0.0.1:9000/f2.jpg"],
+        images: [`${STORAGE_HOST_PREFIX}/f1.jpg`, `${STORAGE_HOST_PREFIX}/f2.jpg`],
       });
       const result = await FeedbackAPI.createFeedback(form);
       expect(result.id).toBeGreaterThan(0);

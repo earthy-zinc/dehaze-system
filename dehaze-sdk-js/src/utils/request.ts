@@ -54,6 +54,9 @@ function alignResponseTraceId(response: AxiosResponse): void {
  * API 失败自动构造日志条目（method/path/status/duration/code）交 Logger 上报。
  * trace_id 从 config.metadata.traceId 读取，显式传入 fields.trace_id。
  * 触发时机：响应拦截器 reject 路径（业务码错误或 HTTP 错误）。
+ *
+ * 401 例外：未认证（未登录冷启动探测 /auth/me、会话失效）是可预期的鉴权结果而非服务端故障，
+ * 按 INFO 记录——本机 console 可见、远端不上报，避免把预期结果算成 ERROR 淹没真实故障。
  */
 function reportApiError(error: AxiosError): void {
   const logger = Logger.getInstance();
@@ -77,6 +80,11 @@ function reportApiError(error: AxiosError): void {
   if (status !== undefined) fields.status = status;
   if (code !== undefined) fields.code = code;
   if (duration !== undefined) fields.duration = duration;
+
+  if (status === 401) {
+    logger.info(`API_UNAUTHORIZED: ${error.message}`, fields);
+    return;
+  }
 
   // error.message 携带关键诊断：业务错误为后端 msg，网络错误为 Network Error / timeout 描述
   logger.error(`API_ERROR: ${error.message}`, fields);

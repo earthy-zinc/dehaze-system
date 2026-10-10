@@ -33,11 +33,6 @@ describe("模板下载接口测试 - ImportExportAPI.downloadTemplate", () => {
     test("下载字典 Excel 模板返回 Blob", () => expectTemplateBlob("dict", "excel"));
   });
 
-  describe("GET /api/v1/algorithm/template - 算法模块模板", () => {
-    test("下载算法 Excel 模板返回 Blob", () => expectTemplateBlob("algorithm", "excel"));
-    test("下载算法 CSV 模板返回 Blob", () => expectTemplateBlob("algorithm", "csv"));
-  });
-
   describe("异常场景", () => {
     test("下载不支持导入的模块(dataset)模板应抛出错误", async () => {
       await expectBizError(ImportExportAPI.downloadTemplate("dataset" as any, "excel"), [

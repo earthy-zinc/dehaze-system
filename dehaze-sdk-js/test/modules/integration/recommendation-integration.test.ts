@@ -1,11 +1,10 @@
-import { ModelAPI, FileAPI } from "../../../index";
+import { AiImageAPI, FileAPI } from "../../../index";
 import RecommendationAPI from "@/api/recommendation";
 import FavoriteAPI from "@/api/favorite";
-import { createPredictionForm } from "#/factories/model";
+import { createImageEditForm } from "#/factories/model";
 import { login, logout } from "#/utils/auth";
-import { ensureDehazeQuota } from "#/utils/quota";
 import { USERS } from "#/factories/constants";
-import type { RecommendedAlgorithm } from "@/api/recommendation/model";
+import type { RecommendedModelVO } from "@/api/recommendation/model";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -18,7 +17,6 @@ describe("推荐跨模块集成测试", () => {
   let uploadedFileUrl: string;
 
   beforeAll(async () => {
-    await ensureDehazeQuota();
     await login(USERS.USER.username);
 
     const uploadWithRetry = async (relativePath: string): Promise<{ id: number; url: string }> => {
@@ -76,15 +74,15 @@ describe("推荐跨模块集成测试", () => {
     await logout();
   });
 
-  /** 基于分析结果获取算法推荐，并断言返回列表结构 */
-  async function getRecommendations(imageMd5: string): Promise<RecommendedAlgorithm[]> {
-    const recommendations = await RecommendationAPI.getAlgorithmRecommendations({ imageMd5 });
+  /** 基于分析结果获取模型推荐，并断言返回列表结构 */
+  async function getRecommendations(imageMd5: string): Promise<RecommendedModelVO[]> {
+    const recommendations = await RecommendationAPI.getModelRecommendations({ imageMd5 });
     expect(Array.isArray(recommendations)).toBe(true);
     return recommendations;
   }
 
   describe("场景1：推荐→采纳→反馈 完整流程", () => {
-    test("正向流程：分析图片→获取推荐→采纳推荐算法去雾→提交有用反馈", async () => {
+    test("正向流程：分析图片→获取推荐→采纳推荐模型去雾→提交有用反馈", async () => {
       const analysis = await RecommendationAPI.analyze({ imageUrl: uploadedFileUrl });
       expect(analysis.hazeLevel).toBeDefined();
       expect(typeof analysis.hazeConfidence).toBe("number");
@@ -96,15 +94,15 @@ describe("推荐跨模块集成测试", () => {
       ).toBeGreaterThan(0);
 
       const top = recommendations[0]!;
-      expect(top.algorithmId).toBeDefined();
+      expect(top.modelId).toBeTruthy();
       expect(typeof top.matchScore).toBe("number");
       expect(typeof top.reason).toBe("string");
 
-      // 采纳推荐算法去雾，recommendedBy 标记来源
-      const recommendationId = top.recommendationId ?? top.algorithmId;
-      const predResult = await ModelAPI.predictAndWait(
-        createPredictionForm({
-          algorithmId: top.algorithmId,
+      // 采纳推荐模型去雾，recommendedBy 标记来源
+      const recommendationId = top.recommendationId!;
+      const predResult = await AiImageAPI.submitAndWait(
+        createImageEditForm({
+          model: top.modelId,
           fileId: uploadedFileId,
           recommendedBy: recommendationId,
         }),
@@ -121,7 +119,7 @@ describe("推荐跨模块集成测试", () => {
   });
 
   describe("场景2：推荐→不采纳→反馈 完整流程", () => {
-    test("正向流程：分析图片→获取推荐→不采纳使用其他算法→提交无用反馈", async () => {
+    test("正向流程：分析图片→获取推荐→不采纳使用其他模型→提交无用反馈", async () => {
       const analysis = await RecommendationAPI.analyze({ imageUrl: uploadedFileUrl });
       expect(analysis.sceneType).toBeDefined();
 
@@ -131,18 +129,16 @@ describe("推荐跨模块集成测试", () => {
         "分析后无推荐结果：推荐规则未命中或推荐服务异常"
       ).toBeGreaterThan(0);
 
-      // 不采纳推荐，改用固定可用算法 13
-      const predResult = await ModelAPI.predictAndWait(
-        createPredictionForm({
-          algorithmId: 13,
+      // 不采纳推荐，改用默认可用图像模型
+      const predResult = await AiImageAPI.submitAndWait(
+        createImageEditForm({
           fileId: uploadedFileId,
         }),
         { intervalMs: 2000, timeoutMs: 120000 }
       );
       expect(predResult.status).toBe(2);
 
-      const recommendationId =
-        recommendations[0]!.recommendationId ?? recommendations[0]!.algorithmId;
+      const recommendationId = recommendations[0]!.recommendationId!;
       const feedbackResult = await RecommendationAPI.submitFeedback({
         recommendationId,
         useful: false,

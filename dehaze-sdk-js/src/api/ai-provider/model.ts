@@ -182,12 +182,12 @@ export interface ProviderHealthStatVO {
   health: ProviderHealth;
   /** 近 24h 调用次数 */
   callCount: number;
-  /** 成功率（0-1） */
-  successRate: number;
-  /** 429 限流率（0-1） */
-  rate429: number;
-  /** 延迟 P95（毫秒） */
-  p95LatencyMs?: number;
+  /** 成功率（0-1）；近 24h 无调用时无样本（python 信封省略 null 字段，java/go 返回 null），页面显示 - */
+  successRate?: number | null;
+  /** 429 限流率（0-1）；近 24h 无调用时同上 */
+  rate429?: number | null;
+  /** 延迟 P95（毫秒）；近 24h 无调用时同上 */
+  p95LatencyMs?: number | null;
   /** 是否熔断 */
   circuitOpen: boolean;
 }

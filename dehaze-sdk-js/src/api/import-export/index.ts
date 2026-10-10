@@ -10,16 +10,8 @@ import {
 } from "./model";
 
 /**
- * 模块标识到 URL 路径段的映射。
- * 算法模块的 CRUD 路径为 /api/v1/algorithms（复数），
- * 导入导出路径需与 CRUD 保持一致，故映射为 "algorithms"。
+ * ImportExportAPI —— 通用导入导出端点（/api/v1/{module}/_export、_import、template）
  */
-// 通用导入导出端点的模块段即原始模块名（/api/v1/{module}/_export），
-// 无需映射；单个算法配置 JSON 导出走 /api/v1/algorithms/{id}/_export 专用路由
-function modulePath(module: string): string {
-  return module;
-}
-
 class ImportExportAPI {
   /**
    * 简单查询条件导出（GET）

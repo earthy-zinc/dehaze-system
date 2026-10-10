@@ -22,9 +22,9 @@
  *   1) 先确认 java 服务已升级到带 `@Field` 映射的版本（否则迁移后旧版 java 反而读不到数据）。
  *   2) 脚本首步即统计并在最后校验「待迁移/遗留文档数」（迁移前 >0、迁移后应为 0），
  *      可单独用 `countDocuments` 预检，不必先跑迁移。
- *   3) 建议先备份：`mongodump --host 127.0.0.1 --port 27017 -u root -p "$MONGODB_PASSWORD" \
- *      --authenticationDatabase admin --db dehaze --collection login_log --collection audit_log \
- *      --out /tmp/mongo-backup-$(date +%F)`
+ *   3) 建议先备份（连接参数与库名取自根 `.env`，不写死地址）：
+ *      `mongodump "mongodb://$MONGODB_USERNAME:$MONGODB_PASSWORD@$MONGODB_HOST:$MONGODB_PORT/$MONGODB_DATABASE" \
+ *        --collection login_log --collection audit_log --out /tmp/mongo-backup-$(date +%F)`
  *   4) 记录当前索引：`db.login_log.getIndexes()` / `db.audit_log.getIndexes()`（脚本也会打印）。
  *
  * 执行（连接串从根 `.env` 的 MONGODB_* 取值，密码勿写进命令历史可用环境变量）

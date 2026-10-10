@@ -1,8 +1,7 @@
 import { expectBizError } from "#/utils/assertion";
 import { createUserForm, createUserQuery } from "#/factories/user";
 import { uniqueName, uniqueEmail, uniqueMobile } from "#/factories/common";
-import { login, clearLoginFailCounters } from "#/utils/auth";
-import { getRedis } from "#/utils/redis";
+import { getCaptchaCode, login, clearLoginFailCounters } from "#/utils/auth";
 import UserAPI from "@/api/user";
 import AuthAPI from "@/api/auth";
 import { UserForm, UserQuery, UserPageVO } from "@/api/user/model";
@@ -909,8 +908,7 @@ describe("用户管理接口测试", () => {
     /** 使用自定义密码登录（不走 utils/auth 的 SEED_PASSWORD 缓存通道） */
     async function loginWithPassword(name: string, password: string): Promise<string> {
       const captcha = await AuthAPI.getCaptcha();
-      const code = await getRedis().get(`captcha_code:${captcha.captchaKey}`);
-      if (!code) throw new Error(`验证码已过期: ${captcha.captchaKey}`);
+      const code = await getCaptchaCode(captcha.captchaKey);
       const result = await AuthAPI.login({
         username: name,
         password,

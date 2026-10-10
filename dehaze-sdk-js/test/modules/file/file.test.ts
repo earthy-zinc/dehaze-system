@@ -108,15 +108,6 @@ describe("文件管理接口测试", () => {
       uploadedFileIds.push(result.id);
     });
 
-    test("正向测试：上传文件并指定modelId", async () => {
-      const result = await FileAPI.upload(makeFormFile(path.basename(testFilePath)), 1);
-
-      expect(result.id).toBeGreaterThan(0);
-      expect(typeof result.name).toBe("string");
-      expect(typeof result.url).toBe("string");
-      uploadedFileIds.push(result.id);
-    });
-
     test("参数校验：未提供文件应抛出业务错误", async () => {
       await expectBizError(FileAPI.upload(null as any), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
     });
@@ -176,7 +167,7 @@ describe("文件管理接口测试", () => {
       let lastLoaded = 0;
       let lastTotal: number | undefined;
 
-      const result = await FileAPI.upload(formFile, undefined, (progressEvent) => {
+      const result = await FileAPI.upload(formFile, (progressEvent) => {
         progressCalled = true;
         if (progressEvent.total) {
           // 记录单调递增且不超过 total 的进度值，最后统一断言

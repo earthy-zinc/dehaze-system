@@ -64,8 +64,9 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
   describe("GET /api/v1/ai-billing/balance - 余额查询", () => {
     test("正向测试：查询当前用户余额与配额", async () => {
       const balance = await AiBillingAPI.getBalance();
-      // 后端 creditsBalance 为 Decimal 序列化为字符串（如 "0.00"），可解析为数字
-      expect(["number", "string"]).toContain(typeof balance.creditsBalance);
+      // 后端 creditsBalance 为 Decimal 防精度丢失按字符串下发（如 "0.00"），契约定死为 string
+      expect(typeof balance.creditsBalance).toBe("string");
+      expect(Number.parseFloat(balance.creditsBalance)).not.toBeNaN();
       expect(typeof balance.arrearsStatus).toBe("boolean");
       expect(typeof balance.dailyUsed).toBe("number");
       expect(typeof balance.dailyLimit).toBe("number");
@@ -177,6 +178,11 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
       expect(typeof bill.totalConsume).toBe("number");
       expect(typeof bill.totalRecharge).toBe("number");
       expect(typeof bill.totalRefund).toBe("number");
+      // 余额为 Decimal 防精度丢失的字符串序列化（如 "3000.00"），非 JSON 数字
+      expect(typeof bill.balanceStart).toBe("string");
+      expect(typeof bill.balanceEnd).toBe("string");
+      expect(Number.parseFloat(bill.balanceStart)).not.toBeNaN();
+      expect(Number.parseFloat(bill.balanceEnd)).not.toBeNaN();
     });
 
     test("边界：查询不存在的月份账单应失败", async () => {
@@ -194,6 +200,9 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
       const bill = await AiBillingAPI.downloadBill(month);
       expect(bill.month).toBe(month);
       expect(typeof bill.totalConsume).toBe("number");
+      // 下载与查询同一契约：余额同样按字符串下发
+      expect(typeof bill.balanceStart).toBe("string");
+      expect(typeof bill.balanceEnd).toBe("string");
     });
 
     test("边界：下载不存在的月份账单应失败", async () => {
@@ -297,8 +306,9 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
       });
       const result = await AiBillingAPI.adjustCredits(form);
       expect(result.userId).toBe(USERS.USER.id);
-      // 后端 creditsBalance 为 Decimal 序列化为字符串（如 "10"），可解析为数字
-      expect(["number", "string"]).toContain(typeof result.creditsBalance);
+      // 后端 creditsBalance 为 Decimal 按字符串下发（如 "10"），契约定死为 string
+      expect(typeof result.creditsBalance).toBe("string");
+      expect(Number.parseFloat(result.creditsBalance)).not.toBeNaN();
     });
 
     test("正向测试：管理员扣减用户积分", async () => {
@@ -454,9 +464,8 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
 
       result.list.forEach((record) => {
         expect(record.credits).toBeGreaterThanOrEqual(0);
-        // 本地默认模型（qwen3-0.6b）费率配置为 0：有 token 计量但 credits 为 0 属
-        // 正常换算；「非缓存 token 必产生积分消耗」仅在付费模型下成立，待接入
-        // 付费模型后补充该断言
+        // 当前平台默认模型为免费档（未登记售价，费率为 0）：有 token 计量但 credits 为 0 属
+        // 正常换算；「非缓存 token 必产生积分消耗」仅在付费模型下成立，待默认模型转为付费档后补充该断言
       });
     });
 
@@ -500,9 +509,9 @@ describe("AI 计费管理模块接口测试 - AiBillingAPI", () => {
 
   describe("计费联动验证 - 对话产生计费记录", () => {
     test("正向测试：AI 对话产生 billType=chat 的计费记录且 token 用量入账", async () => {
-      // 本地默认模型（qwen3-0.6b）费率配置为 0，不产生积分扣减/配额变化；
-      // 本地环境验证「消息发送 → 计费记录落库 + token 计量」联动，
-      // 付费模型的余额/配额扣减联动需接入付费模型后补充验证
+      // 当前平台默认模型为免费档（未登记售价），不产生积分扣减/配额变化；
+      // 此处验证「消息发送 → 计费记录落库 + token 计量」联动，
+      // 付费模型的余额/配额扣减联动需默认模型转为付费档后补充验证
       const result = await AiBillingAPI.getRecords(
         createBillingRecordQuery({ conversationId: chatConversationId, pageSize: 10 })
       );
@@ -555,6 +564,9 @@ describe("消耗汇总/异常监控/成本管理/对账（契约先行）", () =
     });
     expect(created.id).toBeGreaterThan(0);
     expect(created.priceVersion).toBeGreaterThan(0);
+    // 出参档位单价为 Decimal 序列化字符串（如 "1.0000"），契约定死为 string
+    expect(typeof created.details?.[0]?.unitPrice).toBe("string");
+    expect(Number.parseFloat(created.details?.[0]?.unitPrice ?? "")).not.toBeNaN();
     await AiBillingAPI.updateCost(created.id, { status: 0 });
     await AiBillingAPI.deleteCost(created.id);
   });
@@ -578,8 +590,9 @@ describe("消耗汇总/异常监控/成本管理/对账（契约先行）", () =
       // 分组行仅返回 dimension+cost：订单实收无法按供应商归因
       expect(row.dimension).toBeDefined();
       expect(typeof row.cost).toBe("number");
-      expect(row.metric).toBeUndefined();
-      expect(row.revenue).toBeUndefined();
+      // CostGroupVO 契约只含 dimension + cost，故按「键不存在」断言（原写法访问了类型上不存在的属性）
+      expect(row).not.toHaveProperty("metric");
+      expect(row).not.toHaveProperty("revenue");
     }
   });
 

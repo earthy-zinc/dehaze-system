@@ -4,6 +4,9 @@ import { uniqueName, uniqueCode } from "./common";
 import { TestCleanupRegistry } from "#/utils/cleanup";
 import MenuAPI from "@/api/menu";
 
+/** 测试菜单统一名称前缀：集测按此前缀清理（《菜单管理/测试用例》约定），勿改动 */
+export const TEST_MENU_NAME_PREFIX = "测试菜单";
+
 /**
  * 创建菜单表单数据
  * @param overrides 覆盖默认值的字段
@@ -14,7 +17,7 @@ export function createMenuForm(overrides: Partial<MenuForm> = {}): MenuForm {
   const defaultComponent = type === MenuTypeEnum.MENU ? "test/index" : "";
   return {
     parentId: 0,
-    name: uniqueName("测试菜单"),
+    name: uniqueName(TEST_MENU_NAME_PREFIX),
     type: MenuTypeEnum.CATALOG,
     path: "/" + uniqueCode("test"),
     component: defaultComponent,

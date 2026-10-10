@@ -7,11 +7,11 @@
 
 与三个邻居的职责边界（防止边界腐烂的核心约束）：
 
-| | 承载 | 触发 | 产物 | 判定 |
-|---|---|---|---|---|
-| `dehaze-python/tests` 等各端 tests | 产品代码回归（断言正确性） | 每次改动 / CI | pass/fail | **精确预期值** |
-| `dehaze-sdk-js/test` | SDK ↔ 后端契约集成 | 发版 / 契约变更 | pass/fail | 契约一致 |
-| **dehaze-test（本项目）** | 开发过程辅助 | **人工按需** | 数据 / 报告 / 环境状态 | **无预期值，供人决策** |
+|                                    | 承载                       | 触发            | 产物                   | 判定                   |
+| ---------------------------------- | -------------------------- | --------------- | ---------------------- | ---------------------- |
+| `dehaze-python/tests` 等各端 tests | 产品代码回归（断言正确性） | 每次改动 / CI   | pass/fail              | **精确预期值**         |
+| `dehaze-sdk-js/test`               | SDK ↔ 后端契约集成         | 发版 / 契约变更 | pass/fail              | 契约一致               |
+| **dehaze-test（本项目）**          | 开发过程辅助               | **人工按需**    | 数据 / 报告 / 环境状态 | **无预期值，供人决策** |
 
 四类任务：
 
@@ -51,13 +51,9 @@ PYTHON=../dehaze-python/.venv/bin/python   # 在仓库根的 dehaze-test/ 目录
 
 三端后端通过本机映射端口访问（Java:8989 / Go:8990 / Python:8991），开箱即用。
 
-**Redis（6379）和 MySQL（3306）默认指向 `MYSQL_HOST` / `REDIS_HOST`（`127.0.0.1`），远程端口可能不开放**。需要直连时（如查未读消息数、清理缓存、重建数据库），自行做端口转发：
+MySQL / Redis 等基础设施的连接参数一律取自仓库根 `.env`（`MYSQL_*` / `REDIS_*`，与 `dehaze-sdk-js/test/config/constant.ts` 同源，SDK 侧另读 `NGINX_STATIC_*`），代码里不写死地址、**缺失即报错**（不再回落到 `127.0.0.1` 或生产预留库名）；这些变量同时决定库名与 Redis db（dev `dehaze_dev` + db1 / pre `dehaze_pre` + db2），**换环境就是换 `.env`**。
 
-```bash
-ssh -L 6379:127.0.0.1:6379 -L 3306:127.0.0.1:3306 <user>@<MYSQL_HOST>
-```
-
-转发完成后，dehaze-test 会通过 `MYSQL_HOST` / `REDIS_HOST`（被 ssh 转发到 127.0.0.1）直连 Redis/MySQL。
+dev（21.91.16.245）与 pre（21.6.51.87）的 `.env` 均把 `*_HOST` 指向中间件宿主，在两台机器上直连即可。从办公网工作站跑同一套工具时同样可直连：中间件宿主的 Redis（6381）、nginx 静态（19000）、MySQL（3306）、Mongo（27017）等端口均不在链路侧代理的封禁名单内（被封禁的是 6379 / 9000 等默认端口，客户端表现为 502，不是服务故障），因此**不需要端口转发**。
 
 ## 使用
 
@@ -85,6 +81,11 @@ cd dehaze-test
 
 # 重建数据库（危险操作：需显式 --only 指定库名；--only dehaze 会清空开发库全部数据）
 ../dehaze-python/.venv/bin/python scripts/rebuild_mysql.py --only dehaze
+
+# 环境重置（把 .env 指向的命名空间整体清空并回到种子态：MySQL + Redis + MinIO + MongoDB + ES；
+# 破坏性操作须 --target 等于 .env 的 MYSQL_DATABASE 且显式 --yes，先 --dry-run 可只打印计划）
+../dehaze-python/.venv/bin/python scripts/reset_env.py --target dehaze_pre --dry-run
+../dehaze-python/.venv/bin/python scripts/reset_env.py --target dehaze_pre --yes
 ```
 
 ### 知识库质量评估
@@ -121,8 +122,8 @@ print("API 未读数:", resp["data"]["count"])
 
 三端后端固定映射到本机端口（与 `dehaze-sdk-js/test/config/constant.ts` 一致）：
 
-| 后端 | 端口 |
-|---|---|
-| dehaze-java | 8989 |
-| dehaze-go | 8990 |
+| 后端          | 端口 |
+| ------------- | ---- |
+| dehaze-java   | 8989 |
+| dehaze-go     | 8990 |
 | dehaze-python | 8991 |

@@ -701,7 +701,8 @@ describe("部门管理接口测试", () => {
       createdDeptIds.push(deptId);
 
       const options = await DeptAPI.getOptions();
-      const optionIds: number[] = [];
+      // OptionType.value 契约即 string | number（部门 ID 实际为 number），按真实类型收集
+      const optionIds: Array<string | number> = [];
       const walk = (nodes: typeof options) => {
         nodes.forEach((n) => {
           optionIds.push(n.value);

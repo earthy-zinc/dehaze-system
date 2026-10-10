@@ -21,18 +21,13 @@ class FileAPI {
    * 上传文件
    *
    * @param file
-   * @param modelId
    * @param onUploadProgress 上传进度回调
    */
   static upload(
     file: File,
-    modelId?: number,
     onUploadProgress?: (progressEvent: { loaded: number; total?: number }) => void
   ) {
     const formData = new FormData();
-    if (modelId) {
-      formData.append("modelId", modelId.toString());
-    }
     formData.append("file", file);
     return request<FileInfo>({
       url: "/api/v1/files",
