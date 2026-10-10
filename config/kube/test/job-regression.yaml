@@ -1,0 +1,186 @@
+# 三端全量单测回归（第 1 批）：java `mvn test` / go `go test ./...` / 编排侧 python `pytest`
+#
+#   kubectl apply -f config/kube/test/job-regression.yaml -n p-cloud-dev-test-perm-resource-5aesj19quwkg
+#   kubectl logs -n $NS job/dehaze-test-regression-java     # / -go / -python
+#   kubectl delete job dehaze-test-regression-go dehaze-test-regression-java dehaze-test-regression-python -n $NS
+#
+# 前置（镜像构建与两个 Secret）见 job-smoke.yaml 头部注释。
+# 第 2 批（三个推理服务）见 job-services.yaml —— **两批不得同时 apply**，
+# 组织配额 32C/32G 按 limits 累加：本文件合计 22C/26G，services 文件合计 10C/20G。
+# 三端各用独立测试库互不干扰：dehaze_test_java / dehaze_test_go / dehaze_test_py；
+# redis：java 用 db13（DEHAZE_TEST_REDIS_DB）、go 用 config.test.yaml 固定的 db4、python 用 fakeredis（端口 6390）。
+# 编排侧 python 已 GPU-free（推理外置为 dehaze-service/*）：不再需要 CUDA 基座与 torch，
+# 内存上限从 12Gi 降到 10Gi；容器内无 .env，凭证由 Secret 挂载到 /app/.env。
+# 每端末尾打印统一汇总行（PASS/FAIL/SKIP 计数 + 失败用例名），失败时容器退出码非 0、Job 显红。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-regression-go
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: regression
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: regression
+        backend: go
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: go
+          image: csighub.tencentyun.com/earthywu/dehaze-system:go-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-go
+          env:
+            - name: DEHAZE_TEST_DB
+              value: dehaze_test_go
+          resources:
+            requests: {cpu: "1", memory: 2Gi}
+            limits: {cpu: "4", memory: 6Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"
+              go test -v -count=1 ./... > /tmp/go.log 2>&1
+              rc=$?
+              echo "==== SUMMARY ===="
+              echo "PASS=$(grep -c '^--- PASS' /tmp/go.log) FAIL=$(grep -c '^--- FAIL' /tmp/go.log) SKIP=$(grep -c '^--- SKIP' /tmp/go.log)"
+              echo "---- 失败用例 ----"; grep '^--- FAIL' /tmp/go.log | head -40
+              echo "---- 失败上下文 ----"; grep -A 6 '^--- FAIL' /tmp/go.log | head -120
+              echo "---- 失败包 ----"; grep -E '^FAIL' /tmp/go.log | head -20
+              echo "==== END SUMMARY ===="
+              echo "GO_EXIT=$rc"
+              exit $rc
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-regression-java
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: regression
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: regression
+        backend: java
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: java
+          image: csighub.tencentyun.com/earthywu/dehaze-system:java-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-java
+          env:
+            - name: DEHAZE_TEST_DB
+              value: dehaze_test_java
+            - name: DEHAZE_TEST_REDIS_DB
+              value: "13"
+          resources:
+            requests: {cpu: "1", memory: 2Gi}
+            limits: {cpu: "6", memory: 8Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="$JAVA_HOME/bin:/usr/share/maven/bin:$PATH"
+              mvn -B -ntp test > /tmp/java.log 2>&1
+              rc=$?
+              echo "==== SUMMARY ===="
+              echo "失败用例总数: $(grep -c '^\[ERROR\]   ' /tmp/java.log)"
+              echo "---- 结果统计 ----"; grep -E "Tests run:.*(Failures|Errors)" /tmp/java.log | tail -5
+              echo "---- 失败用例 ----"; grep -E '^\[ERROR\]   ' /tmp/java.log | head -40
+              echo "==== END SUMMARY ===="
+              echo "JAVA_EXIT=$rc"
+              exit $rc
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-regression-python
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: regression
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: regression
+        backend: python
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: python
+          image: csighub.tencentyun.com/earthywu/dehaze-system:py-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-python
+          env:
+            - name: DEHAZE_TEST_DB
+              value: dehaze_test_py
+          resources:
+            requests: {cpu: "1", memory: 4Gi}
+            limits: {cpu: "8", memory: 10Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/bin:$PATH"
+              # tee 保证长跑过程中 kubectl logs 能看到进度（只重定向的话跑完才有输出）
+              # --tb=short 与 pytest.ini 一致；失败用例名统一由 SUMMARY 段输出
+              .venv/bin/python -m pytest -q --no-header 2>&1 | tee /tmp/py.log
+              rc=${PIPESTATUS[0]}
+              echo "==== SUMMARY ===="
+              echo "失败用例数: $(grep -cE '^(FAILED|ERROR) ' /tmp/py.log)"
+              grep -E "^(FAILED|ERROR) " /tmp/py.log | head -40
+              echo "---- 结果统计 ----"; tail -5 /tmp/py.log
+              echo "==== END SUMMARY ===="
+              echo "PY_EXIT=$rc"
+              exit $rc

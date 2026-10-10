@@ -3,7 +3,7 @@
 包含两类输出：
 1. dehaze-sdk-js/test/resources/  本地上传用占位图片
 2. datasets/  模拟数据集图片，经根目录 datasets 符号链接/挂载由 nginx-dataset
-   容器提供 http://{host}:9000/datasets/... 访问，供预测/评测接口按 URL 下载
+   容器提供 http://{host}:19000/datasets/... 访问，供预测/评测接口按 URL 下载
 
 图片带渐变 + 高斯噪声纹理（非纯色），确保：
 - 每张字节内容不同，避免后端文件 hash 去重导致 fileName 复用

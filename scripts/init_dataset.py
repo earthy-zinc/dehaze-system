@@ -15,8 +15,8 @@ haze_level 自动解析规则：
 OTS / Haze4K 的 A+β 双参数格式需 --haze-format 显式指定。
 
 存储约定：sys_file 写 object_name + storage='nginx-static'，URL 永不落库。
-nginx-static 后端 baseUrl 为服务根地址（如 http://host:9000），object_name 必须含资源前缀
-（数据集为 datasets/），运行时 url = baseUrl + "/" + object_name 拼出 http://host:9000/datasets/...。
+nginx-static 后端 baseUrl 为服务根地址（如 http://host:19000），object_name 必须含资源前缀
+（数据集为 datasets/），运行时 url = baseUrl + "/" + object_name 拼出 http://host:19000/datasets/...。
 """
 import argparse
 import hashlib
@@ -257,7 +257,7 @@ def main():
     parser.add_argument("--db-name", default="dehaze")
     parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
     parser.add_argument("--nginx-base-url", required=True,
-                        help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径")
+                        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径")
     parser.add_argument("--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）")
     parser.add_argument("--haze-format", choices=["auto", "ots", "haze4k"], default="auto",
                         help="haze_level 解析格式：auto(默认) / ots(A=,beta=) / haze4k(beta=,A=)")

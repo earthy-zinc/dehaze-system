@@ -4,7 +4,7 @@
 -- ============================================================
 -- 设计思路:
 -- 图像输入历史表，记录用户每次去雾处理的完整信息。
--- algorithm_name 冗余存储算法名称，避免 join 查询。
+-- model_name 冗余存储模型名称，避免 join 查询。
 -- idx_user_time 复合索引优化「用户历史按时间倒序」的高频查询。
 -- 收藏状态由收藏管理模块 sys_favorite 表统一管理，本表不再维护 is_favorite 字段。
 -- 历史记录为只追加，不使用逻辑删除。
@@ -18,9 +18,9 @@ CREATE TABLE `sys_input_history`
     `original_thumbnail_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '原始缩略图URL',
     `result_image_url`       varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '处理结果图片URL',
     `result_thumbnail_url`   varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '结果缩略图URL',
-    `algorithm_id`           bigint                                                         NULL DEFAULT NULL COMMENT '算法ID',
-    `algorithm_name`         varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '算法名称（冗余）',
-    `algorithm_params`       json                                                           NULL COMMENT '算法参数（JSON）',
+    `model_id`               varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '图像模型标识（统一模型规范 slug）',
+    `model_name`             varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '模型名称（冗余）',
+    `model_params`           json                                                           NULL COMMENT '模型参数（JSON）',
     `processing_time`         int                                                            NULL DEFAULT NULL COMMENT '处理耗时（毫秒）',
     `status`                 tinyint                                                        NULL DEFAULT 3 COMMENT '处理状态(1:成功;2:失败;3:处理中)，创建时确定，不随处理进度更新',
     `input_source`           varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NULL DEFAULT NULL COMMENT '图片来源(upload/camera/sample)',

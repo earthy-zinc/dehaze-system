@@ -3,9 +3,16 @@
 -- 模块: 核心模块-AI对话
 -- ============================================================
 -- 设计思路:
--- AI 模型配置表，管理平台接入的大语言模型清单及计费比例。
--- model_id 为模型标识（如 gpt-4o、claude-3-5-sonnet），是业务引用键，唯一索引。
--- model_type 标识模型类型（chat/embedding/rerank），consumers 按类型选择模型（对话选 chat、知识库选 embedding/rerank）。
+-- AI 模型配置表，管理平台接入的全模态模型清单及计费比例。
+-- model_id 为模型标识（如 gpt-4o、claude-3-5-sonnet、aecrnet），是业务引用键，唯一索引。
+-- model_type 标识模型类型，全模态白名单：
+--   chat(对话)/embedding(向量)/rerank(重排)/image_gen(文生图)/image_edit(图像编辑,含去雾等)/
+--   video_gen(视频生成)/asr(语音识别)/tts(语音合成)/music_gen(音乐生成)/3d_gen(3D生成)；
+--   consumers 按类型选择模型（对话选 chat、知识库选 embedding/rerank、去雾页选 image_edit）。
+-- task_tags 为任务归类标签（JSON 数组），承接任务类型路由与厂商 function 枚举语义：
+--   图像模型 ["dehaze"]/["super_resolution"]…（原 sys_algorithm.task_type）；
+--   asr 模型 ["stream"]/["offline"]（原 sys_voice_model.model_type）；embedding 模型 ["text"]/["image"]。
+--   产品侧（去雾页选模型、ASR 通道选择）按 model_type + task_tags 过滤。
 -- dimension 为 embedding 向量维度（model_type=embedding 时必填，知识库 ES 索引映射依赖，创建后不可修改）。
 -- provider_id 关联 sys_ai_provider.id，标识模型所属供应商（替代原 provider 字符串字段）。
 --   同一 model_id 可通过不同 provider_id 配置多行，实现"同一模型切换供应商"。
@@ -14,6 +21,9 @@
 --   供应商采购价（成本单价）存 sys_ai_model_cost，sys_ai_model 不再承载价格字段。
 -- supports_multimodal/supports_tool_call/supports_streaming/supports_prompt_cache/supports_structured_output
 --   标识模型能力，供前端模型选择和后端能力校验。
+-- 下列列为「仅对应类型必填」语义（非对应类型保持默认值，不拆表）：
+--   chat：max_context_tokens/max_output_tokens/supports_*/prompt_cache_prefix_len/image_tokens_per_image；
+--   embedding：dimension。
 -- fallback_model_id 关联 sys_ai_model.id（主键），指定降级模型（主模型限流/宕机时自动切换），为空表示无降级；
 --   用主键引用而非 model_id，避免同一 model_id 在多供应商下降级指向歧义。
 -- prompt_cache_prefix_len 标识 prompt caching 稳定前缀长度，用于 prompt 结构优化（OpenAI/Anthropic 要求稳定前缀在头部）。
@@ -25,7 +35,8 @@ CREATE TABLE `sys_ai_model`
     `id`                   bigint                                                          NOT NULL AUTO_INCREMENT COMMENT '主键',
     `provider_id`          bigint                                                          NOT NULL COMMENT '关联供应商ID(关联sys_ai_provider.id)',
     `model_id`             varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '模型标识(如gpt-4o;claude-3-5-sonnet;deepseek-chat)',
-    `model_type`           varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'chat' COMMENT '模型类型(chat:对话;embedding:向量;rerank:重排)',
+    `model_type`           varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'chat' COMMENT '模型类型(chat:对话;embedding:向量;rerank:重排;image_gen:文生图;image_edit:图像编辑;video_gen:视频生成;asr:语音识别;tts:语音合成;music_gen:音乐生成;3d_gen:3D生成)',
+    `task_tags`            json                                                            NULL DEFAULT NULL COMMENT '任务归类标签(JSON数组;图像模型["dehaze"]/["super_resolution"]…;asr模型["stream"]/["offline"];embedding模型["text"]/["image"])',
     `dimension`            bigint                                                          NULL DEFAULT NULL COMMENT 'embedding向量维度(model_type=embedding时必填;创建后不可改)',
     `display_name`         varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '显示名称',
     `max_context_tokens`   int                                                             NOT NULL DEFAULT 4096 COMMENT '最大上下文Token数',

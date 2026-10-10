@@ -3,8 +3,10 @@
 -- 模块: 日志模块
 -- ============================================================
 -- 设计思路:
--- 预测日志表，记录算法推理操作的完整日志。
--- 基于 algorithm_id + origin_md5 可实现缓存查询：相同算法处理相同图片直接返回历史结果。
+-- 图像任务日志表，记录图像模型推理操作的完整日志。
+-- 基于 model_id + origin_md5 可实现缓存查询：相同模型处理相同图片直接返回历史结果。
+-- provider_id/actual_model 记录实际调用的供应商与模型（降级/路由后可能与请求模型不同）。
+-- vendor_task_id 记录异步厂商任务号（本地同步推理为空）。
 -- status 字段（tinyint）追踪异步任务状态(1:处理中;2:已完成;3:失败;4:已取消)，配合 Python 后端异步处理。
 -- 日志记录为只追加，不使用逻辑删除。
 -- ------------------------------------------------------------
@@ -12,7 +14,10 @@ DROP TABLE IF EXISTS `sys_pred_log`;
 CREATE TABLE `sys_pred_log`
 (
     `id`             bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `algorithm_id`   bigint                                                         NOT NULL COMMENT '算法id',
+    `model_id`       varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '图像模型标识（统一模型规范 slug）',
+    `provider_id`    bigint                                                         NULL DEFAULT NULL COMMENT '实际调用供应商id（归因，降级后为备用供应商）',
+    `actual_model`   varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NULL DEFAULT NULL COMMENT '实际执行模型',
+    `vendor_task_id` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NULL DEFAULT NULL COMMENT '异步厂商任务号（本地同步推理为空）',
     `origin_file_id` bigint                                                         NULL DEFAULT NULL COMMENT '原始图像文件id（有雾图像）',
     `origin_md5`     char(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci     NULL DEFAULT NULL COMMENT '原始图像md5值',
     `origin_url`     TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL DEFAULT NULL COMMENT '原始图像url',
@@ -28,12 +33,12 @@ CREATE TABLE `sys_pred_log`
     `create_by`      bigint                                                         NULL DEFAULT NULL COMMENT '创建人ID',
     `update_by`      bigint                                                         NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
-    INDEX `idx_algorithm_id` (`algorithm_id`) USING BTREE,
+    INDEX `idx_model_id` (`model_id`) USING BTREE,
     INDEX `idx_origin_md5` (`origin_md5`) USING BTREE,
     INDEX `idx_pred_md5` (`pred_md5`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE,
     INDEX `idx_recommended_by` (`recommended_by`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci COMMENT = '模型预测日志表'
+  COLLATE = utf8mb4_0900_ai_ci COMMENT = '图像任务日志表'
   ROW_FORMAT = DYNAMIC;

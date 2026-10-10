@@ -2,7 +2,7 @@
 description: 
 alwaysApply: true
 enabled: true
-updatedAt: 2026-08-22T16:18:19.303Z
+updatedAt: 2026-09-28T09:20:26.000Z
 provider: 
 ---
 
@@ -32,6 +32,11 @@ provider:
 - 秉持"代码即文档"的理念，只有在逻辑意图无法通过清晰的命名和结构直观表达时，才会补充必要的注释，以阐明"为什么"而非"做什么"。
 - 不要定义一堆用处不大的别名，看似有用，但实际用处不大的工具函数，把逻辑撰写的越简单越好，不要把简单的问题搞复杂化，禁止过度设计代码
 - 再次强调严格禁止过度设计，能一个函数解决的，不要拆分多个函数，多个变量，多个文件来回引用，将本就简单的需求复杂化
+
+### 环境值与一次性逻辑的处理
+
+- **固定不变的环境值直接写死**：不会随环境变化且非敏感的值（中间件地址、端口、对象名等）直接使用，不要引入运行时解析（读配置、探测端口、多级回退）的间接层——只有真正易变的状态才值得探测。
+- **一次性逻辑当场执行，不写进代码**：迁移、搬运、兼容类只跑一次的动作，用命令当场做完，不要落成代码里的常驻分支或开关——常驻分支会被后人当作线上逻辑继续维护。
 
 同时要保持平衡，避免过度简化导致：
 - 降低代码清晰度或可维护性
@@ -66,6 +71,14 @@ provider:
 
 如需启动/重启/停止 dehaze-java、dehaze-python、dehaze-go 应用，三端后端统一通过 `scripts/run.py` 管理生命周期（启动/停止/重启/查看状态/查看日志），无需手动在各子项目目录下执行启动命令
 日志统一存放在各服务 `logs/{yyyy-MM-dd}/` 目录下。可查阅项目根目录 README.md 获得启动指引，并告知用户，切勿私自重启和停止
+
+### Python 静态检查（交付前必须过终端门禁）
+
+- 任何 Python 代码改动（`dehaze-python`、`dehaze-service/*`、`dehaze-mcp-gateway`）交付前，必须通过**终端**跑通 `bash dehaze-python/scripts/check.sh`，并在回报中给出脚本的实际退出码/输出作为证据
+- 该脚本是**唯一判定入口**：IDE 的即时诊断不作为依据——本机 VS Code 的语言服务器可能未启用，且 pyright 的 typeshed 结论随版本变化，只有脚本内固定的 `PYRIGHT_VERSION` 才与 CI 口径一致
+- 不要在 IDE 设置里另设一套类型检查口径（`python.analysis.typeCheckingMode`、`python.analysis.diagnosticSeverityOverrides`）：它既与 `pyrightconfig.json` 冲突被忽略，也会让 IDE 与门禁分裂
+- 新增 Python 子项目时同步三处：子项目自身 `pyrightconfig.json`、仓库根 `pyrightconfig.json` 的 `include` + `executionEnvironments`、`check.sh` 里的 `PYRIGHT_PROJECTS`
+- 禁止用文件级 `# type: ignore` / `# pyright: ignore`、拿 `Any`/`cast` 消音、或降低 severity 让检查变绿；抑制纪律与逐项目配置口径见 `dehaze-doc/docs/02-系统架构/05-测试架构.md` §5.3
 
 ## 注释编写规则
 

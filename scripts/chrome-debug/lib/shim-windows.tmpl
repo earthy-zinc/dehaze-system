@@ -1,0 +1,25 @@
+@echo off
+{{daemonGuard}}
+
+if not exist "{{realToolPath}}" (
+  echo {{tool}} 不存在，请重新执行 chrome-debug install：{{realToolPath}} 1>&2
+  exit /b 127
+)
+
+curl -sf --max-time 1 "{{cdpUrl}}/json/version" >nul 2>&1
+if not errorlevel 1 goto run
+if not exist "{{chromePath}}" goto run
+if not exist "{{userDir}}" mkdir "{{userDir}}"
+start "" "{{chromePath}}" --remote-debugging-port={{cdpPort}} --remote-debugging-address={{loopback}} --user-data-dir="{{userDir}}" --no-first-run --no-default-browser-check {{extraArgs}}
+
+set /a tries=0
+:wait
+curl -sf --max-time 1 "{{cdpUrl}}/json/version" >nul 2>&1
+if not errorlevel 1 goto run
+set /a tries+=1
+if %tries% geq {{startupPolls}} goto run
+ping -n 2 {{loopback}} >nul
+goto wait
+
+:run
+"{{realToolPath}}" %*

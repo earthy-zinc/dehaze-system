@@ -16,7 +16,7 @@ CREATE TABLE `sys_ai_agent_eval_sample`
     `dataset_id`        bigint                                                         NOT NULL COMMENT '关联评测集ID(关联sys_ai_agent_eval_dataset.id)',
     `task_goal`         TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NOT NULL COMMENT '任务目标(样本要完成的任务描述)',
     `allowed_input`     TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '允许输入(输入范围/约束说明,可空)',
-    `tools`             json                                                           NULL COMMENT '可用工具JSON(样本预期调用的工具列表,可空)',
+    `tools`             json                                                           NULL COMMENT '期望工具调用JSON(有序数组,每项 {"name","args"},args 为期望参数键值子集,可空)',
     `expected_process`  TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '期望过程(正确的推理/调用过程,可空)',
     `expected_result`   TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci         NULL COMMENT '期望结果(准确/完整/格式等通过条件,可空)',
     `forbidden_behavior` TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci        NULL COMMENT '禁止行为(不得发生的越权/注入/敏感泄露等,可空)',

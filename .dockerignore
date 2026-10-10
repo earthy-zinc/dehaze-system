@@ -1,0 +1,60 @@
+# 构建上下文裁剪 —— 服务于单测回归「测试镜像」构建（上下文 = 仓库根）：
+#   docker build -f dehaze-java/Dockerfile                        --target test -t csighub.tencentyun.com/earthywu/dehaze-system:java-test-<sha>  .
+#   docker build -f dehaze-go/Dockerfile                          --target test -t csighub.tencentyun.com/earthywu/dehaze-system:go-test-<sha>    .
+#   docker build -f dehaze-python/Dockerfile                      --target test -t csighub.tencentyun.com/earthywu/dehaze-system:py-test-<sha>    .
+#   docker build -f dehaze-service/dehaze-llm/Dockerfile          --target test -t csighub.tencentyun.com/earthywu/dehaze-system:llm-test-<sha>   .
+#   docker build -f dehaze-service/dehaze-voice/Dockerfile       --target test -t csighub.tencentyun.com/earthywu/dehaze-system:voice-test-<sha>  .
+#   docker build -f dehaze-service/dehaze-modal/Dockerfile       --target test -t csighub.tencentyun.com/earthywu/dehaze-system:modal-test-<sha>  .
+# 重依赖基础镜像（上下文同为仓库根，tag = uv.lock 指纹，lock 未变则复用）：
+#   docker build -f dehaze-service/dehaze-modal/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:modal-base-08dc5a158a40 .
+#   docker build -f dehaze-service/dehaze-voice/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:voice-base-3d01ce25e049 .
+# 所有 Python 依赖一律在镜像内 `uv sync --frozen` 自建，任何 .venv / 本地残留都不进上下文。
+# 模式不含 / 时只匹配仓库根下的同名项；**/ 开头匹配任意层级。
+
+.git
+node_modules
+models
+datasets
+.tmp-mpsrc
+.playwright-cli
+design-review
+*.png
+
+# 本地虚拟环境与残留物（依赖由镜像内 uv sync 自建）
+dehaze-python/.venv
+dehaze-service/*/.venv
+
+# GPU 推理代码已迁至 dehaze-service/dehaze-modal；此目录是迁移后的本地残留、未被 git 跟踪
+dehaze-python/algorithm
+
+# 与单测回归无关的子项目，整体排除以缩小上下文
+dehaze-front-vue
+dehaze-front-react
+dehaze-taro
+dehaze-uniapp
+dehaze_flutter
+dehaze-react-native
+dehaze-android
+dehaze-mobile
+dehaze-desktop-web
+dehaze-algorithm
+dehaze-doc
+dehaze-paper
+dehaze-mcp-gateway
+dehaze-sdk-js
+dehaze-system
+dehaze-test
+
+# 构建产物、运行日志、缓存
+**/.git
+**/node_modules
+**/target
+**/logs
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.idea
+**/.vscode
+**/pyxxl.log

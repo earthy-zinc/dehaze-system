@@ -143,7 +143,7 @@ coverage.xml
 
 # Python 环境文件
 **/.env*
-!**/.env.example
+!**/.env.*.example
 .venv
 env/
 venv/
@@ -255,9 +255,7 @@ pids
 **/storybook-static/
 *storybook.log
 
-# 前端测试
-**/playwright-report/
-**/test-results/
+# 前端页面级测试产物（playwright.config.ts 的 outputDir 与 reporter 输出根）
 test_result/
 
 # =============================================================================
@@ -272,6 +270,8 @@ test_result/
 
 # Go 测试文件
 *.test
+# 但 vite 的 mode 环境文件 .env.test 是配置而非测试产物，需放行（git 取最后匹配项）
+!**/.env.test
 
 # Go 覆盖率
 *.out
@@ -422,6 +422,7 @@ storybook-static/
 # Python 测试/覆盖率产物（所有层级）
 # =============================================================================
 **/.pytest_cache/
+**/.ruff_cache/
 **/.coverage
 **/htmlcov/
 
@@ -435,6 +436,7 @@ dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
 # 重要！需要保留的文件（排除忽略）
 # =============================================================================
 !dehaze_flutter/lib
+!scripts/chrome-debug/lib
 .idea/
 .vscode/.chrome
 .vscode/.msedge
@@ -468,5 +470,31 @@ dehaze-sdk-js/.session-cache.json
 .agent
 docker-compose-dev.yml
 .codebuddy/teams/
+.codebuddy/.state/
 dehaze-test/kb_eval/reports/
 dehaze-python/upload
+
+# Agent 设计评审/浏览器调试产物（过程文件，不入库）
+design-review/
+.playwright-cli/
+
+# 验收证据截图（留在房间附件/MR，不入库）
+acceptance-*.png
+
+# =============================================================================
+# 每机本地的私密种子（machine-local private seed）
+# -----------------------------------------------------------------------------
+# config/sql/data/zz_private_*.sql：由各机就地生成、只含密文（如供应商 API Key 密文），
+# 供 DB 重置 / docker 首启时自动回灌；明文不入库、本文件亦不入库。
+# =============================================================================
+config/sql/data/zz_private_*.sql
+
+# =============================================================================
+# 本机运行时产物
+# =============================================================================
+# 环境脚本（setup-toolchain*）每次执行生成的备份快照，仅本机可见
+scripts/tooling/backup/
+
+# Docker Desktop 在可写目录旁挂载单文件时生成的 0 字节挂载点锚文件
+# （见 docker-compose.yml mysql 段：xxl_job.sql 以单文件挂进 docker-entrypoint-initdb.d）
+config/sql/schema/xxl_job.sql

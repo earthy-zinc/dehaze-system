@@ -5,7 +5,10 @@
 -- 设计思路:
 -- 用户售价档位明细表（与版本主表 sys_ai_model_price 构成主从结构）。
 -- 每行 = 一个 token 类型 × 一个上下文分段 × 一个时段档位的单价。
--- token_type 区分计费对象：input(输入未命中)/cached(缓存命中)/output(输出)。
+-- usage_kind 区分计量粒度：token（token 类模型，token_type 取 input/cached/output）/unit（非 token 类，
+--   与主表 billing_unit 联动，按张/秒/万字符计量，单行 unit 档、不设峰谷）。
+-- token_type 区分计费对象：input(输入未命中)/cached(缓存命中)/output(输出)；
+--   usage_kind=unit 时固定取 'unit'（非 token 类仅一行，不区分方向）。
 -- time_slot 区分时段档位：peak(高峰)/idle(空闲)，时段判定规则全局配置（ai.billing.peak-hours）；
 --   未来新增时段档位仅扩展枚举，不改表结构。
 -- min_tokens/max_tokens 定义上下文分段区间（按本次调用输入总 token 数定位）：
@@ -20,7 +23,8 @@ CREATE TABLE `sys_ai_model_price_detail`
 (
     `id`             bigint                                                          NOT NULL AUTO_INCREMENT COMMENT '主键',
     `price_id`       bigint                                                          NOT NULL COMMENT '价格版本ID(关联sys_ai_model_price.id)',
-    `token_type`     varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL COMMENT '计费类型(input:输入未命中;cached:缓存命中;output:输出)',
+    `token_type`     varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL COMMENT '计费类型(input:输入未命中;cached:缓存命中;output:输出;unit:非token类单档)',
+    `usage_kind`     varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL DEFAULT 'token' COMMENT '计量粒度(token:按token;unit:按张/秒/万字符,与主表billing_unit联动)',
     `time_slot`      varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL COMMENT '时段档位(peak:高峰;idle:空闲)',
     `min_tokens`     bigint                                                          NOT NULL DEFAULT 0 COMMENT '上下文分段下界(按本次输入总token数,含缓存命中)',
     `max_tokens`     bigint                                                          NULL DEFAULT NULL COMMENT '上下文分段上界(NULL表示不限,区间为[min_tokens,max_tokens))',

@@ -1,9 +1,22 @@
 {
-  "typeCheckingMode": "standard",
+  "extends": "./pyright.base.json",
   "venvPath": "dehaze-python",
   "venv": ".venv",
-  "include": ["dehaze-python/app", "dehaze-python/tests", "dehaze-mcp-gateway"],
-  "ignore": ["dehaze-python/algorithm", "dehaze-python/logs"],
+  "include": [
+    "dehaze-python/app",
+    "dehaze-python/tests",
+    "dehaze-mcp-gateway",
+  ],
+  "ignore": [
+    "dehaze-python/logs",
+    "dehaze-service/dehaze-modal/algorithm",
+    "dehaze-service/dehaze-llm/app",
+    "dehaze-service/dehaze-llm/tests",
+    "dehaze-service/dehaze-voice/app",
+    "dehaze-service/dehaze-voice/tests",
+    "dehaze-service/dehaze-modal/app",
+    "dehaze-service/dehaze-modal/tests"
+  ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
@@ -32,6 +45,24 @@
       "extraPaths": [
         "dehaze-python",
         "dehaze-mcp-gateway"
+      ]
+    },
+    {
+      "root": "dehaze-service/dehaze-llm",
+      "extraPaths": [
+        "dehaze-service/dehaze-llm"
+      ]
+    },
+    {
+      "root": "dehaze-service/dehaze-voice",
+      "extraPaths": [
+        "dehaze-service/dehaze-voice"
+      ]
+    },
+    {
+      "root": "dehaze-service/dehaze-modal",
+      "extraPaths": [
+        "dehaze-service/dehaze-modal"
       ]
     }
   ]

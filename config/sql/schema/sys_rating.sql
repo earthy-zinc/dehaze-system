@@ -19,7 +19,7 @@ CREATE TABLE `sys_rating`
     `id`             bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
     `user_id`        bigint                                                         NOT NULL COMMENT '评价用户ID',
     `pred_log_id`    bigint                                                         NOT NULL COMMENT '关联处理日志ID（sys_pred_log.id）',
-    `algorithm_id`   bigint                                                         NOT NULL COMMENT '算法ID',
+    `model_id`       varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '图像模型标识（统一模型规范 slug）',
     `rating`         tinyint                                                        NOT NULL COMMENT '评分(1-5星)',
     `comment`        varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '评价文字',
     `tags`           json                                                           NULL DEFAULT NULL COMMENT '评价标签（JSON数组）',
@@ -36,7 +36,7 @@ CREATE TABLE `sys_rating`
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `uk_pred_log_id` (`pred_log_id`, `deleted`) USING BTREE,
     INDEX `idx_user_id` (`user_id`) USING BTREE,
-    INDEX `idx_algorithm_id` (`algorithm_id`) USING BTREE,
+    INDEX `idx_model_id` (`model_id`) USING BTREE,
     INDEX `idx_rating` (`rating`) USING BTREE,
     INDEX `idx_create_time` (`create_time`) USING BTREE
 ) ENGINE = InnoDB

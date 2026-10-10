@@ -42,7 +42,49 @@
     "aptPackages": [
       "build-essential", "curl", "wget", "git", "unzip", "jq", "aria2",
       "ripgrep", "fd-find", "bat", "fzf", "tree", "htop", "ca-certificates"
+    ],
+    "_dnfComment": "dnf（TencentOS/CentOS/Rocky 等 RHEL 系）等价包名；不做换源，沿用机器现有内网源。",
+    "dnfPackages": [
+      "gcc", "gcc-c++", "make", "curl", "wget", "git", "unzip", "jq", "aria2",
+      "ripgrep", "fd-find", "bat", "fzf", "tree", "htop", "ca-certificates"
     ]
+  },
+
+  "macos": {
+    "_comment": "brew 安装 mise；Java 全部交给 mise 管理，不复用 brew 已装的 openjdk。",
+    "extraVersions": {
+      "_comment": "多项目需要的额外运行时版本，只 mise install 不改变 .runtimes 里的全局默认版本。",
+      "node": ["14", "20"],
+      "java": ["temurin-17"]
+    },
+    "globalNpmPackages": {
+      "_comment": "全局 npm 包只装在这个 node 版本下，避免每个版本重复安装。",
+      "nodeVersion": "24",
+      "packages": [
+        "@tencent-ai/codebuddy-code",
+        "@tencent/panshi-api-doc-mcp",
+        "@tencent/panshi-dim-mcp",
+        "@playwright/cli",
+        "agent-browser",
+        "chrome-devtools-mcp",
+        "pm2",
+        "pnpm",
+        "whistle",
+        "tsx",
+        "yarn"
+      ]
+    },
+    "legacy": {
+      "_comment": "迁移前旧装清理，cleanup 步使用。",
+      "brewRemove": ["openjdk@17", "openjdk@21", "openjdk@25"],
+      "manualDirs": ["/usr/local/go"],
+      "sudoDirs": ["/usr/local/go"],
+      "shellStripPatterns": [
+        "NVM_DIR", "nvm.sh", "bash_completion.*nvm",
+        "GOENV_ROOT", "goenv init",
+        "JAVA_HOME=/opt/homebrew/opt/openjdk"
+      ]
+    }
   },
 
   "legacy": {

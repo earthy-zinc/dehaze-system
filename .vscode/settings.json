@@ -192,15 +192,19 @@
   // Python
   // 项目统一用 Ruff（见 dehaze-python/pyproject.toml 的 [tool.ruff]），
   // isort 扩展自带语言服务器会与 ruff 的 isort 规则重复报错，故关闭。
-  // 类型检查范围、导入搜索根、以及"按目录区分环境"**单点定义在仓库根 pyrightconfig.json**：
-  // 该文件存在时 pyright 会整体忽略本文件的 python.analysis.*（IDE 与 CLI 同源），
-  // 所以 typeCheckingMode / exclude / extraPaths 不再在此保留副本，改配置请改那个文件。
-  // 其中的 executionEnvironments 只有一条：dehaze-mcp-gateway/tests 需要
-  //   dehaze-python（import app.*）+ dehaze-mcp-gateway（import server，uv 把网关目录装成
-  //   可编辑包）；网关本体与 dehaze-python 的 mcp 已统一到同一条 1.24.x 版本线，
-  //   故不必再为它单独挂一份 venv 搜索根。
-  // 下面两条在 pyrightconfig.json 里没有对应键（属于客户端侧 / Pylance 专有），保持在工作区。
-  // 语言服务器的选择与解释器路径是 window/machine 级，只能配在机器级。
+  // 类型检查配置分两层：共享判定标准（typeCheckingMode / pythonPlatform）单点定义在
+  // 仓库根 pyright.base.json；检查范围与 venv 由各 Python 子项目自己的 pyrightconfig.json
+  // 描述（dehaze-python、dehaze-mcp-gateway、dehaze-service/dehaze-{llm,voice,modal}）。
+  // 以仓库为单根打开工作区时生效的仍是仓库根 pyrightconfig.json（extends pyright.base.json，
+  // 用 executionEnvironments 区分各子项目的导入搜索根与 app 包归属）——pyright 不会自动拾取
+  // 子目录配置，故子项目配置只在单独打开该项目、或 CLI 逐项目执行
+  // （dehaze-python/scripts/check.sh）时生效。
+  // 这些文件存在时 pyright 会整体忽略本文件的 python.analysis.*（IDE 与 CLI 同源），
+  // 所以 typeCheckingMode / exclude / extraPaths 不再在此保留副本，改配置请改上述文件。
+  // 下面几项在 pyright 配置里没有对应键，保持在工作区：isort.serverEnabled 属 isort 扩展；
+  // python.analysis.languageServerMode 属 Pylance（本机装的是 ms-pyright 扩展，不认此项）。
+  // 解释器与导入解析由各 pyrightconfig.json 的 venvPath/venv 单点决定：不要在机器级写死
+  // 本仓库的 venv 路径（会污染这台机器上的其他 Python 项目），也不必在此重复声明。
   // ============================================================
   "isort.serverEnabled": false,
   "python.analysis.autoImportCompletions": true,
@@ -211,10 +215,15 @@
   // 并执行 dehaze-mcp-gateway/tests/live_test.py（该文件顶层即跑实时用例）。
   "python.testing.cwd": "${workspaceFolder}/dehaze-python",
 
+  // 不要在此处关闭或调整类型检查：口径由仓库根 pyright.base.json 单点决定，
+  // 且存在 pyrightconfig.json 时 pyright 会忽略 VS Code 的 python.analysis.*，
+  // 另设一处只会让 IDE 与终端门禁（scripts/check.sh）口径分裂。
+
   // ============================================================
   // 杂项
   // ============================================================
   "gitlens.advanced.blame.customArguments": ["--ignore-revs-file", ".git-blame-ignore-revs"],
   "gitlens.codeLens.enabled": false,
-  "gitlens.currentLine.enabled": false
+  "gitlens.currentLine.enabled": false,
+  "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx4G -Xms100m -Xlog:disable"
 }

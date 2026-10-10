@@ -1,0 +1,110 @@
+浏览器调试实例管理 + 三个 CLI（agent-browser / playwright-cli / chrome-devtools）的统一接管与自愈
+平台：macOS / Linux / Windows
+  工作站：直接拉起本机 Chrome（默认 CDP 9222）
+  服务器：并发拉起 Xvfb + x11vnc + websockify，人工可经 noVNC 接管
+
+用法
+  node scripts/chrome-debug/index.mjs <command> [options]
+
+命令
+  setup          一条龙：check 检测 → 写三工具 CDP 配置 → 装 shim → 拉起实例
+  check          环境检测（Node / Chrome / 三工具 / 实例 / 绑定 / shim / PATH 优先级）
+  install        写三工具 CDP 配置 + 安装 shim（不碰实例）
+  uninstall      移除 shim 与 shell rc 中的 PATH 行
+  start          拉起实例（幂等，已在运行则不动）
+  stop           停止实例（有 pid 记录时结束进程，否则经 CDP Browser.close）
+  restart        停止后重新拉起
+  status         运行态：端口、profile、页面、daemon、远程桌面
+  view           人工接管入口（服务器：SSH 隧道 + noVNC；工作站：本机窗口）
+  logs [名称]    跟踪日志，默认 chrome；可选 xvfb / x11vnc / websockify
+  smoke [url] [outPng]   CDP 端到端冒烟并截图（默认用同目录 probe.html，截图落 ~/.chrome-debug/screenshots）
+  vnc-check      VNC 链路自检：RFB 握手、屏幕尺寸、画面推送
+
+选项
+  --cdp-port=<port>     CDP 端口（默认 9222；setup 指定的值会被记住）
+  --user-dir=<dir>      Chrome profile 目录（默认：~/.chrome-debug/profile）
+  --shim-dir=<dir>      shim 落点（默认：~/.local/bin；Windows 为 %USERPROFILE%\bin）
+  --vnc-port=<port>     VNC 端口（默认 5900，仅服务器）
+  --web-port=<port>     noVNC 网页端口（默认 6080，仅服务器）
+  --display=<:n>        Xvfb 显示号（默认 :99，仅服务器）
+  --screen=<WxH>        Xvfb 与 Chrome 窗口尺寸（默认 1920x1080，仅服务器）
+  --no-devtools         不自动打开 DevTools（默认每个标签页自动开，便于随手看页面/网络）
+  --no-remote-desktop   服务器上不起 Xvfb / 远程桌面
+  --sign-port=<port>    智能网关签名代理端口（默认 18070，仅 DevCloud 等无智能网关的机器）
+  --no-sign-proxy       关闭签名代理（凭证齐备时默认开启；旧名 --no-panshi-sign 仍兼容）
+
+环境变量
+  VNC_PASSWORD   x11vnc 密码（不设则无密码，仅靠 127.0.0.1 绑定 + SSH 隧道保护）
+  NOVNC_WEB      noVNC 静态目录（默认 /usr/share/novnc）
+  CHROME_BIN     Chrome 可执行文件路径（自动定位失败时使用）
+  SSH_TARGET     view 输出里显示的 ssh 目标（如 user@host）
+  SMART_PROXY_KEY  磐石智能网关 Token（签名代理用；也可写进 ~/.chrome-debug/.env）
+  STAFF_NAME       员工英文名（同上，决定环境网关按谁的环境转发）
+  SA_TOKEN         imeta（环境切换页）的网关 Token，**与磐石 Token 不是同一个**；配了才打通 imeta 通道
+  IOA_TOKEN        forcem（[sg-]forcem-[dev|test].testsite.woa.com）的网关 Token，**与前两者都不同**；配了才打通 forcem 通道
+
+运行时产物（~/.chrome-debug/）
+  config.json     工具状态：端口、profile、shim 目录
+  profile/        Chrome 用户数据（登录态 / Cookie 持久保留）
+  logs/           chrome-<端口>.log、xvfb-<端口>.log、x11vnc-<端口>.log、websockify-<端口>.log、gateway-sign-<端口>.log
+  pids/           进程 PID，文件名带端口
+  screenshots/    冒烟截图
+  novnc/          自建的补丁版 noVNC（install/setup 时自动下载并打补丁，见下）
+  .vncpasswd      VNC 密码文件（仅设置 VNC_PASSWORD 时）
+  .env            签名代理凭证（可选，环境变量优先；勿提交到仓库）
+
+智能网关签名代理（仅 DevCloud 需要）
+  DevCloud 机器经 iGate 直达这些站点时链路上没有智能网关，网关会因缺身份返回 302、后端会因缺签名返回 401。
+  本工具据此拉起本地签名代理，按请求现算签名（时间戳窗口 180s）。凭证取 SMART_PROXY_KEY / STAFF_NAME
+  （环境变量优先，其次 ~/.chrome-debug/.env）；缺任一项则跳过并提示，不影响实例启动。启用后 Chrome 经 PAC
+  只把下列站点的 http 流量交给代理，其余一律直连；PAC 由代理自身经 http 提供
+  （http://127.0.0.1:<签名端口>/gateway-sign.pac）。三个应用各用各的网关 token，签名公式相同、token 不同：
+
+  panshi（dev/test.panshi.woa.com）—— SMART_PROXY_KEY
+    PAC 纳入 panshi；上游走 http（DevCloud 未放通 443）。
+
+  imeta（环境切换页）—— **配了 SA_TOKEN 才启用**
+    PAC 额外纳入 imeta；用 SA_TOKEN 签名并附上自行构造的 x-tai-identity（JWE，与智能网关同格式），
+    且**只把「磐石响应」里指向 imeta 的 https 跳转改写成 http**（绝不改 imeta 自身响应，否则
+    http↔https 会无限重定向、浏览器疯狂刷新）。缺 SA_TOKEN 时降级：imeta 直连（443 被拒），
+    环境切换改用 env-gateway 原生参数：
+      http://dev.panshi.woa.com/<path>?forceEnvId=<环境ID>&forceEnvPersist=1   # 切并记住（会话级）
+      http://dev.panshi.woa.com/<path>?forceEnvId=clear                        # 清除强制环境
+
+  forcem（[sg-]forcem-[dev|test].testsite.woa.com，国内/国际 × dev/test）—— **配了 IOA_TOKEN 才启用**
+    PAC 额外纳入这四个主机；用 IOA_TOKEN 签名并附上 x-tai-identity。
+    与 panshi/imeta 不同：该站 **443 可达、80 会 302 到 https**，故代理侧上游固定走 https。
+    浏览器需用 http 打开（https 无法在不做 MITM 的前提下注入头），可用 noVNC 目录下的 go.html 降级。
+
+  另外，DevCloud 不可达、会拖住页面加载的装饰性外链（如 rhrc.woa.com 的 HR 头像）会被纳入 PAC 并由
+  代理立即快速失败，避免标签页一直转圈；要真正加载它们需申请 iGate 放通，再从 FAIL_FAST_HOSTS 移除。
+
+补丁版 noVNC（剪贴板）
+  发行版 noVNC 的剪贴板是「面板式手动同步」，且传统通道只按 ISO 8859-1 处理（中文变 '?'/乱码）；
+  上游至今（1.7.0）不改。install / setup 会自动下载固定版本 noVNC 到 ~/.chrome-debug/novnc 并打四处补丁：
+    - 发送/接收都改用 UTF-8（实测 x11vnc 原样透传字节）
+    - 主机→远端自动同步（监听 paste 事件）、远端→主机自动写入本机剪贴板
+  websockify 会自动优先使用该目录（可用 NOVNC_WEB 覆盖）；未装成功只告警、回落发行版 noVNC。
+  注：本机浏览器访问 noVNC 需走 https 或 localhost，远端→主机自动写入才可用（Clipboard API 限制）。
+
+降级跳板页（https → http）
+  DevCloud 上 panshi/imeta 只放通 80，从聊天/文档里粘来的 https 链接打不开，而浏览器没有
+  「自动把 https 降级」的开关（只能靠扩展或 MITM，均不采用）。作为替代，安装时会在 noVNC 目录
+  放一个 go.html：
+    http://localhost:6080/go.html        # 与 noVNC 同一端口，已有隧道即可用，无需再开隧道
+  把 https 链接粘进去、回车，它会换成 http 打开（只对 panshi.woa.com / imeta.woa.com 生效，
+  带 query 的完整链接原样保留）。它不做协议转换、不碰 TLS/证书。
+
+示例
+  node scripts/chrome-debug/index.mjs check
+  node scripts/chrome-debug/index.mjs setup
+  node scripts/chrome-debug/index.mjs setup --cdp-port=9223 --user-dir=/tmp/profile-9223
+  node scripts/chrome-debug/index.mjs status
+  node scripts/chrome-debug/index.mjs view
+
+接管方式
+  setup / install 会把三个 CLI 的命令名用 shim 遮蔽（落点 ~/.local/bin，并前置到 shell rc）：
+  shim 自包含——实例不在时就地拉起，再转发真身；chrome-devtools 的
+  shim 还会先校准 daemon 的连接目标。端口、profile 与 Chrome 路径在安装时写进 shim，
+  换端口或换 node 版本后重跑 install 刷新；服务器模式下实例由 start 管理，shim 只转发。
+  同一个 CDP 端口的实例由全部调用方共享；多 agent 并行时按 session 或独立实例隔离。

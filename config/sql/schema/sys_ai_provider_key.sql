@@ -4,7 +4,9 @@
 -- ============================================================
 -- 设计思路:
 -- 供应商 API Key 表，每个供应商可配置多个 Key，实现负载均衡和 Key 轮换。
--- key_hash 为 SHA256 哈希，用于查重（同一 Key 不可重复录入）。
+-- key_hash 为 SHA256 哈希，用于查重：按 (provider_id, key_hash) 联合唯一（同一密钥可在不同
+--   供应商登记——本地三供应商 local(8992)/local-voice(8993)/local-modal(8994) 共用同一把
+--   INTERNAL_SERVICE_KEY，各需登记一行；与 sys_voice_provider_key 2026-09-28 的处置一致）。
 -- key_cipher 为 AES-256 加密的密文，运行时解密获取明文（明文不存储、不进入日志）。
 -- key_prefix 为密钥前缀（展示用，如 sk-proj-aB...），不存储完整 Key。
 -- priority 为优先级（数字越小越优先），同优先级按 weight 加权随机选取。
@@ -36,7 +38,7 @@ CREATE TABLE `sys_ai_provider_key`
     `create_time`  datetime                                                        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`  datetime                                                        NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `uk_key_hash` (`key_hash`) USING BTREE,
+    UNIQUE INDEX `uk_provider_key` (`provider_id`, `key_hash`) USING BTREE,
     INDEX `idx_provider` (`provider_id`, `status`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

@@ -42,6 +42,42 @@ scrape_configs:
         labels:
           service: 'go'
 
+  # 外置推理服务（dehaze-service/*，内网专用）：/metrics 需 Authorization: Bearer，
+  # 凭证由 prometheus 容器启动时从 __INTERNAL_SERVICE_KEY__ 占位符替换为 ${INTERNAL_SERVICE_KEY}
+  #
+  # llm/voice 已退出默认链路（日常由第三方托管模型承接：方舟/硅基流动 chat·embedding·rerank、
+  # 火山语音 asr·tts），仅在验证 local 或按协议/接口规范做极简调用时按需手动起这两个服务：
+  # 未启动的环境（如 pre）会持续报 target down 告警，但**不影响三端后端与 modal**；
+  # 如需消除该告警，在对应环境的 compose 侧摘除本 job 即可。
+  # modal（8994）仍是无替代的去雾核心算法服务，必须保留。
+  - job_name: 'dehaze-llm'
+    metrics_path: '/metrics'
+    authorization:
+      credentials: __INTERNAL_SERVICE_KEY__
+    static_configs:
+      - targets: [ 'host.docker.internal:8992' ]
+        labels:
+          service: 'llm'
+
+  - job_name: 'dehaze-voice'
+    metrics_path: '/metrics'
+    authorization:
+      credentials: __INTERNAL_SERVICE_KEY__
+    static_configs:
+      - targets: [ 'host.docker.internal:8993' ]
+        labels:
+          service: 'voice'
+
+  # modal：去雾核心算法服务，必须保留（不随第三方模型切换下线）
+  - job_name: 'dehaze-modal'
+    metrics_path: '/metrics'
+    authorization:
+      credentials: __INTERNAL_SERVICE_KEY__
+    static_configs:
+      - targets: [ 'host.docker.internal:8994' ]
+        labels:
+          service: 'modal'
+
   # Node Exporter (宿主机 CPU/内存/磁盘)
   - job_name: 'node'
     static_configs:

@@ -17,6 +17,6 @@ provider:
 7. **桩**：从 `tests/stubs/{fakes,factories,mocks}` 按职责导入。
 8. **目录**：镜像源码包路径（app/service/ai/service/ → tests/service/ai/service/）。
 9. **Marker**：router 测试→`api`；db fixture 用户→`requires_db`；call 实测 >2s→`slow`。
-10. **运行**：`uv run pytest`（自动 APP_ENV=testing）；多进程/多 agent 并行须 `DB_NAME=xxx` env 隔离。
+10. **运行**：`uv run pytest`（自动 APP_ENV=testing）；多 worker/多 agent 并行用 `DEHAZE_TEST_DB=xxx` 隔离库（默认 `dehaze_test`），多 worker 加 `-n auto`。
 11. **命名**：`test_功能_场景`，禁止 test_xxx_gaps/test_xxx_repro 补丁式堆积。
 12. 规范全文与示例见 `dehaze-doc/docs/02-系统架构/05-测试架构.md` §6.4。

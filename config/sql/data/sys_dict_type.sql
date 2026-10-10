@@ -8,6 +8,8 @@ VALUES (1, '性别', 'gender', 1, NULL, '2019-12-06 19:03:32', '2022-06-12 16:21
        (5, 'AI记忆Embedding配置', 'ai_embedding', 1, '记忆向量化 Embedding 全局配置（后端实现 §7.7），provider_code/model/dims 三键', NOW(), NOW()),
        (6, '会员成长值规则', 'member_growth_rules', 1, '营销激励参数，运营可调', NOW(), NOW()),
        (7, '收藏容量', 'favorite_capacity', 1, '各会员等级收藏容量上限，运营可调', NOW(), NOW()),
-       (8, 'AI评测参数', 'ai_eval', 1, '智能体评测质量参数（评测中心/判分治理），退化阈值/一致性阈值/复核抽样比例', NOW(), NOW());
+       (8, 'AI评测参数', 'ai_eval', 1, '智能体评测质量参数（评测中心/判分治理），退化阈值/一致性阈值/复核抽样比例', NOW(), NOW()),
+       (9, 'AI模型默认配置', 'ai_model', 1, '平台默认对话模型（会话与请求均未指定模型时使用，未配置则报错）', NOW(), NOW()),
+       (10, '语音计费单价', 'voice_billing', 1, '语音交互计费单价（语音交互 §7.2），单价随 AI 计费统一管理', NOW(), NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;

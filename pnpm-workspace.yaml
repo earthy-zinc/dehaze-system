@@ -6,20 +6,22 @@ packages:
   - dehaze-front-vue
   - dehaze-front-react
 
-onlyBuiltDependencies:
-  - '@parcel/watcher'
-  - '@tarojs/binding'
-  - '@tarojs/cli'
-  - bufferutil
-  - core-js
-  - electron
-  - electron-winstaller
-  - es5-ext
-  - esbuild
-  - msw
-  - unrs-resolver
-  - utf-8-validate
-  - vue-demi
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  '@tarojs/binding': true
+  '@tarojs/cli': true
+  bufferutil: true
+  core-js: true
+  core-js-pure: true
+  electron: true
+  electron-winstaller: true
+  es5-ext: true
+  esbuild: true
+  msw: true
+  unrs-resolver: true
+  utf-8-validate: true
+  vue-demi: true
 
 overrides:
   '@tarojs/webpack5-prebundle>enhanced-resolve': 5.17.1

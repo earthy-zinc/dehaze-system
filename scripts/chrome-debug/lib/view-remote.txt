@@ -1,0 +1,18 @@
+在【本地电脑】上做下面任一步，即可看到并操作服务器上的 Chrome
+
+方式一：SSH 隧道 + 浏览器（推荐）
+  ssh -N -L {{webPort}}:127.0.0.1:{{webPort}} {{sshTarget}}
+  然后本地浏览器打开：{{webUrl}}
+
+方式二：IDE 远程开发（CodeBuddy / VS Code Remote）
+  端口面板转发 {{webPort}}，点开生成的转发地址
+
+方式三：只调页面（不需要看画面时）
+  ssh -N -L {{cdpPort}}:127.0.0.1:{{cdpPort}} {{sshTarget}}
+  然后打开 {{cdpUrl}}/json/list，点任一页面的 devtoolsFrontendUrl 进 DevTools
+
+方式四：让 AI 代你操作（走同一实例，无需转发）
+
+鉴权：{{auth}}
+说明：服务器无窗口管理器，Chrome 以 {{screen}} 铺满；键盘输入前先点一下页面区域取得焦点
+会话：与 AI 共用同一 profile（{{userDir}}），人工登录后 AI 接着操作仍是登录态

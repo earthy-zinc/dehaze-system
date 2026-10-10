@@ -8,6 +8,9 @@
 --   覆盖 DeepSeek 时段定价、OpenAI/Anthropic 上下文长度分段定价及两者组合。
 -- model_id 关联 sys_ai_model.model_id（业务键），provider_id 关联 sys_ai_provider.id，
 --   (model_id, provider_id) 对齐 sys_ai_model 的联合唯一键，唯一定位模型。
+-- billing_unit 为计费维度（计量单位）：million_tokens（chat/embedding/rerank）/image（张）/
+--   second（asr）/ten_thousand_chars（tts）/frame（video 预留）；
+--   token 类模型走 token_type × 分段 × 峰谷结构，非 token 类模型单行 unit 档（detail.usage_kind='unit'），不设峰谷。
 -- price_version 为价格版本号，调价时新增版本（同 model_id+provider_id 内递增），
 --   历史消息按调用时刻对应的价格版本核算（effective_from <= t < effective_to），对账有据。
 -- 配置类表，使用逻辑删除；唯一键含 deleted，软删后可重建；price_version 按全历史递增不复用。
@@ -20,6 +23,7 @@ CREATE TABLE `sys_ai_model_price`
     `provider_id`    bigint                                                          NOT NULL COMMENT '供应商ID(关联sys_ai_provider.id)',
     `price_version`  int                                                             NOT NULL DEFAULT 1 COMMENT '价格版本号(调价递增,同模型同供应商内唯一)',
     `unit`           varchar(24) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL DEFAULT 'credits_per_million' COMMENT '单价单位(credits_per_million:积分/百万token)',
+    `billing_unit`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NOT NULL DEFAULT 'million_tokens' COMMENT '计费维度(million_tokens:百万token;image:张;second:秒;ten_thousand_chars:万字符;frame:帧)',
     `effective_from` datetime                                                        NOT NULL COMMENT '价格版本生效时间',
     `effective_to`   datetime                                                        NULL DEFAULT NULL COMMENT '价格版本失效时间(NULL表示当前版本)',
     `status`         tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:生效;0:停用)',

@@ -3,10 +3,18 @@
 -- 模块: 核心模块-AI对话
 -- ============================================================
 -- 设计思路:
--- 模型供应商配置表，管理平台接入的 LLM 供应商（OpenAI/Anthropic/DeepSeek 等）。
--- provider_code 为业务唯一键（如 openai/anthropic/deepseek），白名单语义：软删后不可复用（应用层查全表判重）。
+-- 模型供应商配置表，管理平台接入的全模态模型供应商（OpenAI/Anthropic/DeepSeek/本地推理服务等）。
+-- provider_code 为业务唯一键（如 openai/anthropic/deepseek/local/local-voice/local-modal），白名单语义：软删后不可复用（应用层查全表判重）。
 -- api_base_url 为供应商 API 端点，支持代理地址（如自建 OpenAI 代理）。
--- protocol_type 决定请求/响应协议：openai_compat（OpenAI 兼容）或 anthropic（Claude 原生）。
+-- protocol_type 决定请求/响应协议（值域 8 个协议族，管理端「协议类型」下拉为唯一配置入口）：
+--   openai_compat（chat/embedding/rerank/tts/asr 离线，OpenAI 兼容）/ anthropic（Claude 原生）/
+--   openai_image（图像同步 JSON：/v1/images/generations、/v1/images/edits，本地 modal 与方舟 SeedEdit 同构）/
+--   openai_audio（/v1/audio/speech、/v1/audio/transcriptions，本地 voice 同构）/
+--   cohere（embedding 私有端点 /v1/embed，返回 embeddings[]）/
+--   dashscope_realtime（百炼实时语音 WS：run-task/continue-task/finish-task 指令 + 音频帧）/
+--   volc_realtime（火山实时语音 WS：二进制帧，ASR /api/v3/sauc/bigmodel、TTS /api/v1/tts/ws_binary）/
+--   dashscope_async（百炼异步任务族：X-DashScope-Async + /api/v1/tasks/{id}，万相图像/视频/3D）。
+--   (provider.protocol_type, model.model_type) 二元组路由到唯一适配器。
 -- auth_type 决定 HTTP 认证头格式：bearer（Authorization: Bearer）、x-api-key 或 custom（自定义请求头，头名在 default_headers 中配置）。
 -- default_headers 存储供应商特有请求头（如 anthropic-version），JSON 格式。
 -- sort_order 为排序序号，管理员可调整供应商展示顺序。
@@ -19,14 +27,15 @@ DROP TABLE IF EXISTS `sys_ai_provider`;
 CREATE TABLE `sys_ai_provider`
 (
     `id`              bigint                                                          NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `provider_code`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '供应商编码(openai;anthropic;deepseek;zhipu;qwen;custom)',
+    `provider_code`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '供应商编码(openai;anthropic;deepseek;zhipu;qwen;custom;local;local-voice;local-modal)',
     `display_name`    varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '显示名称(如OpenAI;Anthropic;DeepSeek)',
     `api_base_url`    varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'API基础地址(如https://api.openai.com/v1)',
-    `protocol_type`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'openai_compat' COMMENT '协议类型(openai_compat:OpenAI兼容;anthropic:Claude原生)',
+    `protocol_type`   varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'openai_compat' COMMENT '协议类型(openai_compat:OpenAI兼容;anthropic:Claude原生;openai_image:图像同步JSON;openai_audio:音频兼容;cohere:embedding私有/v1/embed;dashscope_realtime:百炼实时语音;volc_realtime:火山实时语音;dashscope_async:百炼异步任务)',
     `auth_type`       varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'bearer' COMMENT '认证方式(bearer:Authorization Bearer;x-api-key:Anthropic风格;custom:自定义请求头,头名在default_headers配置)',
     `default_headers` json                                                            NULL COMMENT '默认请求头(JSON,如{"anthropic-version":"2023-06-01"});auth_type=custom时,需含{"auth_header":"头名"}',
     `sort_order`      int                                                             NOT NULL DEFAULT 0 COMMENT '排序序号(数字越小越靠前)',
     `health_check_enabled` tinyint                                                    NOT NULL DEFAULT 1 COMMENT '健康检查开关(1:开启,参与熔断判定;0:关闭)',
+    `request_timeout_seconds` int                                                     NULL DEFAULT NULL COMMENT '请求超时(秒;NULL=调用方默认:chat 120/embedding 30);本地 CPU 推理等慢供应商应显式配置(如 300)',
     `user_identity_forward`   json                                                      NULL DEFAULT NULL COMMENT '用户身份透传配置(JSON,按供应商能力配置,如DeepSeek/OpenAI/Anthropic;NULL=不启用):{"enabled":true,"field":"user_id","prefix":"u_","max_len":512} - enabled:是否向供应商请求透传平台用户标识; field:注入字段名或嵌套路径(OpenAI兼容:user|user_id;Anthropic:metadata.user_id); prefix:透传值脱敏前缀(值=prefix+sha256(userId)截断,满足供应商字符限制); max_len:透传值最大长度(如DeepSeek 512)',
     `remark`          varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci    NULL DEFAULT NULL COMMENT '运维备注(账号归属/合同号/商务信息)',
     `status`          tinyint                                                         NOT NULL DEFAULT 1 COMMENT '状态(1:启用;0:禁用)',

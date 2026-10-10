@@ -3,7 +3,7 @@ description: 设计稿还原准则。当任务涉及将设计稿（HTML / Figma 
 alwaysApply: false
 enabled: true
 updatedAt: 2026-07-31T00:00:00.000Z
-provider: 
+provider:
 ---
 
 # 设计稿还原准则

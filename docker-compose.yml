@@ -18,7 +18,13 @@ services:
       - mysql-data:/var/lib/mysql
       - mysql-logs:/var/log/mysql
       - ./config/mysql:/etc/mysql/conf.d:ro
-      - ./config/sql/schema:/docker-entrypoint-initdb.d:ro
+      # 不能加 :ro——下面 xxl_job.sql 是以单文件形式挂进本目录，父目录只读时 Docker Desktop(Windows)
+      # 无法在其内创建挂载点（runc: read-only file system），容器起不来。
+      - ./config/sql/schema:/docker-entrypoint-initdb.d
+      # xxl-job 调度中心独立库的引导脚本（自带 DROP/CREATE DATABASE xxl_job），与业务库 schema 分目录存放：
+      # 放在 config/sql/schema/ 里会被 `schema/*.sql` 通配（手工重置、脚本、文档命令）误命中而删库。
+      # 首启仍需执行，故按单文件挂进 docker-entrypoint-initdb.d（字母序仍在 sys_*.sql 之后、zz_load_data.sh 之前）。
+      - ./config/sql/schema-external/xxl_job.sql:/docker-entrypoint-initdb.d/xxl_job.sql:ro
       - ./config/sql/data:/docker-init-data:ro
     command:
       - --character-set-server=utf8mb4
@@ -29,12 +35,14 @@ services:
       - pei-network
 
   # Redis
+  # 宿主端口用 6381 而非默认 6379：办公网→DevCloud 的链路代理按端口黑名单拦默认服务端口
+  # （实测 6379/9000/9001/5601/5173/5174 返 502，6380/9110/5274 等非默认端口放行）
   redis:
     image: redis:latest
     container_name: redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6381:6379"
     environment:
       TZ: Asia/Shanghai
     volumes:
@@ -73,7 +81,7 @@ services:
 
   # MinIO
   # 用于后端文件上传功能（用户上传的去雾结果等），端口 9110/9190
-  # 数据集原始文件的浏览通过下面的 nginx 静态服务提供（端口 9000）
+  # 数据集原始文件的浏览通过下面的 nginx 静态服务提供（端口 19000）
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -96,14 +104,15 @@ services:
 
   # Nginx 静态文件服务
   # 通过项目根目录下的 datasets、models 符号链接（指向 D:\DeepLearning）统一管理数据
-  # 数据集图片 URL：http://{NGINX_STATIC_HOST}:9000/datasets/{dataset_path}/{subdir}/{filename}
-  # 模型权重 URL：http://{NGINX_STATIC_HOST}:9000/models/{algorithm_path}
+  # 数据集图片 URL：http://{NGINX_STATIC_HOST}:{NGINX_STATIC_PORT}/datasets/{dataset_path}/{subdir}/{filename}
+  # 模型权重 URL：http://{NGINX_STATIC_HOST}:{NGINX_STATIC_PORT}/models/{algorithm_path}
+  # 宿主端口用 19000 而非默认 9000：办公网→DevCloud 的链路代理按端口黑名单拦默认服务端口
   nginx-dataset:
     image: nginx:alpine
     container_name: nginx-dataset
     restart: always
     ports:
-      - "9000:80"
+      - "19000:80"
     volumes:
       - ./datasets:/usr/share/nginx/html/datasets:ro
       - ./models:/usr/share/nginx/html/models:ro
@@ -171,6 +180,9 @@ services:
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
       - xpack.security.transport.ssl.enabled=false
+      # 放开通配删除：dehaze-test/scripts/reset_env.py 按 ES 索引前缀（dev_* / pre_*）整体删除，
+      # ES8 默认 destructive_requires_name=true 会以 400 illegal_argument_exception 拒绝通配删除。
+      - action.destructive_requires_name=false
       - TZ=Asia/Shanghai
     ulimits:
       memlock:
@@ -252,6 +264,10 @@ services:
       - ./dehaze-java/logs:/logs/java:ro
       - ./dehaze-python/logs:/logs/python:ro
       - ./dehaze-go/logs:/logs/go:ro
+      # 外置推理服务日志（dehaze-service/*，目录不存在时 compose 会以 root 创建）
+      - ./dehaze-service/dehaze-llm/logs:/logs/llm:ro
+      - ./dehaze-service/dehaze-voice/logs:/logs/voice:ro
+      - ./dehaze-service/dehaze-modal/logs:/logs/modal:ro
       - filebeat-data:/usr/share/filebeat/data
       - ./config/filebeat/proc-stat:/usr/share/filebeat/proc-stat:ro
     depends_on:
@@ -311,6 +327,11 @@ services:
       - xxl-job-logs:/data/applogs
     depends_on:
       - mysql
+    # 三端执行器注册地址由 scripts/run.py 注入 host.docker.internal（见 部署架构§执行器注册）：
+    # Docker Desktop(Windows/macOS) 原生解析该域名，Linux 需显式映射到网桥网关，
+    # 否则执行器注册地址无法解析、xxl-job 初始化 NPE 导致后端启动失败
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - pei-network
 
@@ -325,11 +346,12 @@ services:
       - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.tpl:ro
       - ./config/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus-data:/prometheus
-    # 启动时将 prometheus.tpl 中的 __ALERTMANAGER_PASSWORD__ 占位符替换为 ${ALERTMANAGER_PASSWORD}
-    # 生成 /etc/prometheus/prometheus.yml，再启动 prometheus（prometheus.yml 不支持环境变量）
+    # 启动时将 prometheus.tpl 中的占位符替换为实际值（__ALERTMANAGER_PASSWORD__ /
+    # __INTERNAL_SERVICE_KEY__：推理服务 /metrics 需 Bearer 鉴权），生成
+    # /etc/prometheus/prometheus.yml 再启动 prometheus（prometheus.yml 不支持环境变量）
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - "sed 's/__ALERTMANAGER_PASSWORD__/${ALERTMANAGER_PASSWORD}/g' /etc/prometheus/prometheus.tpl > /etc/prometheus/prometheus.yml && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091"
+      - "sed -e 's/__ALERTMANAGER_PASSWORD__/${ALERTMANAGER_PASSWORD}/g' -e 's/__INTERNAL_SERVICE_KEY__/${INTERNAL_SERVICE_KEY}/g' /etc/prometheus/prometheus.tpl > /etc/prometheus/prometheus.yml && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091"
     networks:
       - pei-network
 

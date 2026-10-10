@@ -45,6 +45,46 @@ filebeat.inputs:
       service: go
     fields_under_root: true
 
+  # 外置推理服务（dehaze-service/*）：fields.service 与日志实现约定的服务名一致
+  - type: filestream
+    id: dehaze-llm
+    enabled: true
+    paths:
+      - /logs/llm/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: llm
+    fields_under_root: true
+
+  - type: filestream
+    id: dehaze-voice
+    enabled: true
+    paths:
+      - /logs/voice/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: voice
+    fields_under_root: true
+
+  - type: filestream
+    id: dehaze-modal
+    enabled: true
+    paths:
+      - /logs/modal/*/*.log
+    parsers:
+      - ndjson:
+          keys_under_root: true
+          add_error_key: true
+    fields:
+      service: modal
+    fields_under_root: true
+
   - type: filestream
     id: dehaze-client
     enabled: true

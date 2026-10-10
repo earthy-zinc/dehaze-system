@@ -195,7 +195,7 @@ def main():
     parser.add_argument("--db-name", default="dehaze")
     parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
     parser.add_argument("--nginx-base-url", required=True,
-                        help="nginx 静态服务根地址（如 http://127.0.0.1:9000），不带 /datasets 等资源子路径；WPX 图由此直服")
+                        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径；WPX 图由此直服")
     parser.add_argument("--regenerate", action="store_true", help="强制重建（先删后建）")
     args = parser.parse_args()
 

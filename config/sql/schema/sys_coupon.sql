@@ -5,7 +5,7 @@
 -- 设计思路:
 -- 优惠券模板表，定义优惠券规则与发放库存。
 -- type 标识四种类型：满减券/折扣券/无门槛券/体验券。
--- face_value/threshold 配合 type 使用：满减券需 threshold+face_value，折扣券 face_value 为折扣比例（0-100）。
+-- face_value/threshold 配合 type 使用：满减券需 threshold+face_value，折扣券 face_value 为用户支付百分比（0-100；80 表示 8 折，抵扣 = 促销后价 × (100-face_value)%）。
 -- valid_type 区分固定时间段和领取后N天两种有效期模式，对应字段分别填充。
 -- total_qty 为发放总量（-1表示不限），issued_qty/used_qty 由领取和核销时累加，配合乐观锁防止超发。
 -- applicable_scope 为 JSON 数组，存储适用套餐ID（NULL表示全部适用）。
@@ -16,7 +16,7 @@ CREATE TABLE `sys_coupon`
     `id`                bigint                                                         NOT NULL AUTO_INCREMENT COMMENT '主键',
     `name`              varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '优惠券名称',
     `type`              varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '类型(full_reduction:满减券;discount:折扣券;no_threshold:无门槛券;trial:体验券)',
-    `face_value`        bigint                                                         NOT NULL DEFAULT 0 COMMENT '面值（满减/无门槛为分，折扣为0-100）',
+    `face_value`        bigint                                                         NOT NULL DEFAULT 0 COMMENT '面值（满减/无门槛为分，折扣为用户支付百分比 0-100：80 表示 8 折，抵扣按 (100-face_value)%）',
     `threshold`         bigint                                                         NULL DEFAULT NULL COMMENT '使用门槛（满减券必填，单位：分）',
     `valid_type`        varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '有效期类型(fixed:固定时间段;relative:领取后N天)',
     `valid_start`       datetime                                                       NULL DEFAULT NULL COMMENT '有效期开始时间（fixed类型必填）',

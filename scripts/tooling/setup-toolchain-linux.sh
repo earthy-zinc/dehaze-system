@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# dehaze 开发环境统一管理（WSL / Linux）：apt(系统/CLI) + mise(语言运行时) + uv(Python)
+# dehaze 开发环境统一管理（WSL / Linux，含 TencentOS/CentOS/Rocky 等 RHEL 系）：
+# apt 或 dnf/yum(系统/CLI) + mise(语言运行时) + uv(Python)
 #
 # 幂等、分阶段、可回滚。安装与清理严格分离：
 #   install —— 通用，任何机器（含全新机器）可反复运行，只装不删。
@@ -42,7 +43,7 @@ usage() {
   ./setup-toolchain-linux.sh --step cleanup  清理迁移前的旧装（机器特定）
   ./setup-toolchain-linux.sh --step all      安装 + 清理
   ./setup-toolchain-linux.sh --dry-run       预演，不产生任何改动
-  ./setup-toolchain-linux.sh --restore       还原 apt 源 / .bashrc / 环境
+  ./setup-toolchain-linux.sh --restore       还原 apt 源（仅 apt 机器）/ .bashrc / 环境
 EOF
     exit 0
 }
@@ -99,6 +100,21 @@ detect_distro() {
     echo "${ID:-unknown}"
 }
 
+# apt（Ubuntu/Debian/WSL）或 dnf/yum（TencentOS/CentOS/Rocky 等 RHEL 系）；
+# 没有换源逻辑的 RHEL 系默认沿用机器现有内网源，不做额外改造。
+detect_pkg_mgr() {
+    if command -v apt-get >/dev/null 2>&1; then
+        echo apt
+    elif command -v dnf >/dev/null 2>&1; then
+        echo dnf
+    elif command -v yum >/dev/null 2>&1; then
+        echo yum
+    else
+        err '未找到支持的包管理器（apt-get/dnf/yum）'
+        exit 1
+    fi
+}
+
 # ---------------------------------------------------------------- 备份 / 还原
 save_backup() {
     info "备份到 $BACKUP_ROOT"
@@ -132,6 +148,11 @@ restore() {
 
 # ---------------------------------------------------------------- 安装
 set_apt_mirror() {
+    if [ "$PKG_MGR" != "apt" ]; then
+        info "包管理器为 $PKG_MGR，非 apt，跳过换源（沿用机器现有内网源）"
+        return
+    fi
+
     local mirror apt_source distro codename
     mirror="$(cfg '.mirrors.aptMirror')"
     apt_source="$(cfg '.linux.aptSourceFile')"
@@ -171,14 +192,22 @@ EOF
     else
         $SUDO sed -i -E "s|^URIs:.*|URIs: $mirror|" "$apt_source"
     fi
-    ok "apt 源已指向 $mirror（$codename）"
+    ok "apt 源已指向 ${mirror}（${codename}）"
 }
 
-apt_install_packages() {
+install_system_packages() {
     local -a pkgs
-    mapfile -t pkgs < <(cfg '.linux.aptPackages')
-    run $SUDO apt-get update
-    run $SUDO apt-get install -y "${pkgs[@]}"
+    case "$PKG_MGR" in
+        apt)
+            mapfile -t pkgs < <(cfg '.linux.aptPackages')
+            run $SUDO apt-get update
+            run $SUDO apt-get install -y "${pkgs[@]}"
+            ;;
+        dnf|yum)
+            mapfile -t pkgs < <(cfg '.linux.dnfPackages')
+            run $SUDO "$PKG_MGR" install -y "${pkgs[@]}"
+            ;;
+    esac
 }
 
 install_mise() {
@@ -196,7 +225,7 @@ write_env_file() {
     pip_index="$(cfg '.mirrors.pipIndex')"
 
     if [ "$DRY_RUN" = "1" ]; then
-        log WHAT "写入 $ENV_FILE（镜像 + mise 激活 + PATH）并在 ~/.bashrc 引用"
+        log WHAT "写入 ${ENV_FILE}（镜像 + mise 激活 + PATH）并在 ~/.bashrc 引用"
         return
     fi
     mkdir -p "$(dirname "$ENV_FILE")"
@@ -256,14 +285,14 @@ install_python() {
         warn '当前 uv 的 --default 需要 preview 模式，改用 --preview 重试'
         run uv python install "$ver" --preview --default
     fi
-    ok "已安装 Python $ver（系统 /usr/bin/python3 保持不变）"
+    ok "已安装 Python ${ver}（系统 /usr/bin/python3 保持不变）"
 }
 
 invoke_install() {
     info '=== 安装阶段（通用，可反复运行）==='
     save_backup
     set_apt_mirror
-    apt_install_packages
+    install_system_packages
     install_mise
     write_env_file
     configure_ecosystem_mirrors
@@ -282,12 +311,17 @@ cleanup_legacy() {
 
     # 只卸载真正已安装的包，避免某个包不存在时 apt 报错中断脚本。
     # 不使用 --autoremove：它会连带清扫无关的自动安装包，曾导致整条 CUDA 被误删。
-    for p in "${remove[@]}"; do
-        [ -n "$p" ] || continue
-        dpkg -s "$p" >/dev/null 2>&1 && installed+=("$p")
-    done
-    if [ "${#installed[@]}" -gt 0 ]; then
-        run $SUDO apt-get remove -y "${installed[@]}"
+    # legacy.linux.aptRemove 是 Debian 系旧装清理专用，非 apt 机器上跳过（如需清理 dnf 包请手工处理）。
+    if [ "$PKG_MGR" = "apt" ]; then
+        for p in "${remove[@]}"; do
+            [ -n "$p" ] || continue
+            dpkg -s "$p" >/dev/null 2>&1 && installed+=("$p")
+        done
+        if [ "${#installed[@]}" -gt 0 ]; then
+            run $SUDO apt-get remove -y "${installed[@]}"
+        fi
+    elif [ "${#remove[@]}" -gt 0 ] && [ -n "${remove[0]}" ]; then
+        warn "包管理器为 $PKG_MGR，跳过 legacy.linux.aptRemove（${remove[*]} 需手工处理）"
     fi
 
     # 删除手装目录（如 /usr/local/go、~/.nvm）
@@ -328,6 +362,8 @@ show_summary() {
 
 # ---------------------------------------------------------------- 入口
 require_python3
+PKG_MGR="$(detect_pkg_mgr)"
+info "包管理器：$PKG_MGR"
 
 if [ "$RESTORE" = "1" ]; then
     restore

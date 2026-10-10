@@ -1,0 +1,3 @@
+本机窗口直接可见可操作（无需转发）
+CDP 地址：{{cdpUrl}} —— 打开 {{cdpUrl}}/json/list，点任一页面的 devtoolsFrontendUrl 进 DevTools
+与 AI 共用同一个浏览器与 profile（{{userDir}}）：你登录/过验证码后，AI 接着操作时仍是登录态

@@ -1,0 +1,227 @@
+# 六端单测回归 · 链路冒烟：编排侧 + 三个推理服务各跑一个最小用例集，
+# 验证「镜像可拉 / 依赖可导入 / 中间件可连 / 测试可发现」（不追求覆盖）。
+#
+# 前置一：内网仓库登录与镜像构建（仓库地址与凭据见
+#   .codebuddy/skills/dehaze-project-knowledge/references/06-服务器与联调环境.md）
+#   SHA=$(git rev-parse --short HEAD)
+#   # 重依赖基础镜像：tag = uv.lock 指纹，未变则跳过（指纹算法见各 Dockerfile.base 头部）
+#   docker build -f dehaze-service/dehaze-modal/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:modal-base-08dc5a158a40 .
+#   docker build -f dehaze-service/dehaze-voice/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:voice-base-3d01ce25e049 .
+#   docker build -f dehaze-python/Dockerfile                --target test -t csighub.tencentyun.com/earthywu/dehaze-system:py-test-$SHA    .
+#   docker build -f dehaze-service/dehaze-llm/Dockerfile    --target test -t csighub.tencentyun.com/earthywu/dehaze-system:llm-test-$SHA   .
+#   docker build -f dehaze-service/dehaze-voice/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/dehaze-system:voice-test-$SHA .
+#   docker build -f dehaze-service/dehaze-modal/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/dehaze-system:modal-test-$SHA .
+#   docker push 上述所有 tag
+#
+# 前置二：两个 Secret（不入版本库）
+#   NS=p-cloud-dev-test-perm-resource-5aesj19quwkg
+#   kubectl create secret docker-registry csighub-registry -n $NS --docker-server=csighub.tencentyun.com \
+#     --docker-username=earthywu --docker-password=<见 06-服务器与联调环境.md>
+#   sed 's/127\.0\.0\.1/21.6.51.87/g' .env > /tmp/dehaze-test.env      # Pod 里 127.0.0.1 是 Pod 自己，指向中间件宿主
+#   kubectl create secret generic dehaze-test-env -n $NS --from-file=.env=/tmp/dehaze-test.env
+#
+# 运行与读日志：
+#   kubectl apply -f config/kube/test/job-smoke.yaml -n $NS
+#   kubectl logs -n $NS job/dehaze-test-smoke-python     # / -llm / -voice / -modal
+#
+# 为什么每端一个 Job（不是一个 Pod 多容器）：多容器 Pod 里只要有一个镜像还在拉，kubelet 就不发布
+# 任何容器状态，`kubectl logs` 会报 "waiting to start: ContainerCreating"，日志都读不到；
+# 且各端失败互不影响、可独立重试。容器命令一律 bash -c + 显式 PATH（bash -lc 会重置 PATH）。
+# 测试镜像以同一 SHA tag 重建，故 imagePullPolicy: Always（防拿到节点缓存的旧镜像）；生产部署请按 digest 固定。
+# 资源：本文件 4 个 Pod 的 limits 合计 16C/28G，在组织配额 32C/32G 之内，可同时 apply；
+# 与 job-regression.yaml（24G）、job-services.yaml（20G）不得同时运行（配额按 limits 累加）。
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-smoke-python
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: smoke
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: smoke
+        backend: python
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: python
+          image: csighub.tencentyun.com/earthywu/dehaze-system:py-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-python
+          env:
+            - name: DEHAZE_TEST_DB
+              value: dehaze_test_py
+          resources:
+            requests: {cpu: "500m", memory: 2Gi}
+            limits: {cpu: "4", memory: 8Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/bin:$PATH"
+              .venv/bin/python -m pytest tests/repository/test_user_repository.py -q --no-header > /tmp/smoke-py.log 2>&1
+              rc=$?
+              tail -30 /tmp/smoke-py.log
+              exit $rc
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-smoke-llm
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: smoke
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: smoke
+        backend: llm
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: llm
+          image: csighub.tencentyun.com/earthywu/dehaze-system:llm-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-service/dehaze-llm
+          resources:
+            requests: {cpu: "500m", memory: 1Gi}
+            limits: {cpu: "2", memory: 4Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/bin:$PATH"
+              .venv/bin/python -m pytest tests/test_endpoints.py -q --no-header > /tmp/smoke-llm.log 2>&1
+              rc=$?
+              tail -30 /tmp/smoke-llm.log
+              exit $rc
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-smoke-voice
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: smoke
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: smoke
+        backend: voice
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: voice
+          image: csighub.tencentyun.com/earthywu/dehaze-system:voice-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-service/dehaze-voice
+          resources:
+            requests: {cpu: "500m", memory: 2Gi}
+            limits: {cpu: "4", memory: 8Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/bin:$PATH"
+              .venv/bin/python -m pytest tests/test_auth.py -q --no-header > /tmp/smoke-voice.log 2>&1
+              rc=$?
+              tail -30 /tmp/smoke-voice.log
+              exit $rc
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dehaze-test-smoke-modal
+  namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
+  labels:
+    app: dehaze-test
+    phase: smoke
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: dehaze-test
+        phase: smoke
+        backend: modal
+    spec:
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: csighub-registry
+      volumes:
+        - name: env-file
+          secret:
+            secretName: dehaze-test-env
+      containers:
+        - name: modal
+          image: csighub.tencentyun.com/earthywu/dehaze-system:modal-test-fe62ad390
+          imagePullPolicy: Always
+          workingDir: /app/dehaze-service/dehaze-modal
+          resources:
+            requests: {cpu: "500m", memory: 2Gi}
+            limits: {cpu: "4", memory: 8Gi}
+          volumeMounts:
+            - name: env-file
+              mountPath: /app/.env
+              subPath: .env
+              readOnly: true
+          command: ["bash", "-c"]
+          args:
+            - |
+              export PATH="/usr/local/bin:$PATH"
+              # 真实跑通 algorithm.DCP（无权重、纯 numpy/opencv）：镜像 → importlib 装载 → 返回 PNG
+              .venv/bin/python -m pytest tests/test_inference_api.py::test_inference_runs_weightless_algorithm -q --no-header > /tmp/smoke-modal.log 2>&1
+              rc=$?
+              tail -30 /tmp/smoke-modal.log
+              exit $rc

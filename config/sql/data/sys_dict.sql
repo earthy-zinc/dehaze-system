@@ -36,6 +36,15 @@ values (1, 'gender', '男', '1', 1, 1, 0, null, '2019-05-05 13:07:52', '2022-06-
        -- AI 评测质量参数（评测中心 F-M08-014；阈值均为百分比/百分制整数，运营可调）
        (35, 'ai_eval', 'regression_threshold', '5', 1, 1, 1, '相对退化阈值(%,相对上次评测总分下降超此值判定退化)', NOW(), NOW()),
        (36, 'ai_eval', 'judge_consistency_threshold', '90', 2, 1, 1, '判分一致性阈值(%,人工复核一致率低于此值判定漂移)', NOW(), NOW()),
-       (37, 'ai_eval', 'judge_review_ratio', '1', 3, 1, 1, '人工复核抽样比例(%,通过样本按此比例确定性抽样)', NOW(), NOW());
+       (37, 'ai_eval', 'judge_review_ratio', '1', 3, 1, 1, '人工复核抽样比例(%,通过样本按此比例确定性抽样)', NOW(), NOW()),
+       -- 平台默认对话模型（会话与请求均未指定模型时使用；未配置则报错，不再回退代码常量）
+       (38, 'ai_model', 'default_model', 'qwen3-0.6b', 1, 1, 1, '平台默认对话模型(须为已启用模型)', NOW(), NOW()),
+       -- 全模态平台默认模型（统一模型管理 §2.2 默认模型解析链；按 model_type 增键，须为已启用模型）
+       -- 注：default_model.image_edit 为阶段1「只播种」占位——image_edit 模型行由阶段1 迁移从 sys_algorithm
+       --   迁入（config/sql/migration/2026-09-29_*.sql），不进本静态种子，故全新环境（测试库）该键暂无对应模型，
+       --   消费方在阶段 2/3 接入（届时技术事实源收敛为 dehaze-modal /v1/models 的规范 slug）。
+       (41, 'ai_model', 'default_model.asr', 'sensevoice', 2, 1, 1, '平台默认语音识别模型(须为已启用模型)', NOW(), NOW()),
+       (42, 'ai_model', 'default_model.tts', 'huayan', 3, 1, 1, '平台默认语音合成模型(须为已启用模型)', NOW(), NOW()),
+       (43, 'ai_model', 'default_model.image_edit', 'aecrnet', 4, 1, 1, '平台默认图像编辑模型(须为已启用模型;aecrnet=AECR-Net,由阶段1迁移迁入)', NOW(), NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;
