@@ -34,7 +34,7 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         if keywords:
             stmt = stmt.where(
                 or_(
-                    SysInputHistory.algorithm_name.like(f"%{escape_like(keywords)}%", escape="\\"),
+                    SysInputHistory.model_name.like(f"%{escape_like(keywords)}%", escape="\\"),
                     SysInputHistory.original_image_url.like(
                         f"%{escape_like(keywords)}%", escape="\\"
                     ),

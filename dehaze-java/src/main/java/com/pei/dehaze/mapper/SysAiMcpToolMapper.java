@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiMcpTool;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiMcpToolMapper extends BaseMapper<SysAiMcpTool> {
-}
+public interface SysAiMcpToolMapper extends BaseMapper<SysAiMcpTool> {}

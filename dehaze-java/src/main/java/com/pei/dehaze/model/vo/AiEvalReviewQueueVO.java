@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.vo;
 
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 /**
  * 复核队列响应

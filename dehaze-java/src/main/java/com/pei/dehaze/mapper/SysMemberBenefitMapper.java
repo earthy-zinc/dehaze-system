@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysMemberBenefit;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysMemberBenefitMapper extends BaseMapper<SysMemberBenefit> {
-}
+public interface SysMemberBenefitMapper extends BaseMapper<SysMemberBenefit> {}

@@ -24,5 +24,4 @@ public class AiSubAgentItemForm {
 
     @Schema(description = "优先级(数字越小越优先)")
     private Integer priority;
-
 }

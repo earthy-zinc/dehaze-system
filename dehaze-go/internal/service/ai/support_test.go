@@ -1,37 +1,32 @@
 package ai
 
 import (
-	"path/filepath"
+	"encoding/json"
 	"testing"
 
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 )
 
-// Python 侧（dehaze-python ai_cipher）用同一环境密钥与固定 IV(0..15) 生成的密文，
-// 作为跨端互认基线：Go 必须能解出明文，密文格式（base64(iv+ct)，PKCS7）不得偏离。
+// 跨端互认基线：三端共用同一组固定向量（密钥 crossEndTestKey、IV 固定，密文由
+// python aes_cipher 生成）。用例自行注入该密钥，不读仓库 .env 的实际密钥，
+// 因此密钥轮换不会让用例失真。Java 侧同向量见 AiCredentialCipherTest。
 const (
-	pythonPlaintext  = "sk-test-1234567890abcdef"
-	pythonCiphertext = "AAECAwQFBgcICQoLDA0OD04BvaVwbwVz3nUguEEnoh3yEJ+0wte2FqIoQ8LCAFp4"
-	pythonKeyHash    = "93faf5716142f90256b4c1c4bc2c1bc2ee0a2460d5a738d6938dda1ad4216afd"
+	crossEndTestKey  = "dehaze-cross-end-test-key"
+	pythonPlaintext  = "sk-test-cross-end-key-1234"
+	pythonCiphertext = "AAECAwQFBgcICQoLDA0ODz1AYgtqdeBmh/6NKWzlW3NCUUnNiiaerx4P+CPjrzaD"
+	pythonKeyHash    = "856515f37e98ccb7c9b21fdeaf1960856a9216fe82dcaac672849580b1e0f329"
 	pythonMaskedKey  = "sk-test-..."
 )
 
-func loadRepoEnv(t *testing.T) {
-	t.Helper()
-	// 测试 CWD 是包目录（dehaze-go/internal/service/ai），仓库根 .env 在上溯四级
-	require.NoError(t, godotenv.Load(filepath.Join("..", "..", "..", "..", ".env")))
-}
-
 func TestDecryptSecretReadsPythonCiphertext(t *testing.T) {
-	loadRepoEnv(t)
+	t.Setenv("AI_PROVIDER_KEY_ENCRYPTION_KEY", crossEndTestKey)
 	plain, err := DecryptSecret(pythonCiphertext)
 	require.NoError(t, err)
 	require.Equal(t, pythonPlaintext, plain, "Go 必须能解开 python 写入的密文（跨端互认）")
 }
 
 func TestEncryptSecretRoundTrip(t *testing.T) {
-	loadRepoEnv(t)
+	t.Setenv("AI_PROVIDER_KEY_ENCRYPTION_KEY", crossEndTestKey)
 	cipherText, err := EncryptSecret(pythonPlaintext)
 	require.NoError(t, err)
 	require.NotEqual(t, pythonPlaintext, cipherText)
@@ -45,6 +40,22 @@ func TestHashAndMaskSecretAlignPython(t *testing.T) {
 	require.Equal(t, pythonKeyHash, HashSecret(pythonPlaintext), "SHA256 查重哈希需与 python 一致")
 	require.Equal(t, pythonMaskedKey, MaskSecret(pythonPlaintext), "前缀脱敏需与 python mask_key 一致")
 	require.Equal(t, "short...", MaskSecret("short"))
+}
+
+// 无样本快照：状态位与调用量确定，比率与延迟必须落成 JSON null（与 python 快照同口径），
+// 落成 0/1.0 会让看板把「无数据」显示成 100% 成功、0ms。
+func TestNoSampleSnapshotKeepsNullMetrics(t *testing.T) {
+	b, err := json.Marshal(noSampleSnapshot("healthy", false))
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"status": "healthy",
+		"circuit_open": false,
+		"total_calls_24h": 0,
+		"success_rate": null,
+		"error_rate": null,
+		"limit_rate": null,
+		"p95_latency_ms": null
+	}`, string(b))
 }
 
 func TestSpeedTierOf(t *testing.T) {

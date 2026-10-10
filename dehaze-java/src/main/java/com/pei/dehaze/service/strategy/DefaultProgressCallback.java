@@ -4,13 +4,12 @@ import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * 默认进度回调实现
@@ -38,10 +37,13 @@ public class DefaultProgressCallback implements ProgressCallback {
     private long lastUpdateTime = 0;
     private int lastProgress = -1;
 
-    public DefaultProgressCallback(Long taskId, String taskIdStr, Long createBy,
-                                   SysTaskMapper taskMapper,
-                                   RedisTemplate<String, Object> redisTemplate,
-                                   WebSocketMessageRelay wsMessageRelay) {
+    public DefaultProgressCallback(
+            Long taskId,
+            String taskIdStr,
+            Long createBy,
+            SysTaskMapper taskMapper,
+            RedisTemplate<String, Object> redisTemplate,
+            WebSocketMessageRelay wsMessageRelay) {
         this.taskId = taskId;
         this.taskIdStr = taskIdStr;
         this.createBy = createBy;
@@ -87,8 +89,9 @@ public class DefaultProgressCallback implements ProgressCallback {
                 cachedTask.setProgress(progress);
                 cachedTask.setProcessedFiles(current);
                 cachedTask.setTotalFiles(total);
-                redisTemplate.opsForValue().set(cacheKey, cachedTask,
-                        TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+                redisTemplate
+                        .opsForValue()
+                        .set(cacheKey, cachedTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
             }
         } catch (Exception e) {
             log.warn("Redis 缓存进度刷新失败（不影响任务执行）", e);
@@ -97,8 +100,7 @@ public class DefaultProgressCallback implements ProgressCallback {
         // WebSocket 推送任务进度（对齐 Python 消息格式）
         pushProgressMessage(progress, current, total);
 
-        log.debug("任务进度更新: taskId={}, progress={}/{} ({}%)",
-                taskIdStr, current, total, progress);
+        log.debug("任务进度更新: taskId={}, progress={}/{} ({}%)", taskIdStr, current, total, progress);
     }
 
     /**

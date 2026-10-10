@@ -14,5 +14,4 @@ public class AiAgentSkillsForm {
 
     @Schema(description = "Skill 名称列表(覆盖式更新)")
     private List<String> skills;
-
 }

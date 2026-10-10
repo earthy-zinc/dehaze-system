@@ -12,9 +12,11 @@ import (
 
 const timeFormat = "2006-01-02 15:04:05"
 
-// rawJSON 将库中的 JSON 字符串转为可直接序列化的原始消息（空串→null）。
+// rawJSON 将库中的 JSON 字符串转为可直接序列化的原始消息（空串与 JSON null 文本→nil）。
+// "无配置"在库中落的是 JSON 文本 `null`（4 字节），只判空串会让 `json:"...,omitempty"` 失效、
+// 多下发一个 null 键（java/python 均剔除该键）。
 func rawJSON(s string) json.RawMessage {
-	if s == "" {
+	if s == "" || s == "null" {
 		return nil
 	}
 	return json.RawMessage(s)

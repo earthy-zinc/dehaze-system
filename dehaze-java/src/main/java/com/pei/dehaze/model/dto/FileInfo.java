@@ -14,5 +14,4 @@ public class FileInfo {
 
     @Schema(description = "文件URL")
     private String url;
-
 }

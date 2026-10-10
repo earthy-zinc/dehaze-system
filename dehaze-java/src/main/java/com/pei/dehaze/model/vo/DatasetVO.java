@@ -3,10 +3,9 @@ package com.pei.dehaze.model.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
 
 /**
  * @author earthy-zinc
@@ -39,7 +38,10 @@ public class DatasetVO {
     @Schema(description = "子数据集列表，支持多级嵌套树形结构")
     private List<DatasetVO> children;
 
-    @Schema(description = "数据集状态：1-启用，0-禁用", example = "1", allowableValues = {"0", "1"})
+    @Schema(
+            description = "数据集状态：1-启用，0-禁用",
+            example = "1",
+            allowableValues = {"0", "1"})
     private Integer status;
 
     @Schema(description = "统计信息（包含图片数量、分布等）")

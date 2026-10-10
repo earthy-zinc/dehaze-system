@@ -1,8 +1,8 @@
 package com.pei.dehaze.service.strategy;
 
+import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
-import java.util.Map;
 
 /**
  * 任务执行结果
@@ -27,30 +27,20 @@ public class TaskResult {
      * 创建成功结果
      */
     public static TaskResult success(String data) {
-        return TaskResult.builder()
-                .success(true)
-                .data(data)
-                .build();
+        return TaskResult.builder().success(true).data(data).build();
     }
 
     /**
      * 创建成功结果（带元数据）
      */
     public static TaskResult success(String data, Map<String, Object> metadata) {
-        return TaskResult.builder()
-                .success(true)
-                .data(data)
-                .metadata(metadata)
-                .build();
+        return TaskResult.builder().success(true).data(data).metadata(metadata).build();
     }
 
     /**
      * 创建失败结果
      */
     public static TaskResult failure(String errorMessage) {
-        return TaskResult.builder()
-                .success(false)
-                .errorMessage(errorMessage)
-                .build();
+        return TaskResult.builder().success(false).errorMessage(errorMessage).build();
     }
 }

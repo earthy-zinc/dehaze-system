@@ -24,11 +24,12 @@ from tests.stubs.factories import fake_redis
 
 
 def _conv():
+    # 会话已带模型：幂等用例不考察默认模型解析链（该链路见 test_model_defaults）
     return SysAiConversation(
         id=1,
         status=1,
         model_config={},
-        model=None,
+        model="gpt-4o",
         agent_code=None,
         message_count=2,
         title="标题",
@@ -93,10 +94,10 @@ class _AgentRepo(AiAgentRepository):
 
 
 class _ModelRepo(AiModelRepository):
-    """测试替身：仅覆写 get_by_model_id（返回启用中的模型）。"""
+    """测试替身：仅覆写 get_by_model_id（返回启用中的模型，含上下文预算字段）。"""
 
     async def get_by_model_id(self, db, model_id):
-        return SysAiModel(status=1)
+        return SysAiModel(status=1, max_context_tokens=8192, max_output_tokens=4096)
 
 
 class _ModelSvc(AiModelService):

@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 /** 用户端消耗汇总（当前时段总消耗 + 趋势 + 模型分布 + 缓存节省） */
 @Schema(description = "用户端消耗汇总")

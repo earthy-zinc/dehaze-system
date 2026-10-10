@@ -37,7 +37,7 @@ type SysBalanceRefund struct {
 	RefundNo        string     `gorm:"column:refund_no;type:varchar(32);not null;uniqueIndex:uk_refund_no;comment:退款单号" json:"refundNo"`
 	UserID          int64      `gorm:"column:user_id;type:bigint;not null;index:idx_user_id;comment:用户ID" json:"userId"`
 	Amount          int64      `gorm:"column:amount;type:bigint;not null;comment:退款金额(分)" json:"amount"`
-	Status          int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:退款状态(1:待审核;2:已退款;3:退款失败)" json:"status"`
+	Status          int8       `gorm:"column:status;type:tinyint;not null;index:idx_status;comment:退款状态(1:待审核;2:已退款;3:退款失败)" json:"status"`
 	Channel         *string    `gorm:"column:channel;type:varchar(16);comment:原路退回渠道" json:"channel"`
 	ChannelRefundNo string     `gorm:"column:channel_refund_no;type:varchar(64);comment:渠道退款流水号" json:"channelRefundNo"`
 	ApplyTime       time.Time  `gorm:"column:apply_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:申请时间" json:"applyTime"`
@@ -60,7 +60,7 @@ type SysRecharge struct {
 	UserID           int64      `gorm:"column:user_id;type:bigint;not null;index:idx_user_id;comment:用户ID" json:"userId"`
 	Amount           int64      `gorm:"column:amount;type:bigint;not null;comment:充值金额(分)" json:"amount"`
 	PayMethod        string     `gorm:"column:pay_method;type:varchar(16);not null;comment:支付方式(wechat:微信;alipay:支付宝)" json:"payMethod"`
-	Status           int8       `gorm:"column:status;type:tinyint;not null;default:1;comment:充值状态(1:待支付;2:已支付;3:已关闭)" json:"status"`
+	Status           int8       `gorm:"column:status;type:tinyint;not null;comment:充值状态(1:待支付;2:已支付;3:已关闭)" json:"status"`
 	ChannelPaymentNo *string    `gorm:"column:channel_payment_no;type:varchar(64);comment:渠道支付流水号" json:"channelPaymentNo"`
 	PayTime          *time.Time `gorm:"column:pay_time;type:datetime;comment:支付成功时间" json:"payTime"`
 	Deleted          int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识" json:"deleted"`

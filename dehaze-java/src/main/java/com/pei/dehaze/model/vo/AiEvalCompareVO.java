@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.vo;
 
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 /**
  * 两次评测对比响应

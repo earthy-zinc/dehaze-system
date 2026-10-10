@@ -1,8 +1,11 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
+
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.converter.DatasetConverter;
@@ -12,9 +15,10 @@ import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.form.DatasetUpdateForm;
-import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.service.impl.SysDatasetServiceImpl;
+import java.time.LocalDateTime;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,14 +26,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.*;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
 /**
  * 数据集服务单元测试
@@ -63,7 +59,8 @@ class SysDatasetServiceTest {
     void setUp() {
         // 手动创建 spy 对象，因为 SysDatasetServiceImpl 没有无参构造器
         // self 参数先传 mock，创建 spy 后再替换为 spy 自身（解决 @Cacheable 自调用）
-        datasetService = spy(new SysDatasetServiceImpl(datasetConverter, sysDatasetItemService, mock(SysDatasetService.class)));
+        datasetService =
+                spy(new SysDatasetServiceImpl(datasetConverter, sysDatasetItemService, mock(SysDatasetService.class)));
         ReflectionTestUtils.setField(datasetService, "self", datasetService);
 
         // 注入依赖
@@ -107,7 +104,8 @@ class SysDatasetServiceTest {
     /**
      * 创建 countDatasetStatsSingle 返回的统计 Map
      */
-    private Map<String, Object> createStatsMap(long imageCount, long totalSize, long annotatedCount, long unannotatedCount) {
+    private Map<String, Object> createStatsMap(
+            long imageCount, long totalSize, long annotatedCount, long unannotatedCount) {
         Map<String, Object> map = new HashMap<>();
         map.put("image_count", imageCount);
         map.put("total_size", totalSize);

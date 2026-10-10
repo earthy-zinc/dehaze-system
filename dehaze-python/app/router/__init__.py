@@ -36,14 +36,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     app.include_router(api_key_router)
 
     # 通用导入导出路由（必须先于各模块 CRUD 注册，否则 /{module}/template、/_export、/_import
-    # 会被 CRUD 的 /{module}/{id} 路径参数吞掉，如 /algorithms/template 被当作 algorithm_id 解析）
+    # 会被 CRUD 的 /{module}/{id} 路径参数吞掉，如 /datasets/template 被当作 dataset_id 解析）
     from app.router.import_export import router as import_export_router
 
     app.include_router(import_export_router)
-
-    from app.router.algorithm import router as algorithm_router
-
-    app.include_router(algorithm_router)
 
     from app.router.dict import router as dict_router
 
@@ -85,10 +81,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
 
     app.include_router(task_router)
 
-    # 预测路由（去雾处理核心入口）
-    from app.router.prediction import router as prediction_router
+    # 图像任务路由（去雾处理核心入口，提交-轮询任务模式）
+    from app.router.images import router as images_router
 
-    app.include_router(prediction_router)
+    app.include_router(images_router)
 
     from app.router.evaluation import router as evaluation_router
 
@@ -97,11 +93,6 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.image_input import router as image_input_router
 
     app.include_router(image_input_router)
-
-    # 算法选择路由（智能推荐/收藏/对比）
-    from app.router.algorithm_select import router as algorithm_select_router
-
-    app.include_router(algorithm_select_router)
 
     from app.router.announcement import router as announcement_router
     from app.router.message import router as message_router
@@ -170,8 +161,10 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.ai_model import router as ai_model_router
     from app.router.ai_provider import router as ai_provider_router
     from app.router.ai_usage_stats import router as ai_usage_stats_router
+    from app.router.ai_user_preference import router as ai_user_preference_router
 
     app.include_router(ai_model_router)
+    app.include_router(ai_user_preference_router)
     app.include_router(ai_conversation_router)
     app.include_router(ai_artifact_router)
     app.include_router(ai_memory_router)
@@ -239,11 +232,6 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     from app.router.voice import router as voice_router
 
     app.include_router(voice_router)
-
-    # 语音引擎注册表管理路由（Provider/Key/Model，voice:engine:manage）
-    from app.router.voice_admin import router as voice_admin_router
-
-    app.include_router(voice_admin_router)
 
     # 管理端缓存统一失效入口（ROOT/ADMIN）
     from app.router.cache import router as cache_router

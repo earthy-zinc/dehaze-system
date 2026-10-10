@@ -9,9 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRegisterVoiceProxyRoutes_RegistersWhitelist 语音域白名单必须与
-// dehaze-python/app/router/voice.py、voice_admin.py 逐条对齐：漏注册会让 SDK 在前端拿到 404，
+// TestRegisterVoiceProxyRoutes_RegistersWhitelist 语音域用户端白名单必须与
+// dehaze-python/app/router/voice.py 逐条对齐：漏注册会让 SDK 在前端拿到 404，
 // 多注册则意味着 Go 侧凭空多出 python 不存在的端点。
+// 引擎注册表管理端（voice_admin.py：providers / keys / models）已在阶段 2 退役，不在白名单内。
 func TestRegisterVoiceProxyRoutes_RegistersWhitelist(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
@@ -38,21 +39,6 @@ func TestRegisterVoiceProxyRoutes_RegistersWhitelist(t *testing.T) {
 		"POST /api/v1/voice/hotwords/global",
 		"DELETE /api/v1/voice/hotwords/global/:id",
 		"GET /api/v1/voice/service/status",
-		// 管理端（voice_admin.py）
-		"GET /api/v1/voice/providers",
-		"GET /api/v1/voice/providers/enabled",
-		"POST /api/v1/voice/providers",
-		"PUT /api/v1/voice/providers/:id",
-		"DELETE /api/v1/voice/providers/:id",
-		"POST /api/v1/voice/providers/:id/test-connection",
-		"GET /api/v1/voice/providers/:id/keys",
-		"POST /api/v1/voice/providers/:id/keys",
-		"PUT /api/v1/voice/providers/:id/keys/:key_id",
-		"DELETE /api/v1/voice/providers/:id/keys/:key_id",
-		"GET /api/v1/voice/models",
-		"POST /api/v1/voice/models",
-		"PUT /api/v1/voice/models/:id",
-		"DELETE /api/v1/voice/models/:id",
 		// 流式 ASR WebSocket
 		"GET /ws/asr",
 	}
@@ -62,14 +48,21 @@ func TestRegisterVoiceProxyRoutes_RegistersWhitelist(t *testing.T) {
 		}
 	}
 
-	// 白名单外不做兜底转发
+	// 退役的管理端（voice_admin.py）与白名单外方法一律 404，不做兜底转发
 	outside := []struct {
 		method string
 		path   string
 	}{
 		{http.MethodGet, "/api/v1/voice/asr/stream-session"},
 		{http.MethodPost, "/api/v1/voice/tts/voices"},
+		{http.MethodGet, "/api/v1/voice/providers"},
+		{http.MethodGet, "/api/v1/voice/providers/enabled"},
+		{http.MethodPost, "/api/v1/voice/providers"},
+		{http.MethodPost, "/api/v1/voice/providers/3/test-connection"},
+		{http.MethodGet, "/api/v1/voice/providers/3/keys"},
+		{http.MethodDelete, "/api/v1/voice/providers/3/keys/5"},
 		{http.MethodGet, "/api/v1/voice/providers/1"},
+		{http.MethodGet, "/api/v1/voice/models"},
 		{http.MethodPatch, "/api/v1/voice/models/1"},
 	}
 	for _, route := range outside {
@@ -83,8 +76,8 @@ func TestRegisterVoiceProxyRoutes_RegistersWhitelist(t *testing.T) {
 
 // TestRegisterVoiceProxyRoutes_CoexistsWithNativeRoutes 语音域路由与其它模块共用 /api/v1 组、
 // 且 /ws/asr 与既有 /ws 同节点，注册不得 panic（gin 同一位置只允许一个通配符名）。
-// 静态与参数兄弟（hotwords/global 与 hotwords/:id、providers/enabled 与 providers/:id/keys）
-// 是本次注册最容易踩 panic 的形态，此处用真实注册锁定。
+// 静态与参数兄弟（hotwords/global 与 hotwords/:id）是本次注册最容易踩 panic 的形态，
+// 此处用真实注册锁定。
 func TestRegisterVoiceProxyRoutes_CoexistsWithNativeRoutes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()

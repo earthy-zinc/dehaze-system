@@ -1,9 +1,15 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.mapper.SysMemberGrowthLogMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
-import com.pei.dehaze.mapper.SysMemberQuotaMapper;
 import com.pei.dehaze.mapper.SysMemberSignInMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysMember;
@@ -14,6 +20,8 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.SysDictService;
+import java.lang.reflect.Field;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,16 +30,6 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.lang.reflect.Field;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 /**
  * MemberServiceImpl 签到成长值字典化（sys_dict: member_growth_rules）单元测试。
@@ -44,28 +42,37 @@ class MemberServiceImplTest {
 
     @Mock
     private SysUserMapper userMapper;
+
     @Mock
     private SysMemberGrowthLogMapper growthLogMapper;
+
     @Mock
     private SysMemberSignInMapper signInMapper;
-    @Mock
-    private SysMemberQuotaMapper quotaMapper;
+
     @Mock
     private MemberBenefitService memberBenefitService;
+
     @Mock
     private MessageService messageService;
+
     @Mock
     private StringRedisTemplate stringRedisTemplate;
+
     @Mock
     private SysDictService sysDictService;
+
     @Mock
     private com.pei.dehaze.mapper.SysOrderMapper orderMapper;
+
     @Mock
     private com.pei.dehaze.mapper.SysUserCouponMapper userCouponMapper;
+
     @Mock
     private com.pei.dehaze.mapper.SysCouponMapper couponMapper;
+
     @Mock
     private com.pei.dehaze.repository.AuditLogRepository auditLogRepository;
+
     @Mock
     private SysMemberMapper memberMapper;
 
@@ -73,12 +80,21 @@ class MemberServiceImplTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new MemberServiceImpl(userMapper, growthLogMapper, signInMapper,
-                quotaMapper, memberBenefitService, messageService, stringRedisTemplate, sysDictService,
-                orderMapper, userCouponMapper, couponMapper, auditLogRepository);
+        service = new MemberServiceImpl(
+                userMapper,
+                growthLogMapper,
+                signInMapper,
+                memberBenefitService,
+                messageService,
+                stringRedisTemplate,
+                sysDictService,
+                orderMapper,
+                userCouponMapper,
+                couponMapper,
+                auditLogRepository);
         // 通过反射设置继承的 baseMapper，支撑 getMemberOrCreate 的 this.getOne
-        Field baseMapperField = com.baomidou.mybatisplus.extension.service.impl.ServiceImpl.class
-                .getDeclaredField("baseMapper");
+        Field baseMapperField =
+                com.baomidou.mybatisplus.extension.service.impl.ServiceImpl.class.getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(service, memberMapper);
     }
@@ -137,7 +153,9 @@ class MemberServiceImplTest {
         stubMember();
         when(sysDictService.getIntValue(eq("member_growth_rules"), eq("sign_in_value"), any(Integer.class)))
                 .thenReturn(3);
-        lenient().when(sysDictService.getIntValue(eq("member_growth_rules"), eq("sign_in_streak_bonus"), any(Integer.class)))
+        lenient()
+                .when(sysDictService.getIntValue(
+                        eq("member_growth_rules"), eq("sign_in_streak_bonus"), any(Integer.class)))
                 .thenReturn(20);
 
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {

@@ -9,7 +9,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from app.models.entity.sys_algorithm import SysAlgorithm
+from app.models.entity.sys_ai_model import SysAiModel
 from app.models.entity.sys_file import SysFile
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PredictionContext:
-    algorithm: SysAlgorithm
+    model: SysAiModel
     file_id: int | None = None
     image_url: str | None = None
     origin_file: SysFile | None = None

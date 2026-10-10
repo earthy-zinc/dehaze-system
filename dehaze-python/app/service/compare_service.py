@@ -34,7 +34,7 @@ class CompareService:
         """
         提交对比报告生成任务（异步）
 
-        根据 pred_log_id 查询预测日志，用其中的 algorithmId/originUrl/predUrl 生成报告。
+        根据 pred_log_id 查询预测日志，用其中的 modelId/originUrl/predUrl 生成报告。
 
         Returns:
             {"taskId": int, "status": int}
@@ -47,17 +47,17 @@ class CompareService:
         if pred_log.status != LogStatus.COMPLETED.value:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "处理任务尚未完成，无法生成报告")
 
-        algorithm_id = pred_log.algorithm_id
+        model_id = pred_log.model_id
         origin_url = pred_log.origin_url
         result_url = pred_log.pred_url
 
-        await prediction_service.get_algorithm(algorithm_id)
+        await prediction_service.get_model(model_id)
 
         set_current_user_id(user_id)
         try:
             async with get_db_session() as db:
                 log = SysEvalLog(
-                    algorithm_id=algorithm_id,
+                    model_id=model_id,
                     pred_url=result_url,
                     gt_url=origin_url,
                     pred_md5="",
@@ -77,7 +77,7 @@ class CompareService:
         background_task = loop.create_task(
             self._generate_async(
                 task_id=task_id,
-                algorithm_id=algorithm_id,
+                model_id=model_id,
                 origin_url=origin_url,
                 result_url=result_url,
                 user_id=user_id,
@@ -92,7 +92,7 @@ class CompareService:
                 task_id=f"compare:{task_id}",
                 task=background_task,
                 task_type="compare",
-                metadata={"task_id": task_id, "algorithm_id": algorithm_id, "user_id": user_id},
+                metadata={"task_id": task_id, "model_id": model_id, "user_id": user_id},
             )
         except Exception as e:
             logger.warning("对比报告任务追踪注册失败（不影响执行）: %s", e)
@@ -139,7 +139,7 @@ class CompareService:
     async def _generate_async(
         self,
         task_id: int,
-        algorithm_id: int,
+        model_id: str,
         origin_url: str,
         result_url: str,
         user_id: int,
@@ -147,27 +147,27 @@ class CompareService:
         """异步生成 HTML 报告"""
         set_current_user_id(user_id)
         try:
-            algorithm_name = "未知算法"
+            model_name = "未知模型"
             try:
-                algo = await prediction_service.get_algorithm(algorithm_id)
-                algorithm_name = algo.name or "未知算法"
+                model = await prediction_service.get_model(model_id)
+                model_name = model.display_name or "未知模型"
             except BusinessException:
                 # 算法行在提交生成后被删除/停用：报告主体（图片对比）仍可产出，
-                # 仅标签降级为"未知算法"（降级是契约，不是掩盖）；其余异常
+                # 仅标签降级为"未知模型"（降级是契约，不是掩盖）；其余异常
                 # （DB 不可用等）不在此吞掉，向上抛出由外层标记任务失败并记录
                 logger.warning(
-                    "对比报告取算法信息失败，使用默认名称: taskId=%s, algorithm_id=%s",
+                    "对比报告取算法信息失败，使用默认名称: taskId=%s, model_id=%s",
                     task_id,
-                    algorithm_id,
+                    model_id,
                 )
 
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             html = self._build_report_html(
-                algorithm_name=algorithm_name,
+                model_name=model_name,
                 generated_at=now_str,
                 origin_url=origin_url,
                 result_url=result_url,
-                algorithm_id=algorithm_id,
+                model_id=model_id,
             )
 
             async with get_db_session() as db:
@@ -199,14 +199,14 @@ class CompareService:
 
     @staticmethod
     def _build_report_html(
-        algorithm_name: str,
+        model_name: str,
         generated_at: str,
         origin_url: str,
         result_url: str,
-        algorithm_id: int,
+        model_id: str,
     ) -> str:
         """构建对比报告 HTML（动态字段 HTML 转义，防报告页存储型 XSS）"""
-        safe_algorithm_name = escape(algorithm_name)
+        safe_model_name = escape(model_name)
         safe_origin_url = escape(origin_url, quote=True)
         safe_result_url = escape(result_url, quote=True)
         onerror = "this.style.display='none'"
@@ -245,7 +245,7 @@ class CompareService:
     <div class="container">
         <div class="header">
             <h1>去雾效果对比报告</h1>
-            <div class="meta">算法：{safe_algorithm_name} | 生成时间：{generated_at}</div>
+            <div class="meta">模型：{safe_model_name} | 生成时间：{generated_at}</div>
         </div>
         <div class="section">
             <h2>图片对比</h2>
@@ -265,11 +265,11 @@ class CompareService:
             <div class="info-grid">
                 <div class="info-item">
                     <div class="label">算法名称</div>
-                    <div class="value">{safe_algorithm_name}</div>
+                    <div class="value">{safe_model_name}</div>
                 </div>
                 <div class="info-item">
                     <div class="label">算法ID</div>
-                    <div class="value">{algorithm_id}</div>
+                    <div class="value">{model_id}</div>
                 </div>
                 <div class="info-item">
                     <div class="label">生成时间</div>

@@ -17,12 +17,6 @@ import com.pei.dehaze.model.vo.AiNextTimesVO;
 import com.pei.dehaze.model.vo.AiScheduleHistoryVO;
 import com.pei.dehaze.model.vo.AiScheduleRunSummaryVO;
 import com.pei.dehaze.model.vo.AiScheduleVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.support.CronExpression;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -31,6 +25,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.support.CronExpression;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 定时任务服务（F-M08-009）。
@@ -50,14 +49,14 @@ public class AiScheduleService {
 
     private static final String DEFAULT_TIMEZONE = "Asia/Shanghai";
 
-    private static final Map<String, Integer> LEVEL_MAP = Map.of(
-            "level_0", 0, "level_1", 1, "level_2", 2, "level_3", 3);
+    private static final Map<String, Integer> LEVEL_MAP =
+            Map.of("level_0", 0, "level_1", 1, "level_2", 2, "level_3", 3);
 
-    private static final Map<String, Integer> WEEKDAY_ALIAS = Map.of(
-            "mon", 1, "tue", 2, "wed", 3, "thu", 4, "fri", 5, "sat", 6, "sun", 0);
+    private static final Map<String, Integer> WEEKDAY_ALIAS =
+            Map.of("mon", 1, "tue", 2, "wed", 3, "thu", 4, "fri", 5, "sat", 6, "sun", 0);
 
-    private static final Map<String, String> WEEKDAY_LABEL = Map.of(
-            "0", "日", "1", "一", "2", "二", "3", "三", "4", "四", "5", "五", "6", "六", "7", "日");
+    private static final Map<String, String> WEEKDAY_LABEL =
+            Map.of("0", "日", "1", "一", "2", "二", "3", "三", "4", "四", "5", "五", "6", "六", "7", "日");
 
     private final SysAiScheduleMapper scheduleMapper;
 
@@ -69,11 +68,10 @@ public class AiScheduleService {
     public AiScheduleVO create(Long userId, AiScheduleCreateForm form) {
         ensureVip2(userId);
         if (scheduleMapper.countByUserId(userId) >= MAX_SCHEDULES_PER_USER) {
-            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
-                    "定时任务数量已达上限(" + MAX_SCHEDULES_PER_USER + "个)");
+            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "定时任务数量已达上限(" + MAX_SCHEDULES_PER_USER + "个)");
         }
-        String timezone = form.getTimezone() == null || form.getTimezone().isBlank()
-                ? DEFAULT_TIMEZONE : form.getTimezone();
+        String timezone =
+                form.getTimezone() == null || form.getTimezone().isBlank() ? DEFAULT_TIMEZONE : form.getTimezone();
         String cron = normalizeCron(form.getCron());
         parseCron(cron);
         SysAiSchedule task = new SysAiSchedule();
@@ -114,7 +112,9 @@ public class AiScheduleService {
         if (form.getEnabled() != null) {
             task.setEnabled(form.getEnabled());
         }
-        if (form.getCron() != null || form.getTimezone() != null || Integer.valueOf(1).equals(form.getEnabled())) {
+        if (form.getCron() != null
+                || form.getTimezone() != null
+                || Integer.valueOf(1).equals(form.getEnabled())) {
             task.setNextTriggerTime(computeNextTrigger(task.getCron(), task.getTimezone()));
         }
         scheduleMapper.updateById(task);
@@ -139,7 +139,8 @@ public class AiScheduleService {
         }
         Page<SysAiSchedule> page = new Page<>(query.getPageNum(), query.getPageSize());
         IPage<SysAiSchedule> taskPage = scheduleMapper.selectPage(page, wrapper);
-        List<Long> scheduleIds = taskPage.getRecords().stream().map(SysAiSchedule::getId).toList();
+        List<Long> scheduleIds =
+                taskPage.getRecords().stream().map(SysAiSchedule::getId).toList();
         Map<Long, SysAiScheduleRun> latest = new HashMap<>();
         if (!scheduleIds.isEmpty()) {
             for (SysAiScheduleRun run : scheduleRunMapper.selectLatestByScheduleIds(scheduleIds)) {
@@ -245,7 +246,8 @@ public class AiScheduleService {
             return text;
         }
         String[] parts = text.split("@");
-        if (parts.length < 2 || parts.length > 3
+        if (parts.length < 2
+                || parts.length > 3
                 || !List.of("daily", "weekly", "monthly").contains(parts[0])) {
             return text;
         }
@@ -298,11 +300,16 @@ public class AiScheduleService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "Cron 表达式非法: " + cron);
         }
         // 5 位 UNIX Cron（分 时 日 月 周）转 Spring 6 位（补秒位），星期名归一为数字
-        String weekday = fields[4].toLowerCase().replace("mon", "1").replace("tue", "2")
-                .replace("wed", "3").replace("thu", "4").replace("fri", "5")
-                .replace("sat", "6").replace("sun", "0");
-        String springCron = "0 " + fields[0] + " " + fields[1] + " " + fields[2] + " "
-                + fields[3] + " " + weekday;
+        String weekday = fields[4]
+                .toLowerCase()
+                .replace("mon", "1")
+                .replace("tue", "2")
+                .replace("wed", "3")
+                .replace("thu", "4")
+                .replace("fri", "5")
+                .replace("sat", "6")
+                .replace("sun", "0");
+        String springCron = "0 " + fields[0] + " " + fields[1] + " " + fields[2] + " " + fields[3] + " " + weekday;
         try {
             return CronExpression.parse(springCron);
         } catch (IllegalArgumentException e) {
@@ -344,8 +351,7 @@ public class AiScheduleService {
             String day = parts[2];
             String month = parts[3];
             String weekday = parts[4];
-            if ("*".equals(minute) && "*".equals(hour) && "*".equals(day) && "*".equals(month)
-                    && "*".equals(weekday)) {
+            if ("*".equals(minute) && "*".equals(hour) && "*".equals(day) && "*".equals(month) && "*".equals(weekday)) {
                 return "每分钟";
             }
             if ("*".equals(hour) && "*".equals(day) && "*".equals(month) && "*".equals(weekday)) {
@@ -379,8 +385,7 @@ public class AiScheduleService {
                 for (String value : day.split(",")) {
                     days.add(value + "号");
                 }
-                return "每年" + String.join("、", months) + String.join("、", days) + " "
-                        + timePart(hour, minute);
+                return "每年" + String.join("、", months) + String.join("、", days) + " " + timePart(hour, minute);
             }
         } catch (Exception e) {
             log.debug("Cron 描述生成失败，回退原始表达式: {}", cron);
@@ -407,14 +412,13 @@ public class AiScheduleService {
         String levelCode = insightMapper.selectMemberLevelCode(userId);
         int level = levelCode == null ? 0 : LEVEL_MAP.getOrDefault(levelCode, 0);
         if (level < 2) {
-            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW,
-                    "定时调度功能需 VIP2 及以上会员，请升级会员后使用");
+            throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "定时调度功能需 VIP2 及以上会员，请升级会员后使用");
         }
     }
 
     private SysAiSchedule getOwned(Long userId, Long scheduleId) {
-        SysAiSchedule task = scheduleMapper.selectOne(new LambdaQueryWrapper<SysAiSchedule>()
-                .eq(SysAiSchedule::getId, scheduleId));
+        SysAiSchedule task =
+                scheduleMapper.selectOne(new LambdaQueryWrapper<SysAiSchedule>().eq(SysAiSchedule::getId, scheduleId));
         if (task == null || !task.getUserId().equals(userId)) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "定时任务不存在");
         }

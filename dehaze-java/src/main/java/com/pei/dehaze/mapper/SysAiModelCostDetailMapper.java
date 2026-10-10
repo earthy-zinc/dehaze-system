@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiModelCostDetail;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiModelCostDetailMapper extends BaseMapper<SysAiModelCostDetail> {
-}
+public interface SysAiModelCostDetailMapper extends BaseMapper<SysAiModelCostDetail> {}

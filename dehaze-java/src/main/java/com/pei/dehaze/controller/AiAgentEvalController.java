@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,10 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 /**
  * 智能体评测集/样本/执行记录（评测执行与任务进度属转发域）。
@@ -47,8 +45,9 @@ public class AiAgentEvalController {
     @Operation(summary = "创建评测集")
     @PostMapping("/datasets")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<AiEvalDatasetVO> createDataset(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                                 @Valid @RequestBody AiEvalDatasetCreateForm form) {
+    public Result<AiEvalDatasetVO> createDataset(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Valid @RequestBody AiEvalDatasetCreateForm form) {
         return Result.success(evalService.createDataset(agentId, form));
     }
 
@@ -111,8 +110,9 @@ public class AiAgentEvalController {
     @Operation(summary = "删除评测样本")
     @DeleteMapping("/samples/{sampleId}")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<Void> deleteSample(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                     @Parameter(description = "样本ID") @PathVariable Long sampleId) {
+    public Result<Void> deleteSample(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Parameter(description = "样本ID") @PathVariable Long sampleId) {
         evalService.deleteSample(agentId, sampleId, SecurityUtils.getUserId());
         return Result.success();
     }
@@ -123,7 +123,7 @@ public class AiAgentEvalController {
     public PageResult<AiEvalRunVO> listRuns(
             @Parameter(description = "Agent ID") @PathVariable Long agentId,
             @Valid @ParameterObject AiEvalRunPageQuery query) {
-        return PageResult.success(evalService.listRuns(agentId, query.getPageNum(), query.getPageSize(),
-                query.getDatasetId()));
+        return PageResult.success(
+                evalService.listRuns(agentId, query.getPageNum(), query.getPageSize(), query.getDatasetId()));
     }
 }

@@ -1,5 +1,13 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.model.query.AiBillingStatQuery;
@@ -7,6 +15,8 @@ import com.pei.dehaze.model.query.AiObservabilityTrendsQuery;
 import com.pei.dehaze.service.AiBillingService;
 import com.pei.dehaze.service.AiCompatCallService;
 import com.pei.dehaze.service.AiObservabilityService;
+import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,17 +32,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-
-import java.util.List;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * AI 域查询参数校验守卫。
@@ -115,8 +114,7 @@ class AiQueryParamValidationTest {
     @MethodSource("pagedEndpoints")
     @DisplayName("分页参数等于上限：放行，不误拦")
     void pageSizeAtLimitAccepted(String url, String param) throws Exception {
-        var actions = mockMvc.perform(get(url).param(param, "100"))
-                .andExpect(status().isOk());
+        var actions = mockMvc.perform(get(url).param(param, "100")).andExpect(status().isOk());
         // 导出端点返回文件流而非 {code,msg,data} 信封，只断言状态码
         if (!url.endsWith("/export")) {
             actions.andExpect(jsonPath("$.code").value("00000"));
@@ -201,8 +199,7 @@ class AiQueryParamValidationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"));
 
-        ArgumentCaptor<AiObservabilityTrendsQuery> captor =
-                ArgumentCaptor.forClass(AiObservabilityTrendsQuery.class);
+        ArgumentCaptor<AiObservabilityTrendsQuery> captor = ArgumentCaptor.forClass(AiObservabilityTrendsQuery.class);
         verify(observabilityService).trends(captor.capture());
         assertThat(captor.getValue().getDimension()).isEqualTo("agent");
     }
@@ -237,8 +234,7 @@ class AiQueryParamValidationTest {
     @Test
     @DisplayName("stats/anomalies 的 userId 保持无界（python 本身无 ge，不得反向加界）")
     void statsAndAnomaliesUserIdStayUnbounded() throws Exception {
-        mockMvc.perform(get("/api/v1/ai-billing/stats").param("userId", "0"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/ai-billing/stats").param("userId", "0")).andExpect(status().isOk());
         when(billingService.listAnomalies(any())).thenReturn(new Page<>(1, 20, 0));
         mockMvc.perform(get("/api/v1/ai-billing/anomalies").param("userId", "0"))
                 .andExpect(status().isOk());
@@ -274,8 +270,7 @@ class AiQueryParamValidationTest {
     @Test
     @DisplayName("会话时间线 include 超 32 字符被拒（python TimelineQuery max_length=32）")
     void timelineIncludeOverLengthRejected() throws Exception {
-        mockMvc.perform(get("/api/v1/ai/observability/conversations/1/timeline")
-                        .param("include", "x".repeat(33)))
+        mockMvc.perform(get("/api/v1/ai/observability/conversations/1/timeline").param("include", "x".repeat(33)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
 
@@ -287,8 +282,8 @@ class AiQueryParamValidationTest {
     @Test
     @DisplayName("无分页参数时使用 DTO 默认值，不触发校验")
     void defaultPagingAccepted() throws Exception {
-        List<String> urls = List.of("/api/v1/ai-billing/records", "/api/v1/ai/observability/traces",
-                "/api/v1/ai/compat/calls");
+        List<String> urls =
+                List.of("/api/v1/ai-billing/records", "/api/v1/ai/observability/traces", "/api/v1/ai/compat/calls");
         for (String url : urls) {
             mockMvc.perform(get(url))
                     .andExpect(status().isOk())

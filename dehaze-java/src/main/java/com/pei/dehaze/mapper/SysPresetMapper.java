@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysPreset;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysPresetMapper extends BaseMapper<SysPreset> {
-}
+public interface SysPresetMapper extends BaseMapper<SysPreset> {}

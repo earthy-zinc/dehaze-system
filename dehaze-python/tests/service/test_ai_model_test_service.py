@@ -32,12 +32,14 @@ def _model(pk=1, model_id="gpt-4o", model_type="chat", provider_id=1, status=1) 
     )
 
 
-def _provider(pid=1, code="openai", protocol="openai_compat", status=1):
+def _provider(
+    pid=1, code="openai", protocol="openai_compat", status=1, base_url="https://api.example.com/v1"
+):
     return SimpleNamespace(
         id=pid,
         provider_code=code,
         protocol_type=protocol,
-        api_base_url="https://api.example.com/v1",
+        api_base_url=base_url,
         auth_type="bearer",
         status=status,
         default_headers={},
@@ -70,9 +72,8 @@ class TestProbeRequest:
         assert payload["input"] == "hi"
 
     def test_embedding_cohere(self):
-        url, payload = m._probe_request(
-            "openai_compat", "embedding", "https://a.com/v1/embed", "e1"
-        )
+        """cohere 协议族：走 /v1/embed，body 加 input_type（探针口径）"""
+        url, payload = m._probe_request("cohere", "embedding", "https://a.com/v1/embed", "e1")
         assert url == "https://a.com/v1/embed"
         assert payload["input_type"] == "search_query"
 
@@ -192,6 +193,147 @@ class TestTestModel:
         with pytest.raises(BusinessException) as exc:
             await m.test_model(_FakeDb(), await fake_redis(), 1)
         assert exc.value.code == ResultCode.OPERATION_NOT_ALLOW
+
+
+class TestTypeAwareProbe:
+    """按类型探测：asr/tts/image_edit 走最小真实推理（multipart/JSON），
+    image_gen 走 GET {base}/models 可达性；video/music/3d 占位返回。"""
+
+    async def _setup(self, monkeypatch, model, provider=None):
+        provider = provider or _provider(
+            protocol="openai_audio", base_url="https://engine.example.com"
+        )
+        repo = SimpleNamespace(get_by_id=AsyncMock(return_value=model))
+        provider_repo = SimpleNamespace(get_by_id=AsyncMock(return_value=provider))
+        monkeypatch.setattr(m, "ai_model_repository", repo)
+        monkeypatch.setattr(m, "ai_provider_repository", provider_repo)
+        selector = SimpleNamespace(select_key=AsyncMock(return_value="sk-test"))
+        monkeypatch.setattr(m, "provider_key_selector", selector)
+        monkeypatch.setattr(m, "_clear_model_cache", AsyncMock())
+        return model
+
+    @staticmethod
+    def _capturing_client(captured):
+        class _Resp:
+            status_code = 200
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get(self, url, headers=None):
+                captured["method"] = "GET"
+                captured["url"] = url
+                return _Resp()
+
+            async def post(self, url, headers=None, files=None, data=None, json=None):
+                captured["method"] = "POST"
+                captured["url"] = url
+                captured["files"] = files
+                captured["data"] = data
+                captured["json"] = json
+                return _Resp()
+
+        return _Client()
+
+    @pytest.mark.parametrize(
+        ("model_type", "expected_url", "arg_key"),
+        [
+            ("asr", "https://engine.example.com/v1/audio/transcriptions", "file"),
+            ("image_edit", "https://engine.example.com/v1/images/edits", "image"),
+        ],
+    )
+    async def test_multipart_probe_types(self, monkeypatch, model_type, expected_url, arg_key):
+        model = await self._setup(
+            monkeypatch, _model(model_id="m-1", model_type=model_type, provider_id=1)
+        )
+        captured: dict = {}
+        monkeypatch.setattr(m.httpx, "AsyncClient", lambda **kw: self._capturing_client(captured))
+
+        result = await m.test_model(_FakeDb(), await fake_redis(), 1)
+
+        assert result["success"] is True
+        assert captured["method"] == "POST"
+        assert captured["url"] == expected_url
+        assert arg_key in captured["files"]
+        assert captured["data"]["model"] == "m-1"
+        assert model.last_test_status == 1
+
+    async def test_tts_probe_posts_json(self, monkeypatch):
+        model = await self._setup(
+            monkeypatch, _model(model_id="m-tts", model_type="tts", provider_id=1)
+        )
+        captured: dict = {}
+        monkeypatch.setattr(m.httpx, "AsyncClient", lambda **kw: self._capturing_client(captured))
+
+        result = await m.test_model(_FakeDb(), await fake_redis(), 1)
+
+        assert result["success"] is True
+        assert captured["method"] == "POST"
+        assert captured["url"] == "https://engine.example.com/v1/audio/speech"
+        assert captured["json"]["model"] == "m-tts"
+        assert model.last_test_status == 1
+
+    async def test_image_gen_probes_model_list(self, monkeypatch):
+        """image_gen 本地引擎无生成式实现 → 退回 GET {base}/models 可达性探测"""
+        model = await self._setup(
+            monkeypatch, _model(model_id="m-gen", model_type="image_gen", provider_id=1)
+        )
+        captured: dict = {}
+        monkeypatch.setattr(m.httpx, "AsyncClient", lambda **kw: self._capturing_client(captured))
+
+        result = await m.test_model(_FakeDb(), await fake_redis(), 1)
+
+        assert result["success"] is True
+        assert captured["method"] == "GET"
+        assert captured["url"] == "https://engine.example.com/models"
+        assert model.last_test_status == 1
+
+    @pytest.mark.parametrize("model_type", ["video_gen", "music_gen", "3d_gen"])
+    async def test_unsupported_types_return_message_without_probe(self, monkeypatch, model_type):
+        model = await self._setup(
+            monkeypatch, _model(model_id="m-2", model_type=model_type, provider_id=1)
+        )
+
+        def _no_http(**kw):
+            raise AssertionError(f"{model_type} 不应发起 HTTP 请求")
+
+        monkeypatch.setattr(m.httpx, "AsyncClient", _no_http)
+        result = await m.test_model(_FakeDb(), await fake_redis(), 1)
+
+        assert result["success"] is False
+        assert result["error"] == "该类型暂不支持连通性测试"
+        # 未做真实探测：不落库，last_test_* 保持原值
+        assert model.last_test_status == 0
+
+    @pytest.mark.parametrize("model_type", ["asr", "tts"])
+    async def test_realtime_voice_protocol_returns_message_without_probe(
+        self, monkeypatch, model_type
+    ):
+        """实时语音协议族为 WS 私有帧协议、无 OpenAI 兼容端点 → 占位返回，不发 HTTP 探测"""
+        model = await self._setup(
+            monkeypatch,
+            _model(model_id="m-voice", model_type=model_type, provider_id=1),
+            provider=_provider(
+                code="dashscope-voice",
+                protocol="dashscope_realtime",
+                base_url="wss://dashscope.aliyuncs.com/api-ws/v1/inference",
+            ),
+        )
+
+        def _no_http(**kw):
+            raise AssertionError("实时语音协议族不应发起 HTTP 探测")
+
+        monkeypatch.setattr(m.httpx, "AsyncClient", _no_http)
+        result = await m.test_model(_FakeDb(), await fake_redis(), 1)
+
+        assert result["success"] is False
+        assert result["error"] == "实时语音协议族（百炼/火山）经 WS 接入，暂不支持连通性测试"
+        # 未做真实探测：不落库，last_test_* 保持原值
+        assert model.last_test_status == 0
 
 
 class TestUsageStats24h:

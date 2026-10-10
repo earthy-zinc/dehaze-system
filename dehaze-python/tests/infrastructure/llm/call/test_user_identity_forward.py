@@ -52,7 +52,9 @@ def _make_model(model_id="gpt-4o", pk=1, provider_id=1):
         id=pk,
         model_id=model_id,
         provider_id=provider_id,
+        model_type="chat",
         max_output_tokens=2048,
+        supports_tool_call=1,
         supports_prompt_cache=0,
         prompt_cache_prefix_len=0,
         extra_request_params=None,
@@ -172,12 +174,19 @@ def test_identity_no_user_context_not_injected():
     assert build_user_identity(provider, None) is None
 
 
-def test_identity_local_provider_not_injected():
-    provider = _make_provider(
+def test_identity_is_config_driven_not_provider_code():
+    """身份透传完全由供应商行配置决定，不再按 provider_code=='local' 特判。
+
+    改造后内置供应商靠种子列 NULL 天然不注入（见《第三方模型接入改造设计》§能力字段化）；
+    显式配置启用即注入，provider_code=local 也不例外。
+    """
+    configured = _make_provider(
         provider_code="local",
         forward={"enabled": True, "field": "user", "prefix": "u_", "max_len": 64},
     )
-    assert build_user_identity(provider, 42) is None
+    assert build_user_identity(configured, 42) == ("user", _expected_value(max_len=64))
+    # 内置供应商的实际形态：该列为 NULL → 不注入
+    assert build_user_identity(_make_provider(provider_code="local"), 42) is None
 
 
 # ==================== openai_compat 协议落位 ====================

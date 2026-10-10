@@ -8,11 +8,10 @@ import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 /**
  * 预测/评估日志僵尸任务恢复

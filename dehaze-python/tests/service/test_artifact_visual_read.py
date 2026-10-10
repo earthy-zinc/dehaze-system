@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.service.ai_artifact_service as mod
 import app.service.file_service as fs
+from app.config import settings
 from app.core.exceptions import BusinessException
 from app.repository.ai_artifact_repository import ai_artifact_repository
 from app.service.ai_artifact_service import ai_artifact_service
@@ -22,7 +23,7 @@ def _make_artifact(**overrides):
         "type": "image_result",
         "ref_type": "sys_file",
         "ref_id": 10,
-        "summary": {"algorithm": "RIDCP"},
+        "summary": {"modelName": "RIDCP"},
         "is_invalid": 0,
         "create_time": None,
     }
@@ -244,7 +245,7 @@ async def test_get_message_artifact_refs_grouped(monkeypatch):
     result = await svc.get_message_artifact_refs(AsyncSession(), [10, 11, 12])
     assert set(result.keys()) == {10, 11}
     assert result[10] == [
-        {"id": 1, "type": "image_result", "summary": {"algorithm": "RIDCP"}},
+        {"id": 1, "type": "image_result", "summary": {"modelName": "RIDCP"}},
         {"id": 2, "type": "metric_report", "summary": {"psnr": 30}},
     ]
     assert result[11] == [{"id": 3, "type": "file_ref", "summary": None}]
@@ -378,10 +379,10 @@ async def test_file_service_delete_hooks_invalid_for_file(monkeypatch, tmp_path)
 
     # 注入真实本地存储（tmp_path 真实文件读写），断言物理文件被删除
     storage = LocalStorageService(base_dir=str(tmp_path))
-    storage.upload("dehaze", "pred/20260101/x.jpg", b"file-content", "image/jpeg")
-    assert storage.exists("dehaze", "pred/20260101/x.jpg") is True
+    storage.upload(settings.MINIO_BUCKET, "pred/20260101/x.jpg", b"file-content", "image/jpeg")
+    assert storage.exists(settings.MINIO_BUCKET, "pred/20260101/x.jpg") is True
     monkeypatch.setattr(fs, "get_storage_by_name", lambda name: storage)
 
     await fs.file_service.delete_file_with_storage(AsyncSession(), file_id=10)
     assert called.get("file_id") == 10
-    assert storage.exists("dehaze", "pred/20260101/x.jpg") is False
+    assert storage.exists(settings.MINIO_BUCKET, "pred/20260101/x.jpg") is False

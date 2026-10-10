@@ -17,5 +17,4 @@ public class AiAgentMcpForm {
 
     @Schema(description = "MCP 命名空间列表(覆盖式更新)")
     private List<String> mcpNamespaces;
-
 }

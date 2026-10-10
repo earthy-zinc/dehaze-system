@@ -41,5 +41,4 @@ public class AiConversationUpdateForm {
 
     @Schema(description = "类似问题推荐开关")
     private Boolean suggestionsEnabled;
-
 }

@@ -17,12 +17,12 @@ import org.mapstruct.Mappings;
 @Mapper(componentModel = "spring")
 public interface DictTypeConverter {
     @Mappings({
-            @Mapping(ignore = true, target = "countId"),
-            @Mapping(ignore = true, target = "maxLimit"),
-            @Mapping(ignore = true, target = "optimizeCountSql"),
-            @Mapping(ignore = true, target = "optimizeJoinOfCountSql"),
-            @Mapping(ignore = true, target = "orders"),
-            @Mapping(ignore = true, target = "searchCount"),
+        @Mapping(ignore = true, target = "countId"),
+        @Mapping(ignore = true, target = "maxLimit"),
+        @Mapping(ignore = true, target = "optimizeCountSql"),
+        @Mapping(ignore = true, target = "optimizeJoinOfCountSql"),
+        @Mapping(ignore = true, target = "orders"),
+        @Mapping(ignore = true, target = "searchCount"),
     })
     Page<DictTypePageVO> entity2Page(Page<SysDictType> page);
 

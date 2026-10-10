@@ -120,7 +120,14 @@ async def test_direct_skips_graph_build(monkeypatch):
     state = {"direct_called": False, "graph_called": False}
 
     async def _run_direct(
-        conv_id, user_id, msg_id, model_id, stream_session_id, messages, system_prompt
+        conv_id,
+        user_id,
+        msg_id,
+        model_id,
+        stream_session_id,
+        messages,
+        system_prompt,
+        used_memory_ids,
     ):
         state["direct_called"] = True
         return {"final_response": "hi", "stop_reason": "stop", "usage": {}}

@@ -16,8 +16,7 @@ public final class AppPaths {
     private static final String SERVICE_DIR = "dehaze-java";
     private static final Path REPO_ROOT = locateRepoRoot();
 
-    private AppPaths() {
-    }
+    private AppPaths() {}
 
     public static Path repoRoot() {
         return REPO_ROOT;

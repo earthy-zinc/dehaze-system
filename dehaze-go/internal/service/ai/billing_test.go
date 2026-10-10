@@ -478,7 +478,7 @@ func seedBillingUser(t *testing.T, db *gorm.DB, creditsBalance int64) int64 {
 		Where("username = ?", "admin").Limit(1).Scan(&userID).Error)
 	require.NotZero(t, userID, "测试库缺少 admin 种子用户")
 	require.NoError(t, db.Exec(
-		"UPDATE sys_user SET credits_balance = ?, credits_version = 0 WHERE id = ?",
+		"UPDATE sys_user SET credits_balance = ? WHERE id = ?",
 		creditsBalance, userID).Error)
 	return userID
 }

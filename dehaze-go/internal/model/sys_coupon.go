@@ -32,7 +32,7 @@ type SysUserCoupon struct {
 	BaseModel
 	UserID      int64      `gorm:"column:user_id;type:bigint;not null;index:idx_user_id_status;comment:用户ID" json:"userId"`
 	CouponID    int64      `gorm:"column:coupon_id;type:bigint;not null;index:idx_coupon_id;comment:优惠券模板ID" json:"couponId"`
-	Status      int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_user_id_status;comment:状态" json:"status"`
+	Status      int8       `gorm:"column:status;type:tinyint;not null;index:idx_user_id_status;comment:状态" json:"status"`
 	ReceiveTime time.Time  `gorm:"column:receive_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:领取时间" json:"receiveTime"`
 	ExpireTime  *time.Time `gorm:"column:expire_time;type:datetime;index:idx_expire_time;comment:过期时间" json:"expireTime"`
 	UsedTime    *time.Time `gorm:"column:used_time;type:datetime;comment:使用时间" json:"usedTime"`

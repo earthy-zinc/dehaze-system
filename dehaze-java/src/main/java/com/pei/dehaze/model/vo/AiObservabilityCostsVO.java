@@ -1,10 +1,9 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
 
 /** 资源消耗聚合：按维度分页聚合 + 按日 Token 趋势 */
 @Schema(description = "资源消耗聚合")

@@ -23,9 +23,9 @@ class NginxStorageService(StorageService):
     """
     nginx 静态服务后端
 
-    baseUrl 为 nginx 静态服务根地址（如 http://host:9000），不带任何资源子路径。
+    baseUrl 为 nginx 静态服务根地址（如 http://host:19000），不带任何资源子路径。
     object_name 自带资源前缀（datasets/...、models/...），URL 拼接为：
-        {baseUrl}/{object_name}  →  http://host:9000/datasets/AECR-Net/clear/01.jpg
+        {baseUrl}/{object_name}  →  http://host:19000/datasets/AECR-Net/clear/01.jpg
     """
 
     @property

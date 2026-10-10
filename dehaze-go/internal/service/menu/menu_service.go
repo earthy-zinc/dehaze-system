@@ -136,6 +136,7 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		Component:  form.Component,
 		Perm:       form.Perm,
 		Visible:    int8(form.Visible),
+		Status:     1, // 新建菜单默认启用（DB 列默认值同为 1；显式赋值取代 GORM default 标签的零值替换）
 		Sort:       form.Sort,
 		Icon:       form.Icon,
 		Redirect:   form.Redirect,

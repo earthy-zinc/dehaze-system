@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from sqlalchemy import CHAR, JSON, BigInteger, Index, Integer, Text
+from sqlalchemy import CHAR, JSON, BigInteger, Index, Integer, String, Text
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,15 +15,26 @@ from app.models.enum.log_status import LogStatus
 class SysPredLog(BaseModel):
     __tablename__ = "sys_pred_log"
     __table_args__ = (
-        Index("idx_algorithm_id", "algorithm_id"),
+        Index("idx_model_id", "model_id"),
         Index("idx_origin_md5", "origin_md5"),
         Index("idx_pred_md5", "pred_md5"),
         Index("idx_status", "status"),
-        {"comment": "模型预测日志表"},
+        {"comment": "图像任务日志表"},
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment="id")
-    algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="算法id")
+    model_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="图像模型标识（统一模型规范 slug）"
+    )
+    provider_id: Mapped[int | None] = mapped_column(
+        BigInteger, comment="实际调用供应商id（归因，降级后为备用供应商）"
+    )
+    actual_model: Mapped[str | None] = mapped_column(
+        String(64), comment="实际执行模型（降级/路由对齐 chat 链路）"
+    )
+    vendor_task_id: Mapped[str | None] = mapped_column(
+        String(128), comment="异步厂商任务号（dashscope 等，本地同步推理为空）"
+    )
     origin_file_id: Mapped[int | None] = mapped_column(
         BigInteger, comment="原始图像文件id（有雾图像）"
     )
@@ -48,15 +59,17 @@ class SysPredLog(BaseModel):
 class SysEvalLog(BaseModel):
     __tablename__ = "sys_eval_log"
     __table_args__ = (
-        Index("idx_algorithm_id", "algorithm_id"),
+        Index("idx_model_id", "model_id"),
         Index("idx_pred_md5", "pred_md5"),
         Index("idx_gt_md5", "gt_md5"),
         Index("idx_status", "status"),
-        {"comment": "模型预测日志表"},
+        {"comment": "模型评估日志表"},
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment="id")
-    algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="算法id")
+    model_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="图像模型标识（统一模型规范 slug）"
+    )
     pred_file_id: Mapped[int | None] = mapped_column(BigInteger, comment="预测图像文件id")
     pred_md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, comment="预测图像md5值")
     pred_url: Mapped[str] = mapped_column(Text, nullable=False, comment="预测图像url")

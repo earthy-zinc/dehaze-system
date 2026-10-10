@@ -8,8 +8,6 @@ type TaskBO struct {
 	Name string `json:"name" binding:"required"`
 	// 任务类型
 	Type string `json:"type" binding:"required"`
-	// 算法ID
-	AlgorithmID int64 `json:"algorithmId" binding:"required"`
 	// 数据集ID
 	DatasetID int64 `json:"datasetId" binding:"required"`
 	// 数据项ID列表（可选，不传则处理整个数据集）

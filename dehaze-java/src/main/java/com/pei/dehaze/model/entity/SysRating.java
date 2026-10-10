@@ -5,11 +5,10 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
 import java.io.Serial;
 import java.time.LocalDateTime;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -23,7 +22,7 @@ public class SysRating extends BaseEntity {
 
     private Long predLogId;
 
-    private Long algorithmId;
+    private String modelId;
 
     private Integer rating;
 

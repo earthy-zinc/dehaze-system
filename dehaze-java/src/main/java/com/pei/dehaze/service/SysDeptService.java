@@ -6,7 +6,6 @@ import com.pei.dehaze.model.entity.SysDept;
 import com.pei.dehaze.model.form.DeptForm;
 import com.pei.dehaze.model.query.DeptQuery;
 import com.pei.dehaze.model.vo.DeptVO;
-
 import java.util.List;
 
 /**

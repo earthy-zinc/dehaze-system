@@ -1,10 +1,16 @@
 package com.pei.dehaze.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.ImageUrlVO;
 import com.pei.dehaze.service.impl.SysItemFileServiceImpl;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
+import java.time.LocalDateTime;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,14 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
 /**
  * 图片文件服务单元测试
@@ -90,8 +88,12 @@ class SysItemFileServiceTest {
         // StorageServiceFactory 按 storage 返回 mock FileService，getUrl 动态拼接
         // 使用 lenient 避免不调用这些 stub 的测试方法触发 UnnecessaryStubbing
         lenient().when(storageServiceFactory.get(anyString())).thenReturn(fileService);
-        lenient().when(fileService.getUrl("images/clear_001.jpg")).thenReturn("http://cdn.example.com/images/clear_001.jpg");
-        lenient().when(fileService.getUrl("thumbs/clear_001_thumb.jpg")).thenReturn("http://cdn.example.com/thumbs/clear_001_thumb.jpg");
+        lenient()
+                .when(fileService.getUrl("images/clear_001.jpg"))
+                .thenReturn("http://cdn.example.com/images/clear_001.jpg");
+        lenient()
+                .when(fileService.getUrl("thumbs/clear_001_thumb.jpg"))
+                .thenReturn("http://cdn.example.com/thumbs/clear_001_thumb.jpg");
     }
 
     /**

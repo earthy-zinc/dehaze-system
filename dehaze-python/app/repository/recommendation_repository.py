@@ -44,11 +44,11 @@ class RecommendationRepository(BaseRepository[SysRecommendation]):
             stmt = stmt.where(SysRecommendation.create_time <= end)
         return (await db.execute(stmt)).scalar() or 0
 
-    async def count_adopted_algorithm_distinct(
+    async def count_adopted_model_distinct(
         self, db: AsyncSession, start: datetime | None, end: datetime | None
     ) -> int:
-        stmt = select(func.count(func.distinct(SysRecommendation.adopted_algorithm_id))).where(
-            SysRecommendation.adopted_algorithm_id.isnot(None)
+        stmt = select(func.count(func.distinct(SysRecommendation.adopted_model_id))).where(
+            SysRecommendation.adopted_model_id.isnot(None)
         )
         if start:
             stmt = stmt.where(SysRecommendation.create_time >= start)

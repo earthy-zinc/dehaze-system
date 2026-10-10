@@ -8,7 +8,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	fbrepo "github.com/earthyzinc/dehaze-go/internal/repository/feedback"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
@@ -24,18 +24,18 @@ const (
 )
 
 type ratingEvent struct {
-	RatingID    int64     `json:"ratingId"`
-	UserID      int64     `json:"userId"`
-	AlgorithmID int64     `json:"algorithmId"`
-	Rating      int8      `json:"rating"`
-	Comment     string    `json:"comment"`
-	CreatedAt   time.Time `json:"createdAt"`
+	RatingID  int64     `json:"ratingId"`
+	UserID    int64     `json:"userId"`
+	ModelID   string    `json:"modelId"`
+	Rating    int8      `json:"rating"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type LowRatingAlertService struct {
 	ratingRepo     fbrepo.IRatingRepository
 	userRepo       userrepo.IUserRepository
-	algorithmRepo  algorepo.IAlgorithmRepository
+	modelRepo      *airepo.ModelRepository
 	messageService msgservice.IMessageService
 	publisher      *mq.Publisher
 	logger         *zap.Logger
@@ -44,7 +44,7 @@ type LowRatingAlertService struct {
 func NewLowRatingAlertService(
 	ratingRepo fbrepo.IRatingRepository,
 	userRepo userrepo.IUserRepository,
-	algorithmRepo algorepo.IAlgorithmRepository,
+	modelRepo *airepo.ModelRepository,
 	messageService msgservice.IMessageService,
 	publisher *mq.Publisher,
 	logger *zap.Logger,
@@ -52,7 +52,7 @@ func NewLowRatingAlertService(
 	return &LowRatingAlertService{
 		ratingRepo:     ratingRepo,
 		userRepo:       userRepo,
-		algorithmRepo:  algorithmRepo,
+		modelRepo:      modelRepo,
 		messageService: messageService,
 		publisher:      publisher,
 		logger:         logger,
@@ -70,12 +70,12 @@ func (s *LowRatingAlertService) PublishRatingEvent(ctx context.Context, rating *
 	}
 
 	event := ratingEvent{
-		RatingID:    rating.ID,
-		UserID:      rating.UserID,
-		AlgorithmID: rating.AlgorithmID,
-		Rating:      rating.Rating,
-		Comment:     rating.Comment,
-		CreatedAt:   rating.CreatedAt,
+		RatingID:  rating.ID,
+		UserID:    rating.UserID,
+		ModelID:   rating.ModelID,
+		Rating:    rating.Rating,
+		Comment:   rating.Comment,
+		CreatedAt: rating.CreatedAt,
 	}
 	body, err := json.Marshal(event)
 	if err != nil {
@@ -132,10 +132,10 @@ func (s *LowRatingAlertService) CheckAndAlert(ctx context.Context, ratingID int6
 }
 
 func (s *LowRatingAlertService) sendNormalAlert(ctx context.Context, rating *model.SysRating, adminIDs []int64) {
-	algorithmName := s.findAlgorithmName(ctx, rating.AlgorithmID)
+	modelName := s.findModelName(ctx, rating.ModelID)
 	title := fmt.Sprintf("低分评价告警（%d星）", rating.Rating)
-	content := fmt.Sprintf("用户ID:%d 对算法「%s」提交了 %d 星评价。评价内容：%s",
-		rating.UserID, algorithmName, rating.Rating, rating.Comment)
+	content := fmt.Sprintf("用户ID:%d 对模型「%s」提交了 %d 星评价。评价内容：%s",
+		rating.UserID, modelName, rating.Rating, rating.Comment)
 
 	form := &bo.MessageSendForm{
 		Type:         "alert",
@@ -155,19 +155,19 @@ func (s *LowRatingAlertService) sendNormalAlert(ctx context.Context, rating *mod
 
 func (s *LowRatingAlertService) checkUrgentAlert(ctx context.Context, rating *model.SysRating, adminIDs []int64) {
 	since := time.Now().Add(-alertWindow)
-	lowCount, err := s.ratingRepo.CountLowRatingsByAlgorithmSince(ctx, rating.AlgorithmID, since)
+	lowCount, err := s.ratingRepo.CountLowRatingsByModelSince(ctx, rating.ModelID, since)
 	if err != nil {
-		s.logger.Error("查询同算法24小时低分评价数失败", zap.Error(err))
+		s.logger.Error("查询同模型24小时低分评价数失败", zap.Error(err))
 		return
 	}
 	if lowCount < alertUrgentThreshold {
 		return
 	}
 
-	algorithmName := s.findAlgorithmName(ctx, rating.AlgorithmID)
-	title := "紧急低分告警：同算法24小时内低分评价达标"
-	content := fmt.Sprintf("算法「%s」24小时内收到 %d 条低分评价（阈值 %d），请及时排查算法质量问题。",
-		algorithmName, lowCount, alertUrgentThreshold)
+	modelName := s.findModelName(ctx, rating.ModelID)
+	title := "紧急低分告警：同模型24小时内低分评价达标"
+	content := fmt.Sprintf("模型「%s」24小时内收到 %d 条低分评价（阈值 %d），请及时排查模型质量问题。",
+		modelName, lowCount, alertUrgentThreshold)
 
 	form := &bo.MessageSendForm{
 		Type:         "critical_alert",
@@ -175,12 +175,12 @@ func (s *LowRatingAlertService) checkUrgentAlert(ctx context.Context, rating *mo
 		Content:      content,
 		RecipientIDs: adminIDs,
 		BizModule:    "feedback",
-		BizID:        fmt.Sprintf("rating_urgent_%d_%d", rating.AlgorithmID, time.Now().Unix()),
+		BizID:        fmt.Sprintf("rating_urgent_%s_%d", rating.ModelID, time.Now().Unix()),
 		Priority:     1,
 	}
 	if _, err := s.messageService.Send(ctx, form); err != nil {
 		s.logger.Error("发送紧急低分告警失败",
-			zap.Int64("algorithmId", rating.AlgorithmID),
+			zap.String("modelId", rating.ModelID),
 			zap.Error(err))
 	}
 }
@@ -221,15 +221,15 @@ func (s *LowRatingAlertService) findAdminUserIDs(ctx context.Context) ([]int64, 
 	return s.userRepo.FindAdminUserIDs(ctx)
 }
 
-func (s *LowRatingAlertService) findAlgorithmName(ctx context.Context, algorithmID int64) string {
-	name, err := s.algorithmRepo.FindNameByID(ctx, algorithmID)
-	if err != nil {
-		s.logger.Warn("查询算法名称失败",
-			zap.Int64("algorithmID", algorithmID),
+func (s *LowRatingAlertService) findModelName(ctx context.Context, modelID string) string {
+	model, err := s.modelRepo.GetByModelID(ctx, modelID)
+	if err != nil || model == nil {
+		s.logger.Warn("查询模型名称失败",
+			zap.String("modelID", modelID),
 			zap.Error(err))
 		return ""
 	}
-	return name
+	return model.DisplayName
 }
 
 func (s *LowRatingAlertService) buildRoutingKey() string {

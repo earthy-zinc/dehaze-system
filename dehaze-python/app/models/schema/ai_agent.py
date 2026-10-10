@@ -249,11 +249,26 @@ class EvalDatasetResult(OrmResult):
     create_time: datetime | None = Field(default=None, description="创建时间")
 
 
+class EvalToolCall(BaseModel):
+    """期望的工具调用：工具选择（name）+ 参数正确性（args）的判定依据。
+
+    args 为**期望键值子集**——实际调用参数包含其中每个键且值相等即判参数正确；
+    省略 args 表示该步只校验工具被调用，不校验参数。
+    """
+
+    name: str = Field(..., min_length=1, max_length=128, description="工具名称")
+    args: dict[str, Any] | None = Field(
+        default=None, description="期望参数(实际调用参数包含这些键值即通过)"
+    )
+
+
 class EvalSampleCreate(BaseModel):
     dataset_id: int = Field(..., description="关联评测集ID")
     task_goal: str = Field(..., min_length=1, description="任务目标")
     allowed_input: str | None = Field(default=None, description="允许输入")
-    tools: list[str] | None = Field(default=None, description="可用工具")
+    tools: list[EvalToolCall] | None = Field(
+        default=None, description="期望工具调用序列(有序,用于工具选择/参数/多步判定)"
+    )
     expected_process: str | None = Field(default=None, description="期望过程")
     expected_result: str | None = Field(default=None, description="期望结果")
     forbidden_behavior: str | None = Field(default=None, description="禁止行为")
@@ -263,7 +278,9 @@ class EvalSampleCreate(BaseModel):
 class EvalSampleUpdate(BaseModel):
     task_goal: str | None = Field(default=None, min_length=1, description="任务目标")
     allowed_input: str | None = Field(default=None, description="允许输入")
-    tools: list[str] | None = Field(default=None, description="可用工具")
+    tools: list[EvalToolCall] | None = Field(
+        default=None, description="期望工具调用序列(有序,用于工具选择/参数/多步判定)"
+    )
     expected_process: str | None = Field(default=None, description="期望过程")
     expected_result: str | None = Field(default=None, description="期望结果")
     forbidden_behavior: str | None = Field(default=None, description="禁止行为")
@@ -277,7 +294,7 @@ class EvalSampleResult(OrmResult):
     dataset_id: int = Field(description="关联评测集ID")
     task_goal: str = Field(description="任务目标")
     allowed_input: str | None = Field(default=None, description="允许输入")
-    tools: list[str] | None = Field(default=None, description="可用工具")
+    tools: list[EvalToolCall] | None = Field(default=None, description="期望工具调用序列")
     expected_process: str | None = Field(default=None, description="期望过程")
     expected_result: str | None = Field(default=None, description="期望结果")
     forbidden_behavior: str | None = Field(default=None, description="禁止行为")

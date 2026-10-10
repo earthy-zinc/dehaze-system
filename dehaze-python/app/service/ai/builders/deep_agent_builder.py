@@ -43,7 +43,7 @@ from app.service.ai.middleware.dehaze_hooks_middleware import (
 from app.service.ai.middleware.guardrail_middleware import GuardrailMiddleware
 from app.service.ai.middleware.mcp_namespace_prefilter import McpNamespacePrefilterMiddleware
 from app.service.ai.middleware.paradigm_middleware import ParadigmMiddleware
-from app.service.ai.middleware.run_context import current_run_ctx
+from app.service.ai.middleware.run_context import current_run_ctx, ensure_run_ctx
 from app.service.ai.middleware.tool_failure_guard import ToolFailureGuardMiddleware
 from app.service.ai.strategies.complexity_evaluator import evaluate_complexity
 from app.service.ai.strategies.prompt_composer import compose_system_prompt
@@ -73,6 +73,18 @@ def register_graph_ctx_template(graph: Any, template: dict) -> None:
 def get_graph_ctx_template(graph: Any) -> dict | None:
     """取图实例的 run ctx 模板；未登记返回 None"""
     return _graph_ctx_templates.get(graph)
+
+
+def ensure_graph_run_ctx(graph: Any) -> None:
+    """图 run 前在**驱动任务**中预置本 run 运行时上下文（模板由构图时登记）。
+
+    图节点在各自独立 asyncio 任务中执行，abefore_agent 内 set_run_ctx 对
+    model/tools/end 节点不可见，故必须在 astream/ainvoke 的调用方预置。
+    漏调会让工具回退到不含 user_id/conversation_id 的构图模板并抛 KeyError。
+    """
+    template = get_graph_ctx_template(graph)
+    if template is not None:
+        ensure_run_ctx(template)
 
 
 def _ensure_harness_profile() -> None:
@@ -133,7 +145,7 @@ def _make_ctx(snapshot: dict, config: dict) -> dict:
         "token_used": 0,
         "step_count": 0,
         "task_type": "",
-        "task_algorithm": "",
+        "task_model": "",
         "task_params": {},
         "task_status": "",
         "task_id": "",
@@ -163,8 +175,9 @@ def _build_agent_core(
     middleware = [
         DehazeHooksMiddleware(ctx, subagent),
         GuardrailMiddleware(guardrails, mcp_namespaces),
-        # 多步推理范式编排：图恒定装载，仅按运行时 state.reasoning_mode 介入
-        ParadigmMiddleware(model, config, ctx),
+        # 多步推理范式编排：图恒定装载，仅按运行时 state.reasoning_mode 介入。
+        # 传入业务工具集：范式路径与主图共用同一套工具（PRJ-1，此前范式零工具）。
+        ParadigmMiddleware(model, config, ctx, tools=tools),
         # 能力扩展（F-M08-006）：MCP 命名空间预筛选动态注入（消息层，不进图缓存键）
         McpNamespacePrefilterMiddleware(agent_namespaces=mcp_namespaces or None),
         # 容量/任务清单约束包装 write_file、write_todos（置于失败保护外层，
@@ -203,7 +216,7 @@ def _build_remote_tool(endpoint, shadow_name: str, shadow_desc: str, ctx: dict) 
         started = time.monotonic()
         ctx["task_type"] = "a2a"
         ctx["task_status"] = "processing"
-        ctx["task_algorithm"] = ""
+        ctx["task_model"] = ""
         try:
             task = await a2a_client.message_send(
                 endpoint, [{"role": "user", "content": task_input}]

@@ -53,13 +53,13 @@ class _BenefitRepo(MemberBenefitRepository):
 
 
 class _UserRepo(UserRepository):
-    """测试替身：仅覆写 get_credits_balance_and_version（返回注入余额）。"""
+    """测试替身：仅覆写 get_credits_balance（返回注入余额）。"""
 
     def __init__(self, balance):
         self._balance = balance
 
-    async def get_credits_balance_and_version(self, db, user_id):
-        return (self._balance, 1)
+    async def get_credits_balance(self, db, user_id):
+        return self._balance
 
 
 class _CreditLogRepo(AiCreditLogRepository):

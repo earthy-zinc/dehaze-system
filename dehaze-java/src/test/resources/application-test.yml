@@ -5,9 +5,11 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # createDatabaseIfNotExist：首次连接自动创建 dehaze_test（MySQL 8 默认 utf8mb4/utf8mb4_0900_ai_ci），
+    # 测试库名由 DEHAZE_TEST_DB 指定：设成独立库（如 dehaze_test_java）即可与 python/go
+    # 两端的测试并行运行，各方独立建库、独立重建、互不阻塞；不设则用基线库 dehaze_test。
+    # createDatabaseIfNotExist：首次连接自动创建（MySQL 8 默认 utf8mb4/utf8mb4_0900_ai_ci），
     # 之后由 sql.init 全量重建 schema/种子数据（脚本 DROP TABLE IF EXISTS，幂等）
-    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/dehaze_test?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true&createDatabaseIfNotExist=true
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${DEHAZE_TEST_DB:dehaze_test}?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true&createDatabaseIfNotExist=true
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
     druid:
@@ -43,8 +45,9 @@ spring:
       encoding: UTF-8
   data:
     redis:
-      # 逻辑库 15 与开发后端的 db 0 隔离，测试写入的缓存键不污染开发环境
-      database: 15
+      # 逻辑库 15 与开发后端的 db 0 隔离，测试写入的缓存键不污染开发环境；
+      # 并行跑多套 java 测试时用 DEHAZE_TEST_REDIS_DB 各分配一个库
+      database: ${DEHAZE_TEST_REDIS_DB:15}
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
@@ -60,8 +63,8 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      # 独立测试库，与开发后端的 dehaze 库隔离
-      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze_test?authSource=admin
+      # 独立测试库，与开发后端的 dehaze 库隔离；库名跟随 DEHAZE_TEST_DB
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${DEHAZE_TEST_DB:dehaze_test}?authSource=admin
   cache:
     type: none
   servlet:

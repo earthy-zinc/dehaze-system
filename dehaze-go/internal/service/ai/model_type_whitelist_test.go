@@ -14,15 +14,17 @@ import (
 )
 
 // TestModelTypeWhitelistBlocksUnknownValue python `AiModelCreate.model_type` / `AiModelUpdate.model_type`
-// 均为 Literal[chat/embedding/rerank]，非法字面量在 python 由 pydantic 拦成 A0400；go 无校验层，
+// 均为全模态 Literal，非法字面量在 python 由 pydantic 拦成 A0400；go 无校验层，
 // 必须在 service 层拦成 A0400 且不落库（否则非法类型直接入库，污染模型类型筛选与目录展示）。
 func TestModelTypeWhitelistBlocksUnknownValue(t *testing.T) {
 	testutil.LoadTestConfig(t)
 	db := testutil.NewTestDB(t)
-	svc := NewModelService(db, airepo.NewModelRepository(db), airepo.NewModelPriceRepository(db), nil, nil)
+	svc := NewModelService(db, airepo.NewModelRepository(db), airepo.NewModelPriceRepository(db), nil, nil, newTestFavoriteService(db), nil)
 	ctx := context.Background()
 
-	for _, modelType := range []string{"CHAT", "llm", "chat ", "rerank/embedding", "chat;drop", "聊天"} {
+	for _, modelType := range []string{
+		"CHAT", "llm", "chat ", "rerank/embedding", "chat;drop", "聊天", "image", "asr_stream", "IMAGE_GEN",
+	} {
 		modelID := fmt.Sprintf("whitelist_probe_%d", time.Now().UnixNano())
 		_, err := svc.CreateModel(ctx, &bo.AiModelCreateForm{
 			ProviderID: 1, ModelID: modelID, ModelType: modelType, DisplayName: "白名单探针",
@@ -48,15 +50,15 @@ func TestModelTypeWhitelistBlocksUnknownValue(t *testing.T) {
 }
 
 // TestListModelsRejectsUnknownModelTypeFilter python `AiModelPageQuery.model_type` 同为
-// Literal[chat/embedding/rerank]，非法筛选值在 python 是请求校验阶段的 A0400（而非"过滤后空列表"）；
+// 全模态 Literal，非法筛选值在 python 是请求校验阶段的 A0400（而非"过滤后空列表"）；
 // go 无该校验层，须在 service 层拦成同码错误，避免拼错类型被静默当作"无匹配数据"。
 func TestListModelsRejectsUnknownModelTypeFilter(t *testing.T) {
 	testutil.LoadTestConfig(t)
 	db := testutil.NewTestDB(t)
-	svc := NewModelService(db, airepo.NewModelRepository(db), airepo.NewModelPriceRepository(db), nil, nil)
+	svc := NewModelService(db, airepo.NewModelRepository(db), airepo.NewModelPriceRepository(db), nil, nil, newTestFavoriteService(db), nil)
 	ctx := context.Background()
 
-	for _, modelType := range []string{"CHAT", "llm", "chat ", "rerank/embedding", "聊天"} {
+	for _, modelType := range []string{"CHAT", "llm", "chat ", "rerank/embedding", "聊天", "image", "asr_stream"} {
 		query := &bo.AiModelQuery{ModelType: modelType}
 		query.PageNum, query.PageSize = 1, 10
 
@@ -68,7 +70,10 @@ func TestListModelsRejectsUnknownModelTypeFilter(t *testing.T) {
 	}
 
 	// 空串＝不筛选（显式空串与不传在 go 侧不可区分，沿用既有空串差异登记口径）；合法值正常返回
-	for _, modelType := range []string{"", "chat", "embedding", "rerank"} {
+	for _, modelType := range []string{
+		"", "chat", "embedding", "rerank", "image_gen", "image_edit",
+		"video_gen", "asr", "tts", "music_gen", "3d_gen",
+	} {
 		query := &bo.AiModelQuery{ModelType: modelType}
 		query.PageNum, query.PageSize = 1, 10
 

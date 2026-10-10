@@ -7,16 +7,15 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.model.dto.ItemFileDTO;
 import com.pei.dehaze.service.ImageProcessingService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * FileDTO 工厂类
@@ -86,12 +85,7 @@ public class FileDTOFactory {
      * @return ItemFileDTO
      */
     public ItemFileDTO createItemFileDTO(
-            MultipartFile file,
-            String path,
-            String type,
-            String description,
-            String sceneType,
-            String hazeLevel) {
+            MultipartFile file, String path, String type, String description, String sceneType, String hazeLevel) {
         try {
             ItemFileDTO itemBO = new ItemFileDTO();
             populateFileDTO(file, path, itemBO);
@@ -180,12 +174,17 @@ public class FileDTOFactory {
             throw new BusinessException("读取文件头失败", e);
         }
         boolean ok = switch (ext) {
-            case "jpg", "jpeg" -> startsWith(head, new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
-            case "png" -> startsWith(head, new byte[]{(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
+            case "jpg", "jpeg" -> startsWith(head, new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
+            case "png" -> startsWith(head, new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
             case "gif" -> startsWith(head, "GIF87a".getBytes()) || startsWith(head, "GIF89a".getBytes());
-            case "bmp" -> startsWith(head, new byte[]{'B', 'M'});
-            case "webp" -> head.length >= 12 && startsWith(head, "RIFF".getBytes())
-                    && head[8] == 'W' && head[9] == 'E' && head[10] == 'B' && head[11] == 'P';
+            case "bmp" -> startsWith(head, new byte[] {'B', 'M'});
+            case "webp" ->
+                head.length >= 12
+                        && startsWith(head, "RIFF".getBytes())
+                        && head[8] == 'W'
+                        && head[9] == 'E'
+                        && head[10] == 'B'
+                        && head[11] == 'P';
             default -> false;
         };
         if (!ok) {

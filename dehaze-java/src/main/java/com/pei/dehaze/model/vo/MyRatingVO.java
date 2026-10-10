@@ -2,10 +2,9 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
 
 @Data
 @Schema(description = "我的评价列表VO")
@@ -17,8 +16,8 @@ public class MyRatingVO {
     @Schema(description = "处理记录ID")
     private Long predLogId;
 
-    @Schema(description = "算法名称")
-    private String algorithmName;
+    @Schema(description = "模型名称")
+    private String modelName;
 
     @Schema(description = "评分(1-5)")
     private Integer rating;

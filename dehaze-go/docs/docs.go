@@ -3343,9 +3343,6 @@ const docTemplate = `{
                     "description": "ItemFileId",
                     "type": "integer"
                 },
-                "originUrl": {
-                    "type": "string"
-                },
                 "type": {
                     "type": "string"
                 },

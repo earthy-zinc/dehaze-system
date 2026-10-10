@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 @Data
 @Schema(description = "通知偏好设置表单")

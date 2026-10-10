@@ -12,6 +12,7 @@ import logging
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_knowledge_test_set import SysKnowledgeTestSet
@@ -88,6 +89,8 @@ class TestSetService:
             knowledge_base_ids=[knowledge_base_id],
             top_k=top_k,
             bill=False,
+            # 召回测试集评估的是检索质量：超时降级产生的空结果会直接算作未命中，用显式检索预算
+            timeout_ms=settings.KB_SEARCH_QUERY_TIMEOUT_MS,
         )
         # 检索结果为节粒度：期望 chunk 属于任一命中节（其内容包含原 chunk 文本）即命中
         hit_ids: set[int] = set()

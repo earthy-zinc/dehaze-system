@@ -42,7 +42,7 @@ def _plan(*tasks):
     return {"tasks": list(tasks), "status": "executing", "revisions": []}
 
 
-async def _build_plan_stub(task, model_call, tool_hint=None):
+async def _build_plan_stub(task, model_call, tool_hint=None, available_tools=None, **kwargs):
     return {"tasks": [_task("A")], "status": "pending", "revisions": []}
 
 

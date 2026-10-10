@@ -29,6 +29,15 @@ class SysAiModelPrice(BaseModel, SoftDeleteMixin):
         default="credits_per_million",
         comment="单价单位(credits_per_million:积分/百万token)",
     )
+    billing_unit: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="million_tokens",
+        comment=(
+            "计费计量单位(million_tokens:百万token;image:张;second:秒;"
+            "ten_thousand_chars:万字符;frame:帧)"
+        ),
+    )
     effective_from: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, comment="价格版本生效时间"
     )
@@ -54,6 +63,12 @@ class SysAiModelPriceDetail(BaseModel, SoftDeleteMixin):
     )
     token_type: Mapped[str] = mapped_column(
         String(16), nullable=False, comment="token类型(input;cached;output)"
+    )
+    usage_kind: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="token",
+        comment="计量类型(token:token计价;unit:按计费计量单位整档计价)",
     )
     time_slot: Mapped[str] = mapped_column(
         String(16), nullable=False, comment="时段档位(peak;idle)"

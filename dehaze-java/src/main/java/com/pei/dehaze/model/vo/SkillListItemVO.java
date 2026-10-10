@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** Skill 列表项（不含指令全文，渐进式加载不注入 instruction） */
 @Schema(description = "Skill 列表项")

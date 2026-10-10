@@ -1,9 +1,12 @@
 package com.pei.dehaze.config;
 
 import com.pei.dehaze.config.property.RabbitMQProperties;
+import java.net.URI;
+import java.net.URISyntaxException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -15,10 +18,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.amqp.core.AcknowledgeMode;
-
-import java.net.URI;
-import java.net.URISyntaxException;
 
 /**
  * RabbitMQ 配置
@@ -67,8 +66,7 @@ public class RabbitMQConfig {
      * RabbitTemplate 配置
      */
     @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory,
-            MessageConverter jsonMessageConverter) {
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
         template.setMandatory(true);
@@ -82,8 +80,11 @@ public class RabbitMQConfig {
 
         // 消息退回回调
         template.setReturnsCallback(returned -> {
-            log.error("RabbitMQ 消息被退回: {}, replyCode: {}, replyText: {}",
-                    returned.getMessage(), returned.getReplyCode(), returned.getReplyText());
+            log.error(
+                    "RabbitMQ 消息被退回: {}, replyCode: {}, replyText: {}",
+                    returned.getMessage(),
+                    returned.getReplyCode(),
+                    returned.getReplyText());
         });
 
         return template;
@@ -111,8 +112,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public DirectExchange taskExchange() {
-        return ExchangeBuilder
-                .directExchange(properties.getExchange().getName())
+        return ExchangeBuilder.directExchange(properties.getExchange().getName())
                 .durable(true)
                 .build();
     }
@@ -122,8 +122,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public DirectExchange taskDlxExchange() {
-        return ExchangeBuilder
-                .directExchange(properties.getExchange().getName() + ".dlx")
+        return ExchangeBuilder.directExchange(properties.getExchange().getName() + ".dlx")
                 .durable(true)
                 .build();
     }
@@ -133,8 +132,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue exportQueue() {
-        return QueueBuilder
-                .durable("task.export")
+        return QueueBuilder.durable("task.export")
                 .withArgument("x-message-ttl", 86400000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
                 .withArgument("x-dead-letter-routing-key", "task.export.dlx")
@@ -143,8 +141,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue exportRetryQueue0() {
-        return QueueBuilder
-                .durable("task.export.retry.0")
+        return QueueBuilder.durable("task.export.retry.0")
                 .withArgument("x-message-ttl", 5000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "task.export")
@@ -153,8 +150,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue exportRetryQueue1() {
-        return QueueBuilder
-                .durable("task.export.retry.1")
+        return QueueBuilder.durable("task.export.retry.1")
                 .withArgument("x-message-ttl", 30000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "task.export")
@@ -163,8 +159,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue exportRetryQueue2() {
-        return QueueBuilder
-                .durable("task.export.retry.2")
+        return QueueBuilder.durable("task.export.retry.2")
                 .withArgument("x-message-ttl", 300000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "task.export")
@@ -212,8 +207,7 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue lowRatingAlertQueue() {
-        return QueueBuilder
-                .durable("feedback.low_rating")
+        return QueueBuilder.durable("feedback.low_rating")
                 .withArgument("x-message-ttl", 86400000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
                 .withArgument("x-dead-letter-routing-key", "feedback.low_rating.dlx")
@@ -222,8 +216,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue lowRatingAlertRetryQueue0() {
-        return QueueBuilder
-                .durable("feedback.low_rating.retry.0")
+        return QueueBuilder.durable("feedback.low_rating.retry.0")
                 .withArgument("x-message-ttl", 5000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "feedback.low_rating")
@@ -232,8 +225,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue lowRatingAlertRetryQueue1() {
-        return QueueBuilder
-                .durable("feedback.low_rating.retry.1")
+        return QueueBuilder.durable("feedback.low_rating.retry.1")
                 .withArgument("x-message-ttl", 30000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "feedback.low_rating")
@@ -242,8 +234,7 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue lowRatingAlertRetryQueue2() {
-        return QueueBuilder
-                .durable("feedback.low_rating.retry.2")
+        return QueueBuilder.durable("feedback.low_rating.retry.2")
                 .withArgument("x-message-ttl", 300000)
                 .withArgument("x-dead-letter-exchange", properties.getExchange().getName())
                 .withArgument("x-dead-letter-routing-key", "feedback.low_rating")

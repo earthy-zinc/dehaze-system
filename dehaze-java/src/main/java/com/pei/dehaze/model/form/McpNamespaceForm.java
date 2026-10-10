@@ -1,10 +1,9 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
 
 /** 命名空间配置项（覆盖式更新，整组提交） */
 @Schema(description = "MCP 命名空间配置项")

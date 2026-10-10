@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,9 +19,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * AI 中间产物（引用化查询）。
@@ -37,10 +36,9 @@ public class AiArtifactController {
     @Operation(summary = "会话产物分页列表")
     @GetMapping("/conversations/{convId}/artifacts")
     public PageResult<AiArtifactVO> listByConversation(
-            @Parameter(description = "会话ID") @PathVariable Long convId,
-            @Valid @ParameterObject PageParamQuery query) {
-        return PageResult.success(artifactService.listByConversation(convId, SecurityUtils.getUserId(),
-                query.getPageNum(), query.getPageSize()));
+            @Parameter(description = "会话ID") @PathVariable Long convId, @Valid @ParameterObject PageParamQuery query) {
+        return PageResult.success(artifactService.listByConversation(
+                convId, SecurityUtils.getUserId(), query.getPageNum(), query.getPageSize()));
     }
 
     @Operation(summary = "消息关联产物列表")
@@ -51,8 +49,9 @@ public class AiArtifactController {
 
     @Operation(summary = "按业务引用反查产物列表")
     @GetMapping("/artifacts/by-ref")
-    public Result<List<AiArtifactVO>> listByRef(@Parameter(description = "引用业务表") @RequestParam String refType,
-                                                @Parameter(description = "引用业务表ID") @RequestParam Long refId) {
+    public Result<List<AiArtifactVO>> listByRef(
+            @Parameter(description = "引用业务表") @RequestParam String refType,
+            @Parameter(description = "引用业务表ID") @RequestParam Long refId) {
         return Result.success(artifactService.listByRef(refType, refId, SecurityUtils.getUserId()));
     }
 

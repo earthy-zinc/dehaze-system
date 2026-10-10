@@ -1,6 +1,6 @@
-"""推荐管理服务层测试（真实 MySQL 测试库，覆盖推荐匹配/反馈归属/规则校验/对抗语料）。
+"""推荐管理服务层测试（真实 MySQL 测试库，覆盖模型推荐匹配/反馈归属/规则校验/对抗语料）。
 
-对应测试用例.md：T-REC 推荐匹配与排序、反馈归属校验、规则参数校验、
+对应测试用例.md：T-REC 模型推荐匹配与排序、反馈归属校验、规则参数校验、
 图像特征分析确定性（固定 seed 不变量）、报表日期校验。
 """
 
@@ -16,17 +16,19 @@ from tests.stubs.factories import make_user_context
 
 pytestmark = pytest.mark.requires_db
 
-# 种子算法（config/sql/data/sys_algorithm.sql，status=4 已发布）
-ALG_A = 1
-ALG_B = 2
-ALG_C = 3
+# 种子图像模型（config/sql/data/sys_ai_model.sql，status=1 已启用）
+MODEL_A = "aecrnet"
+MODEL_B = "aodnet"
+MODEL_C = "c2pnet-its"
 
 
 def _rule_form(**overrides) -> RecommendationRuleForm:
+    # 默认模型用 aodnet：避开种子规则 sys_rule_* 关联的默认模型 aecrnet，
+    # 使未显式禁用种子规则的用例不触发"同场景同模型组合"防重
     data = {
         "ruleName": "测试规则_svc",
         "sceneType": "urban",
-        "algorithmIds": [ALG_A],
+        "modelIds": [MODEL_B],
         "weight": 60,
         "enabled": True,
     }
@@ -39,7 +41,7 @@ def _other_user():
 
 
 async def _disable_seed_rules(db):
-    """禁用 sys_rule_* 种子规则（6 场景全覆盖且关联已发布算法 13），隔离自建规则的匹配口径"""
+    """禁用 sys_rule_* 种子规则（6 场景全覆盖且关联默认模型 aecrnet），隔离自建规则的匹配口径"""
     for r in await recommendation_service.get_rules(db):
         if r.ruleName.startswith("sys_rule_"):
             await recommendation_service.update_rule(
@@ -48,7 +50,7 @@ async def _disable_seed_rules(db):
                 _rule_form(
                     ruleName=r.ruleName,
                     sceneType=r.sceneType,
-                    algorithmIds=r.algorithmIds,
+                    modelIds=r.modelIds,
                     weight=r.weight,
                     enabled=False,
                 ),
@@ -104,19 +106,20 @@ async def test_analyze_feature_domains_valid():
     assert vo.noiseLevel in ("low", "medium", "high")
 
 
-# ===== 算法推荐（规则匹配 / 排序不变量 / 落库） =====
+# ===== 模型推荐（规则匹配 / 排序不变量 / 落库） =====
 
 
-async def test_get_algorithms_matches_enabled_rule_and_persists_record(db):
+async def test_get_models_matches_enabled_rule_and_persists_record(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=60)
     )
     user = _other_user()
 
-    result = await recommendation_service.get_algorithms(db, user.id, None, "svc-md5-0001")
+    result = await recommendation_service.get_models(db, user.id, None, "svc-md5-0001")
 
-    assert [vo.algorithmId for vo in result] == [ALG_A]
+    assert [vo.modelId for vo in result] == [MODEL_A]
+    assert result[0].modelName == "AECR-NET"
     assert result[0].matchScore == 60
     assert result[0].recommendationId is not None
 
@@ -124,58 +127,59 @@ async def test_get_algorithms_matches_enabled_rule_and_persists_record(db):
     assert rec.user_id == user.id
     assert rec.image_md5 == "svc-md5-0001"
     assert rec.feedback == 0
-    assert rec.top_algorithms[0]["algorithmId"] == ALG_A
+    assert rec.target_type == "model"
+    assert rec.top_models[0]["modelId"] == MODEL_A
 
 
-async def test_get_algorithms_tie_break_by_algorithm_id(db):
-    """同分推荐按 algorithmId 升序，保证跨端排序一致"""
+async def test_get_models_tie_break_by_model_id(db):
+    """同分推荐按 modelId 升序，保证跨端排序一致"""
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_C, ALG_A, ALG_B], weight=80)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_C, MODEL_A, MODEL_B], weight=80)
     )
 
-    result = await recommendation_service.get_algorithms(db, 990001, None, "svc-md5-tie")
+    result = await recommendation_service.get_models(db, 990001, None, "svc-md5-tie")
 
-    assert [vo.algorithmId for vo in result] == [ALG_A, ALG_B, ALG_C]
+    assert [vo.modelId for vo in result] == [MODEL_A, MODEL_B, MODEL_C]
     assert all(vo.matchScore == 80 for vo in result)
 
 
-async def test_get_algorithms_top_n_limit(db):
+async def test_get_models_top_n_limit(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
         db,
         0,
-        _rule_form(sceneType="urban", algorithmIds=[ALG_A, ALG_B, ALG_C, 5, 6], weight=90),
+        _rule_form(sceneType="urban", modelIds=[MODEL_A, MODEL_B, MODEL_C, "d4", "fcd"], weight=90),
     )
 
-    result = await recommendation_service.get_algorithms(db, 990001, None, "svc-md5-topn")
+    result = await recommendation_service.get_models(db, 990001, None, "svc-md5-topn")
 
     assert len(result) == 3
 
 
-async def test_get_algorithms_filters_unpublished_candidates(db):
-    """候选 = 规则关联算法 ∩ 已发布算法，不存在的算法被过滤"""
+async def test_get_models_filters_unavailable_candidates(db):
+    """候选 = 规则关联模型 ∩ 已启用图像模型，未启用/不存在的模型被过滤"""
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[999999], weight=99)
+        db, 0, _rule_form(sceneType="urban", modelIds=["ghost-model"], weight=99)
     )
 
-    result = await recommendation_service.get_algorithms(db, 990001, None, "svc-md5-norule")
+    result = await recommendation_service.get_models(db, 990001, None, "svc-md5-norule")
     assert result == []
 
 
-async def test_get_algorithms_ignores_disabled_rule(db):
+async def test_get_models_ignores_disabled_rule(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=95, enabled=False)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=95, enabled=False)
     )
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_B], weight=50, enabled=True)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_B], weight=50, enabled=True)
     )
 
-    result = await recommendation_service.get_algorithms(db, 990001, None, "svc-md5-disabled")
+    result = await recommendation_service.get_models(db, 990001, None, "svc-md5-disabled")
 
-    assert [vo.algorithmId for vo in result] == [ALG_B]
+    assert [vo.modelId for vo in result] == [MODEL_B]
 
 
 # ===== 推荐反馈（归属校验） =====
@@ -184,9 +188,9 @@ async def test_get_algorithms_ignores_disabled_rule(db):
 async def _create_recommendation_for(db, user_id: int, md5: str) -> int:
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=60)
     )
-    result = await recommendation_service.get_algorithms(db, user_id, None, md5)
+    result = await recommendation_service.get_models(db, user_id, None, md5)
     assert result, "前置推荐结果为空，无法构造反馈场景"
     assert result[0].recommendationId is not None
     return result[0].recommendationId
@@ -259,9 +263,9 @@ async def test_rule_form_rejects_weight_out_of_range():
         _rule_form(weight=-1)
 
 
-async def test_rule_form_rejects_empty_algorithm_ids():
+async def test_rule_form_rejects_empty_model_ids():
     with pytest.raises(ValidationError):
-        _rule_form(algorithmIds=[])
+        _rule_form(modelIds=[])
 
 
 async def test_update_rule_rejects_nonexistent_rule(db):
@@ -330,18 +334,18 @@ async def test_get_report_no_feedback_zero_rates(db):
     assert isinstance(report.trend, list)
 
 
-# ===== 规则防重（A0501，同场景+同算法集合） =====
+# ===== 规则防重（A0501，同场景+同模型集合） =====
 
 
-async def test_update_rule_rejects_duplicate_scene_and_algorithms(db):
+async def test_update_rule_rejects_duplicate_scene_and_models(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A, ALG_B], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A, MODEL_B], weight=60)
     )
 
     with pytest.raises(BusinessException) as ei:
         await recommendation_service.update_rule(
-            db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A, ALG_B], weight=90)
+            db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A, MODEL_B], weight=90)
         )
     assert ei.value.code == ResultCode.DATA_EXISTS
 
@@ -349,24 +353,24 @@ async def test_update_rule_rejects_duplicate_scene_and_algorithms(db):
 async def test_update_rule_duplicate_is_order_insensitive(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A, ALG_B], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A, MODEL_B], weight=60)
     )
 
     with pytest.raises(BusinessException) as ei:
         await recommendation_service.update_rule(
-            db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_B, ALG_A], weight=70)
+            db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_B, MODEL_A], weight=70)
         )
     assert ei.value.code == ResultCode.DATA_EXISTS
 
 
-async def test_update_rule_allows_same_algorithms_in_different_scene(db):
+async def test_update_rule_allows_same_models_in_different_scene(db):
     await _disable_seed_rules(db)
     await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=60)
     )
 
     vo = await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="landscape", algorithmIds=[ALG_A], weight=50)
+        db, 0, _rule_form(sceneType="landscape", modelIds=[MODEL_A], weight=50)
     )
     assert vo.id > 0
 
@@ -374,11 +378,11 @@ async def test_update_rule_allows_same_algorithms_in_different_scene(db):
 async def test_update_rule_self_update_not_treated_as_duplicate(db):
     await _disable_seed_rules(db)
     created = await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=60)
     )
 
     vo = await recommendation_service.update_rule(
-        db, created.id, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=80)
+        db, created.id, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=80)
     )
     assert vo.id == created.id
 
@@ -386,15 +390,15 @@ async def test_update_rule_self_update_not_treated_as_duplicate(db):
 async def test_update_rule_rejects_update_colliding_with_other_rule(db):
     await _disable_seed_rules(db)
     first = await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=60)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=60)
     )
     second = await recommendation_service.update_rule(
-        db, 0, _rule_form(sceneType="urban", algorithmIds=[ALG_B], weight=50)
+        db, 0, _rule_form(sceneType="urban", modelIds=[MODEL_B], weight=50)
     )
 
     with pytest.raises(BusinessException) as ei:
         await recommendation_service.update_rule(
-            db, second.id, _rule_form(sceneType="urban", algorithmIds=[ALG_A], weight=70)
+            db, second.id, _rule_form(sceneType="urban", modelIds=[MODEL_A], weight=70)
         )
     assert ei.value.code == ResultCode.DATA_EXISTS
     assert first.id > 0

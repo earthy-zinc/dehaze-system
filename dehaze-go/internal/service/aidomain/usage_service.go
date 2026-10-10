@@ -18,15 +18,17 @@ const keyUnavailableKeyPattern = "ai:provider_key:*:unavailable"
 const providerHealthSnapshotKeyFmt = "ai:provider:%d:health"
 
 // ProviderHealthStatVO 供应商健康看板项。
+// 比率与延迟为指针：近 24h 无调用（快照里为 null / 缺键）时输出 null，
+// 由前端渲染「—」，不能落成 0 被显示成 100% 成功、0ms。
 type ProviderHealthStatVO struct {
-	ProviderID   int64   `json:"providerId"`
-	ProviderName string  `json:"providerName"`
-	Health       string  `json:"health"`
-	CallCount    int64   `json:"callCount"`
-	SuccessRate  float64 `json:"successRate"`
-	Rate429      float64 `json:"rate429"`
-	P95LatencyMs int64   `json:"p95LatencyMs"`
-	CircuitOpen  bool    `json:"circuitOpen"`
+	ProviderID   int64    `json:"providerId"`
+	ProviderName string   `json:"providerName"`
+	Health       string   `json:"health"`
+	CallCount    int64    `json:"callCount"`
+	SuccessRate  *float64 `json:"successRate"`
+	Rate429      *float64 `json:"rate429"`
+	P95LatencyMs *int64   `json:"p95LatencyMs"`
+	CircuitOpen  bool     `json:"circuitOpen"`
 }
 
 // ModelUsageStatVO 模型用量分布项。
@@ -114,13 +116,14 @@ func (s *UsageService) providerHealth(ctx context.Context) ([]ProviderHealthStat
 						item.CallCount = int64(value)
 					}
 					if value, ok := toFloat(snapshot["success_rate"]); ok {
-						item.SuccessRate = value
+						item.SuccessRate = &value
 					}
 					if value, ok := toFloat(snapshot["limit_rate"]); ok {
-						item.Rate429 = value
+						item.Rate429 = &value
 					}
 					if value, ok := toFloat(snapshot["p95_latency_ms"]); ok {
-						item.P95LatencyMs = int64(value)
+						p95 := int64(value)
+						item.P95LatencyMs = &p95
 					}
 					if value, ok := snapshot["circuit_open"].(bool); ok {
 						item.CircuitOpen = value

@@ -25,9 +25,11 @@ class SysInputHistory(BaseModel):
     original_thumbnail_url: Mapped[str | None] = mapped_column(String(500), comment="原始缩略图URL")
     result_image_url: Mapped[str | None] = mapped_column(String(500), comment="处理结果图片URL")
     result_thumbnail_url: Mapped[str | None] = mapped_column(String(500), comment="结果缩略图URL")
-    algorithm_id: Mapped[int | None] = mapped_column(BigInteger, comment="算法ID")
-    algorithm_name: Mapped[str | None] = mapped_column(String(100), comment="算法名称（冗余）")
-    algorithm_params: Mapped[str | None] = mapped_column(Text, comment="算法参数（JSON）")
+    model_id: Mapped[str | None] = mapped_column(
+        String(64), comment="图像模型标识（统一模型规范 slug）"
+    )
+    model_name: Mapped[str | None] = mapped_column(String(100), comment="模型名称（冗余）")
+    model_params: Mapped[str | None] = mapped_column(Text, comment="模型参数（JSON）")
     processing_time: Mapped[int | None] = mapped_column(Integer, comment="处理耗时（毫秒）")
     status: Mapped[int | None] = mapped_column(
         mysql_types.TINYINT,

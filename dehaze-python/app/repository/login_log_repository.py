@@ -4,6 +4,7 @@ from typing import Any
 from app.config import settings
 from app.dependencies import mongo
 from app.models.entity.mongo_log import LoginLogDocument
+from app.repository.mongo_bson import as_int64, int64_candidates
 
 
 class LoginLogRepository:
@@ -21,8 +22,15 @@ class LoginLogRepository:
         location: str = "",
         device_type: str = "web",
     ) -> dict:
+        """写入一条登录日志。
+
+        `user_id` 统一编码为 BSON int64：java（`Long`）与 go（`int64`）按该字段过滤登录
+        日志（普通用户仅看本人），pymongo 对 < 2^31 的裸 int 写 int32 ⇒ 单类型读不到
+        python 的记录且不报错（见 `app/repository/mongo_bson.py`）。
+        `status` 保持 int32（java `Integer`、go `int` 驱动编码同为 int32，三端口径本就一致）。
+        """
         doc = {
-            "user_id": user_id,
+            "user_id": as_int64(user_id),
             "username": username,
             "ip": ip,
             "location": location,
@@ -129,7 +137,8 @@ class LoginLogRepository:
         if device_type:
             query["device_type"] = device_type
         if user_ids is not None:
-            query["user_id"] = {"$in": user_ids}
+            # int32/int64 双类型候选：本端新写入与另两端写入是 int64，历史 int32 记录也不能漏
+            query["user_id"] = {"$in": int64_candidates(user_ids)}
         if start_time or end_time:
             time_range: dict[str, Any] = {}
             if start_time:

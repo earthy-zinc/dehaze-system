@@ -20,10 +20,26 @@ from datetime import datetime
 from typing import Any, cast
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
-from app.config import settings
+from app.core.constants import (
+    TASK_CACHE_PREFIX,
+    TASK_HEARTBEAT_INTERVAL,
+    TASK_PROGRESS_PREFIX,
+    TASK_REDIS_KEY_PREFIX,
+    TASK_REDIS_TTL,
+)
 
 logger = logging.getLogger(__name__)
+
+# 追踪键前缀（含分隔符）：`task:running:{task_id}`，task_id 自身允许含 `:`（如 `pred:123`）
+_TRACKER_KEY_PREFIX = f"{TASK_REDIS_KEY_PREFIX}:"
+
+# 同一前缀下还挂着非追踪键：任务缓存 `task:running:cache:{id}`、任务进度
+# `task:running:progress:{id}`（均为 string 类型）。用 `task:running:*` 扫描后对它们
+# hgetall 会 WRONGTYPE，且 `cache:{id}` 会被当成假 task_id。此处**显式排除命名空间**，
+# 不靠"捕获异常→静默回退"兜底。
+_NON_TRACKER_KEY_PREFIXES = (TASK_CACHE_PREFIX, TASK_PROGRESS_PREFIX)
 
 
 @dataclass
@@ -91,8 +107,8 @@ class TaskTracker:
         if self._redis:
             for task_id in list(self._running_tasks.keys()):
                 try:
-                    await self._redis.delete(f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}")
-                except Exception as e:
+                    await self._redis.delete(f"{TASK_REDIS_KEY_PREFIX}:{task_id}")
+                except RedisError as e:
                     logger.warning(f"Redis 任务状态清理失败: taskId={task_id}, error={e}")
 
         logger.info("TaskTracker Redis 状态同步已停止")
@@ -143,7 +159,7 @@ class TaskTracker:
         if not self._redis:
             return
         try:
-            key = f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}"
+            key = f"{TASK_REDIS_KEY_PREFIX}:{task_id}"
             pipe = self._redis.pipeline()
             pipe.hset(
                 key,
@@ -154,9 +170,9 @@ class TaskTracker:
                     "metadata": json.dumps(metadata or {}, ensure_ascii=False),
                 },
             )
-            pipe.expire(key, settings.TASK_REDIS_TTL)
+            pipe.expire(key, TASK_REDIS_TTL)
             await pipe.execute()
-        except Exception as e:
+        except RedisError as e:
             logger.warning(f"Redis 任务状态同步失败: taskId={task_id}, error={e}")
 
     async def _cleanup_task(self, task_id: str):
@@ -164,8 +180,8 @@ class TaskTracker:
         self._running_tasks.pop(task_id, None)
         if self._redis:
             try:
-                await self._redis.delete(f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}")
-            except Exception as e:
+                await self._redis.delete(f"{TASK_REDIS_KEY_PREFIX}:{task_id}")
+            except RedisError as e:
                 logger.warning(f"Redis 任务状态清理失败: taskId={task_id}, error={e}")
 
     async def unregister(self, task_id: str) -> None:
@@ -173,8 +189,8 @@ class TaskTracker:
         self._running_tasks.pop(task_id, None)
         if self._redis:
             try:
-                await self._redis.delete(f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}")
-            except Exception as e:
+                await self._redis.delete(f"{TASK_REDIS_KEY_PREFIX}:{task_id}")
+            except RedisError as e:
                 logger.warning(f"Redis 任务状态清理失败: taskId={task_id}, error={e}")
         logger.debug(f"任务已取消注册: taskId={task_id}")
 
@@ -288,6 +304,21 @@ class TaskTracker:
             for t in self._running_tasks.values()
         ]
 
+    async def _scan_tracker_keys(self) -> list[str]:
+        """扫描追踪任务键（本端前缀下），显式排除同前缀的非追踪命名空间。
+
+        调用方需保证 `self._redis` 非空。
+        """
+        redis = cast(Redis, self._redis)
+        keys: list[str] = []
+        pattern = f"{TASK_REDIS_KEY_PREFIX}:*"
+        async for key in redis.scan_iter(match=pattern, count=100):
+            key_str = key if isinstance(key, str) else key.decode("utf-8")
+            if key_str.startswith(_NON_TRACKER_KEY_PREFIXES):
+                continue
+            keys.append(key_str)
+        return keys
+
     async def get_global_running_tasks(self) -> list[dict[str, Any]]:
         """获取全局运行中的任务列表（跨 Worker）"""
         if not self._redis:
@@ -295,28 +326,38 @@ class TaskTracker:
 
         try:
             tasks = []
-            pattern = f"{settings.TASK_REDIS_KEY_PREFIX}:*"
-            async for key in self._redis.scan_iter(match=pattern, count=100):
-                key_str = key if isinstance(key, str) else key.decode("utf-8")
-                task_id = key_str.split(":", 2)[-1]
+            for key_str in await self._scan_tracker_keys():
                 # redis-py 同步/异步客户端共用 hgetall 签名（Union[Awaitable[dict], dict]）；
                 # 此处为异步客户端，运行时恒返回协程，await 正确，用 cast 收窄类型
                 data = await cast(Awaitable[dict], self._redis.hgetall(key_str))
+                if not data:
+                    continue
 
-                if data:
-                    tasks.append(
-                        {
-                            "task_id": task_id,
-                            "task_type": data.get("task_type", "unknown"),
-                            "worker": data.get("worker", "unknown"),
-                            "started_at": data.get("started_at", ""),
-                            "metadata": json.loads(data.get("metadata", "{}")),
-                        }
+                raw_metadata = data.get("metadata") or "{}"
+                try:
+                    metadata = json.loads(raw_metadata)
+                except json.JSONDecodeError as e:
+                    # metadata 由本端写入，非法即数据损坏：留痕并跳过该条，
+                    # 不放任它把整个全局视图打成"Redis 不可用"式的静默回退
+                    logger.error(
+                        f"追踪任务 metadata 非法 JSON，跳过: key={key_str}, "
+                        f"raw={raw_metadata!r}, error={e}"
                     )
+                    continue
+
+                tasks.append(
+                    {
+                        "task_id": key_str[len(_TRACKER_KEY_PREFIX) :],
+                        "task_type": data.get("task_type", "unknown"),
+                        "worker": data.get("worker", "unknown"),
+                        "started_at": data.get("started_at", ""),
+                        "metadata": metadata,
+                    }
+                )
 
             return tasks
-        except Exception as e:
-            logger.warning(f"获取全局任务列表失败: {e}")
+        except RedisError as e:
+            logger.error(f"获取全局任务列表失败（Redis 不可用），回退本 Worker 视图: error={e}")
             return self.get_running_tasks()
 
     async def get_global_running_count(self) -> int:
@@ -325,32 +366,28 @@ class TaskTracker:
             return self.running_count
 
         try:
-            count = 0
-            pattern = f"{settings.TASK_REDIS_KEY_PREFIX}:*"
-            async for _ in self._redis.scan_iter(match=pattern, count=100):
-                count += 1
-            return count
-        except Exception as e:
-            logger.warning(f"获取全局任务数失败: {e}")
+            return len(await self._scan_tracker_keys())
+        except RedisError as e:
+            logger.error(f"获取全局任务数失败（Redis 不可用），回退本 Worker 计数: error={e}")
             return self.running_count
 
     async def _heartbeat_loop(self):
         """心跳循环：续期 Redis 中的任务状态"""
         while not self._is_shutting_down:
             try:
-                await asyncio.sleep(settings.TASK_HEARTBEAT_INTERVAL)
+                await asyncio.sleep(TASK_HEARTBEAT_INTERVAL)
 
                 if self._redis and self._running_tasks:
                     pipe = self._redis.pipeline()
                     for task_id in self._running_tasks:
                         pipe.expire(
-                            f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}",
-                            settings.TASK_REDIS_TTL,
+                            f"{TASK_REDIS_KEY_PREFIX}:{task_id}",
+                            TASK_REDIS_TTL,
                         )
                     await pipe.execute()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"任务心跳失败: {e}")
 
 

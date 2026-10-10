@@ -33,10 +33,11 @@ from app.dependencies.auth import SESSION_COOKIE, UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.voice import HotwordForm
 from app.models.schema.voice_asr import StreamAsrSessionForm
-from app.models.schema.voice_tts import VOICE_CATALOG, TtsForm
+from app.models.schema.voice_tts import TtsForm, get_voice_catalog
 from app.service.voice.asr_service import asr_service
 from app.service.voice.hotword_service import hotword_service
 from app.service.voice.tts_service import tts_service
+from app.service.voice.voice_model_route import resolve_voice_model
 from app.service.voice.voice_service_status import voice_service_status
 
 router = APIRouter(tags=["语音交互"])
@@ -128,9 +129,12 @@ async def synthesize_tts(
 
 @router.get("/api/v1/voice/tts/voices", summary="可用音色列表")
 async def list_voices(
+    db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    return success(VOICE_CATALOG)
+    """返回平台默认 tts 模型所属供应商协议族下的音色目录（未配置默认模型即报错）"""
+    route = await resolve_voice_model(db, "tts")
+    return success(get_voice_catalog(route.provider.protocol_type))
 
 
 @router.get("/api/v1/voice/tts/audio/{cache_key}", summary="缓存音频下载（解密后流式返回）")

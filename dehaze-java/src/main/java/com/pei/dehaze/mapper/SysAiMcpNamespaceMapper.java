@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiMcpNamespace;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiMcpNamespaceMapper extends BaseMapper<SysAiMcpNamespace> {
-}
+public interface SysAiMcpNamespaceMapper extends BaseMapper<SysAiMcpNamespace> {}

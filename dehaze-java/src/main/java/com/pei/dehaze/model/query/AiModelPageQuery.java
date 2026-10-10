@@ -13,6 +13,9 @@ public class AiModelPageQuery extends BasePageQuery {
     @Schema(description = "关键字(按显示名称/模型标识模糊搜索)")
     private String keyword;
 
-    @Schema(description = "按模型类型筛选(chat/embedding/rerank)")
+    @Schema(description = "按模型类型筛选(chat/embedding/rerank/image_gen/image_edit/video_gen/asr/tts/music_gen/3d_gen)")
     private String modelType;
+
+    @Schema(description = "按任务标签筛选(逗号分隔，task_tags 数组含任一即命中)")
+    private String taskTags;
 }

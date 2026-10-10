@@ -30,13 +30,11 @@ public interface TaskStrategy {
      * 取消任务（清理资源）
      * @param task 任务实体
      */
-    default void cancel(SysTask task) {
-    }
+    default void cancel(SysTask task) {}
 
     /**
      * 验证任务参数
      * @param params 任务参数
      */
-    default void validateParams(Map<String, Object> params) {
-    }
+    default void validateParams(Map<String, Object> params) {}
 }

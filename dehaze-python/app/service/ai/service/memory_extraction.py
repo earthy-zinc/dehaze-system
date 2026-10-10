@@ -7,6 +7,7 @@
 - 反思整合、合并去重
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -20,6 +21,7 @@ from app.models.entity.sys_ai_memory import SysAiMemory
 from app.repository.ai_memory_repository import ai_memory_repository
 from app.service.ai.service import trace_collector
 from app.service.ai.service.memory_es_service import sync_memory
+from app.service.ai.service.model_defaults import resolve_default_chat_model
 from app.utils.pii import mask_pii
 
 logger = logging.getLogger(__name__)
@@ -146,6 +148,10 @@ async def _score_importance(db, model_id: str, content: str, user_id: int) -> in
         logger.warning("重要性评分非 JSON: %s", raw[:200])
         return 50
     if not isinstance(factors, dict):
+        return 50
+    # 五因子全 0（模型未给出有效评分）按评分失败处理，避免记忆重要性落为 0
+    if not any(int(factors.get(name) or 0) for name in _IMPORTANCE_WEIGHTS):
+        logger.warning("重要性评分五因子全 0，回退 50: %s", raw[:120])
         return 50
     return _compute_importance(factors)
 
@@ -282,6 +288,35 @@ async def save_extracted_memories(user_id: int, memories: list[dict]) -> int:
     return saved
 
 
+# 后台抽取任务引用，防止被垃圾回收
+_pending_extraction_tasks: set[asyncio.Task] = set()
+
+
+def schedule_memory_extraction(
+    user_id: int, model_id: str, messages: list[dict], conversation_id: int
+) -> None:
+    """后台触发记忆抽取（fire-and-forget，不阻塞主流程）。
+
+    调用方两处：图路径的 after_agent 钩子、direct 范式的收尾。两处同为“一轮对话结束”，
+    故统一走本入口，避免 direct 路径漏抽记忆。
+    """
+    if not user_id or not model_id or not messages or not conversation_id:
+        return
+
+    async def _run() -> None:
+        try:
+            memories = await extract_memories(
+                user_id, model_id, messages, conversation_id=conversation_id
+            )
+            await save_extracted_memories(user_id, memories)
+        except Exception:
+            logger.warning("Memory extraction failed", exc_info=True)
+
+    task = asyncio.create_task(_run())
+    _pending_extraction_tasks.add(task)
+    task.add_done_callback(_pending_extraction_tasks.discard)
+
+
 async def _llm_text(
     db, model_id: str, prompt: str, system_prompt: str, max_tokens: int, user_id: int
 ) -> str:
@@ -307,7 +342,7 @@ async def reflect_and_consolidate(db, user_id: int, model_id: str | None = None)
     洞察写入 sys_ai_memory（source=reflection，memory_type=procedural/semantic）。
     返回新增洞察数量。
     """
-    model_id = model_id or settings.AI_DEFAULT_MODEL
+    model_id = model_id or await resolve_default_chat_model(db)
     since = datetime.now() - timedelta(days=7)
     episodic = await ai_memory_repository.list_recent_episodic(db, user_id, since)
     if not episodic:
@@ -384,7 +419,7 @@ async def merge_duplicates(db, user_id: int, model_id: str | None = None) -> int
     - 旧记忆软删除，保留合并后的新记忆
     返回合并次数。
     """
-    model_id = model_id or settings.AI_DEFAULT_MODEL
+    model_id = model_id or await resolve_default_chat_model(db)
     memories = await ai_memory_repository.get_active_by_user(db, user_id, limit=1000)
     if len(memories) < 2:
         return 0

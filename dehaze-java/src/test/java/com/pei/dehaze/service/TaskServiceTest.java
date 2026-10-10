@@ -1,5 +1,9 @@
 package com.pei.dehaze.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.WebSocketMessageRelay;
@@ -10,13 +14,14 @@ import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.impl.TaskServiceImpl;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -25,13 +30,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 任务服务单元测试
@@ -95,24 +93,42 @@ class TaskServiceTest {
         when(fileService.getUrl(anyString())).thenAnswer(inv -> "http://test.com/files/" + inv.getArgument(0));
 
         // 使用Spy创建TaskServiceImpl，通过构造器注入依赖
-        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, new com.pei.dehaze.service.strategy.TaskStrategyFactory(java.util.List.of(new com.pei.dehaze.service.strategy.TaskStrategy() {
-                    @Override
-                    public java.util.List<String> getTaskTypes() {
-                        return java.util.List.of("dataset_export", "user_export", "role_export", "user_import",
-                                "dept_export", "dept_import", "menu_export", "menu_import",
-                                "dict_export", "dict_import", "algorithm_export", "algorithm_import");
-                    }
+        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(
+                taskExecutor,
+                new com.pei.dehaze.service.strategy.TaskStrategyFactory(java.util.List.of(
+                        new com.pei.dehaze.service.strategy.TaskStrategy() {
+                            @Override
+                            public java.util.List<String> getTaskTypes() {
+                                return java.util.List.of(
+                                        "dataset_export",
+                                        "user_export",
+                                        "role_export",
+                                        "user_import",
+                                        "dept_export",
+                                        "dept_import",
+                                        "menu_export",
+                                        "menu_import",
+                                        "dict_export",
+                                        "dict_import");
+                            }
 
-                    @Override
-                    public com.pei.dehaze.service.strategy.TaskResult execute(com.pei.dehaze.model.entity.SysTask task,
-                            java.util.Map<String, Object> params, com.pei.dehaze.service.strategy.ProgressCallback callback) {
-                        return null;
-                    }
-                })), storageServiceFactory, redisTemplate, wsMessageRelay, meterRegistry));
+                            @Override
+                            public com.pei.dehaze.service.strategy.TaskResult execute(
+                                    com.pei.dehaze.model.entity.SysTask task,
+                                    java.util.Map<String, Object> params,
+                                    com.pei.dehaze.service.strategy.ProgressCallback callback) {
+                                return null;
+                            }
+                        })),
+                storageServiceFactory,
+                redisTemplate,
+                wsMessageRelay,
+                meterRegistry));
 
         // 注入 baseMapper（ServiceImpl 父类字段）
         try {
-            java.lang.reflect.Field baseMapperField = taskService.getClass().getSuperclass().getDeclaredField("baseMapper");
+            java.lang.reflect.Field baseMapperField =
+                    taskService.getClass().getSuperclass().getDeclaredField("baseMapper");
             baseMapperField.setAccessible(true);
             baseMapperField.set(taskService, sysTaskMapper);
         } catch (Exception e) {
@@ -121,12 +137,14 @@ class TaskServiceTest {
 
         // Mock save方法，因为baseMapper无法注入
         org.mockito.Mockito.doAnswer(invocation -> {
-            SysTask task = invocation.getArgument(0);
-            if (task.getId() == null) {
-                task.setId(1L);
-            }
-            return true;
-        }).when(taskService).save(any(SysTask.class));
+                    SysTask task = invocation.getArgument(0);
+                    if (task.getId() == null) {
+                        task.setId(1L);
+                    }
+                    return true;
+                })
+                .when(taskService)
+                .save(any(SysTask.class));
 
         // Mock updateById方法
         org.mockito.Mockito.doReturn(true).when(taskService).updateById(any(SysTask.class));
@@ -149,8 +167,9 @@ class TaskServiceTest {
         userDetails.setUserId(TEST_USER_ID);
         userDetails.setEnabled(true);
         userDetails.setAuthorities(Collections.emptySet());
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
     }
 
     @AfterEach
@@ -227,7 +246,8 @@ class TaskServiceTest {
     void testCreateTask_WithOptions() {
         // Arrange
         mockForm.setType("dataset_export");
-        mockForm.setParamsJson("{\"module\":\"dataset\",\"query\":{\"datasetId\":1,\"options\":{\"structure\":\"flat\",\"includeTypes\":[\"clear\",\"hazy\"],\"includeThumbnail\":true}}}");
+        mockForm.setParamsJson(
+                "{\"module\":\"dataset\",\"query\":{\"datasetId\":1,\"options\":{\"structure\":\"flat\",\"includeTypes\":[\"clear\",\"hazy\"],\"includeThumbnail\":true}}}");
 
         try (MockedStatic<SecurityUtils> mockedSecurityUtils = mockStatic(SecurityUtils.class)) {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
@@ -422,9 +442,7 @@ class TaskServiceTest {
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getDownloadUrl(taskId));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.getDownloadUrl(taskId));
         assertTrue(exception.getMessage().contains("任务未完成"));
     }
 
@@ -450,9 +468,7 @@ class TaskServiceTest {
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getDownloadUrl(taskId));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.getDownloadUrl(taskId));
         assertTrue(exception.getMessage().contains("任务已过期"));
     }
 
@@ -535,9 +551,7 @@ class TaskServiceTest {
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.cancelTask(taskId));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.cancelTask(taskId));
         assertTrue(exception.getMessage().contains("任务已完成或失败"));
     }
 
@@ -557,9 +571,7 @@ class TaskServiceTest {
         when(sysTaskMapper.selectOne(any())).thenReturn(null);
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.cancelTask(taskId));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.cancelTask(taskId));
         assertTrue(exception.getMessage().contains("任务不存在"));
     }
 }

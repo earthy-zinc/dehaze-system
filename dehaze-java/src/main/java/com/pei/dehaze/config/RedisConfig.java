@@ -1,5 +1,7 @@
 package com.pei.dehaze.config;
 
+import static com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINAL;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
@@ -11,8 +13,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
-
-import static com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINAL;
 
 /**
  * Redis 配置
@@ -80,5 +80,4 @@ public class RedisConfig {
         container.setConnectionFactory(connectionFactory);
         return container;
     }
-
 }

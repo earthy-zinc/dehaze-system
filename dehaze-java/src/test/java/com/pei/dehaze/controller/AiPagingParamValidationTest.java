@@ -1,5 +1,14 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.model.vo.AiArtifactVO;
@@ -22,15 +31,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
  * 分页参数边界校验（pageNum ≥ 1、pageSize ≤ 100，对齐 python BasePageQuery）。
  * <p>
@@ -46,14 +46,19 @@ class AiPagingParamValidationTest {
 
     @Mock
     private AiKnowledgeBaseService knowledgeBaseService;
+
     @Mock
     private AiArtifactService artifactService;
+
     @Mock
     private AiMcpService mcpService;
+
     @Mock
     private AiModelService modelService;
+
     @Mock
     private AiProviderService providerService;
+
     @Mock
     private AiSkillService skillService;
 
@@ -141,12 +146,15 @@ class AiPagingParamValidationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"))
                 .andExpect(jsonPath("$.msg").value(PAGE_SIZE_MESSAGE));
-        // 售价版本查询沿用 python 的 page/size 命名
-        modelMvc.perform(get("/api/v1/ai/models/model-a/prices").param("size", "101"))
+        // 售价版本查询沿用 python 的 page/size 命名，modelId 为 query 参数
+        modelMvc.perform(get("/api/v1/ai/models/prices")
+                        .param("modelId", "model-a")
+                        .param("size", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"))
                 .andExpect(jsonPath("$.msg").value(PAGE_SIZE_MESSAGE));
-        providerMvc.perform(get("/api/v1/ai/providers").param("pageSize", "101"))
+        providerMvc
+                .perform(get("/api/v1/ai/providers").param("pageSize", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"))
                 .andExpect(jsonPath("$.msg").value(PAGE_SIZE_MESSAGE));
@@ -161,7 +169,8 @@ class AiPagingParamValidationTest {
     @Test
     @DisplayName("会话产物列表 pageSize=101 返回 400 + A0400，且不触达服务层")
     void artifactPageSizeOverLimitRejected() throws Exception {
-        artifactMvc.perform(get("/api/v1/ai/conversations/7/artifacts").param("pageSize", "101"))
+        artifactMvc
+                .perform(get("/api/v1/ai/conversations/7/artifacts").param("pageSize", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"))
                 .andExpect(jsonPath("$.msg").value(PAGE_SIZE_MESSAGE));
@@ -172,8 +181,7 @@ class AiPagingParamValidationTest {
     @Test
     @DisplayName("分块列表 pageSize=100 边界放行并透传 pageNum/pageSize")
     void chunksPageSizeAtLimitAllowed() throws Exception {
-        when(knowledgeBaseService.listChunks(eq(5L), eq(1), eq(100)))
-                .thenReturn(new Page<KbChunkVO>(1, 100, 0));
+        when(knowledgeBaseService.listChunks(eq(5L), eq(1), eq(100))).thenReturn(new Page<KbChunkVO>(1, 100, 0));
 
         kbMvc.perform(get("/api/v1/kb/documents/5/chunks").param("pageSize", "100"))
                 .andExpect(status().isOk())
@@ -191,7 +199,8 @@ class AiPagingParamValidationTest {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(3L);
 
-            artifactMvc.perform(get("/api/v1/ai/conversations/7/artifacts").param("pageSize", "100"))
+            artifactMvc
+                    .perform(get("/api/v1/ai/conversations/7/artifacts").param("pageSize", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("00000"));
 

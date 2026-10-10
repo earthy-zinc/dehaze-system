@@ -2,10 +2,10 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Data
 @Schema(description = "推荐规则表单")
@@ -19,9 +19,9 @@ public class RecommendationRuleForm {
     @NotBlank(message = "场景类型不能为空")
     private String sceneType;
 
-    @Schema(description = "候选算法ID列表")
-    @NotNull(message = "算法ID列表不能为空")
-    private List<Long> algorithmIds;
+    @Schema(description = "候选图像模型标识列表（统一模型规范 slug）")
+    @NotEmpty(message = "模型标识列表不能为空")
+    private List<String> modelIds;
 
     @Schema(description = "规则权重(0-100)")
     @NotNull(message = "权重不能为空")

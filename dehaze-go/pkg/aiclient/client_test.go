@@ -155,10 +155,10 @@ func TestForwardJSON_UpstreamUnavailableReturnsBusinessEnvelope(t *testing.T) {
 
 	client := newTestClient(t, serviceURL)
 	engine := gin.New()
-	engine.POST("/api/v1/ai/models/:id/test", client.ForwardJSON)
+	engine.POST("/api/v1/ai/models/test", client.ForwardJSON)
 
 	rec := httptest.NewRecorder()
-	engine.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/ai/models/3/test", strings.NewReader(`{}`)))
+	engine.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/ai/models/test", strings.NewReader(`{}`)))
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("上游不可达必须返回统一业务信封（HTTP 200），got %d", rec.Code)

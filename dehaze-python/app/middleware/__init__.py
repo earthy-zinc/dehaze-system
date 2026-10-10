@@ -87,7 +87,7 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
     # CORS 中间件（最外层，从配置读取 Origin 白名单，禁止 "*" + credentials 组合）
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,
+        allow_origins=settings.CORS_ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["Authorization", "Content-Type", "X-Requested-With"],

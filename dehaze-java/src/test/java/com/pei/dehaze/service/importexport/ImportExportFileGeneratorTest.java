@@ -1,16 +1,13 @@
 package com.pei.dehaze.service.importexport;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.alibaba.excel.EasyExcel;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,8 +18,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * 导入导出文件生成器单元测试
@@ -40,8 +39,7 @@ class ImportExportFileGeneratorTest {
         return List.of(
                 ExportFieldConfig.of("username", "用户名", 1),
                 ExportFieldConfig.of("nickname", "昵称", 2),
-                ExportFieldConfig.of("createTime", "创建时间", 3)
-        );
+                ExportFieldConfig.of("createTime", "创建时间", 3));
     }
 
     // ==================== Excel 生成 ====================
@@ -50,9 +48,8 @@ class ImportExportFileGeneratorTest {
     @DisplayName("writeExcel - 表头按 fields 顺序写入")
     void testWriteExcel_Headers() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1", "张三", "2026-07-27 10:00:00"))
-                : List.of();
+        ExportDataProvider provider = (pageNum, pageSize) ->
+                pageNum == 1 ? List.of(List.of("user1", "张三", "2026-07-27 10:00:00")) : List.of();
 
         generator.writeExcel(baos, sampleExportFields(), provider);
 
@@ -106,9 +103,8 @@ class ImportExportFileGeneratorTest {
     @DisplayName("writeCsv - 包含 BOM 头且按表头顺序写入")
     void testWriteCsv_BomAndHeaders() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1", "张三", "2026-07-27 10:00:00"))
-                : List.of();
+        ExportDataProvider provider = (pageNum, pageSize) ->
+                pageNum == 1 ? List.of(List.of("user1", "张三", "2026-07-27 10:00:00")) : List.of();
 
         generator.writeCsv(baos, sampleExportFields(), provider);
 
@@ -154,11 +150,9 @@ class ImportExportFileGeneratorTest {
     @DisplayName("writeTemplateExcel - 包含表头和示例数据")
     void testWriteTemplateExcel_WithSampleData() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        List<ImportFieldConfig> fields = List.of(
-                ImportFieldConfig.of("username", "用户名", true),
-                ImportFieldConfig.of("nickname", "昵称", false));
-        List<Map<String, Object>> sampleData = List.of(
-                Map.of("username", "zhangsan", "nickname", "张三"));
+        List<ImportFieldConfig> fields =
+                List.of(ImportFieldConfig.of("username", "用户名", true), ImportFieldConfig.of("nickname", "昵称", false));
+        List<Map<String, Object>> sampleData = List.of(Map.of("username", "zhangsan", "nickname", "张三"));
 
         generator.writeTemplateExcel(baos, fields, sampleData);
 
@@ -186,20 +180,16 @@ class ImportExportFileGeneratorTest {
     @DisplayName("parseExcel - 按 label 映射到 field")
     void testParseExcel_FieldMapping() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1", "张三"))
-                : List.of();
-        generator.writeExcel(baos, List.of(
-                ExportFieldConfig.of("username", "用户名", 1),
-                ExportFieldConfig.of("nickname", "昵称", 2)
-        ), provider);
+        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("user1", "张三")) : List.of();
+        generator.writeExcel(
+                baos,
+                List.of(ExportFieldConfig.of("username", "用户名", 1), ExportFieldConfig.of("nickname", "昵称", 2)),
+                provider);
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        generator.parseExcel(new ByteArrayInputStream(baos.toByteArray()),
-                List.of(
-                        ImportFieldConfig.of("username", "用户名", true),
-                        ImportFieldConfig.of("nickname", "昵称", false)
-                ),
+        generator.parseExcel(
+                new ByteArrayInputStream(baos.toByteArray()),
+                List.of(ImportFieldConfig.of("username", "用户名", true), ImportFieldConfig.of("nickname", "昵称", false)),
                 (rowNum, row) -> rows.add(row));
 
         assertEquals(1, rows.size());
@@ -211,20 +201,17 @@ class ImportExportFileGeneratorTest {
     @DisplayName("parseCsv - 按 label 映射到 field")
     void testParseCsv_FieldMapping() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("admin", "管理员"))
-                : List.of();
-        generator.writeCsv(baos, List.of(
-                ExportFieldConfig.of("code", "角色编码", 1),
-                ExportFieldConfig.of("name", "角色名称", 2)
-        ), provider);
+        ExportDataProvider provider =
+                (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("admin", "管理员")) : List.of();
+        generator.writeCsv(
+                baos,
+                List.of(ExportFieldConfig.of("code", "角色编码", 1), ExportFieldConfig.of("name", "角色名称", 2)),
+                provider);
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        generator.parseCsv(new ByteArrayInputStream(baos.toByteArray()),
-                List.of(
-                        ImportFieldConfig.of("code", "角色编码", true),
-                        ImportFieldConfig.of("name", "角色名称", false)
-                ),
+        generator.parseCsv(
+                new ByteArrayInputStream(baos.toByteArray()),
+                List.of(ImportFieldConfig.of("code", "角色编码", true), ImportFieldConfig.of("name", "角色名称", false)),
                 (rowNum, row) -> rows.add(row));
 
         assertEquals(1, rows.size());
@@ -236,14 +223,13 @@ class ImportExportFileGeneratorTest {
     @DisplayName("parse - 自动识别 xlsx 走 parseExcel")
     void testParse_AutoExcel() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1"))
-                : List.of();
-        generator.writeExcel(baos,
-                List.of(ExportFieldConfig.of("username", "用户名", 1)), provider);
+        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("user1")) : List.of();
+        generator.writeExcel(baos, List.of(ExportFieldConfig.of("username", "用户名", 1)), provider);
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        generator.parse(new ByteArrayInputStream(baos.toByteArray()), "test.xlsx",
+        generator.parse(
+                new ByteArrayInputStream(baos.toByteArray()),
+                "test.xlsx",
                 List.of(ImportFieldConfig.of("username", "用户名", true)),
                 (rowNum, row) -> rows.add(row));
 
@@ -254,14 +240,13 @@ class ImportExportFileGeneratorTest {
     @DisplayName("parse - 自动识别 csv 走 parseCsv")
     void testParse_AutoCsv() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1"))
-                : List.of();
-        generator.writeCsv(baos,
-                List.of(ExportFieldConfig.of("username", "用户名", 1)), provider);
+        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("user1")) : List.of();
+        generator.writeCsv(baos, List.of(ExportFieldConfig.of("username", "用户名", 1)), provider);
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        generator.parse(new ByteArrayInputStream(baos.toByteArray()), "test.csv",
+        generator.parse(
+                new ByteArrayInputStream(baos.toByteArray()),
+                "test.csv",
                 List.of(ImportFieldConfig.of("username", "用户名", true)),
                 (rowNum, row) -> rows.add(row));
 
@@ -271,45 +256,54 @@ class ImportExportFileGeneratorTest {
     @Test
     @DisplayName("parse - 不支持的文件类型抛 A0701")
     void testParse_UnsupportedType() {
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> generator.parse(new ByteArrayInputStream(new byte[0]), "test.txt",
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> generator.parse(
+                        new ByteArrayInputStream(new byte[0]),
+                        "test.txt",
                         List.of(ImportFieldConfig.of("a", "A", false)),
-                        (rowNum, row) -> {
-                        }));
-        assertEquals(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.getCode(), ex.getResultCode().getCode());
+                        (rowNum, row) -> {}));
+        assertEquals(
+                ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.getCode(),
+                ex.getResultCode().getCode());
     }
 
     @Test
     @DisplayName("parse - 文件名为 null 抛 A0701")
     void testParse_NullFileName() {
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> generator.parse(new ByteArrayInputStream(new byte[0]), null,
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> generator.parse(
+                        new ByteArrayInputStream(new byte[0]),
+                        null,
                         List.of(ImportFieldConfig.of("a", "A", false)),
-                        (rowNum, row) -> {
-                        }));
-        assertEquals(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.getCode(), ex.getResultCode().getCode());
+                        (rowNum, row) -> {}));
+        assertEquals(
+                ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.getCode(),
+                ex.getResultCode().getCode());
     }
 
     @Test
     @DisplayName("parse - 多列对齐字段顺序")
     void testParse_FieldOrderPreserved() throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("v1", "v2", "v3"))
-                : List.of();
-        generator.writeCsv(baos, List.of(
-                ExportFieldConfig.of("f1", "F1", 1),
-                ExportFieldConfig.of("f2", "F2", 2),
-                ExportFieldConfig.of("f3", "F3", 3)
-        ), provider);
+        ExportDataProvider provider =
+                (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("v1", "v2", "v3")) : List.of();
+        generator.writeCsv(
+                baos,
+                List.of(
+                        ExportFieldConfig.of("f1", "F1", 1),
+                        ExportFieldConfig.of("f2", "F2", 2),
+                        ExportFieldConfig.of("f3", "F3", 3)),
+                provider);
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        generator.parseCsv(new ByteArrayInputStream(baos.toByteArray()),
+        generator.parseCsv(
+                new ByteArrayInputStream(baos.toByteArray()),
                 List.of(
                         ImportFieldConfig.of("f1", "F1", false),
                         ImportFieldConfig.of("f2", "F2", false),
-                        ImportFieldConfig.of("f3", "F3", false)
-                ),
+                        ImportFieldConfig.of("f3", "F3", false)),
                 (rowNum, row) -> rows.add(row));
 
         assertEquals(1, rows.size());
@@ -323,12 +317,19 @@ class ImportExportFileGeneratorTest {
     void testWriteExcel_HiddenFieldSkipped() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         List<ExportFieldConfig> fields = List.of(
-                ExportFieldConfig.builder().field("username").label("用户名").order(1).build(),
-                ExportFieldConfig.builder().field("password").label("密码").order(2).hidden(true).build()
-        );
-        ExportDataProvider provider = (pageNum, pageSize) -> pageNum == 1
-                ? List.of(List.of("user1", "secret"))
-                : List.of();
+                ExportFieldConfig.builder()
+                        .field("username")
+                        .label("用户名")
+                        .order(1)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("password")
+                        .label("密码")
+                        .order(2)
+                        .hidden(true)
+                        .build());
+        ExportDataProvider provider =
+                (pageNum, pageSize) -> pageNum == 1 ? List.of(List.of("user1", "secret")) : List.of();
 
         generator.writeExcel(baos, fields, provider);
 
@@ -342,54 +343,64 @@ class ImportExportFileGeneratorTest {
     @Test
     @DisplayName("parseExcel - Excel 格式错误抛 A0704")
     void testParseExcel_InvalidFormat() {
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> generator.parseExcel(new ByteArrayInputStream("not an excel".getBytes(StandardCharsets.UTF_8)),
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> generator.parseExcel(
+                        new ByteArrayInputStream("not an excel".getBytes(StandardCharsets.UTF_8)),
                         List.of(ImportFieldConfig.of("a", "A", false)),
-                        (rowNum, row) -> {
-                        }));
-        assertEquals(ResultCode.IMPORT_FILE_PARSE_ERROR.getCode(), ex.getResultCode().getCode());
+                        (rowNum, row) -> {}));
+        assertEquals(
+                ResultCode.IMPORT_FILE_PARSE_ERROR.getCode(), ex.getResultCode().getCode());
     }
 
     @Test
     @DisplayName("parseCsv - 表头与模板不一致抛 A0705")
     void testParseCsv_HeaderMismatch() {
         String csv = "wrongHeader\nvalue1\n";
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> generator.parseCsv(new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> generator.parseCsv(
+                        new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8)),
                         List.of(ImportFieldConfig.of("a", "正确表头", true)),
-                        (rowNum, row) -> {
-                        }));
-        assertEquals(ResultCode.IMPORT_TEMPLATE_MISMATCH.getCode(), ex.getResultCode().getCode());
+                        (rowNum, row) -> {}));
+        assertEquals(
+                ResultCode.IMPORT_TEMPLATE_MISMATCH.getCode(),
+                ex.getResultCode().getCode());
     }
 
     // ==================== 工具方法 ====================
 
     private List<Map<String, String>> readExcel(byte[] bytes) {
         List<Map<String, String>> result = new ArrayList<>();
-        EasyExcel.read(new ByteArrayInputStream(bytes), new com.alibaba.excel.read.listener.ReadListener<Map<Integer, String>>() {
-            final Map<Integer, String> headers = new LinkedHashMap<>();
+        EasyExcel.read(
+                        new ByteArrayInputStream(bytes),
+                        new com.alibaba.excel.read.listener.ReadListener<Map<Integer, String>>() {
+                            final Map<Integer, String> headers = new LinkedHashMap<>();
 
-            @Override
-            public void invokeHead(Map<Integer, com.alibaba.excel.metadata.data.ReadCellData<?>> cellDataMap,
-                                   com.alibaba.excel.context.AnalysisContext context) {
-                cellDataMap.forEach((k, v) -> headers.put(k, v.getStringValue()));
-            }
+                            @Override
+                            public void invokeHead(
+                                    Map<Integer, com.alibaba.excel.metadata.data.ReadCellData<?>> cellDataMap,
+                                    com.alibaba.excel.context.AnalysisContext context) {
+                                cellDataMap.forEach((k, v) -> headers.put(k, v.getStringValue()));
+                            }
 
-            @Override
-            public void invoke(Map<Integer, String> data, com.alibaba.excel.context.AnalysisContext context) {
-                Map<String, String> row = new LinkedHashMap<>();
-                for (Map.Entry<Integer, String> entry : headers.entrySet()) {
-                    if (data.containsKey(entry.getKey())) {
-                        row.put(entry.getValue(), data.get(entry.getKey()));
-                    }
-                }
-                result.add(row);
-            }
+                            @Override
+                            public void invoke(
+                                    Map<Integer, String> data, com.alibaba.excel.context.AnalysisContext context) {
+                                Map<String, String> row = new LinkedHashMap<>();
+                                for (Map.Entry<Integer, String> entry : headers.entrySet()) {
+                                    if (data.containsKey(entry.getKey())) {
+                                        row.put(entry.getValue(), data.get(entry.getKey()));
+                                    }
+                                }
+                                result.add(row);
+                            }
 
-            @Override
-            public void doAfterAllAnalysed(com.alibaba.excel.context.AnalysisContext context) {
-            }
-        }).sheet().doRead();
+                            @Override
+                            public void doAfterAllAnalysed(com.alibaba.excel.context.AnalysisContext context) {}
+                        })
+                .sheet()
+                .doRead();
         return result;
     }
 
@@ -404,11 +415,12 @@ class ImportExportFileGeneratorTest {
             }
         }
         try (InputStreamReader reader = new InputStreamReader(pis, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder()
-                     .setHeader()
-                     .setSkipHeaderRecord(true)
-                     .build()
-                     .parse(reader)) {
+                CSVParser parser = CSVFormat.DEFAULT
+                        .builder()
+                        .setHeader()
+                        .setSkipHeaderRecord(true)
+                        .build()
+                        .parse(reader)) {
             for (var record : parser) {
                 Map<String, String> row = new LinkedHashMap<>();
                 for (var entry : parser.getHeaderMap().entrySet()) {

@@ -28,13 +28,6 @@ import com.pei.dehaze.model.vo.AiAgentThoughtVO;
 import com.pei.dehaze.model.vo.AiConversationVO;
 import com.pei.dehaze.model.vo.AiMessagePageVO;
 import com.pei.dehaze.model.vo.AiMessageVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,6 +41,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 会话与消息服务（非推理类端点）。
@@ -64,9 +63,6 @@ public class AiConversationService {
 
     /** 未指定 Agent 时的平台默认 Agent 编码 */
     private static final String DEFAULT_AGENT_CODE = "default";
-
-    /** 会话默认模型标识（对齐 python AI_DEFAULT_MODEL） */
-    private static final String DEFAULT_MODEL = "qwen3-0.6b";
 
     /** 置顶会话上限 */
     private static final int PINNED_CONVERSATION_LIMIT = 10;
@@ -115,6 +111,8 @@ public class AiConversationService {
 
     private final AiInsightMapper insightMapper;
 
+    private final AiDefaultModelResolver defaultModelResolver;
+
     private final StringRedisTemplate stringRedisTemplate;
 
     private final ObjectMapper objectMapper;
@@ -122,20 +120,20 @@ public class AiConversationService {
     /**
      * 会话导出结果（控制器直接写响应体）
      */
-    public record ConversationExport(String filename, String contentType, String content) {
-    }
+    public record ConversationExport(String filename, String contentType, String content) {}
 
     // ── 会话 CRUD ─────────────────────────────────────────────
 
     @Transactional
     public AiConversationVO create(Long userId, AiConversationCreateForm form) {
-        String scene = form.getScene() != null && SCENE_PROMPTS.containsKey(form.getScene())
-                ? form.getScene() : "general";
+        String scene =
+                form.getScene() != null && SCENE_PROMPTS.containsKey(form.getScene()) ? form.getScene() : "general";
         AgentAnchor anchor = resolveAgentAnchor(form.getAgentCode());
         SysAiConversation conv = new SysAiConversation();
         conv.setUserId(userId);
         conv.setTitle(form.getTitle() != null && !form.getTitle().isBlank() ? form.getTitle() : "新对话");
-        conv.setModel(form.getModel() != null ? form.getModel() : DEFAULT_MODEL);
+        conv.setModel(
+                form.getModel() != null ? form.getModel() : defaultModelResolver.resolveForUser(userId, anchor.code()));
         conv.setAgentCode(anchor.code());
         conv.setAgentVersion(anchor.version());
         conv.setSystemPrompt(form.getSystemPrompt() != null ? form.getSystemPrompt() : SCENE_PROMPTS.get(scene));
@@ -158,7 +156,8 @@ public class AiConversationService {
         } else {
             statusFilter = status == null ? 1 : (status == 0 ? null : status);
         }
-        boolean keywordPresent = query.getKeyword() != null && !query.getKeyword().isBlank();
+        boolean keywordPresent =
+                query.getKeyword() != null && !query.getKeyword().isBlank();
         LambdaQueryWrapper<SysAiConversation> wrapper = new LambdaQueryWrapper<SysAiConversation>()
                 .eq(!admin, SysAiConversation::getUserId, userId)
                 .eq(statusFilter != null, SysAiConversation::getStatus, statusFilter)
@@ -176,8 +175,8 @@ public class AiConversationService {
                 if (hitConvIds.isEmpty()) {
                     wrapper.and(w -> w.like(SysAiConversation::getTitle, keyword));
                 } else {
-                    wrapper.and(w -> w.like(SysAiConversation::getTitle, keyword)
-                            .or().in(SysAiConversation::getId, hitConvIds));
+                    wrapper.and(w ->
+                            w.like(SysAiConversation::getTitle, keyword).or().in(SysAiConversation::getId, hitConvIds));
                 }
             }
         }
@@ -235,6 +234,11 @@ public class AiConversationService {
             AgentAnchor anchor = resolveAgentAnchor(form.getAgentCode());
             conv.setAgentCode(anchor.code());
             conv.setAgentVersion(anchor.version());
+            // 切换 Agent 且未同时显式指定模型时，会话模型按新 Agent 重新解析
+            // （否则"换了 Agent 模型不变"，与新建会话的解析口径不一致）
+            if (form.getModel() == null) {
+                conv.setModel(defaultModelResolver.resolveForUser(userId, anchor.code()));
+            }
         }
         if (form.getPinned() != null) {
             if (Integer.valueOf(1).equals(form.getPinned())) {
@@ -260,8 +264,8 @@ public class AiConversationService {
 
     @Transactional
     public AiConversationVO restore(Long convId, Long userId) {
-        SysAiConversation conv = conversationMapper.selectInTrash(convId, userId,
-                LocalDateTime.now().minusDays(RECYCLE_WINDOW_DAYS));
+        SysAiConversation conv = conversationMapper.selectInTrash(
+                convId, userId, LocalDateTime.now().minusDays(RECYCLE_WINDOW_DAYS));
         if (conv == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在或已超出恢复窗口");
         }
@@ -273,9 +277,10 @@ public class AiConversationService {
 
     public IPage<AiConversationVO> listTrash(Long userId, int pageNum, int pageSize) {
         Page<SysAiConversation> page = new Page<>(pageNum, pageSize);
-        IPage<SysAiConversation> trash = conversationMapper.selectTrashPage(page, userId,
-                LocalDateTime.now().minusDays(RECYCLE_WINDOW_DAYS));
-        List<AiConversationVO> records = trash.getRecords().stream().map(this::toVOWithUnread).toList();
+        IPage<SysAiConversation> trash = conversationMapper.selectTrashPage(
+                page, userId, LocalDateTime.now().minusDays(RECYCLE_WINDOW_DAYS));
+        List<AiConversationVO> records =
+                trash.getRecords().stream().map(this::toVOWithUnread).toList();
         return pageOf(page, records, trash.getTotal());
     }
 
@@ -303,8 +308,7 @@ public class AiConversationService {
                     }
                     conversationMapper.softDeleteByIds(List.of(conv.getId()));
                 }
-                default -> throw new BusinessException(ResultCode.PARAM_ERROR,
-                        "不支持的批量操作类型: " + form.getAction());
+                default -> throw new BusinessException(ResultCode.PARAM_ERROR, "不支持的批量操作类型: " + form.getAction());
             }
             count++;
         }
@@ -355,23 +359,32 @@ public class AiConversationService {
         String fmt = format == null ? "markdown" : format;
         if ("json".equals(fmt)) {
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("conversation", Map.of(
-                    "id", conv.getId(),
-                    "title", conv.getTitle() == null ? "" : conv.getTitle(),
-                    "model", conv.getModel() == null ? "" : conv.getModel(),
-                    "agent_code", conv.getAgentCode() == null ? "" : conv.getAgentCode(),
-                    "create_time", conv.getCreateTime() == null ? "" : conv.getCreateTime().toString()));
+            payload.put(
+                    "conversation",
+                    Map.of(
+                            "id", conv.getId(),
+                            "title", conv.getTitle() == null ? "" : conv.getTitle(),
+                            "model", conv.getModel() == null ? "" : conv.getModel(),
+                            "agent_code", conv.getAgentCode() == null ? "" : conv.getAgentCode(),
+                            "create_time",
+                                    conv.getCreateTime() == null
+                                            ? ""
+                                            : conv.getCreateTime().toString()));
             List<Map<String, Object>> messages = new ArrayList<>();
             for (SysAiMessage msg : chain) {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("role", msg.getRole());
                 item.put("content", msg.getContent() == null ? "" : msg.getContent());
-                item.put("create_time", msg.getCreateTime() == null ? "" : msg.getCreateTime().toString());
+                item.put(
+                        "create_time",
+                        msg.getCreateTime() == null ? "" : msg.getCreateTime().toString());
                 messages.add(item);
             }
             payload.put("messages", messages);
             try {
-                return new ConversationExport("conversation_" + convId + ".json", "application/json",
+                return new ConversationExport(
+                        "conversation_" + convId + ".json",
+                        "application/json",
                         objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload));
             } catch (Exception e) {
                 throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "会话导出失败");
@@ -379,8 +392,11 @@ public class AiConversationService {
         }
         StringBuilder sb = new StringBuilder("# ").append(conv.getTitle()).append("\n\n");
         for (SysAiMessage msg : chain) {
-            sb.append("## ").append("user".equals(msg.getRole()) ? "用户" : "助手").append("\n\n")
-                    .append(msg.getContent() == null ? "" : msg.getContent()).append("\n\n");
+            sb.append("## ")
+                    .append("user".equals(msg.getRole()) ? "用户" : "助手")
+                    .append("\n\n")
+                    .append(msg.getContent() == null ? "" : msg.getContent())
+                    .append("\n\n");
         }
         return new ConversationExport("conversation_" + convId + ".md", "text/markdown", sb.toString());
     }
@@ -400,15 +416,18 @@ public class AiConversationService {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在");
         }
         Page<SysAiMessage> cursor = new Page<>(1, limit + 1L, false);
-        List<SysAiMessage> rows = messageMapper.selectPage(cursor,
-                new LambdaQueryWrapper<SysAiMessage>()
-                        .eq(SysAiMessage::getConversationId, convId)
-                        .lt(before != null, SysAiMessage::getId, before)
-                        .orderByDesc(SysAiMessage::getId)).getRecords();
+        List<SysAiMessage> rows = messageMapper
+                .selectPage(
+                        cursor,
+                        new LambdaQueryWrapper<SysAiMessage>()
+                                .eq(SysAiMessage::getConversationId, convId)
+                                .lt(before != null, SysAiMessage::getId, before)
+                                .orderByDesc(SysAiMessage::getId))
+                .getRecords();
         boolean hasMore = rows.size() > limit;
         List<SysAiMessage> pageRecords = hasMore ? rows.subList(0, limit) : rows;
-        long total = messageMapper.selectCount(new LambdaQueryWrapper<SysAiMessage>()
-                .eq(SysAiMessage::getConversationId, convId));
+        long total = messageMapper.selectCount(
+                new LambdaQueryWrapper<SysAiMessage>().eq(SysAiMessage::getConversationId, convId));
         List<Long> assistantIds = pageRecords.stream()
                 .filter(m -> "assistant".equals(m.getRole()))
                 .map(SysAiMessage::getId)
@@ -418,7 +437,8 @@ public class AiConversationService {
         for (SysAiMessage msg : pageRecords) {
             AiMessageVO vo = toMessageVO(msg);
             vo.setThoughts(thoughtsMap.getOrDefault(msg.getId(), List.of()).stream()
-                    .map(this::toThoughtVO).toList());
+                    .map(this::toThoughtVO)
+                    .toList());
             records.add(vo);
         }
         AiMessagePageVO result = new AiMessagePageVO();
@@ -447,12 +467,15 @@ public class AiConversationService {
         if (msg == null || !Objects.equals(msg.getConversationId(), convId)) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
         }
-        return messageMapper.selectList(new LambdaQueryWrapper<SysAiMessage>()
+        return messageMapper
+                .selectList(new LambdaQueryWrapper<SysAiMessage>()
                         .eq(SysAiMessage::getConversationId, convId)
                         .eq(SysAiMessage::getParentMessageId, msgId)
                         .orderByDesc(SysAiMessage::getCreateTime)
                         .orderByDesc(SysAiMessage::getId))
-                .stream().map(this::toMessageVO).toList();
+                .stream()
+                .map(this::toMessageVO)
+                .toList();
     }
 
     @Transactional
@@ -484,13 +507,13 @@ public class AiConversationService {
     /**
      * 会话锚定的 Agent 编码与已发布版本号（无已发布版本时为 null）
      */
-    private record AgentAnchor(String code, Integer version) {
-    }
+    private record AgentAnchor(String code, Integer version) {}
 
     private AgentAnchor resolveAgentAnchor(String agentCode) {
         String code = agentCode == null || agentCode.isBlank() ? DEFAULT_AGENT_CODE : agentCode.trim();
         SysAiAgent agent = agentMapper.selectOne(new LambdaQueryWrapper<SysAiAgent>()
-                .eq(SysAiAgent::getAgentCode, code).last("LIMIT 1"));
+                .eq(SysAiAgent::getAgentCode, code)
+                .last("LIMIT 1"));
         if (agent == null) {
             return new AgentAnchor(code, null);
         }
@@ -516,11 +539,14 @@ public class AiConversationService {
         if (convIds == null || convIds.isEmpty()) {
             return Set.of();
         }
-        return conversationMapper.selectList(new LambdaQueryWrapper<SysAiConversation>()
+        return conversationMapper
+                .selectList(new LambdaQueryWrapper<SysAiConversation>()
                         .select(SysAiConversation::getId)
                         .eq(SysAiConversation::getUserId, userId)
                         .in(SysAiConversation::getId, convIds))
-                .stream().map(SysAiConversation::getId).collect(Collectors.toSet());
+                .stream()
+                .map(SysAiConversation::getId)
+                .collect(Collectors.toSet());
     }
 
     /** 消息归属校验：消息表无 user_id，归属由所属会话判定（对齐 python get_by_id_and_user 的 join 语义） */
@@ -564,8 +590,8 @@ public class AiConversationService {
         List<SysAiMessage> all = messageMapper.selectList(new LambdaQueryWrapper<SysAiMessage>()
                 .eq(SysAiMessage::getConversationId, convId)
                 .orderByAsc(SysAiMessage::getId));
-        Map<Long, SysAiMessage> byId = all.stream()
-                .collect(Collectors.toMap(SysAiMessage::getId, m -> m, (a, b) -> a, LinkedHashMap::new));
+        Map<Long, SysAiMessage> byId =
+                all.stream().collect(Collectors.toMap(SysAiMessage::getId, m -> m, (a, b) -> a, LinkedHashMap::new));
         List<SysAiMessage> chain = new ArrayList<>();
         Set<Long> visited = new HashSet<>();
         Long cursor = tailMsgId;
@@ -590,7 +616,8 @@ public class AiConversationService {
                 .orderByAsc(SysAiAgentThought::getPosition));
         Map<Long, List<SysAiAgentThought>> grouped = new HashMap<>();
         for (SysAiAgentThought thought : thoughts) {
-            grouped.computeIfAbsent(thought.getMessageId(), k -> new ArrayList<>()).add(thought);
+            grouped.computeIfAbsent(thought.getMessageId(), k -> new ArrayList<>())
+                    .add(thought);
         }
         return grouped;
     }
@@ -605,19 +632,19 @@ public class AiConversationService {
         List<Long> convIds = results.stream().map(AiConversationVO::getId).toList();
         Set<Long> userIds = results.stream().map(AiConversationVO::getUserId).collect(Collectors.toSet());
         Map<Long, String> names = insightMapper.listUserDisplayNames(new ArrayList<>(userIds)).stream()
-                .collect(Collectors.toMap(DisplayNameRead::getId,
-                        r -> r.getName() == null ? "" : r.getName(), (a, b) -> a));
-        Map<Long, ConversationConsumptionRead> consumption = insightMapper
-                .sumConsumptionByConversationIds(convIds).stream()
-                .collect(Collectors.toMap(ConversationConsumptionRead::getConversationId, r -> r, (a, b) -> a));
+                .collect(Collectors.toMap(
+                        DisplayNameRead::getId, r -> r.getName() == null ? "" : r.getName(), (a, b) -> a));
+        Map<Long, ConversationConsumptionRead> consumption =
+                insightMapper.sumConsumptionByConversationIds(convIds).stream()
+                        .collect(Collectors.toMap(ConversationConsumptionRead::getConversationId, r -> r, (a, b) -> a));
         Map<Long, Set<Integer>> anomalyStatus = new HashMap<>();
         for (AnomalyStatusRead row : insightMapper.listAnomalyStatusByConversations(convIds)) {
-            anomalyStatus.computeIfAbsent(row.getConversationId(), k -> new HashSet<>())
+            anomalyStatus
+                    .computeIfAbsent(row.getConversationId(), k -> new HashSet<>())
                     .add(row.getStatus());
         }
         Set<Long> quotaConvIds = new java.util.HashSet<>(insightMapper.listQuotaAnomalyConversationIds(convIds));
-        Set<Long> riskyToolConvIds = new java.util.HashSet<>(
-                insightMapper.listRiskyToolConversationIds(convIds));
+        Set<Long> riskyToolConvIds = new java.util.HashSet<>(insightMapper.listRiskyToolConversationIds(convIds));
         for (AiConversationVO result : results) {
             result.setUserName(names.get(result.getUserId()));
             ConversationConsumptionRead stat = consumption.get(result.getId());
@@ -652,8 +679,10 @@ public class AiConversationService {
             return;
         }
         Map<Long, Long> matched = messageMapper.findLatestIdsByKeyword(convIds, keyword).stream()
-                .collect(Collectors.toMap(SysAiMessageMapper.KeywordMatchRow::getConversationId,
-                        SysAiMessageMapper.KeywordMatchRow::getMessageId, (a, b) -> a));
+                .collect(Collectors.toMap(
+                        SysAiMessageMapper.KeywordMatchRow::getConversationId,
+                        SysAiMessageMapper.KeywordMatchRow::getMessageId,
+                        (a, b) -> a));
         for (AiConversationVO result : results) {
             result.setMatchedMessageId(matched.get(result.getId()));
         }

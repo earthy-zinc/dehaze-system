@@ -17,10 +17,19 @@ class BillingRecordResult(OrmResult):
     message_id: int | None = Field(default=None, description="消息ID")
     model: str = Field(description="实际使用模型标识")
     actual_model: str | None = Field(default=None, description="用户原选模型标识")
-    bill_type: str = Field(description="计费类型(chat;chat_subagent;tool_llm;kb_inject;asr;tts)")
+    bill_type: str = Field(
+        description="计费类型(chat;chat_subagent;tool_llm;kb_inject;embedding;rerank;asr;tts)"
+    )
     input_tokens: int = Field(description="输入Token数")
     cached_input_tokens: int = Field(description="缓存命中的输入Token数")
     output_tokens: int = Field(description="输出Token数")
+    quantity: Decimal | None = Field(
+        default=None, description="非token计量数量(张/秒/万字符;token类模型为null)"
+    )
+    quantity_unit: str | None = Field(
+        default=None,
+        description="非token计量单位(image:张;second:秒;ten_thousand_chars:万字符;frame:帧)",
+    )
     credits: int = Field(description="消耗积分数")
     credits_saved: int = Field(description="缓存命中节省积分数")
     tool_credits: int | None = Field(default=None, description="工具调用额外积分")

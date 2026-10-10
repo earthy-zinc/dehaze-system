@@ -14,7 +14,7 @@ public class SysEvalLog extends BaseEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private Long algorithmId;
+    private String modelId;
 
     private Long predFileId;
 

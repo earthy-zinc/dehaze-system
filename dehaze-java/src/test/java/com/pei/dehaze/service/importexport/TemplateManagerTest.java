@@ -1,5 +1,9 @@
 package com.pei.dehaze.service.importexport;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
@@ -8,6 +12,9 @@ import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,16 +23,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 导入模板管理器单元测试
@@ -62,8 +59,7 @@ class TemplateManagerTest {
     @DisplayName("downloadTemplate - excel 格式调用 writeTemplateExcel")
     void testDownloadTemplate_Excel() throws IOException {
         ImportHandler handler = new StubImportHandler(
-                List.of(ImportFieldConfig.of("username", "用户名", true)),
-                List.of(Map.of("username", "zhangsan")));
+                List.of(ImportFieldConfig.of("username", "用户名", true)), List.of(Map.of("username", "zhangsan")));
         when(importHandlerRegistry.getHandler("user")).thenReturn(handler);
 
         templateManager.downloadTemplate("user", "excel", response);
@@ -76,9 +72,8 @@ class TemplateManagerTest {
     @Test
     @DisplayName("downloadTemplate - csv 格式调用 writeTemplateCsv")
     void testDownloadTemplate_Csv() throws IOException {
-        ImportHandler handler = new StubImportHandler(
-                List.of(ImportFieldConfig.of("username", "用户名", true)),
-                List.of());
+        ImportHandler handler =
+                new StubImportHandler(List.of(ImportFieldConfig.of("username", "用户名", true)), List.of());
         when(importHandlerRegistry.getHandler("user")).thenReturn(handler);
 
         templateManager.downloadTemplate("user", "csv", response);
@@ -91,9 +86,8 @@ class TemplateManagerTest {
     @Test
     @DisplayName("downloadTemplate - null 格式默认走 excel")
     void testDownloadTemplate_NullFormatDefaultsExcel() throws IOException {
-        ImportHandler handler = new StubImportHandler(
-                List.of(ImportFieldConfig.of("username", "用户名", true)),
-                List.of());
+        ImportHandler handler =
+                new StubImportHandler(List.of(ImportFieldConfig.of("username", "用户名", true)), List.of());
         when(importHandlerRegistry.getHandler("user")).thenReturn(handler);
 
         templateManager.downloadTemplate("user", null, response);
@@ -107,9 +101,11 @@ class TemplateManagerTest {
         when(importHandlerRegistry.getHandler("unknown"))
                 .thenThrow(new BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, "模块 unknown 不支持导入"));
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> templateManager.downloadTemplate("unknown", "excel", response));
-        assertEquals(ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(), ex.getResultCode().getCode());
+        BusinessException ex = assertThrows(
+                BusinessException.class, () -> templateManager.downloadTemplate("unknown", "excel", response));
+        assertEquals(
+                ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(),
+                ex.getResultCode().getCode());
     }
 
     @Test
@@ -118,24 +114,25 @@ class TemplateManagerTest {
         ImportHandler handler = new StubImportHandler(List.of(), List.of());
         when(importHandlerRegistry.getHandler("user")).thenReturn(handler);
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> templateManager.downloadTemplate("user", "excel", response));
-        assertEquals(ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(), ex.getResultCode().getCode());
+        BusinessException ex = assertThrows(
+                BusinessException.class, () -> templateManager.downloadTemplate("user", "excel", response));
+        assertEquals(
+                ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(),
+                ex.getResultCode().getCode());
     }
 
     @Test
     @DisplayName("downloadTemplate - 生成器异常包装为 BusinessException")
     void testDownloadTemplate_GeneratorThrows() throws IOException {
-        ImportHandler handler = new StubImportHandler(
-                List.of(ImportFieldConfig.of("username", "用户名", true)),
-                List.of());
+        ImportHandler handler =
+                new StubImportHandler(List.of(ImportFieldConfig.of("username", "用户名", true)), List.of());
         when(importHandlerRegistry.getHandler("user")).thenReturn(handler);
-        doThrow(new IOException("磁盘已满"))
-                .when(fileGenerator).writeTemplateCsv(any(), anyList(), anyList());
+        doThrow(new IOException("磁盘已满")).when(fileGenerator).writeTemplateCsv(any(), anyList(), anyList());
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> templateManager.downloadTemplate("user", "csv", response));
-        assertEquals(ResultCode.SYSTEM_EXECUTION_ERROR.getCode(), ex.getResultCode().getCode());
+        BusinessException ex =
+                assertThrows(BusinessException.class, () -> templateManager.downloadTemplate("user", "csv", response));
+        assertEquals(
+                ResultCode.SYSTEM_EXECUTION_ERROR.getCode(), ex.getResultCode().getCode());
     }
 
     private static class StubImportHandler implements ImportHandler {
@@ -158,7 +155,8 @@ class TemplateManagerTest {
         }
 
         @Override
-        public ImportResult importBatch(List<Map<String, Object>> rows, ImportOptions options, ProgressCallback callback) {
+        public ImportResult importBatch(
+                List<Map<String, Object>> rows, ImportOptions options, ProgressCallback callback) {
             return ImportResult.success(0, 0);
         }
 

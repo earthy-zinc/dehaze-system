@@ -17,8 +17,7 @@ public final class LogArchiveUtils {
     private static final String LOG_HOME = "./logs";
     private static final String[] LOG_LEVELS = {"info", "error"};
 
-    private LogArchiveUtils() {
-    }
+    private LogArchiveUtils() {}
 
     /**
      * 归档当天已存在且非空的活动日志文件为 {level}.{n}.log，

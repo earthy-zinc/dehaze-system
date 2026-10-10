@@ -1,7 +1,6 @@
 """预测结果上传存储：上传到默认存储后端（与文件管理模块共享存储桶）。"""
 
 import asyncio
-import io
 import logging
 import time
 from datetime import datetime
@@ -15,16 +14,16 @@ from app.service.storage.factory import get_storage_service
 logger = logging.getLogger(__name__)
 
 
-async def upload_result(result_bytes: io.BytesIO, algorithm_name: str) -> str:
+async def upload_result(result_bytes: bytes, model_name: str) -> str:
     """上传预测结果到存储。
 
     返回 object_name（对象键），URL 由响应层通过 storage.get_url 拼接。
     """
     date_str = datetime.now().strftime("%Y%m%d")
-    filename = f"{algorithm_name}_{int(time.time() * 1000)}.png"
+    filename = f"{model_name}_{int(time.time() * 1000)}.png"
     object_name = f"predictions/{date_str}/{filename}"
 
-    data = result_bytes.getvalue()
+    data = result_bytes
     storage_service = get_storage_service()
     bucket_name = settings.MINIO_BUCKET
     loop = asyncio.get_running_loop()

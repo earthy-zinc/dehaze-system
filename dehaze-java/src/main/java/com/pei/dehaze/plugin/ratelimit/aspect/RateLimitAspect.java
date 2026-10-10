@@ -5,6 +5,7 @@ import com.pei.dehaze.common.exception.RateLimitException;
 import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.security.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -16,8 +17,6 @@ import org.redisson.api.RateType;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
-
 @Aspect
 @Component
 @RequiredArgsConstructor
@@ -25,11 +24,7 @@ public class RateLimitAspect {
     private final RedissonClient redissonClient;
     private final HttpServletRequest request;
 
-    private static final String[] IP_HEADERS = {
-            "X-Forwarded-For",
-            "X-Real-IP",
-            "Proxy-Client-IP",
-            "WL-Proxy-Client-IP"
+    private static final String[] IP_HEADERS = {"X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP"
     };
 
     @Around("@annotation(rateLimit)")
@@ -53,11 +48,7 @@ public class RateLimitAspect {
             RRateLimiter rateLimiter = redissonClient.getRateLimiter(key);
             if (!rateLimiter.isExists()) {
                 rateLimiter.trySetRate(
-                        RateType.OVERALL,
-                        rateLimit.maxRequests(),
-                        rateLimit.timeWindow(),
-                        RateIntervalUnit.SECONDS
-                );
+                        RateType.OVERALL, rateLimit.maxRequests(), rateLimit.timeWindow(), RateIntervalUnit.SECONDS);
             }
             if (!rateLimiter.tryAcquire()) {
                 throw new RateLimitException(rateLimit.message());

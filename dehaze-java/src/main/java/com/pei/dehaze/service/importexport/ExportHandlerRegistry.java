@@ -2,11 +2,10 @@ package com.pei.dehaze.service.importexport;
 
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
-import org.springframework.stereotype.Component;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.stereotype.Component;
 
 /**
  * 导出处理器注册表
@@ -21,8 +20,7 @@ public class ExportHandlerRegistry {
         for (ExportHandler handler : handlerList) {
             ExportHandler existing = handlers.put(handler.getModule(), handler);
             if (existing != null) {
-                throw new IllegalStateException(
-                        "Duplicate ExportHandler for module: " + handler.getModule());
+                throw new IllegalStateException("Duplicate ExportHandler for module: " + handler.getModule());
             }
         }
     }
@@ -30,8 +28,7 @@ public class ExportHandlerRegistry {
     public ExportHandler getHandler(String module) {
         ExportHandler handler = handlers.get(module);
         if (handler == null) {
-            throw new BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED,
-                    "模块 " + module + " 不支持导出");
+            throw new BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, "模块 " + module + " 不支持导出");
         }
         return handler;
     }

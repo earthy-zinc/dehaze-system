@@ -20,7 +20,7 @@ CTX_AVG_KEY = "ai:ctx:avg:{conversation_id}"
 CTX_AVG_TTL = 600  # 10 分钟
 
 
-def _approx_tokens(text: str) -> int:
+def approx_tokens(text: str) -> int:
     """近似 Token 数：非 ASCII 字符（中文等）按 1 字符 ≈ 1 token，ASCII 按 4 字符 ≈ 1 token。
 
     预扣口径必须保守（宁多不少），len//4 对中文严重低估会令配额校验形同虚设。
@@ -54,7 +54,7 @@ class EstimateService:
         context_tokens = ctx_avg * 0.8
 
         # 当前消息 Token × 保守系数
-        msg_tokens = _approx_tokens(content) * settings.AI_BILLING_ESTIMATE_INPUT_FACTOR
+        msg_tokens = approx_tokens(content) * settings.AI_BILLING_ESTIMATE_INPUT_FACTOR
 
         # 记忆注入 + 工具定义
         input_estimate = (
@@ -80,7 +80,7 @@ class EstimateService:
     ) -> int:
         """预估多步推理中单步的积分消耗（滚动预算校验用）"""
         rates = await self.rate_provider.get_rates(db, model_id)
-        ctx_tokens = sum(_approx_tokens(msg.get("content") or "") for msg in messages)
+        ctx_tokens = sum(approx_tokens(msg.get("content") or "") for msg in messages)
         output_estimate = rates["max_output_tokens"] * settings.AI_BILLING_ESTIMATE_OUTPUT_FACTOR
         return int(ctx_tokens * rates["input_rate"] + output_estimate * rates["output_rate"])
 

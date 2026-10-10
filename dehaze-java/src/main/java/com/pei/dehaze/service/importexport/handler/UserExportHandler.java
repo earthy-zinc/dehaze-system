@@ -11,13 +11,12 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 用户导出处理器
@@ -50,25 +49,53 @@ public class UserExportHandler implements ExportHandler {
     @Override
     public List<ExportFieldConfig> getFieldConfigs() {
         return List.of(
-                ExportFieldConfig.builder().field("username").label("用户名").order(1).build(),
-                ExportFieldConfig.builder().field("nickname").label("昵称").order(2).build(),
-                ExportFieldConfig.builder().field("deptName").label("部门").order(3).build(),
-                ExportFieldConfig.builder().field("genderLabel").label("性别").order(4).build(),
-                ExportFieldConfig.builder().field("mobile").label("手机号").order(5).build(),
+                ExportFieldConfig.builder()
+                        .field("username")
+                        .label("用户名")
+                        .order(1)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("nickname")
+                        .label("昵称")
+                        .order(2)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("deptName")
+                        .label("部门")
+                        .order(3)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("genderLabel")
+                        .label("性别")
+                        .order(4)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("mobile")
+                        .label("手机号")
+                        .order(5)
+                        .build(),
                 ExportFieldConfig.builder().field("email").label("邮箱").order(6).build(),
-                ExportFieldConfig.builder().field("statusLabel").label("状态").order(7).build(),
-                ExportFieldConfig.builder().field("createTime").label("创建时间").order(8)
-                        .dateFormat("yyyy-MM-dd HH:mm:ss").build()
-        );
+                ExportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态")
+                        .order(7)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("createTime")
+                        .label("创建时间")
+                        .order(8)
+                        .dateFormat("yyyy-MM-dd HH:mm:ss")
+                        .build());
     }
 
     @Override
     public ExportDataProvider getDataProvider(ExportContext ctx) {
-        List<ExportFieldConfig> fields = ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
-                ? getFieldConfigs()
-                : getFieldConfigs().stream()
-                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
-                .toList();
+        List<ExportFieldConfig> fields =
+                ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
+                        ? getFieldConfigs()
+                        : getFieldConfigs().stream()
+                                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
+                                .toList();
 
         return (pageNum, pageSize) -> {
             UserPageQuery query = buildQuery(ctx.getQueryParams(), pageNum, PAGE_SIZE);
@@ -130,12 +157,12 @@ public class UserExportHandler implements ExportHandler {
             case "genderLabel" -> nullToEmpty(vo.getGenderLabel());
             case "mobile" -> nullToEmpty(vo.getMobile());
             case "email" -> nullToEmpty(vo.getEmail());
-            case "statusLabel" -> vo.getStatus() == null
-                    ? ""
-                    : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
-            case "createTime" -> vo.getCreateTime() == null
-                    ? ""
-                    : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(vo.getCreateTime());
+            case "statusLabel" ->
+                vo.getStatus() == null ? "" : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
+            case "createTime" ->
+                vo.getCreateTime() == null
+                        ? ""
+                        : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(vo.getCreateTime());
             default -> "";
         };
     }

@@ -19,5 +19,4 @@ public class AiEvalDatasetUpdateForm {
     @Size(max = 512, message = "评测集描述长度不能超过512")
     @Schema(description = "评测集描述")
     private String description;
-
 }

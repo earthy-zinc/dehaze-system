@@ -36,14 +36,14 @@ public class SysInputHistory extends BaseEntity {
     /** 结果缩略图URL */
     private String resultThumbnailUrl;
 
-    /** 使用的算法ID */
-    private Long algorithmId;
+    /** 使用的图像模型标识（统一模型规范 slug） */
+    private String modelId;
 
-    /** 算法名称（冗余字段） */
-    private String algorithmName;
+    /** 模型名称（冗余字段） */
+    private String modelName;
 
-    /** 算法参数（JSON） */
-    private String algorithmParams;
+    /** 模型参数（JSON） */
+    private String modelParams;
 
     /** 处理耗时（毫秒） */
     private Integer processingTime;

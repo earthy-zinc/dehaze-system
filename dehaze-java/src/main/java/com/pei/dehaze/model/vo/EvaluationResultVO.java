@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 @Schema(description = "评估结果视图对象")
 @Data
@@ -19,7 +18,13 @@ public class EvaluationResultVO {
     @Schema(description = "评估指标结果（PSNR/SSIM/LPIPS/NIQE/等，status=completed 时返回）")
     private Map<String, Double> metrics;
 
-    @Schema(description = "处理时间（毫秒）")
+    @Schema(description = "预测图内容MD5（status=completed 时返回）")
+    private String predMd5;
+
+    @Schema(description = "参考图内容MD5（status=completed 时返回）")
+    private String gtMd5;
+
+    @Schema(description = "处理时间（秒）")
     private Integer time;
 
     @Schema(description = "失败错误信息（status=failed 时返回）")

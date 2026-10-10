@@ -4,14 +4,13 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.AiA2aMapper;
 import com.pei.dehaze.service.AiA2aService;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /** A2A Agent Card 实现（对齐 python a2a_server.build_agent_card） */
 @Slf4j
@@ -57,8 +56,7 @@ public class AiA2aServiceImpl implements AiA2aService {
         card.put("capabilities", Map.of("streaming", true, "pushNotifications", false));
         card.put("defaultInputModes", List.of("text", "file"));
         card.put("defaultOutputModes", List.of("text", "file"));
-        card.put("skills", List.of(Map.of("name", agentCode, "description",
-                description == null ? "" : description)));
+        card.put("skills", List.of(Map.of("name", agentCode, "description", description == null ? "" : description)));
         card.put("securitySchemes", Map.of("http", Map.of("scheme", "bearer")));
         card.put("security", List.of(Map.of("http", List.of())));
         return card;

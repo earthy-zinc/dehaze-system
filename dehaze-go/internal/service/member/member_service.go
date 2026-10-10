@@ -34,7 +34,6 @@ const (
 
 	memberProfileCacheTTL = 10 * time.Minute
 	memberBenefitCacheTTL = 30 * time.Minute
-	quotaCounterCacheTTL  = 35 * 24 * time.Hour
 	// memberBenefitSummaryCacheTTL 权益概览缓存时长（python `_set_summary_cache` 为 300s，取齐）
 	memberBenefitSummaryCacheTTL = 300 * time.Second
 	// 试用引导默认值（python TRIAL_DEFAULT_DAYS / TRIAL_DEFAULT_CREDITS）
@@ -402,7 +401,7 @@ func (s *MemberService) findAllBenefits(ctx context.Context) ([]model.SysMemberB
 	return list, nil
 }
 
-// InvalidateMemberCache 失效指定用户的会员相关缓存（profile/level/quota/benefit）
+// InvalidateMemberCache 失效指定用户的会员相关缓存（profile/level/benefit）
 // 供 OrderService 支付完成后调用，避免重复实现
 func (s *MemberService) InvalidateMemberCache(ctx context.Context, userID int64, levelCode string) {
 	if s.cache == nil {
@@ -410,8 +409,6 @@ func (s *MemberService) InvalidateMemberCache(ctx context.Context, userID int64,
 	}
 	_ = s.cache.Delete(ctx, MemberProfileKey(userID))
 	_ = s.cache.Delete(ctx, MemberLevelKey(userID))
-	_ = s.cache.Delete(ctx, MemberQuotaKey(userID, QuotaTypeDehaze))
-	_ = s.cache.Delete(ctx, MemberQuotaKey(userID, QuotaTypeEvaluate))
 	if levelCode != "" {
 		_ = s.cache.Delete(ctx, MemberBenefitKey(levelCode))
 	}
@@ -878,8 +875,35 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 	if form.MonthlyDehazeQuota != nil {
 		updates["monthly_dehaze_quota"] = *form.MonthlyDehazeQuota
 	}
+	if form.MonthlyDerainQuota != nil {
+		updates["monthly_derain_quota"] = *form.MonthlyDerainQuota
+	}
+	if form.MonthlyDesnowQuota != nil {
+		updates["monthly_desnow_quota"] = *form.MonthlyDesnowQuota
+	}
+	if form.MonthlyLowlightQuota != nil {
+		updates["monthly_lowlight_quota"] = *form.MonthlyLowlightQuota
+	}
+	if form.MonthlySuperResolutionQuota != nil {
+		updates["monthly_super_resolution_quota"] = *form.MonthlySuperResolutionQuota
+	}
+	if form.MonthlyDenoiseQuota != nil {
+		updates["monthly_denoise_quota"] = *form.MonthlyDenoiseQuota
+	}
+	if form.MonthlyInpaintQuota != nil {
+		updates["monthly_inpaint_quota"] = *form.MonthlyInpaintQuota
+	}
 	if form.MonthlyEvaluateQuota != nil {
 		updates["monthly_evaluate_quota"] = *form.MonthlyEvaluateQuota
+	}
+	if form.AiCreditsDaily != nil {
+		updates["ai_credits_daily"] = *form.AiCreditsDaily
+	}
+	if form.AiCreditsMonthly != nil {
+		updates["ai_credits_monthly"] = *form.AiCreditsMonthly
+	}
+	if form.MultimodalLimit != nil {
+		updates["multimodal_limit"] = *form.MultimodalLimit
 	}
 	if form.HistoryRetention != nil {
 		updates["history_retention"] = *form.HistoryRetention
@@ -904,6 +928,9 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 	}
 	if form.BatchDownload != nil {
 		updates["batch_download"] = *form.BatchDownload
+	}
+	if form.VipGiftCredits != nil {
+		updates["vip_gift_credits"] = *form.VipGiftCredits
 	}
 	if form.Sort != nil {
 		updates["sort"] = *form.Sort
@@ -938,17 +965,96 @@ func (s *MemberService) UpdateBenefit(ctx context.Context, levelCode string, for
 	if err := s.benefitRepo.Update(ctx, levelCode, updates); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "权益配置更新失败", err)
 	}
+	updated, err := s.benefitRepo.FindByLevelCode(ctx, levelCode)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询权益配置失败", err)
+	}
+	if err := s.refreshLevelMemberQuotas(ctx, levelCode, updated); err != nil {
+		return err
+	}
 	if s.cache != nil {
 		_ = s.cache.Delete(ctx, MemberBenefitKey(levelCode))
 		_ = s.cache.Delete(ctx, MemberBenefitAllKey())
-		if userIDs, err := s.memberRepo.FindUserIDsByLevelCodes(ctx, []string{levelCode}); err == nil {
-			for _, uid := range userIDs {
-				_ = s.cache.Delete(ctx, MemberQuotaKey(uid, QuotaTypeDehaze))
-				_ = s.cache.Delete(ctx, MemberQuotaKey(uid, QuotaTypeEvaluate))
-			}
+	}
+	return nil
+}
+
+// memberQuotaColumns 会员行 8 类配额列与套餐覆盖项 key 的对应（python QUOTA_TASK_TYPES 口径）
+var memberQuotaColumns = []struct {
+	column      string
+	overrideKey string
+	quota       func(*model.SysMemberBenefit) int
+}{
+	{"monthly_dehaze_quota", "monthlyDehazeQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyDehazeQuota }},
+	{"monthly_derain_quota", "monthlyDerainQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyDerainQuota }},
+	{"monthly_desnow_quota", "monthlyDesnowQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyDesnowQuota }},
+	{"monthly_lowlight_quota", "monthlyLowlightQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyLowlightQuota }},
+	{"monthly_super_resolution_quota", "monthlySuperResolutionQuota", func(b *model.SysMemberBenefit) int { return b.MonthlySuperResolutionQuota }},
+	{"monthly_denoise_quota", "monthlyDenoiseQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyDenoiseQuota }},
+	{"monthly_inpaint_quota", "monthlyInpaintQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyInpaintQuota }},
+	{"monthly_evaluate_quota", "monthlyEvaluateQuota", func(b *model.SysMemberBenefit) int { return b.MonthlyEvaluateQuota }},
+}
+
+// quotaSnapshot 8 类配额的落库值：覆盖项与等级权益取较高值（python _effective_task_quota）
+func quotaSnapshot(benefit *model.SysMemberBenefit, overrides map[string]int) map[string]interface{} {
+	snapshot := make(map[string]interface{}, len(memberQuotaColumns))
+	for _, c := range memberQuotaColumns {
+		value := c.quota(benefit)
+		if override, ok := overrides[c.overrideKey]; ok && override > value {
+			value = override
+		}
+		snapshot[c.column] = value
+	}
+	return snapshot
+}
+
+// refreshLevelMemberQuotas 权益配置修改立即生效：回刷该等级活跃会员的 8 类配额快照（不含已用）并失效缓存。
+// 已购会员卡（level_source=purchase 且未到期）单独按"覆盖值与权益取较高值"回刷，
+// 否则会把已购卡会员的更高额度打回等级基线。
+func (s *MemberService) refreshLevelMemberQuotas(ctx context.Context, levelCode string, benefit *model.SysMemberBenefit) error {
+	if benefit == nil {
+		return nil
+	}
+	base := quotaSnapshot(benefit, nil)
+	if err := s.db.WithContext(ctx).Model(&model.SysMember{}).
+		Where("level_code = ? AND status = 1 AND deleted = 0", levelCode).
+		Where("level_source != ? OR expire_time IS NULL OR expire_time <= ?", "purchase", time.Now()).
+		Updates(base).Error; err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "回刷会员配额失败", err)
+	}
+
+	if overrides := s.cardQuotaOverrides(ctx, levelCode); len(overrides) > 0 {
+		card := quotaSnapshot(benefit, overrides)
+		if err := s.db.WithContext(ctx).Model(&model.SysMember{}).
+			Where("level_code = ? AND status = 1 AND deleted = 0", levelCode).
+			Where("level_source = ? AND (expire_time IS NULL OR expire_time > ?)", "purchase", time.Now()).
+			Updates(card).Error; err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "回刷会员卡配额失败", err)
+		}
+	}
+
+	userIDs, err := s.memberRepo.FindUserIDsByLevelCodes(ctx, []string{levelCode})
+	if err != nil {
+		return nil
+	}
+	for _, uid := range userIDs {
+		s.InvalidateMemberCache(ctx, uid, levelCode)
+		if s.cache != nil {
+			_ = s.cache.Delete(ctx, MemberBenefitSummaryKey(uid))
 		}
 	}
 	return nil
+}
+
+func (s *MemberService) cardQuotaOverrides(ctx context.Context, levelCode string) map[string]int {
+	if s.cardOverrides == nil {
+		return nil
+	}
+	overrides, err := s.cardOverrides.PackageBenefitOverrides(ctx, levelCode)
+	if err != nil {
+		return nil
+	}
+	return overrides
 }
 
 func (s *MemberService) AwardGrowth(ctx context.Context, userID int64, changeType string, changeValue int, reason, relatedID string) error {
@@ -1018,174 +1124,6 @@ func (s *MemberService) AwardGrowth(ctx context.Context, userID int64, changeTyp
 		return common.WrapBizError(common.DATABASE_ERROR, "成长值奖励失败", err)
 	}
 	s.InvalidateMemberCache(ctx, userID, newLevel)
-	return nil
-}
-
-// CheckAndDeductQuota 校验并扣减会员配额（使用 Redis DECR 原子操作，异步落库）
-func (s *MemberService) CheckAndDeductQuota(ctx context.Context, userID int64, quotaType QuotaType) error {
-	member, err := s.memberRepo.FindByUserID(ctx, userID)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询会员信息失败", err)
-	}
-	if member == nil {
-		return common.NewBizError(common.MEMBER_NOT_FOUND, "会员不存在")
-	}
-	if member.Status != 1 {
-		return common.NewBizError(common.MEMBER_FROZEN, "会员已冻结")
-	}
-
-	var quota, used int
-	if quotaType == QuotaTypeDehaze {
-		quota = member.MonthlyDehazeQuota
-		used = member.MonthlyDehazeUsed
-	} else {
-		quota = member.MonthlyEvaluateQuota
-		used = member.MonthlyEvaluateUsed
-	}
-
-	if quota <= 0 {
-		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
-	}
-
-	if s.cache != nil {
-		counterKey := MemberQuotaKey(userID, quotaType)
-		remainingStr, err := s.cache.Get(ctx, counterKey)
-		if err != nil || remainingStr == "" {
-			remaining := int64(quota - used)
-			if remaining <= 0 {
-				return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
-			}
-			_ = s.cache.Set(ctx, counterKey, remaining, quotaCounterCacheTTL)
-		}
-
-		newVal, decErr := s.cache.Decr(ctx, counterKey)
-		if decErr != nil {
-			logger.Warn("Redis DECR 配额扣减失败，降级为数据库校验", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(decErr))
-		} else {
-			if newVal < 0 {
-				_, _ = s.cache.Incr(ctx, counterKey)
-				return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
-			}
-			s.lifecycle.Go(func(ctx context.Context) {
-				s.asyncPersistQuotaUsed(ctx, userID, quotaType)
-			})
-			if s.auditLogSvc != nil {
-				s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "member", userID, "quota_deduct", "member", nil, map[string]interface{}{"quotaType": string(quotaType), "amount": 1}, database.GetIP(ctx), database.GetUserAgent(ctx))
-			}
-			return nil
-		}
-	}
-
-	// DB 同步路径：应用层预校验仅作快速失败，权威扣减依赖行级条件更新
-	// （used < quota 原子判定），高并发下预校验读到的快照可能过期，超扣在此被拦截。
-	if used >= quota {
-		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
-	}
-	newUsed, deducted, err := s.memberRepo.DeductQuotaIfAvailable(ctx, userID, string(quotaType))
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "扣减配额失败", err)
-	}
-	if !deducted {
-		return common.NewBizError(common.QUOTA_EXCEEDED, "配额已用尽")
-	}
-	if s.cache != nil {
-		// DB 权威扣减成功后，缓存计数器写入 DB 精确剩余值，避免 Delete 造成缓存击穿/重建风暴；
-		// 缓存写失败仅告警，账目以 DB 为准。
-		if err := s.cache.Set(ctx, MemberQuotaKey(userID, quotaType), int64(quota-newUsed), quotaCounterCacheTTL); err != nil {
-			logger.Warn("DB 扣减后缓存计数器对齐失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
-		}
-	}
-	if s.auditLogSvc != nil {
-		s.auditLogSvc.RecordAuditAsync(ctx, database.GetUserID(ctx), "member", userID, "quota_deduct", "member", nil, map[string]interface{}{"quotaType": string(quotaType), "amount": 1}, database.GetIP(ctx), database.GetUserAgent(ctx))
-	}
-	return nil
-}
-
-func (s *MemberService) asyncPersistQuotaUsed(ctx context.Context, userID int64, quotaType QuotaType) {
-	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), 1); err != nil {
-		logger.Error("异步落库配额扣减失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
-	}
-}
-
-// RefundQuota 回补会员配额（预测/评估失败时调用，回补缓存计数器并异步回补数据库）
-func (s *MemberService) RefundQuota(ctx context.Context, userID int64, quotaType QuotaType) error {
-	if s.cache != nil {
-		counterKey := MemberQuotaKey(userID, quotaType)
-		if _, err := s.cache.Incr(ctx, counterKey); err != nil {
-			logger.Warn("回补配额 Incr 失败", zap.Int64("userID", userID), zap.String("quotaType", string(quotaType)), zap.Error(err))
-		}
-	}
-	if err := s.memberRepo.IncrementQuotaUsed(ctx, userID, string(quotaType), -1); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "回补配额失败", err)
-	}
-	return nil
-}
-
-// ResetMonthlyQuota 重置所有活跃会员的月度配额（每月初执行）
-func (s *MemberService) ResetMonthlyQuota(ctx context.Context) error {
-	now := time.Now()
-	quotaMonth := now.Year()*100 + int(now.Month())
-
-	benefits, err := s.findAllBenefits(ctx)
-	if err != nil {
-		return err
-	}
-	benefitMap := make(map[string]*model.SysMemberBenefit, len(benefits))
-	for i := range benefits {
-		benefitMap[benefits[i].LevelCode] = &benefits[i]
-	}
-
-	batchSize := 500
-	totalCount := 0
-	successCount := 0
-
-	for {
-		members, err := s.memberRepo.FindAllActive(ctx, &quotaMonth, batchSize)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询活跃会员失败", err)
-		}
-		if len(members) == 0 {
-			break
-		}
-
-		for _, m := range members {
-			totalCount++
-			dehazeQuota := 0
-			evaluateQuota := 0
-			if b, ok := benefitMap[m.LevelCode]; ok {
-				dehazeQuota = b.MonthlyDehazeQuota
-				evaluateQuota = b.MonthlyEvaluateQuota
-			}
-
-			if m.QuotaResetMonth != nil {
-				archive := &model.SysMemberQuota{
-					UserID:        m.UserID,
-					QuotaMonth:    *m.QuotaResetMonth,
-					LevelCode:     m.LevelCode,
-					DehazeQuota:   m.MonthlyDehazeQuota,
-					DehazeUsed:    m.MonthlyDehazeUsed,
-					EvaluateQuota: m.MonthlyEvaluateQuota,
-					EvaluateUsed:  m.MonthlyEvaluateUsed,
-					ResetTime:     now,
-				}
-				_ = s.memberRepo.CreateQuotaArchive(ctx, archive)
-			}
-
-			if err := s.memberRepo.ResetMonthlyQuota(ctx, m.UserID, dehazeQuota, evaluateQuota, quotaMonth); err != nil {
-				logger.Error("重置会员月度配额失败", zap.Int64("userID", m.UserID), zap.Error(err))
-				continue
-			}
-
-			if s.cache != nil {
-				_ = s.cache.Delete(ctx, MemberQuotaKey(m.UserID, QuotaTypeDehaze))
-				_ = s.cache.Delete(ctx, MemberQuotaKey(m.UserID, QuotaTypeEvaluate))
-				s.InvalidateMemberCache(ctx, m.UserID, m.LevelCode)
-			}
-			successCount++
-		}
-	}
-
-	logger.Debug("月度配额重置完成", zap.Int("total", totalCount), zap.Int("success", successCount))
 	return nil
 }
 
@@ -1349,22 +1287,32 @@ func toBenefitVO(b *model.SysMemberBenefit) vo.BenefitVO {
 		return vo.BenefitVO{}
 	}
 	return vo.BenefitVO{
-		LevelCode:            b.LevelCode,
-		LevelName:            b.LevelName,
-		GrowthMin:            b.GrowthMin,
-		GrowthMax:            b.GrowthMax,
-		MonthlyDehazeQuota:   b.MonthlyDehazeQuota,
-		MonthlyEvaluateQuota: b.MonthlyEvaluateQuota,
-		HistoryRetention:     b.HistoryRetention,
-		BatchLimit:           b.BatchLimit,
-		MaxDevices:           b.MaxDevices,
-		Priority:             int(b.Priority),
-		AdvancedParams:       int(b.AdvancedParams),
-		HdExport:             int(b.HdExport),
-		ReportExport:         int(b.ReportExport),
-		BatchDownload:        int(b.BatchDownload),
-		Sort:                 b.Sort,
-		Status:               int(b.Status),
+		LevelCode:                   b.LevelCode,
+		LevelName:                   b.LevelName,
+		GrowthMin:                   b.GrowthMin,
+		GrowthMax:                   b.GrowthMax,
+		AiCreditsDaily:              b.AiCreditsDaily,
+		AiCreditsMonthly:            b.AiCreditsMonthly,
+		MultimodalLimit:             b.MultimodalLimit,
+		MaxDevices:                  b.MaxDevices,
+		VipGiftCredits:              b.VipGiftCredits,
+		HistoryRetention:            b.HistoryRetention,
+		BatchLimit:                  b.BatchLimit,
+		Priority:                    int(b.Priority),
+		AdvancedParams:              int(b.AdvancedParams),
+		HdExport:                    int(b.HdExport),
+		ReportExport:                int(b.ReportExport),
+		BatchDownload:               int(b.BatchDownload),
+		Sort:                        b.Sort,
+		Status:                      int(b.Status),
+		MonthlyDehazeQuota:          b.MonthlyDehazeQuota,
+		MonthlyDerainQuota:          b.MonthlyDerainQuota,
+		MonthlyDesnowQuota:          b.MonthlyDesnowQuota,
+		MonthlyLowlightQuota:        b.MonthlyLowlightQuota,
+		MonthlySuperResolutionQuota: b.MonthlySuperResolutionQuota,
+		MonthlyDenoiseQuota:         b.MonthlyDenoiseQuota,
+		MonthlyInpaintQuota:         b.MonthlyInpaintQuota,
+		MonthlyEvaluateQuota:        b.MonthlyEvaluateQuota,
 	}
 }
 

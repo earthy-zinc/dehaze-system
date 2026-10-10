@@ -43,6 +43,7 @@ from app.models.schema.ai_skill import (
 )
 from app.models.schema.common import PageResult
 from app.repository.ai_skill_repository import ai_skill_repository
+from app.service.ai.service.model_defaults import resolve_default_chat_model
 from app.service.storage.factory import get_storage_service
 
 logger = logging.getLogger(__name__)
@@ -451,7 +452,7 @@ class SkillManageService:
         refs = await self.ai_skill_repository.count_agent_references(db, skill.name)
         if refs > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 f"Skill [{skill.name}] 已被 {refs} 个 Agent 关联，请先解绑再删除",
             )
         await self.ai_skill_repository.soft_delete_by_ids(db, [skill_id])
@@ -524,7 +525,7 @@ class SkillManageService:
         from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
         from app.service.ai.strategies.agent_config_resolver import resolve
 
-        model_id = settings.AI_DEFAULT_MODEL
+        model_id = await resolve_default_chat_model(db)
         config = await resolve(db, redis, None, None)
         graph = await DeepAgentBuilder().build_from_snapshot(
             db,

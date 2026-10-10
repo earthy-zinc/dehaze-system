@@ -219,6 +219,14 @@ class TestValidateModelCaps:
         )
         assert result is None
 
+    async def test_text_protocol_family_passes_without_native_tool_call(self):
+        """不支持原生工具但命中文本协议家族：放行（工具清单由编排层注入提示词）"""
+        model = _model(model_id="qwen3-0.6b", tool_call=0)
+        result = await m.ai_model_service.validate_model_caps(
+            model, has_attachments=False, need_tools=True
+        )
+        assert result is None
+
 
 class TestListEnabledModels:
     async def test_is_fallback_target_flag(self, monkeypatch):
@@ -255,6 +263,57 @@ class TestListEnabledModels:
         assert flags["gpt-4o-mini"] is True
         assert flags["gpt-4o"] is False
         assert flags["claude"] is False
+
+    async def test_is_default_flag_follows_platform_dict(self, monkeypatch):
+        """平台默认标记（is_default）：取值与字典一致，且按 model_type 分键读字典
+
+        以 python 为事实源的跨端契约：/ai/models/enabled 每项带 isDefault，
+        指向该模型类型的平台默认模型（chat→default_model、image_edit→default_model.image_edit），
+        供前端在无历史记录时直接预选后端默认，替代"启用列表首项"兜底。
+        """
+        chat_a = _model(pk=1, model_id="chat-a", provider_id=1)
+        chat_b = _model(pk=2, model_id="chat-b", provider_id=1)
+        edit_a = _model(pk=3, model_id="aecrnet", provider_id=1, model_type="image_edit")
+
+        class _FakeRepo(AiModelRepository):
+            async def list_enabled(self, db, model_type=None):
+                return [chat_a, chat_b, edit_a]
+
+        platform_defaults = {"chat": "chat-a", "image_edit": "aecrnet"}
+        requested: list[str] = []
+
+        async def fake_resolve(db, model_type):
+            requested.append(model_type)
+            return platform_defaults.get(model_type)
+
+        async def get_user_level(db, redis, uid):
+            return 0
+
+        async def health_snapshot(redis, provider_id):
+            return {}
+
+        async def get_json(self, key):
+            return None
+
+        async def set_json(self, key, value, ttl):
+            return None
+
+        monkeypatch.setattr(m.CacheService, "get_json", get_json)
+        monkeypatch.setattr(m.CacheService, "set_json", set_json)
+        monkeypatch.setattr(m, "_get_user_level", get_user_level)
+        monkeypatch.setattr(m, "_provider_health_snapshot", health_snapshot)
+        monkeypatch.setattr(m, "resolve_platform_default_model_id", fake_resolve)
+        svc = AiModelService(ai_model_repository=_FakeRepo())
+
+        items = await svc.list_enabled_models(
+            AsyncMock(spec=AsyncSession), AsyncMock(spec=Redis), 1
+        )
+        flags = {item.model_id: item.is_default for item in items}
+        assert flags == {"chat-a": True, "chat-b": False, "aecrnet": True}
+        # 只按出现到的 model_type 读键（不按类型遍历全量表）；
+        # 键映射契约（chat→default_model、image_edit→default_model.image_edit）见
+        # tests/service/ai/service/test_model_defaults.py::test_default_model_dict_key_contract
+        assert sorted(requested) == ["chat", "image_edit"]
 
 
 def _create_form(
@@ -353,7 +412,7 @@ class TestDeleteModel:
         svc = AiModelService(ai_model_repository=_FakeRepo())
         with pytest.raises(BusinessException) as exc:
             await svc.delete_model(db, mock_redis, "del-active")
-        assert exc.value.code == ResultCode.DATA_BIND_EXISTS
+        assert exc.value.code == ResultCode.DATA_REFERENCED
 
     async def test_delete_model_no_active_session(self, db, mock_redis):
         captured = {}
@@ -530,3 +589,102 @@ class TestVipLevelFilter:
             # 种子数据含 vip_level=0 的模型，仅断言自建模型按等级过滤，不假设列表全集
             assert expected.issubset(model_ids)
             assert model_ids.isdisjoint({"vip1", "vip2"} - expected)
+
+
+class TestFullModelTypeWhitelist:
+    """阶段 1：model_type 全模态白名单扩展 + task_tags 增删改回读。"""
+
+    async def test_create_image_edit_with_task_tags(self, db, mock_redis):
+        result = await m.ai_model_service.create_model(
+            db,
+            mock_redis,
+            AiModelCreate(
+                provider_id=999,
+                model_id="aecrnet",
+                model_type="image_edit",
+                task_tags=["dehaze"],
+                display_name="AECRNet 去雾",
+            ),
+        )
+        assert result.model_type == "image_edit"
+        assert result.task_tags == ["dehaze"]
+
+    async def test_update_task_tags(self, db, mock_redis):
+        await m.ai_model_service.create_model(db, mock_redis, _create_form("tt-a"))
+        result = await m.ai_model_service.update_model(
+            db, mock_redis, "tt-a", AiModelUpdate(task_tags=["text"])
+        )
+        assert result.task_tags == ["text"]
+
+    async def test_new_model_types_accepted_and_filterable(self, db, mock_redis):
+        for mt in ("image_gen", "asr", "tts", "music_gen", "3d_gen"):
+            result = await m.ai_model_service.create_model(
+                db, mock_redis, _create_form(f"new-{mt}", mt)
+            )
+            assert result.model_type == mt
+            page = await m.ai_model_service.list_models(db, 1, 10, model_type=mt)
+            assert any(item.model_id == f"new-{mt}" for item in page.list)
+
+    def test_unknown_model_type_rejected(self):
+        with pytest.raises(ValidationError):
+            AiModelCreate.model_validate(
+                {
+                    "provider_id": 999,
+                    "model_id": "bad",
+                    "model_type": "unknown_type",
+                    "display_name": "x",
+                }
+            )
+
+
+class TestTaskTagsFilter:
+    """阶段 1：taskTags 查询面（逗号分隔 + OR，无标签模型不命中），语义与 Go/Java 一致。"""
+
+    async def _seed(self, db, redis, model_id, task_tags):
+        return await m.ai_model_service.create_model(
+            db,
+            redis,
+            AiModelCreate(
+                provider_id=999,
+                model_id=model_id,
+                model_type="image_edit",
+                task_tags=task_tags,
+                display_name=f"M-{model_id}",
+            ),
+        )
+
+    async def test_list_models_or_semantics_and_no_tag_excluded(self, db, mock_redis):
+        await self._seed(db, mock_redis, "tag-dehaze", ["dehaze"])
+        await self._seed(db, mock_redis, "tag-sr", ["super_resolution"])
+        await self._seed(db, mock_redis, "tag-none", None)
+
+        single = await m.ai_model_service.list_models(db, 1, 10, task_tags="dehaze")
+        ids = {i.model_id for i in single.list}
+        assert "tag-dehaze" in ids
+        assert "tag-sr" not in ids
+        assert "tag-none" not in ids
+
+        both = await m.ai_model_service.list_models(db, 1, 10, task_tags="dehaze,super_resolution")
+        ids = {i.model_id for i in both.list}
+        assert {"tag-dehaze", "tag-sr"} <= ids
+        assert "tag-none" not in ids
+
+    async def test_list_enabled_models_filters_by_task_tags(self, db, mock_redis, monkeypatch):
+        await self._seed(db, mock_redis, "en-dehaze", ["dehaze"])
+        await self._seed(db, mock_redis, "en-sr", ["super_resolution"])
+
+        async def _no_snapshot(redis, provider_id):
+            return {}
+
+        async def _get_level(db, redis, uid):
+            return 0
+
+        monkeypatch.setattr(m, "_provider_health_snapshot", _no_snapshot)
+        monkeypatch.setattr(m, "_get_user_level", _get_level)
+
+        items = await m.ai_model_service.list_enabled_models(
+            db, mock_redis, 1, "image_edit", "dehaze"
+        )
+        ids = {i.model_id for i in items}
+        assert "en-dehaze" in ids
+        assert "en-sr" not in ids

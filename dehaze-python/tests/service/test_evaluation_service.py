@@ -1,17 +1,21 @@
 """效果评估服务测试（真实 MySQL 测试库 dehaze_test + SAVEPOINT 回滚）。
 
 覆盖：评估日志用户隔离（list_logs/list_completed_metrics）、合格判定阈值口径、
-评估前置失败（算法不存在/图片下载失败）配额归还。
+远端指标计算落库口径（dehaze-modal /v1/metrics）、评估前置与执行失败配额归还。
 
 遵循 dehaze 测试规范：仅依赖 db fixture 与 mock_redis（autouse），
 只断言业务结果，命名 test_功能_场景。
 """
 
+from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
+import respx
 
+from app.config import settings
 from app.models.entity.sys_log import SysEvalLog
 from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import eval_log_repository
@@ -20,19 +24,38 @@ from app.service.evaluation_service import (
     evaluation_service,
     parse_eval_result,
 )
-from app.service.member.quota_service import member_quota_service
 
 pytestmark = pytest.mark.requires_db
 
 USER_A = 2001001
 USER_B = 2001002
 
+_MODAL_BASE = settings.MODAL_ENGINE_BASE_URL.rstrip("/")
+_MODELS_URL = f"{_MODAL_BASE}/v1/models"
+_METRICS_URL = f"{_MODAL_BASE}/v1/metrics"
+
+# 能力发现返回的指标集目录（指标名 + 展示标签 + 是否需参考图）
+_METRIC_CATALOG = [
+    {
+        "id": "psnr",
+        "type": "metrics",
+        "available": True,
+        "capabilities": {"label": "PSNR", "better": "higher", "requires_clear": True},
+    },
+    {
+        "id": "niqe",
+        "type": "metrics",
+        "available": True,
+        "capabilities": {"label": "NIQE", "better": "lower", "requires_clear": False},
+    },
+]
+
 
 async def _create_log(
-    db, user_id: int, algorithm_id: int = 1, status: int = LogStatus.COMPLETED.value
+    db, user_id: int, model_id: str = "aecrnet", status: int = LogStatus.COMPLETED.value
 ) -> SysEvalLog:
     log = SysEvalLog(
-        algorithm_id=algorithm_id,
+        model_id=model_id,
         pred_md5="a" * 32,
         pred_url="http://storage/pred.jpg",
         gt_md5="b" * 32,
@@ -58,13 +81,13 @@ async def test_list_logs_only_returns_own_logs(db):
     assert [log.id for log in logs] == [own.id]
 
 
-async def test_list_logs_filter_by_algorithm(db):
-    """评估日志列表支持按算法 ID 筛选"""
-    own_1 = await _create_log(db, USER_A, algorithm_id=1)
-    await _create_log(db, USER_A, algorithm_id=2)
+async def test_list_logs_filter_by_model(db):
+    """评估日志列表支持按模型标识筛选"""
+    own_1 = await _create_log(db, USER_A, model_id="aecrnet")
+    await _create_log(db, USER_A, model_id="aodnet")
 
     logs, total = await evaluation_service.list_logs(
-        db, user_id=USER_A, algorithm_id=1, page=1, size=10
+        db, user_id=USER_A, model_id="aecrnet", page=1, size=10
     )
 
     assert total == 1
@@ -151,68 +174,113 @@ async def test_update_result_roundtrip_stays_dict(db):
     assert isinstance(reloaded.result, dict)
 
 
-# ===== 评估前置失败配额归还 =====
+# ===== 评估前置校验失败 =====
 
 
-@pytest.fixture
-def quota_mocks(monkeypatch):
-    deduct = AsyncMock()
-    restore = AsyncMock()
-    monkeypatch.setattr(member_quota_service, "check_and_deduct_quota", deduct)
-    monkeypatch.setattr(member_quota_service, "restore_quota", restore)
-    return deduct, restore
-
-
-async def test_evaluate_quota_restored_when_algorithm_missing(db, quota_mocks, monkeypatch):
-    """扣减配额后算法不存在 → 配额归还，不静默泄漏"""
-    deduct, restore = quota_mocks
-
+async def test_evaluate_raises_when_model_missing(db, monkeypatch):
+    """模型不存在时提交失败，不创建日志"""
     from app.core.exceptions import BusinessException
 
-    async def raise_missing(algorithm_id):
-        raise BusinessException("A0401", "算法不存在")
+    async def raise_missing(model_id):
+        raise BusinessException("A0401", "图像模型不存在")
 
     monkeypatch.setattr(evaluation_service, "_execute_async", AsyncMock())
 
     import app.service.prediction.prediction_service as prediction_module
 
-    monkeypatch.setattr(prediction_module.prediction_service, "get_algorithm", raise_missing)
+    monkeypatch.setattr(prediction_module.prediction_service, "get_model", raise_missing)
 
     with pytest.raises(BusinessException):
         await evaluation_service.evaluate(
-            algorithm_id=99999999,
+            model_id="no-such-model",
             pred_url="http://storage/pred.jpg",
             gt_url="http://storage/gt.jpg",
             user_id=USER_A,
         )
 
-    deduct.assert_awaited_once()
-    restore.assert_awaited_once()
 
-
-async def test_evaluate_quota_restored_when_image_download_fails(db, quota_mocks, monkeypatch):
-    """扣减配额后图片下载失败 → 配额归还"""
-    deduct, restore = quota_mocks
-
+async def test_evaluate_raises_when_image_download_fails(db, monkeypatch):
+    """图片下载失败时提交失败，不创建日志"""
     import app.service.evaluation_service as evaluation_module
     import app.service.prediction.prediction_service as prediction_module
 
-    async def ok_algorithm(algorithm_id):
-        return SimpleNamespace(name="测试算法")
+    async def ok_model(model_id):
+        return SimpleNamespace(name="测试模型")
 
     async def fail_fetch(url):
         raise RuntimeError("图片下载失败")
 
-    monkeypatch.setattr(prediction_module.prediction_service, "get_algorithm", ok_algorithm)
+    monkeypatch.setattr(prediction_module.prediction_service, "get_model", ok_model)
     monkeypatch.setattr(evaluation_module, "fetch_image", fail_fetch)
 
     with pytest.raises(RuntimeError):
         await evaluation_service.evaluate(
-            algorithm_id=1,
+            model_id="aecrnet",
             pred_url="http://storage/pred.jpg",
             gt_url="http://storage/gt.jpg",
             user_id=USER_A,
         )
 
-    deduct.assert_awaited_once()
-    restore.assert_awaited_once()
+
+# ===== 远端指标计算（dehaze-modal /v1/metrics） =====
+
+
+async def _run_evaluation(log_id: int, monkeypatch) -> None:
+    """执行异步评估：引擎 HTTP 由 respx 接管，成长值激励不参与本组断言"""
+
+    async def _skip_growth(user_id, log_id):
+        return None
+
+    monkeypatch.setattr(evaluation_service, "_award_evaluate_growth", _skip_growth)
+    await evaluation_service._execute_async(
+        log_id=log_id,
+        model_id="aecrnet",
+        pred_bytes=BytesIO(b"pred-image"),
+        gt_bytes=BytesIO(b"gt-image"),
+        user_id=USER_A,
+    )
+
+
+async def test_execute_async_stores_metrics_keyed_by_label(db, monkeypatch):
+    """部分指标失败仍落已完成项，且落库 key 为 label（前端按 PSNR/NIQE 取值）"""
+    log = await _create_log(db, USER_A, status=LogStatus.PROCESSING.value)
+
+    with respx.mock(assert_all_mocked=True) as router:
+        router.get(_MODELS_URL).mock(
+            return_value=httpx.Response(200, json={"data": _METRIC_CATALOG})
+        )
+        route = router.post(_METRICS_URL).mock(
+            return_value=httpx.Response(
+                200, json={"metrics": {"psnr": 32.5}, "failed": ["niqe"], "meta": {}}
+            )
+        )
+        await _run_evaluation(log.id, monkeypatch)
+
+    # 下发的指标名清单来自能力发现（全量指标，含逐项失败项）
+    body = route.calls.last.request.read().decode("utf-8", "replace")
+    assert '"psnr"' in body
+    assert '"niqe"' in body
+
+    await db.refresh(log)
+    assert log.status == LogStatus.COMPLETED.value
+    assert log.result == {"PSNR": 32.5}
+
+
+async def test_execute_async_fails_when_all_metrics_fail(db, monkeypatch):
+    """全部指标计算失败 → 任务置失败（部分失败才算已完成；评估免费不涉及配额）"""
+    log = await _create_log(db, USER_A, status=LogStatus.PROCESSING.value)
+
+    with respx.mock(assert_all_mocked=True) as router:
+        router.get(_MODELS_URL).mock(
+            return_value=httpx.Response(200, json={"data": _METRIC_CATALOG})
+        )
+        router.post(_METRICS_URL).mock(
+            return_value=httpx.Response(
+                200, json={"metrics": {}, "failed": ["psnr", "niqe"], "meta": {}}
+            )
+        )
+        await _run_evaluation(log.id, monkeypatch)
+
+    await db.refresh(log)
+    assert log.status == LogStatus.FAILED.value
+    assert "全部失败" in (log.error_message or "")

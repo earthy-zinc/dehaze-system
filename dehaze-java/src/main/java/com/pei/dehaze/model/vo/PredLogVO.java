@@ -3,46 +3,42 @@ package com.pei.dehaze.model.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import lombok.Data;
 
-import java.time.LocalDateTime;
-
 /**
- * 预测日志视图对象
- *
- * @author earthyzinc
- * @since 2024-06-12
+ * 图像任务历史项视图对象（GET /api/v1/images/tasks）
  */
-@Schema(description = "预测日志视图对象")
+@Schema(description = "图像任务历史项视图对象")
 @Data
 public class PredLogVO {
 
-    @Schema(description = "日志ID")
+    @Schema(description = "任务ID")
     private Long id;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String model;
 
-    @Schema(description = "算法名称")
-    private String algorithmName;
+    @Schema(description = "原图MD5")
+    private String originMd5;
 
     @Schema(description = "原始图片URL")
     private String originUrl;
 
+    @Schema(description = "结果图MD5")
+    private String predMd5;
+
     @Schema(description = "处理结果URL")
     private String predUrl;
 
-    @Schema(description = "处理时间（毫秒）")
-    private Integer time;
-
-    @Schema(description = "任务状态：1=处理中,2=已完成,3=失败")
+    @Schema(description = "任务状态：1=处理中,2=已完成,3=失败,4=已取消")
     private LogStatusEnum status;
 
     @Schema(description = "失败错误信息")
     private String errorMessage;
 
-    @Schema(description = "推荐来源：推荐记录ID（推荐管理模块）")
-    private Long recommendedBy;
+    @Schema(description = "推理耗时（秒）")
+    private Integer time;
 
     @Schema(description = "创建时间")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

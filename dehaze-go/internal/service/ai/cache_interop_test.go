@@ -42,7 +42,7 @@ func TestModelListCacheReadsPeerFixture(t *testing.T) {
 	resetCacheKey(t, client, modelListCacheKey)
 
 	service := NewModelService(db, airepo.NewModelRepository(db),
-		airepo.NewModelPriceRepository(db), NewHealthService(db), nil)
+		airepo.NewModelPriceRepository(db), NewHealthService(db), nil, newTestFavoriteService(db), nil)
 
 	require.NoError(t, client.Set(ctx, modelListCacheKey, pythonModelListFixture, 0).Err())
 

@@ -7,5 +7,4 @@ package com.pei.dehaze.model.event;
  * @param itemId 数据项ID
  * @param fileId 文件ID
  */
-public record ItemFileCreatedEvent(Long itemId, Long fileId) {
-}
+public record ItemFileCreatedEvent(Long itemId, Long fileId) {}

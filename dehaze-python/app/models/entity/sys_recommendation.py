@@ -22,10 +22,10 @@ class SysRecommendation(BaseModel):
         String(32), nullable=False, comment="图像MD5（关联特征分析缓存）"
     )
     target_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="algorithm", comment="推荐对象类型"
+        String(32), nullable=False, default="model", comment="推荐对象类型"
     )
-    top_algorithms: Mapped[list | None] = mapped_column(
-        JSON, nullable=True, comment="推荐算法列表（JSON数组）"
+    top_models: Mapped[list | None] = mapped_column(
+        JSON, nullable=True, comment="推荐图像模型列表（JSON数组，统一模型规范 slug）"
     )
     analysis_result: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, comment="图像特征分析结果（JSON）"
@@ -33,6 +33,6 @@ class SysRecommendation(BaseModel):
     feedback: Mapped[int] = mapped_column(
         mysql_types.TINYINT, nullable=False, default=0, comment="推荐反馈(0:未反馈;1:有用;2:无用)"
     )
-    adopted_algorithm_id: Mapped[int | None] = mapped_column(
-        BigInteger, nullable=True, comment="用户采纳的算法ID"
+    adopted_model_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, comment="用户采纳的图像模型标识（统一模型规范 slug）"
     )

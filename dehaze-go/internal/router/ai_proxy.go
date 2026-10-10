@@ -37,7 +37,8 @@ func RegisterAIProxyRoutes(rg *gin.RouterGroup, api *api.AIProxyApi) {
 		{http.MethodPost, "/ai/skills/:id/test", api.ForwardJSON},
 		// SKILL 压缩包上传：zip 解包 + manifest 解析 + 脚本命令策略校验 + 落盘，全在 python
 		{http.MethodPost, "/ai/skills/upload", api.ForwardMultipart},
-		{http.MethodPost, "/ai/models/:id/test", api.ForwardJSON},
+		// model_id 含 `/`，故以 query 参数 modelId 传递，路径无参数
+		{http.MethodPost, "/ai/models/test", api.ForwardJSON},
 		{http.MethodPost, "/ai/providers/:id/test-connection", api.ForwardJSON},
 
 		// MCP Server 探测与工具试调用（需真实 MCP 会话）

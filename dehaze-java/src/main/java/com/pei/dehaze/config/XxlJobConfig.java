@@ -45,7 +45,6 @@ public class XxlJobConfig {
     @Value("${xxl.job.executor.timeout:10}")
     private int timeout;
 
-
     @Bean
     public XxlJobSpringExecutor xxlJobExecutor() {
         log.info(">>>>>>>>>>> xxl-job config init.");
@@ -62,5 +61,4 @@ public class XxlJobConfig {
 
         return xxlJobSpringExecutor;
     }
-
 }

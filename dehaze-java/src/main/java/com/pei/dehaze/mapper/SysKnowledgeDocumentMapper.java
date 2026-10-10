@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysKnowledgeDocument;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysKnowledgeDocumentMapper extends BaseMapper<SysKnowledgeDocument> {
-}
+public interface SysKnowledgeDocumentMapper extends BaseMapper<SysKnowledgeDocument> {}

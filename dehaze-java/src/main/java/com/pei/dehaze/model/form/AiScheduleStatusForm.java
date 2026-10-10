@@ -19,5 +19,4 @@ public class AiScheduleStatusForm {
     @Max(value = 1, message = "启停状态不能大于1")
     @Schema(description = "目标启停状态(1:启用;0:停用)")
     private Integer enabled;
-
 }

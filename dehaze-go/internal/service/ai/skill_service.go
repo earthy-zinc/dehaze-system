@@ -276,7 +276,7 @@ func (s *SkillService) DeleteSkill(ctx context.Context, skillID, operatorID int6
 		return common.WrapBizError(common.DATABASE_ERROR, "统计 Skill 关联数失败", err)
 	}
 	if refs[skill.Name] > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS,
+		return common.NewBizError(common.DATA_REFERENCED,
 			"Skill ["+skill.Name+"] 已被 "+strconv.FormatInt(refs[skill.Name], 10)+" 个 Agent 关联，请先解绑再删除")
 	}
 	if err := s.repo.SoftDelete(ctx, skillID, operatorID); err != nil {

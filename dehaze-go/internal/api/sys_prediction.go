@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SysPredictionApi 去雾预测 API
+// SysPredictionApi 图像任务 API（/api/v1/images/*）
 type SysPredictionApi struct {
 	service     *predservice.PredictionService
 	fileService *fileservice.FileService
@@ -20,8 +20,8 @@ func NewSysPredictionApi(service *predservice.PredictionService, fileService *fi
 	return &SysPredictionApi{service: service, fileService: fileService}
 }
 
-// Predict 执行去雾预测
-func (api *SysPredictionApi) Predict(c *gin.Context) {
+// SubmitImageEdit 提交图像编辑任务（POST /images/edits）
+func (api *SysPredictionApi) SubmitImageEdit(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID, err := security.RequireUserID(c)
 	if err != nil {
@@ -30,7 +30,7 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 	}
 
 	var req struct {
-		AlgorithmID   int64  `json:"algorithmId" binding:"required"`
+		Model         string `json:"model"`
 		ImageURL      string `json:"imageUrl"`
 		FileID        *int64 `json:"fileId"`
 		Params        string `json:"params"`
@@ -56,7 +56,7 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 		return
 	}
 
-	result, err := api.service.Predict(ctx, req.AlgorithmID, imageURL, req.Params, userID, req.RecommendedBy)
+	result, err := api.service.Predict(ctx, req.Model, imageURL, req.Params, userID, req.RecommendedBy)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -64,35 +64,12 @@ func (api *SysPredictionApi) Predict(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
-// GetPredictionLog 查询预测任务状态
-// CancelPrediction 取消预测任务（POST /prediction/:id/cancel，幂等）
-func (api *SysPredictionApi) CancelPrediction(c *gin.Context) {
+// GetImageTask 查询图像任务状态（GET /images/tasks/{taskId}）
+func (api *SysPredictionApi) GetImageTask(c *gin.Context) {
 	ctx := c.Request.Context()
-	taskID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Param("taskId"), 10, 64)
 	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无效的任务ID: "+c.Param("id")))
-		return
-	}
-	userID, err := security.RequireUserID(c)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	result, err := api.service.CancelTask(ctx, taskID, userID)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-	common.OkWithDetailed(result, "取消成功", c)
-}
-
-func (api *SysPredictionApi) GetPredictionLog(c *gin.Context) {
-	ctx := c.Request.Context()
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无效的任务ID: "+c.Param("taskId")))
 		return
 	}
 	userID, err := security.RequireUserID(c)
@@ -109,18 +86,31 @@ func (api *SysPredictionApi) GetPredictionLog(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
-// ListPredictionLogs 预测日志列表
-func (api *SysPredictionApi) ListPredictionLogs(c *gin.Context) {
+// CancelImageTask 取消图像任务（POST /images/tasks/{taskId}/cancel，幂等）
+func (api *SysPredictionApi) CancelImageTask(c *gin.Context) {
 	ctx := c.Request.Context()
-	var algorithmID int64
-	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
-		var err error
-		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
-			return
-		}
+	taskID, err := strconv.ParseInt(c.Param("taskId"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无效的任务ID: "+c.Param("taskId")))
+		return
 	}
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	result, err := api.service.CancelTask(ctx, taskID, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(result, "取消成功", c)
+}
+
+// ListImageTasks 图像任务历史列表（GET /images/tasks）
+func (api *SysPredictionApi) ListImageTasks(c *gin.Context) {
+	ctx := c.Request.Context()
 	pageNum, pageSize, ok := parsePagination(c)
 	if !ok {
 		return
@@ -131,60 +121,10 @@ func (api *SysPredictionApi) ListPredictionLogs(c *gin.Context) {
 		return
 	}
 
-	result, err := api.service.GetLogPage(ctx, algorithmID, userID, pageNum, pageSize)
+	result, err := api.service.GetLogPage(ctx, c.Query("model"), userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 	common.OkWithDetailed(result, "查询成功", c)
-}
-
-// BatchPredict 批量去雾预测
-func (api *SysPredictionApi) BatchPredict(c *gin.Context) {
-	ctx := c.Request.Context()
-	userID, err := security.RequireUserID(c)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	var req struct {
-		AlgorithmID   int64                              `json:"algorithmId" binding:"required"`
-		Items         []predservice.BatchPredictionInput `json:"items" binding:"required"`
-		RecommendedBy *int64                             `json:"recommendedBy"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	results, err := api.service.BatchPredict(ctx, req.AlgorithmID, req.Items, userID, req.RecommendedBy)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-	common.OkWithData(struct {
-		Total   int                            `json:"total"`
-		Results []predservice.PredictionResult `json:"results"`
-	}{
-		Total:   len(results),
-		Results: results,
-	}, c)
-}
-
-// GetQuota 查询剩余处理次数
-func (api *SysPredictionApi) GetQuota(c *gin.Context) {
-	ctx := c.Request.Context()
-	userID, err := security.RequireUserID(c)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	result, err := api.service.GetQuota(ctx, userID)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-	common.OkWithData(result, c)
 }

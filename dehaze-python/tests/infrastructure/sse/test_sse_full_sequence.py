@@ -101,9 +101,15 @@ class TestFullSequence:
         await emitter.send_event("s1", "message.end", {"stopReason": "tool_calls", "usage": {}})
 
         types = [e[0] for e in emitter.events]
-        assert "content_block.start" not in types
+        # 工具调用同样走完整内容块生命周期：start(type=tool_use, index≥2, 带 id/name) → delta → stop
+        assert emitter.events[0] == (
+            "content_block.start",
+            {"index": 2, "type": "tool_use", "id": "c1", "name": "search"},
+        )
+        assert ("content_block.stop", {"index": 2}) in emitter.events
         assert types.index("thought") < types.index("message.end")
         delta = next(e for e in emitter.events if e[0] == "content_block.delta")
+        assert delta[1]["index"] == 2
         assert delta[1]["delta"]["type"] == "input_json_delta"
         assert emitter.events[-1][1]["stopReason"] == "tool_calls"
 
@@ -184,7 +190,9 @@ class TestStreamTimeoutStateMachine:
         """空闲超时只结束连接：不推 error（推理仍在跑），也不落终结事件。"""
         import json
 
-        manager = self._make_manager(monkeypatch, mock_redis, heartbeat=0.03, timeout=0.02)
+        # 心跳间隔远大于空闲超时：首轮空闲即判定超时（差值须远大于事件循环时钟分辨率，
+        # Windows 为 15.6ms，定时器可提前一个分辨率触发）
+        manager = self._make_manager(monkeypatch, mock_redis, heartbeat=0.3, timeout=0.01)
         queue = asyncio.Queue()
         chunks = [chunk async for chunk in manager._stream_from_queue("s-timeout", queue)]
         assert chunks == []

@@ -1,5 +1,6 @@
 package com.pei.dehaze.service.impl;
 
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.json.JSONObject;
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.mapper.SysPredLogMapper;
@@ -24,68 +25,81 @@ public class PredLogAsyncTask {
     private final MeterRegistry meterRegistry;
 
     @Async("datasetTaskExecutor")
-    public void execute(Long logId, Long algorithmId, String imageUrl, String params) {
+    public void execute(Long logId, String model, Long fileId, String imageUrl, String params) {
         long startTime = System.currentTimeMillis();
         try {
-            JSONObject result = pythonClient.predict(algorithmId, imageUrl, params);
+            JSONObject result = pythonClient.predict(model, fileId, imageUrl, params);
             Integer status = result.getInt("status");
             if (status != null && status == LogStatusEnum.PROCESSING.getValue()) {
-                Long pythonLogId = result.getLong("logId");
-                result = pollPredTask(pythonLogId);
+                Long pythonTaskId = result.getLong("taskId");
+                result = pollPredTask(pythonTaskId);
             }
 
-            int elapsed = (int) (System.currentTimeMillis() - startTime);
+            int elapsedMs = (int) (System.currentTimeMillis() - startTime);
 
             Integer finalStatus = result.getInt("status");
             if (finalStatus != null && finalStatus == LogStatusEnum.FAILED.getValue()) {
                 SysPredLog update = new SysPredLog();
                 update.setId(logId);
-                update.setTime(elapsed);
+                update.setTime(elapsedMs / 1000);
                 update.setStatus(LogStatusEnum.FAILED);
                 update.setErrorMessage(result.getStr("errorMessage"));
                 predLogMapper.updateById(update);
-                meterRegistry.counter("dehaze_prediction_total", "status", "failure").increment();
-                log.error("预测失败(Python): algorithmId={}, predLogId={}, error={}",
-                        algorithmId, logId, result.getStr("errorMessage"));
+                meterRegistry
+                        .counter("dehaze_prediction_total", "status", "failure")
+                        .increment();
+                log.error(
+                        "图像任务失败(Python): model={}, predLogId={}, error={}",
+                        model,
+                        logId,
+                        result.getStr("errorMessage"));
                 return;
             }
 
             SysPredLog update = new SysPredLog();
             update.setId(logId);
-            update.setTime(elapsed);
+            update.setTime(elapsedMs / 1000);
             update.setPredUrl(result.getStr("resultUrl"));
             update.setPredMd5(result.getStr("resultMd5"));
+            // origin_md5 是原图内容 MD5，由算法服务下载图片后返回；仅 imageUrl 入参时本地算不出
+            String originMd5 = result.getStr("originMd5");
+            if (CharSequenceUtil.isNotBlank(originMd5)) {
+                update.setOriginMd5(originMd5);
+            }
             update.setStatus(LogStatusEnum.COMPLETED);
             predLogMapper.updateById(update);
 
-            meterRegistry.counter("dehaze_prediction_total", "status", "success").increment();
-            log.debug("预测完成: algorithmId={}, predLogId={}, time={}ms",
-                    algorithmId, logId, elapsed);
+            meterRegistry
+                    .counter("dehaze_prediction_total", "status", "success")
+                    .increment();
+            log.debug("图像任务完成: model={}, predLogId={}, time={}ms", model, logId, elapsedMs);
         } catch (Exception e) {
-            int elapsed = (int) (System.currentTimeMillis() - startTime);
+            int elapsedMs = (int) (System.currentTimeMillis() - startTime);
             SysPredLog update = new SysPredLog();
             update.setId(logId);
-            update.setTime(elapsed);
+            update.setTime(elapsedMs / 1000);
             update.setStatus(LogStatusEnum.FAILED);
             update.setErrorMessage(e.getMessage());
             predLogMapper.updateById(update);
 
-            meterRegistry.counter("dehaze_prediction_total", "status", "failure").increment();
-            log.error("预测失败: algorithmId={}, predLogId={}, error={}",
-                    algorithmId, logId, e.getMessage(), e);
+            meterRegistry
+                    .counter("dehaze_prediction_total", "status", "failure")
+                    .increment();
+            log.error("图像任务失败: model={}, predLogId={}, error={}", model, logId, e.getMessage(), e);
         }
     }
 
-    private JSONObject pollPredTask(Long pythonLogId) throws InterruptedException {
+    private JSONObject pollPredTask(Long pythonTaskId) throws InterruptedException {
         long deadline = System.currentTimeMillis() + POLL_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(POLL_INTERVAL_MS);
-            JSONObject result = pythonClient.getPredTaskStatus(pythonLogId);
+            JSONObject result = pythonClient.getPredTaskStatus(pythonTaskId);
             Integer status = result.getInt("status");
-            if (status != null && (status == LogStatusEnum.COMPLETED.getValue() || status == LogStatusEnum.FAILED.getValue())) {
+            if (status != null
+                    && (status == LogStatusEnum.COMPLETED.getValue() || status == LogStatusEnum.FAILED.getValue())) {
                 return result;
             }
         }
-        throw new RuntimeException("Python 预测任务 " + pythonLogId + " 轮询超时");
+        throw new RuntimeException("Python 图像任务 " + pythonTaskId + " 轮询超时");
     }
 }

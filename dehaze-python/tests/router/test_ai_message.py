@@ -416,11 +416,22 @@ class TestRegenerateAndEdit:
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0400"
 
-    async def test_edit_content_too_long_rejected(self, msg_client):
+    async def test_edit_over_model_budget_maps_a0500(self, msg_client, monkeypatch):
+        """单条消息长度上限按模型上下文预算在服务层判定（A0500），路由原样透传
+
+        长度上限不再是固定的 4000 字符 schema 校验，故此处只断言错误码映射。
+        """
         client, _ = msg_client
-        resp = await client.put("/api/v1/ai/messages/54", json={"content": "x" * 4001})
+
+        async def _fake_edit(db, user_id, msg_id, form):
+            raise BusinessException(
+                ResultCode.BUSINESS_ERROR, "单条消息超出模型上下文预算（800 字符，模型 gpt-4o）"
+            )
+
+        monkeypatch.setattr(ai_message_service, "edit_message", _fake_edit)
+        resp = await client.put("/api/v1/ai/messages/54", json={"content": "x" * 801})
         assert resp.status_code == 400
-        assert resp.json()["code"] == "A0400"
+        assert resp.json()["code"] == "A0500"
 
     async def test_edit_assistant_message_maps_a0502(self, msg_client, monkeypatch):
         client, _ = msg_client

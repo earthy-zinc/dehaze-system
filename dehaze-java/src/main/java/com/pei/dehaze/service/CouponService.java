@@ -11,7 +11,6 @@ import com.pei.dehaze.model.vo.CouponCreateResult;
 import com.pei.dehaze.model.vo.CouponReceiveResult;
 import com.pei.dehaze.model.vo.CouponVO;
 import com.pei.dehaze.model.vo.UserCouponVO;
-
 import java.util.List;
 
 public interface CouponService extends IService<SysCoupon> {

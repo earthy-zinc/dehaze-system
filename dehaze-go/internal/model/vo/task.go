@@ -45,10 +45,6 @@ type TaskDetailVO struct {
 	Name string `json:"name"`
 	// 任务类型
 	Type string `json:"type"`
-	// 算法ID
-	AlgorithmID int64 `json:"algorithmId"`
-	// 算法名称
-	AlgorithmName string `json:"algorithmName"`
 	// 数据集ID
 	DatasetID int64 `json:"datasetId"`
 	// 数据集名称

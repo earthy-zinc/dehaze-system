@@ -25,15 +25,15 @@ public interface SysAiAgentVersionMapper extends BaseMapper<SysAiAgentVersion> {
     /**
      * 当前已发布版本（status=2，版本号最大）
      */
-    @Select("SELECT * FROM sys_ai_agent_version WHERE agent_id = #{agentId} AND status = 2 " +
-            "ORDER BY version_no DESC LIMIT 1")
+    @Select("SELECT * FROM sys_ai_agent_version WHERE agent_id = #{agentId} AND status = 2 "
+            + "ORDER BY version_no DESC LIMIT 1")
     SysAiAgentVersion getLatestPublished(@Param("agentId") Long agentId);
 
     /**
      * 最新草稿版本（status=1，发布门禁评测对象）
      */
-    @Select("SELECT * FROM sys_ai_agent_version WHERE agent_id = #{agentId} AND status = 1 " +
-            "ORDER BY version_no DESC LIMIT 1")
+    @Select("SELECT * FROM sys_ai_agent_version WHERE agent_id = #{agentId} AND status = 1 "
+            + "ORDER BY version_no DESC LIMIT 1")
     SysAiAgentVersion getLatestDraft(@Param("agentId") Long agentId);
 
     /**
@@ -51,7 +51,7 @@ public interface SysAiAgentVersionMapper extends BaseMapper<SysAiAgentVersion> {
     /**
      * 版本历史分页（不加载 snapshot 大字段，按版本号倒序）
      */
-    @Select("SELECT id, agent_id, version_no, status, change_note, operator_id, create_time " +
-            "FROM sys_ai_agent_version WHERE agent_id = #{agentId} ORDER BY version_no DESC")
+    @Select("SELECT id, agent_id, version_no, status, change_note, operator_id, create_time "
+            + "FROM sys_ai_agent_version WHERE agent_id = #{agentId} ORDER BY version_no DESC")
     IPage<SysAiAgentVersion> selectVersionPage(IPage<SysAiAgentVersion> page, @Param("agentId") Long agentId);
 }

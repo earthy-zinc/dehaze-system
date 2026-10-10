@@ -20,7 +20,7 @@ type SysOrder struct {
 	PayableAmount     int64      `gorm:"column:payable_amount;type:bigint;not null;comment:应付金额" json:"payableAmount"`
 	PaidAmount        int64      `gorm:"column:paid_amount;type:bigint;not null;default:0;comment:实付金额" json:"paidAmount"`
 	PayMethod         *string    `gorm:"column:pay_method;type:varchar(16);comment:支付方式" json:"payMethod"`
-	Status            int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_user_id_status;index:idx_status;comment:订单状态" json:"status"`
+	Status            int8       `gorm:"column:status;type:tinyint;not null;index:idx_user_id_status;index:idx_status;comment:订单状态" json:"status"`
 	ExpireTime        time.Time  `gorm:"column:expire_time;type:datetime;not null;index:idx_expire_time;comment:支付超时时间" json:"expireTime"`
 	EffectiveTime     *time.Time `gorm:"column:effective_time;type:datetime;comment:权益生效时间" json:"effectiveTime"`
 	PackageExpireTime *time.Time `gorm:"column:package_expire_time;type:datetime;index:idx_package_expire_time;comment:套餐到期时间" json:"packageExpireTime"`

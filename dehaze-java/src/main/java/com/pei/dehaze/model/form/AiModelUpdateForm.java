@@ -4,9 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
+import java.util.List;
 import java.util.Map;
+import lombok.Data;
 
 /**
  * AI 模型更新表单：仅提交需要变更的字段（null 视为不修改）。
@@ -21,6 +21,9 @@ public class AiModelUpdateForm {
     private Long providerId;
 
     private String modelType;
+
+    /** 任务归类标签（全量替换：传 [] 清空，传 null 不改） */
+    private List<String> taskTags;
 
     @Min(1)
     private Long dimension;

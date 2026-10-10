@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.schema.ai_model_price import (
+    BillingUnit,
     ModelPriceCreateRequest,
     ModelPriceDetailForm,
     ModelPriceQuery,
@@ -256,3 +257,128 @@ class TestExternalPaidModels:
         calc = await provider.calculate(db, "gpt-4o-mini", 1, 1000, 200, 300)
         assert calc["credits"] == 1500
         assert calc["configured"] is True
+
+
+class TestBillingUnitAndUsageKind:
+    """阶段 1 价格维度化：主表 billing_unit、明细 usage_kind 的默认值与自定义回读。"""
+
+    async def test_defaults(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        p = await svc.create_price(db, _create_request("bu-default", [_detail("input", "2000")]))
+        assert p.billing_unit == "million_tokens"
+        assert p.details[0].usage_kind == "token"
+
+    async def test_custom_unit_kind_round_trip(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        req = ModelPriceCreateRequest(
+            model_id="tts-huayan",
+            provider_id=1,
+            billing_unit="ten_thousand_chars",
+            effective_from=_EFFECTIVE_FROM,
+            details=[
+                ModelPriceDetailForm(
+                    token_type="unit",
+                    usage_kind="unit",
+                    time_slot="idle",
+                    min_tokens=0,
+                    max_tokens=None,
+                    unit_price=Decimal("5"),
+                )
+            ],
+        )
+        p = await svc.create_price(db, req)
+        assert p.billing_unit == "ten_thousand_chars"
+        assert p.details[0].usage_kind == "unit"
+
+        listed = await svc.list_prices(db, ModelPriceQuery(model_id="tts-huayan", page=1, size=10))
+        assert listed.list[0].billing_unit == "ten_thousand_chars"
+
+    async def test_update_billing_unit(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        created = await svc.create_price(db, _create_request("bu-upd", [_detail("input", "2000")]))
+        updated = await svc.update_price(db, created.id, {"billing_unit": "second"})
+        assert updated.billing_unit == "second"
+
+    def test_billing_unit_whitelist_rejected(self):
+        with pytest.raises(ValidationError):
+            ModelPriceCreateRequest.model_validate(
+                {"model_id": "x", "provider_id": 1, "billing_unit": "day"}
+            )
+
+    def test_usage_kind_whitelist_rejected(self):
+        with pytest.raises(ValidationError):
+            ModelPriceDetailForm.model_validate(
+                {
+                    "token_type": "input",
+                    "usage_kind": "per_image",
+                    "time_slot": "idle",
+                    "unit_price": "1",
+                }
+            )
+
+
+class TestUnitCredits:
+    """非 token 计费的公共计价入口（asr/tts/image 共用）：unit 档单行 × 计量单位数量。"""
+
+    async def _seed_unit_price(self, db, model_id: str, billing_unit: BillingUnit, unit_price: str):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        return await svc.create_price(
+            db,
+            ModelPriceCreateRequest(
+                model_id=model_id,
+                provider_id=1,
+                billing_unit=billing_unit,
+                effective_from=_EFFECTIVE_FROM,
+                details=[
+                    ModelPriceDetailForm(
+                        token_type="unit",
+                        usage_kind="unit",
+                        time_slot="idle",
+                        min_tokens=0,
+                        max_tokens=None,
+                        unit_price=Decimal(unit_price),
+                    )
+                ],
+            ),
+        )
+
+    async def test_asr_seconds_round_half_up_with_min_one(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        await self._seed_unit_price(db, "calc-asr", "second", "1")
+
+        r = await svc.calculate_unit_credits(db, "calc-asr", 1, _IDLE_TIME, Decimal("2.5"))
+        assert r == {"credits": 3, "configured": True, "billing_unit": "second"}
+        # 0.4 秒 → 0.4 积分 → 取整 0 → 沿用 token 口径"单次至少 1 积分"
+        r2 = await svc.calculate_unit_credits(db, "calc-asr", 1, _IDLE_TIME, Decimal("0.4"))
+        assert r2["credits"] == 1
+
+    async def test_tts_ten_thousand_chars(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        await self._seed_unit_price(db, "calc-tts", "ten_thousand_chars", "100")
+
+        # 0.005 万字符（50 字符）× 100 = 0.5 → 四舍五入 1
+        r = await svc.calculate_unit_credits(db, "calc-tts", 1, _IDLE_TIME, Decimal("0.005"))
+        assert r["credits"] == 1
+        # 1.2345 万字符 × 100 = 123.45 → 123（quantity × 单价 = credits 可复算）
+        r2 = await svc.calculate_unit_credits(db, "calc-tts", 1, _IDLE_TIME, Decimal("1.2345"))
+        assert r2["credits"] == 123
+        assert r2["billing_unit"] == "ten_thousand_chars"
+
+    async def test_image_per_image(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        await self._seed_unit_price(db, "calc-image", "image", "1")
+        r = await svc.calculate_unit_credits(db, "calc-image", 1, _IDLE_TIME, Decimal("7"))
+        assert r == {"credits": 7, "configured": True, "billing_unit": "image"}
+
+    async def test_no_price_returns_not_configured(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        r = await svc.calculate_unit_credits(db, "no-such-model", 1, _IDLE_TIME, Decimal("3"))
+        assert r == {"credits": 0, "configured": False, "billing_unit": None}
+
+    async def test_token_only_version_is_not_configured_for_unit(self, db):
+        svc = AiModelPriceService(price_repository=ai_model_price_repository)
+        await svc.create_price(db, _create_request("calc-token", [_detail("input", "2000")]))
+        r = await svc.calculate_unit_credits(db, "calc-token", 1, _IDLE_TIME, Decimal("3"))
+        assert r["credits"] == 0
+        assert r["configured"] is False
+        assert r["billing_unit"] == "million_tokens"

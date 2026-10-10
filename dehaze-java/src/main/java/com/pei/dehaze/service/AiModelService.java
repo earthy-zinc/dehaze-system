@@ -11,7 +11,6 @@ import com.pei.dehaze.model.query.AiModelPageQuery;
 import com.pei.dehaze.model.query.ModelPriceQuery;
 import com.pei.dehaze.model.vo.AiModelVO;
 import com.pei.dehaze.model.vo.ModelPriceVO;
-
 import java.util.List;
 
 /** AI 模型注册表与用户售价版本管理（对齐 python ai_model_service / ai_model_price_service） */
@@ -20,8 +19,8 @@ public interface AiModelService extends IService<SysAiModel> {
     /** 模型分页列表（含近 24h 调用统计） */
     Page<AiModelVO> listModels(AiModelPageQuery query);
 
-    /** 启用模型列表（按用户 VIP 等级过滤，可按模型类型筛选） */
-    List<AiModelVO> listEnabledModels(String modelType);
+    /** 启用模型列表（按用户 VIP 等级过滤，可按模型类型/任务标签筛选） */
+    List<AiModelVO> listEnabledModels(String modelType, String taskTags);
 
     AiModelVO createModel(AiModelForm form);
 

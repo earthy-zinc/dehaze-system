@@ -1,5 +1,11 @@
 package com.pei.dehaze.controller;
 
+import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
+import static org.springframework.web.bind.annotation.RequestMethod.GET;
+import static org.springframework.web.bind.annotation.RequestMethod.PATCH;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
+import static org.springframework.web.bind.annotation.RequestMethod.PUT;
+
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.result.ResultCode;
@@ -11,6 +17,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -19,20 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.http.HttpRequest;
-import java.nio.charset.StandardCharsets;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Optional;
-
-import static org.springframework.web.bind.annotation.RequestMethod.DELETE;
-import static org.springframework.web.bind.annotation.RequestMethod.GET;
-import static org.springframework.web.bind.annotation.RequestMethod.PATCH;
-import static org.springframework.web.bind.annotation.RequestMethod.POST;
-import static org.springframework.web.bind.annotation.RequestMethod.PUT;
 
 /**
  * AI 能力端点转发入口（B 类端点：deepagents / LLM / 向量检索等强依赖 Python 的能力）。
@@ -79,7 +78,8 @@ public class AiProxyController {
 
     @Operation(summary = "AI 能力端点转发（JSON / SSE / multipart 透传）")
     @RequestMapping(method = {GET, POST, PUT, PATCH, DELETE})
-    public void forward(HttpServletRequest request, HttpServletResponse response) throws IOException, InterruptedException {
+    public void forward(HttpServletRequest request, HttpServletResponse response)
+            throws IOException, InterruptedException {
         String method = request.getMethod();
         String path = AiProxyRoutes.pathOf(request);
         Optional<AiProxyRoutes.Kind> kind = AiProxyRoutes.kindOf(method, path);
@@ -122,8 +122,12 @@ public class AiProxyController {
      * SSE 转发：上游响应体逐块写回并 flush——servlet 缓冲会吞住事件，必须逐块刷出。
      * 客户端断连由写响应时的 IOException 暴露，据此关闭上游流（取消订阅），停止 python 侧推理。
      */
-    private void forwardStream(String method, String target, HttpHeaders headers,
-                               HttpRequest.BodyPublisher body, HttpServletResponse response)
+    private void forwardStream(
+            String method,
+            String target,
+            HttpHeaders headers,
+            HttpRequest.BodyPublisher body,
+            HttpServletResponse response)
             throws IOException, InterruptedException {
         aiForwardClient.stream(method, target, headers, body, (status, contentType, upstream) -> {
             response.setStatus(status);
@@ -197,7 +201,9 @@ public class AiProxyController {
         if (response.isCommitted()) {
             return;
         }
-        writeJson(response, HttpStatus.SERVICE_UNAVAILABLE.value(),
+        writeJson(
+                response,
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
                 Result.failed(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "AI 服务暂不可用，请稍后重试"));
     }
 

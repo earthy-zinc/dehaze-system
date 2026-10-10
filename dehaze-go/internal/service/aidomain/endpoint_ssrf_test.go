@@ -1,6 +1,8 @@
 package aidomain
 
 import (
+	"errors"
+	"net"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -56,12 +58,36 @@ func TestIsSafeURLRejectsInternalTargets(t *testing.T) {
 		"https://[::ffff:127.0.0.1]/",
 		"https://[::ffff:10.0.0.1]/",
 		"https://[::ffff:192.168.1.1]/",
-		// 域名解析失败保守拒绝
-		"https://no-such-host-for-ssrf-test.invalid/",
 	}
 	for _, raw := range denied {
 		t.Run("deny "+raw, func(t *testing.T) {
 			assert.False(t, isSafeURL(raw), "不应放行: %s", raw)
+		})
+	}
+}
+
+// TestIsSafeURLDomainResolution 域名解析分支：替换解析入口注入结果，不依赖真实 DNS
+// （内网 DNS 会把不存在的域名通配解析到某个地址，按真实解析结果断言会随环境假绿/假红）。
+func TestIsSafeURLDomainResolution(t *testing.T) {
+	original := lookupIP
+	t.Cleanup(func() { lookupIP = original })
+
+	cases := []struct {
+		name      string
+		addresses []net.IP
+		err       error
+		want      bool
+	}{
+		{"解析失败保守拒绝", nil, errors.New("no such host"), false},
+		{"解析结果为空保守拒绝", []net.IP{}, nil, false},
+		{"解析到内网拒绝", []net.IP{net.ParseIP("192.168.50.10")}, nil, false},
+		{"任一地址为内网即拒绝", []net.IP{net.ParseIP("93.184.216.34"), net.ParseIP("10.1.2.3")}, nil, false},
+		{"解析到公网放行", []net.IP{net.ParseIP("93.184.216.34")}, nil, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			lookupIP = func(string) ([]net.IP, error) { return tc.addresses, tc.err }
+			assert.Equal(t, tc.want, isSafeURL("https://agent.example.com/x"))
 		})
 	}
 }

@@ -1,7 +1,11 @@
 package com.pei.dehaze.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.pei.dehaze.config.property.AlgorithmProperties;
 import com.pei.dehaze.service.client.VoiceAsrProxyHandler;
+import java.net.http.HttpClient;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
@@ -13,16 +17,11 @@ import org.springframework.mock.web.MockServletContext;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.support.WebSocketHandlerMapping;
-import org.springframework.web.servlet.handler.SimpleUrlHandlerMapping;
-
-import java.net.http.HttpClient;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@code /ws/asr} 的映射归属与优先级守卫。
@@ -72,9 +71,7 @@ class VoiceAsrWebSocketMappingTest {
                     break;
                 }
             }
-            assertThat(firstMatch)
-                    .as("DispatcherServlet 解析 /ws/asr 时命中的第一个映射")
-                    .isSameAs(voiceMapping);
+            assertThat(firstMatch).as("DispatcherServlet 解析 /ws/asr 时命中的第一个映射").isSameAs(voiceMapping);
         }
     }
 
@@ -123,7 +120,10 @@ class VoiceAsrWebSocketMappingTest {
             context.setServletContext(new MockServletContext());
             context.register(TestWebConfig.class, VoiceAsrWebSocketConfig.class);
             context.refresh();
-            assertThat(mappingOwning(context.getBeansOfType(HandlerMapping.class).values().stream().toList(), "/ws/asr"))
+            assertThat(mappingOwning(
+                            context.getBeansOfType(HandlerMapping.class).values().stream()
+                                    .toList(),
+                            "/ws/asr"))
                     .isInstanceOf(WebSocketHandlerMapping.class);
         }
     }

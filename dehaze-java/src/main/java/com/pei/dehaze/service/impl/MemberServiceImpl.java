@@ -10,7 +10,6 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysMemberGrowthLogMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
-import com.pei.dehaze.mapper.SysMemberQuotaMapper;
 import com.pei.dehaze.mapper.SysMemberSignInMapper;
 import com.pei.dehaze.mapper.SysOrderMapper;
 import com.pei.dehaze.mapper.SysUserCouponMapper;
@@ -18,7 +17,6 @@ import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.entity.SysMember;
 import com.pei.dehaze.model.entity.SysMemberBenefit;
 import com.pei.dehaze.model.entity.SysMemberGrowthLog;
-import com.pei.dehaze.model.entity.SysMemberQuota;
 import com.pei.dehaze.model.entity.SysMemberSignIn;
 import com.pei.dehaze.model.entity.SysOrder;
 import com.pei.dehaze.model.entity.SysUser;
@@ -34,17 +32,11 @@ import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.SysDictService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,8 +44,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -62,6 +59,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     /** 营销激励字典类型（签到/评价成长值） */
     private static final String GROWTH_RULES_DICT_TYPE = "member_growth_rules";
+
     private static final int SIGN_IN_BONUS_DAYS = 7;
 
     private static final Map<String, String> CHANGE_TYPE_LABELS = Map.of(
@@ -72,13 +70,11 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             "sign_in_bonus", "连续签到奖励",
             "consume", "消费",
             "refund_deduct", "退款扣减",
-            "admin_adjust", "管理员调整"
-    );
+            "admin_adjust", "管理员调整");
 
     private final SysUserMapper userMapper;
     private final SysMemberGrowthLogMapper growthLogMapper;
     private final SysMemberSignInMapper signInMapper;
-    private final SysMemberQuotaMapper quotaMapper;
     private final MemberBenefitService memberBenefitService;
     private final MessageService messageService;
     private final StringRedisTemplate stringRedisTemplate;
@@ -111,10 +107,13 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 .orderByDesc(SysMember::getBecomeMemberTime);
 
         if (CharSequenceUtil.isNotBlank(query.getKeywords())) {
-            List<Long> userIds = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+            List<Long> userIds = userMapper
+                    .selectList(new LambdaQueryWrapper<SysUser>()
                             .and(w -> w.like(SysUser::getUsername, query.getKeywords())
-                                    .or().like(SysUser::getNickname, query.getKeywords())
-                                    .or().like(SysUser::getMobile, query.getKeywords())))
+                                    .or()
+                                    .like(SysUser::getNickname, query.getKeywords())
+                                    .or()
+                                    .like(SysUser::getMobile, query.getKeywords())))
                     .stream()
                     .map(SysUser::getId)
                     .toList();
@@ -132,24 +131,28 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         if (records.isEmpty()) {
             userMap = Collections.emptyMap();
         } else {
-            userMap = userMapper.selectBatchIds(records.stream()
-                            .map(SysMember::getUserId).distinct().toList())
+            userMap = userMapper
+                    .selectBatchIds(records.stream()
+                            .map(SysMember::getUserId)
+                            .distinct()
+                            .toList())
                     .stream()
                     .collect(Collectors.toMap(SysUser::getId, u -> u));
         }
 
         Page<MemberPageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        result.setRecords(records.stream().map(m -> {
-            SysUser u = userMap.get(m.getUserId());
-            return toPageVO(m, u);
-        }).toList());
+        result.setRecords(records.stream()
+                .map(m -> {
+                    SysUser u = userMap.get(m.getUserId());
+                    return toPageVO(m, u);
+                })
+                .toList());
         return result;
     }
 
     @Override
     public MemberDetailVO getDetail(Long userId) {
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -170,10 +173,15 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "member", action = "level_change", targetType = "member", targetIdSpel = "#userId", beforeSpel = "", afterSpel = "#form")
+    @AuditLog(
+            module = "member",
+            action = "level_change",
+            targetType = "member",
+            targetIdSpel = "#userId",
+            beforeSpel = "",
+            afterSpel = "#form")
     public void adjustLevel(Long userId, MemberLevelAdjustForm form) {
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -185,14 +193,9 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             member.setBecomeMemberTime(LocalDateTime.now());
         }
         SysMemberBenefit benefit = getCachedBenefit(form.getLevelCode());
-        if (benefit != null) {
-            member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-            member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-        }
+        memberBenefitService.refreshMemberQuotaSnapshot(member);
         this.updateById(member);
-        stringRedisTemplate.delete("member:level:" + userId);
-        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
+        memberBenefitService.invalidateMemberQuotaCache(userId);
         if (!form.getLevelCode().equals(oldLevelCode)) {
             sendLevelChangeNotification(userId, oldLevelCode, form.getLevelCode(), benefit);
         }
@@ -200,14 +203,18 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "member", action = "growth_change", targetType = "member", targetIdSpel = "#userId", afterSpel = "#form")
+    @AuditLog(
+            module = "member",
+            action = "growth_change",
+            targetType = "member",
+            targetIdSpel = "#userId",
+            afterSpel = "#form")
     public void adjustGrowth(Long userId, MemberGrowthAdjustForm form) {
         // 变动值为 0 属无意义流水，拒绝落库（python adjust_growth 同款口径）
         if (form.getChangeValue() == null || form.getChangeValue() == 0) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "变动值不能为0");
         }
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -221,26 +228,23 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         String targetLevel = calcLevelByGrowth(newGrowth);
         if (!targetLevel.equals(member.getLevelCode()) && "growth".equals(member.getLevelSource())) {
             member.setLevelCode(targetLevel);
-            SysMemberBenefit benefit = memberBenefitService.getByLevelCode(targetLevel);
-            if (benefit != null) {
-                member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-                member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-            }
+            memberBenefitService.refreshMemberQuotaSnapshot(member);
         }
         this.updateById(member);
-        stringRedisTemplate.delete("member:level:" + userId);
-        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
-        recordGrowthLog(userId, "admin_adjust", actualChange, newGrowth,
-                null, form.getReason(), operatorId);
+        memberBenefitService.invalidateMemberQuotaCache(userId);
+        recordGrowthLog(userId, "admin_adjust", actualChange, newGrowth, null, form.getReason(), operatorId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "member", action = "status_change", targetType = "member", targetIdSpel = "#userId", afterSpel = "#form")
+    @AuditLog(
+            module = "member",
+            action = "status_change",
+            targetType = "member",
+            targetIdSpel = "#userId",
+            afterSpel = "#form")
     public void updateStatus(Long userId, MemberStatusForm form) {
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -270,9 +274,18 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         Page<SysMemberGrowthLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysMemberGrowthLog> wrapper = new LambdaQueryWrapper<SysMemberGrowthLog>()
                 .eq(SysMemberGrowthLog::getUserId, userId)
-                .eq(CharSequenceUtil.isNotBlank(query.getChangeType()), SysMemberGrowthLog::getChangeType, query.getChangeType())
-                .ge(query.getStartTime() != null, SysMemberGrowthLog::getCreateTime, query.getStartTime() != null ? query.getStartTime().atStartOfDay() : null)
-                .le(query.getEndTime() != null, SysMemberGrowthLog::getCreateTime, query.getEndTime() != null ? query.getEndTime().atTime(23, 59, 59) : null)
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getChangeType()),
+                        SysMemberGrowthLog::getChangeType,
+                        query.getChangeType())
+                .ge(
+                        query.getStartTime() != null,
+                        SysMemberGrowthLog::getCreateTime,
+                        query.getStartTime() != null ? query.getStartTime().atStartOfDay() : null)
+                .le(
+                        query.getEndTime() != null,
+                        SysMemberGrowthLog::getCreateTime,
+                        query.getEndTime() != null ? query.getEndTime().atTime(23, 59, 59) : null)
                 .orderByDesc(SysMemberGrowthLog::getCreateTime);
         growthLogMapper.selectPage(page, wrapper);
 
@@ -298,12 +311,13 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 .eq(SysMemberSignIn::getSignDate, today.minusDays(1))
                 .last("LIMIT 1"));
         int continuousDays = yesterdaySignIn != null && yesterdaySignIn.getContinuousDays() != null
-                ? yesterdaySignIn.getContinuousDays() + 1 : 1;
+                ? yesterdaySignIn.getContinuousDays() + 1
+                : 1;
 
         boolean bonusTriggered = continuousDays > 0 && continuousDays % SIGN_IN_BONUS_DAYS == 0;
         int signInValue = sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "sign_in_value", 3);
-        int bonusGrowth = bonusTriggered
-                ? sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "sign_in_streak_bonus", 20) : 0;
+        int bonusGrowth =
+                bonusTriggered ? sysDictService.getIntValue(GROWTH_RULES_DICT_TYPE, "sign_in_streak_bonus", 20) : 0;
         int totalGrowth = signInValue + bonusGrowth;
 
         SysMemberSignIn signIn = new SysMemberSignIn();
@@ -324,22 +338,22 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         String targetLevel = calcLevelByGrowth(newGrowth);
         if (!targetLevel.equals(member.getLevelCode()) && "growth".equals(member.getLevelSource())) {
             member.setLevelCode(targetLevel);
-            SysMemberBenefit benefit = memberBenefitService.getByLevelCode(targetLevel);
-            if (benefit != null) {
-                member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-                member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-            }
+            memberBenefitService.refreshMemberQuotaSnapshot(member);
         }
         this.updateById(member);
-        stringRedisTemplate.delete("member:level:" + userId);
-        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
+        memberBenefitService.invalidateMemberQuotaCache(userId);
 
-        recordGrowthLog(userId, "sign_in", signInValue, oldGrowth + signInValue,
-                String.valueOf(signIn.getId()), "每日签到", null);
+        recordGrowthLog(
+                userId, "sign_in", signInValue, oldGrowth + signInValue, String.valueOf(signIn.getId()), "每日签到", null);
         if (bonusTriggered) {
-            recordGrowthLog(userId, "sign_in_bonus", bonusGrowth, newGrowth,
-                    String.valueOf(signIn.getId()), "连续签到" + SIGN_IN_BONUS_DAYS + "天奖励", null);
+            recordGrowthLog(
+                    userId,
+                    "sign_in_bonus",
+                    bonusGrowth,
+                    newGrowth,
+                    String.valueOf(signIn.getId()),
+                    "连续签到" + SIGN_IN_BONUS_DAYS + "天奖励",
+                    null);
         }
 
         SignInResultVO vo = new SignInResultVO();
@@ -364,8 +378,14 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 (member.getTotalConsumption() != null ? member.getTotalConsumption() : 0L) + consumeGrowth);
         this.updateById(member);
         stringRedisTemplate.delete("member:level:" + order.getUserId());
-        recordGrowthLog(order.getUserId(), "consume", (int) consumeGrowth, newGrowth,
-                String.valueOf(order.getId()), "购买" + order.getPackageName(), null);
+        recordGrowthLog(
+                order.getUserId(),
+                "consume",
+                (int) consumeGrowth,
+                newGrowth,
+                String.valueOf(order.getId()),
+                "购买" + order.getPackageName(),
+                null);
     }
 
     @Override
@@ -391,50 +411,6 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     @Override
-    public void resetMonthlyQuota() {
-        int currentMonth = Integer.parseInt(LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")));
-        Map<String, SysMemberBenefit> benefitMap = memberBenefitService.list().stream()
-                .collect(Collectors.toMap(SysMemberBenefit::getLevelCode, b -> b, (a, b) -> a));
-
-        int batchSize = 500;
-        int totalProcessed = 0;
-        while (true) {
-            Page<SysMember> page = this.page(new Page<>(1, batchSize), new LambdaQueryWrapper<SysMember>()
-                    .and(w -> w.isNull(SysMember::getQuotaResetMonth).or().ne(SysMember::getQuotaResetMonth, currentMonth)));
-            List<SysMember> members = page.getRecords();
-            if (members.isEmpty()) {
-                break;
-            }
-            for (SysMember member : members) {
-                if (member.getQuotaResetMonth() != null) {
-                    // upsert：quota_month + user_id 唯一键冲突时复活软删行，保留历史额度记录
-                    quotaMapper.upsertByUserAndMonth(
-                            member.getUserId(),
-                            member.getQuotaResetMonth(),
-                            member.getMonthlyDehazeQuota(),
-                            member.getMonthlyDehazeUsed(),
-                            member.getMonthlyEvaluateQuota(),
-                            member.getMonthlyEvaluateUsed()
-                    );
-                }
-                SysMemberBenefit benefit = benefitMap.get(member.getLevelCode());
-                if (benefit != null) {
-                    member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-                    member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-                }
-                member.setMonthlyDehazeUsed(0);
-                member.setMonthlyEvaluateUsed(0);
-                member.setQuotaResetMonth(currentMonth);
-                this.updateById(member);
-                stringRedisTemplate.delete("member:quota:" + member.getUserId() + ":dehaze");
-                stringRedisTemplate.delete("member:quota:" + member.getUserId() + ":evaluate");
-            }
-            totalProcessed += members.size();
-        }
-        log.debug("月度配额重置完成: 共处理{}条记录", totalProcessed);
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public void processExpiredMembers() {
         LocalDateTime now = LocalDateTime.now();
@@ -448,14 +424,9 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             member.setLevelSource("growth");
             member.setExpireTime(null);
             SysMemberBenefit benefit = memberBenefitService.getByLevelCode(targetLevel);
-            if (benefit != null) {
-                member.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-                member.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
-            }
+            memberBenefitService.refreshMemberQuotaSnapshot(member);
             this.updateById(member);
-            stringRedisTemplate.delete("member:level:" + member.getUserId());
-            stringRedisTemplate.delete("member:quota:" + member.getUserId() + ":dehaze");
-            stringRedisTemplate.delete("member:quota:" + member.getUserId() + ":evaluate");
+            memberBenefitService.invalidateMemberQuotaCache(member.getUserId());
             if (!oldLevelCode.equals(targetLevel)) {
                 sendLevelChangeNotification(member.getUserId(), oldLevelCode, targetLevel, benefit);
             }
@@ -466,15 +437,14 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void initMember(Long userId) {
-        SysMemberBenefit benefit = memberBenefitService.getByLevelCode("level_0");
         // upsert：user_id 相同即同一自然人，无越权风险；复活时降级为 level_0、清空 monthly_*_quota，保留 total_consumption（风控用）
         Long totalConsumption = 0L;
         this.baseMapper.upsertByUser(userId, totalConsumption);
     }
 
     /** 图像处理 7 类任务（权益概览按类目聚合，python IMAGE_TASK_TYPES 同款） */
-    private static final List<String> IMAGE_TASK_TYPES = List.of(
-            "dehaze", "derain", "desnow", "lowlight", "super_resolution", "denoise", "inpaint");
+    private static final List<String> IMAGE_TASK_TYPES =
+            List.of("dehaze", "derain", "desnow", "lowlight", "super_resolution", "denoise", "inpaint");
 
     @Override
     public Map<String, Object> getBenefitSummary(Long userId) {
@@ -503,7 +473,8 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
         // AI 类目：日/月限额取等级权益（java 无 AI 积分流水域，余额/今日已用为 0）
         long dailyLimit = benefit != null && benefit.getAiCreditsDaily() != null ? benefit.getAiCreditsDaily() : 0;
-        long monthlyLimit = benefit != null && benefit.getAiCreditsMonthly() != null ? benefit.getAiCreditsMonthly() : 0;
+        long monthlyLimit =
+                benefit != null && benefit.getAiCreditsMonthly() != null ? benefit.getAiCreditsMonthly() : 0;
         if (monthlyLimit < dailyLimit) {
             monthlyLimit = dailyLimit;
         }
@@ -529,13 +500,21 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     private long[] memberTaskQuota(SysMember member, String taskType) {
         return switch (taskType) {
-            case "dehaze" -> new long[]{nvlQuota(member.getMonthlyDehazeQuota()), nvlQuota(member.getMonthlyDehazeUsed())};
-            case "derain" -> new long[]{nvlQuota(member.getMonthlyDerainQuota()), nvlQuota(member.getMonthlyDerainUsed())};
-            case "desnow" -> new long[]{nvlQuota(member.getMonthlyDesnowQuota()), nvlQuota(member.getMonthlyDesnowUsed())};
-            case "lowlight" -> new long[]{nvlQuota(member.getMonthlyLowlightQuota()), nvlQuota(member.getMonthlyLowlightUsed())};
-            case "super_resolution" -> new long[]{nvlQuota(member.getMonthlySuperResolutionQuota()), nvlQuota(member.getMonthlySuperResolutionUsed())};
-            case "denoise" -> new long[]{nvlQuota(member.getMonthlyDenoiseQuota()), nvlQuota(member.getMonthlyDenoiseUsed())};
-            default -> new long[]{nvlQuota(member.getMonthlyInpaintQuota()), nvlQuota(member.getMonthlyInpaintUsed())};
+            case "dehaze" ->
+                new long[] {nvlQuota(member.getMonthlyDehazeQuota()), nvlQuota(member.getMonthlyDehazeUsed())};
+            case "derain" ->
+                new long[] {nvlQuota(member.getMonthlyDerainQuota()), nvlQuota(member.getMonthlyDerainUsed())};
+            case "desnow" ->
+                new long[] {nvlQuota(member.getMonthlyDesnowQuota()), nvlQuota(member.getMonthlyDesnowUsed())};
+            case "lowlight" ->
+                new long[] {nvlQuota(member.getMonthlyLowlightQuota()), nvlQuota(member.getMonthlyLowlightUsed())};
+            case "super_resolution" ->
+                new long[] {
+                    nvlQuota(member.getMonthlySuperResolutionQuota()), nvlQuota(member.getMonthlySuperResolutionUsed())
+                };
+            case "denoise" ->
+                new long[] {nvlQuota(member.getMonthlyDenoiseQuota()), nvlQuota(member.getMonthlyDenoiseUsed())};
+            default -> new long[] {nvlQuota(member.getMonthlyInpaintQuota()), nvlQuota(member.getMonthlyInpaintUsed())};
         };
     }
 
@@ -548,10 +527,13 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         SysMember member = getMemberOrCreate(userId);
 
         // 体验券激活状态：持有未使用且未过期的 trial 券即视为已激活
-        List<Long> trialCouponIds = couponMapper.selectList(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysCoupon>()
-                .eq(com.pei.dehaze.model.entity.SysCoupon::getType, "trial")
-                .select(com.pei.dehaze.model.entity.SysCoupon::getId))
-                .stream().map(com.pei.dehaze.model.entity.SysCoupon::getId).toList();
+        List<Long> trialCouponIds = couponMapper
+                .selectList(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysCoupon>()
+                        .eq(com.pei.dehaze.model.entity.SysCoupon::getType, "trial")
+                        .select(com.pei.dehaze.model.entity.SysCoupon::getId))
+                .stream()
+                .map(com.pei.dehaze.model.entity.SysCoupon::getId)
+                .toList();
         com.pei.dehaze.model.entity.SysUserCoupon activeTrial = null;
         if (!trialCouponIds.isEmpty()) {
             activeTrial = userCouponMapper.selectOne(new LambdaQueryWrapper<com.pei.dehaze.model.entity.SysUserCoupon>()
@@ -577,8 +559,10 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         result.setTrialDays(3);
         result.setTrialCredits(100);
         result.setVoucherActivated(voucherActivated);
-        result.setVoucherExpireTime(activeTrial != null && activeTrial.getExpireTime() != null
-                ? activeTrial.getExpireTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : null);
+        result.setVoucherExpireTime(
+                activeTrial != null && activeTrial.getExpireTime() != null
+                        ? activeTrial.getExpireTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        : null);
         result.setAiTrialCreditsBalance(0L);
         result.setNewUserExclusiveAvailable(newUserExclusiveAvailable);
         result.setPaidMembership("purchase".equals(member.getLevelSource()) || member.getExpireTime() != null);
@@ -589,7 +573,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     public Map<String, Object> listMemberAuditLogs(Long userId, int pageNum, int pageSize) {
         // 目标会员后台操作审计日志（Mongo，倒序，详情弹窗「操作日志」页签）
         List<com.pei.dehaze.model.entity.AuditLog> all =
-                auditLogRepository.findByTargetTypeAndTargetIdOrderByCreateTimeDesc("member", userId);
+                auditLogRepository.listByTargetTypeAndTargetId("member", userId);
         int total = all.size();
         int from = (int) Math.min((long) (pageNum - 1) * pageSize, total);
         int to = Math.min(from + pageSize, total);
@@ -605,7 +589,9 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
             item.put("beforeValue", log.getBeforeValue());
             item.put("afterValue", log.getAfterValue());
             item.put("ip", log.getIp());
-            item.put("createTime", log.getCreateTime() != null ? log.getCreateTime().format(fmt) : null);
+            item.put(
+                    "createTime",
+                    log.getCreateTime() != null ? log.getCreateTime().format(fmt) : null);
             listData.add(item);
         }
         Map<String, Object> result = new LinkedHashMap<>();
@@ -619,8 +605,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         // 会员档案兜底：种子账号与后台创建的用户不走注册流程，无 sys_member 行会导致
         // 计费配额校验 fail-closed 误报"配额不足"；已有活跃档案直接跳过（initMember 的
         // upsert 会降级 level_0，不可对活跃会员调用）
-        long activeCount = this.count(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        long activeCount = this.count(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (activeCount == 0) {
             initMember(userId);
         }
@@ -628,8 +613,7 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
 
     @Override
     public int getMaxDevices(Long userId) {
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         String levelCode = member != null ? member.getLevelCode() : "level_0";
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(levelCode);
         // 权益行缺失属数据异常，按 level_0 的 1 台兜底，避免解析为 0 后踢掉刚登录的会话
@@ -672,18 +656,28 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                     form.setTemplateCode(templateCode);
                     Map<String, String> variables = new HashMap<>();
                     SysMemberBenefit currentBenefit = memberBenefitService.getByLevelCode(member.getLevelCode());
-                    variables.put("currentLevel", currentBenefit != null ? currentBenefit.getLevelName() : member.getLevelCode());
+                    variables.put(
+                            "currentLevel",
+                            currentBenefit != null ? currentBenefit.getLevelName() : member.getLevelCode());
                     variables.put("days", String.valueOf(days));
-                    variables.put("expireDate", member.getExpireTime() != null
-                            ? member.getExpireTime().toLocalDate().toString() : "");
+                    variables.put(
+                            "expireDate",
+                            member.getExpireTime() != null
+                                    ? member.getExpireTime().toLocalDate().toString()
+                                    : "");
                     if (days == 3) {
                         String targetLevel = calcLevelByGrowth(member.getGrowthValue());
                         SysMemberBenefit downgradeBenefit = memberBenefitService.getByLevelCode(targetLevel);
-                        variables.put("downgradeLevel", downgradeBenefit != null ? downgradeBenefit.getLevelName() : targetLevel);
+                        variables.put(
+                                "downgradeLevel",
+                                downgradeBenefit != null ? downgradeBenefit.getLevelName() : targetLevel);
                         if (currentBenefit != null && downgradeBenefit != null) {
-                            variables.put("benefitCompare",
-                                    "去雾:" + currentBenefit.getMonthlyDehazeQuota() + "→" + downgradeBenefit.getMonthlyDehazeQuota() + "次/月，"
-                                            + "评估:" + currentBenefit.getMonthlyEvaluateQuota() + "→" + downgradeBenefit.getMonthlyEvaluateQuota() + "次/月");
+                            variables.put(
+                                    "benefitCompare",
+                                    "去雾:" + currentBenefit.getMonthlyDehazeQuota() + "→"
+                                            + downgradeBenefit.getMonthlyDehazeQuota() + "次/月，" + "评估:"
+                                            + currentBenefit.getMonthlyEvaluateQuota() + "→"
+                                            + downgradeBenefit.getMonthlyEvaluateQuota() + "次/月");
                         } else {
                             variables.put("benefitCompare", "");
                         }
@@ -699,63 +693,6 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         log.debug("会员到期预警完成: 共发送{}条提醒", sentCount);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "member", action = "quota_deduct", targetType = "member", targetIdSpel = "#userId", afterSpel = "{quotaType:#quotaType,amount:#amount}")
-    public boolean deductQuota(Long userId, String quotaType, int amount) {
-        if (amount <= 0) {
-            return true;
-        }
-        String quotaKey = "member:quota:" + userId + ":" + quotaType;
-        String cached = stringRedisTemplate.opsForValue().get(quotaKey);
-        if (cached == null) {
-            SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                    .eq(SysMember::getUserId, userId));
-            if (member == null) {
-                return false;
-            }
-            if (member.getStatus() != 1) {
-                throw new BusinessException(ResultCode.MEMBER_FROZEN);
-            }
-            int remaining = "dehaze".equals(quotaType)
-                    ? (member.getMonthlyDehazeQuota() != null ? member.getMonthlyDehazeQuota() : 0)
-                    - (member.getMonthlyDehazeUsed() != null ? member.getMonthlyDehazeUsed() : 0)
-                    : (member.getMonthlyEvaluateQuota() != null ? member.getMonthlyEvaluateQuota() : 0)
-                    - (member.getMonthlyEvaluateUsed() != null ? member.getMonthlyEvaluateUsed() : 0);
-            stringRedisTemplate.opsForValue().set(quotaKey, String.valueOf(remaining), Duration.ofHours(25));
-            cached = String.valueOf(remaining);
-        }
-        Long remaining = Long.parseLong(cached);
-        if (remaining < amount) {
-            return false;
-        }
-        Long newRemaining = stringRedisTemplate.opsForValue().decrement(quotaKey, amount);
-        if (newRemaining == null || newRemaining < 0) {
-            stringRedisTemplate.opsForValue().increment(quotaKey, amount);
-            return false;
-        }
-        updateQuotaUsedInDb(userId, quotaType, amount);
-        return true;
-    }
-
-    private void updateQuotaUsedInDb(Long userId, String quotaType, int amount) {
-        try {
-            SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                    .eq(SysMember::getUserId, userId));
-            if (member == null) {
-                return;
-            }
-            if ("dehaze".equals(quotaType)) {
-                member.setMonthlyDehazeUsed((member.getMonthlyDehazeUsed() != null ? member.getMonthlyDehazeUsed() : 0) + amount);
-            } else {
-                member.setMonthlyEvaluateUsed((member.getMonthlyEvaluateUsed() != null ? member.getMonthlyEvaluateUsed() : 0) + amount);
-            }
-            this.updateById(member);
-        } catch (Exception e) {
-            log.error("配额落库失败，等待补偿: userId={}, quotaType={}", userId, quotaType, e);
-        }
-    }
-
     private SysMemberBenefit getCachedBenefit(String levelCode) {
         String cacheKey = "member:benefit:" + levelCode;
         String cached = stringRedisTemplate.opsForValue().get(cacheKey);
@@ -764,12 +701,15 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         }
         SysMemberBenefit benefit = memberBenefitService.getByLevelCode(levelCode);
         if (benefit != null) {
-            stringRedisTemplate.opsForValue().set(cacheKey, cn.hutool.json.JSONUtil.toJsonStr(benefit), Duration.ofMinutes(60));
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(cacheKey, cn.hutool.json.JSONUtil.toJsonStr(benefit), Duration.ofMinutes(60));
         }
         return benefit;
     }
 
-    private void sendLevelChangeNotification(Long userId, String oldLevelCode, String newLevelCode, SysMemberBenefit newBenefit) {
+    private void sendLevelChangeNotification(
+            Long userId, String oldLevelCode, String newLevelCode, SysMemberBenefit newBenefit) {
         try {
             SysMemberBenefit oldBenefit = memberBenefitService.getByLevelCode(oldLevelCode);
             int oldSort = oldBenefit != null && oldBenefit.getSort() != null ? oldBenefit.getSort() : 0;
@@ -783,7 +723,12 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 form.setTemplateCode("member_level_up");
                 Map<String, String> variables = new HashMap<>();
                 variables.put("levelName", newBenefit != null ? newBenefit.getLevelName() : newLevelCode);
-                variables.put("benefitList", newBenefit != null ? "去雾" + newBenefit.getMonthlyDehazeQuota() + "次/月，评估" + newBenefit.getMonthlyEvaluateQuota() + "次/月" : "");
+                variables.put(
+                        "benefitList",
+                        newBenefit != null
+                                ? "去雾" + newBenefit.getMonthlyDehazeQuota() + "次/月，评估"
+                                        + newBenefit.getMonthlyEvaluateQuota() + "次/月"
+                                : "");
                 form.setVariables(variables);
             } else {
                 form.setTemplateCode("member_downgrade_warning");
@@ -800,12 +745,10 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
     }
 
     private SysMember getMemberOrCreate(Long userId) {
-        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             initMember(userId);
-            member = this.getOne(new LambdaQueryWrapper<SysMember>()
-                    .eq(SysMember::getUserId, userId));
+            member = this.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         }
         return member;
     }
@@ -839,8 +782,14 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         return days;
     }
 
-    private void recordGrowthLog(Long userId, String changeType, int changeValue, long balance,
-                                 String relatedId, String reason, Long operatorId) {
+    private void recordGrowthLog(
+            Long userId,
+            String changeType,
+            int changeValue,
+            long balance,
+            String relatedId,
+            String reason,
+            Long operatorId) {
         SysMemberGrowthLog log = new SysMemberGrowthLog();
         log.setUserId(userId);
         log.setChangeType(changeType);
@@ -852,15 +801,19 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         growthLogMapper.insert(log);
     }
 
-    private MemberProfileVO buildProfileVO(SysMember member, SysUser user, SysMemberBenefit benefit,
-                                           List<SysMemberBenefit> allBenefits) {
+    private MemberProfileVO buildProfileVO(
+            SysMember member, SysUser user, SysMemberBenefit benefit, List<SysMemberBenefit> allBenefits) {
         MemberProfileVO vo = new MemberProfileVO();
         copyProfileFields(member, user, benefit, allBenefits, vo);
         return vo;
     }
 
-    private void copyProfileFields(SysMember member, SysUser user, SysMemberBenefit benefit,
-                                   List<SysMemberBenefit> allBenefits, MemberProfileVO vo) {
+    private void copyProfileFields(
+            SysMember member,
+            SysUser user,
+            SysMemberBenefit benefit,
+            List<SysMemberBenefit> allBenefits,
+            MemberProfileVO vo) {
         vo.setUserId(member.getUserId());
         if (user != null) {
             vo.setUsername(user.getUsername());
@@ -881,7 +834,8 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         fillProgress(member, benefit, allBenefits, vo);
     }
 
-    private void fillProgress(SysMember member, SysMemberBenefit current, List<SysMemberBenefit> allBenefits, MemberProfileVO vo) {
+    private void fillProgress(
+            SysMember member, SysMemberBenefit current, List<SysMemberBenefit> allBenefits, MemberProfileVO vo) {
         if (current == null || allBenefits == null || allBenefits.isEmpty()) {
             vo.setProgressPercent(0);
             return;
@@ -927,10 +881,13 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         vo.setLevelName(benefit.getLevelName());
         vo.setGrowthMin(benefit.getGrowthMin());
         vo.setGrowthMax(benefit.getGrowthMax());
-        vo.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
-        vo.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
+        vo.setAiCreditsDaily(benefit.getAiCreditsDaily());
+        vo.setAiCreditsMonthly(benefit.getAiCreditsMonthly());
+        vo.setMultimodalLimit(benefit.getMultimodalLimit());
+        vo.setVipGiftCredits(benefit.getVipGiftCredits());
         vo.setHistoryRetention(benefit.getHistoryRetention());
         vo.setBatchLimit(benefit.getBatchLimit());
+        vo.setMaxDevices(benefit.getMaxDevices());
         vo.setPriority(benefit.getPriority());
         vo.setAdvancedParams(benefit.getAdvancedParams());
         vo.setHdExport(benefit.getHdExport());
@@ -938,6 +895,14 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
         vo.setBatchDownload(benefit.getBatchDownload());
         vo.setSort(benefit.getSort());
         vo.setStatus(benefit.getStatus());
+        vo.setMonthlyDehazeQuota(benefit.getMonthlyDehazeQuota());
+        vo.setMonthlyDerainQuota(benefit.getMonthlyDerainQuota());
+        vo.setMonthlyDesnowQuota(benefit.getMonthlyDesnowQuota());
+        vo.setMonthlyLowlightQuota(benefit.getMonthlyLowlightQuota());
+        vo.setMonthlySuperResolutionQuota(benefit.getMonthlySuperResolutionQuota());
+        vo.setMonthlyDenoiseQuota(benefit.getMonthlyDenoiseQuota());
+        vo.setMonthlyInpaintQuota(benefit.getMonthlyInpaintQuota());
+        vo.setMonthlyEvaluateQuota(benefit.getMonthlyEvaluateQuota());
         return vo;
     }
 

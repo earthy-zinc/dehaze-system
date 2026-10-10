@@ -85,6 +85,7 @@ class AiProviderService:
             default_headers=form.default_headers,
             sort_order=form.sort_order,
             health_check_enabled=form.health_check_enabled,
+            request_timeout_seconds=form.request_timeout_seconds,
             user_identity_forward=(
                 form.user_identity_forward.model_dump() if form.user_identity_forward else None
             ),
@@ -128,7 +129,7 @@ class AiProviderService:
         bound = await ai_provider_repository.count_models(db, provider_id)
         if bound > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型",
             )
         await ai_provider_repository.soft_delete_by_ids(db, [provider_id])

@@ -29,6 +29,6 @@ public interface DictConverter {
 
     DictForm entity2Form(SysDict entity);
 
-    @InheritInverseConfiguration(name="entity2Form")
+    @InheritInverseConfiguration(name = "entity2Form")
     SysDict form2Entity(DictForm entity);
 }

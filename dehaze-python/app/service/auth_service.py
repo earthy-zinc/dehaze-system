@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import CAPTCHA_KEY_PREFIX
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import UserContext
 from app.infrastructure.cache.cache import CacheService
@@ -306,14 +307,14 @@ class AuthService:
                 ResultCode.REPEAT_SUBMIT_ERROR, "注册请求过于频繁，请60秒后再试"
             )
 
-        stored_captcha = await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
+        stored_captcha = await redis.get(f"{CAPTCHA_KEY_PREFIX}{captcha_key}")
         if not stored_captcha:
             raise BusinessException(ResultCode.VERIFY_CODE_TIMEOUT, "验证码已过期")
         if isinstance(stored_captcha, bytes):
             stored_captcha = stored_captcha.decode()
         if stored_captcha.lower() != captcha_code.lower():
             raise BusinessException(ResultCode.VERIFY_CODE_ERROR, "验证码错误")
-        await redis.delete(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
+        await redis.delete(f"{CAPTCHA_KEY_PREFIX}{captcha_key}")
 
         username = username.lower().strip()
         from app.models.entity.sys_user import SysUser, SysUserRole
@@ -590,7 +591,7 @@ class AuthService:
 
         session_keys: list[str] = []
         kicked_user_ids: set[int] = set()
-        async for key in redis.scan_iter(match=f"{SESSION_PREFIX}*"):
+        async for key in redis.scan_iter(match=f"{SESSION_PREFIX}*", count=1000):
             key_str = key.decode() if isinstance(key, bytes) else key
             if key_str.startswith(SESSION_USER_PREFIX):
                 continue
@@ -649,7 +650,7 @@ class AuthService:
         captcha_key = str(uuid.uuid4())
 
         await redis.setex(
-            f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text
+            f"{CAPTCHA_KEY_PREFIX}{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text
         )
 
         return {
@@ -697,7 +698,7 @@ class AuthService:
         expired=True 表示验证码 Key 不存在（未生成/已消费/超时），
         用于区分 A0214（验证码错误）与 A0213（验证码已过期）。
         """
-        stored_captcha = await redis.getdel(f"{settings.CAPTCHA_KEY_PREFIX}{captcha_key}")
+        stored_captcha = await redis.getdel(f"{CAPTCHA_KEY_PREFIX}{captcha_key}")
 
         if not stored_captcha:
             return False, True

@@ -94,7 +94,7 @@ async def _resolve_embedding_model(
     return model.dimension, provider.provider_code
 
 
-async def _check_manage_permission(db: AsyncSession, kb: SysKnowledgeBase, user) -> None:
+async def check_manage_permission(db: AsyncSession, kb: SysKnowledgeBase, user) -> None:
     """校验知识库管理权限：私有库仅 owner，公开库仅管理员。"""
     if kb.visibility == "public":
         if not user.is_admin:
@@ -191,7 +191,7 @@ class KnowledgeBaseService:
         kb = await knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
 
         # 请求中携带不可修改项 → 拒绝
         if "embedding_model" in data or "chunking_strategy" in data:
@@ -224,7 +224,7 @@ class KnowledgeBaseService:
         kb = await knowledge_base_repository.get_by_id(db, kb_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
 
         # 软删知识库与关联文档，物理清分块行 + 删 ES 索引（三者一致，避免残留孤儿分块）
         await knowledge_base_repository.soft_delete_by_ids(db, [kb_id])

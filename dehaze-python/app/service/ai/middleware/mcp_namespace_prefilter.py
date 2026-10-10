@@ -56,10 +56,9 @@ NAMESPACE_KEYWORDS: dict[str, tuple[str, ...]] = {
         "psnr",
         "ssim",
     ),
-    "algorithm": ("算法", "推荐", "选型", "model", "algorithm", "recommend"),
     "batch": ("批量", "批处理", "并发", "batch", "parallel"),
     "preset": ("预设", "模板", "preset", "template"),
-    "model": ("模型", "权重", "下载", "model"),
+    "model": ("模型", "权重", "下载", "算法", "推荐", "选型", "model", "algorithm", "recommend"),
     "dataset": ("数据集", "数据", "dataset", "data"),
     "user": ("用户", "账号", "资料", "user", "profile", "account"),
 }
@@ -68,10 +67,9 @@ NAMESPACE_KEYWORDS: dict[str, tuple[str, ...]] = {
 _NAMESPACE_DESCRIPTIONS: dict[str, str] = {
     "image_processing": "图像去雾/处理/增强相关 API",
     "evaluation": "图像质量评估（PSNR/SSIM）相关 API",
-    "algorithm": "算法选择与推荐相关 API",
     "batch": "批量处理相关 API",
     "preset": "预设与模板相关 API",
-    "model": "模型资源相关 API",
+    "model": "模型资源与选择推荐相关 API",
     "dataset": "数据集管理相关 API",
     "user": "用户与账号相关 API",
 }

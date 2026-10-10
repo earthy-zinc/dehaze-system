@@ -7,6 +7,7 @@ sys_ai_model 驱动，后续在此扩展为跨模态配置化路由（见架构�
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.infrastructure.llm.tool_dialect import is_prompt_tool_family
 from app.models.entity.sys_ai_model import SysAiModel
 from app.repository.ai_model_repository import ai_model_repository
 
@@ -31,11 +32,17 @@ def _model_route(model: SysAiModel) -> dict:
 
 
 def _model_meets_caps(model: SysAiModel, required_caps: set[str]) -> bool:
-    """校验模型能力是否满足全部要求（required_caps 中不存在的能力视为不要求）"""
+    """校验模型能力是否满足全部要求（required_caps 中不存在的能力视为不要求）。
+
+    tool_call 视为满足的条件：原生 function calling（supports_tool_call=1），
+    或命中文本工具协议家族（不支持原生时退化为提示词注入工具，见 tool_dialect）。
+    """
     for cap in required_caps:
         if cap == "multimodal" and not model.supports_multimodal:
             return False
-        if cap == "tool_call" and not model.supports_tool_call:
+        if cap == "tool_call" and not (
+            model.supports_tool_call or is_prompt_tool_family(model.model_id, model.model_type)
+        ):
             return False
         if cap == "streaming" and not model.supports_streaming:
             return False

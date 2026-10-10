@@ -18,9 +18,8 @@ public interface PaymentChannelService {
 
     boolean autoDeduct(String orderNo, long amountFen, String description, String payToken);
 
-    record UnifiedOrderResult(boolean success, String payUrl, String qrCode, String errorMessage) {
-    }
+    record UnifiedOrderResult(boolean success, String payUrl, String qrCode, String errorMessage) {}
 
-    record CallbackVerifyResult(boolean success, String orderNo, long amountFen, String channelTradeNo, String errorMessage) {
-    }
+    record CallbackVerifyResult(
+            boolean success, String orderNo, long amountFen, String channelTradeNo, String errorMessage) {}
 }

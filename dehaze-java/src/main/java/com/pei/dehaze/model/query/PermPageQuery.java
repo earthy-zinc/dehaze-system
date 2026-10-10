@@ -16,10 +16,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class PermPageQuery extends BasePageQuery {
 
-    @Schema(description="权限名称")
+    @Schema(description = "权限名称")
     private String name;
 
-    @Schema(description="菜单ID")
+    @Schema(description = "菜单ID")
     private Long menuId;
-
 }

@@ -7,7 +7,6 @@ import com.pei.dehaze.model.entity.SysDict;
 import com.pei.dehaze.model.form.DictForm;
 import com.pei.dehaze.model.query.DictPageQuery;
 import com.pei.dehaze.model.vo.DictPageVO;
-
 import java.util.List;
 
 /**
@@ -86,4 +85,14 @@ public interface SysDictService extends IService<SysDict> {
      */
     int getIntValue(String typeCode, String key, int defaultValue);
 
+    /**
+     * 读取指定字典类型下某个键的字符串值（键为字典项 name，值为 value 字段）。
+     * <p>缺键时 warn 日志并回退默认值，不抛异常阻断业务。</p>
+     *
+     * @param typeCode     字典类型编码
+     * @param key          字典项键（name）
+     * @param defaultValue 缺键回退的默认值
+     * @return 字典字符串值，缺键时返回 defaultValue
+     */
+    String getStringValue(String typeCode, String key, String defaultValue);
 }

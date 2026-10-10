@@ -2,17 +2,16 @@ package com.pei.dehaze.service.payment.impl;
 
 import com.pei.dehaze.config.property.PaymentProperties;
 import com.pei.dehaze.service.payment.PaymentChannelService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Map;
+import java.util.TreeMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.Map;
-import java.util.TreeMap;
 
 @Slf4j
 @Service
@@ -25,6 +24,7 @@ public class WechatPayService implements PaymentChannelService {
     private static final String CLOSE_ORDER_PATH = "/v3/pay/transactions/out-trade-no/%s/close";
 
     private final PaymentProperties paymentProperties;
+
     @Qualifier("paymentRestTemplate")
     private final RestTemplate restTemplate;
 
@@ -39,7 +39,8 @@ public class WechatPayService implements PaymentChannelService {
     }
 
     @Override
-    public UnifiedOrderResult unifiedOrder(String orderNo, long amountFen, String description, Map<String, String> extra) {
+    public UnifiedOrderResult unifiedOrder(
+            String orderNo, long amountFen, String description, Map<String, String> extra) {
         if (!isEnabled()) {
             return mockOrder(orderNo);
         }
@@ -52,8 +53,7 @@ public class WechatPayService implements PaymentChannelService {
                     "description", description,
                     "out_trade_no", orderNo,
                     "notify_url", cfg.getNotifyUrl(),
-                    "amount", Map.of("total", amountFen, "currency", "CNY")
-            );
+                    "amount", Map.of("total", amountFen, "currency", "CNY"));
             ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
             if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
                 String codeUrl = (String) resp.getBody().get("code_url");
@@ -100,16 +100,19 @@ public class WechatPayService implements PaymentChannelService {
             PaymentProperties.ChannelConfig cfg = paymentProperties.getWechat();
             String url = cfg.getBaseUrl() + REFUND_PATH;
             Map<String, Object> body = Map.of(
-                    "out_trade_no", orderNo,
-                    "out_refund_no", refundNo,
-                    "reason", reason != null ? reason : "",
-                    "amount", Map.of(
+                    "out_trade_no",
+                    orderNo,
+                    "out_refund_no",
+                    refundNo,
+                    "reason",
+                    reason != null ? reason : "",
+                    "amount",
+                    Map.of(
                             "refund", refundAmountFen,
                             "total", totalAmountFen,
-                            "currency", "CNY"
-                    ),
-                    "notify_url", cfg.getRefundNotifyUrl()
-            );
+                            "currency", "CNY"),
+                    "notify_url",
+                    cfg.getRefundNotifyUrl());
             ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
             return resp.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {

@@ -123,17 +123,18 @@ func (s *ProviderService) CreateProvider(ctx context.Context, form *bo.ProviderC
 	}
 
 	p := &model.SysAiProvider{
-		ProviderCode:        form.ProviderCode,
-		DisplayName:         form.DisplayName,
-		ApiBaseUrl:          form.ApiBaseUrl,
-		ProtocolType:        protocolOr(form.ProtocolType),
-		AuthType:            authOr(form.AuthType),
-		DefaultHeaders:      form.DefaultHeaders,
-		SortOrder:           intOr(form.SortOrder, 0),
-		HealthCheckEnabled:  int8Or(form.HealthCheckEnabled, 1),
-		UserIdentityForward: form.UserIdentityForward,
-		Remark:              nil,
-		Status:              int8Or(form.Status, 1),
+		ProviderCode:          form.ProviderCode,
+		DisplayName:           form.DisplayName,
+		ApiBaseUrl:            form.ApiBaseUrl,
+		ProtocolType:          protocolOr(form.ProtocolType),
+		AuthType:              authOr(form.AuthType),
+		DefaultHeaders:        form.DefaultHeaders,
+		SortOrder:             intOr(form.SortOrder, 0),
+		HealthCheckEnabled:    int8Or(form.HealthCheckEnabled, 1),
+		RequestTimeoutSeconds: form.RequestTimeoutSeconds,
+		UserIdentityForward:   form.UserIdentityForward,
+		Remark:                nil,
+		Status:                int8Or(form.Status, 1),
 	}
 	if provided, isNull := rawProvided(form.Remark); provided && !isNull {
 		value, err := jsonString(form.Remark)
@@ -181,6 +182,9 @@ func (s *ProviderService) UpdateProvider(ctx context.Context, providerID int64, 
 	}
 	if form.HealthCheckEnabled != nil {
 		updates["health_check_enabled"] = *form.HealthCheckEnabled
+	}
+	if form.RequestTimeoutSeconds != nil {
+		updates["request_timeout_seconds"] = *form.RequestTimeoutSeconds
 	}
 	if form.Status != nil {
 		updates["status"] = *form.Status
@@ -230,7 +234,7 @@ func (s *ProviderService) DeleteProvider(ctx context.Context, providerID, operat
 		return common.WrapBizError(common.DATABASE_ERROR, "统计关联模型失败", err)
 	}
 	if bound > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型")
+		return common.NewBizError(common.DATA_REFERENCED, "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型")
 	}
 	if err := s.providerRepo.SoftDelete(ctx, providerID, operatorID); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除供应商失败", err)
@@ -262,12 +266,12 @@ func (s *ProviderService) CreateProviderKey(ctx context.Context, providerID int6
 		return nil, err
 	}
 	hash := HashSecret(form.Key)
-	existing, err := s.keyRepo.GetByHash(ctx, hash)
+	existing, err := s.keyRepo.GetByProviderAndHash(ctx, providerID, hash)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "校验API Key失败", err)
 	}
 	if existing != nil {
-		return nil, common.NewBizError(common.DATA_EXISTS, "该 API Key 已存在")
+		return nil, common.NewBizError(common.DATA_EXISTS, "该供应商下该 API Key 已存在")
 	}
 	cipherText, err := EncryptSecret(form.Key)
 	if err != nil {
@@ -389,20 +393,21 @@ func (s *ProviderService) requireKey(ctx context.Context, providerID, keyID int6
 
 func toProviderVO(p *model.SysAiProvider) vo.ProviderVO {
 	return vo.ProviderVO{
-		ID:                  p.ID,
-		ProviderCode:        p.ProviderCode,
-		DisplayName:         p.DisplayName,
-		ApiBaseUrl:          p.ApiBaseUrl,
-		ProtocolType:        p.ProtocolType,
-		AuthType:            p.AuthType,
-		DefaultHeaders:      p.DefaultHeaders,
-		SortOrder:           p.SortOrder,
-		HealthCheckEnabled:  p.HealthCheckEnabled,
-		UserIdentityForward: p.UserIdentityForward,
-		Remark:              p.Remark,
-		Status:              p.Status,
-		CreateTime:          p.CreatedAt,
-		UpdateTime:          p.UpdatedAt,
+		ID:                    p.ID,
+		ProviderCode:          p.ProviderCode,
+		DisplayName:           p.DisplayName,
+		ApiBaseUrl:            p.ApiBaseUrl,
+		ProtocolType:          p.ProtocolType,
+		AuthType:              p.AuthType,
+		DefaultHeaders:        p.DefaultHeaders,
+		SortOrder:             p.SortOrder,
+		HealthCheckEnabled:    p.HealthCheckEnabled,
+		RequestTimeoutSeconds: p.RequestTimeoutSeconds,
+		UserIdentityForward:   p.UserIdentityForward,
+		Remark:                p.Remark,
+		Status:                p.Status,
+		CreateTime:            p.CreatedAt,
+		UpdateTime:            p.UpdatedAt,
 	}
 }
 

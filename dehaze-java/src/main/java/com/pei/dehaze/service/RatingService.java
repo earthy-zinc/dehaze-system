@@ -10,7 +10,6 @@ import com.pei.dehaze.model.vo.MyRatingVO;
 import com.pei.dehaze.model.vo.RatingDetailVO;
 import com.pei.dehaze.model.vo.RatingPageVO;
 import com.pei.dehaze.model.vo.RatingStatsVO;
-
 import java.time.LocalDateTime;
 
 public interface RatingService extends IService<SysRating> {

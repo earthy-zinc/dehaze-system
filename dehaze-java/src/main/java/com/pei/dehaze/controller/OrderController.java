@@ -30,13 +30,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 
 @Tag(name = "13.订单管理")
 @RestController
@@ -68,8 +67,8 @@ public class OrderController {
     @Operation(summary = "后台：余额退款审核")
     @PutMapping("/balance-refunds/{refundId}/audit")
     @PreAuthorize("@ss.hasPerm('order:refund:approve')")
-    public Result<Void> approveBalanceRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
-                                             @RequestBody BalanceRefundAuditForm form) {
+    public Result<Void> approveBalanceRefund(
+            @Parameter(description = "退款ID") @PathVariable Long refundId, @RequestBody BalanceRefundAuditForm form) {
         balanceService.approveBalanceRefund(refundId, form);
         return Result.success();
     }
@@ -95,23 +94,24 @@ public class OrderController {
 
     @Operation(summary = "用户端：取消订单")
     @PutMapping("/{orderNo}/cancel")
-    public Result<Void> cancel(@Parameter(description = "订单号") @PathVariable String orderNo,
-                               @Parameter(description = "取消原因", required = true) @RequestParam String reason) {
+    public Result<Void> cancel(
+            @Parameter(description = "订单号") @PathVariable String orderNo,
+            @Parameter(description = "取消原因", required = true) @RequestParam String reason) {
         orderService.cancel(orderNo, reason);
         return Result.success();
     }
 
     @Operation(summary = "用户端：发起支付")
     @PostMapping("/{orderNo}/pay")
-    public Result<PayResult> pay(@Parameter(description = "订单号") @PathVariable String orderNo,
-                                 @Valid @RequestBody PayRequest request) {
+    public Result<PayResult> pay(
+            @Parameter(description = "订单号") @PathVariable String orderNo, @Valid @RequestBody PayRequest request) {
         return Result.success(orderService.pay(orderNo, request));
     }
 
     @Operation(summary = "用户端：申请退款")
     @PostMapping("/{orderNo}/refund")
-    public Result<Void> applyRefund(@Parameter(description = "订单号") @PathVariable String orderNo,
-                                    @Valid @RequestBody RefundApplyForm form) {
+    public Result<Void> applyRefund(
+            @Parameter(description = "订单号") @PathVariable String orderNo, @Valid @RequestBody RefundApplyForm form) {
         orderService.applyRefund(orderNo, form);
         return Result.success();
     }
@@ -149,8 +149,8 @@ public class OrderController {
     @Operation(summary = "后台：退款审核通过")
     @PutMapping("/refunds/{refundId}/approve")
     @PreAuthorize("@ss.hasPerm('order:refund:approve')")
-    public Result<Void> approveRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
-                                      @Valid @RequestBody RefundAuditForm form) {
+    public Result<Void> approveRefund(
+            @Parameter(description = "退款ID") @PathVariable Long refundId, @Valid @RequestBody RefundAuditForm form) {
         orderService.approveRefund(refundId, form);
         return Result.success();
     }
@@ -158,8 +158,8 @@ public class OrderController {
     @Operation(summary = "后台：退款审核驳回")
     @PutMapping("/refunds/{refundId}/reject")
     @PreAuthorize("@ss.hasPerm('order:refund:approve')")
-    public Result<Void> rejectRefund(@Parameter(description = "退款ID") @PathVariable Long refundId,
-                                     @Valid @RequestBody RefundAuditForm form) {
+    public Result<Void> rejectRefund(
+            @Parameter(description = "退款ID") @PathVariable Long refundId, @Valid @RequestBody RefundAuditForm form) {
         orderService.rejectRefund(refundId, form);
         return Result.success();
     }
@@ -168,8 +168,14 @@ public class OrderController {
     @GetMapping("/stats")
     @PreAuthorize("@ss.hasPerm('order:stats')")
     public Result<OrderStatsVO> getStats(
-            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime startTime,
+            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime endTime) {
         return Result.success(orderService.getStats(startTime, endTime));
     }
 }

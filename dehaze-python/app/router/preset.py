@@ -21,7 +21,7 @@ router = APIRouter(
 
 @router.get("", response_model=Result[PageResult[PresetVO]], summary="参数预设列表")
 async def list_presets(
-    algorithmId: int | None = Query(default=None, description="算法ID（可选筛选）"),
+    modelId: str | None = Query(default=None, description="算法ID（可选筛选）"),
     isSystem: bool | None = Query(default=None, description="是否系统预设"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
@@ -32,7 +32,7 @@ async def list_presets(
     result = await preset_service.list_presets(
         db,
         user.id,
-        algorithmId,
+        modelId,
         is_system=isSystem,
         page=pageNum,
         size=pageSize,

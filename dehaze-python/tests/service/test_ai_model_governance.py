@@ -53,7 +53,7 @@ class TestDeleteFallbackGuard:
         )
         with pytest.raises(BusinessException) as exc:
             await ai_model_service.delete_model(db, mock_redis, "fb-target")
-        assert exc.value.code == ResultCode.DATA_BIND_EXISTS
+        assert exc.value.code == ResultCode.DATA_REFERENCED
 
     async def test_delete_allowed_after_reference_removed(self, db, mock_redis):
         target = await ai_model_service.create_model(db, mock_redis, _model_form("fb-t2"))
@@ -158,7 +158,7 @@ class TestDeleteProviderGuard:
 
         with pytest.raises(BusinessException) as exc:
             await ai_provider_service.delete_provider(db, mock_redis, provider.id)
-        assert exc.value.code == ResultCode.DATA_BIND_EXISTS
+        assert exc.value.code == ResultCode.DATA_REFERENCED
 
     async def test_delete_provider_allowed_without_models(self, db, mock_redis):
         provider = await ai_provider_service.create_provider(

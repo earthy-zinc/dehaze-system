@@ -3,9 +3,8 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 @Schema(description = "AI 供应商创建表单")
 @Data
@@ -36,6 +35,9 @@ public class ProviderForm {
     private Integer sortOrder = 0;
 
     private Integer healthCheckEnabled = 1;
+
+    /** 请求超时(秒;null=调用方默认:chat 120/embedding 30)；慢供应商(如本地 CPU 推理)显式配置 */
+    private Integer requestTimeoutSeconds;
 
     private UserIdentityForwardForm userIdentityForward;
 

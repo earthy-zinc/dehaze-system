@@ -1,8 +1,23 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.filter.TraceIdFilter;
 import com.pei.dehaze.service.client.AiForwardClient;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.ConnectException;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,22 +29,6 @@ import org.slf4j.MDC;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.ConnectException;
-import java.net.http.HttpRequest;
-import java.nio.charset.StandardCharsets;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 /**
  * AI 转发 Controller 单元测试：白名单 404、会话头透传、信封原样透传、SSE 管道与不可达降级。
@@ -101,17 +100,18 @@ class AiProxyControllerTest {
         controller.forward(request, response);
 
         assertThat(response.getStatus()).isEqualTo(404);
-        assertThat(JSONUtil.parseObj(response.getContentAsString()).getStr("code")).isEqualTo("A0401");
+        assertThat(JSONUtil.parseObj(response.getContentAsString()).getStr("code"))
+                .isEqualTo("A0401");
         verifyNoInteractions(aiForwardClient);
     }
 
     @Test
     @DisplayName("JSON 端点原样透传上游状态码、Content-Type 与信封响应体")
     void forward_passesThroughEnvelopeBody() throws Exception {
-        byte[] envelope = "{\"code\":\"00000\",\"msg\":\"一切ok\",\"data\":{\"stopped\":true}}"
-                .getBytes(StandardCharsets.UTF_8);
-        when(aiForwardClient.exchange(anyString(), anyString(), any(HttpHeaders.class),
-                any(HttpRequest.BodyPublisher.class)))
+        byte[] envelope =
+                "{\"code\":\"00000\",\"msg\":\"一切ok\",\"data\":{\"stopped\":true}}".getBytes(StandardCharsets.UTF_8);
+        when(aiForwardClient.exchange(
+                        anyString(), anyString(), any(HttpHeaders.class), any(HttpRequest.BodyPublisher.class)))
                 .thenReturn(new AiForwardClient.BufferedResponse(200, "application/json", envelope));
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai/messages/34/stop");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -126,8 +126,8 @@ class AiProxyControllerTest {
     @Test
     @DisplayName("POST 请求体整体转发，并透传目标路径")
     void forward_forwardsJsonBody() throws Exception {
-        when(aiForwardClient.exchange(anyString(), anyString(), any(HttpHeaders.class),
-                any(HttpRequest.BodyPublisher.class)))
+        when(aiForwardClient.exchange(
+                        anyString(), anyString(), any(HttpHeaders.class), any(HttpRequest.BodyPublisher.class)))
                 .thenReturn(new AiForwardClient.BufferedResponse(200, "application/json", "{}".getBytes()));
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai/agents/5/test");
         request.setContent("{\"prompt\":\"hi\"}".getBytes(StandardCharsets.UTF_8));
@@ -136,8 +136,8 @@ class AiProxyControllerTest {
         controller.forward(request, response);
 
         ArgumentCaptor<HttpRequest.BodyPublisher> captor = ArgumentCaptor.forClass(HttpRequest.BodyPublisher.class);
-        verify(aiForwardClient).exchange(eq("POST"), eq("/api/v1/ai/agents/5/test"), any(HttpHeaders.class),
-                captor.capture());
+        verify(aiForwardClient)
+                .exchange(eq("POST"), eq("/api/v1/ai/agents/5/test"), any(HttpHeaders.class), captor.capture());
         assertThat(captor.getValue().contentLength()).isEqualTo("{\"prompt\":\"hi\"}".length());
     }
 
@@ -145,9 +145,10 @@ class AiProxyControllerTest {
     @DisplayName("multipart 端点以原始字节流转发，保留 Content-Type 与 boundary")
     void forward_streamsRawMultipartBody() throws Exception {
         byte[] raw = ("--boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"demo.zip\"\r\n"
-                + "\r\nzip-bytes\r\n--boundary--\r\n").getBytes(StandardCharsets.UTF_8);
-        when(aiForwardClient.exchange(anyString(), anyString(), any(HttpHeaders.class),
-                any(HttpRequest.BodyPublisher.class)))
+                        + "\r\nzip-bytes\r\n--boundary--\r\n")
+                .getBytes(StandardCharsets.UTF_8);
+        when(aiForwardClient.exchange(
+                        anyString(), anyString(), any(HttpHeaders.class), any(HttpRequest.BodyPublisher.class)))
                 .thenReturn(new AiForwardClient.BufferedResponse(200, "application/json", "{}".getBytes()));
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai/skills/upload");
         request.addHeader(HttpHeaders.CONTENT_TYPE, "multipart/form-data; boundary=boundary");
@@ -158,8 +159,8 @@ class AiProxyControllerTest {
 
         ArgumentCaptor<HttpHeaders> headersCaptor = ArgumentCaptor.forClass(HttpHeaders.class);
         ArgumentCaptor<HttpRequest.BodyPublisher> bodyCaptor = ArgumentCaptor.forClass(HttpRequest.BodyPublisher.class);
-        verify(aiForwardClient).exchange(eq("POST"), eq("/api/v1/ai/skills/upload"), headersCaptor.capture(),
-                bodyCaptor.capture());
+        verify(aiForwardClient)
+                .exchange(eq("POST"), eq("/api/v1/ai/skills/upload"), headersCaptor.capture(), bodyCaptor.capture());
         assertThat(headersCaptor.getValue().getFirst(HttpHeaders.CONTENT_TYPE))
                 .isEqualTo("multipart/form-data; boundary=boundary");
         assertThat(bodyCaptor.getValue().contentLength()).isEqualTo(raw.length);
@@ -168,16 +169,21 @@ class AiProxyControllerTest {
     @Test
     @DisplayName("SSE 端点走流式管道，事件块原样写回客户端")
     void forward_pipesSseStream() throws Exception {
-        byte[] events = "event: content_block.delta\ndata: {\"text\":\"你好\"}\n\n: ping\n\n"
-                .getBytes(StandardCharsets.UTF_8);
+        byte[] events =
+                "event: content_block.delta\ndata: {\"text\":\"你好\"}\n\n: ping\n\n".getBytes(StandardCharsets.UTF_8);
         doAnswer(invocation -> {
-            AiForwardClient.StreamPipe pipe = invocation.getArgument(4);
-            pipe.pipe(200, "text/event-stream", new ByteArrayInputStream(events));
-            return null;
-        }).when(aiForwardClient).stream(anyString(), anyString(), any(HttpHeaders.class),
-                any(HttpRequest.BodyPublisher.class), any(AiForwardClient.StreamPipe.class));
-        MockHttpServletRequest request = new MockHttpServletRequest(
-                "POST", "/api/v1/ai/conversations/1/messages");
+                    AiForwardClient.StreamPipe pipe = invocation.getArgument(4);
+                    pipe.pipe(200, "text/event-stream", new ByteArrayInputStream(events));
+                    return null;
+                })
+                .when(aiForwardClient)
+                .stream(
+                        anyString(),
+                        anyString(),
+                        any(HttpHeaders.class),
+                        any(HttpRequest.BodyPublisher.class),
+                        any(AiForwardClient.StreamPipe.class));
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai/conversations/1/messages");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         controller.forward(request, response);
@@ -191,8 +197,8 @@ class AiProxyControllerTest {
     @Test
     @DisplayName("python 不可达返回统一业务错误信封而非裸 500")
     void forward_returnsBusinessErrorWhenUpstreamUnreachable() throws Exception {
-        when(aiForwardClient.exchange(anyString(), anyString(), any(HttpHeaders.class),
-                any(HttpRequest.BodyPublisher.class)))
+        when(aiForwardClient.exchange(
+                        anyString(), anyString(), any(HttpHeaders.class), any(HttpRequest.BodyPublisher.class)))
                 .thenThrow(new ConnectException("Connection refused"));
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/ai/mcp/servers/7/health");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -200,17 +206,20 @@ class AiProxyControllerTest {
         controller.forward(request, response);
 
         assertThat(response.getStatus()).isEqualTo(503);
-        assertThat(JSONUtil.parseObj(response.getContentAsString()).getStr("code")).isEqualTo("C0001");
+        assertThat(JSONUtil.parseObj(response.getContentAsString()).getStr("code"))
+                .isEqualTo("C0001");
     }
 
     @Test
     @DisplayName("SSE 已输出首块后上游断开：只断流，不再改写响应")
     void forward_doesNotRewriteCommittedResponse() throws Exception {
-        doThrow(new IOException("上游连接中断")).when(aiForwardClient).stream(anyString(), anyString(),
-                any(HttpHeaders.class), any(HttpRequest.BodyPublisher.class),
+        doThrow(new IOException("上游连接中断")).when(aiForwardClient).stream(
+                anyString(),
+                anyString(),
+                any(HttpHeaders.class),
+                any(HttpRequest.BodyPublisher.class),
                 any(AiForwardClient.StreamPipe.class));
-        MockHttpServletRequest request = new MockHttpServletRequest(
-                "POST", "/api/v1/ai/conversations/1/messages");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/ai/conversations/1/messages");
         MockHttpServletResponse response = new MockHttpServletResponse() {
             @Override
             public boolean isCommitted() {

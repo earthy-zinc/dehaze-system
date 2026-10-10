@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.config.property.CouponProperties;
 import com.pei.dehaze.mapper.SysCouponMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.mapper.SysUserCouponMapper;
@@ -27,14 +28,7 @@ import com.pei.dehaze.model.vo.CouponReceiveResult;
 import com.pei.dehaze.model.vo.CouponVO;
 import com.pei.dehaze.model.vo.UserCouponVO;
 import com.pei.dehaze.security.util.SecurityUtils;
-import com.pei.dehaze.config.property.CouponProperties;
 import com.pei.dehaze.service.CouponService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,6 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -106,7 +105,11 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(String ids) {
-        List<Long> idList = Arrays.stream(ids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::parseLong).toList();
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
         if (idList.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "未指定删除的优惠券ID");
         }
@@ -119,7 +122,7 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
                     .eq(SysUserCoupon::getCouponId, id)
                     .eq(SysUserCoupon::getStatus, 2));
             if (usedCount > 0) {
-                throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "优惠券已发放使用，无法删除");
+                throw new BusinessException(ResultCode.DATA_REFERENCED, "优惠券已发放使用，无法删除");
             }
             userCouponMapper.delete(new LambdaQueryWrapper<SysUserCoupon>()
                     .eq(SysUserCoupon::getCouponId, id)
@@ -173,7 +176,9 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             }
         }
         LocalDateTime now = LocalDateTime.now();
-        if ("fixed".equals(coupon.getValidType()) && coupon.getValidEnd() != null && now.isAfter(coupon.getValidEnd())) {
+        if ("fixed".equals(coupon.getValidType())
+                && coupon.getValidEnd() != null
+                && now.isAfter(coupon.getValidEnd())) {
             throw new BusinessException(ResultCode.COUPON_EXPIRED);
         }
         int rateLimit = couponProperties.getReceiveRateLimit() != null ? couponProperties.getReceiveRateLimit() : 5;
@@ -193,11 +198,13 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             throw new BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED);
         }
 
-        int rows = baseMapper.update(null, new LambdaUpdateWrapper<SysCoupon>()
-                .eq(SysCoupon::getId, couponId)
-                .eq(SysCoupon::getStatus, 1)
-                .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
-                .setSql("issued_qty = issued_qty + 1"));
+        int rows = baseMapper.update(
+                null,
+                new LambdaUpdateWrapper<SysCoupon>()
+                        .eq(SysCoupon::getId, couponId)
+                        .eq(SysCoupon::getStatus, 1)
+                        .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
+                        .setSql("issued_qty = issued_qty + 1"));
         if (rows == 0) {
             throw new BusinessException(ResultCode.COUPON_STOCK_EMPTY);
         }
@@ -228,11 +235,16 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         if (userCoupons.isEmpty()) {
             return Collections.emptyList();
         }
-        Map<Long, SysCoupon> couponMap = baseMapper.selectByIdsIncludeDeleted(
-                        userCoupons.stream().map(SysUserCoupon::getCouponId).distinct().toList())
+        Map<Long, SysCoupon> couponMap = baseMapper
+                .selectByIdsIncludeDeleted(userCoupons.stream()
+                        .map(SysUserCoupon::getCouponId)
+                        .distinct()
+                        .toList())
                 .stream()
                 .collect(Collectors.toMap(SysCoupon::getId, c -> c));
-        return userCoupons.stream().map(uc -> toUserCouponVO(uc, couponMap.get(uc.getCouponId()))).toList();
+        return userCoupons.stream()
+                .map(uc -> toUserCouponVO(uc, couponMap.get(uc.getCouponId())))
+                .toList();
     }
 
     @Override
@@ -259,11 +271,13 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
             throw new BusinessException(ResultCode.COUPON_LIMIT_EXCEEDED);
         }
 
-        int rows = baseMapper.update(null, new LambdaUpdateWrapper<SysCoupon>()
-                .eq(SysCoupon::getId, coupon.getId())
-                .eq(SysCoupon::getStatus, 1)
-                .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
-                .setSql("issued_qty = issued_qty + 1"));
+        int rows = baseMapper.update(
+                null,
+                new LambdaUpdateWrapper<SysCoupon>()
+                        .eq(SysCoupon::getId, coupon.getId())
+                        .eq(SysCoupon::getStatus, 1)
+                        .and(w -> w.eq(SysCoupon::getTotalQty, -1).or().apply("issued_qty < total_qty"))
+                        .setSql("issued_qty = issued_qty + 1"));
         if (rows == 0) {
             throw new BusinessException(ResultCode.COUPON_STOCK_EMPTY);
         }
@@ -283,26 +297,37 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
 
     private List<Long> resolveTargetUserIds(String targetScope, List<String> levelCodes, List<Long> userIds) {
         if ("all".equals(targetScope)) {
-            return userMapper.selectList(new LambdaQueryWrapper<SysUser>().eq(SysUser::getStatus, 1))
-                    .stream().map(SysUser::getId).toList();
+            return userMapper.selectList(new LambdaQueryWrapper<SysUser>().eq(SysUser::getStatus, 1)).stream()
+                    .map(SysUser::getId)
+                    .toList();
         }
         if ("level".equals(targetScope) && levelCodes != null && !levelCodes.isEmpty()) {
-            List<Long> memberUserIds = memberMapper.selectList(new LambdaQueryWrapper<SysMember>()
-                            .in(SysMember::getLevelCode, levelCodes))
-                    .stream().map(SysMember::getUserId).distinct().toList();
+            List<Long> memberUserIds =
+                    memberMapper
+                            .selectList(new LambdaQueryWrapper<SysMember>().in(SysMember::getLevelCode, levelCodes))
+                            .stream()
+                            .map(SysMember::getUserId)
+                            .distinct()
+                            .toList();
             if (memberUserIds.isEmpty()) {
                 return Collections.emptyList();
             }
-            return userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+            return userMapper
+                    .selectList(new LambdaQueryWrapper<SysUser>()
                             .in(SysUser::getId, memberUserIds)
                             .eq(SysUser::getStatus, 1))
-                    .stream().map(SysUser::getId).toList();
+                    .stream()
+                    .map(SysUser::getId)
+                    .toList();
         }
         if ("users".equals(targetScope) && userIds != null && !userIds.isEmpty()) {
-            return userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+            return userMapper
+                    .selectList(new LambdaQueryWrapper<SysUser>()
                             .in(SysUser::getId, userIds)
                             .eq(SysUser::getStatus, 1))
-                    .stream().map(SysUser::getId).toList();
+                    .stream()
+                    .map(SysUser::getId)
+                    .toList();
         }
         return Collections.emptyList();
     }
@@ -325,7 +350,8 @@ public class CouponServiceImpl extends ServiceImpl<SysCouponMapper, SysCoupon> i
         }
         if (form.getApplicableScope() != null) {
             for (Object scope : form.getApplicableScope()) {
-                boolean valid = scope instanceof Number || List.of("vip", "credit").contains(String.valueOf(scope));
+                boolean valid =
+                        scope instanceof Number || List.of("vip", "credit").contains(String.valueOf(scope));
                 if (!valid) {
                     throw new BusinessException(ResultCode.PARAM_ERROR, "适用商品非法（仅支持商品ID或商品类型）");
                 }

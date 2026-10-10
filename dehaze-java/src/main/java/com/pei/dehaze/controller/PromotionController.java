@@ -50,16 +50,17 @@ public class PromotionController {
     @Operation(summary = "后台：修改促销活动")
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('package:promotion:edit')")
-    public Result<PromotionVO> update(@Parameter(description = "活动ID") @PathVariable Long id,
-                                      @Valid @RequestBody PromotionForm form) {
+    public Result<PromotionVO> update(
+            @Parameter(description = "活动ID") @PathVariable Long id, @Valid @RequestBody PromotionForm form) {
         return Result.success(promotionService.update(id, form));
     }
 
     @Operation(summary = "后台：促销活动上架/下架")
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('package:promotion:edit')")
-    public Result<PromotionVO> updateStatus(@Parameter(description = "活动ID") @PathVariable Long id,
-                                            @Parameter(description = "状态(1:启用;0:禁用)", required = true) @RequestParam Integer status) {
+    public Result<PromotionVO> updateStatus(
+            @Parameter(description = "活动ID") @PathVariable Long id,
+            @Parameter(description = "状态(1:启用;0:禁用)", required = true) @RequestParam Integer status) {
         return Result.success(promotionService.updateStatus(id, status));
     }
 
@@ -74,8 +75,8 @@ public class PromotionController {
     @Operation(summary = "后台：关联套餐")
     @PutMapping("/{id}/packages")
     @PreAuthorize("@ss.hasPerm('package:promotion:edit')")
-    public Result<Void> bindPackages(@Parameter(description = "活动ID") @PathVariable Long id,
-                                     @Valid @RequestBody PromotionPackageForm form) {
+    public Result<Void> bindPackages(
+            @Parameter(description = "活动ID") @PathVariable Long id, @Valid @RequestBody PromotionPackageForm form) {
         promotionService.bindPackages(id, form);
         return Result.success();
     }

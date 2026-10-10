@@ -1,5 +1,13 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -12,7 +20,9 @@ import com.pei.dehaze.model.entity.SysAiArtifact;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,18 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * AI 中间产物服务单测：产物归属随会话校验、按引用反查只返回本人会话产物、图片 URL 运行时按 ref 链路拼接。
@@ -50,14 +48,19 @@ class AiArtifactServiceTest {
 
     @Mock
     private SysAiArtifactMapper artifactMapper;
+
     @Mock
     private SysFileMapper fileMapper;
+
     @Mock
     private SysPredLogMapper predLogMapper;
+
     @Mock
     private SysEvalLogMapper evalLogMapper;
+
     @Mock
     private StorageServiceFactory storageServiceFactory;
+
     @Mock
     private AiConversationService conversationService;
 
@@ -78,7 +81,8 @@ class AiArtifactServiceTest {
     }
 
     private void assertBizError(ResultCode expected, Executable action) {
-        assertThat(assertThrows(BusinessException.class, action).getResultCode()).isEqualTo(expected);
+        assertThat(assertThrows(BusinessException.class, action).getResultCode())
+                .isEqualTo(expected);
     }
 
     @Test
@@ -119,13 +123,13 @@ class AiArtifactServiceTest {
     @Test
     @DisplayName("按引用反查：只返回属于当前用户会话的产物（他人会话产物被过滤）")
     void listByRefFiltersForeignConversations() {
-        when(artifactMapper.selectList(any(Wrapper.class))).thenReturn(List.of(
-                artifact(5L, 1L, "sys_pred_log", 88L),
-                artifact(6L, 2L, "sys_pred_log", 88L)));
+        when(artifactMapper.selectList(any(Wrapper.class)))
+                .thenReturn(List.of(artifact(5L, 1L, "sys_pred_log", 88L), artifact(6L, 2L, "sys_pred_log", 88L)));
         when(conversationService.listOwnedIds(Set.of(1L, 2L), USER_ID)).thenReturn(Set.of(1L));
 
         assertThat(service.listByRef("sys_pred_log", 88L, USER_ID))
-                .extracting(vo -> vo.getId()).containsExactly(5L);
+                .extracting(vo -> vo.getId())
+                .containsExactly(5L);
     }
 
     @Test

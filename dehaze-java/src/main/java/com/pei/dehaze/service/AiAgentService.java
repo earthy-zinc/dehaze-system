@@ -20,7 +20,6 @@ import com.pei.dehaze.model.entity.SysAiAgentEvalDataset;
 import com.pei.dehaze.model.entity.SysAiAgentMcp;
 import com.pei.dehaze.model.entity.SysAiAgentSkill;
 import com.pei.dehaze.model.entity.SysAiAgentSubagent;
-import com.pei.dehaze.model.entity.SysAiAgentVersion;
 import com.pei.dehaze.model.form.AiAgentCreateForm;
 import com.pei.dehaze.model.form.AiAgentSubAgentsForm;
 import com.pei.dehaze.model.form.AiAgentUpdateForm;
@@ -28,11 +27,6 @@ import com.pei.dehaze.model.query.AiAgentPageQuery;
 import com.pei.dehaze.model.read.AgentRefCountRead;
 import com.pei.dehaze.model.vo.AiAgentVO;
 import com.pei.dehaze.model.vo.AiSubAgentVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 智能体管理服务（CRUD/启停/复制/关联绑定/删除级联/缓存失效）。
@@ -96,12 +94,12 @@ public class AiAgentService {
             case "agent" -> wrapper.eq(SysAiAgent::getIsSubagent, 0).eq(SysAiAgent::getIsTeam, 0);
             case "subagent" -> wrapper.eq(SysAiAgent::getIsSubagent, 1);
             case "team" -> wrapper.eq(SysAiAgent::getIsTeam, 1);
-            default -> {
-            }
+            default -> {}
         }
         Page<SysAiAgent> page = new Page<>(query.getPageNum(), query.getPageSize());
         IPage<SysAiAgent> agentPage = agentMapper.selectPage(page, wrapper);
-        List<Long> agentIds = agentPage.getRecords().stream().map(SysAiAgent::getId).toList();
+        List<Long> agentIds =
+                agentPage.getRecords().stream().map(SysAiAgent::getId).toList();
         Map<Long, Long> skillCounts = countMap(agentIds, insightMapper::countSkillsByAgentIds);
         Map<Long, Long> mcpCounts = countMap(agentIds, insightMapper::countMcpByAgentIds);
         Map<Long, Long> subCounts = countMap(agentIds, insightMapper::countSubagentsByAgentIds);
@@ -120,12 +118,15 @@ public class AiAgentService {
      * 可选 Agent 列表（启用且非子 Agent；Team 可作会话入口，保留）
      */
     public List<AiAgentVO> listEnabled() {
-        return agentMapper.selectList(new LambdaQueryWrapper<SysAiAgent>()
+        return agentMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgent>()
                         .eq(SysAiAgent::getStatus, 1)
                         .eq(SysAiAgent::getIsSubagent, 0)
                         .orderByAsc(SysAiAgent::getSortOrder)
                         .orderByAsc(SysAiAgent::getId))
-                .stream().map(this::toVO).toList();
+                .stream()
+                .map(this::toVO)
+                .toList();
     }
 
     public AiAgentVO getDetail(Long agentId) {
@@ -163,9 +164,9 @@ public class AiAgentService {
 
     /** 推理范式白名单（与 python AgentCreate/AgentUpdate.reasoning_mode 的 pattern 同集合） */
     private void requireReasoningMode(String mode) {
-        if (!java.util.Set.of("auto", "direct", "react", "plan_execute", "reflexion").contains(mode)) {
-            throw new BusinessException(ResultCode.PARAM_ERROR,
-                    "推理范式仅支持auto/direct/react/plan_execute/reflexion");
+        if (!java.util.Set.of("auto", "direct", "react", "plan_execute", "reflexion")
+                .contains(mode)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "推理范式仅支持auto/direct/react/plan_execute/reflexion");
         }
     }
 
@@ -236,17 +237,17 @@ public class AiAgentService {
         }
         long conversationRefs = conversationMapper.countByAgentCode(agent.getAgentCode());
         if (conversationRefs > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "存在 " + conversationRefs + " 个会话正在使用该 Agent，请先解绑");
+            throw new BusinessException(ResultCode.DATA_REFERENCED, "存在 " + conversationRefs + " 个会话正在使用该 Agent，请先解绑");
         }
         long subagentRefs = insightMapper.countSubagentReferences(agentId);
         if (subagentRefs > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "该 Agent 被 " + subagentRefs + " 个 Agent 作为子 Agent 引用，请先解绑");
+            throw new BusinessException(
+                    ResultCode.DATA_REFERENCED, "该 Agent 被 " + subagentRefs + " 个 Agent 作为子 Agent 引用，请先解绑");
         }
         List<SysAiAgentEvalDataset> datasets = evalDatasetMapper.selectList(
                 new LambdaQueryWrapper<SysAiAgentEvalDataset>().eq(SysAiAgentEvalDataset::getAgentId, agentId));
-        List<Long> datasetIds = datasets.stream().map(SysAiAgentEvalDataset::getId).toList();
+        List<Long> datasetIds =
+                datasets.stream().map(SysAiAgentEvalDataset::getId).toList();
         int sampleCount = datasetIds.isEmpty() ? 0 : evalSampleMapper.deleteByDatasetIds(datasetIds);
         if (!datasetIds.isEmpty()) {
             evalDatasetMapper.softDeleteByIds(datasetIds);
@@ -262,8 +263,8 @@ public class AiAgentService {
         afterValue.put("eval_samples_deleted", sampleCount);
         afterValue.put("eval_runs_deleted", runCount);
         Long operatorId = com.pei.dehaze.security.util.SecurityUtils.getUserId();
-        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(operatorId, "ai_agent", agentId, "delete",
-                "ai_agent", beforeValue, afterValue, null, null));
+        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(
+                operatorId, "ai_agent", agentId, "delete", "ai_agent", beforeValue, afterValue, null, null));
     }
 
     @Transactional
@@ -301,14 +302,13 @@ public class AiAgentService {
         List<String> names = skillNames == null ? List.of() : skillNames;
         if (!names.isEmpty()) {
             Set<String> existing = new HashSet<>(agentSkillMapper.listExistingSkillNames(names));
-            List<String> missing = names.stream().filter(n -> !existing.contains(n)).sorted().toList();
+            List<String> missing =
+                    names.stream().filter(n -> !existing.contains(n)).sorted().toList();
             if (!missing.isEmpty()) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND,
-                        "以下 Skill 不存在: " + joinTop5(missing));
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "以下 Skill 不存在: " + joinTop5(missing));
             }
         }
-        agentSkillMapper.delete(new LambdaQueryWrapper<SysAiAgentSkill>()
-                .eq(SysAiAgentSkill::getAgentId, agentId));
+        agentSkillMapper.delete(new LambdaQueryWrapper<SysAiAgentSkill>().eq(SysAiAgentSkill::getAgentId, agentId));
         for (String name : names) {
             SysAiAgentSkill link = new SysAiAgentSkill();
             link.setAgentId(agentId);
@@ -328,10 +328,10 @@ public class AiAgentService {
         List<String> names = namespaces == null ? List.of() : namespaces;
         if (!names.isEmpty()) {
             Set<String> registered = new HashSet<>(agentMcpMapper.listRegisteredNamespaces(names));
-            List<String> missing = names.stream().filter(n -> !registered.contains(n)).sorted().toList();
+            List<String> missing =
+                    names.stream().filter(n -> !registered.contains(n)).sorted().toList();
             if (!missing.isEmpty()) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND,
-                        "以下 MCP 命名空间未注册: " + joinTop5(missing));
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "以下 MCP 命名空间未注册: " + joinTop5(missing));
             }
         }
         agentMcpMapper.delete(new LambdaQueryWrapper<SysAiAgentMcp>().eq(SysAiAgentMcp::getAgentId, agentId));
@@ -353,23 +353,35 @@ public class AiAgentService {
         SysAiAgent agent = getOrThrow(agentId);
         List<com.pei.dehaze.model.form.AiSubAgentItemForm> items =
                 form.getSubagents() == null ? List.of() : form.getSubagents();
-        List<Long> childIds = items.stream().map(com.pei.dehaze.model.form.AiSubAgentItemForm::getAgentId).toList();
+        List<Long> childIds = items.stream()
+                .map(com.pei.dehaze.model.form.AiSubAgentItemForm::getAgentId)
+                .toList();
         if (childIds.contains(agentId)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "子 Agent 不能是自身");
         }
         if (!childIds.isEmpty()) {
-            Set<Long> found = agentMapper.selectList(new LambdaQueryWrapper<SysAiAgent>()
-                            .select(SysAiAgent::getId).in(SysAiAgent::getId, childIds))
-                    .stream().map(SysAiAgent::getId).collect(java.util.stream.Collectors.toSet());
-            List<Long> missing = childIds.stream().filter(id -> !found.contains(id)).distinct().sorted().toList();
+            Set<Long> found = agentMapper
+                    .selectList(new LambdaQueryWrapper<SysAiAgent>()
+                            .select(SysAiAgent::getId)
+                            .in(SysAiAgent::getId, childIds))
+                    .stream()
+                    .map(SysAiAgent::getId)
+                    .collect(java.util.stream.Collectors.toSet());
+            List<Long> missing = childIds.stream()
+                    .filter(id -> !found.contains(id))
+                    .distinct()
+                    .sorted()
+                    .toList();
             if (!missing.isEmpty()) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND,
-                        "以下子 Agent 不存在: " + joinTop5(missing.stream().map(String::valueOf).toList()));
+                throw new BusinessException(
+                        ResultCode.RESOURCE_NOT_FOUND,
+                        "以下子 Agent 不存在: "
+                                + joinTop5(missing.stream().map(String::valueOf).toList()));
             }
         }
         ensureSubagentsAcyclic(agentId, childIds);
-        agentSubagentMapper.delete(new LambdaQueryWrapper<SysAiAgentSubagent>()
-                .eq(SysAiAgentSubagent::getParentAgentId, agentId));
+        agentSubagentMapper.delete(
+                new LambdaQueryWrapper<SysAiAgentSubagent>().eq(SysAiAgentSubagent::getParentAgentId, agentId));
         for (com.pei.dehaze.model.form.AiSubAgentItemForm item : items) {
             SysAiAgentSubagent link = new SysAiAgentSubagent();
             link.setParentAgentId(agentId);
@@ -398,9 +410,12 @@ public class AiAgentService {
         if (path.contains(node)) {
             List<Long> cyclePath = new ArrayList<>(path.subList(path.indexOf(node), path.size()));
             cyclePath.add(node);
-            throw new BusinessException(ResultCode.PARAM_ERROR,
-                    "子 Agent 绑定存在环: " + cyclePath.stream().map(String::valueOf)
-                            .collect(java.util.stream.Collectors.joining("→")));
+            throw new BusinessException(
+                    ResultCode.PARAM_ERROR,
+                    "子 Agent 绑定存在环: "
+                            + cyclePath.stream()
+                                    .map(String::valueOf)
+                                    .collect(java.util.stream.Collectors.joining("→")));
         }
         path.add(node);
         List<Long> children = node.equals(path.get(0)) ? rootChildren : listSubagentIds(node);
@@ -412,9 +427,12 @@ public class AiAgentService {
     }
 
     private List<Long> listSubagentIds(Long parentAgentId) {
-        return agentSubagentMapper.selectList(new LambdaQueryWrapper<SysAiAgentSubagent>()
+        return agentSubagentMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgentSubagent>()
                         .eq(SysAiAgentSubagent::getParentAgentId, parentAgentId))
-                .stream().map(SysAiAgentSubagent::getSubagentAgentId).toList();
+                .stream()
+                .map(SysAiAgentSubagent::getSubagentAgentId)
+                .toList();
     }
 
     // ── 内部工具 ─────────────────────────────────────────────
@@ -436,7 +454,8 @@ public class AiAgentService {
 
     private SysAiAgent findByCode(String agentCode) {
         return agentMapper.selectOne(new LambdaQueryWrapper<SysAiAgent>()
-                .eq(SysAiAgent::getAgentCode, agentCode).last("LIMIT 1"));
+                .eq(SysAiAgent::getAgentCode, agentCode)
+                .last("LIMIT 1"));
     }
 
     private Integer flag(Boolean value) {
@@ -463,19 +482,24 @@ public class AiAgentService {
      */
     public AiAgentVO buildDetail(SysAiAgent agent) {
         AiAgentVO vo = toVO(agent);
-        List<String> skills = agentSkillMapper.selectList(new LambdaQueryWrapper<SysAiAgentSkill>()
-                        .eq(SysAiAgentSkill::getAgentId, agent.getId()))
-                .stream().map(SysAiAgentSkill::getSkillName).toList();
-        List<String> namespaces = agentMcpMapper.selectList(new LambdaQueryWrapper<SysAiAgentMcp>()
-                        .eq(SysAiAgentMcp::getAgentId, agent.getId()))
-                .stream().map(SysAiAgentMcp::getMcpNamespace).toList();
+        List<String> skills = agentSkillMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgentSkill>().eq(SysAiAgentSkill::getAgentId, agent.getId()))
+                .stream()
+                .map(SysAiAgentSkill::getSkillName)
+                .toList();
+        List<String> namespaces = agentMcpMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgentMcp>().eq(SysAiAgentMcp::getAgentId, agent.getId()))
+                .stream()
+                .map(SysAiAgentMcp::getMcpNamespace)
+                .toList();
         List<SysAiAgentSubagent> links = agentSubagentMapper.selectList(
                 new LambdaQueryWrapper<SysAiAgentSubagent>().eq(SysAiAgentSubagent::getParentAgentId, agent.getId()));
         Map<Long, SysAiAgent> subAgents = new HashMap<>();
         if (!links.isEmpty()) {
-            List<Long> subIds = links.stream().map(SysAiAgentSubagent::getSubagentAgentId).toList();
-            for (SysAiAgent sub : agentMapper.selectList(new LambdaQueryWrapper<SysAiAgent>()
-                    .in(SysAiAgent::getId, subIds))) {
+            List<Long> subIds =
+                    links.stream().map(SysAiAgentSubagent::getSubagentAgentId).toList();
+            for (SysAiAgent sub :
+                    agentMapper.selectList(new LambdaQueryWrapper<SysAiAgent>().in(SysAiAgent::getId, subIds))) {
                 subAgents.put(sub.getId(), sub);
             }
         }

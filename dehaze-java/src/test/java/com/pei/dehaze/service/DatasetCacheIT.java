@@ -1,12 +1,14 @@
 package com.pei.dehaze.service;
 
-import com.pei.dehaze.common.constant.SystemConstants;
-import com.pei.dehaze.config.TestConfig;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,10 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 数据集缓存测试
@@ -31,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * 注意：测试环境可能禁用了缓存，测试会跳过缓存相关断言
  */
-@SpringBootTest(classes = TestConfig.class)
+@SpringBootTest
 @DisplayName("数据集缓存测试")
 class DatasetCacheIT {
 
@@ -43,9 +41,6 @@ class DatasetCacheIT {
 
     @Autowired(required = false)
     private CacheManager cacheManager;
-
-    private static final String LIST_CACHE_NAME = "dataset:list";
-    private static final String STATS_CACHE_NAME = "dataset:stats";
 
     @BeforeEach
     void setUp() {
@@ -96,7 +91,8 @@ class DatasetCacheIT {
         IPage<DatasetVO> secondResult = datasetService.listPagedDatasets(query);
 
         // Assert - 两次结果应该相同
-        assertThat(secondResult.getRecords().size()).isEqualTo(firstResult.getRecords().size());
+        assertThat(secondResult.getRecords().size())
+                .isEqualTo(firstResult.getRecords().size());
     }
 
     /**
@@ -245,7 +241,8 @@ class DatasetCacheIT {
         IPage<DatasetVO> result2 = datasetService.listPagedDatasets(query2);
 
         // Assert - 带不存在关键字的查询应该返回空或较少结果
-        assertThat(result1.getRecords().size()).isLessThanOrEqualTo(result2.getRecords().size());
+        assertThat(result1.getRecords().size())
+                .isLessThanOrEqualTo(result2.getRecords().size());
     }
 
     /**

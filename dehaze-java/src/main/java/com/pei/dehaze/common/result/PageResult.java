@@ -1,11 +1,10 @@
 package com.pei.dehaze.common.result;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import lombok.Data;
-import org.slf4j.MDC;
-
 import java.io.Serializable;
 import java.util.List;
+import lombok.Data;
+import org.slf4j.MDC;
 
 /**
  * 分页响应结构体
@@ -44,7 +43,5 @@ public class PageResult<T> implements Serializable {
         private List<T> list;
 
         private long total;
-
     }
-
 }

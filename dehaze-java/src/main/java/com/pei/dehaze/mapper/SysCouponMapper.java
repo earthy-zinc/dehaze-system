@@ -2,12 +2,11 @@ package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.pei.dehaze.model.entity.SysCoupon;
+import java.util.Collection;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
-
-import java.util.Collection;
-import java.util.List;
 
 @Mapper
 public interface SysCouponMapper extends BaseMapper<SysCoupon> {

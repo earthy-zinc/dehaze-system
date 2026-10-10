@@ -30,12 +30,12 @@ public class ClientLogController {
 
     @Operation(summary = "前端日志批量上报")
     @RateLimit(
-        key = "rate:limit:client-log:", 
-        timeWindow = 60, maxRequests = 1000,
-        type = RateLimit.LimitType.IP, 
-        limiter = RateLimit.LimiterType.FIXED_WINDOW,
-        message = "日志上报过于频繁，请稍后再试"
-    )
+            key = "rate:limit:client-log:",
+            timeWindow = 60,
+            maxRequests = 1000,
+            type = RateLimit.LimitType.IP,
+            limiter = RateLimit.LimiterType.FIXED_WINDOW,
+            message = "日志上报过于频繁，请稍后再试")
     @PostMapping
     public Result<Void> collect(@RequestBody @Valid ClientLogBatchForm form) {
         clientLogService.collect(form);

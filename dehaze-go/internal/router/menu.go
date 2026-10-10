@@ -16,7 +16,7 @@ func RegisterSysMenuRoutes(rg *gin.RouterGroup, sysMenuApi *api.SysMenuApi) gin.
 		sysMenuRouter.GET(":id/form", sysMenuApi.GetMenuForm)
 
 		// 写操作 - 需要权限校验 + 防重复提交
-		sysMenuRouter.POST("", middleware.Permission("sys:menu:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysMenuApi.SaveMenu)
+		sysMenuRouter.POST("", middleware.Permission("sys:menu:add"), middleware.DefaultAntiRepeat(), sysMenuApi.SaveMenu)
 		sysMenuRouter.PUT(":id", middleware.Permission("sys:menu:edit"), sysMenuApi.UpdateMenu)
 		sysMenuRouter.DELETE(":ids", middleware.Permission("sys:menu:delete"), sysMenuApi.DeleteMenu)
 		sysMenuRouter.PATCH(":id", middleware.Permission("sys:menu:edit"), sysMenuApi.UpdateMenuVisible)

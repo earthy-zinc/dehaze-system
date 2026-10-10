@@ -11,15 +11,14 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 角色导入处理器
@@ -40,11 +39,28 @@ public class RoleImportHandler implements ImportHandler {
     @Override
     public List<ImportFieldConfig> getFieldConfigs() {
         return List.of(
-                ImportFieldConfig.builder().field("name").label("角色名称").required(true).maxLength(64).build(),
-                ImportFieldConfig.builder().field("code").label("角色编码").required(true).maxLength(32).build(),
-                ImportFieldConfig.builder().field("sort").label("排序").required(false).build(),
-                ImportFieldConfig.builder().field("statusLabel").label("状态(启用/禁用)").required(false).build()
-        );
+                ImportFieldConfig.builder()
+                        .field("name")
+                        .label("角色名称")
+                        .required(true)
+                        .maxLength(64)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("code")
+                        .label("角色编码")
+                        .required(true)
+                        .maxLength(32)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("sort")
+                        .label("排序")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态(启用/禁用)")
+                        .required(false)
+                        .build());
     }
 
     @Override
@@ -53,8 +69,7 @@ public class RoleImportHandler implements ImportHandler {
                 "name", "普通用户",
                 "code", "user",
                 "sort", "1",
-                "statusLabel", "启用"
-        ));
+                "statusLabel", "启用"));
     }
 
     @Override
@@ -85,8 +100,7 @@ public class RoleImportHandler implements ImportHandler {
                     throw new IllegalArgumentException("内置角色编码不可导入: " + code);
                 }
 
-                long exists = roleService.count(new LambdaQueryWrapper<SysRole>()
-                        .eq(SysRole::getCode, code));
+                long exists = roleService.count(new LambdaQueryWrapper<SysRole>().eq(SysRole::getCode, code));
                 if (exists > 0) {
                     throw new IllegalArgumentException("角色编码已存在: " + code);
                 }
@@ -110,8 +124,7 @@ public class RoleImportHandler implements ImportHandler {
                         .message(e.getMessage())
                         .build());
                 if (!partial) {
-                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage()
-                            + "（全量模式已回滚所有数据）", e);
+                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage() + "（全量模式已回滚所有数据）", e);
                 }
             }
         }

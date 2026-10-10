@@ -3,12 +3,14 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.mapper.SysRecommendationMapper;
 import com.pei.dehaze.mapper.SysRecommendationRuleMapper;
-import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.entity.SysAiModel;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.entity.SysRecommendation;
 import com.pei.dehaze.model.entity.SysRecommendationRule;
@@ -19,17 +21,10 @@ import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.model.vo.ImageFeatureAnalysisVO;
 import com.pei.dehaze.model.vo.RecommendationReportVO;
 import com.pei.dehaze.model.vo.RecommendationRuleVO;
-import com.pei.dehaze.model.vo.RecommendedAlgorithmVO;
-import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.model.vo.RecommendedModelVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.RecommendationService;
-import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -43,6 +38,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -50,13 +49,16 @@ import java.util.stream.Collectors;
 public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapper, SysRecommendation>
         implements RecommendationService {
 
-    private static final List<String> VALID_SCENE_TYPES = List.of("urban", "landscape", "building", "night", "backlight", "indoor");
-    private static final List<String> IMAGE_EXTENSIONS = List.of(".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif");
+    private static final String IMAGE_MODEL_TYPE = "image_edit";
+    private static final List<String> VALID_SCENE_TYPES =
+            List.of("urban", "landscape", "building", "night", "backlight", "indoor");
+    private static final List<String> IMAGE_EXTENSIONS =
+            List.of(".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif");
     private static final int TOP_N = 3;
 
     private final SysRecommendationRuleMapper ruleMapper;
     private final SysPredLogMapper predLogMapper;
-    private final SysAlgorithmService sysAlgorithmService;
+    private final SysAiModelMapper aiModelMapper;
     private final PythonAlgorithmClient pythonAlgorithmClient;
 
     /**
@@ -77,11 +79,9 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public List<RecommendedAlgorithmVO> getAlgorithmRecommendations(Long analysisId, String imageMd5) {
-        // 获取已发布算法作为候选池
-        List<SysAlgorithm> publishedAlgorithms = sysAlgorithmService.getAllAlgorithms().stream()
-                .filter(a -> a.getStatus() != null && a.getStatus() == 4) // 4 = 已发布
-                .toList();
+    public List<RecommendedModelVO> getModelRecommendations(Long analysisId, String imageMd5) {
+        // 仅取已启用的图像模型作为推荐候选池（对齐 python list_enabled(model_type=image_edit)）
+        List<SysAiModel> published = listEnabledImageModels();
 
         // 加载启用的规则
         List<SysRecommendationRule> rules = getEnabledRules();
@@ -110,39 +110,41 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
             }
         }
 
-        List<RecommendedAlgorithmVO> result = Collections.emptyList();
+        List<RecommendedModelVO> result = Collections.emptyList();
 
-        // 仅在已发布算法和规则都就绪时才做匹配
-        if (!publishedAlgorithms.isEmpty() && !rules.isEmpty()) {
+        // 仅在候选模型和规则都就绪时才做匹配
+        if (!published.isEmpty() && !rules.isEmpty()) {
             final String matchedScene = sceneType;
             List<SysRecommendationRule> matchedRules = rules.stream()
                     .filter(r -> r.getSceneType() != null && r.getSceneType().equals(matchedScene))
-                    .sorted(Comparator.comparingInt(SysRecommendationRule::getWeight).reversed())
+                    .sorted(Comparator.comparingInt(SysRecommendationRule::getWeight)
+                            .reversed())
                     .toList();
 
             if (!matchedRules.isEmpty()) {
-                Set<Long> candidateIds = matchedRules.stream()
-                        .flatMap(r -> r.getAlgorithmIds() != null ? r.getAlgorithmIds().stream() : java.util.stream.Stream.empty())
+                Set<String> candidateIds = matchedRules.stream()
+                        .flatMap(r ->
+                                r.getModelIds() != null ? r.getModelIds().stream() : java.util.stream.Stream.empty())
                         .collect(Collectors.toSet());
 
-                List<SysAlgorithm> candidates = publishedAlgorithms.stream()
-                        .filter(a -> candidateIds.contains(a.getId()))
+                List<SysAiModel> candidates = published.stream()
+                        .filter(m -> candidateIds.contains(m.getModelId()))
                         .toList();
 
                 if (!candidates.isEmpty()) {
                     result = candidates.stream()
-                            .map(alg -> {
-                                RecommendedAlgorithmVO vo = new RecommendedAlgorithmVO();
-                                vo.setAlgorithmId(alg.getId());
-                                vo.setAlgorithmName(alg.getName());
-                                int matchScore = computeMatchScore(alg.getId(), matchedRules);
-                                vo.setMatchScore(matchScore);
-                                vo.setReason(buildReason(matchedScene, alg.getName()));
-                                vo.setEffectDescription("该算法在" + matchedScene + "场景下表现稳定");
+                            .map(model -> {
+                                RecommendedModelVO vo = new RecommendedModelVO();
+                                vo.setModelId(model.getModelId());
+                                vo.setModelName(model.getDisplayName());
+                                vo.setMatchScore(computeMatchScore(model.getModelId(), matchedRules));
+                                vo.setReason(buildReason(matchedScene, model.getDisplayName()));
+                                vo.setEffectDescription("该模型在" + matchedScene + "场景下表现稳定");
                                 return vo;
                             })
-                            .sorted(Comparator.comparingInt(RecommendedAlgorithmVO::getMatchScore).reversed()
-                                    .thenComparing(RecommendedAlgorithmVO::getAlgorithmId))
+                            .sorted(Comparator.comparingInt(RecommendedModelVO::getMatchScore)
+                                    .reversed()
+                                    .thenComparing(RecommendedModelVO::getModelId))
                             .limit(TOP_N)
                             .toList();
                 }
@@ -150,11 +152,11 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         }
 
         // 无论有无结果，都写入 sys_recommendation 记录，确保 feedback 能找到记录
-        List<Map<String, Object>> topAlgorithms = result.stream()
+        List<Map<String, Object>> topModels = result.stream()
                 .map(vo -> {
                     Map<String, Object> item = new java.util.HashMap<>();
-                    item.put("algorithmId", vo.getAlgorithmId());
-                    item.put("algorithmName", vo.getAlgorithmName());
+                    item.put("modelId", vo.getModelId());
+                    item.put("modelName", vo.getModelName());
                     item.put("matchScore", vo.getMatchScore());
                     return item;
                 })
@@ -163,8 +165,8 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         SysRecommendation rec = new SysRecommendation();
         rec.setUserId(currentUserId());
         rec.setImageMd5(imageMd5);
-        rec.setTargetType("algorithm");
-        rec.setTopAlgorithms(topAlgorithms);
+        rec.setTargetType("model");
+        rec.setTopModels(topModels);
         rec.setFeedback(0);
         this.save(rec);
 
@@ -191,8 +193,7 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
     @Override
     public List<RecommendationRuleVO> getRules() {
         List<SysRecommendationRule> rules = ruleMapper.selectList(
-                new LambdaQueryWrapper<SysRecommendationRule>()
-                        .orderByAsc(SysRecommendationRule::getWeight));
+                new LambdaQueryWrapper<SysRecommendationRule>().orderByAsc(SysRecommendationRule::getWeight));
         return rules.stream().map(this::toRuleVO).toList();
     }
 
@@ -205,15 +206,14 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
 
-        List<SysRecommendationRule> existing = ruleMapper.selectList(
-                new LambdaQueryWrapper<SysRecommendationRule>()
-                        .ne(id != null && id != 0, SysRecommendationRule::getId, id));
-        Set<Long> target = new HashSet<>(form.getAlgorithmIds());
+        List<SysRecommendationRule> existing = ruleMapper.selectList(new LambdaQueryWrapper<SysRecommendationRule>()
+                .ne(id != null && id != 0, SysRecommendationRule::getId, id));
+        Set<String> target = new HashSet<>(form.getModelIds());
         for (SysRecommendationRule r : existing) {
             if ((r.getEnabled() == null || r.getEnabled() != 1)
                     || Objects.equals(r.getSceneType(), form.getSceneType()) == false
-                    || r.getAlgorithmIds() == null
-                    || new HashSet<>(r.getAlgorithmIds()).equals(target) == false) {
+                    || r.getModelIds() == null
+                    || new HashSet<>(r.getModelIds()).equals(target) == false) {
                 continue;
             }
             throw new BusinessException(ResultCode.DATA_EXISTS);
@@ -224,12 +224,12 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
             SysRecommendationRule rule = new SysRecommendationRule();
             rule.setRuleName(form.getRuleName());
             rule.setSceneType(form.getSceneType());
-            rule.setAlgorithmIds(form.getAlgorithmIds());
+            rule.setModelIds(form.getModelIds());
             rule.setWeight(form.getWeight());
             rule.setEnabled(form.getEnabled() != null && form.getEnabled() ? 1 : 0);
             ruleMapper.insert(rule);
             refreshRuleCache();
-            return rule.getId() != null ? rule.getId().longValue() : 0L;
+            return rule.getId() != null ? rule.getId() : 0L;
         }
 
         // 更新
@@ -239,12 +239,12 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         }
         rule.setRuleName(form.getRuleName());
         rule.setSceneType(form.getSceneType());
-        rule.setAlgorithmIds(form.getAlgorithmIds());
+        rule.setModelIds(form.getModelIds());
         rule.setWeight(form.getWeight());
         rule.setEnabled(form.getEnabled() != null && form.getEnabled() ? 1 : 0);
         ruleMapper.updateById(rule);
         refreshRuleCache();
-        return rule.getId() != null ? rule.getId().longValue() : id;
+        return rule.getId() != null ? rule.getId() : id;
     }
 
     @Override
@@ -255,11 +255,11 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         long total = this.baseMapper.countTotal(start, end);
         long usefulCount = this.baseMapper.countUseful(start, end);
         long feedbackTotal = this.baseMapper.countFeedbackTotal(start, end);
-        long adoptedDistinct = this.baseMapper.countAdoptedAlgorithmDistinct(start, end);
+        long adoptedDistinct = this.baseMapper.countAdoptedModelDistinct(start, end);
 
         // 采纳数：带推荐来源（recommended_by）的预测记录数
-        LambdaQueryWrapper<SysPredLog> adoptedWrapper = new LambdaQueryWrapper<SysPredLog>()
-                .isNotNull(SysPredLog::getRecommendedBy);
+        LambdaQueryWrapper<SysPredLog> adoptedWrapper =
+                new LambdaQueryWrapper<SysPredLog>().isNotNull(SysPredLog::getRecommendedBy);
         if (start != null) {
             adoptedWrapper.ge(SysPredLog::getCreateTime, start);
         }
@@ -268,11 +268,8 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         }
         long adoptedPredCount = predLogMapper.selectCount(adoptedWrapper);
 
-        // 获取已发布算法总数
-        List<SysAlgorithm> published = sysAlgorithmService.getAllAlgorithms().stream()
-                .filter(a -> a.getStatus() != null && a.getStatus() == 4)
-                .toList();
-        long publishedCount = published.size();
+        // 已启用图像模型总数（覆盖率分母）
+        long publishedCount = listEnabledImageModels().size();
 
         RecommendationReportVO vo = new RecommendationReportVO();
         vo.setTotalRecommendations(total);
@@ -311,16 +308,21 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
 
     // ==================== 内部方法 ====================
 
+    private List<SysAiModel> listEnabledImageModels() {
+        return aiModelMapper.selectList(new LambdaQueryWrapper<SysAiModel>()
+                .eq(SysAiModel::getStatus, 1)
+                .eq(SysAiModel::getModelType, IMAGE_MODEL_TYPE));
+    }
+
     private void validateRuleForm(RecommendationRuleForm form) {
         if (form.getWeight() == null || form.getWeight() < 0 || form.getWeight() > 100) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "规则权重必须在0-100之间");
         }
         if (form.getSceneType() == null || !VALID_SCENE_TYPES.contains(form.getSceneType())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR,
-                    "场景类型不合法，仅支持：" + String.join("/", VALID_SCENE_TYPES));
+            throw new BusinessException(ResultCode.PARAM_ERROR, "场景类型不合法，仅支持：" + String.join("/", VALID_SCENE_TYPES));
         }
-        if (form.getAlgorithmIds() == null || form.getAlgorithmIds().isEmpty()) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "候选算法ID列表不能为空");
+        if (form.getModelIds() == null || form.getModelIds().isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "候选模型标识列表不能为空");
         }
     }
 
@@ -385,17 +387,16 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
 
     private List<SysRecommendationRule> refreshRuleCache() {
         List<SysRecommendationRule> rules = ruleMapper.selectList(
-                new LambdaQueryWrapper<SysRecommendationRule>()
-                        .eq(SysRecommendationRule::getEnabled, 1));
+                new LambdaQueryWrapper<SysRecommendationRule>().eq(SysRecommendationRule::getEnabled, 1));
         ruleCache.clear();
         ruleCache.addAll(rules);
         return rules;
     }
 
-    private int computeMatchScore(Long algorithmId, List<SysRecommendationRule> matchedRules) {
-        // 取该算法在匹配规则中的最高权重作为匹配度
+    private int computeMatchScore(String modelId, List<SysRecommendationRule> matchedRules) {
+        // 取该模型在匹配规则中的最高权重作为匹配度
         int maxWeight = matchedRules.stream()
-                .filter(r -> r.getAlgorithmIds() != null && r.getAlgorithmIds().contains(algorithmId))
+                .filter(r -> r.getModelIds() != null && r.getModelIds().contains(modelId))
                 .mapToInt(SysRecommendationRule::getWeight)
                 .max()
                 .orElse(0);
@@ -403,17 +404,16 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         return Math.min(100, maxWeight);
     }
 
-    private String buildReason(String sceneType, String algorithmName) {
+    private String buildReason(String sceneType, String modelName) {
         Map<String, String> reasonTemplates = Map.of(
                 "urban", "处理速度快，对城市雾霾效果出色",
                 "landscape", "在自然场景下表现稳定，色彩还原度高",
                 "building", "深度模型，对建筑场景处理能力强",
                 "night", "低光照增强组合，避免过度暗化",
                 "backlight", "HDR预处理提升暗部细节",
-                "indoor", "室内场景适配，细节保留好"
-        );
+                "indoor", "室内场景适配，细节保留好");
         String reason = reasonTemplates.getOrDefault(sceneType, "综合表现优秀");
-        return algorithmName + "：" + reason;
+        return modelName + "：" + reason;
     }
 
     private RecommendationRuleVO toRuleVO(SysRecommendationRule entity) {
@@ -421,7 +421,7 @@ public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapp
         vo.setId(entity.getId());
         vo.setRuleName(entity.getRuleName());
         vo.setSceneType(entity.getSceneType());
-        vo.setAlgorithmIds(entity.getAlgorithmIds());
+        vo.setModelIds(entity.getModelIds());
         vo.setWeight(entity.getWeight());
         vo.setEnabled(entity.getEnabled() != null && entity.getEnabled() == 1);
         return vo;

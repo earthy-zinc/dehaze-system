@@ -9,13 +9,13 @@ import time
 
 import pytest
 
-from app.config import settings
+from app.core.constants import CACHE_INVALIDATION_CHANNEL, CACHE_L1_TTL
 from app.infrastructure.cache.cache import CacheService
 from app.infrastructure.cache.local_cache import TTLCache
 
 pytestmark = pytest.mark.unit
 
-_L1_TTL = settings.CACHE_L1_TTL
+_L1_TTL = CACHE_L1_TTL
 
 
 def _fresh_service(mock_redis) -> CacheService:
@@ -77,6 +77,50 @@ async def test_delete_clears_l1_and_l2(mock_redis):
     assert await mock_redis.get("k5") is None
     assert svc._l1 is not None
     assert svc._l1.get("k5") is None
+
+
+async def test_delete_pattern_scans_with_large_count(mock_redis, monkeypatch):
+    """SCAN 显式放大 COUNT=1000：默认 COUNT=10 在远程 Redis 上把一次失效放大成
+    上百次 RTT（dept 每次写都调用，实测 1000 key 的库单次全库扫描 > 3s）。
+
+    COUNT 是线上往返次数契约，状态里不可观测，故此处断言传给 SCAN 的 count 参数。
+    """
+    svc = _fresh_service(mock_redis)
+    await mock_redis.set("dept:options:1", "v")
+    await mock_redis.set("dept:options:2", "v")
+    await mock_redis.set("dept:tree:1", "v")
+
+    counts: list[int | None] = []
+    real_scan_iter = mock_redis.scan_iter
+
+    def _spy_scan_iter(*args, **kwargs):
+        counts.append(kwargs.get("count"))
+        return real_scan_iter(*args, **kwargs)
+
+    monkeypatch.setattr(mock_redis, "scan_iter", _spy_scan_iter)
+
+    deleted = await svc.delete_pattern("dept:options*")
+
+    assert deleted == 2
+    assert counts == [1000]
+
+
+async def test_dept_all_patterns_keeps_cross_end_tree_key(mock_redis):
+    """部门写操作失效的 pattern 集合：`dept:tree*` 是本端唯一没有写入方的项，
+    但 go 端 `DEPT_TREE_KEY="dept:tree"` 写在共享 Redis 上（dept_service.go）⇒
+    python 变更部门后必须按该前缀失效，否则 go 最长 1 小时吐脏部门树。
+    本断言锁定该跨端依赖，避免被"本端零写入方 = 死代码"式清理删掉。"""
+    from app.infrastructure.cache.cache import DeptCacheKeys
+
+    assert DeptCacheKeys.all_patterns() == ["dept:tree*", "dept:options*"]
+
+    await mock_redis.set("dept:tree", "go-written")
+    await mock_redis.set("dept:options", "py-written")
+    svc = _fresh_service(mock_redis)
+    for pattern in DeptCacheKeys.all_patterns():
+        await svc.delete_pattern(pattern)
+
+    assert await mock_redis.get("dept:tree") is None
 
 
 # ── 缓存失效广播：L1 失效 + MCP 变更后的推理图缓存失效 ─────────────────────────
@@ -145,7 +189,7 @@ async def test_publish_graph_invalidation_payload(mock_redis, monkeypatch):
 
     assert len(published) == 1
     channel, payload = published[0]
-    assert channel == settings.CACHE_INVALIDATION_CHANNEL
+    assert channel == CACHE_INVALIDATION_CHANNEL
     msg = json.loads(payload)
     assert msg["type"] == "ai_graph_invalidate"
     assert "key" not in msg

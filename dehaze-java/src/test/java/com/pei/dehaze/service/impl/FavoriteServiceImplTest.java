@@ -1,25 +1,31 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.dehaze.mapper.SysAlgorithmMapper;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
-import com.pei.dehaze.mapper.SysFavoriteMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysMember;
+import com.pei.dehaze.model.form.FavoriteForm;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysDictService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
 /**
  * FavoriteServiceImpl 收藏容量（sys_dict: favorite_capacity）单元测试。
@@ -32,12 +38,16 @@ class FavoriteServiceImplTest {
 
     @Mock
     private SysMemberMapper memberMapper;
+
     @Mock
-    private SysAlgorithmMapper sysAlgorithmMapper;
+    private SysAiModelMapper sysAiModelMapper;
+
     @Mock
     private SysDatasetMapper sysDatasetMapper;
+
     @Mock
     private SysPredLogMapper sysPredLogMapper;
+
     @Mock
     private SysDictService sysDictService;
 
@@ -45,13 +55,21 @@ class FavoriteServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new FavoriteServiceImpl(memberMapper, sysAlgorithmMapper,
-                sysDatasetMapper, sysPredLogMapper, sysDictService);
+        service = new FavoriteServiceImpl(
+                memberMapper, sysAiModelMapper, sysDatasetMapper, sysPredLogMapper, sysDictService);
         // 按字典键返回对应容量，用于验证等级→键映射
-        lenient().when(sysDictService.getIntValue(eq("favorite_capacity"), eq("default"), any(Integer.class))).thenReturn(200);
-        lenient().when(sysDictService.getIntValue(eq("favorite_capacity"), eq("vip1"), any(Integer.class))).thenReturn(500);
-        lenient().when(sysDictService.getIntValue(eq("favorite_capacity"), eq("vip2"), any(Integer.class))).thenReturn(1000);
-        lenient().when(sysDictService.getIntValue(eq("favorite_capacity"), eq("svip"), any(Integer.class))).thenReturn(3000);
+        lenient()
+                .when(sysDictService.getIntValue(eq("favorite_capacity"), eq("default"), any(Integer.class)))
+                .thenReturn(200);
+        lenient()
+                .when(sysDictService.getIntValue(eq("favorite_capacity"), eq("vip1"), any(Integer.class)))
+                .thenReturn(500);
+        lenient()
+                .when(sysDictService.getIntValue(eq("favorite_capacity"), eq("vip2"), any(Integer.class)))
+                .thenReturn(1000);
+        lenient()
+                .when(sysDictService.getIntValue(eq("favorite_capacity"), eq("svip"), any(Integer.class)))
+                .thenReturn(3000);
     }
 
     private void stubMember(Long userId, String levelCode) {
@@ -97,11 +115,31 @@ class FavoriteServiceImplTest {
     }
 
     @Test
+    @DisplayName("add - 收藏已删除/不存在的模型抛 A0401（模型删除后不可再次收藏）")
+    void add_deletedModelRejected() {
+        FavoriteForm form = new FavoriteForm();
+        form.setTargetType("model");
+        form.setTargetId(13L);
+        // 逻辑删除行对 selectById 不可见 → 与不存在同口径
+        when(sysAiModelMapper.selectById(13L)).thenReturn(null);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getUserId).thenReturn(1L);
+
+            assertThatThrownBy(() -> service.add(form))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getResultCode().getCode())
+                    .isEqualTo(ResultCode.RESOURCE_NOT_FOUND.getCode());
+        }
+    }
+
+    @Test
     @DisplayName("getCapacity - 字典缺键时回退默认值 200")
     void missingDictKey_fallsBackToDefault() {
         stubMember(1L, "level_0");
         // 覆盖 default 键的桩为缺失(返回默认值)
-        when(sysDictService.getIntValue(eq("favorite_capacity"), eq("default"), any(Integer.class))).thenReturn(200);
+        when(sysDictService.getIntValue(eq("favorite_capacity"), eq("default"), any(Integer.class)))
+                .thenReturn(200);
         assertThat(service.getCapacity(1L)).isEqualTo(200);
     }
 }

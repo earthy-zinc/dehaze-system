@@ -22,23 +22,26 @@ type BillingBalanceVO struct {
 
 // BillingRecordVO 计费明细
 type BillingRecordVO struct {
-	ID                int64     `json:"id"`
-	UserID            int64     `json:"userId"`
-	ConversationID    *int64    `json:"conversationId,omitempty"`
-	MessageID         *int64    `json:"messageId,omitempty"`
-	Model             string    `json:"model"`
-	ActualModel       *string   `json:"actualModel,omitempty"`
-	BillType          string    `json:"billType"`
-	InputTokens       int       `json:"inputTokens"`
-	CachedInputTokens int       `json:"cachedInputTokens"`
-	OutputTokens      int       `json:"outputTokens"`
-	Credits           int       `json:"credits"`
-	CreditsSaved      int       `json:"creditsSaved"`
-	ToolCredits       *int      `json:"toolCredits,omitempty"`
-	QuotaConsumed     int       `json:"quotaConsumed"`
-	PreDeduct         int       `json:"preDeduct"`
-	RefundStatus      int       `json:"refundStatus"`
-	CreateTime        time.Time `json:"createTime"`
+	ID                int64   `json:"id"`
+	UserID            int64   `json:"userId"`
+	ConversationID    *int64  `json:"conversationId,omitempty"`
+	MessageID         *int64  `json:"messageId,omitempty"`
+	Model             string  `json:"model"`
+	ActualModel       *string `json:"actualModel,omitempty"`
+	BillType          string  `json:"billType"`
+	InputTokens       int     `json:"inputTokens"`
+	CachedInputTokens int     `json:"cachedInputTokens"`
+	OutputTokens      int     `json:"outputTokens"`
+	// Quantity/QuantityUnit：非 token 计量数量与单位（token 类模型缺键）；数量按字符串下发对齐 python Decimal / java BigDecimal
+	Quantity      *string   `json:"quantity,omitempty"`
+	QuantityUnit  *string   `json:"quantityUnit,omitempty"`
+	Credits       int       `json:"credits"`
+	CreditsSaved  int       `json:"creditsSaved"`
+	ToolCredits   *int      `json:"toolCredits,omitempty"`
+	QuotaConsumed int       `json:"quotaConsumed"`
+	PreDeduct     int       `json:"preDeduct"`
+	RefundStatus  int       `json:"refundStatus"`
+	CreateTime    time.Time `json:"createTime"`
 }
 
 // CreditLogVO 余额变动流水（amount/balanceAfter 为整数积分语义，输出为字符串对齐 python Decimal）

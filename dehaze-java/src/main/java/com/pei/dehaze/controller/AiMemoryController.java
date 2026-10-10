@@ -14,6 +14,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,12 +32,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * AI 长期记忆。
@@ -54,15 +53,19 @@ public class AiMemoryController {
     @Operation(summary = "记忆分页列表")
     @GetMapping
     public PageResult<AiMemoryVO> list(@Valid @ParameterObject AiMemoryPageQuery query) {
-        return PageResult.success(memoryService.list(SecurityUtils.getUserId(), query.getPageNum(),
-                query.getPageSize(), query.getMemoryType(), query.getSource()));
+        return PageResult.success(memoryService.list(
+                SecurityUtils.getUserId(),
+                query.getPageNum(),
+                query.getPageSize(),
+                query.getMemoryType(),
+                query.getSource()));
     }
 
     @Operation(summary = "归档记忆分页列表")
     @GetMapping("/archived")
     public PageResult<AiMemoryVO> listArchived(@Valid @ParameterObject AiMemoryPageQuery query) {
-        return PageResult.success(memoryService.listArchived(SecurityUtils.getUserId(), query.getPageNum(),
-                query.getPageSize(), query.getMemoryType()));
+        return PageResult.success(memoryService.listArchived(
+                SecurityUtils.getUserId(), query.getPageNum(), query.getPageSize(), query.getMemoryType()));
     }
 
     @Operation(summary = "创建记忆")
@@ -73,8 +76,8 @@ public class AiMemoryController {
 
     @Operation(summary = "更新记忆")
     @PutMapping("/{memoryId}")
-    public Result<AiMemoryVO> update(@Parameter(description = "记忆ID") @PathVariable Long memoryId,
-                                     @Valid @RequestBody AiMemoryUpdateForm form) {
+    public Result<AiMemoryVO> update(
+            @Parameter(description = "记忆ID") @PathVariable Long memoryId, @Valid @RequestBody AiMemoryUpdateForm form) {
         return Result.success(memoryService.update(memoryId, SecurityUtils.getUserId(), form));
     }
 
@@ -93,9 +96,9 @@ public class AiMemoryController {
 
     @Operation(summary = "关键词搜索记忆")
     @GetMapping("/search")
-    public Result<List<AiMemoryVO>> search(@Parameter(description = "关键词") @RequestParam String keyword,
-                                           @Parameter(description = "返回条数(>=1)") @Min(1)
-                                           @RequestParam(defaultValue = "5") int limit) {
+    public Result<List<AiMemoryVO>> search(
+            @Parameter(description = "关键词") @RequestParam String keyword,
+            @Parameter(description = "返回条数(>=1)") @Min(1) @RequestParam(defaultValue = "5") int limit) {
         return Result.success(memoryService.search(SecurityUtils.getUserId(), keyword, limit));
     }
 
@@ -103,10 +106,14 @@ public class AiMemoryController {
     @PostMapping("/clear")
     public Result<Integer> clear(
             @Parameter(description = "记忆类型(为空则全部)") @RequestParam(required = false) String memoryType,
-            @Parameter(description = "时间范围起") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @Parameter(description = "时间范围止") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @Parameter(description = "时间范围起")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime start,
+            @Parameter(description = "时间范围止")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime end,
             @Parameter(description = "二次确认标识") @RequestParam(defaultValue = "false") Boolean confirm) {
         int count = memoryService.batchClear(SecurityUtils.getUserId(), confirm, memoryType, start, end);
         return Result.success(count, "已清空 " + count + " 条记忆（30 天内可恢复）");
@@ -116,10 +123,14 @@ public class AiMemoryController {
     @PostMapping("/restore")
     public Result<Integer> restore(
             @Parameter(description = "记忆类型(为空则全部)") @RequestParam(required = false) String memoryType,
-            @Parameter(description = "时间范围起") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @Parameter(description = "时间范围止") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @Parameter(description = "时间范围起")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime start,
+            @Parameter(description = "时间范围止")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime end,
             @Parameter(description = "二次确认标识") @RequestParam(defaultValue = "false") Boolean confirm) {
         int count = memoryService.restoreDeleted(SecurityUtils.getUserId(), confirm, memoryType, start, end);
         return Result.success(count, "已恢复 " + count + " 条记忆");
@@ -127,13 +138,16 @@ public class AiMemoryController {
 
     @Operation(summary = "导出全部记忆(JSON/Markdown)")
     @GetMapping("/export")
-    public void export(@Parameter(description = "导出格式(json/markdown)") @RequestParam(defaultValue = "json") String fmt,
-                       HttpServletResponse response) throws IOException {
+    public void export(
+            @Parameter(description = "导出格式(json/markdown)") @RequestParam(defaultValue = "json") String fmt,
+            HttpServletResponse response)
+            throws IOException {
         AiMemoryService.MemoryExport export = memoryService.export(SecurityUtils.getUserId(), fmt);
         response.setContentType(export.contentType());
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.setHeader("Content-Disposition", "attachment; filename=\""
-                + URLEncoder.encode(export.filename(), StandardCharsets.UTF_8) + "\"");
+        response.setHeader(
+                "Content-Disposition",
+                "attachment; filename=\"" + URLEncoder.encode(export.filename(), StandardCharsets.UTF_8) + "\"");
         response.getWriter().write(export.content());
     }
 }

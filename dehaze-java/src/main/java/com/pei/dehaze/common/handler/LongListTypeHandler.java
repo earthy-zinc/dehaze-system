@@ -3,16 +3,15 @@ package com.pei.dehaze.common.handler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.ibatis.type.BaseTypeHandler;
-import org.apache.ibatis.type.JdbcType;
-import org.apache.ibatis.type.MappedTypes;
-
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import org.apache.ibatis.type.BaseTypeHandler;
+import org.apache.ibatis.type.JdbcType;
+import org.apache.ibatis.type.MappedTypes;
 
 /**
  * List&lt;Long&gt; 的 JSON 列类型处理器。
@@ -31,7 +30,8 @@ public class LongListTypeHandler extends BaseTypeHandler<List<Long>> {
     private static final TypeReference<List<Long>> TYPE_REF = new TypeReference<>() {};
 
     @Override
-    public void setNonNullParameter(PreparedStatement ps, int i, List<Long> parameter, JdbcType jdbcType) throws SQLException {
+    public void setNonNullParameter(PreparedStatement ps, int i, List<Long> parameter, JdbcType jdbcType)
+            throws SQLException {
         try {
             ps.setString(i, MAPPER.writeValueAsString(parameter));
         } catch (JsonProcessingException e) {

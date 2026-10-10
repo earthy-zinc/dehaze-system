@@ -237,7 +237,7 @@ class TestEndpoints:
                 "expected_result": "给出算法建议",
                 "expected_process": None,
                 "forbidden_behavior": None,
-                "tools": ["algorithm_recommend"],
+                "tools": [{"name": "algorithm_recommend"}],
                 "risk_level": "high",
                 "judge_passed": False,
                 "actual_output": "建议使用 DCP",

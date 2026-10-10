@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 import lombok.Data;
 
 /**
@@ -28,8 +29,8 @@ public class AiEvalSampleCreateForm {
     @Schema(description = "允许输入")
     private String allowedInput;
 
-    @Schema(description = "可用工具")
-    private List<String> tools;
+    @Schema(description = "期望工具调用序列(有序,每项 {\"name\",\"args\"},args 为期望参数子集)")
+    private List<Map<String, Object>> tools;
 
     @Schema(description = "期望过程")
     private String expectedProcess;
@@ -42,5 +43,4 @@ public class AiEvalSampleCreateForm {
 
     @Schema(description = "风险等级(low/medium/high)")
     private String riskLevel;
-
 }

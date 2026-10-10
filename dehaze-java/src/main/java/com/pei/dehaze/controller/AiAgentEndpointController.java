@@ -47,8 +47,9 @@ public class AiAgentEndpointController {
     @Operation(summary = "更新端点")
     @PatchMapping("/{endpointId}")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<AiEndpointVO> update(@Parameter(description = "端点ID") @PathVariable Long endpointId,
-                                       @Valid @RequestBody AiEndpointUpdateForm form) {
+    public Result<AiEndpointVO> update(
+            @Parameter(description = "端点ID") @PathVariable Long endpointId,
+            @Valid @RequestBody AiEndpointUpdateForm form) {
         return Result.success(endpointService.update(endpointId, form));
     }
 

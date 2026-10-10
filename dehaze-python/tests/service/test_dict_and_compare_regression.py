@@ -1,13 +1,11 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from pydantic import ValidationError
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.models.schema.algorithm_select import CompareRequest
 from app.models.schema.dict import DictForm
 from app.service.dict_service import (
     SYSTEM_PRESET_DICT_TYPE_CODES,
@@ -17,22 +15,6 @@ from app.service.dict_service import (
 # 测试替身：仓储已替换为 FakeRepo，且用例在缓存失效前抛错，db/redis 仅传参占位
 _DB: AsyncSession = AsyncMock(spec=AsyncSession)
 _REDIS: Redis = AsyncMock(spec=Redis)
-
-
-class TestCompareRequestMin:
-    def test_single_algorithm_rejected(self):
-        with pytest.raises(ValidationError):
-            CompareRequest(algorithmIds=[1])
-
-    def test_two_algorithms_ok(self):
-        CompareRequest(algorithmIds=[1, 2])
-
-    def test_three_algorithms_ok(self):
-        CompareRequest(algorithmIds=[1, 2, 3])
-
-    def test_four_algorithms_rejected(self):
-        with pytest.raises(ValidationError):
-            CompareRequest(algorithmIds=[1, 2, 3, 4])
 
 
 class TestDictTypeCodeReadonly:

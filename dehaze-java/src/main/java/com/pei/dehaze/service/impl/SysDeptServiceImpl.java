@@ -20,15 +20,14 @@ import com.pei.dehaze.model.query.DeptQuery;
 import com.pei.dehaze.model.vo.DeptVO;
 import com.pei.dehaze.service.SysDeptService;
 import com.pei.dehaze.service.SysUserService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 部门业务实现类
@@ -39,7 +38,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
-
 
     private final DeptConverter deptConverter;
     private final SysUserService userService;
@@ -65,12 +63,10 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         Integer status = queryParams.getStatus();
 
         // 查询数据
-        List<SysDept> deptList = this.list(
-                new LambdaQueryWrapper<SysDept>()
-                        .like(StrUtil.isNotBlank(keywords), SysDept::getName, keywords)
-                        .eq(status != null, SysDept::getStatus, status)
-                        .orderByAsc(SysDept::getSort)
-        );
+        List<SysDept> deptList = this.list(new LambdaQueryWrapper<SysDept>()
+                .like(StrUtil.isNotBlank(keywords), SysDept::getName, keywords)
+                .eq(status != null, SysDept::getStatus, status)
+                .orderByAsc(SysDept::getSort));
 
         if (CollectionUtil.isEmpty(deptList)) {
             return Collections.emptyList();
@@ -80,8 +76,8 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         List<Long> rootIds = TreeDataUtils.findRootIds(deptList, SysDept::getId, SysDept::getParentId);
 
         // 构建 parentId -> children Map，避免递归内 O(n) 过滤
-        Map<Long, List<SysDept>> parentToChildrenMap = deptList.stream()
-                .collect(Collectors.groupingBy(SysDept::getParentId));
+        Map<Long, List<SysDept>> parentToChildrenMap =
+                deptList.stream().collect(Collectors.groupingBy(SysDept::getParentId));
 
         // 递归生成部门树形列表
         return rootIds.stream()
@@ -121,16 +117,15 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         List<SysDept> deptList = this.list(new LambdaQueryWrapper<SysDept>()
                 .eq(SysDept::getStatus, StatusEnum.ENABLE.getValue())
                 .select(SysDept::getId, SysDept::getParentId, SysDept::getName)
-                .orderByAsc(SysDept::getSort)
-        );
+                .orderByAsc(SysDept::getSort));
         if (CollectionUtil.isEmpty(deptList)) {
             return Collections.emptyList();
         }
 
         List<Long> rootIds = TreeDataUtils.findRootIds(deptList, SysDept::getId, SysDept::getParentId);
 
-        Map<Long, List<SysDept>> parentToChildrenMap = deptList.stream()
-                .collect(Collectors.groupingBy(SysDept::getParentId));
+        Map<Long, List<SysDept>> parentToChildrenMap =
+                deptList.stream().collect(Collectors.groupingBy(SysDept::getParentId));
 
         // 递归生成部门树形列表
         return rootIds.stream()
@@ -203,8 +198,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
             // 父部门的 tree_path 包含当前部门ID → 父部门是当前部门的子部门 → 循环引用
             if (parentDept.getTreePath() != null) {
                 String treePathWithCommas = "," + parentDept.getTreePath() + ",";
-                Assert.isTrue(!treePathWithCommas.contains("," + deptId + ","),
-                        "不能将部门移动到其子部门下，存在循环引用");
+                Assert.isTrue(!treePathWithCommas.contains("," + deptId + ","), "不能将部门移动到其子部门下，存在循环引用");
             }
         }
 
@@ -242,7 +236,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         }
         int depth = StrUtil.split(treePath, ',').size();
         if (depth > MAX_DEPT_LEVEL) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "部门层级不能超过5级");
+            throw new BusinessException(ResultCode.DATA_REFERENCED, "部门层级不能超过5级");
         }
     }
 
@@ -267,7 +261,6 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         return optionList;
     }
 
-
     /**
      * 删除部门
      *
@@ -291,18 +284,14 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
                 throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "根部门不可删除");
             }
             // 子部门检查：有子部门禁止删除（T-DPT-030，不级联删除，python A0502 口径）
-            long childCount = this.count(new LambdaQueryWrapper<SysDept>()
-                    .eq(SysDept::getParentId, id));
+            long childCount = this.count(new LambdaQueryWrapper<SysDept>().eq(SysDept::getParentId, id));
             if (childCount > 0) {
-                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
-                        "该部门下存在子部门，请先删除子部门");
+                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该部门下存在子部门，请先删除子部门");
             }
             // 关联用户检查：有用户禁止删除（T-DPT-029，A0502）
-            long userCount = userService.count(new LambdaQueryWrapper<SysUser>()
-                    .eq(SysUser::getDeptId, id));
+            long userCount = userService.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getDeptId, id));
             if (userCount > 0) {
-                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
-                        "该部门下存在用户，无法删除");
+                throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "该部门下存在用户，无法删除");
             }
         }
 
@@ -325,19 +314,12 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
 
         SysDept entity = this.getOne(new LambdaQueryWrapper<SysDept>()
                 .eq(SysDept::getId, deptId)
-                .select(
-                        SysDept::getId,
-                        SysDept::getName,
-                        SysDept::getParentId,
-                        SysDept::getStatus,
-                        SysDept::getSort
-                ));
+                .select(SysDept::getId, SysDept::getName, SysDept::getParentId, SysDept::getStatus, SysDept::getSort));
         if (entity == null) {
             return null;
         }
         return deptConverter.entity2Form(entity);
     }
-
 
     /**
      * 部门路径生成

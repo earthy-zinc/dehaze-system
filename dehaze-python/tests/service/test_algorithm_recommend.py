@@ -1,104 +1,123 @@
+"""图像模型推荐（统一模型口径）：规则匹配 / 排序不变量 / Top-N / 候选过滤。
+
+被测入口 `recommendation_service.get_models`：候选池 = 已启用图像模型 ∩ 规则关联
+model_ids，按 matchScore 降序、modelId 升序稳定排序，取 Top-3，并落 sys_recommendation。
+"""
+
+from types import SimpleNamespace
+
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.code import ResultCode
-from app.core.exceptions import BusinessException
-from app.models.entity.sys_algorithm import SysAlgorithm
-from app.repository.algorithm_repository import AlgorithmStatus, algorithm_repository
-from app.service.algorithm_select_service import algorithm_select_service
+from app.models.entity.sys_recommendation import SysRecommendation
+from app.service import recommendation_service as rec_module
+from app.service.recommendation_service import recommendation_service
 
+pytestmark = pytest.mark.requires_db
 
-def _db() -> AsyncSession:
-    """真实会话实例：db 仅作形参透传，仓储调用全部由打桩的 algorithm_repository 承接。"""
-    return AsyncSession()
-
-
-def _algo(
-    aid,
-    name,
-    type_="dehaze",
-    parent_id=0,
-    status=AlgorithmStatus.PUBLISHED,
-    desc="",
-) -> SysAlgorithm:
-    return SysAlgorithm(
-        id=aid, name=name, type=type_, parent_id=parent_id, status=status, description=desc
-    )
+MODEL_A = "aecrnet"
+MODEL_B = "aodnet"
+MODEL_C = "c2pnet-its"
+USER_ID = 990001
 
 
-def _stub_list_published(algos):
-    async def _fn(*args, **kwargs):
-        return algos
-
-    return _fn
+def _model(model_id: str):
+    return SimpleNamespace(model_id=model_id, display_name=f"模型-{model_id}")
 
 
-async def test_keyword_match_returns_top_n(monkeypatch):
-    algos = [
-        _algo(1, "夜景去雾算法", desc="用于夜景去雾"),
-        _algo(2, "去雾增强", desc="通用去雾"),
-        _algo(3, "去雨算法", desc="derain"),
-        _algo(4, "图像超分", desc="super resolution"),
-    ]
-    monkeypatch.setattr(algorithm_repository, "list_published", _stub_list_published(algos))
-
-    result = await algorithm_select_service.recommend(_db(), keyword="去雾", top_n=3)
-    assert result["total"] == 2
-    assert len(result["items"]) == 2
-    assert {i["algorithmName"] for i in result["items"]} == {"夜景去雾算法", "去雾增强"}
-    assert all(i["matchScore"] > 0 for i in result["items"])
+def _rule(scene_type: str, model_ids: list[str], weight: int):
+    return SimpleNamespace(scene_type=scene_type, model_ids=model_ids, weight=weight)
 
 
-async def test_task_type_filter(monkeypatch):
-    algos = [
-        _algo(1, "夜景去雾", type_="dehaze"),
-        _algo(2, "去雨", type_="derain"),
-    ]
-    monkeypatch.setattr(algorithm_repository, "list_published", _stub_list_published(algos))
+def _stub(monkeypatch, *, models, rules, latest=None):
+    async def _list_enabled(db, model_type):
+        return models
 
-    result = await algorithm_select_service.recommend(
-        _db(), keyword="夜景", task_type="dehaze", top_n=3
-    )
-    assert result["total"] == 1
-    assert result["items"][0]["algorithmId"] == 1
+    async def _get_enabled_rules(db):
+        return rules
 
+    async def _get_latest(db, image_md5):
+        return latest
 
-async def test_empty_result_returns_200_shape(monkeypatch):
-    monkeypatch.setattr(algorithm_repository, "list_published", _stub_list_published([]))
-    result = await algorithm_select_service.recommend(_db(), keyword="不存在的关键词", top_n=3)
-    assert result["total"] == 0
-    assert result["items"] == []
-
-
-async def test_no_keyword_no_sample_no_task_returns_empty(monkeypatch):
+    monkeypatch.setattr(rec_module.ai_model_repository, "list_enabled", _list_enabled)
     monkeypatch.setattr(
-        algorithm_repository, "list_published", _stub_list_published([_algo(1, "夜景去雾")])
-    )
-    result = await algorithm_select_service.recommend(_db())
-    assert result["total"] == 0
-    assert result["items"] == []
-
-
-async def test_topn_out_of_range_raises(monkeypatch):
-    monkeypatch.setattr(
-        algorithm_repository, "list_published", _stub_list_published([_algo(1, "夜景去雾")])
-    )
-    with pytest.raises(BusinessException) as exc:
-        await algorithm_select_service.recommend(_db(), keyword="去雾", top_n=11)
-    assert exc.value.code == ResultCode.BUSINESS_ERROR
-
-    with pytest.raises(BusinessException) as exc:
-        await algorithm_select_service.recommend(_db(), keyword="去雾", top_n=0)
-    assert exc.value.code == ResultCode.BUSINESS_ERROR
-
-
-async def test_sample_algorithm_not_found_raises_a0401(monkeypatch):
-    monkeypatch.setattr(
-        algorithm_repository, "list_published", _stub_list_published([_algo(1, "夜景去雾")])
+        rec_module.recommendation_rule_repository, "get_enabled_rules", _get_enabled_rules
     )
     monkeypatch.setattr(
-        algorithm_repository, "get_by_id_include_unpublished", _stub_list_published(None)
+        rec_module.recommendation_repository, "get_latest_by_image_md5", _get_latest
     )
-    with pytest.raises(BusinessException) as exc:
-        await algorithm_select_service.recommend(_db(), sample_algorithm_id=999999, top_n=3)
-    assert exc.value.code == ResultCode.RESOURCE_NOT_FOUND
+
+
+async def test_matches_enabled_rule_and_persists_record(db, monkeypatch):
+    _stub(
+        monkeypatch,
+        models=[_model(MODEL_A), _model(MODEL_B)],
+        rules=[_rule("urban", [MODEL_A], 60)],
+    )
+
+    result = await recommendation_service.get_models(db, USER_ID, None, "svc-md5-0001")
+
+    assert [vo.modelId for vo in result] == [MODEL_A]
+    assert result[0].modelName == f"模型-{MODEL_A}"
+    assert result[0].matchScore == 60
+    assert result[0].recommendationId is not None
+
+    rec = await db.get(SysRecommendation, result[0].recommendationId)
+    assert rec.user_id == USER_ID
+    assert rec.image_md5 == "svc-md5-0001"
+    assert rec.target_type == "model"
+    assert rec.top_models[0]["modelId"] == MODEL_A
+
+
+async def test_tie_break_by_model_id(db, monkeypatch):
+    """同分推荐按 modelId 升序，保证跨端排序一致"""
+    _stub(
+        monkeypatch,
+        models=[_model(MODEL_A), _model(MODEL_B), _model(MODEL_C)],
+        rules=[_rule("urban", [MODEL_C, MODEL_A, MODEL_B], 80)],
+    )
+
+    result = await recommendation_service.get_models(db, USER_ID, None, "svc-md5-tie")
+
+    assert [vo.modelId for vo in result] == [MODEL_A, MODEL_B, MODEL_C]
+    assert all(vo.matchScore == 80 for vo in result)
+
+
+async def test_top_n_limit(db, monkeypatch):
+    extra_ids = [MODEL_A, MODEL_B, MODEL_C, "d4", "fcd"]
+    _stub(
+        monkeypatch,
+        models=[_model(m) for m in extra_ids],
+        rules=[_rule("urban", extra_ids, 90)],
+    )
+
+    result = await recommendation_service.get_models(db, USER_ID, None, "svc-md5-topn")
+
+    assert len(result) == 3
+
+
+async def test_filters_candidates_not_in_enabled_models(db, monkeypatch):
+    """候选 = 规则关联 model_ids ∩ 已启用图像模型，未启用/不存在的被过滤"""
+    _stub(
+        monkeypatch,
+        models=[_model(MODEL_A)],
+        rules=[_rule("urban", ["ghost-model", MODEL_A], 99)],
+    )
+
+    result = await recommendation_service.get_models(db, USER_ID, None, "svc-md5-filter")
+
+    assert [vo.modelId for vo in result] == [MODEL_A]
+
+
+async def test_scene_from_recent_analysis_record(db, monkeypatch):
+    """image_md5 命中历史分析记录时按记录场景匹配规则（而非默认 urban）"""
+    latest = SimpleNamespace(analysis_result={"sceneType": "landscape"})
+    _stub(
+        monkeypatch,
+        models=[_model(MODEL_A), _model(MODEL_B)],
+        rules=[_rule("urban", [MODEL_A], 90), _rule("landscape", [MODEL_B], 40)],
+        latest=latest,
+    )
+
+    result = await recommendation_service.get_models(db, USER_ID, None, "svc-md5-scene")
+
+    assert [vo.modelId for vo in result] == [MODEL_B]

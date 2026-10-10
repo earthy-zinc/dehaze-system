@@ -40,12 +40,12 @@ public final class TaskConstants {
     // ========== 任务类型 - 通用导出 ==========
     /** 数据集导出（ZIP 归档，整合旧 item_download/batch_download/custom_export） */
     public static final String TYPE_DATASET_EXPORT = "dataset_export";
+
     public static final String TYPE_USER_EXPORT = "user_export";
     public static final String TYPE_ROLE_EXPORT = "role_export";
     public static final String TYPE_DEPT_EXPORT = "dept_export";
     public static final String TYPE_MENU_EXPORT = "menu_export";
     public static final String TYPE_DICT_EXPORT = "dict_export";
-    public static final String TYPE_ALGORITHM_EXPORT = "algorithm_export";
 
     // ========== 任务类型 - 通用导入 ==========
     public static final String TYPE_USER_IMPORT = "user_import";
@@ -53,7 +53,6 @@ public final class TaskConstants {
     public static final String TYPE_DEPT_IMPORT = "dept_import";
     public static final String TYPE_MENU_IMPORT = "menu_import";
     public static final String TYPE_DICT_IMPORT = "dict_import";
-    public static final String TYPE_ALGORITHM_IMPORT = "algorithm_import";
 
     // ========== 限制 ==========
     /** 单次导入/导出最大行数 */
@@ -83,11 +82,7 @@ public final class TaskConstants {
 
     // ========== 终态集合 ==========
     /** 任务终态集合（已完成 / 已失败 / 已取消），用于幂等检查 */
-    public static final Set<Integer> TERMINAL_STATUSES = Set.of(
-            STATUS_COMPLETED,
-            STATUS_FAILED,
-            STATUS_CANCELLED
-    );
+    public static final Set<Integer> TERMINAL_STATUSES = Set.of(STATUS_COMPLETED, STATUS_FAILED, STATUS_CANCELLED);
 
     // ========== 模块标识 ==========
     public static final String MODULE_USER = "user";
@@ -96,7 +91,6 @@ public final class TaskConstants {
     public static final String MODULE_MENU = "menu";
     public static final String MODULE_DICT = "dict";
     public static final String MODULE_DATASET = "dataset";
-    public static final String MODULE_ALGORITHM = "algorithm";
 
     /**
      * 根据任务类型判断任务类别

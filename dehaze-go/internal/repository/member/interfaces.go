@@ -13,18 +13,15 @@ type IMemberRepository interface {
 	FindByUserIDs(ctx context.Context, userIDs []int64) ([]model.SysMember, error)
 	FindWithUserByUserID(ctx context.Context, userID int64) (*MemberWithUser, error)
 	FindPageWithUser(ctx context.Context, q *query.MemberPageQuery) ([]MemberWithUser, int64, error)
-	FindAllActive(ctx context.Context, excludeQuotaResetMonth *int, limit int) ([]model.SysMember, error)
 	FindExpiredNonGrowth(ctx context.Context, now time.Time) ([]model.SysMember, error)
 	FindExpiringBetween(ctx context.Context, start, end time.Time) ([]model.SysMember, error)
 	FindUserIDsByLevelCodes(ctx context.Context, levelCodes []string) ([]int64, error)
+	// FindActiveUserIDsByLevelCode 分页扫描指定等级的活跃会员（未删除、未冻结），用于 VIP 月度赠送等批量任务
+	FindActiveUserIDsByLevelCode(ctx context.Context, levelCode string, offset, limit int) ([]int64, error)
 	Upsert(ctx context.Context, m *model.SysMember) error
 	UpdateLevel(ctx context.Context, userID int64, updates map[string]interface{}) error
 	UpdateGrowth(ctx context.Context, userID int64, growthValue int64) error
 	Update(ctx context.Context, userID int64, updates map[string]interface{}) error
-	IncrementQuotaUsed(ctx context.Context, userID int64, quotaType string, delta int) error
-	DeductQuotaIfAvailable(ctx context.Context, userID int64, quotaType string) (newUsed int, deducted bool, err error)
-	ResetMonthlyQuota(ctx context.Context, userID int64, dehazeQuota, evaluateQuota, quotaMonth int) error
-	CreateQuotaArchive(ctx context.Context, quota *model.SysMemberQuota) error
 	Transaction(ctx context.Context, fn func(repo IMemberRepository) error) error
 }
 

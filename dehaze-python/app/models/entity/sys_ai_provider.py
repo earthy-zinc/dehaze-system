@@ -47,6 +47,11 @@ class SysAiProvider(BaseModel, SoftDeleteMixin):
     health_check_enabled: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=1, comment="健康检查开关(1:开启,参与熔断判定;0:关闭)"
     )
+    request_timeout_seconds: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="请求超时(秒;NULL=调用方默认),慢供应商(如本地 CPU 推理)应显式配置",
+    )
     user_identity_forward: Mapped[Any | None] = mapped_column(
         JSON,
         nullable=True,

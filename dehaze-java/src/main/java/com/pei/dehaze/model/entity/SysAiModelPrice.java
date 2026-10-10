@@ -4,10 +4,9 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.pei.dehaze.common.base.BaseEntity;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.time.LocalDateTime;
 
 /** AI 模型用户售价版本（表 sys_ai_model_price） */
 @Data
@@ -24,6 +23,9 @@ public class SysAiModelPrice extends BaseEntity {
     private Integer priceVersion;
 
     private String unit;
+
+    /** 计费计量单位(million_tokens:百万token;image:张;second:秒;ten_thousand_chars:万字符;frame:帧) */
+    private String billingUnit;
 
     private LocalDateTime effectiveFrom;
 

@@ -1,10 +1,9 @@
 package com.pei.dehaze.model.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.io.Serializable;
 import java.util.Map;
+import lombok.Data;
 
 /**
  * 数据集统计信息DTO

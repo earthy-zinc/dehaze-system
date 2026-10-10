@@ -2,7 +2,6 @@ package aidomain
 
 import (
 	"context"
-	"encoding/json"
 	"strconv"
 	"time"
 
@@ -398,7 +397,8 @@ func (s *EvalCenterService) ReviewDetail(ctx context.Context, runID, sampleID in
 		result.ExpectedResult = derefString(sample.ExpectedResult)
 		result.ExpectedProcess = derefString(sample.ExpectedProcess)
 		result.ForbiddenBehavior = derefString(sample.ForbiddenBehavior)
-		result.Tools = parseJSONStringSlice(sample.Tools)
+		tools, _ := parseEvalTools(rawJSON(sample.Tools))
+		result.Tools = tools
 		if result.RiskLevel == "" {
 			result.RiskLevel = sample.RiskLevel
 		}
@@ -486,15 +486,4 @@ func stringMapField(source map[string]any, key string) map[string]string {
 		}
 	}
 	return result
-}
-
-func parseJSONStringSlice(raw string) []string {
-	if raw == "" {
-		return nil
-	}
-	var parsed []string
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-		return nil
-	}
-	return parsed
 }

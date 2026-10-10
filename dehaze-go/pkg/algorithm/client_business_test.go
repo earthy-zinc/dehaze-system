@@ -29,7 +29,7 @@ func TestDoPostBusinessErrorsDoNotTripBreaker(t *testing.T) {
 	require.NoError(t, err)
 
 	for i := 0; i < 8; i++ {
-		err := client.doPost(context.Background(), "/api/v1/prediction", map[string]any{"imageUrl": "http://127.0.0.1/x.jpg"}, nil)
+		err := client.doPost(context.Background(), "/api/v1/images/edits", map[string]any{"imageUrl": "http://127.0.0.1/x.jpg"}, nil)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "熔断", "第 %d 次业务 400 不应触发熔断", i+1)
 	}
@@ -51,7 +51,7 @@ func TestDoPostInfraErrorsStillTripBreaker(t *testing.T) {
 
 	sawOpen := false
 	for i := 0; i < 4; i++ {
-		err := client.doPost(context.Background(), "/api/v1/prediction", map[string]any{"a": 1}, nil)
+		err := client.doPost(context.Background(), "/api/v1/images/edits", map[string]any{"a": 1}, nil)
 		require.Error(t, err)
 		if contains(err.Error(), "熔断") {
 			sawOpen = true

@@ -382,14 +382,14 @@ class TestResumeStop:
             reasoning_service=SimpleNamespace(resume=fake_resume),
         )
 
-        form = MessageResume(confirm=True, params={"algorithmId": 7})
+        form = MessageResume(confirm=True, params={"modelId": 7})
         resp = await svc.resume_message(AsyncSession(), 5, 1, form)
         async for _ in resp.body_iterator:
             pass
         assert resp.media_type == "text/event-stream"
         assert resume_calls
         assert resume_calls[0][0:3] == (10, 1, 5)
-        assert resume_calls[0][3] == {"confirmed": True, "algorithmId": 7}
+        assert resume_calls[0][3] == {"confirmed": True, "modelId": 7}
 
     async def test_resume_no_interrupt(self):
         msg = _msg(5, 10, 3, "assistant")

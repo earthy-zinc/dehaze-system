@@ -60,7 +60,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
         {
             "ratingId": int,
             "userId": int,
-            "algorithmId": int,
+            "modelId": int,
             "rating": int,
             "comment": str | None,
             "createTime": str | None,
@@ -69,7 +69,7 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
     set_current_user_id(SYSTEM_USER_ID)
     try:
         rating_id = body.get("ratingId")
-        algorithm_id = body.get("algorithmId")
+        model_id = body.get("modelId")
         rating_value = body.get("rating")
         comment = body.get("comment")
 
@@ -104,10 +104,8 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                 },
             )
 
-            if rating_value == 1 and algorithm_id:
-                low_count = await rating_repository.count_low_ratings_by_algorithm_24h(
-                    db, algorithm_id
-                )
+            if rating_value == 1 and model_id:
+                low_count = await rating_repository.count_low_ratings_by_model_24h(db, model_id)
                 if low_count >= LOW_RATING_URGENT_COUNT:
                     await message_service.send(
                         db,
@@ -115,13 +113,13 @@ async def handle_low_rating_alert(body: dict[str, Any], headers: dict[str, Any])
                             "type": "critical_alert",
                             "title": "低分评价紧急告警",
                             "content": (
-                                f"算法ID {algorithm_id} 在24小时内收到 {low_count} 条低分评价，"
+                                f"算法ID {model_id} 在24小时内收到 {low_count} 条低分评价，"
                                 "请紧急处理"
                             ),
                             "recipientIds": admin_ids,
                             "priority": 1,
                             "bizModule": "feedback",
-                            "bizId": f"rating:urgent:{algorithm_id}:{rating_id}",
+                            "bizId": f"rating:urgent:{model_id}:{rating_id}",
                         },
                     )
 

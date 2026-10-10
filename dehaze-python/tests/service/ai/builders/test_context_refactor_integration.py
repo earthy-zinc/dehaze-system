@@ -267,12 +267,13 @@ class TestUsedMemoryIdsE2E:
 
 class TestScenePromptOnConversationCreate:
     def _make_form(self, scene=None, system_prompt=None):
+        # 显式指定模型：本用例只考察场景人设落库，避免触发默认模型解析（需真实 db）
         return SimpleNamespace(
             scene=scene,
             systemPrompt=system_prompt,
             agentCode=None,
             title="新对话",
-            model=None,
+            model="gpt-4o",
             modelConfig=None,
             suggestionsEnabled=True,
             apiKeyId=None,

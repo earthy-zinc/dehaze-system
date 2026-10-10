@@ -1,5 +1,14 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.model.form.SkillUpdateForm;
 import com.pei.dehaze.model.vo.SkillVO;
@@ -14,15 +23,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * `PUT /api/v1/ai/skills/{id}` 的表单约束在端点层真实生效（`@RequestBody @Valid`）。
@@ -51,15 +51,18 @@ class SkillUpdateValidationEndpointTest {
     @Test
     @DisplayName("name 为空串 / 超长 返回 400 + A0400，且不触达服务层")
     void outOfRangeFieldsRejected() throws Exception {
-        mockMvc.perform(put("/api/v1/ai/skills/5").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/skills/5")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
-        mockMvc.perform(put("/api/v1/ai/skills/5").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/skills/5")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"" + "x".repeat(129) + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
-        mockMvc.perform(put("/api/v1/ai/skills/5").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/skills/5")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"scene\":\"" + "x".repeat(256) + "\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -72,7 +75,8 @@ class SkillUpdateValidationEndpointTest {
     void validUpdateAccepted() throws Exception {
         when(skillService.updateSkill(eq(5L), any(SkillUpdateForm.class))).thenReturn(new SkillVO());
 
-        mockMvc.perform(put("/api/v1/ai/skills/5").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/skills/5")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"skill-a\",\"scene\":\"去雾\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"));

@@ -15,12 +15,6 @@ import com.pei.dehaze.model.entity.SysAiAgentSkill;
 import com.pei.dehaze.model.entity.SysAiAgentSubagent;
 import com.pei.dehaze.model.entity.SysAiAgentVersion;
 import com.pei.dehaze.model.vo.AiAgentVersionVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,6 +24,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 智能体版本管理服务（草稿快照、发布门禁、回滚、版本历史与差异对比）。
@@ -82,8 +81,8 @@ public class AiAgentVersionService {
         Map<String, Object> snapshot = target.getSnapshot() == null ? Map.of() : target.getSnapshot();
         agent.setName(stringValue(snapshot, "name", agent.getName()));
         agent.setDescription(stringValue(snapshot, "description", agent.getDescription()));
-        agent.setSystemPrompt(snapshot.get("system_prompt") == null ? null
-                : String.valueOf(snapshot.get("system_prompt")));
+        agent.setSystemPrompt(
+                snapshot.get("system_prompt") == null ? null : String.valueOf(snapshot.get("system_prompt")));
         agent.setModelId(stringValue(snapshot, "model_id", agent.getModelId()));
         agent.setReasoningMode(stringValue(snapshot, "reasoning_mode", agent.getReasoningMode()));
         agent.setConfig(asMap(snapshot.get("config")));
@@ -99,8 +98,8 @@ public class AiAgentVersionService {
         Map<String, Object> afterValue = new LinkedHashMap<>();
         afterValue.put("from_version_no", versionNo);
         afterValue.put("to_version_no", version.getVersionNo());
-        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(operatorId, "ai_agent", agentId, "rollback",
-                "ai_agent", null, afterValue, null, null));
+        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(
+                operatorId, "ai_agent", agentId, "rollback", "ai_agent", null, afterValue, null, null));
         return version.getVersionNo();
     }
 
@@ -108,7 +107,8 @@ public class AiAgentVersionService {
         Page<SysAiAgentVersion> page = new Page<>(pageNum, pageSize);
         IPage<SysAiAgentVersion> versionPage = versionMapper.selectVersionPage(page, agentId);
         Page<AiAgentVersionVO> result = new Page<>(pageNum, pageSize, versionPage.getTotal());
-        result.setRecords(new ArrayList<>(versionPage.getRecords().stream().map(this::toVO).toList()));
+        result.setRecords(new ArrayList<>(
+                versionPage.getRecords().stream().map(this::toVO).toList()));
         return result;
     }
 
@@ -144,8 +144,8 @@ public class AiAgentVersionService {
                 ? versionMapper.getLatestPublished(agentId)
                 : versionMapper.getByAgentAndVersion(agentId, versionNo);
         if (version == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND,
-                    versionNo == null ? "该 Agent 暂无已发布版本" : "版本快照不存在");
+            throw new BusinessException(
+                    ResultCode.RESOURCE_NOT_FOUND, versionNo == null ? "该 Agent 暂无已发布版本" : "版本快照不存在");
         }
         return resolveSnapshot(version.getSnapshot() == null ? Map.of() : version.getSnapshot());
     }
@@ -203,15 +203,25 @@ public class AiAgentVersionService {
         snapshot.put("is_subagent", agent.getIsSubagent());
         snapshot.put("is_team", agent.getIsTeam());
         snapshot.put("is_exposed", agent.getIsExposed());
-        snapshot.put("skills", skillMapper.selectList(new LambdaQueryWrapper<SysAiAgentSkill>()
-                        .eq(SysAiAgentSkill::getAgentId, agent.getId()))
-                .stream().map(SysAiAgentSkill::getSkillName).toList());
-        snapshot.put("mcp_namespaces", mcpMapper.selectList(new LambdaQueryWrapper<SysAiAgentMcp>()
-                        .eq(SysAiAgentMcp::getAgentId, agent.getId()))
-                .stream().map(SysAiAgentMcp::getMcpNamespace).toList());
+        snapshot.put(
+                "skills",
+                skillMapper
+                        .selectList(new LambdaQueryWrapper<SysAiAgentSkill>()
+                                .eq(SysAiAgentSkill::getAgentId, agent.getId()))
+                        .stream()
+                        .map(SysAiAgentSkill::getSkillName)
+                        .toList());
+        snapshot.put(
+                "mcp_namespaces",
+                mcpMapper
+                        .selectList(
+                                new LambdaQueryWrapper<SysAiAgentMcp>().eq(SysAiAgentMcp::getAgentId, agent.getId()))
+                        .stream()
+                        .map(SysAiAgentMcp::getMcpNamespace)
+                        .toList());
         List<Map<String, Object>> subagents = new ArrayList<>();
-        for (SysAiAgentSubagent link : subagentMapper.selectList(new LambdaQueryWrapper<SysAiAgentSubagent>()
-                .eq(SysAiAgentSubagent::getParentAgentId, agent.getId()))) {
+        for (SysAiAgentSubagent link : subagentMapper.selectList(
+                new LambdaQueryWrapper<SysAiAgentSubagent>().eq(SysAiAgentSubagent::getParentAgentId, agent.getId()))) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("agent_id", link.getSubagentAgentId());
             item.put("priority", link.getPriority());
@@ -242,8 +252,8 @@ public class AiAgentVersionService {
             link.setCreateTime(LocalDateTime.now());
             mcpMapper.insert(link);
         }
-        subagentMapper.delete(new LambdaQueryWrapper<SysAiAgentSubagent>()
-                .eq(SysAiAgentSubagent::getParentAgentId, agentId));
+        subagentMapper.delete(
+                new LambdaQueryWrapper<SysAiAgentSubagent>().eq(SysAiAgentSubagent::getParentAgentId, agentId));
         for (Object item : asList(snapshot.get("subagents"))) {
             Map<String, Object> map = asMap(item);
             if (map == null || map.get("agent_id") == null) {
@@ -274,8 +284,11 @@ public class AiAgentVersionService {
             keys.addAll(((Map<String, Object>) baseVal).keySet());
             keys.addAll(((Map<String, Object>) targetVal).keySet());
             for (String key : keys) {
-                diff(((Map<String, Object>) baseVal).get(key), ((Map<String, Object>) targetVal).get(key),
-                        prefix.isEmpty() ? key : prefix + "." + key, acc);
+                diff(
+                        ((Map<String, Object>) baseVal).get(key),
+                        ((Map<String, Object>) targetVal).get(key),
+                        prefix.isEmpty() ? key : prefix + "." + key,
+                        acc);
             }
             return;
         }

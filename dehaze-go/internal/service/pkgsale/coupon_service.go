@@ -387,7 +387,7 @@ func (s *CouponService) DeleteByIDs(ctx context.Context, ids []int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询优惠券使用记录失败", err)
 	}
 	if usedCount > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "优惠券已发放使用，无法删除")
+		return common.NewBizError(common.DATA_REFERENCED, "优惠券已发放使用，无法删除")
 	}
 
 	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

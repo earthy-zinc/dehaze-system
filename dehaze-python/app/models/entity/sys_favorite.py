@@ -2,7 +2,7 @@
 统一收藏实体
 
 对齐 Java SysFavorite.java + config/sql/schema/sys_favorite.sql
-通过 target_type + target_id 实现多态收藏，支持 algorithm/result/dataset 等任意业务实体。
+通过 target_type + target_id 实现多态收藏，支持 model/result/dataset 等任意业务实体。
 """
 
 from sqlalchemy import BigInteger, Index, String
@@ -27,7 +27,7 @@ class SysFavorite(BaseModel, SoftDeleteMixin):
     target_type: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        comment="收藏对象类型(algorithm:算法;result:处理结果;dataset:数据集;image:图片;preset:参数方案)",
+        comment="收藏对象类型(model:图像模型;result:处理结果;dataset:数据集;image:图片;preset:参数方案)",
     )
     target_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="收藏对象ID")
     is_invalid: Mapped[int] = mapped_column(

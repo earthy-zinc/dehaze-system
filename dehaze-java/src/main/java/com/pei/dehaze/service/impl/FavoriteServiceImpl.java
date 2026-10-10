@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
-import com.pei.dehaze.mapper.SysAlgorithmMapper;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.mapper.SysFavoriteMapper;
 import com.pei.dehaze.mapper.SysMemberMapper;
@@ -22,16 +22,15 @@ import com.pei.dehaze.model.vo.FavoriteVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.FavoriteService;
 import com.pei.dehaze.service.SysDictService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -39,13 +38,14 @@ import java.util.stream.Collectors;
 public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavorite> implements FavoriteService {
 
     /** 收藏类型常量 */
-    private static final List<String> VALID_TARGET_TYPES = Arrays.asList("algorithm", "result", "dataset", "image", "preset");
+    private static final List<String> VALID_TARGET_TYPES =
+            Arrays.asList("model", "result", "dataset", "image", "preset");
 
     /** 收藏容量字典类型 */
     private static final String FAVORITE_CAPACITY_DICT_TYPE = "favorite_capacity";
 
     private final SysMemberMapper memberMapper;
-    private final SysAlgorithmMapper sysAlgorithmMapper;
+    private final SysAiModelMapper sysAiModelMapper;
     private final SysDatasetMapper sysDatasetMapper;
     private final SysPredLogMapper sysPredLogMapper;
     private final SysDictService sysDictService;
@@ -72,8 +72,7 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
         }
 
         // 容量校验（MP 自动过滤 deleted=0）
-        long currentCount = this.count(new LambdaQueryWrapper<SysFavorite>()
-                .eq(SysFavorite::getUserId, userId));
+        long currentCount = this.count(new LambdaQueryWrapper<SysFavorite>().eq(SysFavorite::getUserId, userId));
         int capacity = getCapacity(userId);
         if (currentCount >= capacity) {
             throw new BusinessException(ResultCode.BUSINESS_ERROR, "收藏已达上限（" + capacity + "条），请清理后重试");
@@ -90,16 +89,16 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
 
     /**
      * 校验收藏目标对象是否存在
-     * algorithm/dataset/result 为已实现类型，必须校验；image/preset 为预留类型，跳过校验
+     * model/dataset/result 为已实现类型，必须校验；image/preset 为预留类型，跳过校验
      */
     private void validateTargetExists(String targetType, Long targetId) {
         if (targetId == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "收藏目标不存在");
         }
         switch (targetType) {
-            case "algorithm":
-                if (sysAlgorithmMapper.selectById(targetId) == null) {
-                    throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
+            case "model":
+                if (sysAiModelMapper.selectById(targetId) == null) {
+                    throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图像模型不存在");
                 }
                 break;
             case "dataset":
@@ -138,12 +137,7 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
         Long userId = SecurityUtils.getUserId();
         Page<FavoriteVO> page = new Page<>(query.getPageNum(), query.getPageSize());
         return this.baseMapper.selectFavoritePage(
-                page,
-                userId,
-                query.getTargetType(),
-                query.getKeywords(),
-                query.getSortBy(),
-                query.getSortOrder());
+                page, userId, query.getTargetType(), query.getKeywords(), query.getSortBy(), query.getSortOrder());
     }
 
     @Override
@@ -167,8 +161,8 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
         }
 
         List<SysFavorite> list = this.list(wrapper);
-        Map<String, Long> countMap = list.stream()
-                .collect(Collectors.groupingBy(SysFavorite::getTargetType, Collectors.counting()));
+        Map<String, Long> countMap =
+                list.stream().collect(Collectors.groupingBy(SysFavorite::getTargetType, Collectors.counting()));
 
         List<FavoriteCountVO> result = new ArrayList<>();
         for (String type : VALID_TARGET_TYPES) {
@@ -199,8 +193,7 @@ public class FavoriteServiceImpl extends ServiceImpl<SysFavoriteMapper, SysFavor
      * （level_0→default、level_1→vip1、level_2→vip2、level_3→svip）。</p>
      */
     int getCapacity(Long userId) {
-        SysMember member = memberMapper.selectOne(
-                new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
+        SysMember member = memberMapper.selectOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         String levelCode = member != null ? member.getLevelCode() : "level_0";
         String dictKey = switch (levelCode) {
             case "level_1" -> "vip1";

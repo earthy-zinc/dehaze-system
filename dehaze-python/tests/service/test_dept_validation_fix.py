@@ -83,7 +83,7 @@ async def test_create_dept_exceeds_5_levels_rejected(dept_env):
     dept_env.tree_path = "0,1,2,3,4,9"
     with pytest.raises(BusinessException) as ei:
         await dept_service.create_dept(_FakeDB(), Redis(), {"name": "子", "parentId": 9})
-    assert ei.value.code == ResultCode.DATA_BIND_EXISTS
+    assert ei.value.code == ResultCode.DATA_REFERENCED
     assert "部门层级不能超过5级" in ei.value.message
 
 
@@ -126,7 +126,7 @@ async def test_update_dept_exceeds_5_levels_rejected(dept_env):
     dept_env.tree_path = "0,2,3,4,5,20"
     with pytest.raises(BusinessException) as ei:
         await dept_service.update_dept(AsyncSession(), Redis(), 7, {"parentId": 20})
-    assert ei.value.code == ResultCode.DATA_BIND_EXISTS
+    assert ei.value.code == ResultCode.DATA_REFERENCED
     assert "部门层级不能超过5级" in ei.value.message
 
 

@@ -2,12 +2,11 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /** 过程链详情：trace 汇总字段 + 上下文快照 + LLM 调用回放 + 推理步骤 + 会话消息 + 计费与产物 */
 @Schema(description = "过程链详情")

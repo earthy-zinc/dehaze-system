@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysPaymentRecord;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysPaymentRecordMapper extends BaseMapper<SysPaymentRecord> {
-}
+public interface SysPaymentRecordMapper extends BaseMapper<SysPaymentRecord> {}

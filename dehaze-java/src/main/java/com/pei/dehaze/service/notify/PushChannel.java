@@ -7,12 +7,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.mapper.SysNotificationSettingMapper;
 import com.pei.dehaze.model.entity.SysMessage;
 import com.pei.dehaze.model.entity.SysNotificationSetting;
+import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalTime;
 
 @Slf4j
 @Component
@@ -54,7 +53,8 @@ public class PushChannel implements MessagePushChannel {
             return false;
         }
         JSONObject prefs = CharSequenceUtil.isNotBlank(setting.getPreferences())
-                ? JSONUtil.parseObj(setting.getPreferences()) : new JSONObject();
+                ? JSONUtil.parseObj(setting.getPreferences())
+                : new JSONObject();
         JSONObject typeChannels = prefs.getJSONObject("typeChannels");
         if (typeChannels != null) {
             JSONObject typeCfg = typeChannels.getJSONObject(message.getType());
@@ -64,8 +64,7 @@ public class PushChannel implements MessagePushChannel {
         }
         if (CharSequenceUtil.isNotBlank(message.getBizModule())) {
             JSONObject moduleSwitches = prefs.getJSONObject("moduleSwitches");
-            if (moduleSwitches != null
-                    && Boolean.FALSE.equals(moduleSwitches.getBool(message.getBizModule(), null))) {
+            if (moduleSwitches != null && Boolean.FALSE.equals(moduleSwitches.getBool(message.getBizModule(), null))) {
                 return false;
             }
         }
@@ -104,7 +103,7 @@ public class PushChannel implements MessagePushChannel {
     }
 
     private SysNotificationSetting getSetting(Long recipientId) {
-        return settingMapper.selectOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                .eq(SysNotificationSetting::getUserId, recipientId));
+        return settingMapper.selectOne(
+                new LambdaQueryWrapper<SysNotificationSetting>().eq(SysNotificationSetting::getUserId, recipientId));
     }
 }

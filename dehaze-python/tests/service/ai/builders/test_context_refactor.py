@@ -251,9 +251,9 @@ async def test_maybe_compress_recompresses_oversized_prior_summary(db, monkeypat
 
 
 def test_artifact_ref_line_format():
-    refs = [{"id": 7, "type": "image_result", "summary": {"algorithm": "RIDCP"}}]
+    refs = [{"id": 7, "type": "image_result", "summary": {"modelName": "RIDCP"}}]
     lines = ContextManager._build_artifact_ref_lines(refs)
-    assert lines == ["[[产物 #7] image_result：{'algorithm': 'RIDCP'}]"]
+    assert lines == ["[[产物 #7] image_result：{'modelName': 'RIDCP'}]"]
 
 
 async def test_recent_messages_folds_tool_result_into_assistant(monkeypatch):
@@ -314,7 +314,7 @@ async def test_build_context_attaches_artifact_refs(monkeypatch):
         return None, []
 
     async def _artifact_refs(db, message_ids):
-        return {2: [{"id": 7, "type": "image_result", "summary": {"algorithm": "RIDCP"}}]}
+        return {2: [{"id": 7, "type": "image_result", "summary": {"modelName": "RIDCP"}}]}
 
     _install_build_context_mocks(monkeypatch, [msgs[1], msgs[2]], _no_memories, _artifact_refs)
 
@@ -322,7 +322,7 @@ async def test_build_context_attaches_artifact_refs(monkeypatch):
         AsyncSession(), make_conv(current_branch_message_id=2, system_prompt="会话提示"), "gpt"
     )
     assert messages[1]["role"] == "assistant"
-    assert "[[产物 #7] image_result：{'algorithm': 'RIDCP'}]" in messages[1]["content"]
+    assert "[[产物 #7] image_result：{'modelName': 'RIDCP'}]" in messages[1]["content"]
     assert system_prompt is not None
     assert system_prompt.startswith(STABLE_SYSTEM_PROMPT)
     assert "会话提示" in system_prompt

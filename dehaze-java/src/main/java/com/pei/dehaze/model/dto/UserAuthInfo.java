@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.dto;
 
-import lombok.Data;
-
 import java.util.Set;
+import lombok.Data;
 
 /**
  * 用户认证信息
@@ -31,5 +30,4 @@ public class UserAuthInfo {
     private Set<String> perms;
 
     private Integer dataScope;
-
 }

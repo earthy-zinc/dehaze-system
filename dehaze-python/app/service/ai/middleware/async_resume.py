@@ -86,7 +86,7 @@ def submit_batch_task(
     msg_id: int,
     user_id: int,
     image_urls: list[str],
-    algorithm_id: int,
+    model: str,
     stream_session_id: str,
     thread_id: str,
 ) -> str:
@@ -107,7 +107,7 @@ def submit_batch_task(
     }
     # 任务登记需在独立事件循环中执行（当前在工具节点内，get_redis_client 可用）
     task = asyncio.get_running_loop().create_task(
-        _schedule_run(task_id, mapping, image_urls, algorithm_id, stream_session_id)
+        _schedule_run(task_id, mapping, image_urls, model, stream_session_id)
     )
     _pending_tasks.add(task)
     _running_tasks[task_id] = task
@@ -128,7 +128,7 @@ async def cancel_task(task_id: str) -> None:
         task.cancel()
 
 
-async def _schedule_run(task_id, mapping, image_urls, algorithm_id, stream_session_id) -> None:
+async def _schedule_run(task_id, mapping, image_urls, model, stream_session_id) -> None:
     from app.service.ai.service.batch_process_service import process_batch
 
     # 先登记反查键，再执行任务（任务极快完成时确保回调能反查到）
@@ -140,7 +140,7 @@ async def _schedule_run(task_id, mapping, image_urls, algorithm_id, stream_sessi
             mapping["msg_id"],
             mapping["user_id"],
             image_urls,
-            algorithm_id,
+            model,
             stream_session_id,
         )
     except Exception as e:

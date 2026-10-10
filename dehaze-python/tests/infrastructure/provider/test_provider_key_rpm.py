@@ -8,11 +8,7 @@ from datetime import datetime
 
 import pytest
 
-from app.infrastructure.provider.provider_key_selector import (
-    KEY_DAILY_PREFIX,
-    KEY_MINUTE_PREFIX,
-    provider_key_selector,
-)
+from app.infrastructure.provider.provider_key_selector import provider_key_selector
 from app.models.entity.sys_ai_provider_key import SysAiProviderKey
 from app.models.schema.ai_provider import ProviderCreate, ProviderKeyCreate
 from app.service.ai_provider_key_service import ai_provider_key_service
@@ -40,11 +36,11 @@ async def _usable_key_ids(db, mock_redis, provider_id: int) -> set[int]:
 
 
 def _now_minute_key(key_id: int) -> str:
-    return KEY_MINUTE_PREFIX.format(key_id, datetime.now().strftime("%Y%m%d%H%M"))
+    return provider_key_selector.minute.format(key_id, datetime.now().strftime("%Y%m%d%H%M"))
 
 
 def _now_daily_key(key_id: int) -> str:
-    return KEY_DAILY_PREFIX.format(key_id, datetime.now().strftime("%Y%m%d"))
+    return provider_key_selector.daily.format(key_id, datetime.now().strftime("%Y%m%d"))
 
 
 def _stub_key(

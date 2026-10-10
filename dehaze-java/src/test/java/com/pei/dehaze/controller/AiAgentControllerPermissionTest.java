@@ -1,14 +1,13 @@
 package com.pei.dehaze.controller;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.security.access.prepost.PreAuthorize;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Agent 管理端点权限口径守卫（纯反射，不启 Spring 上下文）。
@@ -37,15 +36,17 @@ class AiAgentControllerPermissionTest {
 
     private static void assertRequiresManage(String name) {
         PreAuthorize annotation = method(name).getAnnotation(PreAuthorize.class);
-        assertThat(annotation).as("%s 应要求 ai:agent:manage（对齐 python _ensure_manager）", name).isNotNull();
+        assertThat(annotation)
+                .as("%s 应要求 ai:agent:manage（对齐 python _ensure_manager）", name)
+                .isNotNull();
         assertThat(annotation.value()).as(name).isEqualTo(MANAGE_PERMISSION);
     }
 
     @Test
     @DisplayName("写操作全部要求 ai:agent:manage（发布已移交转发域，不在原生控制器）")
     void writeEndpointsRequireManagePermission() {
-        List.of("create", "update", "delete", "setStatus", "copy", "setSkills", "setMcps",
-                "setSubagents", "rollback").forEach(AiAgentControllerPermissionTest::assertRequiresManage);
+        List.of("create", "update", "delete", "setStatus", "copy", "setSkills", "setMcps", "setSubagents", "rollback")
+                .forEach(AiAgentControllerPermissionTest::assertRequiresManage);
     }
 
     @Test

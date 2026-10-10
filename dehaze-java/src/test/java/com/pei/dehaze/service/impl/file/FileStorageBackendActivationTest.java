@@ -1,5 +1,8 @@
 package com.pei.dehaze.service.impl.file;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.service.FileService;
 import org.junit.jupiter.api.DisplayName;
@@ -12,9 +15,6 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 存储后端激活与默认后端守卫。
@@ -69,7 +69,8 @@ class FileStorageBackendActivationTest {
     void unknownFileType_failsFast() {
         runner.withPropertyValues("file.type=bogus").run(context -> {
             assertThat(context).hasNotFailed();
-            assertThatThrownBy(() -> context.getBean(StorageServiceFactory.class).getDefault())
+            assertThatThrownBy(
+                            () -> context.getBean(StorageServiceFactory.class).getDefault())
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("不支持的存储后端");
         });
@@ -77,10 +78,17 @@ class FileStorageBackendActivationTest {
 
     /** 只扫描存储后端相关的实现（保持生产条件注解为唯一事实源，不在测试里重复条件） */
     @Configuration
-    @ComponentScan(basePackageClasses = FileService.class, useDefaultFilters = false,
-            includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
-                    classes = {LocalFileService.class, MinioFileService.class, NginxStaticFileService.class,
-                            StorageServiceFactory.class}))
-    static class BackendScanConfig {
-    }
+    @ComponentScan(
+            basePackageClasses = FileService.class,
+            useDefaultFilters = false,
+            includeFilters =
+                    @ComponentScan.Filter(
+                            type = FilterType.ASSIGNABLE_TYPE,
+                            classes = {
+                                LocalFileService.class,
+                                MinioFileService.class,
+                                NginxStaticFileService.class,
+                                StorageServiceFactory.class
+                            }))
+    static class BackendScanConfig {}
 }

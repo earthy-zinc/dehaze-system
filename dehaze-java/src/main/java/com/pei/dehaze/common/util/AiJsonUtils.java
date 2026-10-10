@@ -27,8 +27,7 @@ public final class AiJsonUtils {
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
 
-    private AiJsonUtils() {
-    }
+    private AiJsonUtils() {}
 
     public static String write(Object value) {
         if (value == null) {

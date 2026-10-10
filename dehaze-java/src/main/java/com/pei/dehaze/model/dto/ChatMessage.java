@@ -21,5 +21,4 @@ public class ChatMessage {
      * 消息内容
      */
     private String content;
-
 }

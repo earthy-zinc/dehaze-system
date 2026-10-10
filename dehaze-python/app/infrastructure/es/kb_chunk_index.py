@@ -4,7 +4,7 @@
 字段：content_vector(dense_vector/cosine)、content(text 全文)、doc_title(text)、
 doc_id/chunk_id/chunk_index/section_index/version、create_time(date)、
 metadata(object 动态+显式过滤子字段)、tags(keyword)。metadata 显式定义过滤用子字段
-（type/algorithm_id/entities.name/relations.type），其余 metadata 内容保持动态映射。
+（type/model_id/entities.name/relations.type），其余 metadata 内容保持动态映射。
 
 只承载索引定义、ensure/delete、批量写入/删除、向量/关键词/RRF 混合检索原语；
 Embedding 计算、配置读取、API Key 选择等业务编排见 service 层 kb 服务，勿在此引入 httpx/repository。
@@ -15,15 +15,17 @@ import logging
 from collections import defaultdict
 from datetime import datetime
 
+from app.config import settings
 from app.infrastructure.es.es_client import es_client
 
 logger = logging.getLogger(__name__)
 
-INDEX_PREFIX = "kb_chunks_{kb_id}"
+# 索引前缀带环境标识（ES_INDEX_PREFIX），避免多环境共用 ES 时互串
+INDEX_PREFIX = f"{settings.ES_INDEX_PREFIX}kb_chunks_"
 
 
 def kb_index_name(kb_id: int) -> str:
-    return INDEX_PREFIX.format(kb_id=kb_id)
+    return f"{INDEX_PREFIX}{kb_id}"
 
 
 def _kb_mappings(dims: int) -> dict:
@@ -53,7 +55,7 @@ def _kb_mappings(dims: int) -> dict:
                 "dynamic": True,
                 "properties": {
                     "type": {"type": "keyword"},
-                    "algorithm_id": {"type": "long"},
+                    "model_id": {"type": "long"},
                     "entities": {
                         "type": "object",
                         "properties": {"name": {"type": "keyword"}},
@@ -166,14 +168,14 @@ def build_filters(
     tags: list[str] | None = None,
     start_time: datetime | None = None,
     end_time: datetime | None = None,
-    algorithm_id: int | None = None,
+    model_id: int | None = None,
     entities: list[str] | None = None,
     relations: list[str] | None = None,
 ) -> list[dict]:
     """构建元数据 filter 子句（检索前缩小范围）。
 
     支持文档类型/标签/时间范围/算法关联/实体/关系维度过滤。
-    metadata 为 object 动态字段，算法与实体/关系分别落在 metadata.algorithm_id 与
+    metadata 为 object 动态字段，算法与实体/关系分别落在 metadata.model_id 与
     metadata.entities/relations（知识图谱阶段 1 结构）。
     """
     filters: list[dict] = []
@@ -188,13 +190,23 @@ def build_filters(
         if end_time:
             range_clause["lte"] = end_time.isoformat()
         filters.append({"range": {"create_time": range_clause}})
-    if algorithm_id:
-        filters.append({"term": {"metadata.algorithm_id": algorithm_id}})
+    if model_id:
+        filters.append({"term": {"metadata.model_id": model_id}})
     if entities:
         filters.append({"terms": {"metadata.entities.name": entities}})
     if relations:
         filters.append({"terms": {"metadata.relations.type": relations}})
     return filters
+
+
+def _score_to_cosine(score: float) -> float:
+    """把 ES cosine 相似度的 `_score` 还原为原始 cosine（-1~1）。
+
+    mapping `similarity=cosine` 时 ES 返回的 `_score = (1 + cos) / 2`（落在 [0.5,1]），
+    而库 `score_threshold` 与检索结果 `score` 的契约都是"余弦相似度(0-1)"。不还原就会把
+    阈值语义整体抬到 [0.5,1] 区间——阈值 0.5 实际等价于 cos≈0，等于不过滤（门禁形同虚设）。
+    """
+    return max(-1.0, min(1.0, 2.0 * float(score) - 1.0))
 
 
 async def vector_search(
@@ -203,9 +215,10 @@ async def vector_search(
     filters: list[dict],
     top_n: int = 5,
 ) -> list[dict]:
-    """纯向量检索（ES 8.12+ 顶层 knn 语法），返回命中文档 _source 列表（含 relevance 分数）。
+    """纯向量检索（ES 8.12+ 顶层 knn 语法），返回命中文档 _source 列表（含 relevance=余弦相似度）。
 
     使用顶层 knn 的 filter 作为 filtered HNSW 前置过滤，保证过滤后仍返回足额 top_n。
+    relevance 统一为原始 cosine（见 `_score_to_cosine`），与 score_threshold/结果 score 契约一致。
     """
     body: dict = {
         "size": top_n,
@@ -217,7 +230,10 @@ async def vector_search(
             "filter": {"bool": {"filter": filters}},
         },
     }
-    return await _search(kb_index_name(kb_id), body)
+    docs = await _search(kb_index_name(kb_id), body)
+    for doc in docs:
+        doc["relevance"] = _score_to_cosine(doc.get("relevance", 0.0))
+    return docs
 
 
 async def keyword_search(
@@ -256,11 +272,16 @@ async def hybrid_search(
     rank_window_size: int = 20,
     vector_weight: float = 1.0,
     keyword_weight: float = 1.0,
+    score_threshold: float = 0.0,
 ) -> list[dict]:
     """应用层 RRF 混合检索：vector_search(kNN) 与 keyword_search(BM25) 分别取候选后融合。
 
     不用 ES retriever RRF API：该能力需白金 license，Basic license 请求返回 403
     导致检索降级空结果；改在应用层做 RRF 融合，仅依赖 Basic 可用的两个检索原语。
+
+    score_threshold > 0 时先按库相似度阈值过滤**向量候选**（RRF 融合分数不可比，
+    门禁只能落在原始 cosine 上）：低相关向量不进入融合，使 hybrid 也具备相关度门禁
+    （否则无关查询仍会拿到 top-K，工具无法表达"未检索到相关内容"）。
     返回命中文档 _source 列表（含 relevance=RRF 融合分数）。
     """
     if not query_vector:
@@ -269,6 +290,10 @@ async def hybrid_search(
         vector_search(kb_id, query_vector, filters, top_n=rank_window_size),
         keyword_search(kb_id, query, filters, top_n=rank_window_size),
     )
+    if score_threshold > 0:
+        vector_docs = [
+            d for d in vector_docs if float(d.get("relevance", 0.0) or 0.0) >= score_threshold
+        ]
     return _rrf_fuse(
         [(vector_docs, vector_weight), (keyword_docs, keyword_weight)],
         rank_constant=rank_constant,

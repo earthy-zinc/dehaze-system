@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysDictType;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysDictTypeMapper extends BaseMapper<SysDictType> {
-}
+public interface SysDictTypeMapper extends BaseMapper<SysDictType> {}

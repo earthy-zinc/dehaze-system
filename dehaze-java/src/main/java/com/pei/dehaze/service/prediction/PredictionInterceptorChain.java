@@ -1,11 +1,10 @@
 package com.pei.dehaze.service.prediction;
 
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * 预测拦截器责任链：按 Spring 注入顺序执行，第一个命中即短路。
@@ -25,7 +24,8 @@ public class PredictionInterceptorChain {
             try {
                 Optional<InterceptedResult> result = interceptor.intercept(context);
                 if (result.isPresent()) {
-                    log.debug("预测拦截器命中: {} -> resultUrl={}",
+                    log.debug(
+                            "预测拦截器命中: {} -> resultUrl={}",
                             interceptor.getClass().getSimpleName(),
                             result.get().getResultUrl());
                     return result;

@@ -1,5 +1,9 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileDTOFactory;
@@ -8,6 +12,9 @@ import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.BatchDeleteResult;
 import com.pei.dehaze.service.impl.DatasetOperationServiceImpl;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,14 +23,6 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 数据集操作服务单元测试
@@ -87,7 +86,8 @@ class DatasetOperationServiceTest {
 
         // deleteDatasetItemCascade 委托给 batchDeleteDatasetItemsCascadeWithResult
         when(sysDatasetItemService.listByIds(any())).thenReturn(Arrays.asList(sampleDatasetItem));
-        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any())).thenReturn(files);
+        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any()))
+                .thenReturn(files);
         when(sysItemFileService.deleteFile(anyLong())).thenReturn(true);
         when(sysDatasetItemService.removeByIds(any())).thenReturn(true);
 
@@ -107,7 +107,8 @@ class DatasetOperationServiceTest {
         // Given
         Long datasetItemId = 999L;
         when(sysDatasetItemService.listByIds(any())).thenReturn(Collections.emptyList());
-        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any())).thenReturn(Collections.emptyList());
+        when(sysItemFileService.list(ArgumentMatchers.<LambdaQueryWrapper<SysItemFile>>any()))
+                .thenReturn(Collections.emptyList());
 
         // When & Then
         assertThatThrownBy(() -> datasetOperationService.deleteDatasetItemCascade(datasetItemId))
@@ -129,12 +130,15 @@ class DatasetOperationServiceTest {
     void testBatchDeleteDatasets_Success() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L);
-        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
-        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
+        SysDataset ds1 = new SysDataset();
+        ds1.setId(1L);
+        SysDataset ds2 = new SysDataset();
+        ds2.setId(2L);
 
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any()))
+                .thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -154,12 +158,17 @@ class DatasetOperationServiceTest {
         // Given
         List<Long> datasetIds = Arrays.asList(1L);
 
-        SysDataset child2 = new SysDataset(); child2.setId(2L); child2.setParentId(1L);
-        SysDataset child3 = new SysDataset(); child3.setId(3L); child3.setParentId(1L);
+        SysDataset child2 = new SysDataset();
+        child2.setId(2L);
+        child2.setParentId(1L);
+        SysDataset child3 = new SysDataset();
+        child3.setId(3L);
+        child3.setParentId(1L);
 
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(sampleDataset));
         when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(sampleDataset, child2, child3));
-        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any()))
+                .thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -197,13 +206,16 @@ class DatasetOperationServiceTest {
     void testBatchDeleteDatasets_PartialSuccess() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L, 999L);
-        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
-        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
+        SysDataset ds1 = new SysDataset();
+        ds1.setId(1L);
+        SysDataset ds2 = new SysDataset();
+        ds2.setId(2L);
 
         // listByIds 只返回存在的数据集（不含 999L），999L 会触发 "数据集不存在"
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any()))
+                .thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -219,18 +231,20 @@ class DatasetOperationServiceTest {
         assertThat(result.getResults().get(2).getErrorCode()).isEqualTo("RESOURCE_NOT_FOUND");
     }
 
-
     @Test
     @DisplayName("测试批量删除结果格式")
     void testBatchDeleteResult_Format() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L);
-        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
-        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
+        SysDataset ds1 = new SysDataset();
+        ds1.setId(1L);
+        SysDataset ds2 = new SysDataset();
+        ds2.setId(2L);
 
         when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getAllDatasets()).thenReturn(Arrays.asList(ds1, ds2));
-        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any())).thenReturn(Collections.emptyList());
+        when(sysDatasetItemService.list(ArgumentMatchers.<LambdaQueryWrapper<SysDatasetItem>>any()))
+                .thenReturn(Collections.emptyList());
         when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
@@ -290,8 +304,8 @@ class DatasetOperationServiceTest {
         String hazyHeavyFileName = "image001_hazy_heavy.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractFilePrefix", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractFilePrefix", String.class);
         method.setAccessible(true);
 
         String clearPrefix = (String) method.invoke(datasetOperationService, clearFileName);
@@ -323,8 +337,8 @@ class DatasetOperationServiceTest {
         String hazyFileName = "image001_hazy_light.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("isClearImage", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("isClearImage", String.class);
         method.setAccessible(true);
 
         boolean isClear1 = (boolean) method.invoke(datasetOperationService, clearFileName);
@@ -351,8 +365,8 @@ class DatasetOperationServiceTest {
         String clearFileName = "image001_clear.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("isHazyImage", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("isHazyImage", String.class);
         method.setAccessible(true);
 
         boolean isHazy1 = (boolean) method.invoke(datasetOperationService, hazyFileName);
@@ -378,8 +392,8 @@ class DatasetOperationServiceTest {
         String heavyFileName = "image001_hazy_heavy.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractHazeLevel", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
         String lightLevel = (String) method.invoke(datasetOperationService, lightFileName);
@@ -405,8 +419,8 @@ class DatasetOperationServiceTest {
         String noLevelFileName = "image001_hazy.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractHazeLevel", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
         String level = (String) method.invoke(datasetOperationService, noLevelFileName);
@@ -427,8 +441,8 @@ class DatasetOperationServiceTest {
         // Given - RESIDE/ITS 格式：{id}_{idx}_{beta}.png
         String betaFileName = "1000_1_0.74905.png";
 
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractHazeLevel", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
         String level = (String) method.invoke(datasetOperationService, betaFileName);
@@ -449,8 +463,8 @@ class DatasetOperationServiceTest {
         // Given - RESIDE/OTS 格式：{id}_{A}_{beta}.jpg
         String aBetaFileName = "0025_0.8_0.2.jpg";
 
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractHazeLevel", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
         String level = (String) method.invoke(datasetOperationService, aBetaFileName);
@@ -473,8 +487,8 @@ class DatasetOperationServiceTest {
         String complexHazyFileName = "outdoor_scene_001_hazy_light.jpg";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractFilePrefix", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractFilePrefix", String.class);
         method.setAccessible(true);
 
         String clearPrefix = (String) method.invoke(datasetOperationService, complexClearFileName);
@@ -500,8 +514,8 @@ class DatasetOperationServiceTest {
         String fileName3 = "test_hazy_heavy.png";
 
         // When - 使用反射调用私有方法
-        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
-                .getDeclaredMethod("extractHazeLevel", String.class);
+        java.lang.reflect.Method method =
+                DatasetOperationServiceImpl.class.getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
         String level1 = (String) method.invoke(datasetOperationService, fileName1);

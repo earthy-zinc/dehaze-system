@@ -1,22 +1,19 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.converter.DictConverter;
-import com.pei.dehaze.mapper.SysDictMapper;
 import com.pei.dehaze.mapper.SysDictTypeMapper;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 
 /**
  * SysDictServiceImpl#getIntValue 单元测试。
@@ -29,9 +26,7 @@ class SysDictServiceImplTest {
 
     private SysDictServiceImpl buildSpy(List<Option<String>> options) {
         SysDictServiceImpl service = new SysDictServiceImpl(
-                mock(DictConverter.class),
-                mock(SysDictTypeMapper.class),
-                mock(StringRedisTemplate.class));
+                mock(DictConverter.class), mock(SysDictTypeMapper.class), mock(StringRedisTemplate.class));
         SysDictServiceImpl spy = spy(service);
         lenient().doReturn(options).when(spy).listDictOptions("favorite_capacity");
         lenient().doReturn(options).when(spy).listDictOptions("member_growth_rules");
@@ -67,13 +62,15 @@ class SysDictServiceImplTest {
     @DisplayName("getIntValue - 无字典项时回退默认值")
     void getIntValue_emptyOptionsFallsBack() {
         SysDictServiceImpl service = buildSpy(List.of());
-        assertThat(service.getIntValue("member_growth_rules", "sign_in_value", 3)).isEqualTo(3);
+        assertThat(service.getIntValue("member_growth_rules", "sign_in_value", 3))
+                .isEqualTo(3);
     }
 
     @Test
     @DisplayName("getIntValue - 数值非法(非数字)时回退默认值")
     void getIntValue_nonNumericFallsBack() {
         SysDictServiceImpl service = buildSpy(List.of(new Option<>("abc", "sign_in_value")));
-        assertThat(service.getIntValue("member_growth_rules", "sign_in_value", 3)).isEqualTo(3);
+        assertThat(service.getIntValue("member_growth_rules", "sign_in_value", 3))
+                .isEqualTo(3);
     }
 }

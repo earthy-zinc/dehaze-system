@@ -3,13 +3,13 @@
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
@@ -40,6 +40,7 @@ from app.service.ai.service.conversation_search_service import (
     defer_conversation_sync,
     search_conversations,
 )
+from app.service.ai.service.model_defaults import resolve_default_chat_model
 from app.service.ai.service.reasoning_service import reasoning_service
 from app.service.ai.strategies.scene_templates import SCENE_VALUES, get_scene_prompt
 
@@ -51,11 +52,60 @@ PINNED_CONVERSATION_LIMIT = 10
 _PIN_LOCK_TTL = 10
 # 软删除恢复窗口（天）
 RECYCLE_WINDOW_DAYS = 30
+# 会话标题最大字数（对齐 T-CV-010：≤20 字）
+TITLE_MAX_LEN = 20
+
+# 思考链残留：部分模型（Qwen3 未关思考时）把推理过程与正文一起回传
+_THINK_CLOSED_RE = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
+
+# 推理式自述开头：模型把「我该怎么起标题」当标题输出，这类文本不是标题
+_REASONING_TITLE_PREFIXES = (
+    "嗯",
+    "哦",
+    "好的",
+    "让我",
+    "我需要",
+    "我们需要",
+    "首先",
+    "这个对话",
+    "对话内容",
+    "根据对话",
+    "用户让我",
+    "用户要求",
+)
 
 
 def _iter_payload(payload: str):
     """按行产出导出内容（配合 StreamingResponse 流式写出）"""
     yield payload
+
+
+def _clean_generated_title(raw: str) -> str:
+    """清洗 LLM 标题输出：剥离思考链、取首行、去引号与前缀。
+
+    为空、超 TITLE_MAX_LEN 字，或形如模型内心独白（「嗯，用户让我为…」）时返回空串，
+    由调用方降级为首条用户消息截断。会话标题会被用户直接看到，不能出现推理过程。
+    """
+    title = _THINK_CLOSED_RE.sub("", raw or "")
+    # 未闭合的思考块：其后的内容都是推理，直接丢弃
+    open_at = title.lower().find("<think")
+    if open_at != -1:
+        title = title[:open_at]
+    title = title.strip()
+    if not title:
+        return ""
+    title = title.splitlines()[0].strip()
+    for prefix in ("标题：", "标题:", "Title:", "title:"):
+        if title.startswith(prefix):
+            title = title[len(prefix) :].strip()
+            break
+    title = title.strip("“”\"'`#* ").strip()
+    if not 0 < len(title) <= TITLE_MAX_LEN:
+        return ""
+    # 推理式自述：模型把「我该怎么起标题」当标题输出（本地 Qwen3 未关思考时高发）
+    if title.startswith(_REASONING_TITLE_PREFIXES):
+        return ""
+    return title
 
 
 class AiConversationService:
@@ -139,7 +189,8 @@ class AiConversationService:
         conv = SysAiConversation(
             user_id=user_id,
             title=form.title or "新对话",
-            model=form.model or settings.AI_DEFAULT_MODEL,
+            # 未指定模型：用户偏好 > 该 Agent 配置的模型 > 平台默认模型（见 model_defaults）
+            model=form.model or await resolve_default_chat_model(db, user_id, agent_code),
             agent_code=agent_code,
             agent_version=agent_version,
             system_prompt=system_prompt,
@@ -314,10 +365,13 @@ class AiConversationService:
             else:
                 conv.pinned_at = None
         if "agentCode" in data:
-            # 切换 Agent：重新锚定版本（下一条消息生效）
+            # 切换 Agent：重新锚定版本（下一条消息生效）；未同时显式指定模型时，
+            # 会话模型随之按新 Agent 重新解析（否则"换了 Agent 模型不变"）
             agent_code, agent_version = await self._resolve_agent_anchor(db, data.get("agentCode"))
             conv.agent_code = agent_code
             conv.agent_version = agent_version
+            if "model" not in data:
+                conv.model = await resolve_default_chat_model(db, user_id, agent_code)
         if "title" in data:
             conv.title_source = "manual"
         await db.flush()
@@ -354,32 +408,40 @@ class AiConversationService:
         return now
 
     async def _auto_generate_title(self, conversation_id: int, first_user_content: str) -> None:
-        """异步用 LLM 生成标题，失败降级截取前 20 字"""
+        """异步用 LLM 生成标题（清洗后限 20 字），不可用时降级截取首条消息前 20 字"""
+        fallback = (first_user_content or "新对话").replace("\n", " ").strip()[:TITLE_MAX_LEN]
         title = ""
         try:
             async with get_db_session() as db:
                 conv = await self.ai_conversation_repository.get_by_id(db, conversation_id)
                 if not conv:
                     return
-                model_id = conv.model or settings.AI_DEFAULT_MODEL
-                prompt = f"请为以下对话生成一个简洁的标题（不超过20字）：{first_user_content}"
+                model_id = conv.model or await resolve_default_chat_model(db)
+                prompt = (
+                    f"请为以下对话生成一个不超过{TITLE_MAX_LEN}个字的标题，"
+                    "直接输出标题本身，不要引号、不要解释、不要任何前缀。\n"
+                    f"对话内容：{first_user_content}"
+                )
                 chunks = [
                     chunk.content
                     async for chunk in self.llm_client.stream_chat(
                         db,
                         model_id,
                         [{"role": "user", "content": prompt}],
+                        # 带 system 提示：本地 provider 按 Qwen3 约定在 system 尾部注入 /no_think
+                        # 关闭思考，从源头避免推理过程混进标题（远程 provider 视为普通指令）
+                        system_prompt="你是会话标题生成器：只输出标题本身，不要思考过程、不要解释、不要引号、不要前缀。",
                         max_tokens=50,
                         user_id=conv.user_id,
                     )
                     if chunk.type == "text_delta"
                 ]
-                title = "".join(chunks).strip()
+                title = _clean_generated_title("".join(chunks))
         except Exception:
-            logger.warning("LLM 生成标题失败，降级截取前 20 字", exc_info=True)
+            logger.warning("LLM 生成标题失败，降级截取首条消息前 20 字", exc_info=True)
             title = ""
         if not title:
-            title = (first_user_content or "新对话")[:20]
+            title = fallback or "新对话"
         async with get_db_session() as db:
             await self.ai_conversation_repository.update_title(
                 db, conversation_id, title, title_source="auto"
@@ -509,7 +571,11 @@ class AiConversationService:
         if not await self.sse_emitter_manager.acquire_lock(conv.id):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
-        model = msg.model or conv.model or settings.AI_DEFAULT_MODEL
+        model = (
+            msg.model
+            or conv.model
+            or await resolve_default_chat_model(db, conv.user_id, conv.agent_code)
+        )
         stream_session_id = str(uuid4())
         try:
             # 新 assistant 消息：parent 沿用原 assistant 的父 user 消息，与原回复形成兄弟分支
@@ -593,7 +659,7 @@ class AiConversationService:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
         # 按中断类型组装恢复载荷：
-        # - confirm：确认/拒绝算法推荐，需 confirmed + 可选 algorithmId
+        # - confirm：确认/拒绝算法推荐，需 confirmed + 可选 modelId
         # - plan_approve：计划确认/干预（Plan-and-Execute），透传 plan_edit
         # - quota：用户升级 VIP 后直接恢复，无需业务载荷（reasoning 层转 Command(resume=True)）
         # - async_wait：由任务完成回调自动恢复，不走本端点（此处兜底按空载荷继续）

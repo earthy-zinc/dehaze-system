@@ -110,7 +110,7 @@ class DeptService:
         """校验部门层级不超过 5 级（T-DPT-014/018a：超出报 A0504"部门层级不能超过5级"）"""
         # tree_path 格式: "0" 为第 1 级，"0,1" 为第 2 级
         if len(tree_path.split(",")) > MAX_DEPT_LEVEL:
-            raise BusinessException(ResultCode.DATA_BIND_EXISTS, "部门层级不能超过5级")
+            raise BusinessException(ResultCode.DATA_REFERENCED, "部门层级不能超过5级")
 
     def _validate_name_safety(self, name: str) -> None:
         """部门名称安全性校验（复用公共 XSS 校验，报 A0400）"""

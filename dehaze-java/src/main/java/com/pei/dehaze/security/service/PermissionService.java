@@ -8,18 +8,17 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysRoleMenuService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
-import org.springframework.util.PatternMatchUtils;
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.util.PatternMatchUtils;
 
 /**
  * SpringSecurity 权限校验
@@ -82,15 +81,13 @@ public class PermissionService {
         boolean hasPermission = rolePerms.stream()
                 .anyMatch(rolePerm ->
                         // 匹配权限，支持通配符(* 等)
-                        PatternMatchUtils.simpleMatch(rolePerm, requiredPerm)
-                );
+                        PatternMatchUtils.simpleMatch(rolePerm, requiredPerm));
 
         if (!hasPermission) {
             log.debug("用户无操作权限");
         }
         return hasPermission;
     }
-
 
     /**
      * 从缓存中获取角色权限列表，缓存未命中时回源数据库并回填缓存。
@@ -123,8 +120,7 @@ public class PermissionService {
         for (int i = 0; i < roleCodeList.size(); i++) {
             String rolePermsJson = rolePermsList.get(i);
             if (rolePermsJson != null) {
-                Set<String> rolePerms = JSONUtil.parseArray(rolePermsJson)
-                        .stream()
+                Set<String> rolePerms = JSONUtil.parseArray(rolePermsJson).stream()
                         .map(Object::toString)
                         .collect(Collectors.toSet());
                 perms.addAll(rolePerms);
@@ -195,12 +191,11 @@ public class PermissionService {
                 // refreshRolePermsCache 会先 delete 再 set，并设置独立 TTL
                 sysRoleMenuService.refreshRolePermsCache(roleCode);
                 // 从 Redis 读取回填的权限（纯 JSON 字符串数组）
-                String rolePermsJson = stringRedisTemplate.opsForValue()
-                        .get(SecurityConstants.ROLE_PERMS_PREFIX + roleCode);
+                String rolePermsJson =
+                        stringRedisTemplate.opsForValue().get(SecurityConstants.ROLE_PERMS_PREFIX + roleCode);
                 Set<String> rolePerms = new HashSet<>();
                 if (rolePermsJson != null) {
-                    rolePerms = JSONUtil.parseArray(rolePermsJson)
-                            .stream()
+                    rolePerms = JSONUtil.parseArray(rolePermsJson).stream()
                             .map(Object::toString)
                             .collect(Collectors.toSet());
                 }
@@ -215,5 +210,4 @@ public class PermissionService {
             }
         }
     }
-
 }

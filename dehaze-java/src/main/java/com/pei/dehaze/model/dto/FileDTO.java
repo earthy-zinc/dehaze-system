@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.dto;
 
-import lombok.Data;
-
 import java.io.File;
+import lombok.Data;
 
 @Data
 public class FileDTO {

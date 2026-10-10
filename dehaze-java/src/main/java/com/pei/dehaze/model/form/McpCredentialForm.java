@@ -2,9 +2,8 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 /** 外部服务凭据配置表单（加密存储，仅录入/更新，不回显明文） */
 @Schema(description = "MCP Server 凭据配置表单")

@@ -12,7 +12,7 @@ type SysRefundRecord struct {
 	Reason          string     `gorm:"column:reason;type:varchar(256);not null;comment:退款原因" json:"reason"`
 	UsedDays        *int       `gorm:"column:used_days;type:int;comment:会员卡已使用天数(按天折算依据)" json:"usedDays"`
 	UsedCredits     *int64     `gorm:"column:used_credits;type:bigint;comment:积分卡已消耗积分(按用量折算依据)" json:"usedCredits"`
-	Status          int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:退款状态" json:"status"`
+	Status          int8       `gorm:"column:status;type:tinyint;not null;index:idx_status;comment:退款状态" json:"status"`
 	Channel         *string    `gorm:"column:channel;type:varchar(16);comment:退款渠道" json:"channel"`
 	ChannelRefundNo string     `gorm:"column:channel_refund_no;type:varchar(64);comment:渠道退款流水号" json:"channelRefundNo"`
 	ApplyTime       time.Time  `gorm:"column:apply_time;type:datetime;not null;default:CURRENT_TIMESTAMP;comment:申请时间" json:"applyTime"`

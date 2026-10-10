@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"time"
@@ -125,7 +126,7 @@ func (s *RatingService) CreateRating(ctx context.Context, userID int64, form *bo
 	rating := &model.SysRating{
 		UserID:      userID,
 		PredLogID:   form.PredLogID,
-		AlgorithmID: predLog.AlgorithmID,
+		ModelID:     predLog.ModelID,
 		Rating:      int8(form.Rating),
 		Comment:     form.Comment,
 		Tags:        toJSONString(form.Tags),
@@ -202,7 +203,7 @@ func (s *RatingService) ListMyRatings(ctx context.Context, userID int64, pageNum
 	}
 	vos := make([]vo.MyRatingVO, 0, len(list))
 	for _, r := range list {
-		vos = append(vos, toMyRatingVO(&r.SysRating, r.AlgorithmName))
+		vos = append(vos, toMyRatingVO(&r.SysRating, r.ModelName))
 	}
 	return &vo.PageResult[vo.MyRatingVO]{List: vos, Total: total}, nil
 }
@@ -241,7 +242,7 @@ func (s *RatingService) ListPagedRatings(ctx context.Context, q *query.RatingPag
 	}
 	vos := make([]vo.RatingPageVO, 0, len(list))
 	for _, r := range list {
-		myVO := toMyRatingVO(&r.SysRating, r.AlgorithmName)
+		myVO := toMyRatingVO(&r.SysRating, r.ModelName)
 		v := vo.RatingPageVO{
 			MyRatingVO: myVO,
 			UserID:     r.UserID,
@@ -324,32 +325,31 @@ func (s *RatingService) GetRatingStats(ctx context.Context, startTime, endTime s
 	sort.Slice(positiveRanking, func(i, j int) bool { return positiveRanking[i].Count > positiveRanking[j].Count })
 	sort.Slice(negativeRanking, func(i, j int) bool { return negativeRanking[i].Count > negativeRanking[j].Count })
 
-	algoRows, err := s.ratingRepo.GetAlgorithmStats(ctx, startTime, endTime)
+	modelRows, err := s.ratingRepo.GetModelStats(ctx, startTime, endTime)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法统计失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询模型维度统计失败", err)
 	}
-	algoStats := make([]vo.AlgorithmRatingStat, 0, len(algoRows))
-	for _, row := range algoRows {
-		lowRate := float64(0)
-		if row.TotalRatings > 0 {
-			lowRate = float64(row.LowRatingCount) / float64(row.TotalRatings) * 100
+	modelStats := make([]vo.ModelStat, 0, len(modelRows))
+	for _, row := range modelRows {
+		stat := vo.ModelStat{
+			ModelID:       row.ModelID,
+			ModelName:     row.ModelName,
+			AverageRating: round2(row.AvgRating),
+			TotalRatings:  row.Total,
 		}
-		algoStats = append(algoStats, vo.AlgorithmRatingStat{
-			AlgorithmID:   row.AlgorithmID,
-			AlgorithmName: row.AlgorithmName,
-			AverageRating: row.AverageRating,
-			TotalRatings:  row.TotalRatings,
-			LowRatingRate: lowRate,
-		})
+		if row.Total > 0 {
+			stat.LowRatingRate = round2(float64(row.LowCount) * 100 / float64(row.Total))
+		}
+		modelStats = append(modelStats, stat)
 	}
 
 	result := &vo.RatingStatsVO{
 		TotalRatings:       total,
-		AverageRating:      avgRating,
+		AverageRating:      round2(avgRating),
 		RatingDistribution: distribution,
 		PositiveTagRanking: positiveRanking,
 		NegativeTagRanking: negativeRanking,
-		AlgorithmStats:     algoStats,
+		ModelStats:         modelStats,
 	}
 
 	if s.cache != nil {
@@ -413,14 +413,18 @@ func (s *RatingService) invalidateRatingStatsCache(ctx context.Context) {
 	_, _ = s.cache.Incr(ctx, cacheKeyRatingStatsGlobalVersion)
 }
 
+func round2(v float64) float64 {
+	return math.Round(v*100) / 100
+}
+
 func (s *RatingService) buildRatingDetailVO(ctx context.Context, r *model.SysRating) (*vo.RatingDetailVO, error) {
-	myVO := toMyRatingVO(r, s.findAlgorithmName(ctx, r.AlgorithmID))
+	myVO := toMyRatingVO(r, s.findModelName(ctx, r.ModelID))
 	v := &vo.RatingDetailVO{
 		RatingPageVO: vo.RatingPageVO{
 			MyRatingVO: myVO,
 			IsHidden:   int(r.IsHidden),
 		},
-		AlgorithmID: r.AlgorithmID,
+		ModelID: r.ModelID,
 	}
 	if r.IsAnonymous == 0 {
 		v.UserID = r.UserID
@@ -431,12 +435,12 @@ func (s *RatingService) buildRatingDetailVO(ctx context.Context, r *model.SysRat
 	return v, nil
 }
 
-func (s *RatingService) findAlgorithmName(ctx context.Context, algorithmID int64) string {
+func (s *RatingService) findModelName(ctx context.Context, modelID string) string {
 	var name string
 	s.db.WithContext(ctx).
-		Table("sys_algorithm").
-		Where("id = ? AND deleted = 0", algorithmID).
-		Select("name").
+		Table("sys_ai_model").
+		Where("model_id = ? AND deleted = 0", modelID).
+		Select("display_name").
 		Scan(&name)
 	return name
 }
@@ -455,18 +459,18 @@ func (s *RatingService) findUserinfo(ctx context.Context, userID int64) (string,
 	return row.Username, row.Avatar
 }
 
-func toMyRatingVO(r *model.SysRating, algorithmName string) vo.MyRatingVO {
+func toMyRatingVO(r *model.SysRating, modelName string) vo.MyRatingVO {
 	v := vo.MyRatingVO{
-		ID:            r.ID,
-		PredLogID:     r.PredLogID,
-		AlgorithmName: algorithmName,
-		Rating:        int(r.Rating),
-		IsAnonymous:   int(r.IsAnonymous),
-		Comment:       r.Comment,
-		Tags:          fromJSONString(r.Tags),
-		ImageUrls:     fromJSONString(r.ImageUrls),
-		AdminReply:    r.AdminReply,
-		CreateTime:    r.CreatedAt.Format(timeFormat),
+		ID:          r.ID,
+		PredLogID:   r.PredLogID,
+		ModelName:   modelName,
+		Rating:      int(r.Rating),
+		IsAnonymous: int(r.IsAnonymous),
+		Comment:     r.Comment,
+		Tags:        fromJSONString(r.Tags),
+		ImageUrls:   fromJSONString(r.ImageUrls),
+		AdminReply:  r.AdminReply,
+		CreateTime:  r.CreatedAt.Format(timeFormat),
 	}
 	if r.ReplyTime != nil {
 		v.ReplyTime = r.ReplyTime.Format(timeFormat)

@@ -1,5 +1,15 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -9,7 +19,9 @@ import com.pei.dehaze.model.entity.SysAiMemory;
 import com.pei.dehaze.model.entity.SysAiMessage;
 import com.pei.dehaze.model.entity.SysAiMessageFeedback;
 import com.pei.dehaze.model.form.AiFeedbackCreateForm;
-import org.junit.jupiter.api.BeforeEach;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,20 +33,6 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * AI 消息反馈服务单测：仅助手消息可反馈、30 天时效、标签白名单、软删行复活、点踩沉淀偏好记忆。
@@ -52,8 +50,10 @@ class AiFeedbackServiceTest {
 
     @Mock
     private SysAiMessageFeedbackMapper feedbackMapper;
+
     @Mock
     private SysAiMemoryMapper memoryMapper;
+
     @Mock
     private AiConversationService conversationService;
 
@@ -82,16 +82,17 @@ class AiFeedbackServiceTest {
     }
 
     private void assertBizError(ResultCode expected, Executable action) {
-        assertThat(assertThrows(BusinessException.class, action).getResultCode()).isEqualTo(expected);
+        assertThat(assertThrows(BusinessException.class, action).getResultCode())
+                .isEqualTo(expected);
     }
 
     @Test
     @DisplayName("仅助手消息可反馈：用户消息报 A0502")
     void feedbackOnUserMessageRejected() {
-        when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
-                .thenReturn(message("user", LocalDateTime.now()));
+        when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID)).thenReturn(message("user", LocalDateTime.now()));
 
-        assertBizError(ResultCode.DATA_STATE_NOT_ALLOW,
+        assertBizError(
+                ResultCode.DATA_STATE_NOT_ALLOW,
                 () -> service.submit(MESSAGE_ID, USER_ID, form(1, List.of("accurate"), null)));
         verify(feedbackMapper, never()).insert(any(SysAiMessageFeedback.class));
     }
@@ -101,8 +102,7 @@ class AiFeedbackServiceTest {
     void feedbackOnForeignMessageRejected() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID)).thenReturn(null);
 
-        assertBizError(ResultCode.RESOURCE_NOT_FOUND,
-                () -> service.submit(MESSAGE_ID, USER_ID, form(1, null, null)));
+        assertBizError(ResultCode.RESOURCE_NOT_FOUND, () -> service.submit(MESSAGE_ID, USER_ID, form(1, null, null)));
     }
 
     @Test
@@ -111,7 +111,8 @@ class AiFeedbackServiceTest {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now().minusDays(31)));
 
-        assertBizError(ResultCode.DATA_STATE_NOT_ALLOW,
+        assertBizError(
+                ResultCode.DATA_STATE_NOT_ALLOW,
                 () -> service.submit(MESSAGE_ID, USER_ID, form(1, List.of("accurate"), null)));
     }
 
@@ -121,8 +122,8 @@ class AiFeedbackServiceTest {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
 
-        assertBizError(ResultCode.PARAM_ERROR,
-                () -> service.submit(MESSAGE_ID, USER_ID, form(1, List.of("incorrect"), null)));
+        assertBizError(
+                ResultCode.PARAM_ERROR, () -> service.submit(MESSAGE_ID, USER_ID, form(1, List.of("incorrect"), null)));
     }
 
     @Test
@@ -132,10 +133,9 @@ class AiFeedbackServiceTest {
                 .thenReturn(message("assistant", LocalDateTime.now()));
 
         // 点踩取 -1（python Literal[1,-1]）；若沿用 0 会被评分白名单先拦，本用例将测不到标签规则（假绿）
-        assertBizError(ResultCode.PARAM_ERROR,
-                () -> service.submit(MESSAGE_ID, USER_ID, form(-1, List.of(), null)));
-        assertBizError(ResultCode.PARAM_ERROR,
-                () -> service.submit(MESSAGE_ID, USER_ID, form(-1, List.of("whatever"), null)));
+        assertBizError(ResultCode.PARAM_ERROR, () -> service.submit(MESSAGE_ID, USER_ID, form(-1, List.of(), null)));
+        assertBizError(
+                ResultCode.PARAM_ERROR, () -> service.submit(MESSAGE_ID, USER_ID, form(-1, List.of("whatever"), null)));
     }
 
     @Test
@@ -143,7 +143,8 @@ class AiFeedbackServiceTest {
     void likeWithoutTagInsertsInternalFeedback() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
 
         service.submit(MESSAGE_ID, USER_ID, form(1, null, "不错"));
 
@@ -162,15 +163,16 @@ class AiFeedbackServiceTest {
         SysAiMessageFeedback existing = new SysAiMessageFeedback();
         existing.setId(21L);
         existing.setDeleted(1L);
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(existing);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(existing);
         // 复活后服务会重新读取该行返回给调用方
         when(feedbackMapper.selectById(21L)).thenReturn(existing);
 
         service.submit(MESSAGE_ID, USER_ID, form(1, List.of("accurate"), null));
 
         // 标签以 JSON 数组字符串落库（与 python 存储口径一致）
-        verify(feedbackMapper).revive(eq(21L), eq(1), eq("[\"accurate\"]"), isNull(), eq(1L),
-                eq("qwen3-0.6b"), eq("internal"));
+        verify(feedbackMapper)
+                .revive(eq(21L), eq(1), eq("[\"accurate\"]"), isNull(), eq(1L), eq("qwen3-0.6b"), eq("internal"));
         verify(feedbackMapper, never()).insert(any(SysAiMessageFeedback.class));
     }
 
@@ -179,7 +181,8 @@ class AiFeedbackServiceTest {
     void dislikePersistsPreferenceMemory() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
 
         // 点踩在 python 侧是 Literal[1,-1] 中的 -1（0 不是合法取值，旧用例按 0 构造已与契约不符）
         service.submit(MESSAGE_ID, USER_ID, form(-1, List.of("too_long", "incorrect"), "太啰嗦了"));
@@ -201,7 +204,8 @@ class AiFeedbackServiceTest {
     void dislikeWithoutMappedTagSkipsMemory() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
 
         service.submit(MESSAGE_ID, USER_ID, form(-1, List.of("harmful"), null));
 
@@ -213,7 +217,8 @@ class AiFeedbackServiceTest {
     void likeDoesNotPersistMemory() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
 
         service.submit(MESSAGE_ID, USER_ID, form(1, List.of("detailed"), null));
 
@@ -226,7 +231,8 @@ class AiFeedbackServiceTest {
         SysAiMessageFeedback revoked = new SysAiMessageFeedback();
         revoked.setId(21L);
         revoked.setDeleted(1L);
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(revoked);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(revoked);
 
         assertThat(service.get(MESSAGE_ID, USER_ID)).isNull();
     }
@@ -234,14 +240,16 @@ class AiFeedbackServiceTest {
     @Test
     @DisplayName("撤销反馈：无反馈报 A0543，存在则软删")
     void revokeSoftDeletesExistingFeedback() {
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
         assertBizError(ResultCode.FEEDBACK_NOT_FOUND, () -> service.revoke(MESSAGE_ID, USER_ID));
 
         SysAiMessageFeedback existing = new SysAiMessageFeedback();
         existing.setId(21L);
         existing.setDeleted(0L);
         existing.setTags(List.of("accurate"));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(existing);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(existing);
 
         service.revoke(MESSAGE_ID, USER_ID);
 
@@ -260,7 +268,8 @@ class AiFeedbackServiceTest {
         existing.setUserId(USER_ID);
         existing.setRating(1);
         existing.setTags(List.of("accurate", "detailed"));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(existing);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(existing);
 
         assertThat(service.get(MESSAGE_ID, USER_ID).getTags()).containsExactly("accurate", "detailed");
     }
@@ -270,7 +279,8 @@ class AiFeedbackServiceTest {
     void likePathDoesNotTouchMemoryMapper() {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID))
                 .thenReturn(message("assistant", LocalDateTime.now()));
-        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID)).thenReturn(null);
+        when(feedbackMapper.selectByUserAndMessageIgnoringDeleted(MESSAGE_ID, USER_ID))
+                .thenReturn(null);
 
         service.submit(MESSAGE_ID, USER_ID, form(1, List.of("concise"), null));
 

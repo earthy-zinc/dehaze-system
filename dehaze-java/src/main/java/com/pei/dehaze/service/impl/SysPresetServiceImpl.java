@@ -11,12 +11,11 @@ import com.pei.dehaze.model.form.PresetForm;
 import com.pei.dehaze.model.vo.PresetVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysPresetService;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -27,23 +26,23 @@ public class SysPresetServiceImpl extends ServiceImpl<SysPresetMapper, SysPreset
     private static final String TYPE_CUSTOM = "custom";
 
     @Override
-    public Page<PresetVO> listPresets(Long algorithmId, int pageNum, int pageSize, Boolean isSystem) {
+    public Page<PresetVO> listPresets(String modelId, int pageNum, int pageSize, Boolean isSystem) {
         Long userId = SecurityUtils.getUserId();
 
         LambdaQueryWrapper<SysPreset> wrapper = new LambdaQueryWrapper<SysPreset>()
-                .eq(algorithmId != null, SysPreset::getAlgorithmId, algorithmId);
+                .eq(modelId != null && !modelId.isBlank(), SysPreset::getModelId, modelId);
 
         if (isSystem != null && isSystem) {
             // 仅系统预设
             wrapper.eq(SysPreset::getType, TYPE_SYSTEM);
         } else if (isSystem != null && !isSystem) {
             // 仅用户自定义预设
-            wrapper.eq(SysPreset::getType, TYPE_CUSTOM)
-                   .eq(SysPreset::getUserId, userId);
+            wrapper.eq(SysPreset::getType, TYPE_CUSTOM).eq(SysPreset::getUserId, userId);
         } else {
             // 全部：系统预设 + 用户自定义
             wrapper.and(w -> w.eq(SysPreset::getType, TYPE_SYSTEM)
-                    .or().eq(SysPreset::getType, TYPE_CUSTOM)
+                    .or()
+                    .eq(SysPreset::getType, TYPE_CUSTOM)
                     .eq(SysPreset::getUserId, userId));
         }
 
@@ -63,7 +62,7 @@ public class SysPresetServiceImpl extends ServiceImpl<SysPresetMapper, SysPreset
         SysPreset preset = new SysPreset();
         preset.setName(form.getName());
         preset.setType(TYPE_CUSTOM);
-        preset.setAlgorithmId(form.getAlgorithmId());
+        preset.setModelId(form.getModelId());
         preset.setParams(form.getParams());
         preset.setUserId(userId);
         preset.setIsDefault(form.getIsDefault() != null ? form.getIsDefault() : 0);
@@ -88,7 +87,7 @@ public class SysPresetServiceImpl extends ServiceImpl<SysPresetMapper, SysPreset
         }
 
         preset.setName(form.getName());
-        preset.setAlgorithmId(form.getAlgorithmId());
+        preset.setModelId(form.getModelId());
         preset.setParams(form.getParams());
         preset.setIsDefault(form.getIsDefault() != null ? form.getIsDefault() : preset.getIsDefault());
         this.updateById(preset);
@@ -119,7 +118,7 @@ public class SysPresetServiceImpl extends ServiceImpl<SysPresetMapper, SysPreset
         vo.setId(entity.getId());
         vo.setName(entity.getName());
         vo.setType(entity.getType());
-        vo.setAlgorithmId(entity.getAlgorithmId());
+        vo.setModelId(entity.getModelId());
         vo.setParams(entity.getParams());
         vo.setUserId(entity.getUserId());
         vo.setIsDefault(entity.getIsDefault());

@@ -1,9 +1,8 @@
 package com.pei.dehaze.service.importexport.model;
 
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
 
 /**
  * 导入结果

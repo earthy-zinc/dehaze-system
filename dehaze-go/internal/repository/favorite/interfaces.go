@@ -10,9 +10,9 @@ import (
 // FavoriteWithTarget 收藏记录+目标对象名称/缩略图联合结果
 type FavoriteWithTarget struct {
 	model.SysFavorite
-	AlgorithmName string `gorm:"column:algorithm_name" json:"algorithmName"`
-	DatasetName   string `gorm:"column:dataset_name" json:"datasetName"`
-	DatasetImg    string `gorm:"column:dataset_img" json:"datasetImg"`
+	ModelName   string `gorm:"column:model_name" json:"modelName"`
+	DatasetName string `gorm:"column:dataset_name" json:"datasetName"`
+	DatasetImg  string `gorm:"column:dataset_img" json:"datasetImg"`
 }
 
 // IFavoriteRepository 收藏数据访问接口

@@ -23,11 +23,16 @@ from app.repository.ai_mcp_namespace_repository import ai_mcp_namespace_reposito
 from app.repository.ai_mcp_server_repository import ai_mcp_server_repository
 from app.repository.ai_mcp_tool_repository import ai_mcp_tool_repository
 from app.service.ai_mcp.ai_mcp_server_service import ai_mcp_server_service
-from app.service.ai_mcp.mcp_health_checker import mcp_health_checker
+from app.service.ai_mcp.mcp_health_checker import McpHealthChecker
 
 pytestmark = pytest.mark.requires_db
 
 _PROBE_URL_RE = re.compile(r"https://example\.com/mcp")
+
+
+def _checker() -> McpHealthChecker:
+    """串行巡检：db fixture 与被测代码共用同一连接，并发 savepoint 会互相破坏。"""
+    return McpHealthChecker(concurrency=1)
 
 
 async def _probe_safe(_url: str) -> bool:
@@ -136,7 +141,7 @@ async def test_delete_server_blocked_when_agent_references_namespace(db, mock_re
 
     with pytest.raises(BusinessException) as exc:
         await ai_mcp_server_service.delete_server(db, created.id)
-    assert exc.value.code == ResultCode.DATA_BIND_EXISTS
+    assert exc.value.code == ResultCode.DATA_REFERENCED
     # 未被删除
     assert await ai_mcp_server_repository.get_by_id(db, created.id) is not None
 
@@ -511,8 +516,10 @@ class TestHealthChecker:
 
         with respx.mock(assert_all_mocked=True) as router:
             router.post(_PROBE_URL_RE).mock(return_value=httpx.Response(200))
-            await mcp_health_checker.check_all(db)
+            await _checker().check_all()
 
+        # 巡检走独立会话回写，需失效本地身份映射后再断言真实落库状态
+        db.expire_all()
         on_row = await ai_mcp_server_repository.get_by_id(db, enabled.id)
         assert on_row is not None
         assert on_row.health == "online"
@@ -530,8 +537,9 @@ class TestHealthChecker:
 
         with respx.mock(assert_all_mocked=True) as router:
             router.post(_PROBE_URL_RE).mock(side_effect=httpx.ConnectTimeout("timeout"))
-            await mcp_health_checker.check_all(db)
+            await _checker().check_all()
 
+        db.expire_all()
         row = await ai_mcp_server_repository.get_by_id(db, created.id)
         assert row is not None
         assert row.health == "offline"

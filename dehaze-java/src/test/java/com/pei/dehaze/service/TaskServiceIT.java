@@ -1,5 +1,7 @@
 package com.pei.dehaze.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -7,6 +9,9 @@ import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.security.model.SysUserDetails;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,12 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 任务服务集成测试
@@ -50,8 +49,9 @@ class TaskServiceIT {
         userDetails.setUserId(TEST_USER_ID);
         userDetails.setEnabled(true);
         userDetails.setAuthorities(Collections.emptySet());
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities()));
     }
 
     @AfterEach
@@ -136,9 +136,8 @@ class TaskServiceIT {
     void testGetTaskStatus_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getTaskStatus(nonExistentTaskId));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> taskService.getTaskStatus(nonExistentTaskId));
 
         assertTrue(exception.getMessage().contains("任务不存在"));
     }
@@ -151,9 +150,7 @@ class TaskServiceIT {
     @Test
     @DisplayName("查询任务状态-空任务ID抛出异常")
     void testGetTaskStatus_NullTaskId() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getTaskStatus(""));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.getTaskStatus(""));
 
         assertTrue(exception.getMessage().contains("任务ID不能为空"));
     }
@@ -266,9 +263,8 @@ class TaskServiceIT {
     void testGetDownloadUrl_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getDownloadUrl(nonExistentTaskId));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> taskService.getDownloadUrl(nonExistentTaskId));
 
         assertTrue(exception.getMessage().contains("任务不存在"));
     }
@@ -281,9 +277,7 @@ class TaskServiceIT {
     @Test
     @DisplayName("下载任务-空任务ID抛出异常")
     void testGetDownloadUrl_NullTaskId() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.getDownloadUrl(""));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.getDownloadUrl(""));
 
         assertTrue(exception.getMessage().contains("任务ID不能为空"));
     }
@@ -296,9 +290,7 @@ class TaskServiceIT {
     @Test
     @DisplayName("取消任务-空任务ID抛出异常")
     void testCancelTask_NullTaskId() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.cancelTask(""));
+        BusinessException exception = assertThrows(BusinessException.class, () -> taskService.cancelTask(""));
 
         assertTrue(exception.getMessage().contains("任务ID不能为空"));
     }
@@ -313,9 +305,8 @@ class TaskServiceIT {
     void testCancelTask_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> taskService.cancelTask(nonExistentTaskId));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> taskService.cancelTask(nonExistentTaskId));
 
         assertTrue(exception.getMessage().contains("任务不存在"));
     }

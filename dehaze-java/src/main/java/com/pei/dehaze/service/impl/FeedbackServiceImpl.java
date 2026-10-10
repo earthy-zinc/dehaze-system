@@ -30,12 +30,6 @@ import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.FeedbackService;
 import com.pei.dehaze.service.FileService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +41,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -62,12 +61,11 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
     private static final int REPLIER_TYPE_USER = 1;
     private static final int REPLIER_TYPE_ADMIN = 2;
 
-    private static final Map<Integer, String> STATUS_TO_STRING = Map.of(
-            1, "pending", 2, "processing", 3, "replied", 4, "closed");
-    private static final Map<String, Integer> STATUS_FROM_STRING = Map.of(
-            "pending", 1, "processing", 2, "replied", 3, "closed", 4);
-    private static final List<String> FEEDBACK_TYPES = Arrays.asList(
-            "suggestion", "bug", "experience", "complaint");
+    private static final Map<Integer, String> STATUS_TO_STRING =
+            Map.of(1, "pending", 2, "processing", 3, "replied", 4, "closed");
+    private static final Map<String, Integer> STATUS_FROM_STRING =
+            Map.of("pending", 1, "processing", 2, "replied", 3, "closed", 4);
+    private static final List<String> FEEDBACK_TYPES = Arrays.asList("suggestion", "bug", "experience", "complaint");
     private static final List<String> ALLOWED_IMAGE_EXTENSIONS = Arrays.asList(".jpg", ".jpeg", ".png", ".webp");
     private static final String CACHE_FEEDBACK_STATS = "feedback:stats";
 
@@ -144,15 +142,21 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         vo.setImages(parseList(feedback.getImages()));
         vo.setAssignedTime(feedback.getAssignedTime());
         vo.setCloseReason(feedback.getCloseReason());
-        List<SysFeedbackReply> replies = feedbackReplyMapper.selectList(
-                new LambdaQueryWrapper<SysFeedbackReply>()
-                        .eq(SysFeedbackReply::getFeedbackId, id)
-                        .orderByAsc(SysFeedbackReply::getId));
-        Map<Long, SysUser> userMap = replies.isEmpty() ? Collections.emptyMap()
-                : userMapper.selectBatchIds(replies.stream()
-                        .map(SysFeedbackReply::getReplierId).distinct().toList())
-                .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
-        vo.setReplies(replies.stream().map(r -> toReplyVO(r, userMap.get(r.getReplierId()))).toList());
+        List<SysFeedbackReply> replies = feedbackReplyMapper.selectList(new LambdaQueryWrapper<SysFeedbackReply>()
+                .eq(SysFeedbackReply::getFeedbackId, id)
+                .orderByAsc(SysFeedbackReply::getId));
+        Map<Long, SysUser> userMap = replies.isEmpty()
+                ? Collections.emptyMap()
+                : userMapper
+                        .selectBatchIds(replies.stream()
+                                .map(SysFeedbackReply::getReplierId)
+                                .distinct()
+                                .toList())
+                        .stream()
+                        .collect(Collectors.toMap(SysUser::getId, u -> u));
+        vo.setReplies(replies.stream()
+                .map(r -> toReplyVO(r, userMap.get(r.getReplierId())))
+                .toList());
         return vo;
     }
 
@@ -189,11 +193,15 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
     public Page<FeedbackPageVO> listPagedFeedback(FeedbackPageQuery query) {
         Page<SysFeedback> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysFeedback> wrapper = new LambdaQueryWrapper<SysFeedback>()
-                .eq(CharSequenceUtil.isNotBlank(query.getFeedbackType()),
-                        SysFeedback::getFeedbackType, query.getFeedbackType())
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getFeedbackType()),
+                        SysFeedback::getFeedbackType,
+                        query.getFeedbackType())
                 .eq(query.getStatus() != null, SysFeedback::getStatus, statusToInt(query.getStatus()))
-                .eq(CharSequenceUtil.isNotBlank(query.getRelatedModule()),
-                        SysFeedback::getRelatedModule, query.getRelatedModule())
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getRelatedModule()),
+                        SysFeedback::getRelatedModule,
+                        query.getRelatedModule())
                 .eq(query.getPriority() != null, SysFeedback::getPriority, query.getPriority())
                 .eq(query.getAssigneeId() != null, SysFeedback::getAssigneeId, query.getAssigneeId())
                 .ge(query.getStartTime() != null, SysFeedback::getCreateTime, query.getStartTime())
@@ -201,17 +209,24 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
                 .orderByDesc(SysFeedback::getId);
 
         if (CharSequenceUtil.isNotBlank(query.getKeywords())) {
-            List<Long> userIds = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+            List<Long> userIds = userMapper
+                    .selectList(new LambdaQueryWrapper<SysUser>()
                             .and(w -> w.like(SysUser::getUsername, query.getKeywords())
-                                    .or().like(SysUser::getNickname, query.getKeywords())))
-                    .stream().map(SysUser::getId).toList();
+                                    .or()
+                                    .like(SysUser::getNickname, query.getKeywords())))
+                    .stream()
+                    .map(SysUser::getId)
+                    .toList();
             if (userIds.isEmpty()) {
                 wrapper.and(w -> w.like(SysFeedback::getTitle, query.getKeywords())
-                        .or().like(SysFeedback::getContent, query.getKeywords()));
+                        .or()
+                        .like(SysFeedback::getContent, query.getKeywords()));
             } else {
                 wrapper.and(w -> w.like(SysFeedback::getTitle, query.getKeywords())
-                        .or().like(SysFeedback::getContent, query.getKeywords())
-                        .or().in(SysFeedback::getUserId, userIds));
+                        .or()
+                        .like(SysFeedback::getContent, query.getKeywords())
+                        .or()
+                        .in(SysFeedback::getUserId, userIds));
             }
         }
 
@@ -219,12 +234,14 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
         List<Long> allUserIds = page.getRecords().stream()
                 .flatMap(f -> Arrays.asList(f.getUserId(), f.getAssigneeId()).stream())
                 .filter(java.util.Objects::nonNull)
-                .distinct().toList();
-        Map<Long, SysUser> userMap = allUserIds.isEmpty() ? Collections.emptyMap()
-                : userMapper.selectBatchIds(allUserIds).stream()
-                .collect(Collectors.toMap(SysUser::getId, u -> u));
+                .distinct()
+                .toList();
+        Map<Long, SysUser> userMap = allUserIds.isEmpty()
+                ? Collections.emptyMap()
+                : userMapper.selectBatchIds(allUserIds).stream().collect(Collectors.toMap(SysUser::getId, u -> u));
         Page<FeedbackPageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        result.setRecords(page.getRecords().stream().map(f -> toPageVO(f, userMap)).toList());
+        result.setRecords(
+                page.getRecords().stream().map(f -> toPageVO(f, userMap)).toList());
         return result;
     }
 
@@ -398,23 +415,24 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
             java.time.LocalDateTime updateTime = (java.time.LocalDateTime) row.get("updateTime");
             java.time.LocalDateTime firstReplyTime = firstReplyMap.get(feedbackId);
             if (createTime != null && firstReplyTime != null) {
-                totalResponseTime += java.time.Duration.between(createTime, firstReplyTime).toMillis();
+                totalResponseTime +=
+                        java.time.Duration.between(createTime, firstReplyTime).toMillis();
                 responseCount++;
             }
             Integer statusVal = ((Number) row.get("status")).intValue();
-            if (statusVal != null && statusVal == FEEDBACK_STATUS_CLOSED
-                    && createTime != null && updateTime != null) {
-                totalCloseTime += java.time.Duration.between(createTime, updateTime).toMillis();
+            if (statusVal != null && statusVal == FEEDBACK_STATUS_CLOSED && createTime != null && updateTime != null) {
+                totalCloseTime +=
+                        java.time.Duration.between(createTime, updateTime).toMillis();
                 closeCount++;
             }
         }
         // 单位统一为小时（保留2位小数），与 Go/Python 对齐
-        stats.setAverageResponseTime(responseCount > 0
-                ? Math.round(totalResponseTime / (double) responseCount / 3_600_000.0 * 100) / 100.0
-                : 0.0);
-        stats.setAverageCloseTime(closeCount > 0
-                ? Math.round(totalCloseTime / (double) closeCount / 3_600_000.0 * 100) / 100.0
-                : 0.0);
+        stats.setAverageResponseTime(
+                responseCount > 0
+                        ? Math.round(totalResponseTime / (double) responseCount / 3_600_000.0 * 100) / 100.0
+                        : 0.0);
+        stats.setAverageCloseTime(
+                closeCount > 0 ? Math.round(totalCloseTime / (double) closeCount / 3_600_000.0 * 100) / 100.0 : 0.0);
 
         stats.setTopKeywords(topKeywords(startTime, endTime, 10));
         return stats;
@@ -552,7 +570,7 @@ public class FeedbackServiceImpl extends ServiceImpl<SysFeedbackMapper, SysFeedb
             String path = url.split("[?#]")[0].toLowerCase();
             boolean validExt = ALLOWED_IMAGE_EXTENSIONS.stream().anyMatch(path::endsWith);
             if (!validExt) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "图片格式不支持，仅支持jpg/jpeg/png/webp");
+                throw new BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH);
             }
         }
     }

@@ -8,17 +8,16 @@ import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.model.vo.ImageFeatureAnalysisVO;
 import com.pei.dehaze.model.vo.RecommendationReportVO;
 import com.pei.dehaze.model.vo.RecommendationRuleVO;
-import com.pei.dehaze.model.vo.RecommendedAlgorithmVO;
+import com.pei.dehaze.model.vo.RecommendedModelVO;
 import com.pei.dehaze.service.RecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Tag(name = "16.推荐管理")
 @RestController
@@ -36,12 +35,12 @@ public class RecommendationController {
         return Result.success(recommendationService.analyze(form));
     }
 
-    @Operation(summary = "获取算法推荐（F-REC-002）")
-    @GetMapping("/algorithms")
-    public Result<List<RecommendedAlgorithmVO>> getAlgorithmRecommendations(
+    @Operation(summary = "获取模型推荐（F-REC-002）")
+    @GetMapping("/models")
+    public Result<List<RecommendedModelVO>> getModelRecommendations(
             @Parameter(description = "推荐记录ID") @RequestParam(required = false) Long analysisId,
             @Parameter(description = "图像MD5") @RequestParam(required = false) String imageMd5) {
-        return Result.success(recommendationService.getAlgorithmRecommendations(analysisId, imageMd5));
+        return Result.success(recommendationService.getModelRecommendations(analysisId, imageMd5));
     }
 
     // ============ 反馈接口 ============

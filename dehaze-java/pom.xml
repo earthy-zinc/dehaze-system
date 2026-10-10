@@ -56,7 +56,37 @@
 
         <!-- Spring Dotenv -->
         <spring-dotenv.version>5.1.0</spring-dotenv.version>
+
+        <!-- API 文档（springdoc）：显式覆盖 knife4j 4.3.0 传递引入的 2.0.4，见下方 dependencyManagement -->
+        <springdoc.version>2.8.9</springdoc.version>
+
+        <!-- 代码格式化：Palantir 风格 = 4 空格缩进 + 120 列，与现有 IDEA 风格一致 -->
+        <spotless.version>2.46.1</spotless.version>
+        <palantir-java-format.version>2.99.0</palantir-java-format.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- knife4j 4.3.0 传递引入的 springdoc 2.0.4 与 Spring Boot 3.5（Spring Framework 6.2）不兼容：
+                 访问 /v3/api-docs 会因 ControllerAdviceBean 构造器签名变更抛 NoSuchMethodError，
+                 而内部 MCP 能力网关（dehaze-mcp-gateway）依赖该端点解析全部后端 API。 -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-common</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -414,6 +444,22 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- 代码格式化：mvn spotless:apply 改写源码，spotless:check 作为人工门禁。
+                 轮末自动格式化由 .codebuddy/hooks/verify-on-stop.mjs 按文件清单批量调用本插件。 -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <palantirJavaFormat>
+                            <version>${palantir-java-format.version}</version>
+                        </palantirJavaFormat>
+                        <removeUnusedImports/>
+                    </java>
+                </configuration>
             </plugin>
         </plugins>
     </build>

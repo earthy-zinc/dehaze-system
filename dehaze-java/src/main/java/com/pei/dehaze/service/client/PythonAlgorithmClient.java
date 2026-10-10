@@ -9,6 +9,9 @@ import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -18,10 +21,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.util.UUID;
 
 /**
  * Python 算法服务 HTTP 客户端 — 生产级实现
@@ -49,19 +48,28 @@ public class PythonAlgorithmClient {
 
     @PostConstruct
     public void init() {
-        log.info("PythonAlgorithmClient 初始化完成: baseUrl={}, connectTimeout={}ms, readTimeout={}ms, maxRetry={}",
-                props.getBaseUrl(), props.getConnectTimeout(), props.getReadTimeout(), props.getMaxRetry());
+        log.info(
+                "PythonAlgorithmClient 初始化完成: baseUrl={}, connectTimeout={}ms, readTimeout={}ms, maxRetry={}",
+                props.getBaseUrl(),
+                props.getConnectTimeout(),
+                props.getReadTimeout(),
+                props.getMaxRetry());
     }
 
     // ==================== 公开 API ====================
 
     /**
-     * 调用预测服务：发送雾图 → 返回去雾结果
+     * 提交图像任务：发送图像模型 slug + 图片来源 → 返回任务响应
      */
-    public JSONObject predict(Long algorithmId, String imageUrl, String params) {
+    public JSONObject predict(String model, Long fileId, String imageUrl, String params) {
         JSONObject body = new JSONObject();
-        body.set("algorithmId", algorithmId);
-        body.set("imageUrl", imageUrl);
+        body.set("model", model);
+        if (fileId != null) {
+            body.set("fileId", fileId);
+        }
+        if (imageUrl != null) {
+            body.set("imageUrl", imageUrl);
+        }
         if (params != null) {
             // Python 端约定 params 为 JSON 字符串，直接透传，不能解析成对象
             body.set("params", params);
@@ -72,9 +80,9 @@ public class PythonAlgorithmClient {
     /**
      * 调用评估服务：发送预测图+参考图 → 返回评估指标
      */
-    public JSONObject evaluate(Long algorithmId, String predUrl, String gtUrl) {
+    public JSONObject evaluate(String modelId, String predUrl, String gtUrl) {
         JSONObject body = new JSONObject();
-        body.set("algorithmId", algorithmId);
+        body.set("modelId", modelId);
         body.set("predUrl", predUrl);
         body.set("gtUrl", gtUrl);
         return pythonCallTimer.record(() -> postWithRetry(props.getEvaluatePath(), body.toString()));
@@ -92,10 +100,10 @@ public class PythonAlgorithmClient {
     }
 
     /**
-     * 查询预测任务状态（用于异步轮询）
+     * 查询图像任务状态（用于异步轮询）
      */
     public JSONObject getPredTaskStatus(Long taskId) {
-        return getWithRetry(props.getPredictPath() + "/" + taskId);
+        return getWithRetry(props.getImageTasksPath() + "/" + taskId);
     }
 
     /**
@@ -157,8 +165,8 @@ public class PythonAlgorithmClient {
         }
 
         // 全部重试失败
-        String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): " +
-                (lastException != null ? lastException.getMessage() : "未知错误");
+        String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): "
+                + (lastException != null ? lastException.getMessage() : "未知错误");
         log.error(msg, lastException);
         throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, msg);
     }
@@ -203,8 +211,8 @@ public class PythonAlgorithmClient {
             }
         }
 
-        String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): " +
-                (lastException != null ? lastException.getMessage() : "未知错误");
+        String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): "
+                + (lastException != null ? lastException.getMessage() : "未知错误");
         log.error(msg, lastException);
         throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, msg);
     }
@@ -227,7 +235,9 @@ public class PythonAlgorithmClient {
                 headers.set(HttpHeaders.AUTHORIZATION, authorization);
             }
         }
-        if (!headers.containsKey(HttpHeaders.AUTHORIZATION) && props.getApiKey() != null && !props.getApiKey().isBlank()) {
+        if (!headers.containsKey(HttpHeaders.AUTHORIZATION)
+                && props.getApiKey() != null
+                && !props.getApiKey().isBlank()) {
             headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + props.getApiKey());
         }
         return headers;
@@ -240,7 +250,9 @@ public class PythonAlgorithmClient {
         }
         // HTTP 4xx 是调用方问题，抛 BusinessException 不触发熔断
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回 4xx: " + response.getStatusCode() + " body=" + response.getBody());
+            throw new BusinessException(
+                    ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR,
+                    "Python 服务返回 4xx: " + response.getStatusCode() + " body=" + response.getBody());
         }
 
         String body = response.getBody();
@@ -255,7 +267,8 @@ public class PythonAlgorithmClient {
         if (!"00000".equals(code)) {
             String msg = json.getStr("msg", "未知错误");
             log.error("Python 服务业务异常: code={}, msg={}", code, msg);
-            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务错误 [" + code + "]: " + msg);
+            throw new BusinessException(
+                    ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务错误 [" + code + "]: " + msg);
         }
 
         return json.getJSONObject("data");

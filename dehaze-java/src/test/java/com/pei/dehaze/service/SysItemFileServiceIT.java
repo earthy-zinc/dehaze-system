@@ -1,5 +1,7 @@
 package com.pei.dehaze.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
@@ -9,20 +11,15 @@ import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.ItemFileUpdateForm;
 import com.pei.dehaze.model.vo.BatchDeleteResultVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import com.pei.dehaze.config.TestConfig;
 
 /**
  * 图片文件服务集成测试
@@ -39,7 +36,7 @@ import com.pei.dehaze.config.TestConfig;
  * @author earthy-zinc
  * @since 2025-01-10
  */
-@SpringBootTest(classes = TestConfig.class)
+@SpringBootTest
 @Transactional
 @DisplayName("图片文件服务集成测试")
 class SysItemFileServiceIT {
@@ -153,11 +150,10 @@ class SysItemFileServiceIT {
         Long nonExistentId = 999999L;
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> sysItemFileService.getImageById(nonExistentId)
-        );
-        assertTrue(exception.getMessage().contains("不存在") || exception.getMessage().contains("未找到"));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> sysItemFileService.getImageById(nonExistentId));
+        assertTrue(
+                exception.getMessage().contains("不存在") || exception.getMessage().contains("未找到"));
     }
 
     /**
@@ -275,10 +271,8 @@ class SysItemFileServiceIT {
         form.setDescription("更新描述");
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> sysItemFileService.updateItemFileInfo(nonExistentId, form)
-        );
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> sysItemFileService.updateItemFileInfo(nonExistentId, form));
         assertTrue(exception.getMessage().contains("不存在"));
     }
 
@@ -348,10 +342,8 @@ class SysItemFileServiceIT {
         Long nonExistentId = 999999L;
 
         // Act & Assert
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> sysItemFileService.deleteFile(nonExistentId)
-        );
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> sysItemFileService.deleteFile(nonExistentId));
         assertTrue(exception.getMessage().contains("不存在"));
     }
 

@@ -10,7 +10,6 @@ import com.pei.dehaze.model.form.MemberStatusForm;
 import com.pei.dehaze.model.query.GrowthLogQuery;
 import com.pei.dehaze.model.query.MemberPageQuery;
 import com.pei.dehaze.model.vo.*;
-
 import java.util.Map;
 
 public interface MemberService extends IService<SysMember> {
@@ -43,11 +42,7 @@ public interface MemberService extends IService<SysMember> {
 
     SignInCalendarVO getSignInCalendar(Integer year, Integer month);
 
-    void resetMonthlyQuota();
-
     void processExpiredMembers();
-
-    boolean deductQuota(Long userId, String quotaType, int amount);
 
     void initMember(Long userId);
 

@@ -2,26 +2,27 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
+import com.pei.dehaze.model.entity.SysAiModel;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.form.CompareReportForm;
 import com.pei.dehaze.model.vo.CompareReportResultVO;
-import com.pei.dehaze.service.CompareService;
-import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.CompareService;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Objects;
 
 @Slf4j
 @Service
@@ -32,7 +33,7 @@ public class CompareServiceImpl implements CompareService {
 
     private final SysPredLogMapper predLogMapper;
     private final SysEvalLogMapper evalLogMapper;
-    private final SysAlgorithmService algorithmService;
+    private final SysAiModelMapper aiModelMapper;
 
     @Override
     public CompareReportResultVO generateReport(CompareReportForm form) {
@@ -46,14 +47,13 @@ public class CompareServiceImpl implements CompareService {
         }
 
         SysEvalLog reportTask = new SysEvalLog();
-        reportTask.setAlgorithmId(predLog.getAlgorithmId());
-        reportTask.setPredUrl(predLog.getOriginUrl());
-        reportTask.setGtUrl(predLog.getPredUrl());
+        reportTask.setModelId(predLog.getModelId());
+        // pred=处理结果图、gt=原图（与 python 实现及效果对比后端实现文档一致）
+        reportTask.setPredUrl(predLog.getPredUrl());
+        reportTask.setGtUrl(predLog.getOriginUrl());
         reportTask.setStatus(LogStatusEnum.PROCESSING);
         reportTask.setTaskType("report");
-        reportTask.setResult(JSONUtil.createObj()
-                .set("logId", form.getLogId())
-                .toString());
+        reportTask.setResult(JSONUtil.createObj().set("logId", form.getLogId()).toString());
         evalLogMapper.insert(reportTask);
 
         generateReportAsync(reportTask.getId(), predLog);
@@ -77,15 +77,9 @@ public class CompareServiceImpl implements CompareService {
     @Async("datasetTaskExecutor")
     public void generateReportAsync(Long taskId, SysPredLog predLog) {
         try {
-            String algorithmName = "未知算法";
-            if (predLog.getAlgorithmId() != null) {
-                var algo = algorithmService.getById(predLog.getAlgorithmId());
-                if (algo != null) {
-                    algorithmName = algo.getName();
-                }
-            }
+            String modelName = resolveModelName(predLog.getModelId());
 
-            String html = buildReportHtml(predLog, algorithmName);
+            String html = buildReportHtml(predLog, modelName);
 
             JSONObject result = JSONUtil.createObj()
                     .set("reportHtml", html)
@@ -109,7 +103,17 @@ public class CompareServiceImpl implements CompareService {
         }
     }
 
-    private String buildReportHtml(SysPredLog predLog, String algorithmName) {
+    private String resolveModelName(String modelId) {
+        if (modelId == null) {
+            return "未知模型";
+        }
+        SysAiModel model = aiModelMapper.selectOne(new LambdaQueryWrapper<SysAiModel>()
+                .eq(SysAiModel::getModelId, modelId)
+                .last("LIMIT 1"));
+        return model != null && model.getDisplayName() != null ? model.getDisplayName() : "未知模型";
+    }
+
+    private String buildReportHtml(SysPredLog predLog, String modelName) {
         return """
                 <!DOCTYPE html>
                 <html lang="zh-CN">
@@ -142,7 +146,7 @@ public class CompareServiceImpl implements CompareService {
                     <div class="container">
                         <div class="header">
                             <h1>去雾效果对比报告</h1>
-                            <div class="meta">算法：%s | 生成时间：%s</div>
+                            <div class="meta">模型：%s | 生成时间：%s</div>
                         </div>
                         <div class="section">
                             <h2>图片对比</h2>
@@ -161,12 +165,12 @@ public class CompareServiceImpl implements CompareService {
                             <h2>处理信息</h2>
                             <div class="info-grid">
                                 <div class="info-item">
-                                    <div class="label">算法名称</div>
+                                    <div class="label">模型名称</div>
                                     <div class="value">%s</div>
                                 </div>
                                 <div class="info-item">
-                                    <div class="label">算法ID</div>
-                                    <div class="value">%d</div>
+                                    <div class="label">模型标识</div>
+                                    <div class="value">%s</div>
                                 </div>
                                 <div class="info-item">
                                     <div class="label">处理时间</div>
@@ -184,14 +188,13 @@ public class CompareServiceImpl implements CompareService {
                     </div>
                 </body>
                 </html>
-                """
-                .formatted(
-                        algorithmName, LocalDateTime.now().format(DT_FMT),
+                """.formatted(
+                        modelName,
+                        LocalDateTime.now().format(DT_FMT),
                         predLog.getOriginUrl() != null ? predLog.getOriginUrl() : "",
                         predLog.getPredUrl() != null ? predLog.getPredUrl() : "",
-                        algorithmName,
-                        predLog.getAlgorithmId() != null ? predLog.getAlgorithmId() : 0,
-                        predLog.getTime() != null ? predLog.getTime() : 0
-                );
+                        modelName,
+                        predLog.getModelId() != null ? predLog.getModelId() : "",
+                        predLog.getTime() != null ? predLog.getTime() : 0);
     }
 }

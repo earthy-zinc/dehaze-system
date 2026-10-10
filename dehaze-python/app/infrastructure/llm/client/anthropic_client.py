@@ -5,6 +5,7 @@ import logging
 from collections.abc import AsyncGenerator
 
 from app.infrastructure.llm.common import LlmStreamChunk, build_auth_headers
+from app.infrastructure.llm.tool_dialect import NATIVE_OPENAI
 from app.service.ai.service.trace_collector import record_wire_request, record_wire_response
 
 logger = logging.getLogger(__name__)
@@ -112,6 +113,7 @@ class AnthropicClient:
         tool_choice: str | None,
         temperature: float = 0.7,
         user_identity: tuple[str, str] | None = None,
+        tool_dialect: str = NATIVE_OPENAI,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """构建 Anthropic 原生请求并解析 SSE 流，聚合 tool_use 内容块为三段式 tool_call 事件。
 
@@ -225,7 +227,12 @@ class AnthropicClient:
                         partial = delta.get("partial_json", "")
                         if index in pending:
                             pending[index]["arguments"] += partial
-                            yield LlmStreamChunk(type="tool_call_delta", content=partial)
+                            # 必须带 tool_call_id：上层按 id 匹配暂存缓冲区，缺失会静默丢弃参数分片
+                            yield LlmStreamChunk(
+                                type="tool_call_delta",
+                                content=partial,
+                                tool_call_id=pending[index]["id"],
+                            )
                 elif etype == "content_block_stop":
                     index = event.get("index", 0)
                     if index in pending:

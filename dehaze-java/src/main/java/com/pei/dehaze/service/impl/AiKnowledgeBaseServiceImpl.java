@@ -28,17 +28,16 @@ import com.pei.dehaze.model.vo.LowQualityChunkVO;
 import com.pei.dehaze.model.vo.TestSetVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.AiKnowledgeBaseService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -50,6 +49,7 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
     private static final long KB_DETAIL_TTL = 1800L;
     /** 仅默认分页读写缓存，避免不同 size 互相污染 */
     private static final int DEFAULT_PAGE_SIZE = 10;
+
     private static final String ADMIN_LIST_CACHE_KEY = "kb:list:admin";
 
     private final SysKnowledgeDocumentMapper documentMapper;
@@ -69,7 +69,8 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
         Long userId = SecurityUtils.getUserId();
         String cacheKey = admin ? ADMIN_LIST_CACHE_KEY : "kb:list:" + userId;
         boolean cacheable = CharSequenceUtil.isBlank(query.getKeyword())
-                && query.getPageNum() == 1 && query.getPageSize() == DEFAULT_PAGE_SIZE;
+                && query.getPageNum() == 1
+                && query.getPageSize() == DEFAULT_PAGE_SIZE;
         if (cacheable) {
             Page<KbVO> cached = readPageCache(cacheKey);
             if (cached != null) {
@@ -81,9 +82,8 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
                 .orderByDesc(SysKnowledgeBase::getId);
         if (!admin) {
             // 可见性：公开库全员可见 + 本人私有库
-            wrapper.and(w -> w.eq(SysKnowledgeBase::getVisibility, "public")
-                    .or()
-                    .eq(SysKnowledgeBase::getCreateBy, userId));
+            wrapper.and(w ->
+                    w.eq(SysKnowledgeBase::getVisibility, "public").or().eq(SysKnowledgeBase::getCreateBy, userId));
         }
         Page<SysKnowledgeBase> page = this.page(new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
         Page<KbVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
@@ -165,14 +165,17 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
         }
         LambdaQueryWrapper<SysKnowledgeDocument> wrapper = new LambdaQueryWrapper<SysKnowledgeDocument>()
                 .eq(SysKnowledgeDocument::getKnowledgeBaseId, kbId)
-                .eq(CharSequenceUtil.isNotBlank(query.getProcessingStatus()),
-                        SysKnowledgeDocument::getProcessingStatus, query.getProcessingStatus())
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getProcessingStatus()),
+                        SysKnowledgeDocument::getProcessingStatus,
+                        query.getProcessingStatus())
                 .orderByDesc(SysKnowledgeDocument::getId);
-        Page<SysKnowledgeDocument> page = documentMapper.selectPage(
-                new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
+        Page<SysKnowledgeDocument> page =
+                documentMapper.selectPage(new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
         Page<KbDocumentVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         // 列表不返回大字段 content，详情单独返回（避免列表载荷过大）
-        result.setRecords(page.getRecords().stream().map(doc -> toDocumentVO(doc, false)).toList());
+        result.setRecords(
+                page.getRecords().stream().map(doc -> toDocumentVO(doc, false)).toList());
         return result;
     }
 
@@ -189,7 +192,8 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
     public Page<KbChunkVO> listChunks(Long documentId, int page, int size) {
         SysKnowledgeDocument doc = getDocumentOrRaise(documentId);
         checkDocumentReadable(doc);
-        Page<SysKnowledgeChunk> chunkPage = chunkMapper.selectPage(new Page<>(page, size),
+        Page<SysKnowledgeChunk> chunkPage = chunkMapper.selectPage(
+                new Page<>(page, size),
                 new LambdaQueryWrapper<SysKnowledgeChunk>()
                         .eq(SysKnowledgeChunk::getDocumentId, documentId)
                         .orderByAsc(SysKnowledgeChunk::getChunkIndex));
@@ -216,7 +220,8 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
     @Transactional(readOnly = true)
     public Page<TestSetVO> listTestSets(Long kbId, int page, int size) {
         getOrRaise(kbId);
-        Page<SysKnowledgeTestSet> result = testSetMapper.selectPage(new Page<>(page, size),
+        Page<SysKnowledgeTestSet> result = testSetMapper.selectPage(
+                new Page<>(page, size),
                 new LambdaQueryWrapper<SysKnowledgeTestSet>()
                         .eq(SysKnowledgeTestSet::getKnowledgeBaseId, kbId)
                         .orderByDesc(SysKnowledgeTestSet::getId));
@@ -278,25 +283,25 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
     }
 
     private void checkReadable(SysKnowledgeBase kb) {
-        if ("private".equals(kb.getVisibility())
-                && !kb.getCreateBy().equals(SecurityUtils.getUserId())) {
+        if ("private".equals(kb.getVisibility()) && !kb.getCreateBy().equals(SecurityUtils.getUserId())) {
             throw new BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权查看他人私有知识库");
         }
     }
 
     private void checkDocumentReadable(SysKnowledgeDocument doc) {
         SysKnowledgeBase kb = getOrRaise(doc.getKnowledgeBaseId());
-        if ("private".equals(kb.getVisibility())
-                && !kb.getCreateBy().equals(SecurityUtils.getUserId())) {
+        if ("private".equals(kb.getVisibility()) && !kb.getCreateBy().equals(SecurityUtils.getUserId())) {
             throw new BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权查看他人私有知识库的文档");
         }
     }
 
     private SysKnowledgeBase getByNameAndOwner(String name, Long ownerId) {
-        return this.getOne(new LambdaQueryWrapper<SysKnowledgeBase>()
-                .eq(SysKnowledgeBase::getName, name)
-                .eq(SysKnowledgeBase::getCreateBy, ownerId)
-                .orderByAsc(SysKnowledgeBase::getId), false);
+        return this.getOne(
+                new LambdaQueryWrapper<SysKnowledgeBase>()
+                        .eq(SysKnowledgeBase::getName, name)
+                        .eq(SysKnowledgeBase::getCreateBy, ownerId)
+                        .orderByAsc(SysKnowledgeBase::getId),
+                false);
     }
 
     /** 知识库变更后失效相关缓存：用户列表 + 详情 + 管理端全局列表（含新库） */
@@ -329,10 +334,8 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
             return null;
         }
         try {
-            Map<String, Object> node = objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {
-            });
-            List<KbVO> list = objectMapper.convertValue(node.get("list"), new TypeReference<List<KbVO>>() {
-            });
+            Map<String, Object> node = objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {});
+            List<KbVO> list = objectMapper.convertValue(node.get("list"), new TypeReference<List<KbVO>>() {});
             long total = node.get("total") instanceof Number number ? number.longValue() : 0L;
             Page<KbVO> page = new Page<>(1, DEFAULT_PAGE_SIZE, total);
             page.setRecords(list == null ? List.of() : list);
@@ -447,12 +450,11 @@ public class AiKnowledgeBaseServiceImpl extends ServiceImpl<SysKnowledgeBaseMapp
         List<Long> chunkIds = new ArrayList<>();
         if (CharSequenceUtil.isNotBlank(entity.getExpectedChunkIds())) {
             try {
-                List<Object> raw = objectMapper.readValue(entity.getExpectedChunkIds(),
-                        new TypeReference<List<Object>>() {
-                        });
+                List<Object> raw =
+                        objectMapper.readValue(entity.getExpectedChunkIds(), new TypeReference<List<Object>>() {});
                 for (Object item : raw) {
-                    chunkIds.add(item instanceof Number number ? number.longValue()
-                            : Long.parseLong(String.valueOf(item)));
+                    chunkIds.add(
+                            item instanceof Number number ? number.longValue() : Long.parseLong(String.valueOf(item)));
                 }
             } catch (Exception e) {
                 log.warn("测试集期望分块解析失败 id={}: {}", entity.getId(), e.getMessage());

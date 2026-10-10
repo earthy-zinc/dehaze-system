@@ -1,12 +1,11 @@
 package com.pei.dehaze.service.notify;
 
 import com.pei.dehaze.model.entity.SysMessage;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * 推送分发器：根据渠道可用性分发消息推送
@@ -27,8 +26,12 @@ public class MessagePushDispatcher {
             try {
                 channel.send(message, recipientId);
             } catch (Exception e) {
-                log.error("消息推送失败: channel={}, messageId={}, recipientId={}",
-                        channel.getChannelType(), message.getId(), recipientId, e);
+                log.error(
+                        "消息推送失败: channel={}, messageId={}, recipientId={}",
+                        channel.getChannelType(),
+                        message.getId(),
+                        recipientId,
+                        e);
             }
         }
     }

@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysRecommendationRule;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysRecommendationRuleMapper extends BaseMapper<SysRecommendationRule> {
-}
+public interface SysRecommendationRuleMapper extends BaseMapper<SysRecommendationRule> {}

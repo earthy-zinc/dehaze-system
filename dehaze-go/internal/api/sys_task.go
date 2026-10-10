@@ -41,8 +41,7 @@ var supportedTaskTypes = map[string]bool{
 	"dept_export": true, "dept_import": true,
 	"menu_export": true, "menu_import": true,
 	"dict_export": true, "dict_import": true,
-	"dataset_export":   true,
-	"algorithm_export": true, "algorithm_import": true,
+	"dataset_export": true,
 }
 
 func (api *SysTaskApi) CreateTask(c *gin.Context) {

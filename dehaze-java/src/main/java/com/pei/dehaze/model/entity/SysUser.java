@@ -74,5 +74,4 @@ public class SysUser extends BaseEntity {
      */
     @TableLogic(value = "0", delval = "id")
     private Long deleted;
-
 }

@@ -2,25 +2,24 @@ package com.pei.dehaze.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysRatingMapper;
 import com.pei.dehaze.mapper.SysRoleMapper;
 import com.pei.dehaze.mapper.SysUserRoleMapper;
-import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.entity.SysAiModel;
 import com.pei.dehaze.model.entity.SysRating;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.entity.SysUserRole;
 import com.pei.dehaze.model.form.MessageSendForm;
-import com.pei.dehaze.mapper.SysAlgorithmMapper;
 import com.pei.dehaze.service.LowRatingAlertService;
 import com.pei.dehaze.service.MessageService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
@@ -32,7 +31,7 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
     private static final double SEVERE_LOW_RATING_RATE = 20.0;
 
     private final SysRatingMapper ratingMapper;
-    private final SysAlgorithmMapper algorithmMapper;
+    private final SysAiModelMapper aiModelMapper;
     private final SysRoleMapper roleMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final MessageService messageService;
@@ -44,8 +43,8 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         }
         sendNormalAlert(rating);
         if (rating.getRating() == 1) {
-            if (countLowRatingsIn24Hours(rating.getAlgorithmId()) >= URGENT_LOW_RATING_COUNT) {
-                sendUrgentAlert(rating.getAlgorithmId());
+            if (countLowRatingsIn24Hours(rating.getModelId()) >= URGENT_LOW_RATING_COUNT) {
+                sendUrgentAlert(rating.getModelId());
             }
         }
         if (calcDailyGlobalLowRatingRate() > SEVERE_LOW_RATING_RATE) {
@@ -61,12 +60,10 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
             log.warn("低分告警：未找到管理员用户，跳过发送。ratingId={}", rating.getId());
             return false;
         }
-        SysAlgorithm algorithm = rating.getAlgorithmId() != null
-                ? algorithmMapper.selectById(rating.getAlgorithmId()) : null;
-        String algorithmName = algorithm != null ? algorithm.getName() : String.valueOf(rating.getAlgorithmId());
+        String modelName = resolveModelName(rating.getModelId());
         String title = "低分评价提醒";
-        String content = String.format("用户对算法[%s]的评分较低（%d星），处理记录ID：%d，请关注。",
-                algorithmName, rating.getRating(), rating.getPredLogId());
+        String content = String.format(
+                "用户对模型[%s]的评分较低（%d星），处理记录ID：%d，请关注。", modelName, rating.getRating(), rating.getPredLogId());
 
         MessageSendForm form = new MessageSendForm();
         form.setType("alert");
@@ -82,16 +79,15 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
     }
 
     @Override
-    public boolean sendUrgentAlert(Long algorithmId) {
+    public boolean sendUrgentAlert(String modelId) {
         List<Long> adminUserIds = getAdminUserIds();
         if (adminUserIds.isEmpty()) {
-            log.warn("紧急告警：未找到管理员用户，跳过发送。algorithmId={}", algorithmId);
+            log.warn("紧急告警：未找到管理员用户，跳过发送。modelId={}", modelId);
             return false;
         }
-        SysAlgorithm algorithm = algorithmMapper.selectById(algorithmId);
-        String algorithmName = algorithm != null ? algorithm.getName() : String.valueOf(algorithmId);
-        String title = "算法低分紧急告警";
-        String content = String.format("算法[%s]在24小时内收到%d条以上低分评价，请紧急关注。", algorithmName, URGENT_LOW_RATING_COUNT);
+        String modelName = resolveModelName(modelId);
+        String title = "模型低分紧急告警";
+        String content = String.format("模型[%s]在24小时内收到%d条以上低分评价，请紧急关注。", modelName, URGENT_LOW_RATING_COUNT);
 
         MessageSendForm form = new MessageSendForm();
         form.setType("critical_alert");
@@ -99,10 +95,10 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         form.setContent(content);
         form.setRecipientIds(adminUserIds);
         form.setBizModule("feedback");
-        form.setBizId(algorithmId + ":urgent");
+        form.setBizId(modelId + ":urgent");
         form.setPriority(1);
         messageService.send(form);
-        log.info("低分紧急告警已发送: algorithmId={}", algorithmId);
+        log.info("低分紧急告警已发送: modelId={}", modelId);
         return true;
     }
 
@@ -129,14 +125,24 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
         return true;
     }
 
-    private long countLowRatingsIn24Hours(Long algorithmId) {
-        if (algorithmId == null) {
+    private long countLowRatingsIn24Hours(String modelId) {
+        if (modelId == null) {
             return 0;
         }
         return ratingMapper.selectCount(new LambdaQueryWrapper<SysRating>()
-                .eq(SysRating::getAlgorithmId, algorithmId)
+                .eq(SysRating::getModelId, modelId)
                 .le(SysRating::getRating, LOW_RATING_THRESHOLD)
                 .ge(SysRating::getCreateTime, LocalDateTime.now().minusHours(24)));
+    }
+
+    private String resolveModelName(String modelId) {
+        if (modelId == null) {
+            return "";
+        }
+        SysAiModel model = aiModelMapper.selectOne(new LambdaQueryWrapper<SysAiModel>()
+                .eq(SysAiModel::getModelId, modelId)
+                .last("LIMIT 1"));
+        return model != null && model.getDisplayName() != null ? model.getDisplayName() : modelId;
     }
 
     private double calcDailyGlobalLowRatingRate() {
@@ -150,14 +156,14 @@ public class LowRatingAlertServiceImpl implements LowRatingAlertService {
     }
 
     private List<Long> getAdminUserIds() {
-        List<SysRole> roles = roleMapper.selectList(new LambdaQueryWrapper<SysRole>()
-                .in(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE, "ADMIN"));
+        List<SysRole> roles = roleMapper.selectList(
+                new LambdaQueryWrapper<SysRole>().in(SysRole::getCode, SystemConstants.ROOT_ROLE_CODE, "ADMIN"));
         if (roles.isEmpty()) {
             return Collections.emptyList();
         }
         List<Long> roleIds = roles.stream().map(SysRole::getId).toList();
-        List<SysUserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                .in(SysUserRole::getRoleId, roleIds));
+        List<SysUserRole> userRoles =
+                userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getRoleId, roleIds));
         return userRoles.stream().map(SysUserRole::getUserId).distinct().toList();
     }
 }

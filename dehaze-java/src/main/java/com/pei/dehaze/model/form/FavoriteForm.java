@@ -9,7 +9,7 @@ import lombok.Data;
 @Schema(description = "添加收藏表单")
 public class FavoriteForm {
 
-    @Schema(description = "收藏对象类型(algorithm/result/dataset/image/preset)", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "收藏对象类型(model/result/dataset/image/preset)", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "收藏对象类型不能为空")
     private String targetType;
 

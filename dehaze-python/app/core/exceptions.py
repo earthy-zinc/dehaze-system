@@ -30,6 +30,9 @@ class BusinessException(Exception):
             # 如果第一个参数是 ResultCode
             self.code = code_or_message
             self.message = message or code_or_message.msg
+        # args 只保留面向用户的文案：否则 str(exc) 会输出 (枚举, 文案) 元组 repr，
+        # 把 ResultCode 枚举与内部对象泄漏进任务 errorMessage / 对外响应
+        super().__init__(self.message)
 
 
 class TaskCancelledException(BusinessException):

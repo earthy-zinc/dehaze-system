@@ -2,10 +2,9 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.Map;
+import lombok.Data;
 
 /**
  * AI 会话响应（含管理端审计视角附加字段）

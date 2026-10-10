@@ -45,7 +45,7 @@ func (r *RatingRepository) FindByPredLogID(ctx context.Context, predLogID int64)
 	return &rating, err
 }
 
-func (r *RatingRepository) FindPageMy(ctx context.Context, userID int64, pageNum, pageSize int) ([]RatingWithAlgorithm, int64, error) {
+func (r *RatingRepository) FindPageMy(ctx context.Context, userID int64, pageNum, pageSize int) ([]RatingWithModel, int64, error) {
 	if pageNum <= 0 {
 		pageNum = 1
 	}
@@ -55,8 +55,8 @@ func (r *RatingRepository) FindPageMy(ctx context.Context, userID int64, pageNum
 
 	db := r.db.WithContext(ctx).
 		Table("sys_rating r").
-		Select("r.*, a.name as algorithm_name").
-		Joins("LEFT JOIN sys_algorithm a ON r.algorithm_id = a.id").
+		Select("r.*, m.display_name as model_name").
+		Joins("LEFT JOIN sys_ai_model m ON r.model_id = m.model_id AND m.deleted = 0").
 		Where("r.user_id = ? AND r.deleted = 0", userID)
 
 	var total int64
@@ -64,14 +64,14 @@ func (r *RatingRepository) FindPageMy(ctx context.Context, userID int64, pageNum
 		return nil, 0, err
 	}
 
-	var list []RatingWithAlgorithm
+	var list []RatingWithModel
 	err := db.Order("r.id DESC").
 		Offset((pageNum - 1) * pageSize).Limit(pageSize).
 		Scan(&list).Error
 	return list, total, err
 }
 
-func (r *RatingRepository) FindPage(ctx context.Context, q *query.RatingPageQuery) ([]RatingWithUserAndAlgorithm, int64, error) {
+func (r *RatingRepository) FindPage(ctx context.Context, q *query.RatingPageQuery) ([]RatingWithUserAndModel, int64, error) {
 	pageNum := q.PageNum
 	if pageNum <= 0 {
 		pageNum = 1
@@ -83,17 +83,17 @@ func (r *RatingRepository) FindPage(ctx context.Context, q *query.RatingPageQuer
 
 	db := r.db.WithContext(ctx).
 		Table("sys_rating r").
-		Select("r.*, u.username, u.avatar as user_avatar, a.name as algorithm_name").
+		Select("r.*, u.username, u.avatar as user_avatar, m.display_name as model_name").
 		Joins("LEFT JOIN sys_user u ON r.user_id = u.id").
-		Joins("LEFT JOIN sys_algorithm a ON r.algorithm_id = a.id").
+		Joins("LEFT JOIN sys_ai_model m ON r.model_id = m.model_id AND m.deleted = 0").
 		Where("r.deleted = 0")
 
 	if q.Keywords != "" {
 		kw := "%" + q.Keywords + "%"
 		db = db.Where("u.username LIKE ?", kw)
 	}
-	if q.AlgorithmID != nil {
-		db = db.Where("r.algorithm_id = ?", *q.AlgorithmID)
+	if q.ModelID != "" {
+		db = db.Where("r.model_id = ?", q.ModelID)
 	}
 	if q.RatingMin != nil {
 		db = db.Where("r.rating >= ?", *q.RatingMin)
@@ -120,7 +120,7 @@ func (r *RatingRepository) FindPage(ctx context.Context, q *query.RatingPageQuer
 		return nil, 0, err
 	}
 
-	var list []RatingWithUserAndAlgorithm
+	var list []RatingWithUserAndModel
 	err := db.Order("r.id DESC").
 		Offset((pageNum - 1) * pageSize).Limit(pageSize).
 		Scan(&list).Error
@@ -176,27 +176,6 @@ func (r *RatingRepository) GetStats(ctx context.Context, startTime, endTime stri
 	return total, avg, distribution, nil
 }
 
-func (r *RatingRepository) GetAlgorithmStats(ctx context.Context, startTime, endTime string) ([]AlgorithmRatingStatRow, error) {
-	db := r.db.WithContext(ctx).
-		Table("sys_rating r").
-		Select(`r.algorithm_id, a.name as algorithm_name,
-			AVG(r.rating) as average_rating,
-			COUNT(*) as total_ratings,
-			SUM(CASE WHEN r.rating <= 2 THEN 1 ELSE 0 END) as low_rating_count`).
-		Joins("LEFT JOIN sys_algorithm a ON r.algorithm_id = a.id").
-		Where("r.deleted = 0")
-	if startTime != "" {
-		db = db.Where("r.create_time >= ?", startTime)
-	}
-	if endTime != "" {
-		db = db.Where("r.create_time <= ?", endTime)
-	}
-
-	var rows []AlgorithmRatingStatRow
-	err := db.Group("r.algorithm_id, a.name").Scan(&rows).Error
-	return rows, err
-}
-
 func (r *RatingRepository) GetTagRanking(ctx context.Context, startTime, endTime string) ([]TagCountRow, error) {
 	db := r.db.WithContext(ctx).
 		Table("sys_rating").
@@ -232,6 +211,27 @@ func (r *RatingRepository) GetTagRanking(ctx context.Context, startTime, endTime
 	return result, nil
 }
 
+func (r *RatingRepository) GetModelStats(ctx context.Context, startTime, endTime string) ([]ModelStatRow, error) {
+	db := r.db.WithContext(ctx).
+		Table("sys_rating r").
+		Select("r.model_id AS model_id, COALESCE(m.display_name, '') AS model_name, " +
+			"AVG(r.rating) AS avg_rating, COUNT(*) AS total, " +
+			"SUM(CASE WHEN r.rating <= 2 THEN 1 ELSE 0 END) AS low_count").
+		Joins("LEFT JOIN sys_ai_model m ON r.model_id = m.model_id AND m.deleted = 0").
+		Where("r.deleted = 0").
+		Group("r.model_id, m.display_name")
+	if startTime != "" {
+		db = db.Where("r.create_time >= ?", startTime)
+	}
+	if endTime != "" {
+		db = db.Where("r.create_time <= ?", endTime)
+	}
+
+	var rows []ModelStatRow
+	err := db.Scan(&rows).Error
+	return rows, err
+}
+
 func (r *RatingRepository) GetRatingCountByValue(ctx context.Context, rating int, startTime, endTime string) (int64, error) {
 	db := r.db.WithContext(ctx).
 		Model(&model.SysRating{}).
@@ -247,11 +247,11 @@ func (r *RatingRepository) GetRatingCountByValue(ctx context.Context, rating int
 	return count, err
 }
 
-func (r *RatingRepository) CountLowRatingsByAlgorithmSince(ctx context.Context, algorithmID int64, since time.Time) (int64, error) {
+func (r *RatingRepository) CountLowRatingsByModelSince(ctx context.Context, modelID string, since time.Time) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
 		Model(&model.SysRating{}).
-		Where("algorithm_id = ? AND rating <= 2 AND deleted = 0 AND create_time >= ?", algorithmID, since).
+		Where("model_id = ? AND rating <= 2 AND deleted = 0 AND create_time >= ?", modelID, since).
 		Count(&count).Error
 	return count, err
 }
@@ -275,7 +275,7 @@ func (r *RatingRepository) GetTodayLowRatingCounts(ctx context.Context) (int64, 
 	return lowCount, totalCount, nil
 }
 
-func (r *RatingRepository) GetStatsByAlgorithmID(ctx context.Context, algorithmID int64) (int64, float64, map[int8]int64, error) {
+func (r *RatingRepository) GetStatsByModelID(ctx context.Context, modelID string) (int64, float64, map[int8]int64, error) {
 	type row struct {
 		Rating int8  `gorm:"column:rating"`
 		Count  int64 `gorm:"column:count"`
@@ -284,7 +284,7 @@ func (r *RatingRepository) GetStatsByAlgorithmID(ctx context.Context, algorithmI
 	err := r.db.WithContext(ctx).
 		Model(&model.SysRating{}).
 		Select("rating, COUNT(*) as count").
-		Where("algorithm_id = ? AND is_hidden = 0 AND deleted = 0", algorithmID).
+		Where("model_id = ? AND is_hidden = 0 AND deleted = 0", modelID).
 		Group("rating").
 		Scan(&rows).Error
 	if err != nil {

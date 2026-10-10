@@ -112,9 +112,9 @@ def _patch_resume_deps(db, monkeypatch, interrupt, graph=None, confirmation=None
 
     if confirmation is not None:
 
-        async def _handle(conv_id, msg_id, user_id, confirmed, algorithm_id):
+        async def _handle(conv_id, msg_id, user_id, confirmed, model):
             conf["confirmed"] = confirmed
-            conf["algorithm_id"] = algorithm_id
+            conf["model_id"] = model
 
         monkeypatch.setattr(
             "app.service.ai.service.algorithm_recommend_service.handle_user_confirmation", _handle
@@ -144,16 +144,16 @@ def _assert_resume_succeeded(ih, emitter, finalized):
 async def test_resume_confirm_injects_user_choice(db, monkeypatch):
     graph = _Graph()
     interrupt = _confirm_interrupt(
-        ConfirmKind.ALGORITHM_RECOMMEND, algorithms=[1, 2, 3], artifactId=9
+        ConfirmKind.ALGORITHM_RECOMMEND, models=["aecrnet", "aodnet", "c2pnet-its"], artifactId=9
     )
     service, ih, emitter, finalized, conf = _patch_resume_deps(
         db, monkeypatch, interrupt, graph=graph, confirmation=True
     )
 
-    result = await service.resume(10, 1, 5, {"confirmed": True, "algorithmId": 2})
+    result = await service.resume(10, 1, 5, {"confirmed": True, "modelId": "aodnet"})
 
-    assert conf == {"confirmed": True, "algorithm_id": 2}
-    assert graph.resumed == {"confirmed": True, "algorithmId": 2}
+    assert conf == {"confirmed": True, "model_id": "aodnet"}
+    assert graph.resumed == {"confirmed": True, "modelId": "aodnet"}
     assert graph.config == {"configurable": {"thread_id": "10:5"}}
     assert result["final_response"] == "按你的选择执行"
     _assert_resume_succeeded(ih, emitter, finalized)

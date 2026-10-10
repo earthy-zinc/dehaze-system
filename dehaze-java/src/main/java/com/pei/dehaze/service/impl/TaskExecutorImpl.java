@@ -14,16 +14,15 @@ import com.pei.dehaze.service.strategy.TaskCancelledException;
 import com.pei.dehaze.service.strategy.TaskResult;
 import com.pei.dehaze.service.strategy.TaskStrategy;
 import com.pei.dehaze.service.strategy.TaskStrategyFactory;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 任务执行器实现（策略模式 + MQ 统一路径）
@@ -51,11 +50,12 @@ public class TaskExecutorImpl implements TaskExecutor {
      */
     private final ObjectProvider<RabbitMQPublisher> publisherProvider;
 
-    public TaskExecutorImpl(SysTaskMapper sysTaskMapper,
-                            TaskStrategyFactory strategyFactory,
-                            RedisTemplate<String, Object> redisTemplate,
-                            WebSocketMessageRelay wsMessageRelay,
-                            ObjectProvider<RabbitMQPublisher> publisherProvider) {
+    public TaskExecutorImpl(
+            SysTaskMapper sysTaskMapper,
+            TaskStrategyFactory strategyFactory,
+            RedisTemplate<String, Object> redisTemplate,
+            WebSocketMessageRelay wsMessageRelay,
+            ObjectProvider<RabbitMQPublisher> publisherProvider) {
         this.sysTaskMapper = sysTaskMapper;
         this.strategyFactory = strategyFactory;
         this.redisTemplate = redisTemplate;
@@ -86,8 +86,12 @@ public class TaskExecutorImpl implements TaskExecutor {
         messageBody.put("task_type", sysTask.getTaskType());
         String payload = JSONUtil.toJsonStr(messageBody);
         publisher.publish("task.export", payload, traceId);
-        log.debug("任务已发布到 MQ: dbTaskId={}, taskId={}, type={}, traceId={}",
-                taskId, sysTask.getTaskId(), sysTask.getTaskType(), traceId);
+        log.debug(
+                "任务已发布到 MQ: dbTaskId={}, taskId={}, type={}, traceId={}",
+                taskId,
+                sysTask.getTaskId(),
+                sysTask.getTaskType(),
+                traceId);
     }
 
     @Override
@@ -114,9 +118,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
             // 创建进度回调（传入 relay 用于 WebSocket 推送 + userId 用于用户定向推送）
             ProgressCallback callback = new DefaultProgressCallback(
-                    taskId, sysTask.getTaskId(), sysTask.getCreateBy(),
-                    sysTaskMapper, redisTemplate, wsMessageRelay
-            );
+                    taskId, sysTask.getTaskId(), sysTask.getCreateBy(), sysTaskMapper, redisTemplate, wsMessageRelay);
 
             // 解析参数为 Map
             Map<String, Object> params = buildParams(form);

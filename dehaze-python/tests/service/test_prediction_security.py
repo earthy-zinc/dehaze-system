@@ -1,10 +1,10 @@
-"""去雾处理模块安全与状态机回归（F-REC-002 审查修复）。
+"""图像任务安全与状态机回归（统一模型口径）。
 
-覆盖审查发现：任务归属越权（查询/取消/日志列表）、取消后结果复活竞态、
-推理超时、配额扣减顺序、批量上限权威来源、对抗性语料、SSRF/本地路径防护。
+覆盖：任务归属越权（查询/取消/列表）、取消后结果复活竞态、终态不可覆盖、
+模型路由拒绝（不存在/停用/类型不符）、输入图片来源防护（本地路径 / 非 http / SSRF）。
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -13,19 +13,23 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_log import SysPredLog
 from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import pred_log_repository
-from app.service.prediction import inference_executor
+from app.service.prediction import prediction_service as prediction_module
 from app.service.prediction.image_source import _assert_public_host, fetch_image
-from app.service.prediction.inference_executor import run_dehaze
 from app.service.prediction.prediction_service import prediction_service
 
 pytestmark = pytest.mark.requires_db
+
+# 种子图像模型：aecrnet（启用）/ daclipuir（停用）/ qwen3-0.6b（chat，类型不符）
+MODEL_ENABLED = "aecrnet"
+MODEL_DISABLED = "daclipuir"
+MODEL_WRONG_TYPE = "qwen3-0.6b"
 
 
 async def _create_log(
     db, create_by: int | None, status: int = LogStatus.PROCESSING.value
 ) -> SysPredLog:
     log = SysPredLog(
-        algorithm_id=1,
+        model_id=MODEL_ENABLED,
         origin_md5="0" * 32,
         origin_url="http://example.com/a.png",
         pred_md5="",
@@ -101,12 +105,12 @@ async def test_terminal_state_not_overwritten(db):
     """终态（failed）不可再被流转覆盖"""
     log = await _create_log(db, create_by=101)
     ok = await pred_log_repository.update_status(
-        db, log.id, LogStatus.FAILED.value, "算法执行失败", 5
+        db, log.id, LogStatus.FAILED.value, "推理服务失败", 5
     )
     assert ok is True
 
     again = await pred_log_repository.update_status(
-        db, log.id, LogStatus.FAILED.value, "算法执行失败", 5
+        db, log.id, LogStatus.FAILED.value, "推理服务失败", 5
     )
     assert again is False
 
@@ -116,37 +120,31 @@ async def test_terminal_state_not_overwritten(db):
     assert resurrect is False
 
 
-# ===== 推理超时（30s 阈值） =====
+# ===== 模型路由：不可用即拒绝，且不触发计费预校验 =====
 
 
-async def test_inference_timeout_raises_business_error(monkeypatch):
-    """推理超过阈值 → BusinessException（超时口径），任务按失败处理并回滚配额"""
-
-    def _slow_sync(import_path, model_path, image_bytes):
-        import time
-
-        time.sleep(2)
-
-    monkeypatch.setattr(inference_executor, "INFERENCE_TIMEOUT_SECONDS", 0.2)
-    monkeypatch.setattr(inference_executor, "_run_dehaze_sync", _slow_sync)
+@pytest.mark.parametrize("model", [MODEL_DISABLED, MODEL_WRONG_TYPE, "no-such-model"])
+async def test_predict_rejects_unavailable_image_model(db, model, monkeypatch):
+    """停用 / 类型不符 / 不存在的模型 → A0400，且在扣费预校验之前拒绝"""
+    ensure_balance = AsyncMock()
+    monkeypatch.setattr(prediction_module.image_billing_service, "ensure_balance", ensure_balance)
 
     with pytest.raises(BusinessException) as ei:
-        await run_dehaze("algorithm.DCP.run", "", __import__("io").BytesIO(b"x"))
-    assert ei.value.code == ResultCode.SYSTEM_EXECUTION_ERROR
-    assert "超时" in ei.value.message
+        await prediction_service.predict(
+            model=model, image_url="https://cdn.example.com/a.png", user_id=101
+        )
+    assert ei.value.code == ResultCode.PARAM_ERROR
+    ensure_balance.assert_not_awaited()
 
 
-# ===== 对抗性语料：损坏图片走失败路径（不崩、不返回伪结果） =====
-
-
-async def test_corrupted_image_raises_clean_business_error():
-    """随机字节作为图片 → 算法执行失败（包装为业务错误，截断内部细节）"""
-    import io as _io
-
-    garbage = _io.BytesIO(b"\x00\xff\xfe" * 512)
+async def test_predict_missing_file_raises_not_found(db, monkeypatch):
+    """fileId 指向不存在的文件 → A0401"""
+    monkeypatch.setattr(prediction_module.image_billing_service, "ensure_balance", AsyncMock())
     with pytest.raises(BusinessException) as ei:
-        await run_dehaze("algorithm.DCP.run", "", garbage)
-    assert ei.value.code == ResultCode.SYSTEM_EXECUTION_ERROR
+        await prediction_service.predict(
+            model=MODEL_ENABLED, image_url="", user_id=101, file_id=99999999
+        )
+    assert ei.value.code == ResultCode.RESOURCE_NOT_FOUND
 
 
 # ===== fetch_image：本地路径 / SSRF 防护 =====
@@ -182,56 +180,3 @@ async def test_assert_public_host_blocks_internal_targets(url):
     """SSRF 防护：回环/私网/链路本地/未指定地址一律拒绝"""
     with pytest.raises(BusinessException):
         await _assert_public_host(url)
-
-
-# ===== predict：算法不存在不扣配额（扣减顺序修复） =====
-
-
-async def test_predict_missing_algorithm_skips_quota_deduct(db):
-    from app.service.member import quota_service as quota_module
-
-    deduct = AsyncMock()
-    with (
-        patch.object(quota_module.member_quota_service, "check_and_deduct_quota", deduct),
-        pytest.raises(BusinessException) as ei,
-    ):
-        await prediction_service.predict(
-            algorithm_id=99999999,
-            image_url="http://example.com/a.png",
-            user_id=101,
-        )
-    assert ei.value.code == ResultCode.RESOURCE_NOT_FOUND
-    deduct.assert_not_awaited()
-
-
-# ===== 批量上限：benefit.batch_limit 为唯一权威（去除 20 张硬编码） =====
-
-
-def _batch_items(n: int):
-    from app.models.schema.prediction import BatchPredictionItem
-
-    return [BatchPredictionItem(fileId=i) for i in range(1, n + 1)]
-
-
-async def test_batch_beyond_20_allowed_for_high_tier(db):
-    """高等级权益 batch_limit=1000 时提交 21 张不再被硬编码拦截"""
-    from app.repository.member_benefit_repository import member_benefit_repository
-    from app.repository.member_repository import member_repository
-    from tests.stubs.factories import make_benefit, make_member
-
-    member = make_member(level_code="level_3")
-    benefit = make_benefit(batch_limit=1000)
-    predict_mock = AsyncMock(return_value={"logId": 1, "status": 1})
-
-    with (
-        patch.object(member_repository, "get_by_user_id", AsyncMock(return_value=member)),
-        patch.object(
-            member_benefit_repository, "get_by_level_code", AsyncMock(return_value=benefit)
-        ),
-        patch.object(prediction_service, "predict", predict_mock),
-    ):
-        results = await prediction_service.batch_predict(
-            1, _batch_items(21), user_id=101, skip_quota_check=False
-        )
-    assert len(results) == 21
-    assert predict_mock.await_count == 21

@@ -8,30 +8,22 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 )
 
-type RatingWithAlgorithm struct {
+type RatingWithModel struct {
 	model.SysRating
-	AlgorithmName string `gorm:"column:algorithm_name" json:"algorithmName"`
+	ModelName string `gorm:"column:model_name" json:"modelName"`
 }
 
-type RatingWithUserAndAlgorithm struct {
+type RatingWithUserAndModel struct {
 	model.SysRating
-	Username      string `gorm:"column:username" json:"username"`
-	UserAvatar    string `gorm:"column:user_avatar" json:"userAvatar"`
-	AlgorithmName string `gorm:"column:algorithm_name" json:"algorithmName"`
+	Username   string `gorm:"column:username" json:"username"`
+	UserAvatar string `gorm:"column:user_avatar" json:"userAvatar"`
+	ModelName  string `gorm:"column:model_name" json:"modelName"`
 }
 
 type FeedbackWithUser struct {
 	model.SysFeedback
 	Username     string `gorm:"column:username" json:"username"`
 	AssigneeName string `gorm:"column:assignee_name" json:"assigneeName"`
-}
-
-type AlgorithmRatingStatRow struct {
-	AlgorithmID    int64   `gorm:"column:algorithm_id" json:"algorithmId"`
-	AlgorithmName  string  `gorm:"column:algorithm_name" json:"algorithmName"`
-	AverageRating  float64 `gorm:"column:average_rating" json:"averageRating"`
-	TotalRatings   int64   `gorm:"column:total_ratings" json:"totalRatings"`
-	LowRatingCount int64   `gorm:"column:low_rating_count" json:"lowRatingCount"`
 }
 
 type ModuleCountRow struct {
@@ -42,6 +34,15 @@ type ModuleCountRow struct {
 type TagCountRow struct {
 	Tag   string `gorm:"column:tag" json:"tag"`
 	Count int64  `gorm:"column:count" json:"count"`
+}
+
+// ModelStatRow 模型维度评价聚合行（avg_rating 为原始均值，精度处理在 service 层）
+type ModelStatRow struct {
+	ModelID   string  `gorm:"column:model_id" json:"modelId"`
+	ModelName string  `gorm:"column:model_name" json:"modelName"`
+	AvgRating float64 `gorm:"column:avg_rating" json:"avgRating"`
+	Total     int64   `gorm:"column:total" json:"total"`
+	LowCount  int64   `gorm:"column:low_count" json:"lowCount"`
 }
 
 type TypeCountRow struct {
@@ -62,16 +63,16 @@ type IRatingRepository interface {
 	Create(ctx context.Context, r *model.SysRating) error
 	FindByID(ctx context.Context, id int64) (*model.SysRating, error)
 	FindByPredLogID(ctx context.Context, predLogID int64) (*model.SysRating, error)
-	FindPageMy(ctx context.Context, userID int64, pageNum, pageSize int) ([]RatingWithAlgorithm, int64, error)
-	FindPage(ctx context.Context, q *query.RatingPageQuery) ([]RatingWithUserAndAlgorithm, int64, error)
+	FindPageMy(ctx context.Context, userID int64, pageNum, pageSize int) ([]RatingWithModel, int64, error)
+	FindPage(ctx context.Context, q *query.RatingPageQuery) ([]RatingWithUserAndModel, int64, error)
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
 	GetStats(ctx context.Context, startTime, endTime string) (total int64, avgRating float64, distribution map[int]int64, err error)
-	GetAlgorithmStats(ctx context.Context, startTime, endTime string) ([]AlgorithmRatingStatRow, error)
 	GetTagRanking(ctx context.Context, startTime, endTime string) ([]TagCountRow, error)
+	GetModelStats(ctx context.Context, startTime, endTime string) ([]ModelStatRow, error)
 	GetRatingCountByValue(ctx context.Context, rating int, startTime, endTime string) (int64, error)
-	CountLowRatingsByAlgorithmSince(ctx context.Context, algorithmID int64, since time.Time) (int64, error)
+	CountLowRatingsByModelSince(ctx context.Context, modelID string, since time.Time) (int64, error)
 	GetTodayLowRatingCounts(ctx context.Context) (lowCount int64, totalCount int64, err error)
-	GetStatsByAlgorithmID(ctx context.Context, algorithmID int64) (totalCount int64, avgRating float64, distribution map[int8]int64, err error)
+	GetStatsByModelID(ctx context.Context, modelID string) (totalCount int64, avgRating float64, distribution map[int8]int64, err error)
 }
 
 type IFeedbackRepository interface {

@@ -34,11 +34,6 @@ import com.pei.dehaze.model.vo.SalesStatsVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.PackageService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +44,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -96,7 +95,10 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         Page<SysPackage> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysPackage> wrapper = new LambdaQueryWrapper<SysPackage>()
                 .like(CharSequenceUtil.isNotBlank(query.getName()), SysPackage::getName, query.getName())
-                .eq(CharSequenceUtil.isNotBlank(query.getPackageType()), SysPackage::getPackageType, query.getPackageType())
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getPackageType()),
+                        SysPackage::getPackageType,
+                        query.getPackageType())
                 .eq(CharSequenceUtil.isNotBlank(query.getLevelCode()), SysPackage::getLevelCode, query.getLevelCode())
                 .eq(CharSequenceUtil.isNotBlank(query.getPeriod()), SysPackage::getPeriod, query.getPeriod())
                 .eq(query.getStatus() != null, SysPackage::getStatus, query.getStatus())
@@ -139,9 +141,10 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
      * 校验安装包名称唯一性（仅活跃行；唯一键含 deleted，软删行不占键位）。
      */
     private void validateNameUnique(String name, Long excludeId) {
-        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysPackage>()
-                .eq(SysPackage::getName, name)
-                .ne(excludeId != null, SysPackage::getId, excludeId));
+        long count = getBaseMapper()
+                .selectCount(new LambdaQueryWrapper<SysPackage>()
+                        .eq(SysPackage::getName, name)
+                        .ne(excludeId != null, SysPackage::getId, excludeId));
         if (count > 0) {
             throw new BusinessException(ResultCode.DATA_EXISTS, "套餐名称已存在");
         }
@@ -208,7 +211,11 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteByIds(String ids) {
-        List<Long> idList = Arrays.stream(ids.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Long::parseLong).toList();
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .toList();
         if (idList.isEmpty()) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "未指定删除的套餐ID");
         }
@@ -217,8 +224,8 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             if (pkg == null) {
                 throw new BusinessException(ResultCode.PACKAGE_NOT_FOUND);
             }
-            Long orderCount = orderMapper.selectCount(new LambdaQueryWrapper<SysOrder>()
-                    .eq(SysOrder::getPackageId, id));
+            Long orderCount =
+                    orderMapper.selectCount(new LambdaQueryWrapper<SysOrder>().eq(SysOrder::getPackageId, id));
             if (orderCount > 0) {
                 throw new BusinessException(ResultCode.PACKAGE_HAS_ORDERS);
             }
@@ -236,9 +243,8 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         if (status == 0 && !getActivePromotions(id).isEmpty()) {
             throw new BusinessException(ResultCode.PACKAGE_IN_PROMOTION);
         }
-        LambdaUpdateWrapper<SysPackage> wrapper = new LambdaUpdateWrapper<SysPackage>()
-                .eq(SysPackage::getId, id)
-                .set(SysPackage::getStatus, status);
+        LambdaUpdateWrapper<SysPackage> wrapper =
+                new LambdaUpdateWrapper<SysPackage>().eq(SysPackage::getId, id).set(SysPackage::getStatus, status);
         this.update(wrapper);
     }
 
@@ -281,16 +287,19 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
     @Override
     public SalesStatsVO getSalesStats() {
         SalesStatsVO stats = new SalesStatsVO();
-        List<SysOrder> paidOrders = orderMapper.selectList(new LambdaQueryWrapper<SysOrder>()
-                .in(SysOrder::getStatus, 2, 3));
+        List<SysOrder> paidOrders =
+                orderMapper.selectList(new LambdaQueryWrapper<SysOrder>().in(SysOrder::getStatus, 2, 3));
         stats.setTotalSales((long) paidOrders.size());
-        stats.setTotalRevenue(paidOrders.stream().mapToLong(o -> o.getPaidAmount() != null ? o.getPaidAmount() : 0).sum());
+        stats.setTotalRevenue(paidOrders.stream()
+                .mapToLong(o -> o.getPaidAmount() != null ? o.getPaidAmount() : 0)
+                .sum());
 
         List<SysPackage> allPackages = this.list();
-        Map<Long, SysPackage> pkgMap = allPackages.stream()
-                .collect(Collectors.toMap(SysPackage::getId, p -> p, (a, b) -> a));
+        Map<Long, SysPackage> pkgMap =
+                allPackages.stream().collect(Collectors.toMap(SysPackage::getId, p -> p, (a, b) -> a));
         Set<String> levelCodes = allPackages.stream()
-                .map(SysPackage::getLevelCode).filter(java.util.Objects::nonNull)
+                .map(SysPackage::getLevelCode)
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.toSet());
         Map<String, SysMemberBenefit> benefitMap = new HashMap<>();
         for (String code : levelCodes) {
@@ -339,12 +348,14 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
                 });
                 SalesStatsVO.LevelStatItem levelItem = levelStatsMap.get(pkg.getLevelCode());
                 levelItem.setSalesCount(levelItem.getSalesCount() + 1);
-                levelItem.setRevenue(levelItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
+                levelItem.setRevenue(
+                        levelItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
 
                 if (periodStatsMap.containsKey(pkg.getPeriod())) {
                     SalesStatsVO.PeriodStatItem periodItem = periodStatsMap.get(pkg.getPeriod());
                     periodItem.setSalesCount(periodItem.getSalesCount() + 1);
-                    periodItem.setRevenue(periodItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
+                    periodItem.setRevenue(
+                            periodItem.getRevenue() + (order.getPaidAmount() != null ? order.getPaidAmount() : 0));
                 }
             }
         }
@@ -354,21 +365,31 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
 
         SalesStatsVO.CouponStatItem couponStats = new SalesStatsVO.CouponStatItem();
         List<SysCoupon> coupons = couponMapper.selectList(null);
-        couponStats.setTotalIssued(coupons.stream().mapToLong(c -> c.getIssuedQty() != null ? c.getIssuedQty() : 0).sum());
-        couponStats.setTotalUsed(coupons.stream().mapToLong(c -> c.getUsedQty() != null ? c.getUsedQty() : 0).sum());
-        couponStats.setUsageRate(couponStats.getTotalIssued() > 0 ? (double) couponStats.getTotalUsed() / couponStats.getTotalIssued() : 0.0);
+        couponStats.setTotalIssued(coupons.stream()
+                .mapToLong(c -> c.getIssuedQty() != null ? c.getIssuedQty() : 0)
+                .sum());
+        couponStats.setTotalUsed(coupons.stream()
+                .mapToLong(c -> c.getUsedQty() != null ? c.getUsedQty() : 0)
+                .sum());
+        couponStats.setUsageRate(
+                couponStats.getTotalIssued() > 0
+                        ? (double) couponStats.getTotalUsed() / couponStats.getTotalIssued()
+                        : 0.0);
         stats.setCouponStats(couponStats);
         return stats;
     }
 
     private long calculatePromotionDiscount(SysPackage pkg) {
         LocalDateTime now = LocalDateTime.now();
-        List<SysPromotionPackage> ppList = promotionPackageMapper.selectList(new LambdaQueryWrapper<SysPromotionPackage>()
-                .eq(SysPromotionPackage::getPackageId, pkg.getId()));
+        List<SysPromotionPackage> ppList = promotionPackageMapper.selectList(
+                new LambdaQueryWrapper<SysPromotionPackage>().eq(SysPromotionPackage::getPackageId, pkg.getId()));
         if (ppList.isEmpty()) {
             return 0;
         }
-        List<Long> promotionIds = ppList.stream().map(SysPromotionPackage::getPromotionId).distinct().toList();
+        List<Long> promotionIds = ppList.stream()
+                .map(SysPromotionPackage::getPromotionId)
+                .distinct()
+                .toList();
         Map<Long, SysPromotion> promotionMap = promotionMapper.selectBatchIds(promotionIds).stream()
                 .collect(Collectors.toMap(SysPromotion::getId, p -> p));
         long maxDiscount = 0;
@@ -499,8 +520,14 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         vo.setCreditAmount(pkg.getCreditAmount());
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
-        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
-        vo.setCreditUnitPrice(pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0 ? pkg.getSalePrice() / pkg.getCreditAmount() : 0);
+        vo.setDailyPrice(
+                pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0
+                        ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays())
+                        : 0);
+        vo.setCreditUnitPrice(
+                pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0
+                        ? pkg.getSalePrice() / pkg.getCreditAmount()
+                        : 0);
         vo.setSalesCount(pkg.getSalesCount());
         vo.setStatus(pkg.getStatus());
         vo.setCreateTime(pkg.getCreateTime());
@@ -519,9 +546,15 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
         vo.setPeriodDays(pkg.getPeriodDays());
         vo.setOriginalPrice(pkg.getOriginalPrice());
         vo.setSalePrice(pkg.getSalePrice());
-        vo.setDailyPrice(pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0 ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays()) : 0);
+        vo.setDailyPrice(
+                pkg.getPeriodDays() != null && pkg.getPeriodDays() > 0
+                        ? (2 * pkg.getSalePrice() + pkg.getPeriodDays()) / (2 * pkg.getPeriodDays())
+                        : 0);
         vo.setCreditAmount(pkg.getCreditAmount());
-        vo.setCreditUnitPrice(pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0 ? pkg.getSalePrice() / pkg.getCreditAmount() : 0);
+        vo.setCreditUnitPrice(
+                pkg.getCreditAmount() != null && pkg.getCreditAmount() > 0
+                        ? pkg.getSalePrice() / pkg.getCreditAmount()
+                        : 0);
         vo.setDescription(pkg.getDescription());
         vo.setSalesCount(pkg.getSalesCount());
         vo.setBenefits(buildBenefits(benefit, parseBenefitOverrides(pkg.getBenefitOverrides())));
@@ -533,9 +566,16 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
 
     /** 配额类权益覆盖取 max(等级权益, 覆盖值)，与履约侧口径一致 */
     private static final Set<String> BENEFIT_QUOTA_FIELDS = Set.of(
-            "monthlyDehazeQuota", "monthlyDerainQuota", "monthlyDesnowQuota", "monthlyLowlightQuota",
-            "monthlySuperResolutionQuota", "monthlyDenoiseQuota", "monthlyInpaintQuota", "monthlyEvaluateQuota",
-            "aiCreditsDaily", "aiCreditsMonthly");
+            "monthlyDehazeQuota",
+            "monthlyDerainQuota",
+            "monthlyDesnowQuota",
+            "monthlyLowlightQuota",
+            "monthlySuperResolutionQuota",
+            "monthlyDenoiseQuota",
+            "monthlyInpaintQuota",
+            "monthlyEvaluateQuota",
+            "aiCreditsDaily",
+            "aiCreditsMonthly");
 
     private Map<String, Long> buildBenefits(SysMemberBenefit benefit, BenefitOverrides overrides) {
         Map<String, Long> benefits = new LinkedHashMap<>();
@@ -543,11 +583,15 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             benefits.put("monthlyDehazeQuota", benefit.getMonthlyDehazeQuota().longValue());
             benefits.put("monthlyDerainQuota", benefit.getMonthlyDerainQuota().longValue());
             benefits.put("monthlyDesnowQuota", benefit.getMonthlyDesnowQuota().longValue());
-            benefits.put("monthlyLowlightQuota", benefit.getMonthlyLowlightQuota().longValue());
-            benefits.put("monthlySuperResolutionQuota", benefit.getMonthlySuperResolutionQuota().longValue());
+            benefits.put(
+                    "monthlyLowlightQuota", benefit.getMonthlyLowlightQuota().longValue());
+            benefits.put(
+                    "monthlySuperResolutionQuota",
+                    benefit.getMonthlySuperResolutionQuota().longValue());
             benefits.put("monthlyDenoiseQuota", benefit.getMonthlyDenoiseQuota().longValue());
             benefits.put("monthlyInpaintQuota", benefit.getMonthlyInpaintQuota().longValue());
-            benefits.put("monthlyEvaluateQuota", benefit.getMonthlyEvaluateQuota().longValue());
+            benefits.put(
+                    "monthlyEvaluateQuota", benefit.getMonthlyEvaluateQuota().longValue());
             benefits.put("aiCreditsDaily", benefit.getAiCreditsDaily());
             benefits.put("aiCreditsMonthly", benefit.getAiCreditsMonthly());
             benefits.put("historyRetention", benefit.getHistoryRetention().longValue());
@@ -559,8 +603,8 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
             benefits.put("batchDownload", benefit.getBatchDownload().longValue());
         }
         if (overrides != null) {
-            Map<String, Long> overridesMap = objectMapper.convertValue(overrides,
-                    new TypeReference<Map<String, Long>>() {});
+            Map<String, Long> overridesMap =
+                    objectMapper.convertValue(overrides, new TypeReference<Map<String, Long>>() {});
             overridesMap.forEach((key, value) -> {
                 if (value == null) {
                     return;
@@ -574,12 +618,15 @@ public class PackageServiceImpl extends ServiceImpl<SysPackageMapper, SysPackage
 
     private List<PromotionVO> getActivePromotions(Long packageId) {
         LocalDateTime now = LocalDateTime.now();
-        List<SysPromotionPackage> ppList = promotionPackageMapper.selectList(new LambdaQueryWrapper<SysPromotionPackage>()
-                .eq(SysPromotionPackage::getPackageId, packageId));
+        List<SysPromotionPackage> ppList = promotionPackageMapper.selectList(
+                new LambdaQueryWrapper<SysPromotionPackage>().eq(SysPromotionPackage::getPackageId, packageId));
         if (ppList.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Long> promotionIds = ppList.stream().map(SysPromotionPackage::getPromotionId).distinct().toList();
+        List<Long> promotionIds = ppList.stream()
+                .map(SysPromotionPackage::getPromotionId)
+                .distinct()
+                .toList();
         Map<Long, SysPromotion> promotionMap = promotionMapper.selectBatchIds(promotionIds).stream()
                 .collect(Collectors.toMap(SysPromotion::getId, p -> p));
         List<PromotionVO> result = new ArrayList<>();

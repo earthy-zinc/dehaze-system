@@ -1,10 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.provider.provider_key_selector import (
-    KEY_DAILY_PREFIX,
-    KEY_FAIL_STREAK_PREFIX,
-    KEY_LAST_USED_PREFIX,
-    KEY_UNAVAILABLE_PREFIX,
     _cooldown_seconds,
     provider_key_selector,
 )
@@ -43,37 +39,37 @@ class TestCooldownEscalation:
     async def test_cooldown_escalation_via_redis(self, mock_redis):
         key_id = 7
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
-        assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
-        assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 1
+        assert await mock_redis.ttl(provider_key_selector.unavailable.format(key_id)) == 300
+        assert int(await mock_redis.get(provider_key_selector.fail_streak.format(key_id))) == 1
 
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
-        assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 300
+        assert await mock_redis.ttl(provider_key_selector.unavailable.format(key_id)) == 300
 
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
-        assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
+        assert await mock_redis.ttl(provider_key_selector.unavailable.format(key_id)) == 900
 
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "500")
-        assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 900
+        assert await mock_redis.ttl(provider_key_selector.unavailable.format(key_id)) == 900
 
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "401")
-        assert await mock_redis.ttl(KEY_UNAVAILABLE_PREFIX.format(key_id)) == 1800
+        assert await mock_redis.ttl(provider_key_selector.unavailable.format(key_id)) == 1800
 
     async def test_success_resets_fail_streak(self, mock_redis):
         key_id = 8
         for _ in range(4):
             await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
-        assert int(await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id))) == 4
+        assert int(await mock_redis.get(provider_key_selector.fail_streak.format(key_id))) == 4
 
         await provider_key_selector.mark_call_success(mock_redis, key_id, used_by=100)
-        assert await mock_redis.get(KEY_FAIL_STREAK_PREFIX.format(key_id)) is None
-        assert await mock_redis.get(KEY_LAST_USED_PREFIX.format(key_id)) is not None
+        assert await mock_redis.get(provider_key_selector.fail_streak.format(key_id)) is None
+        assert await mock_redis.get(provider_key_selector.last_used.format(key_id)) is not None
 
     async def test_success_does_not_clear_cooldown_marker(self, mock_redis):
         key_id = 9
         await provider_key_selector.mark_call_failed(mock_redis, key_id, "429")
-        assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
+        assert await mock_redis.exists(provider_key_selector.unavailable.format(key_id))
         await provider_key_selector.mark_call_success(mock_redis, key_id, used_by=1)
-        assert await mock_redis.exists(KEY_UNAVAILABLE_PREFIX.format(key_id))
+        assert await mock_redis.exists(provider_key_selector.unavailable.format(key_id))
 
 
 class TestListUsableKeys:
@@ -100,9 +96,9 @@ class TestListUsableKeys:
             _list_enabled,
         )
 
-        await mock_redis.set(KEY_UNAVAILABLE_PREFIX.format(5), 1)
+        await mock_redis.set(provider_key_selector.unavailable.format(5), 1)
         today = datetime.now().strftime("%Y%m%d")
-        await mock_redis.set(KEY_DAILY_PREFIX.format(6, today), 5)
+        await mock_redis.set(provider_key_selector.daily.format(6, today), 5)
 
         usable = await provider_key_selector.list_usable_keys(AsyncSession(), mock_redis, 1)
         ids = [k.id for k in usable]
@@ -131,7 +127,7 @@ class TestListUsableKeys:
             "app.infrastructure.provider.provider_key_selector.decrypt",
             lambda cipher: cipher,
         )
-        await mock_redis.set(KEY_UNAVAILABLE_PREFIX.format(1), 1)
+        await mock_redis.set(provider_key_selector.unavailable.format(1), 1)
 
         picked = []
         for _ in range(30):

@@ -1,21 +1,23 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.mapper.SysDatasetItemMapper;
+import com.pei.dehaze.mapper.SysDatasetMapper;
+import com.pei.dehaze.mapper.SysFileMapper;
+import com.pei.dehaze.mapper.SysItemFileMapper;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.entity.SysDataset;
-import com.pei.dehaze.model.entity.SysDatasetItem;
-import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.form.DatasetUpdateForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
-import com.pei.dehaze.mapper.SysDatasetMapper;
-import com.pei.dehaze.mapper.SysDatasetItemMapper;
-import com.pei.dehaze.mapper.SysFileMapper;
-import com.pei.dehaze.mapper.SysItemFileMapper;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,11 +25,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 数据集服务集成测试
@@ -194,9 +191,8 @@ class SysDatasetServiceIT {
         DatasetUpdateForm updateForm = new DatasetUpdateForm();
         updateForm.setName("数据集1_" + timestamp);
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> datasetService.updateDataset(dataset2.getId(), updateForm));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> datasetService.updateDataset(dataset2.getId(), updateForm));
 
         assertTrue(exception.getMessage().contains("同父节点下已存在相同名称的数据集"));
     }
@@ -313,9 +309,8 @@ class SysDatasetServiceIT {
     void testGetDatasetById_NotFound() {
         Long nonExistentId = 999999L;
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> datasetService.getDatasetById(nonExistentId));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> datasetService.getDatasetById(nonExistentId));
 
         assertTrue(exception.getMessage().contains("数据集不存在"));
     }
@@ -492,9 +487,7 @@ class SysDatasetServiceIT {
         form.setType("USER");
 
         // 应该抛出校验异常或数据库异常
-        assertThrows(Exception.class,
-                () -> datasetService.addDataset(form),
-                "名称超过最大长度应抛出异常");
+        assertThrows(Exception.class, () -> datasetService.addDataset(form), "名称超过最大长度应抛出异常");
     }
 
     /**

@@ -12,6 +12,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
+from app.core.constants import KB_ASYNC_MAX_RETRY
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.models.entity.sys_knowledge_document import SysKnowledgeDocument
@@ -785,7 +786,6 @@ class TestDocPipelineFailure:
         refs["kb_repo"].update_stats_cas.assert_not_called()
 
     async def test_embedding_failure_exhausts_retry(self, db):
-        from app.config import settings
 
         call_count = {"n": 0}
 
@@ -796,16 +796,15 @@ class TestDocPipelineFailure:
         patches, refs = _pipeline_env(embed_side_effect=_raise)
         with _enter(patches), pytest.raises(RuntimeError):
             await refs["svc"]._process_document(1, 1, 100)
-        assert call_count["n"] == 1 + settings.KB_ASYNC_MAX_RETRY
+        assert call_count["n"] == 1 + KB_ASYNC_MAX_RETRY
         refs["kb_repo"].update_stats_cas.assert_not_called()
 
     async def test_es_bulk_failure_exhausts_retry(self, db):
-        from app.config import settings
 
         patches, refs = _pipeline_env(es_return=False)
         with _enter(patches), pytest.raises(RuntimeError):
             await refs["svc"]._process_document(1, 1, 100)
-        assert refs["bulk_mock"].call_count == 1 + settings.KB_ASYNC_MAX_RETRY
+        assert refs["bulk_mock"].call_count == 1 + KB_ASYNC_MAX_RETRY
         refs["kb_repo"].update_stats_cas.assert_not_called()
 
     async def test_success_path_cleans_dirty_text_writes_chunks_and_stats(self, db):

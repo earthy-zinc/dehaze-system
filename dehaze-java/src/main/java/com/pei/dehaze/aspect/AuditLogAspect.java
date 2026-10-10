@@ -5,6 +5,7 @@ import com.pei.dehaze.annotation.AuditLog;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.AuditLogService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.Method;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -17,8 +18,6 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.lang.reflect.Method;
 
 @Aspect
 @Component
@@ -51,18 +50,29 @@ public class AuditLogAspect {
                 String ip = request != null ? getClientIp(request) : null;
                 String userAgent = request != null ? request.getHeader("User-Agent") : null;
 
-                Object targetId = evaluateSpel(auditLog.targetIdSpel(), args, parameterNames, result, method, "targetIdSpel");
-                Object afterValue = evaluateSpel(auditLog.afterSpel(), args, parameterNames, result, method, "afterSpel");
+                Object targetId =
+                        evaluateSpel(auditLog.targetIdSpel(), args, parameterNames, result, method, "targetIdSpel");
+                Object afterValue =
+                        evaluateSpel(auditLog.afterSpel(), args, parameterNames, result, method, "afterSpel");
 
-                auditLogService.recordAudit(operatorId, auditLog.targetType(), targetId,
-                        auditLog.action(), auditLog.module(), beforeValue, afterValue, ip, userAgent);
+                auditLogService.recordAudit(
+                        operatorId,
+                        auditLog.targetType(),
+                        targetId,
+                        auditLog.action(),
+                        auditLog.module(),
+                        beforeValue,
+                        afterValue,
+                        ip,
+                        userAgent);
             } catch (Exception e) {
                 log.warn("记录审计日志失败: method={}", method.getName(), e);
             }
         }
     }
 
-    private Object evaluateSpel(String spel, Object[] args, String[] parameterNames, Object result, Method method, String field) {
+    private Object evaluateSpel(
+            String spel, Object[] args, String[] parameterNames, Object result, Method method, String field) {
         if (CharSequenceUtil.isBlank(spel)) {
             return null;
         }
@@ -82,7 +92,8 @@ public class AuditLogAspect {
     }
 
     private HttpServletRequest getRequest() {
-        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return requestAttributes != null ? requestAttributes.getRequest() : null;
     }
 

@@ -21,7 +21,6 @@ class DatasetAddForm(BaseModel):
     name: str = Field(..., min_length=1, max_length=64, description="数据集名称")
     type: str | None = Field(default="", max_length=50, description="数据集类型")
     description: str | None = Field(default="", max_length=500, description="数据集描述")
-    path: str | None = Field(default="", max_length=255, description="存储位置")
     status: int = Field(default=1, ge=0, le=1, description="状态(1:启用；0:禁用)")
 
     name_no_xss_validator = field_validator("name")(validate_no_xss)
@@ -34,7 +33,6 @@ class DatasetUpdateForm(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=64, description="数据集名称")
     type: str | None = Field(default=None, max_length=50, description="数据集类型")
     description: str | None = Field(default=None, max_length=500, description="数据集描述")
-    path: str | None = Field(default=None, max_length=255, description="存储位置")
     status: int | None = Field(default=None, ge=0, le=1, description="状态(1:启用；0:禁用)")
 
     name_no_xss_validator = field_validator("name")(validate_no_xss)

@@ -16,7 +16,6 @@ public class SecurityProperties {
      */
     private JwtProperty jwt;
 
-
     /**
      * JWT 配置
      */
@@ -37,6 +36,5 @@ public class SecurityProperties {
          * 刷新令牌过期时间（秒），默认 7 天
          */
         private Long refreshTtl = 604800L;
-
     }
 }

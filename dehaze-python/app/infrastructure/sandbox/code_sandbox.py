@@ -181,6 +181,15 @@ class CodeSandbox:
             rejection = self.check_command_policy(code)
             if rejection:
                 return {"stdout": "", "stderr": rejection, "exitCode": 1, "timedOut": False}
+            if os.name != "posix":
+                # 白名单命中的命令仍需 /bin/sh 执行，Windows 无此能力：显式结构化拒绝，
+                # 避免子进程抛 FileNotFoundError 把内部堆栈透给 LLM
+                return {
+                    "stdout": "",
+                    "stderr": "沙箱 shell 通道依赖 POSIX /bin/sh，当前环境不支持",
+                    "exitCode": 1,
+                    "timedOut": False,
+                }
             cmd = self._build_launcher(code, language)
         else:
             return {
@@ -253,57 +262,59 @@ class CodeSandbox:
         资源限制在子进程 Python 主线程内通过 resource.setrlimit 施加（而非 asyncio 的
         preexec_fn——后者在非主线程 fork 时可能死锁/段错误），随后再执行用户代码：
         - python：exec 用户脚本
-        - shell：以 /bin/sh -c 执行用户命令
-        Windows 无 resource 模块时跳过资源限制（仅保留临时目录弱隔离与超时）。
+        - shell：以 /bin/sh -c 执行用户命令（仅 POSIX，非 POSIX 已在 execute_code 拒绝）
+        非 POSIX（Windows 无 resource 模块）跳过资源限制，仅保留超时终止与临时目录弱隔离。
         """
         code_arg = code
-        if _HAS_RESOURCE:
-            mem_bytes = self._mem_mb * 1024 * 1024
-            cpu = max(1, self._timeout)
-            # 各平台对个别 limit 支持不一（macOS 的 RLIMIT_AS 会抛 ValueError），
-            # 逐个 try 防御，不支持的平台跳过该限制，保留超时终止与临时目录弱隔离兜底
-            #
-            # RLIMIT_NPROC 由内核对整个 UID 的任务数校验（非本次进程树），且宿主其它 PID
-            # 命名空间的任务在 /proc 里不可见，逐进程统计会偏小并让沙箱 fork 直接 EAGAIN；
-            # 故基准取 /proc/loadavg 的全系统任务数（UID 任务数的上界）再加允许新增数，
-            # 基准读不到（非 Linux）时跳过该限制。
-            rl = (
-                "def _rl(n,a,b):\n"
-                "  try: resource.setrlimit(n,(a,b))\n"
-                "  except (ValueError,OSError): pass\n"
-                "def _tasks():\n"
-                "  try: return int(open('/proc/loadavg').read().split()[3].split('/')[1])\n"
-                "  except (OSError,IndexError,ValueError): return -1\n"
-                f"_rl(resource.RLIMIT_AS,{mem_bytes},{mem_bytes});"
-                "__n=_tasks();\n"
-                f"if __n>=0: _rl(resource.RLIMIT_NPROC,__n+{self._nproc},__n+{self._nproc});"
-                f"_rl(resource.RLIMIT_CPU,{cpu},{cpu});"
+        if not _HAS_RESOURCE:
+            return [sys.executable, "-c", "import sys;exec(sys.argv[1])", code_arg]
+        mem_bytes = self._mem_mb * 1024 * 1024
+        cpu = max(1, self._timeout)
+        # 各平台对个别 limit 支持不一（macOS 的 RLIMIT_AS 会抛 ValueError），
+        # 逐个 try 防御，不支持的平台跳过该限制，保留超时终止与临时目录弱隔离兜底
+        #
+        # RLIMIT_NPROC 由内核对整个 UID 的任务数校验（非本次进程树），且宿主其它 PID
+        # 命名空间的任务在 /proc 里不可见，逐进程统计会偏小并让沙箱 fork 直接 EAGAIN；
+        # 故基准取 /proc/loadavg 的全系统任务数（UID 任务数的上界）再加允许新增数，
+        # 基准读不到（非 Linux）时跳过该限制。
+        rl = (
+            "def _rl(n,a,b):\n"
+            "  try: resource.setrlimit(n,(a,b))\n"
+            "  except (ValueError,OSError): pass\n"
+            "def _tasks():\n"
+            "  try: return int(open('/proc/loadavg').read().split()[3].split('/')[1])\n"
+            "  except (OSError,IndexError,ValueError): return -1\n"
+            f"_rl(resource.RLIMIT_AS,{mem_bytes},{mem_bytes})\n"
+            "__n=_tasks()\n"
+            # 每条语句独立成行：语句体若与后续语句同行，非 Linux 上 _tasks() 返回 -1
+            # 时会把后面（含用户代码启动语句）整体跳过，导致沙箱"静默不执行却返回成功"
+            f"if __n>=0: _rl(resource.RLIMIT_NPROC,__n+{self._nproc},__n+{self._nproc})\n"
+            f"_rl(resource.RLIMIT_CPU,{cpu},{cpu})\n"
+        )
+        if language == "shell":
+            inner = (
+                "import resource,subprocess,sys\n"
+                + rl
+                + "sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
             )
-            if language == "shell":
-                inner = (
-                    "import resource,subprocess,sys\n"
-                    + rl
-                    + "sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
-                )
-            else:  # python
-                inner = "import resource,sys\n" + rl + "exec(sys.argv[1])"
-        elif language == "shell":
-            inner = "import subprocess,sys;sys.exit(subprocess.call(['/bin/sh','-c',sys.argv[1]]))"
-        else:  # python, no resource
-            inner = "import sys;exec(sys.argv[1])"
+        else:  # python
+            inner = "import resource,sys\n" + rl + "exec(sys.argv[1])"
         return [sys.executable, "-c", inner, code_arg]
 
     @staticmethod
     def _kill_process_group(process) -> None:
-        """终止整个进程组（POSIX），兜底单进程 kill。"""
+        """终止沙箱子进程：POSIX 下子进程以独立会话启动，须杀整个进程组（留孙进程会
+        继续占用 CPU/文件）；Windows 无进程组概念（无 os.killpg），退化为单进程 kill。"""
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            # killpg 失败（进程组已不存在/无权限）退化为单进程 kill
-            try:
-                process.kill()
-            except ProcessLookupError:
-                logger.debug("沙箱子进程已退出，无需终止: pid=%s", process.pid)
+            if _HAS_RESOURCE:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+                return
+        except PermissionError:
+            pass  # 无权限杀进程组，退化为单进程 kill
+        try:
+            process.kill()
+        except ProcessLookupError:
+            logger.debug("沙箱子进程已退出，无需终止: pid=%s", process.pid)
 
     @staticmethod
     async def _reap(process) -> None:

@@ -1,8 +1,6 @@
 package com.pei.dehaze.common.base;
 
-
 import cn.hutool.core.util.ObjectUtil;
-
 import java.util.EnumSet;
 import java.util.Objects;
 
@@ -46,7 +44,6 @@ public interface IBaseEnum<T> {
         }
         return label;
     }
-
 
     /**
      * 根据文本标签获取值

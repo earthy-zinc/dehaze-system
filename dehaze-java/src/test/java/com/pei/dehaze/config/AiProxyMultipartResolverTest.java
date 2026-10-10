@@ -1,11 +1,11 @@
 package com.pei.dehaze.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * AI 转发 multipart 旁路单元测试：白名单内保持原始字节流，白名单外维持默认解析。

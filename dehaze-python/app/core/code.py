@@ -37,7 +37,7 @@ class ResultCode(Enum):
     DATA_EXISTS = ("A0501", "数据已存在")
     DATA_STATE_NOT_ALLOW = ("A0502", "数据状态不允许")
     OPERATION_NOT_ALLOW = ("A0503", "操作不允许")
-    DATA_BIND_EXISTS = ("A0504", "存在关联数据，无法删除")
+    DATA_REFERENCED = ("A0504", "存在关联数据，无法删除")
     # 用户模块受保护资源（超级管理员）错误码 A050x
     ROOT_USER_PROTECTED = ("A0505", "超级管理员不可删除")
 
@@ -119,17 +119,7 @@ class ResultCode(Enum):
     SYSTEM_EXECUTION_ERROR = ("B0001", "系统执行出错")
     SYSTEM_EXECUTION_TIMEOUT = ("B0100", "系统执行超时")
 
-    # 算法模块错误码 B02xx
-    ALGORITHM_NOT_FOUND = ("B0200", "算法不存在")
-    ALGORITHM_NAME_EXISTS = ("B0201", "算法名称已存在")
-    ALGORITHM_STATUS_NOT_ALLOWED = ("B0202", "当前状态不允许此操作")
-    ALGORITHM_IN_USE = ("B0203", "算法正在使用中，无法删除")
-    ALGORITHM_MODEL_CORRUPTED = ("B0204", "模型文件已损坏")
-    ALGORITHM_VERSION_EXISTS = ("B0205", "版本号已存在")
-    ALGORITHM_ROLLBACK_NOT_ALLOWED = ("B0206", "不允许回滚到该版本")
-    ALGORITHM_AUDIT_PERMISSION_DENIED = ("B0207", "无审核权限")
-    ALGORITHM_AUDIT_REMARK_REQUIRED = ("B0208", "驳回时必须填写原因")
-    ALGORITHM_IMPORT_FORMAT_ERROR = ("B0209", "导入包格式错误")
+    # 图像任务错误码 B02xx
     PREDICTION_TASK_NOT_FOUND = ("B0210", "预测任务不存在")
     RATE_LIMIT = ("B0211", "系统速率限流")
     PREDICTION_IMAGE_FORMAT_UNSUPPORTED = ("B0212", "图片格式不支持")

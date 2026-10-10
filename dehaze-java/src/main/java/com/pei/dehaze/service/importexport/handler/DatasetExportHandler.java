@@ -15,10 +15,6 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
@@ -26,6 +22,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 数据集导出处理器
@@ -73,8 +72,7 @@ public class DatasetExportHandler implements ExportHandler {
             return 0;
         }
         List<Long> itemIds = items.stream().map(SysDatasetItem::getId).toList();
-        return itemFileService.count(new LambdaQueryWrapper<SysItemFile>()
-                .in(SysItemFile::getItemId, itemIds));
+        return itemFileService.count(new LambdaQueryWrapper<SysItemFile>().in(SysItemFile::getItemId, itemIds));
     }
 
     @Override
@@ -91,15 +89,15 @@ public class DatasetExportHandler implements ExportHandler {
         }
 
         List<Long> itemIds = items.stream().map(SysDatasetItem::getId).toList();
-        Map<Long, List<SysItemFile>> itemFilesMap = itemFileService.list(
-                        new LambdaQueryWrapper<SysItemFile>()
-                                .in(SysItemFile::getItemId, itemIds))
-                .stream()
-                .collect(Collectors.groupingBy(SysItemFile::getItemId));
+        Map<Long, List<SysItemFile>> itemFilesMap =
+                itemFileService.list(new LambdaQueryWrapper<SysItemFile>().in(SysItemFile::getItemId, itemIds)).stream()
+                        .collect(Collectors.groupingBy(SysItemFile::getItemId));
 
         int totalFiles = 0;
         for (SysDatasetItem item : items) {
-            int fileCount = itemFilesMap.getOrDefault(item.getId(), Collections.emptyList()).size();
+            int fileCount = itemFilesMap
+                    .getOrDefault(item.getId(), Collections.emptyList())
+                    .size();
             totalFiles += fileCount;
             if (Boolean.TRUE.equals(options.includeThumbnail)) {
                 totalFiles += fileCount;
@@ -132,19 +130,37 @@ public class DatasetExportHandler implements ExportHandler {
             }
         }
 
-        log.debug("数据集导出完成: taskId={}, itemCount={}, fileCount={}",
-                ctx.getTaskId(), items.size(), processedFiles);
+        log.debug("数据集导出完成: taskId={}, itemCount={}, fileCount={}", ctx.getTaskId(), items.size(), processedFiles);
     }
 
     @Override
     public List<ExportFieldConfig> getFieldConfigs() {
         return List.of(
-                ExportFieldConfig.builder().field("datasetName").label("数据集名称").order(1).build(),
-                ExportFieldConfig.builder().field("itemName").label("数据项名称").order(2).build(),
-                ExportFieldConfig.builder().field("fileType").label("文件类型").order(3).build(),
-                ExportFieldConfig.builder().field("fileName").label("文件名").order(4).build(),
-                ExportFieldConfig.builder().field("fileSize").label("文件大小").order(5).build()
-        );
+                ExportFieldConfig.builder()
+                        .field("datasetName")
+                        .label("数据集名称")
+                        .order(1)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("itemName")
+                        .label("数据项名称")
+                        .order(2)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("fileType")
+                        .label("文件类型")
+                        .order(3)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("fileName")
+                        .label("文件名")
+                        .order(4)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("fileSize")
+                        .label("文件大小")
+                        .order(5)
+                        .build());
     }
 
     @Override
@@ -160,9 +176,8 @@ public class DatasetExportHandler implements ExportHandler {
     private List<SysDatasetItem> resolveItems(Map<String, Object> params) {
         Object itemIdsObj = params.get("itemIds");
         if (itemIdsObj instanceof List<?> list && !list.isEmpty()) {
-            List<Long> itemIds = ((List<Number>) list).stream()
-                    .map(Number::longValue)
-                    .toList();
+            List<Long> itemIds =
+                    ((List<Number>) list).stream().map(Number::longValue).toList();
             return datasetItemService.listByIds(itemIds);
         }
 
@@ -179,8 +194,8 @@ public class DatasetExportHandler implements ExportHandler {
         }
         if (datasetIdObj != null) {
             Long datasetId = ((Number) datasetIdObj).longValue();
-            LambdaQueryWrapper<SysDatasetItem> query = new LambdaQueryWrapper<SysDatasetItem>()
-                    .eq(SysDatasetItem::getDatasetId, datasetId);
+            LambdaQueryWrapper<SysDatasetItem> query =
+                    new LambdaQueryWrapper<SysDatasetItem>().eq(SysDatasetItem::getDatasetId, datasetId);
 
             Object filtersObj = params.get("filters");
             if (filtersObj instanceof Map<?, ?> filterMap) {
@@ -202,8 +217,9 @@ public class DatasetExportHandler implements ExportHandler {
         return includeTypes.contains(type);
     }
 
-    private void addFileToZip(ZipOutputStream zos, SysItemFile itemFile,
-                              String structure, String itemName, String subfolder) throws Exception {
+    private void addFileToZip(
+            ZipOutputStream zos, SysItemFile itemFile, String structure, String itemName, String subfolder)
+            throws Exception {
         SysFile sysFile = fileService.getById(itemFile.getFileId());
         if (sysFile == null || sysFile.getObjectName() == null) {
             log.warn("文件不存在或 objectName 为空: fileId={}", itemFile.getFileId());
@@ -214,7 +230,8 @@ public class DatasetExportHandler implements ExportHandler {
         ZipEntry zipEntry = new ZipEntry(entryPath);
         zos.putNextEntry(zipEntry);
 
-        try (InputStream inputStream = storageServiceFactory.get(sysFile.getStorage()).downLoadFile(sysFile.getObjectName())) {
+        try (InputStream inputStream =
+                storageServiceFactory.get(sysFile.getStorage()).downLoadFile(sysFile.getObjectName())) {
             byte[] buffer = new byte[ZIP_BUFFER_SIZE];
             int len;
             while ((len = inputStream.read(buffer)) > 0) {
@@ -224,19 +241,15 @@ public class DatasetExportHandler implements ExportHandler {
         zos.closeEntry();
     }
 
-    private String buildZipEntryPath(String structure, String itemName, String subfolder,
-                                     Long fileId, String fileName) {
+    private String buildZipEntryPath(
+            String structure, String itemName, String subfolder, Long fileId, String fileName) {
         String extension = getFileExtension(fileName);
         String baseName = fileId + extension;
 
         if (STRUCTURE_BY_ITEM.equals(structure)) {
-            return subfolder != null
-                    ? itemName + "/" + subfolder + "/" + baseName
-                    : itemName + "/" + baseName;
+            return subfolder != null ? itemName + "/" + subfolder + "/" + baseName : itemName + "/" + baseName;
         }
-        return subfolder != null
-                ? subfolder + "/" + baseName
-                : baseName;
+        return subfolder != null ? subfolder + "/" + baseName : baseName;
     }
 
     private String getFileExtension(String fileName) {

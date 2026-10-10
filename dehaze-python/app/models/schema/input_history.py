@@ -22,9 +22,9 @@ class InputHistoryForm(BaseModel):
     resultThumbnailUrl: str | None = Field(
         default=None, max_length=500, description="结果缩略图URL"
     )
-    algorithmId: int | None = Field(default=None, description="算法ID")
-    algorithmName: str | None = Field(default=None, max_length=100, description="算法名称（冗余）")
-    algorithmParams: str | None = Field(default=None, description="算法参数（JSON 字符串）")
+    modelId: str | None = Field(default=None, description="图像模型标识（统一模型规范 slug）")
+    modelName: str | None = Field(default=None, max_length=100, description="模型名称（冗余）")
+    modelParams: str | None = Field(default=None, description="模型参数（JSON 字符串）")
     processingTime: int | None = Field(default=None, ge=0, description="处理耗时（毫秒）")
     status: int | None = Field(
         default=3, ge=1, le=3, description="处理状态（1=成功，2=失败，3=处理中），创建时确定"
@@ -33,15 +33,15 @@ class InputHistoryForm(BaseModel):
         default=None, description="图片来源"
     )
 
-    @field_validator("algorithmParams")
+    @field_validator("modelParams")
     @classmethod
-    def _validate_algorithm_params_json(cls, v: str | None) -> str | None:
-        # algorithm_params 落库到 MySQL JSON 列，非合法 JSON 在 Java 端会直接 SQL 报错，此处前置拦截
+    def _validate_model_params_json(cls, v: str | None) -> str | None:
+        # model_params 落库到 MySQL JSON 列，非合法 JSON 在 Java 端会直接 SQL 报错，此处前置拦截
         if v is not None:
             try:
                 json.loads(v)
             except json.JSONDecodeError as e:
-                raise ValueError("algorithmParams 必须为合法 JSON 字符串") from e
+                raise ValueError("modelParams 必须为合法 JSON 字符串") from e
         return v
 
 
@@ -76,23 +76,23 @@ class InputHistoryVO(BaseModel):
         serialization_alias="resultThumbnailUrl",
         description="结果缩略图URL",
     )
-    algorithmId: int | None = Field(
+    modelId: str | None = Field(
         default=None,
-        validation_alias="algorithm_id",
-        serialization_alias="algorithmId",
-        description="算法ID",
+        validation_alias="model_id",
+        serialization_alias="modelId",
+        description="图像模型标识（统一模型规范 slug）",
     )
-    algorithmName: str | None = Field(
+    modelName: str | None = Field(
         default=None,
-        validation_alias="algorithm_name",
-        serialization_alias="algorithmName",
-        description="算法名称",
+        validation_alias="model_name",
+        serialization_alias="modelName",
+        description="模型名称",
     )
-    algorithmParams: str | None = Field(
+    modelParams: str | None = Field(
         default=None,
-        validation_alias="algorithm_params",
-        serialization_alias="algorithmParams",
-        description="算法参数（JSON）",
+        validation_alias="model_params",
+        serialization_alias="modelParams",
+        description="模型参数（JSON）",
     )
     processingTime: int | None = Field(
         default=None,

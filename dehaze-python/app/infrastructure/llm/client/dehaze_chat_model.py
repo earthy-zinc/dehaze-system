@@ -284,3 +284,13 @@ class DehazeChatModel(BaseChatModel):
         # 记录 usage 与实际路由归因，供 _agenerate 附加到最终消息（计费结算透出）
         _usage_var.set(usage)
         _call_meta_var.set(call_meta)
+        # 流式聚合出的 AIMessage 必须自带 usage：Agent 图路径不做 _agenerate 收尾，
+        # 若只在 ContextVar 里存 usage，state 中 AIMessage 无 token 统计，
+        # 结算读到空 usage 而落 0（"输入 0 / 输出 0 tokens"的根因之一）。
+        if usage or call_meta:
+            yield ChatGenerationChunk(
+                message=AIMessageChunk(
+                    content="",
+                    response_metadata={"usage": dict(usage), "call_meta": dict(call_meta)},
+                )
+            )

@@ -15,7 +15,7 @@ import lombok.EqualsAndHashCode;
  * @author earthyzinc
  * @since 2023/3/6
  */
-@TableName(value ="sys_menu")
+@TableName(value = "sys_menu")
 @Data
 @EqualsAndHashCode(callSuper = false)
 public class SysMenu extends BaseEntity {
@@ -100,5 +100,4 @@ public class SysMenu extends BaseEntity {
      */
     @TableLogic(value = "0", delval = "id")
     private Long deleted;
-
 }

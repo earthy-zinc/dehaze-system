@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** AI 计费异常事件（表 sys_ai_billing_anomaly，只追加） */
 @Data

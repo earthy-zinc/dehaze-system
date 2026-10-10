@@ -12,17 +12,16 @@ import com.pei.dehaze.model.form.AiMemoryCreateForm;
 import com.pei.dehaze.model.form.AiMemoryUpdateForm;
 import com.pei.dehaze.model.vo.AiMemoryVO;
 import com.pei.dehaze.service.impl.AiKbIndexClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 长期记忆服务。
@@ -52,8 +51,7 @@ public class AiMemoryService {
     /**
      * 记忆导出结果（控制器直接写响应体）
      */
-    public record MemoryExport(String filename, String contentType, String content) {
-    }
+    public record MemoryExport(String filename, String contentType, String content) {}
 
     public IPage<AiMemoryVO> list(Long userId, int pageNum, int pageSize, String memoryType, String source) {
         LambdaQueryWrapper<SysAiMemory> wrapper = new LambdaQueryWrapper<SysAiMemory>()
@@ -159,8 +157,7 @@ public class AiMemoryService {
     }
 
     @Transactional
-    public int batchClear(Long userId, Boolean confirm, String memoryType,
-                          LocalDateTime start, LocalDateTime end) {
+    public int batchClear(Long userId, Boolean confirm, String memoryType, LocalDateTime start, LocalDateTime end) {
         if (!Boolean.TRUE.equals(confirm)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "批量清空记忆为不可逆操作，需二次确认");
         }
@@ -170,23 +167,23 @@ public class AiMemoryService {
         afterValue.put("memory_type", memoryType);
         afterValue.put("start", start == null ? null : start.toString());
         afterValue.put("end", end == null ? null : end.toString());
-        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(userId, "ai_memory", userId, "clear",
-                "ai_memory", null, afterValue, null, null));
+        AiTxSupport.afterCommit(() -> auditLogService.recordAudit(
+                userId, "ai_memory", userId, "clear", "ai_memory", null, afterValue, null, null));
         return count;
     }
 
     @Transactional
-    public int restoreDeleted(Long userId, Boolean confirm, String memoryType,
-                              LocalDateTime start, LocalDateTime end) {
+    public int restoreDeleted(Long userId, Boolean confirm, String memoryType, LocalDateTime start, LocalDateTime end) {
         if (!Boolean.TRUE.equals(confirm)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "恢复记忆操作需二次确认");
         }
-        List<SysAiMemory> deleted = memoryMapper.listDeletedForRestore(userId, memoryType, start, end,
-                LocalDateTime.now().minusDays(RECOVERY_WINDOW_DAYS));
+        List<SysAiMemory> deleted = memoryMapper.listDeletedForRestore(
+                userId, memoryType, start, end, LocalDateTime.now().minusDays(RECOVERY_WINDOW_DAYS));
         if (deleted.isEmpty()) {
             return 0;
         }
-        return memoryMapper.restoreByIds(deleted.stream().map(SysAiMemory::getId).toList(), userId);
+        return memoryMapper.restoreByIds(
+                deleted.stream().map(SysAiMemory::getId).toList(), userId);
     }
 
     /**
@@ -203,17 +200,26 @@ public class AiMemoryService {
         Map<String, Object> afterValue = new LinkedHashMap<>();
         afterValue.put("format", format);
         afterValue.put("count", memories.size());
-        auditLogService.recordAudit(userId, "ai_memory", userId, "export", "ai_memory", null, afterValue,
-                null, null);
+        auditLogService.recordAudit(userId, "ai_memory", userId, "export", "ai_memory", null, afterValue, null, null);
         if ("markdown".equals(format)) {
             StringBuilder sb = new StringBuilder("# 长期记忆导出\n\n");
             for (SysAiMemory memory : memories) {
-                sb.append("## ").append(memory.getMemoryType())
-                        .append("（来源：").append(memory.getSource()).append("）\n")
-                        .append("- 内容：").append(memory.getContent()).append("\n")
-                        .append("- 重要性：").append(memory.getImportance()).append("\n")
+                sb.append("## ")
+                        .append(memory.getMemoryType())
+                        .append("（来源：")
+                        .append(memory.getSource())
+                        .append("）\n")
+                        .append("- 内容：")
+                        .append(memory.getContent())
+                        .append("\n")
+                        .append("- 重要性：")
+                        .append(memory.getImportance())
+                        .append("\n")
                         .append("- 创建时间：")
-                        .append(memory.getCreateTime() == null ? "-" : memory.getCreateTime().format(TIME_FORMAT))
+                        .append(
+                                memory.getCreateTime() == null
+                                        ? "-"
+                                        : memory.getCreateTime().format(TIME_FORMAT))
                         .append("\n\n");
             }
             return new MemoryExport("memories.md", "text/markdown; charset=utf-8", sb.toString());
@@ -231,13 +237,18 @@ public class AiMemoryService {
             item.put("source", memory.getSource());
             item.put("importance", memory.getImportance());
             item.put("access_count", memory.getAccessCount());
-            item.put("created_at",
-                    memory.getCreateTime() == null ? null : memory.getCreateTime().format(TIME_FORMAT));
+            item.put(
+                    "created_at",
+                    memory.getCreateTime() == null
+                            ? null
+                            : memory.getCreateTime().format(TIME_FORMAT));
             records.add(item);
         }
         payload.put("memories", records);
         try {
-            return new MemoryExport("memories.json", "application/json; charset=utf-8",
+            return new MemoryExport(
+                    "memories.json",
+                    "application/json; charset=utf-8",
                     objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(payload));
         } catch (Exception e) {
             throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "记忆导出失败");

@@ -4,11 +4,10 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.config.property.AlgorithmProperties;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.time.Duration;
 
 /**
  * 弹性容错配置（Resilience4j）

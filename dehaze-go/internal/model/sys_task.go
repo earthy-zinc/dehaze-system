@@ -17,20 +17,18 @@ const (
 type TaskType string
 
 const (
-	TaskTypeUserExport      TaskType = "user_export"
-	TaskTypeRoleExport      TaskType = "role_export"
-	TaskTypeDeptExport      TaskType = "dept_export"
-	TaskTypeMenuExport      TaskType = "menu_export"
-	TaskTypeDictExport      TaskType = "dict_export"
-	TaskTypeDatasetExport   TaskType = "dataset_export"
-	TaskTypeAlgorithmExport TaskType = "algorithm_export"
+	TaskTypeUserExport    TaskType = "user_export"
+	TaskTypeRoleExport    TaskType = "role_export"
+	TaskTypeDeptExport    TaskType = "dept_export"
+	TaskTypeMenuExport    TaskType = "menu_export"
+	TaskTypeDictExport    TaskType = "dict_export"
+	TaskTypeDatasetExport TaskType = "dataset_export"
 
-	TaskTypeUserImport      TaskType = "user_import"
-	TaskTypeRoleImport      TaskType = "role_import"
-	TaskTypeDeptImport      TaskType = "dept_import"
-	TaskTypeMenuImport      TaskType = "menu_import"
-	TaskTypeDictImport      TaskType = "dict_import"
-	TaskTypeAlgorithmImport TaskType = "algorithm_import"
+	TaskTypeUserImport TaskType = "user_import"
+	TaskTypeRoleImport TaskType = "role_import"
+	TaskTypeDeptImport TaskType = "dept_import"
+	TaskTypeMenuImport TaskType = "menu_import"
+	TaskTypeDictImport TaskType = "dict_import"
 )
 
 // SysTask 系统任务表
@@ -38,7 +36,7 @@ type SysTask struct {
 	BaseModel
 	TaskID         string     `gorm:"column:task_id;type:varchar(64);uniqueIndex;not null;comment:任务唯一ID" json:"taskId"`
 	TaskType       TaskType   `gorm:"column:task_type;type:varchar(32);not null;comment:任务类型" json:"taskType"`
-	Status         TaskStatus `gorm:"column:status;type:tinyint;not null;default:1;comment:任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)" json:"status"`
+	Status         TaskStatus `gorm:"column:status;type:tinyint;not null;comment:任务状态(1:待处理;2:处理中;3:已完成;4:失败;5:已取消)" json:"status"`
 	Progress       int        `gorm:"column:progress;type:int;default:0;comment:进度(0-100)" json:"progress"`
 	TotalFiles     int        `gorm:"column:total_files;type:int;default:0;comment:文件总数" json:"totalFiles"`
 	ProcessedFiles int        `gorm:"column:processed_files;type:int;default:0;comment:已处理文件数" json:"processedFiles"`

@@ -1,5 +1,12 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -7,6 +14,8 @@ import com.pei.dehaze.mapper.SysAiMemoryMapper;
 import com.pei.dehaze.mapper.SysAiMessageFeedbackMapper;
 import com.pei.dehaze.model.entity.SysAiMessage;
 import com.pei.dehaze.model.form.AiFeedbackCreateForm;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,16 +27,6 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 /**
  * 消息反馈评分白名单（service 层单一信息源，对齐 python {@code Literal[1,-1]}）。
@@ -46,8 +45,10 @@ class AiFeedbackRatingWhitelistTest {
 
     @Mock
     private SysAiMessageFeedbackMapper feedbackMapper;
+
     @Mock
     private SysAiMemoryMapper memoryMapper;
+
     @Mock
     private AiConversationService conversationService;
 
@@ -79,8 +80,8 @@ class AiFeedbackRatingWhitelistTest {
     void ratingOutsideWhitelistRejected(int rating) {
         when(conversationService.getOwnedMessage(MESSAGE_ID, USER_ID)).thenReturn(assistantMessage());
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.submit(MESSAGE_ID, USER_ID, form(rating)));
+        BusinessException ex =
+                assertThrows(BusinessException.class, () -> service.submit(MESSAGE_ID, USER_ID, form(rating)));
 
         assertThat(ex.getResultCode()).isEqualTo(ResultCode.PARAM_ERROR);
         verifyNoInteractions(feedbackMapper);

@@ -25,13 +25,6 @@ import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -42,12 +35,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysItemFile>
-        implements SysItemFileService {
+public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysItemFile> implements SysItemFileService {
 
     private final SysFileService sysFileService;
     private final ImageProcessingService imageProcessingService;
@@ -118,7 +116,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         return sysItemFile;
     }
 
-
     @Override
     public List<ImageUrlVO> getImageUrlVOs(Long itemId) {
         List<ImageUrlVO> list = this.baseMapper.listImageUrl(itemId);
@@ -136,7 +133,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             vo.setUrl(storageServiceFactory.get(vo.getStorage()).getUrl(vo.getObjectName()));
         }
         if (vo.getThumbnailObjectName() != null && vo.getThumbnailStorage() != null) {
-            vo.setThumbnailUrl(storageServiceFactory.get(vo.getThumbnailStorage()).getUrl(vo.getThumbnailObjectName()));
+            vo.setThumbnailUrl(
+                    storageServiceFactory.get(vo.getThumbnailStorage()).getUrl(vo.getThumbnailObjectName()));
         }
     }
 
@@ -268,9 +266,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
 
         ImageUrlVO detail = new ImageUrlVO();
         SysFile sysFile = sysFileService.getById(itemFile.getFileId());
-        SysFile thumbnailFile = itemFile.getThumbnailFileId() != null
-                ? sysFileService.getById(itemFile.getThumbnailFileId())
-                : null;
+        SysFile thumbnailFile =
+                itemFile.getThumbnailFileId() != null ? sysFileService.getById(itemFile.getThumbnailFileId()) : null;
         populateImageUrlVO(detail, itemFile, sysFile, thumbnailFile);
 
         // 使用 Mapper 直接查询数据项和数据集，避免循环依赖
@@ -292,11 +289,9 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         }
 
         // 查询同一数据项下的其他图片，填充配对信息
-        List<SysItemFile> pairedFiles = this.list(
-            new LambdaQueryWrapper<SysItemFile>()
+        List<SysItemFile> pairedFiles = this.list(new LambdaQueryWrapper<SysItemFile>()
                 .eq(SysItemFile::getItemId, itemFile.getItemId())
-                    .ne(SysItemFile::getId, id)
-        );
+                .ne(SysItemFile::getId, id));
 
         // 设置配对信息
         detail.setHasPairedImages(!pairedFiles.isEmpty());
@@ -311,9 +306,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 if (pairedFile.getThumbnailFileId() != null) allFileIds.add(pairedFile.getThumbnailFileId());
             }
             Map<Long, SysFile> fileMap = allFileIds.isEmpty()
-                ? Collections.emptyMap()
-                : sysFileService.listByIds(allFileIds).stream()
-                    .collect(Collectors.toMap(SysFile::getId, f -> f));
+                    ? Collections.emptyMap()
+                    : sysFileService.listByIds(allFileIds).stream().collect(Collectors.toMap(SysFile::getId, f -> f));
 
             List<SimpleImageUrlVO> pairedVOList = new ArrayList<>();
             for (SysItemFile pairedFile : pairedFiles) {
@@ -326,7 +320,9 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 // 从批量查询的 Map 中获取文件信息
                 SysFile pairedSysFile = fileMap.get(pairedFile.getFileId());
                 if (pairedSysFile != null) {
-                    simpleVO.setUrl(storageServiceFactory.get(pairedSysFile.getStorage()).getUrl(pairedSysFile.getObjectName()));
+                    simpleVO.setUrl(storageServiceFactory
+                            .get(pairedSysFile.getStorage())
+                            .getUrl(pairedSysFile.getObjectName()));
                     simpleVO.setFileName(pairedSysFile.getName());
                     simpleVO.setFormattedSize(pairedSysFile.getSize());
                     simpleVO.setFormat(extractFormat(pairedSysFile.getName(), pairedSysFile.getType()));
@@ -336,7 +332,9 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 if (pairedFile.getThumbnailFileId() != null) {
                     SysFile pairedThumbnail = fileMap.get(pairedFile.getThumbnailFileId());
                     if (pairedThumbnail != null) {
-                        simpleVO.setThumbnailUrl(storageServiceFactory.get(pairedThumbnail.getStorage()).getUrl(pairedThumbnail.getObjectName()));
+                        simpleVO.setThumbnailUrl(storageServiceFactory
+                                .get(pairedThumbnail.getStorage())
+                                .getUrl(pairedThumbnail.getObjectName()));
                     }
                 }
 
@@ -401,17 +399,15 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         if (allFileIds.isEmpty()) {
             return Collections.emptyMap();
         }
-        return sysFileService.listByIds(allFileIds).stream()
-                .collect(Collectors.toMap(SysFile::getId, f -> f));
+        return sysFileService.listByIds(allFileIds).stream().collect(Collectors.toMap(SysFile::getId, f -> f));
     }
 
     @Override
     public ImageUrlVO convertToImageUrlVO(SysItemFile itemFile, Map<Long, SysFile> fileMap) {
         ImageUrlVO vo = new ImageUrlVO();
         SysFile sysFile = fileMap.get(itemFile.getFileId());
-        SysFile thumbnailFile = itemFile.getThumbnailFileId() != null
-                ? fileMap.get(itemFile.getThumbnailFileId())
-                : null;
+        SysFile thumbnailFile =
+                itemFile.getThumbnailFileId() != null ? fileMap.get(itemFile.getThumbnailFileId()) : null;
         populateImageUrlVO(vo, itemFile, sysFile, thumbnailFile);
         return vo;
     }
@@ -445,7 +441,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         }
 
         if (thumbnailFile != null) {
-            vo.setThumbnailUrl(storageServiceFactory.get(thumbnailFile.getStorage()).getUrl(thumbnailFile.getObjectName()));
+            vo.setThumbnailUrl(
+                    storageServiceFactory.get(thumbnailFile.getStorage()).getUrl(thumbnailFile.getObjectName()));
         }
     }
 

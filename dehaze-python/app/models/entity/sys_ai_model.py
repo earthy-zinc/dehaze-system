@@ -24,7 +24,19 @@ class SysAiModel(BaseModel, SoftDeleteMixin):
         String(16),
         nullable=False,
         default="chat",
-        comment="模型类型(chat:对话;embedding:向量;rerank:重排)",
+        comment=(
+            "模型类型(chat:对话;embedding:向量;rerank:重排;image_gen:文生图;"
+            "image_edit:图像编辑;video_gen:视频生成;asr:语音识别;tts:语音合成;"
+            "music_gen:音乐生成;3d_gen:3D生成)"
+        ),
+    )
+    task_tags: Mapped[Any | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment=(
+            '任务归类标签(JSON数组,如图像模型["dehaze"];asr:["stream"]/["offline"];'
+            'embedding:["text"]/["image"])'
+        ),
     )
     dimension: Mapped[int | None] = mapped_column(
         BigInteger,

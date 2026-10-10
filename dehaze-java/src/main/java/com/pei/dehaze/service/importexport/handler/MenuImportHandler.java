@@ -1,7 +1,6 @@
 package com.pei.dehaze.service.importexport.handler;
 
 import cn.hutool.core.text.CharSequenceUtil;
-import com.pei.dehaze.common.base.IBaseEnum;
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import com.pei.dehaze.model.form.MenuForm;
 import com.pei.dehaze.service.SysMenuService;
@@ -10,14 +9,13 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 菜单导入处理器
@@ -37,17 +35,57 @@ public class MenuImportHandler implements ImportHandler {
     @Override
     public List<ImportFieldConfig> getFieldConfigs() {
         return List.of(
-                ImportFieldConfig.builder().field("name").label("菜单名称").required(true).maxLength(64).build(),
-                ImportFieldConfig.builder().field("parentId").label("父菜单ID(0为顶级)").required(false).build(),
-                ImportFieldConfig.builder().field("typeLabel").label("类型(菜单/目录/外链/按钮)").required(true).build(),
-                ImportFieldConfig.builder().field("path").label("路由路径").required(false).build(),
-                ImportFieldConfig.builder().field("component").label("组件路径").required(false).build(),
-                ImportFieldConfig.builder().field("perm").label("权限标识").required(false).build(),
-                ImportFieldConfig.builder().field("visible").label("是否可见(显示/隐藏)").required(false).build(),
-                ImportFieldConfig.builder().field("sort").label("排序").required(false).build(),
-                ImportFieldConfig.builder().field("icon").label("图标").required(false).build(),
-                ImportFieldConfig.builder().field("redirect").label("跳转路径").required(false).build()
-        );
+                ImportFieldConfig.builder()
+                        .field("name")
+                        .label("菜单名称")
+                        .required(true)
+                        .maxLength(64)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("parentId")
+                        .label("父菜单ID(0为顶级)")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("typeLabel")
+                        .label("类型(菜单/目录/外链/按钮)")
+                        .required(true)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("path")
+                        .label("路由路径")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("component")
+                        .label("组件路径")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("perm")
+                        .label("权限标识")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("visible")
+                        .label("是否可见(显示/隐藏)")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("sort")
+                        .label("排序")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("icon")
+                        .label("图标")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("redirect")
+                        .label("跳转路径")
+                        .required(false)
+                        .build());
     }
 
     @Override
@@ -62,8 +100,7 @@ public class MenuImportHandler implements ImportHandler {
                 "visible", "显示",
                 "sort", "1",
                 "icon", "user",
-                "redirect", ""
-        ));
+                "redirect", ""));
     }
 
     @Override
@@ -115,8 +152,7 @@ public class MenuImportHandler implements ImportHandler {
                         .message(e.getMessage())
                         .build());
                 if (!partial) {
-                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage()
-                            + "（全量模式已回滚所有数据）", e);
+                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage() + "（全量模式已回滚所有数据）", e);
                 }
             }
         }

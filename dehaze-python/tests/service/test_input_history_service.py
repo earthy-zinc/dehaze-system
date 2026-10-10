@@ -21,8 +21,8 @@ pytestmark = pytest.mark.api
 def _form(**overrides) -> dict:
     data = {
         "originalImageUrl": f"/images/{uuid.uuid4().hex}.jpg",
-        "algorithmId": 1,
-        "algorithmName": "DCP",
+        "modelId": "aecrnet",
+        "modelName": "AECR-NET",
         "processingTime": 1000,
         "status": 1,
         "inputSource": "upload",
@@ -53,9 +53,9 @@ async def test_quota_autocleanup_deletes_oldest_on_overflow(db):
     """配额已满时创建新记录：自动清理最旧一条，总数不超上限"""
     await _make_member_with_retention(db, user_id=9001, retention=2)
     first_id = await input_history_service.create_history(
-        db, _form(algorithmName="oldest"), user_id=9001
+        db, _form(modelName="oldest"), user_id=9001
     )
-    await input_history_service.create_history(db, _form(algorithmName="second"), user_id=9001)
+    await input_history_service.create_history(db, _form(modelName="second"), user_id=9001)
 
     third_id = await input_history_service.create_history(db, _form(), user_id=9001)
 
@@ -142,13 +142,13 @@ async def test_clear_history_scoped_to_user(db):
 
 async def test_keyword_like_wildcards_escaped(db):
     """关键词中的 %/_ 应按字面匹配而非通配符（对齐 repository escape_like）"""
-    await input_history_service.create_history(db, _form(algorithmName="A%B"), user_id=400)
-    await input_history_service.create_history(db, _form(algorithmName="AXB"), user_id=400)
+    await input_history_service.create_history(db, _form(modelName="A%B"), user_id=400)
+    await input_history_service.create_history(db, _form(modelName="AXB"), user_id=400)
 
     list_vo, _ = await input_history_service.list_history(
         db, user_id=400, keywords="A%B", page=1, size=10
     )
-    names = {v["algorithmName"] for v in list_vo}
+    names = {v["modelName"] for v in list_vo}
     assert names == {"A%B"}
 
 

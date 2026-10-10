@@ -1,5 +1,13 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
@@ -15,6 +23,7 @@ import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysEvalLogService;
 import com.pei.dehaze.service.SysInputHistoryService;
 import com.pei.dehaze.service.SysPredLogService;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,16 +38,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 系统域分页边界与 python 默认值对齐（三端 `pageSize ∈ [1,100]` 统一口径）。
@@ -65,20 +64,28 @@ class SysDomainPagingValidationTest {
 
     @Mock
     private FavoriteService favoriteService;
+
     @Mock
     private MessageService messageService;
+
     @Mock
     private MessageTemplateService messageTemplateService;
+
     @Mock
     private SysDatasetItemService sysDatasetItemService;
+
     @Mock
     private DatasetOperationService datasetOperationService;
+
     @Mock
     private SysEvalLogService evalLogService;
+
     @Mock
     private SysEvalLogMapper evalLogMapper;
+
     @Mock
     private SysInputHistoryService historyService;
+
     @Mock
     private SysPredLogService predLogService;
 
@@ -95,7 +102,7 @@ class SysDomainPagingValidationTest {
                         new SysDatasetItemController(sysDatasetItemService, datasetOperationService),
                         new EvaluationController(evalLogService, evalLogMapper),
                         new ImageInputController(historyService),
-                        new PredictionController(predLogService))
+                        new ImagesController(predLogService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .build();
@@ -110,7 +117,7 @@ class SysDomainPagingValidationTest {
                 "/api/v1/evaluation/metrics",
                 "/api/v1/evaluation/logs",
                 "/api/v1/image-input/history",
-                "/api/v1/prediction/logs");
+                "/api/v1/images/tasks");
     }
 
     @ParameterizedTest(name = "{0}?pageSize=101 → 400")

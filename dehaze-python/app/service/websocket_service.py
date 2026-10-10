@@ -21,7 +21,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
-from app.config import settings
+from app.core.constants import WS_HEARTBEAT_INTERVAL, WS_ONLINE_KEY, WS_ONLINE_TTL, WS_REDIS_CHANNEL
 from app.dependencies.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ class DistributedConnectionManager:
             has_local = user_id in self._local_connections and self._local_connections[user_id]
         if not has_local and self._redis:
             try:
-                await self._redis.zrem(settings.WS_ONLINE_KEY, str(user_id))
+                await self._redis.zrem(WS_ONLINE_KEY, str(user_id))
             except Exception as e:
                 logger.warning(f"清理 Redis 在线状态失败: user_id={user_id}, error={e}")
 
@@ -159,7 +159,7 @@ class DistributedConnectionManager:
                     },
                     ensure_ascii=False,
                 )
-                await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
+                await self._redis.publish(WS_REDIS_CHANNEL, msg)
                 return
             except RedisError as e:
                 logger.warning(f"Redis Pub/Sub 发布失败，降级为本地发送: {e}")
@@ -178,7 +178,7 @@ class DistributedConnectionManager:
                     },
                     ensure_ascii=False,
                 )
-                await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
+                await self._redis.publish(WS_REDIS_CHANNEL, msg)
                 return
             except RedisError as e:
                 logger.warning(f"Redis Pub/Sub 广播失败，降级为本地广播: {e}")
@@ -190,8 +190,8 @@ class DistributedConnectionManager:
         if self._redis and self._started:
             try:
                 now = time.time()
-                min_score = now - settings.WS_ONLINE_TTL
-                raw = await self._redis.zrangebyscore(settings.WS_ONLINE_KEY, min_score, now)
+                min_score = now - WS_ONLINE_TTL
+                raw = await self._redis.zrangebyscore(WS_ONLINE_KEY, min_score, now)
                 # 从本地连接补充用户名信息
                 user_name_map = {}
                 async with self._lock:
@@ -273,8 +273,8 @@ class DistributedConnectionManager:
         while self._started:
             try:
                 pubsub = redis.pubsub()
-                await pubsub.subscribe(settings.WS_REDIS_CHANNEL)
-                logger.debug(f"已订阅 WebSocket 频道: {settings.WS_REDIS_CHANNEL}")
+                await pubsub.subscribe(WS_REDIS_CHANNEL)
+                logger.debug(f"已订阅 WebSocket 频道: {WS_REDIS_CHANNEL}")
 
                 async for message in pubsub.listen():
                     if not self._started:
@@ -285,7 +285,7 @@ class DistributedConnectionManager:
                             data = data.decode("utf-8")
                         await self._handle_pubsub_message(data)
 
-                await pubsub.unsubscribe(settings.WS_REDIS_CHANNEL)
+                await pubsub.unsubscribe(WS_REDIS_CHANNEL)
                 await pubsub.aclose()
             except asyncio.CancelledError:
                 break
@@ -316,7 +316,7 @@ class DistributedConnectionManager:
         """心跳循环：定期更新本 Worker 连接的用户的在线状态"""
         while self._started:
             try:
-                await asyncio.sleep(settings.WS_HEARTBEAT_INTERVAL)
+                await asyncio.sleep(WS_HEARTBEAT_INTERVAL)
 
                 async with self._lock:
                     user_ids = list(self._local_connections.keys())
@@ -325,9 +325,9 @@ class DistributedConnectionManager:
                     now = time.time()
                     pipe = self._redis.pipeline()
                     for uid in user_ids:
-                        pipe.zadd(settings.WS_ONLINE_KEY, {str(uid): now})
+                        pipe.zadd(WS_ONLINE_KEY, {str(uid): now})
                     # 清理过期用户
-                    pipe.zremrangebyscore(settings.WS_ONLINE_KEY, 0, now - settings.WS_ONLINE_TTL)
+                    pipe.zremrangebyscore(WS_ONLINE_KEY, 0, now - WS_ONLINE_TTL)
                     await pipe.execute()
             except asyncio.CancelledError:
                 break
@@ -339,7 +339,7 @@ class DistributedConnectionManager:
         if self._redis:
             try:
                 await self._redis.zadd(
-                    settings.WS_ONLINE_KEY,
+                    WS_ONLINE_KEY,
                     {str(user_id): time.time()},
                 )
             except RedisError as e:

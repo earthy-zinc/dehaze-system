@@ -18,8 +18,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.InputStream;
 import lombok.RequiredArgsConstructor;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -29,8 +29,6 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.InputStream;
 
 @Tag(name = "07.文件接口")
 @RestController
@@ -75,27 +73,18 @@ public class FileController {
     @PostMapping
     @Operation(summary = "文件上传")
     public Result<SysFile> uploadFile(
-            @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file,
-            @Parameter(description = "模型id") @RequestParam(required = false) Long modelId
-    ) {
+            @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file) {
         validateFilename(file.getOriginalFilename());
         String uploadPath = filePathBuilder.buildUploadPath();
         FileDTO fileDTO = fileDTOFactory.createFileDTO(file, uploadPath);
         SysFile fileInfo = sysFileService.saveFile(fileDTO);
-        if (modelId != null) {
-            SysFile wpxFile = sysFileService.getWpxFile(fileInfo, modelId);
-            sysFileService.fillUrl(wpxFile);
-            return Result.success(wpxFile);
-        }
         sysFileService.fillUrl(fileInfo);
         return Result.success(fileInfo);
     }
 
     @DeleteMapping
     @Operation(summary = "文件删除")
-    public Result<Void> deleteFile(
-            @Parameter(description = "文件路径") @RequestParam Long fileId
-    ) {
+    public Result<Void> deleteFile(@Parameter(description = "文件路径") @RequestParam Long fileId) {
         SysFile file = sysFileService.getById(fileId);
         if (file == null) {
             throw new BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在");
@@ -107,9 +96,7 @@ public class FileController {
 
     @GetMapping("/check")
     @Operation(summary = "文件校验")
-    public Result<SysFile> checkFile(
-            @Parameter(description = "文件md5") @RequestParam String md5
-    ) {
+    public Result<SysFile> checkFile(@Parameter(description = "文件md5") @RequestParam String md5) {
         // 校验 MD5 格式：32 位十六进制（T-FM-034/035：无效 MD5 返回 B0404"MD5 格式无效"）
         if (StrUtil.isBlank(md5) || !md5.matches("^[0-9a-fA-F]{32}$")) {
             throw new BusinessException(ResultCode.FILE_MD5_INVALID);
@@ -124,8 +111,7 @@ public class FileController {
     public PageResult<SysFile> listPagedFiles(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "关键字") @RequestParam(required = false) String keywords
-    ) {
+            @Parameter(description = "关键字") @RequestParam(required = false) String keywords) {
         Page<SysFile> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<SysFile> queryWrapper = new LambdaQueryWrapper<>();
         // 普通用户仅可见自己上传的文件，管理员全量
@@ -134,9 +120,7 @@ public class FileController {
         }
         if (keywords != null && !keywords.isEmpty()) {
             // 用 and 嵌套包裹 OR，防止 OR 条件逃逸逻辑删除（deleted=0）过滤
-            queryWrapper.and(w -> w.like(SysFile::getName, keywords)
-                    .or()
-                    .like(SysFile::getType, keywords));
+            queryWrapper.and(w -> w.like(SysFile::getName, keywords).or().like(SysFile::getType, keywords));
         }
         queryWrapper.orderByDesc(SysFile::getCreateTime);
         Page<SysFile> result = sysFileService.page(page, queryWrapper);
@@ -146,9 +130,7 @@ public class FileController {
 
     @GetMapping("/{fileId}")
     @Operation(summary = "获取文件详情")
-    public Result<SysFile> getFileDetail(
-            @Parameter(description = "文件ID") @PathVariable Long fileId
-    ) {
+    public Result<SysFile> getFileDetail(@Parameter(description = "文件ID") @PathVariable Long fileId) {
         SysFile file = sysFileService.getById(fileId);
         if (file == null) {
             throw new BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在");
@@ -169,8 +151,7 @@ public class FileController {
             throw new BusinessException(ResultCode.PARAM_ERROR, "无效的文件路径");
         }
 
-        SysFile file = sysFileService.getOne(
-                new LambdaQueryWrapper<SysFile>().eq(SysFile::getObjectName, objectName));
+        SysFile file = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getObjectName, objectName));
         if (file == null) {
             // 不存在/已软删文件返回业务信封（python B0401 口径），不做裸 404
             throw new BusinessException(ResultCode.FILE_NOT_FOUND, "文件不存在");
@@ -183,11 +164,8 @@ public class FileController {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
         // 根据文件名后缀推断真实 MIME 类型（如 image/jpeg、image/png），避免浏览器/客户端按 application/json 解析图片
-        MediaType mediaType = MediaTypeFactory.getMediaType(filename)
-                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+        MediaType mediaType = MediaTypeFactory.getMediaType(filename).orElse(MediaType.APPLICATION_OCTET_STREAM);
         headers.setContentType(mediaType);
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(new InputStreamResource(stream));
+        return ResponseEntity.ok().headers(headers).body(new InputStreamResource(stream));
     }
 }

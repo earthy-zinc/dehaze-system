@@ -32,7 +32,7 @@ func RegisterAnnouncementRoutes(rg *gin.RouterGroup, annApi *api.AnnouncementApi
 	annRouter := rg.Group("/announcements")
 	{
 		annRouter.GET("/page", annApi.GetPage)
-		annRouter.POST("", middleware.Permission("notify:announcement:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), annApi.Create)
+		annRouter.POST("", middleware.Permission("notify:announcement:add"), middleware.DefaultAntiRepeat(), annApi.Create)
 		annRouter.GET("/:id", annApi.GetDetail)
 		annRouter.PUT("/:id", middleware.Permission("notify:announcement:edit"), annApi.Update)
 		annRouter.DELETE("/:id", middleware.Permission("notify:announcement:delete"), annApi.Delete)

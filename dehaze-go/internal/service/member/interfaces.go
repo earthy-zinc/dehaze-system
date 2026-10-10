@@ -9,13 +9,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 )
 
-type QuotaType string
-
-const (
-	QuotaTypeDehaze   QuotaType = "dehaze"
-	QuotaTypeEvaluate QuotaType = "evaluate"
-)
-
 type MessageSender interface {
 	Send(ctx context.Context, form *bo.MessageSendForm) (*vo.MessageSendResultVO, error)
 }
@@ -74,9 +67,6 @@ type IMemberService interface {
 	ListBenefits(ctx context.Context) ([]vo.BenefitVO, error)
 	UpdateBenefit(ctx context.Context, levelCode string, form *bo.BenefitForm) error
 	AwardGrowth(ctx context.Context, userID int64, changeType string, changeValue int, reason, relatedID string) error
-	CheckAndDeductQuota(ctx context.Context, userID int64, quotaType QuotaType) error
-	RefundQuota(ctx context.Context, userID int64, quotaType QuotaType) error
-	ResetMonthlyQuota(ctx context.Context) error
 	ProcessExpiredMembers(ctx context.Context) error
 	SendExpireReminders(ctx context.Context) error
 	GetLevelCode(ctx context.Context, userID int64) (string, error)

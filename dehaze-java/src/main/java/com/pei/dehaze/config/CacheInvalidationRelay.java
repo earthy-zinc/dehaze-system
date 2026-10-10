@@ -3,6 +3,7 @@ package com.pei.dehaze.config;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import jakarta.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,8 +12,6 @@ import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Component;
-
-import java.nio.charset.StandardCharsets;
 
 /**
  * 缓存失效广播中继
@@ -36,8 +35,8 @@ public class CacheInvalidationRelay implements MessageListener {
 
     @PostConstruct
     public void init() {
-        redisMessageListenerContainer.addMessageListener(this,
-                new ChannelTopic(MultiLevelCache.CACHE_INVALIDATION_CHANNEL));
+        redisMessageListenerContainer.addMessageListener(
+                this, new ChannelTopic(MultiLevelCache.CACHE_INVALIDATION_CHANNEL));
         log.info("缓存失效广播已订阅频道: {}", MultiLevelCache.CACHE_INVALIDATION_CHANNEL);
     }
 

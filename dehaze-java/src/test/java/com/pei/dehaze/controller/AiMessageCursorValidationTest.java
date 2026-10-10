@@ -1,10 +1,26 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
-import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.model.vo.AiMessagePageVO;
 import com.pei.dehaze.model.vo.AiMessageVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.AiConversationService;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,23 +35,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-
-import java.util.List;
-import java.util.Set;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 会话消息列表游标分页守卫（契约：{@code before?}、{@code limit? 1..100 默认50}、响应 {@code {list,total,hasMore}}）。
@@ -153,8 +152,7 @@ class AiMessageCursorValidationTest {
     @Test
     @DisplayName("limit 透传：显式值直达服务层")
     void limitPropagatesToService() throws Exception {
-        mockMvc.perform(get(MESSAGES).param("limit", "100"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get(MESSAGES).param("limit", "100")).andExpect(status().isOk());
 
         verify(conversationService).listMessages(eq(1L), isNull(), isNull(), eq(100), eq(false));
     }

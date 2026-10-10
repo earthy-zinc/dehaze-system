@@ -121,15 +121,11 @@ func (api *FeedbackApi) ListRatings(c *gin.Context) {
 	}
 	q := &query.RatingPageQuery{
 		Keywords:  c.Query("keywords"),
+		ModelID:   c.Query("modelId"),
 		StartTime: c.Query("startTime"),
 		EndTime:   c.Query("endTime"),
 		PageNum:   pageNum,
 		PageSize:  pageSize,
-	}
-	if v := c.Query("algorithmId"); v != "" {
-		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
-			q.AlgorithmID = &n
-		}
 	}
 	if v := c.Query("ratingMin"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {

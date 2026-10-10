@@ -18,38 +18,34 @@ import com.pei.dehaze.model.vo.AnnouncementSendResultVO;
 import com.pei.dehaze.model.vo.AnnouncementVO;
 import com.pei.dehaze.service.AnnouncementService;
 import com.pei.dehaze.service.MessageService;
+import java.time.LocalDateTime;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.*;
-
 @Service
 @RequiredArgsConstructor
-public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, SysAnnouncement> implements AnnouncementService {
+public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, SysAnnouncement>
+        implements AnnouncementService {
 
     private static final Map<String, String> TYPE_LABELS = Map.of(
             "maintenance", "系统维护",
             "feature", "功能更新",
             "activity", "活动通知",
-            "operation", "运营公告"
-    );
+            "operation", "运营公告");
     private static final Map<String, String> SCOPE_LABELS = Map.of(
             "all", "全体用户",
             "level", "按会员等级",
-            "specified", "指定用户"
-    );
+            "specified", "指定用户");
     private static final Map<Integer, String> STATUS_LABELS = Map.of(
             1, "草稿",
             2, "待发送",
             3, "已发送",
-            4, "已取消"
-    );
+            4, "已取消");
     private static final Map<Integer, String> IMPORTANCE_LABELS = Map.of(
             1, "普通",
-            2, "重要"
-    );
+            2, "重要");
 
     private final SysUserMapper sysUserMapper;
     private final MessageService messageService;
@@ -83,11 +79,16 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
     @Override
     public Page<AnnouncementVO> getPage(AnnouncementQuery query) {
         Page<SysAnnouncement> page = new Page<>(query.getPageNum(), query.getPageSize());
-        this.page(page, new LambdaQueryWrapper<SysAnnouncement>()
-                .like(CharSequenceUtil.isNotBlank(query.getTitle()), SysAnnouncement::getTitle, query.getTitle())
-                .eq(CharSequenceUtil.isNotBlank(query.getType()), SysAnnouncement::getType, query.getType())
-                .eq(query.getStatus() != null, SysAnnouncement::getStatus, query.getStatus())
-                .orderByDesc(SysAnnouncement::getCreateTime));
+        this.page(
+                page,
+                new LambdaQueryWrapper<SysAnnouncement>()
+                        .like(
+                                CharSequenceUtil.isNotBlank(query.getTitle()),
+                                SysAnnouncement::getTitle,
+                                query.getTitle())
+                        .eq(CharSequenceUtil.isNotBlank(query.getType()), SysAnnouncement::getType, query.getType())
+                        .eq(query.getStatus() != null, SysAnnouncement::getStatus, query.getStatus())
+                        .orderByDesc(SysAnnouncement::getCreateTime));
 
         Page<AnnouncementVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(this::toVO).toList());
@@ -212,12 +213,13 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
 
     private List<Long> resolveTargetUserIds(SysAnnouncement entity) {
         String scope = entity.getTargetScope();
-        Map<String, Object> params = entity.getTargetParams() != null
-                ? entity.getTargetParams() : Collections.emptyMap();
+        Map<String, Object> params =
+                entity.getTargetParams() != null ? entity.getTargetParams() : Collections.emptyMap();
         return switch (scope) {
-            case "all" -> sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                    .select(SysUser::getId))
-                    .stream().map(SysUser::getId).toList();
+            case "all" ->
+                sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>().select(SysUser::getId)).stream()
+                        .map(SysUser::getId)
+                        .toList();
             case "level" -> {
                 Object level = params.get("level");
                 if (level == null) {
@@ -228,7 +230,10 @@ public class AnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, 
             case "specified" -> {
                 Object userIds = params.get("userIds");
                 if (userIds instanceof List<?> list) {
-                    yield list.stream().filter(Objects::nonNull).map(o -> Long.valueOf(o.toString())).toList();
+                    yield list.stream()
+                            .filter(Objects::nonNull)
+                            .map(o -> Long.valueOf(o.toString()))
+                            .toList();
                 }
                 yield Collections.emptyList();
             }

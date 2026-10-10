@@ -304,60 +304,28 @@ class UserRepository(BaseRepository[SysUser]):
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall() if row[0]]
 
-    async def get_credits_balance_and_version(
-        self,
-        db: AsyncSession,
-        user_id: int,
-    ) -> tuple[Decimal, int] | None:
-        """读取用户余额与乐观锁版本号（billing 余额 CAS 前置读取）"""
-        stmt = select(SysUser.credits_balance, SysUser.credits_version).where(
-            SysUser.id == user_id, SysUser.deleted == 0
-        )
+    async def get_credits_balance(self, db: AsyncSession, user_id: int) -> Decimal | None:
+        """读取用户余额（账户不存在返回 None）"""
+        stmt = select(SysUser.credits_balance).where(SysUser.id == user_id, SysUser.deleted == 0)
         row = (await db.execute(stmt)).first()
-        if row is None:
-            return None
-        return Decimal(row.credits_balance), row.credits_version
+        return Decimal(row.credits_balance) if row is not None else None
 
-    async def deduct_balance_cas(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        amount: Decimal,
-        current_version: int,
-    ) -> bool:
-        """CAS 乐观锁扣减积分余额，返回是否成功"""
+    async def deduct_balance(self, db: AsyncSession, user_id: int, amount: Decimal) -> bool:
+        """扣减积分余额：相对值 UPDATE 天然原子，返回是否命中该用户"""
         result = await db.execute(
             update(SysUser)
-            .where(
-                SysUser.id == user_id,
-                SysUser.credits_version == current_version,
-            )
-            .values(
-                credits_balance=SysUser.credits_balance - amount,
-                credits_version=SysUser.credits_version + 1,
-            )
+            .where(SysUser.id == user_id, SysUser.deleted == 0)
+            .values(credits_balance=SysUser.credits_balance - amount)
             .execution_options(synchronize_session=False)
         )
         return result.rowcount == 1
 
-    async def increase_balance_cas(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        amount: Decimal,
-        current_version: int,
-    ) -> bool:
-        """CAS 乐观锁增加积分余额，返回是否成功"""
+    async def increase_balance(self, db: AsyncSession, user_id: int, amount: Decimal) -> bool:
+        """增加积分余额：相对值 UPDATE 天然原子，返回是否命中该用户"""
         result = await db.execute(
             update(SysUser)
-            .where(
-                SysUser.id == user_id,
-                SysUser.credits_version == current_version,
-            )
-            .values(
-                credits_balance=SysUser.credits_balance + amount,
-                credits_version=SysUser.credits_version + 1,
-            )
+            .where(SysUser.id == user_id, SysUser.deleted == 0)
+            .values(credits_balance=SysUser.credits_balance + amount)
             .execution_options(synchronize_session=False)
         )
         return result.rowcount == 1

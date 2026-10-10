@@ -90,7 +90,8 @@ func TestDeleteRemovesEsVectorDoc(t *testing.T) {
 
 	require.Equal(t, 1, es.hitCount, "删除记忆必须发起一次 ES 文档删除")
 	require.Equal(t, http.MethodDelete, es.method)
-	require.Equal(t, fmt.Sprintf("/ai_memory/_doc/%d", memory.ID), es.path)
+	// 索引名取自生产同一入口，不硬编码：dev / pre 各自带 ES_INDEX_PREFIX，只有生产为空前缀
+	require.Equal(t, fmt.Sprintf("/%s/_doc/%d", memoryEsIndexName(), memory.ID), es.path)
 	require.Equal(t, "refresh=true", es.query)
 	require.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("elastic:Dehaze2026")), es.auth)
 

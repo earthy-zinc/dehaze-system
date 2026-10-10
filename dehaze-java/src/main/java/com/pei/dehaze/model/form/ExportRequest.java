@@ -1,12 +1,11 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.Data;
 
 /**
  * 导出请求参数（GET 查询参数形式）
@@ -44,9 +43,7 @@ public class ExportRequest {
         return paramMap.entrySet().stream()
                 .filter(e -> !isFrameworkParam(e.getKey()))
                 .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> e.getValue().length == 1 ? (Object) e.getValue()[0] : e.getValue()
-                ));
+                        Map.Entry::getKey, e -> e.getValue().length == 1 ? (Object) e.getValue()[0] : e.getValue()));
     }
 
     private boolean isFrameworkParam(String key) {

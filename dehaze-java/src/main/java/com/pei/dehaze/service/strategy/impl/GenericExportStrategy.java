@@ -2,6 +2,7 @@ package com.pei.dehaze.service.strategy.impl;
 
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.model.entity.SysTask;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.pei.dehaze.service.importexport.ExportHandler;
 import com.pei.dehaze.service.importexport.ExportHandlerRegistry;
 import com.pei.dehaze.service.importexport.ImportExportFileGenerator;
@@ -11,16 +12,14 @@ import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
 import com.pei.dehaze.service.strategy.TaskStrategy;
-import com.pei.dehaze.service.impl.file.StorageServiceFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 通用导出策略
@@ -44,9 +43,7 @@ public class GenericExportStrategy implements TaskStrategy {
                 TaskConstants.TYPE_DEPT_EXPORT,
                 TaskConstants.TYPE_MENU_EXPORT,
                 TaskConstants.TYPE_DICT_EXPORT,
-                TaskConstants.TYPE_DATASET_EXPORT,
-                TaskConstants.TYPE_ALGORITHM_EXPORT
-        );
+                TaskConstants.TYPE_DATASET_EXPORT);
     }
 
     @Override
@@ -85,7 +82,9 @@ public class GenericExportStrategy implements TaskStrategy {
                     if (!batch.isEmpty()) {
                         int processed = pageNum * pageSize;
                         int total = (int) Math.min(ctx.getTotalCount(), Integer.MAX_VALUE);
-                        callback.updateProgress(Math.min(processed, total), total,
+                        callback.updateProgress(
+                                Math.min(processed, total),
+                                total,
                                 "导出中: " + Math.min(processed, (int) ctx.getTotalCount()) + "/" + ctx.getTotalCount());
                     }
                     return batch;
@@ -102,10 +101,10 @@ public class GenericExportStrategy implements TaskStrategy {
             String contentType = handler.useDirectExport() ? "application/zip" : getContentType(format);
             String objectName = "exports/" + task.getTaskId() + "." + fileExt;
             // uploadFile 返回 objectName（落库 sys_task.result），下载时由 getDownloadUrl 动态拼接 URL
-            String resultObjectName = storageServiceFactory.getDefault().uploadFile(objectName,
-                    new ByteArrayInputStream(baos.toByteArray()),
-                    (long) baos.size(),
-                    contentType);
+            String resultObjectName = storageServiceFactory
+                    .getDefault()
+                    .uploadFile(
+                            objectName, new ByteArrayInputStream(baos.toByteArray()), (long) baos.size(), contentType);
 
             log.debug("异步导出完成: taskId={}, module={}, objectName={}", task.getTaskId(), module, resultObjectName);
             return TaskResult.success(resultObjectName);

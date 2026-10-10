@@ -51,8 +51,8 @@ func (api *RecommendationApi) Analyze(c *gin.Context) {
 	common.OkWithDetailed(result, "分析成功", c)
 }
 
-// GetAlgorithmRecommendations 获取算法推荐
-func (api *RecommendationApi) GetAlgorithmRecommendations(c *gin.Context) {
+// GetModelRecommendations 获取图像模型推荐
+func (api *RecommendationApi) GetModelRecommendations(c *gin.Context) {
 	userID, err := security.RequireUserID(c)
 	if err != nil {
 		_ = c.Error(err)
@@ -67,7 +67,7 @@ func (api *RecommendationApi) GetAlgorithmRecommendations(c *gin.Context) {
 	}
 	imageMd5 := c.Query("imageMd5")
 
-	result, err := api.service.GetAlgorithmRecommendations(c.Request.Context(), userID, analysisID, imageMd5)
+	result, err := api.service.GetModelRecommendations(c.Request.Context(), userID, analysisID, imageMd5)
 	if err != nil {
 		_ = c.Error(err)
 		return

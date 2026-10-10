@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Schema(description = "MCP 市场预设目录项")
 @Data

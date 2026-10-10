@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 @Data
 @Schema(description = "推荐效果报表")

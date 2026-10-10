@@ -6,11 +6,11 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.dehaze.common.base.BaseEntity;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
 import java.io.Serial;
 import java.util.List;
+import java.util.Map;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 智能体评测样本（无逻辑删除，随评测集物理清理）
@@ -32,7 +32,7 @@ public class SysAiAgentEvalSample extends BaseEntity {
     private String allowedInput;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> tools;
+    private List<Map<String, Object>> tools;
 
     private String expectedProcess;
 

@@ -11,6 +11,11 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "消息搜索查询对象")
 public class MessageSearchQuery extends BasePageQuery {
 
+    /** python message.py:45 默认 20 */
+    {
+        setPageSize(20);
+    }
+
     @Schema(description = "搜索关键字", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "搜索关键字不能为空")
     private String keyword;

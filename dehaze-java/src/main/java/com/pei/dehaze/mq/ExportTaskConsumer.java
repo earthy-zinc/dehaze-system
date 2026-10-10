@@ -55,13 +55,20 @@ public class ExportTaskConsumer extends RabbitMQConsumer {
             return;
         }
         if (TaskConstants.TERMINAL_STATUSES.contains(sysTask.getStatus())) {
-            log.debug("任务已为终态，跳过重复消费: dbTaskId={}, taskId={}, status={}",
-                    dbTaskId, sysTask.getTaskId(), sysTask.getStatus());
+            log.debug(
+                    "任务已为终态，跳过重复消费: dbTaskId={}, taskId={}, status={}",
+                    dbTaskId,
+                    sysTask.getTaskId(),
+                    sysTask.getStatus());
             return;
         }
 
-        log.debug("收到导出任务: dbTaskId={}, taskId={}, type={}, traceId={}",
-                dbTaskId, sysTask.getTaskId(), sysTask.getTaskType(), traceId);
+        log.debug(
+                "收到导出任务: dbTaskId={}, taskId={}, type={}, traceId={}",
+                dbTaskId,
+                sysTask.getTaskId(),
+                sysTask.getTaskType(),
+                traceId);
         // form 传 null，由 executeExportTask 从 sysTask.getParams() 重建
         taskExecutor.executeExportTask(dbTaskId, null);
         log.debug("导出任务处理完成: dbTaskId={}, traceId={}", dbTaskId, traceId);

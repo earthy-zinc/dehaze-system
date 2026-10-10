@@ -14,7 +14,7 @@ class PresetRepository(BaseRepository[SysPreset]):
         self,
         db: AsyncSession,
         user_id: int,
-        algorithm_id: int | None = None,
+        model_id: str | None = None,
         is_system: bool | None = None,
         page: int = 1,
         size: int = 10,
@@ -33,8 +33,8 @@ class PresetRepository(BaseRepository[SysPreset]):
                 )
             )
 
-        if algorithm_id is not None:
-            conditions.append(SysPreset.algorithm_id == algorithm_id)
+        if model_id is not None:
+            conditions.append(SysPreset.model_id == model_id)
 
         base = select(SysPreset).where(*conditions)
 

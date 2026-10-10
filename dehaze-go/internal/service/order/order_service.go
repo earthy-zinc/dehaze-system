@@ -514,7 +514,7 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 	}
 
 	if req.PayMethod == "balance" {
-		// 余额支付：校验并扣减平台余额（乐观锁 CAS），不足拒绝（A053B）
+		// 余额支付：校验并扣减平台余额（相对值 UPDATE），不足拒绝（A053B）
 		accountRepo := orderrepo.NewBalanceAccountRepository(s.db)
 		account, err := accountRepo.GetOrCreate(ctx, o.UserID)
 		if err != nil {
@@ -523,7 +523,7 @@ func (s *OrderService) Pay(ctx context.Context, orderNo string, req *bo.PayReque
 		if account.Balance < o.PayableAmount {
 			return nil, common.NewBizError(common.BALANCE_INSUFFICIENT, "余额不足")
 		}
-		ok, err := accountRepo.AdjustBalance(ctx, o.UserID, -o.PayableAmount, account.Version)
+		ok, err := accountRepo.AdjustBalance(ctx, o.UserID, -o.PayableAmount)
 		if err != nil {
 			return nil, common.WrapBizError(common.DATABASE_ERROR, "扣减余额失败", err)
 		}

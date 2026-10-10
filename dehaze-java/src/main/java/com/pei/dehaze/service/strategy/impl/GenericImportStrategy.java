@@ -11,10 +11,6 @@ import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
 import com.pei.dehaze.service.strategy.TaskStrategy;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -22,6 +18,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 通用导入策略
@@ -44,9 +43,7 @@ public class GenericImportStrategy implements TaskStrategy {
                 TaskConstants.TYPE_ROLE_IMPORT,
                 TaskConstants.TYPE_DEPT_IMPORT,
                 TaskConstants.TYPE_MENU_IMPORT,
-                TaskConstants.TYPE_DICT_IMPORT,
-                TaskConstants.TYPE_ALGORITHM_IMPORT
-        );
+                TaskConstants.TYPE_DICT_IMPORT);
     }
 
     @Override
@@ -65,23 +62,27 @@ public class GenericImportStrategy implements TaskStrategy {
 
         try (InputStream is = storageServiceFactory.getDefault().downLoadFile(fileObjectName)) {
             List<Map<String, Object>> rows = new ArrayList<>();
-            fileGenerator.parse(is, fileObjectName, handler.getDynamicFieldConfigs(),
-                    (rowNum, row) -> rows.add(row));
+            fileGenerator.parse(is, fileObjectName, handler.getDynamicFieldConfigs(), (rowNum, row) -> rows.add(row));
 
             ImportOptions options = ImportOptions.of(mode, extraParams);
             ImportResult result = handler.importBatch(rows, options, callback);
 
             String errorReportUrl = null;
-            if (result.getFailureCount() > 0 && result.getErrors() != null && !result.getErrors().isEmpty()) {
+            if (result.getFailureCount() > 0
+                    && result.getErrors() != null
+                    && !result.getErrors().isEmpty()) {
                 errorReportUrl = generateErrorReport(task.getTaskId(), result.getErrors());
             }
 
-            String finalResult = errorReportUrl != null
-                    ? buildResultJson(result, errorReportUrl)
-                    : JSONUtil.toJsonStr(result);
+            String finalResult =
+                    errorReportUrl != null ? buildResultJson(result, errorReportUrl) : JSONUtil.toJsonStr(result);
 
-            log.debug("异步导入完成: taskId={}, module={}, success={}, failure={}",
-                    task.getTaskId(), module, result.getSuccessCount(), result.getFailureCount());
+            log.debug(
+                    "异步导入完成: taskId={}, module={}, success={}, failure={}",
+                    task.getTaskId(),
+                    module,
+                    result.getSuccessCount(),
+                    result.getFailureCount());
             return TaskResult.success(finalResult);
         } catch (Exception e) {
             log.error("异步导入失败: taskId={}, module={}", task.getTaskId(), module, e);
@@ -105,12 +106,13 @@ public class GenericImportStrategy implements TaskStrategy {
             List<com.pei.dehaze.service.importexport.model.ImportFieldConfig> errorFields = List.of(
                     com.pei.dehaze.service.importexport.model.ImportFieldConfig.of("row", "行号", true),
                     com.pei.dehaze.service.importexport.model.ImportFieldConfig.of("field", "字段", false),
-                    com.pei.dehaze.service.importexport.model.ImportFieldConfig.of("message", "错误信息", true)
-            );
+                    com.pei.dehaze.service.importexport.model.ImportFieldConfig.of("message", "错误信息", true));
             fileGenerator.writeTemplateExcel(baos, errorFields, errorRows);
 
             try (ByteArrayInputStream bis = new ByteArrayInputStream(baos.toByteArray())) {
-                return storageServiceFactory.getDefault().uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
+                return storageServiceFactory
+                        .getDefault()
+                        .uploadFile(objectName, bis, (long) baos.size(), getContentType("excel"));
             }
         } catch (Exception e) {
             log.warn("生成错误报告失败: taskId={}", taskId, e);

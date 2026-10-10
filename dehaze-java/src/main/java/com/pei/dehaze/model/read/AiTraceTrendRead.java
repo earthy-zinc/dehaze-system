@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.read;
 
-import lombok.Data;
-
 import java.math.BigDecimal;
+import lombok.Data;
 
 /** 性能趋势聚合行（按维度+日期） */
 @Data

@@ -87,6 +87,4 @@ public class CaptchaProperties {
          */
         private int size;
     }
-
-
 }

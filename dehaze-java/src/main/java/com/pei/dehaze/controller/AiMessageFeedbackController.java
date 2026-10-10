@@ -33,8 +33,9 @@ public class AiMessageFeedbackController {
 
     @Operation(summary = "提交/更新消息反馈")
     @PostMapping
-    public Result<AiFeedbackVO> submit(@Parameter(description = "消息ID") @PathVariable Long messageId,
-                                       @Valid @RequestBody AiFeedbackCreateForm form) {
+    public Result<AiFeedbackVO> submit(
+            @Parameter(description = "消息ID") @PathVariable Long messageId,
+            @Valid @RequestBody AiFeedbackCreateForm form) {
         return Result.success(feedbackService.submit(messageId, SecurityUtils.getUserId(), form));
     }
 

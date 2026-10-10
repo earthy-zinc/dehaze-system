@@ -4,16 +4,15 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 导入模板管理器
@@ -34,8 +33,7 @@ public class TemplateManager {
         ImportHandler handler = importHandlerRegistry.getHandler(module);
         List<ImportFieldConfig> fields = handler.getDynamicFieldConfigs();
         if (fields == null || fields.isEmpty()) {
-            throw new BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED,
-                    "模块 " + module + " 未配置导入字段");
+            throw new BusinessException(ResultCode.MODULE_IMPORT_NOT_SUPPORTED, "模块 " + module + " 未配置导入字段");
         }
 
         List<Map<String, Object>> sampleData = handler.getTemplateSampleData();
@@ -47,8 +45,8 @@ public class TemplateManager {
                 : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
         response.setContentType(contentType);
-        response.setHeader("Content-Disposition",
-                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+        response.setHeader(
+                "Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
 
         try (OutputStream os = response.getOutputStream()) {
             if ("csv".equalsIgnoreCase(format)) {

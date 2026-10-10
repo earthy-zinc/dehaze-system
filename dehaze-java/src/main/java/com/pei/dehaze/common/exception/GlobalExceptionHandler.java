@@ -7,6 +7,12 @@ import com.pei.dehaze.common.result.ResultCode;
 import jakarta.servlet.ServletException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.sql.SQLSyntaxErrorException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.TypeMismatchException;
@@ -21,19 +27,12 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.sql.SQLSyntaxErrorException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * 全局系统异常处理器
@@ -50,10 +49,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(BindException e) {
-        String msg = e.getAllErrors()
-            .stream()
-            .map(DefaultMessageSourceResolvable::getDefaultMessage)
-            .collect(Collectors.joining("；"));
+        String msg = e.getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining("；"));
         MDC.put("code", ResultCode.PARAM_ERROR.getCode());
         MDC.put("status", "400");
         log.warn("参数校验失败: {}", msg);
@@ -68,10 +66,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(ConstraintViolationException e) {
-        String msg = e.getConstraintViolations()
-            .stream()
-            .map(ConstraintViolation::getMessage)
-            .collect(Collectors.joining("；"));
+        String msg = e.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .collect(Collectors.joining("；"));
         MDC.put("code", ResultCode.PARAM_ERROR.getCode());
         MDC.put("status", "400");
         log.warn("参数校验失败: {}", msg);
@@ -86,11 +83,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MethodArgumentNotValidException e) {
-        String msg = e.getBindingResult()
-            .getAllErrors()
-            .stream()
-            .map(DefaultMessageSourceResolvable::getDefaultMessage)
-            .collect(Collectors.joining("；"));
+        String msg = e.getBindingResult().getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining("；"));
         MDC.put("code", ResultCode.PARAM_ERROR.getCode());
         MDC.put("status", "400");
         log.warn("参数校验失败: {}", msg);
@@ -131,7 +126,6 @@ public class GlobalExceptionHandler {
         MDC.remove("status");
         return Result.failed(ResultCode.PARAM_IS_NULL);
     }
-
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -239,11 +233,11 @@ public class GlobalExceptionHandler {
         return Result.failed(e.getMessage());
     }
 
-
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleBizException(BusinessException e) {
-        String code = e.getResultCode() != null ? e.getResultCode().getCode() : ResultCode.SYSTEM_EXECUTION_ERROR.getCode();
+        String code =
+                e.getResultCode() != null ? e.getResultCode().getCode() : ResultCode.SYSTEM_EXECUTION_ERROR.getCode();
         MDC.put("code", code);
         MDC.put("status", "400");
         log.warn("业务异常: {}", e.getMessage());

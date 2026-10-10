@@ -129,7 +129,7 @@ type EvalReviewDetailVO struct {
 	ExpectedResult    string             `json:"expectedResult,omitempty"`
 	ExpectedProcess   string             `json:"expectedProcess,omitempty"`
 	ForbiddenBehavior string             `json:"forbiddenBehavior,omitempty"`
-	Tools             []string           `json:"tools,omitempty"`
+	Tools             []EvalToolCall     `json:"tools,omitempty"`
 	RiskLevel         string             `json:"riskLevel"`
 	JudgePassed       bool               `json:"judgePassed"`
 	ActualOutput      string             `json:"actualOutput,omitempty"`

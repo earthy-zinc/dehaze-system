@@ -1,5 +1,10 @@
 package com.pei.dehaze.service.importexport.handler;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.GenderEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
@@ -13,6 +18,9 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,15 +33,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
 
 /**
  * 用户导入处理器单元测试
@@ -129,8 +128,7 @@ class UserImportHandlerTest {
         row.put("mobile", "13900139000");
         row.put("email", "lisi@example.com");
 
-        ImportResult result = handler.importBatch(List.of(row),
-                ImportOptions.of("all", null), callback);
+        ImportResult result = handler.importBatch(List.of(row), ImportOptions.of("all", null), callback);
 
         assertEquals(1, result.getTotalRows());
         assertEquals(1, result.getSuccessCount());
@@ -159,8 +157,7 @@ class UserImportHandlerTest {
         SysRole roleAdmin = new SysRole();
         roleAdmin.setId(20L);
         roleAdmin.setCode("admin");
-        when(roleService.list(any(LambdaQueryWrapper.class)))
-                .thenReturn(List.of(roleUser, roleAdmin));
+        when(roleService.list(any(LambdaQueryWrapper.class))).thenReturn(List.of(roleUser, roleAdmin));
 
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("username", "wangwu");
@@ -168,8 +165,8 @@ class UserImportHandlerTest {
         row.put("mobile", "13700137000");
         row.put("roleCodes", "user,admin,unknown");
 
-        ImportResult result = handler.importBatch(List.of(row),
-                ImportOptions.of("all", Map.of("deptId", 100)), callback);
+        ImportResult result =
+                handler.importBatch(List.of(row), ImportOptions.of("all", Map.of("deptId", 100)), callback);
 
         assertEquals(1, result.getSuccessCount());
 
@@ -194,8 +191,8 @@ class UserImportHandlerTest {
         row.put("nickname", "重复");
         row.put("mobile", "13800138000");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("全量模式已回滚"));
         verify(userService, never()).save(any(SysUser.class));
     }
@@ -203,9 +200,7 @@ class UserImportHandlerTest {
     @Test
     @DisplayName("部分模式 - 用户名已存在, 跳过错误行继续导入")
     void testImportBatch_PartialMode_DuplicateUsername_Skips() {
-        when(userService.count(any(LambdaQueryWrapper.class)))
-                .thenReturn(1L)
-                .thenReturn(0L);
+        when(userService.count(any(LambdaQueryWrapper.class))).thenReturn(1L).thenReturn(0L);
 
         Map<String, Object> badRow = new LinkedHashMap<>();
         badRow.put("username", "dup");
@@ -216,8 +211,7 @@ class UserImportHandlerTest {
         goodRow.put("nickname", "新用户");
         goodRow.put("mobile", "13900139000");
 
-        ImportResult result = handler.importBatch(List.of(badRow, goodRow),
-                ImportOptions.of("partial"), callback);
+        ImportResult result = handler.importBatch(List.of(badRow, goodRow), ImportOptions.of("partial"), callback);
 
         assertEquals(2, result.getTotalRows());
         assertEquals(1, result.getSuccessCount());
@@ -236,8 +230,8 @@ class UserImportHandlerTest {
         row.put("nickname", "昵称");
         row.put("mobile", "13800138000");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("用户名为空"));
     }
 
@@ -249,8 +243,8 @@ class UserImportHandlerTest {
         row.put("nickname", "");
         row.put("mobile", "13800138000");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("昵称为空"));
     }
 
@@ -262,8 +256,8 @@ class UserImportHandlerTest {
         row.put("nickname", "n1");
         row.put("mobile", "");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("手机号为空"));
     }
 
@@ -275,8 +269,8 @@ class UserImportHandlerTest {
         row.put("nickname", "n1");
         row.put("mobile", "12345");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("手机号格式不正确"));
     }
 
@@ -289,8 +283,8 @@ class UserImportHandlerTest {
         row.put("mobile", "13800138000");
         row.put("email", "not-an-email");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("邮箱格式不正确"));
     }
 
@@ -303,8 +297,8 @@ class UserImportHandlerTest {
         row.put("mobile", "13800138000");
         row.put("genderLabel", "未知");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("性别取值无效"));
     }
 
@@ -333,8 +327,7 @@ class UserImportHandlerTest {
         row.put("nickname", "n1");
         row.put("mobile", "13800138000");
 
-        ImportResult result = handler.importBatch(List.of(row),
-                ImportOptions.of("partial"), callback);
+        ImportResult result = handler.importBatch(List.of(row), ImportOptions.of("partial"), callback);
 
         assertEquals(1, result.getFailureCount());
         assertEquals(1, result.getErrors().size());
@@ -353,8 +346,7 @@ class UserImportHandlerTest {
         row2.put("nickname", "n2");
         row2.put("mobile", "13800138002");
 
-        ImportResult result = handler.importBatch(List.of(row1, row2),
-                ImportOptions.of("all"), callback);
+        ImportResult result = handler.importBatch(List.of(row1, row2), ImportOptions.of("all"), callback);
 
         assertEquals(2, result.getTotalRows());
         assertEquals(2, result.getSuccessCount());
@@ -370,16 +362,14 @@ class UserImportHandlerTest {
         row.put("nickname", "n");
         row.put("mobile", "13800138000");
 
-        ImportResult result = handler.importBatch(List.of(row),
-                ImportOptions.of("partial"), callback);
+        ImportResult result = handler.importBatch(List.of(row), ImportOptions.of("partial"), callback);
 
         assertEquals(2, result.getErrors().get(0).getRow());
     }
 
     private static class NoopCallback implements ProgressCallback {
         @Override
-        public void updateProgress(int current, int total, String message) {
-        }
+        public void updateProgress(int current, int total, String message) {}
 
         @Override
         public boolean isCancelled() {

@@ -11,7 +11,7 @@ public interface SysPresetService extends IService<SysPreset> {
     /**
      * 获取预设列表（支持分页、算法筛选、系统/自定义过滤）
      */
-    Page<PresetVO> listPresets(Long algorithmId, int pageNum, int pageSize, Boolean isSystem);
+    Page<PresetVO> listPresets(String modelId, int pageNum, int pageSize, Boolean isSystem);
 
     /**
      * 创建自定义预设

@@ -29,11 +29,6 @@ import com.pei.dehaze.model.vo.McpNamespaceVO;
 import com.pei.dehaze.model.vo.McpServerVO;
 import com.pei.dehaze.service.AiCacheInvalidator;
 import com.pei.dehaze.service.AiMcpService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -41,6 +36,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 外部 MCP Server 管理实现。
@@ -54,6 +53,7 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
 
     /** 命名空间名约束：外部工具运行时命名为 <namespace>_<tool>，须是合法工具名片段 */
     private static final Pattern NAMESPACE_NAME = Pattern.compile("^[a-zA-Z][a-zA-Z0-9_-]{0,63}$");
+
     private static final int MAX_TOOL_NAME_LENGTH = 256;
     /** 拒绝命名空间时回显的可用工具数上限，避免工具清单上百条时错误信息过长 */
     private static final int HINT_TOOL_LIMIT = 20;
@@ -67,24 +67,51 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
 
     /** MCP 市场预设目录（内置静态配置，与 python mcp_presets.MARKET_PRESETS 同源） */
     private static final List<Map<String, Object>> MARKET_PRESETS = List.of(
-            Map.of("presetId", "github", "name", "GitHub",
-                    "description", "GitHub 仓库/Issue/PR/代码管理",
-                    "capabilityTags", List.of("github", "repo", "issue", "code"),
-                    "protocolType", "streamable-http",
-                    "endpoint", "https://api.githubcopilot.com/mcp/",
-                    "authType", "oauth2"),
-            Map.of("presetId", "mysql", "name", "MySQL",
-                    "description", "MySQL 数据库查询与运维",
-                    "capabilityTags", List.of("database", "mysql", "sql"),
-                    "protocolType", "streamable-http",
-                    "endpoint", "http://127.0.0.1:8083/mcp",
-                    "authType", "api_key"),
-            Map.of("presetId", "search", "name", "网络搜索",
-                    "description", "联网搜索与网页摘要获取",
-                    "capabilityTags", List.of("search", "web", "browser"),
-                    "protocolType", "streamable-http",
-                    "endpoint", "http://127.0.0.1:8084/mcp",
-                    "authType", "api_key"));
+            Map.of(
+                    "presetId",
+                    "github",
+                    "name",
+                    "GitHub",
+                    "description",
+                    "GitHub 仓库/Issue/PR/代码管理",
+                    "capabilityTags",
+                    List.of("github", "repo", "issue", "code"),
+                    "protocolType",
+                    "streamable-http",
+                    "endpoint",
+                    "https://api.githubcopilot.com/mcp/",
+                    "authType",
+                    "oauth2"),
+            Map.of(
+                    "presetId",
+                    "mysql",
+                    "name",
+                    "MySQL",
+                    "description",
+                    "MySQL 数据库查询与运维",
+                    "capabilityTags",
+                    List.of("database", "mysql", "sql"),
+                    "protocolType",
+                    "streamable-http",
+                    "endpoint",
+                    "http://127.0.0.1:8083/mcp",
+                    "authType",
+                    "api_key"),
+            Map.of(
+                    "presetId",
+                    "search",
+                    "name",
+                    "网络搜索",
+                    "description",
+                    "联网搜索与网页摘要获取",
+                    "capabilityTags",
+                    List.of("search", "web", "browser"),
+                    "protocolType",
+                    "streamable-http",
+                    "endpoint",
+                    "http://127.0.0.1:8084/mcp",
+                    "authType",
+                    "api_key"));
 
     private final SysAiMcpNamespaceMapper namespaceMapper;
     private final SysAiMcpToolMapper toolMapper;
@@ -99,10 +126,11 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
     public Page<McpServerVO> listServers(McpServerPageQuery query) {
         String keyword = query.getKeyword();
         LambdaQueryWrapper<SysAiMcpServer> wrapper = new LambdaQueryWrapper<SysAiMcpServer>()
-                .and(CharSequenceUtil.isNotBlank(keyword), q -> q
-                        .like(SysAiMcpServer::getName, keyword)
-                        .or()
-                        .like(SysAiMcpServer::getDescription, keyword))
+                .and(
+                        CharSequenceUtil.isNotBlank(keyword),
+                        q -> q.like(SysAiMcpServer::getName, keyword)
+                                .or()
+                                .like(SysAiMcpServer::getDescription, keyword))
                 .eq(query.getStatus() != null, SysAiMcpServer::getStatus, query.getStatus())
                 .orderByDesc(SysAiMcpServer::getId);
         Page<SysAiMcpServer> page = this.page(new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
@@ -181,9 +209,9 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
         SysAiMcpServer server = getOrRaise(serverId);
         long refs = this.baseMapper.countAgentReferences(server.getId());
         if (refs > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "MCP Server [" + server.getName() + "] 已被 " + refs
-                            + " 个 Agent 关联（命名空间），请先解绑再删除");
+            throw new BusinessException(
+                    ResultCode.DATA_REFERENCED,
+                    "MCP Server [" + server.getName() + "] 已被 " + refs + " 个 Agent 关联（命名空间），请先解绑再删除");
         }
         this.removeById(server.getId());
         cacheInvalidator.evictReasoningGraphs();
@@ -205,7 +233,8 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
     @Transactional(readOnly = true)
     public List<McpNamespaceVO> listNamespaces(Long serverId) {
         getOrRaise(serverId);
-        return namespaceMapper.selectList(new LambdaQueryWrapper<SysAiMcpNamespace>()
+        return namespaceMapper
+                .selectList(new LambdaQueryWrapper<SysAiMcpNamespace>()
                         .eq(SysAiMcpNamespace::getServerId, serverId)
                         .orderByAsc(SysAiMcpNamespace::getId))
                 .stream()
@@ -220,17 +249,18 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
         Set<String> known = knownToolNames(serverId);
         Set<String> seen = new LinkedHashSet<>();
         for (McpNamespaceForm item : namespaces) {
-            if (!NAMESPACE_NAME.matcher(item.getName() == null ? "" : item.getName()).matches()) {
-                throw new BusinessException(ResultCode.PARAM_ERROR,
-                        "命名空间名非法（须字母开头，仅含字母/数字/下划线/连字符，≤64字符）: " + item.getName());
+            if (!NAMESPACE_NAME
+                    .matcher(item.getName() == null ? "" : item.getName())
+                    .matches()) {
+                throw new BusinessException(
+                        ResultCode.PARAM_ERROR, "命名空间名非法（须字母开头，仅含字母/数字/下划线/连字符，≤64字符）: " + item.getName());
             }
             if (!seen.add(item.getName())) {
                 throw new BusinessException(ResultCode.PARAM_ERROR, "命名空间重复: " + item.getName());
             }
             for (String tool : item.getToolNames()) {
                 if (CharSequenceUtil.isBlank(tool) || tool.length() > MAX_TOOL_NAME_LENGTH) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR,
-                            "命名空间 " + item.getName() + " 的工具名不能为空且≤256字符");
+                    throw new BusinessException(ResultCode.PARAM_ERROR, "命名空间 " + item.getName() + " 的工具名不能为空且≤256字符");
                 }
             }
             // 拒绝清单外的工具名：拼错的工具名装载期静默失效，且无提示可自查
@@ -240,14 +270,16 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
             if (!unknown.isEmpty()) {
                 String hint = known.isEmpty()
                         ? "无（请先在工具 Tab 拉取清单）"
-                        : String.join("、", known.stream().sorted().limit(HINT_TOOL_LIMIT).toList());
-                throw new BusinessException(ResultCode.PARAM_ERROR,
-                        "命名空间 " + item.getName() + " 含未拉取到的工具: " + String.join(", ", unknown)
-                                + "；当前可用工具: " + hint);
+                        : String.join(
+                                "、",
+                                known.stream().sorted().limit(HINT_TOOL_LIMIT).toList());
+                throw new BusinessException(
+                        ResultCode.PARAM_ERROR,
+                        "命名空间 " + item.getName() + " 含未拉取到的工具: " + String.join(", ", unknown) + "；当前可用工具: " + hint);
             }
         }
-        namespaceMapper.delete(new LambdaQueryWrapper<SysAiMcpNamespace>()
-                .eq(SysAiMcpNamespace::getServerId, serverId));
+        namespaceMapper.delete(
+                new LambdaQueryWrapper<SysAiMcpNamespace>().eq(SysAiMcpNamespace::getServerId, serverId));
         for (McpNamespaceForm item : namespaces) {
             SysAiMcpNamespace entity = new SysAiMcpNamespace();
             entity.setServerId(serverId);
@@ -274,8 +306,8 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
             }
             if (form.getExtra() != null && !form.getExtra().isEmpty()) {
                 @SuppressWarnings("unchecked")
-                Map<String, Object> extra = (Map<String, Object>) credentials.computeIfAbsent(
-                        "extra", key -> new LinkedHashMap<String, Object>());
+                Map<String, Object> extra = (Map<String, Object>)
+                        credentials.computeIfAbsent("extra", key -> new LinkedHashMap<String, Object>());
                 form.getExtra().forEach((key, value) -> extra.put(key, cipher.encrypt(value)));
             }
             server.setCredentials(AiJsonUtils.write(credentials));
@@ -370,13 +402,16 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
     }
 
     private SysAiMcpServer getActiveByName(String name) {
-        return this.getOne(new LambdaQueryWrapper<SysAiMcpServer>()
-                .eq(SysAiMcpServer::getName, name)
-                .orderByAsc(SysAiMcpServer::getId), false);
+        return this.getOne(
+                new LambdaQueryWrapper<SysAiMcpServer>()
+                        .eq(SysAiMcpServer::getName, name)
+                        .orderByAsc(SysAiMcpServer::getId),
+                false);
     }
 
     private Set<String> knownToolNames(Long serverId) {
-        return toolMapper.selectList(new LambdaQueryWrapper<SysAiMcpTool>()
+        return toolMapper
+                .selectList(new LambdaQueryWrapper<SysAiMcpTool>()
                         .eq(SysAiMcpTool::getServerId, serverId)
                         .select(SysAiMcpTool::getName))
                 .stream()
@@ -385,16 +420,14 @@ public class AiMcpServiceImpl extends ServiceImpl<SysAiMcpServerMapper, SysAiMcp
     }
 
     private Map<String, Object> readCredentials(String json) {
-        Map<String, Object> credentials = AiJsonUtils.read(json, new TypeReference<Map<String, Object>>() {
-        });
+        Map<String, Object> credentials = AiJsonUtils.read(json, new TypeReference<Map<String, Object>>() {});
         return credentials == null ? new LinkedHashMap<>() : new LinkedHashMap<>(credentials);
     }
 
     private McpNamespaceVO toNamespaceVO(SysAiMcpNamespace entity) {
         McpNamespaceVO vo = new McpNamespaceVO();
         vo.setName(entity.getNamespace());
-        List<String> toolNames = AiJsonUtils.read(entity.getToolNames(), new TypeReference<List<String>>() {
-        });
+        List<String> toolNames = AiJsonUtils.read(entity.getToolNames(), new TypeReference<List<String>>() {});
         vo.setToolNames(toolNames == null ? List.of() : toolNames);
         return vo;
     }

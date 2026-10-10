@@ -1,14 +1,13 @@
 package com.pei.dehaze.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
-import org.springframework.data.redis.core.StringRedisTemplate;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
  * 多级缓存管理器（L1 Caffeine + L2 Redis）
@@ -25,8 +24,12 @@ public class MultiLevelCacheManager implements CacheManager {
     private final String senderId;
     private final ConcurrentMap<String, Cache> cacheMap = new ConcurrentHashMap<>();
 
-    public MultiLevelCacheManager(CacheManager l2CacheManager, MeterRegistry meterRegistry, Duration l1Expire,
-                                  StringRedisTemplate publisher, String senderId) {
+    public MultiLevelCacheManager(
+            CacheManager l2CacheManager,
+            MeterRegistry meterRegistry,
+            Duration l1Expire,
+            StringRedisTemplate publisher,
+            String senderId) {
         this.l2CacheManager = l2CacheManager;
         this.meterRegistry = meterRegistry;
         this.l1Expire = l1Expire;

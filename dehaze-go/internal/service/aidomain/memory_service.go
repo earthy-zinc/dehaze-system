@@ -149,8 +149,11 @@ func (s *MemoryService) Update(ctx context.Context, id, userID int64, form *Memo
 // esRequestTimeout ES 请求超时（对齐 java AiKbIndexClient 的 5s）
 const esRequestTimeout = 5 * time.Second
 
-// memoryEsIndex 记忆向量索引名，文档 _id 为记忆 id（与 python ai_memory_index 一致）
-const memoryEsIndex = "ai_memory"
+// memoryEsIndexName 记忆向量索引名，文档 _id 为记忆 id（与 python ai_memory_index 一致）；
+// 带环境前缀（ES_INDEX_PREFIX），避免多环境共用 ES 时互串
+func memoryEsIndexName() string {
+	return config.GetConfig().ES.IndexPrefix + "ai_memory"
+}
 
 // deleteMemoryDocFromES 删除记忆的 ES 向量文档（对齐 python delete_memory_doc）。
 //
@@ -163,7 +166,7 @@ func deleteMemoryDocFromES(ctx context.Context, memoryID int64) {
 	}
 	reqCtx, cancel := context.WithTimeout(ctx, esRequestTimeout)
 	defer cancel()
-	url := strings.TrimRight(esCfg.URL, "/") + "/" + memoryEsIndex + "/_doc/" +
+	url := strings.TrimRight(esCfg.URL, "/") + "/" + memoryEsIndexName() + "/_doc/" +
 		strconv.FormatInt(memoryID, 10) + "?refresh=true"
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodDelete, url, nil)
 	if err != nil {

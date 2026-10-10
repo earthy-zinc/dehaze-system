@@ -227,6 +227,7 @@ func (h *MenuImportHandler) ImportBatch(rows []map[string]interface{}, options i
 			Component: getAsString(row, "component"),
 			Perm:      getAsString(row, "perm"),
 			Visible:   visible,
+			Status:    1, // 导入菜单默认启用（DB 列默认值同为 1）
 			Sort:      sort,
 			Icon:      getAsString(row, "icon"),
 			Redirect:  getAsString(row, "redirect"),

@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /**
  * 历史记录视图对象
@@ -31,14 +30,14 @@ public class InputHistoryVO {
     @Schema(description = "结果缩略图URL")
     private String resultThumbnailUrl;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
 
-    @Schema(description = "算法名称")
-    private String algorithmName;
+    @Schema(description = "模型名称")
+    private String modelName;
 
-    @Schema(description = "算法参数")
-    private String algorithmParams;
+    @Schema(description = "模型参数")
+    private String modelParams;
 
     @Schema(description = "处理耗时（毫秒）")
     private Integer processingTime;

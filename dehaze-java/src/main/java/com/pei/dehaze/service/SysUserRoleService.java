@@ -1,9 +1,7 @@
 package com.pei.dehaze.service;
 
-
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.entity.SysUserRole;
-
 import java.util.List;
 
 public interface SysUserRoleService extends IService<SysUserRole> {

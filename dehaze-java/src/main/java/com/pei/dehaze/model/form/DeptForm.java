@@ -1,9 +1,9 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -12,24 +12,23 @@ import lombok.Data;
 @Data
 public class DeptForm {
 
-    @Schema(description="部门ID")
+    @Schema(description = "部门ID")
     private Long id;
 
-    @Schema(description="部门名称")
+    @Schema(description = "部门名称")
     @NotBlank(message = "部门名称不能为空")
     @Size(max = 64, message = "部门名称长度不能超过64")
     @Pattern(regexp = "(?s)^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "部门名称不能包含特殊字符")
     private String name;
 
-    @Schema(description="父部门ID")
+    @Schema(description = "父部门ID")
     @NotNull(message = "父部门ID不能为空")
     private Long parentId;
 
-    @Schema(description="状态(1:启用;0:禁用)")
+    @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;
 
-    @Schema(description="排序(数字越小排名越靠前)")
+    @Schema(description = "排序(数字越小排名越靠前)")
     @Min(value = 1, message = "排序必须为正整数")
     private Integer sort;
-
 }

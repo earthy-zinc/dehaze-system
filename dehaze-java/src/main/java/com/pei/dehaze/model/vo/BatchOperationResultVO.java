@@ -1,12 +1,11 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @Data
 @Builder
@@ -29,5 +28,4 @@ public class BatchOperationResultVO {
 
     @Schema(description = "失败详情列表")
     private List<BatchActionFailureDetailVO> failureDetails;
-
 }

@@ -20,5 +20,4 @@ public class AiEvalReviewSubmitForm {
     @Size(max = 500, message = "复核备注长度不能超过500")
     @Schema(description = "复核备注")
     private String remark;
-
 }

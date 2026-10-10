@@ -5,6 +5,7 @@
 """
 
 import json
+import sys
 
 import pytest
 
@@ -22,12 +23,16 @@ class TestEnvAllowlist:
             "import os,json; print(json.dumps(sorted(os.environ)))", "python", timeout=10
         )
         assert result["exitCode"] == 0, result["stderr"]
-        assert json.loads(result["stdout"]) == [
+        # macOS 的 CoreFoundation 在进程启动时自行注入 __CF_USER_TEXT_ENCODING
+        # （用 env -i 空环境启动同样存在），与传入的 env 无关，不属宿主凭据泄露；
+        # 其余变量仍须严格等于白名单，多一个即视为泄露。
+        platform_injected = {"__CF_USER_TEXT_ENCODING"} if sys.platform == "darwin" else set()
+        assert set(json.loads(result["stdout"])) - platform_injected == {
             "LANG",
             "LC_ALL",
             "PATH",
             "PYTHONIOENCODING",
-        ]
+        }
 
     async def test_secret_value_not_leaked(self, monkeypatch):
         monkeypatch.setenv("MINIO_SECRET_KEY", "minio-secret")
@@ -89,6 +94,7 @@ class TestShellWhitelist:
         assert result["stdout"] == ""
         assert "已拒绝执行" in result["stderr"]
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="shell 通道依赖 POSIX /bin/sh")
     async def test_whitelisted_command_runs(self):
         result = await CodeSandbox().execute_code("echo hello", "shell", timeout=10)
         assert result["exitCode"] == 0

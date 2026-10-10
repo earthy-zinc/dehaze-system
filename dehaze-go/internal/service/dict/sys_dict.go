@@ -3,7 +3,6 @@ package dict
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -11,16 +10,90 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/redis"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const (
-	// DictOptionsCachePrefix 字典下拉选项缓存前缀
+	// DictOptionsCachePrefix 字典下拉选项缓存前缀（java/go 下拉选项读路径）
 	DictOptionsCachePrefix = "dict:data:"
+	// DictValueCachePrefix 字典业务值缓存前缀：`dict:value:{typeCode}:{key}`。
+	//
+	// **跨端共享键**——python 的字典值读路径（`dict_service.get_dict_value`，平台默认模型
+	// 解析、会员成长值规则、收藏容量等）走该前缀；java/go 改字典后只失效 `dict:data:`
+	// 会让 python 侧判定滞后到 TTL（1h）到期。两者必须一并失效。
+	DictValueCachePrefix = "dict:value:"
 	// DictOptionsCacheTTL 字典下拉选项缓存过期时间（1小时）
 	DictOptionsCacheTTL = time.Hour
+
+	// cacheInvalidationChannel 缓存失效广播频道（三端共用；python 订阅后清进程内 L1）
+	cacheInvalidationChannel = "cache:invalidation"
+	// dictCacheSenderID 广播发送者标识（接收端据此过滤自身消息）
+	dictCacheSenderID = "dehaze-go"
+	// dictValueScanCount 通配失效单次 SCAN 的 COUNT
+	dictValueScanCount = 100
 )
+
+// clearDictCaches 字典写路径统一失效：下拉选项缓存 + 业务值缓存（与 python 同一批键）。
+//
+// 两处都带跨实例广播：`dict:data:{typeCode}` 经多级缓存 Delete 发 "key" 消息；
+// `dict:value:{typeCode}:*` 是通配失效，发 "pattern" 消息（python 端按 pattern 清 L1）。
+func clearDictCaches(ctx context.Context, cache types.ICache, typeCode string) {
+	if typeCode == "" {
+		return
+	}
+	if cache != nil {
+		_ = cache.Delete(ctx, DictOptionsCachePrefix+typeCode)
+	}
+	invalidateDictValueCache(ctx, typeCode)
+}
+
+// invalidateDictValueCache 失效 `dict:value:{typeCode}:*`：L2 逐键删除 + 广播 pattern 清 L1。
+//
+// 键由 python 写入（本端不读该前缀），故本端只需清共享 L2 并广播；无 Redis 时静默跳过
+// 会让调用方误判为已失效，所以异常一律显式 WARN 留痕。
+func invalidateDictValueCache(ctx context.Context, typeCode string) {
+	client := redis.GetClient()
+	if client == nil {
+		logger.Warn("Redis 未初始化，跳过字典值缓存失效", zap.String("typeCode", typeCode))
+		return
+	}
+	pattern := DictValueCachePrefix + typeCode + ":*"
+
+	var cursor uint64
+	for {
+		keys, next, err := client.Scan(ctx, cursor, pattern, dictValueScanCount).Result()
+		if err != nil {
+			logger.Warn("扫描字典值缓存失败", zap.String("pattern", pattern), zap.Error(err))
+			break
+		}
+		if len(keys) > 0 {
+			if err := client.Del(ctx, keys...).Err(); err != nil {
+				logger.Warn("删除字典值缓存失败", zap.Strings("keys", keys), zap.Error(err))
+			}
+		}
+		cursor = next
+		if cursor == 0 {
+			break
+		}
+	}
+
+	payload, err := json.Marshal(map[string]any{
+		"type":     "pattern",
+		"key":      pattern,
+		"senderId": dictCacheSenderID,
+	})
+	if err != nil {
+		logger.Warn("序列化字典值缓存失效消息失败", zap.String("pattern", pattern), zap.Error(err))
+		return
+	}
+	if err := client.Publish(ctx, cacheInvalidationChannel, payload).Err(); err != nil {
+		logger.Warn("广播字典值缓存失效失败", zap.String("pattern", pattern), zap.Error(err))
+	}
+}
 
 // DictService 字典数据服务
 type DictService struct {
@@ -191,8 +264,8 @@ func (s *DictService) Create(ctx context.Context, form *bo.DictFormBO) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "创建字典数据失败", err)
 	}
 
-	// 清除相关缓存
-	s.clearOptionsCache(ctx, form.TypeCode)
+	// 清除相关缓存（下拉选项 + python 业务值缓存）
+	clearDictCaches(ctx, s.cache, form.TypeCode)
 
 	return nil
 }
@@ -238,7 +311,7 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 	}
 
 	// 清除缓存（typeCode 不变，只需清除一个）
-	s.clearOptionsCache(ctx, dict.TypeCode)
+	clearDictCaches(ctx, s.cache, dict.TypeCode)
 
 	return nil
 }
@@ -272,7 +345,7 @@ func (s *DictService) Delete(ctx context.Context, ids []int64) error {
 
 	// 清除相关缓存
 	for typeCode := range typeCodeSet {
-		s.clearOptionsCache(ctx, typeCode)
+		clearDictCaches(ctx, s.cache, typeCode)
 	}
 
 	return nil
@@ -281,13 +354,4 @@ func (s *DictService) Delete(ctx context.Context, ids []int64) error {
 // findDictsByIDs 根据 ID 列表查询字典列表
 func (s *DictService) findDictsByIDs(ctx context.Context, ids []int64) ([]model.SysDict, error) {
 	return s.dictRepo.FindByIDs(ctx, ids)
-}
-
-// clearOptionsCache 清除字典下拉选项缓存
-func (s *DictService) clearOptionsCache(ctx context.Context, typeCode string) {
-	if s.cache == nil || typeCode == "" {
-		return
-	}
-	cacheKey := fmt.Sprintf("%s%s", DictOptionsCachePrefix, typeCode)
-	_ = s.cache.Delete(ctx, cacheKey)
 }

@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
-import lombok.Data;
-
 import java.util.List;
 import java.util.Map;
+import lombok.Data;
 
 /**
  * 复核详情响应（样本定义 + 实际输出 + 四维得分说明）
@@ -31,7 +30,7 @@ public class AiEvalReviewDetailVO {
 
     private String forbiddenBehavior;
 
-    private List<String> tools;
+    private List<Map<String, Object>> tools;
 
     private String riskLevel;
 

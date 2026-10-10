@@ -1,21 +1,20 @@
 package com.pei.dehaze.model.entity;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.metadata.TableFieldInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.core.toolkit.GlobalConfigUtils;
+import java.util.List;
+import java.util.Optional;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 唯一键感知逻辑删除（方案A）：deleted 列存"删除时的行id"。
@@ -54,9 +53,7 @@ class TableLogicDelvalTest {
     @Test
     void logicDeleteFieldShouldBeNonCharSequenceLong() {
         // delval 原样拼接依赖字段非 CharSequence（String 会生成 deleted='id'，故 deleted 必须保持数值类型）
-        List<TableFieldInfo> logicFields = Optional.of(tableInfo.getFieldList())
-                .orElseThrow()
-                .stream()
+        List<TableFieldInfo> logicFields = Optional.of(tableInfo.getFieldList()).orElseThrow().stream()
                 .filter(TableFieldInfo::isLogicDelete)
                 .toList();
         assertEquals(1, logicFields.size());
@@ -64,6 +61,7 @@ class TableLogicDelvalTest {
         assertEquals("deleted", field.getColumn());
         assertEquals(Long.class, field.getPropertyType());
         assertFalse(field.isCharSequence());
-        assertTrue(field.getPropertyType() instanceof Class<?> && Number.class.isAssignableFrom(field.getPropertyType()));
+        assertTrue(
+                field.getPropertyType() instanceof Class<?> && Number.class.isAssignableFrom(field.getPropertyType()));
     }
 }

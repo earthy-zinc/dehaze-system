@@ -1,10 +1,11 @@
 package com.pei.dehaze.model.vo;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.util.Map;
+import lombok.Data;
 
 /** 月结账单 */
 @Schema(description = "月结账单")
@@ -22,8 +23,12 @@ public class AiBillVO {
 
     private Integer totalRefund;
 
+    /** 期初余额（python Decimal 序列化为字符串，java 对齐同一口径；该 VO 亦为 `ai:bill:*` 缓存载体） */
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal balanceStart;
 
+    /** 期末余额（同上，按字符串下发） */
+    @JsonSerialize(using = ToStringSerializer.class)
     private BigDecimal balanceEnd;
 
     /** 按 billType 维度的明细汇总 */

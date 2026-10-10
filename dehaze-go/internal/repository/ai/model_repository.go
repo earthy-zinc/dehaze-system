@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -19,8 +20,11 @@ func NewModelRepository(db *gorm.DB) *ModelRepository {
 	return &ModelRepository{db: db}
 }
 
-// PaginateModels 分页查询模型（keyword 匹配 display_name/model_id，model_type 精确筛选）
-func (r *ModelRepository) PaginateModels(ctx context.Context, page, size int, keyword, modelType string) ([]model.SysAiModel, int64, error) {
+// PaginateModels 分页查询模型（keyword 匹配 display_name/model_id，model_type 精确筛选，
+// taskTags 命中 task_tags JSON 数组任一即返回）
+func (r *ModelRepository) PaginateModels(
+	ctx context.Context, page, size int, keyword, modelType string, taskTags []string,
+) ([]model.SysAiModel, int64, error) {
 	db := r.db.WithContext(ctx).Model(&model.SysAiModel{}).Where("deleted = 0")
 	if keyword != "" {
 		pattern := "%" + escapeLike(keyword) + "%"
@@ -28,6 +32,10 @@ func (r *ModelRepository) PaginateModels(ctx context.Context, page, size int, ke
 	}
 	if modelType != "" {
 		db = db.Where("model_type = ?", modelType)
+	}
+	if len(taskTags) > 0 {
+		// task_tags 为 NULL 时 JSON_OVERLAPS 结果为 NULL（不命中），与"无标签不参与筛选"一致
+		db = db.Where("JSON_OVERLAPS(task_tags, CAST(? AS JSON))", buildTaskTagsJSON(taskTags))
 	}
 	var total int64
 	if err := db.Count(&total).Error; err != nil {
@@ -155,4 +163,10 @@ func (r *ModelRepository) SoftDeleteByIDs(ctx context.Context, ids []int64, upda
 // escapeLike 转义 LIKE 通配符，避免用户输入中的 % / _ 被当作通配符
 func escapeLike(s string) string {
 	return strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(s)
+}
+
+// buildTaskTagsJSON 把筛选标签序列化为 JSON 数组字面量，供 JSON_OVERLAPS 比对
+func buildTaskTagsJSON(tags []string) string {
+	payload, _ := json.Marshal(tags)
+	return string(payload)
 }

@@ -3,7 +3,6 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -16,15 +15,13 @@ import com.pei.dehaze.model.entity.SysDictType;
 import com.pei.dehaze.model.form.DictTypeForm;
 import com.pei.dehaze.model.query.DictTypePageQuery;
 import com.pei.dehaze.model.vo.DictTypePageVO;
-import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysDictService;
 import com.pei.dehaze.service.SysDictTypeService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * 数据字典类型业务实现类
@@ -38,11 +35,16 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     /** 系统预置字典类型编码（种子内置，对齐 python SYSTEM_PRESET_DICT_TYPE_CODES），不可删除 */
     private static final List<String> SYSTEM_PRESET_DICT_TYPE_CODES = List.of(
-            "gender", "ai_guardrail_defaults", "ai_provider_health", "ai_embedding",
-            "member_growth_rules", "favorite_capacity", "ai_eval");
+            "gender",
+            "ai_guardrail_defaults",
+            "ai_provider_health",
+            "ai_embedding",
+            "ai_model",
+            "member_growth_rules",
+            "favorite_capacity",
+            "ai_eval");
 
     private static final String DICT_OPTIONS_CACHE_KEY_PREFIX = "dict:data:";
-
 
     private final SysDictService dictItemService;
     private final DictTypeConverter dictTypeConverter;
@@ -65,9 +67,9 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         Page<SysDictType> dictTypePage = this.page(
                 new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<SysDictType>()
-                        .and(CharSequenceUtil.isNotBlank(keywords),
-                                wrapper -> wrapper
-                                        .like(SysDictType::getName, keywords)
+                        .and(
+                                CharSequenceUtil.isNotBlank(keywords),
+                                wrapper -> wrapper.like(SysDictType::getName, keywords)
                                         .or()
                                         .like(SysDictType::getCode, keywords))
                         .select(
@@ -76,9 +78,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                                 SysDictType::getCode,
                                 SysDictType::getStatus,
                                 SysDictType::getRemark,
-                                SysDictType::getCreateTime
-                        )
-        );
+                                SysDictType::getCreateTime));
 
         // 实体转换
         return dictTypeConverter.entity2Page(dictTypePage);
@@ -99,8 +99,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                         SysDictType::getName,
                         SysDictType::getCode,
                         SysDictType::getStatus,
-                        SysDictType::getRemark
-                ));
+                        SysDictType::getRemark));
         if (entity == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
@@ -124,7 +123,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         // 持久化
         return this.save(entity);
     }
-
 
     /**
      * 修改字典类型
@@ -190,8 +188,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         List<Long> ids = IdUtils.parseIdList(idsStr);
 
         // 校验字典类型是否存在
-        long existCount = this.count(new LambdaQueryWrapper<SysDictType>()
-                .in(SysDictType::getId, ids));
+        long existCount = this.count(new LambdaQueryWrapper<SysDictType>().in(SysDictType::getId, ids));
         if (existCount == 0) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
@@ -200,7 +197,8 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         List<SysDictType> dictTypes = this.list(new LambdaQueryWrapper<SysDictType>()
                 .in(SysDictType::getId, ids)
                 .select(SysDictType::getCode));
-        List<String> dictTypeCodes = dictTypes.stream().map(SysDictType::getCode).toList();
+        List<String> dictTypeCodes =
+                dictTypes.stream().map(SysDictType::getCode).toList();
 
         // T-DM-025：系统预置字典类型不可删除
         if (dictTypes.stream().map(SysDictType::getCode).anyMatch(SYSTEM_PRESET_DICT_TYPE_CODES::contains)) {
@@ -211,10 +209,10 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             if (force) {
                 dictItemService.deleteByTypeCodes(dictTypeCodes);
             } else {
-                long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
-                        .in(SysDict::getTypeCode, dictTypeCodes));
+                long dictCount = dictItemService.count(
+                        new LambdaQueryWrapper<SysDict>().in(SysDict::getTypeCode, dictTypeCodes));
                 if (dictCount > 0) {
-                    throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除");
+                    throw new BusinessException(ResultCode.DATA_REFERENCED, "存在关联的字典数据，无法删除");
                 }
             }
         }
@@ -229,9 +227,4 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
         return result;
     }
-
 }
-
-
-
-

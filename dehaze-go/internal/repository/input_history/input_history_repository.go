@@ -38,7 +38,7 @@ func (r *inputHistoryRepository) FindPage(ctx context.Context, userID int64, pag
 	}
 	if keyword != "" {
 		like := "%" + escapeLike(keyword) + "%"
-		query = query.Where("original_image_url LIKE ? OR algorithm_name LIKE ?", like, like)
+		query = query.Where("original_image_url LIKE ? OR model_name LIKE ?", like, like)
 	}
 	if status > 0 {
 		query = query.Where("status = ?", status)

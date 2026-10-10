@@ -54,7 +54,7 @@ def _make_ctx():
         "stream_session_id": "s1",
         "model_id": "gpt-4o-mini",
         "task_type": "",
-        "task_algorithm": "",
+        "task_model": "",
         "task_params": {},
         "task_status": "",
         "task_id": "",

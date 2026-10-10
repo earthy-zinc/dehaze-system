@@ -6,11 +6,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.mapper.SysUserRoleMapper;
 import com.pei.dehaze.model.entity.SysUserRole;
 import com.pei.dehaze.service.SysUserRoleService;
-import org.springframework.stereotype.Service;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUserRole> implements SysUserRoleService {
@@ -30,11 +29,10 @@ public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUs
         }
 
         // 用户原角色ID集合
-        List<Long> userRoleIds = this.list(new LambdaQueryWrapper<SysUserRole>()
-                        .eq(SysUserRole::getUserId, userId))
-                .stream()
-                .map(SysUserRole::getRoleId)
-                .collect(Collectors.toList());
+        List<Long> userRoleIds =
+                this.list(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId)).stream()
+                        .map(SysUserRole::getRoleId)
+                        .collect(Collectors.toList());
 
         // 新增用户角色
         List<Long> saveRoleIds;
@@ -46,8 +44,7 @@ public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUs
                     .collect(Collectors.toList());
         }
 
-        List<SysUserRole> saveUserRoles = saveRoleIds
-                .stream()
+        List<SysUserRole> saveUserRoles = saveRoleIds.stream()
                 .map(roleId -> new SysUserRole(userId, roleId))
                 .collect(Collectors.toList());
         this.saveBatch(saveUserRoles);
@@ -61,12 +58,10 @@ public class SysUserRoleServiceImpl extends ServiceImpl<SysUserRoleMapper, SysUs
             if (CollectionUtil.isNotEmpty(removeRoleIds)) {
                 this.remove(new LambdaQueryWrapper<SysUserRole>()
                         .eq(SysUserRole::getUserId, userId)
-                        .in(SysUserRole::getRoleId, removeRoleIds)
-                );
+                        .in(SysUserRole::getRoleId, removeRoleIds));
             }
         }
         return true;
-
     }
 
     /**

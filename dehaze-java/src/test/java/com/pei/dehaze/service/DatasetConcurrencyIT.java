@@ -1,25 +1,22 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.*;
+
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.vo.DatasetVO;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.*;
-
-import com.pei.dehaze.config.TestConfig;
 
 /**
  * 数据集并发场景测试
@@ -36,7 +33,7 @@ import com.pei.dehaze.config.TestConfig;
  * @author earthy-zinc
  * @since 2025-01-10
  */
-@SpringBootTest(classes = TestConfig.class)
+@SpringBootTest
 @DisplayName("数据集并发场景测试")
 class DatasetConcurrencyIT {
 
@@ -153,7 +150,8 @@ class DatasetConcurrencyIT {
         assertThat(failureCount.get()).isEqualTo(0);
 
         // 验证数据库中的实际数据
-        List<SysDatasetItem> items = sysDatasetItemService.lambdaQuery()
+        List<SysDatasetItem> items = sysDatasetItemService
+                .lambdaQuery()
                 .eq(SysDatasetItem::getDatasetId, datasetId)
                 .list();
         assertThat(items).hasSize(expectedTotal);
@@ -350,7 +348,8 @@ class DatasetConcurrencyIT {
         assertThat(failureCount.get()).isEqualTo(0);
 
         // 验证数据库中的实际数据
-        List<SysDatasetItem> items = sysDatasetItemService.lambdaQuery()
+        List<SysDatasetItem> items = sysDatasetItemService
+                .lambdaQuery()
                 .eq(SysDatasetItem::getDatasetId, datasetId)
                 .list();
         assertThat(items).hasSize(expectedTotal);

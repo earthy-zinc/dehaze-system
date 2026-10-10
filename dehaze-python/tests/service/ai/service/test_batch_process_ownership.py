@@ -21,7 +21,7 @@ def _patch(monkeypatch, owner_id=_OWNER, file_exists=True):
 
     async def _predict(**kwargs):
         calls.append(kwargs["image_url"])
-        return {"logId": 7}
+        return {"taskId": 7}
 
     async def _send(stream_session_id, event_type, data):
         events.append((event_type, data))
@@ -40,7 +40,7 @@ def _patch(monkeypatch, owner_id=_OWNER, file_exists=True):
 class TestValidateOwnedImageUrl:
     async def test_external_domain_rejected(self, monkeypatch):
         _base, calls, _events = _patch(monkeypatch)
-        summary = await bps.process_batch(1, 2, _OWNER, ["https://evil.com/a.png"], 1, "s1")
+        summary = await bps.process_batch(1, 2, _OWNER, ["https://evil.com/a.png"], "aecrnet", "s1")
         assert calls == []
         assert (summary["total"], summary["success"], summary["failed"]) == (1, 0, 1)
         assert "本系统产物地址" in summary["failures"][0]["reason"]
@@ -48,27 +48,27 @@ class TestValidateOwnedImageUrl:
     async def test_internal_ip_rejected(self, monkeypatch):
         _base, calls, _events = _patch(monkeypatch)
         summary = await bps.process_batch(
-            1, 2, _OWNER, ["http://169.254.169.254/latest/meta-data"], 1, "s1"
+            1, 2, _OWNER, ["http://169.254.169.254/latest/meta-data"], "aecrnet", "s1"
         )
         assert calls == []
         assert summary["failed"] == 1
 
     async def test_other_users_file_rejected(self, monkeypatch):
         base, calls, _events = _patch(monkeypatch, owner_id=_OTHER)
-        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/own.png"], 1, "s1")
+        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/own.png"], "aecrnet", "s1")
         assert calls == []
         assert summary["failed"] == 1
         assert "不属于当前用户" in summary["failures"][0]["reason"]
 
     async def test_missing_file_rejected(self, monkeypatch):
         base, calls, _events = _patch(monkeypatch, file_exists=False)
-        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/ghost.png"], 1, "s1")
+        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/ghost.png"], "aecrnet", "s1")
         assert calls == []
         assert summary["failed"] == 1
 
     async def test_owned_file_passes(self, monkeypatch):
         base, calls, _events = _patch(monkeypatch)
-        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/own.png"], 1, "s1")
+        summary = await bps.process_batch(1, 2, _OWNER, [f"{base}/own.png"], "aecrnet", "s1")
         assert calls == [f"{base}/own.png"]
         assert summary["success"] == 1
         assert summary["failed"] == 0

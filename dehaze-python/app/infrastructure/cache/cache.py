@@ -22,7 +22,15 @@ from typing import Any
 
 from redis.asyncio import Redis
 
-from app.config import settings
+from app.core.constants import (
+    CACHE_INVALIDATION_CHANNEL,
+    CACHE_L1_ENABLED,
+    CACHE_L1_MAXSIZE,
+    CACHE_L1_TTL,
+    CACHE_NULL_ENABLED,
+    CACHE_NULL_TTL,
+    CACHE_SINGLEFLIGHT_ENABLED,
+)
 from app.infrastructure.cache.local_cache import (
     NULL_VALUE_MARKER,
     SingleFlight,
@@ -53,10 +61,10 @@ GRAPH_INVALIDATION_TYPE = "ai_graph_invalidate"
 def _get_shared_l1() -> TTLCache | None:
     """获取进程级共享 L1 缓存单例"""
     global _shared_l1
-    if _shared_l1 is None and settings.CACHE_L1_ENABLED:
+    if _shared_l1 is None and CACHE_L1_ENABLED:
         _shared_l1 = TTLCache(
-            maxsize=settings.CACHE_L1_MAXSIZE,
-            default_ttl=settings.CACHE_L1_TTL,
+            maxsize=CACHE_L1_MAXSIZE,
+            default_ttl=CACHE_L1_TTL,
         )
     return _shared_l1
 
@@ -64,7 +72,7 @@ def _get_shared_l1() -> TTLCache | None:
 def _get_shared_singleflight() -> SingleFlight | None:
     """获取进程级共享 SingleFlight 单例"""
     global _shared_singleflight
-    if _shared_singleflight is None and settings.CACHE_SINGLEFLIGHT_ENABLED:
+    if _shared_singleflight is None and CACHE_SINGLEFLIGHT_ENABLED:
         _shared_singleflight = SingleFlight()
     return _shared_singleflight
 
@@ -79,29 +87,27 @@ class CacheService:
     def __init__(self, redis: Redis):
         self.redis = redis
         # L1 本地缓存（进程级单例）
-        self._l1_enabled = settings.CACHE_L1_ENABLED
+        self._l1_enabled = CACHE_L1_ENABLED
         self._l1 = _get_shared_l1() if self._l1_enabled else None
         # SingleFlight（进程级单例）
-        self._singleflight = (
-            _get_shared_singleflight() if settings.CACHE_SINGLEFLIGHT_ENABLED else None
-        )
+        self._singleflight = _get_shared_singleflight() if CACHE_SINGLEFLIGHT_ENABLED else None
         # 空值缓存
-        self._null_enabled = settings.CACHE_NULL_ENABLED
-        self._null_ttl = settings.CACHE_NULL_TTL
+        self._null_enabled = CACHE_NULL_ENABLED
+        self._null_ttl = CACHE_NULL_TTL
 
     async def _l1_backfill_ttl(self, key: str) -> int:
         """L2 回填 L1 时使用 L2 剩余 TTL，保持两级缓存生命周期一致。
 
         若不继承剩余 TTL，L1 会以默认 TTL 续命，L2 已过期后 L1 仍返回旧值，
         造成"改了数据必须重启后端"类脏读。TTL 不可得（无过期/查询失败）时
-        用 L1 默认 TTL（settings.CACHE_L1_TTL）兜底。
+        用 L1 默认 TTL（CACHE_L1_TTL）兜底。
         """
         ttl = await redis_operation_with_fallback(
             operation=lambda: self.redis.ttl(key),
             default=-1,
             operation_name=f"cache_ttl:{key}",
         )
-        return ttl if ttl is not None and ttl > 0 else settings.CACHE_L1_TTL
+        return ttl if ttl is not None and ttl > 0 else CACHE_L1_TTL
 
     async def get(
         self,
@@ -268,7 +274,9 @@ class CacheService:
         """
 
         async def _delete_by_pattern() -> int:
-            keys = [key async for key in self.redis.scan_iter(match=pattern)]
+            # count 显式放大：SCAN 默认 COUNT=10，远程 Redis 上按 10 key/次往返会把
+            # 一次失效放大成上百次 RTT（实测 1000 key 的库单次扫描 > 3s）
+            keys = [key async for key in self.redis.scan_iter(match=pattern, count=1000)]
             if keys:
                 return await self.redis.delete(*keys)
             return 0
@@ -396,6 +404,13 @@ class DeptCacheKeys:
 
     @classmethod
     def all_patterns(cls) -> list[str]:
+        """部门写操作需失效的全部缓存 pattern。
+
+        `dept:tree*` 本端（python）不写，但**go 端写**（`dept:tree`，见
+        `dehaze-go/internal/service/dept/dept_service.go` 的 DEPT_TREE_KEY），三端共库共享
+        Redis ⇒ 部门经 python 变更后若不按该 pattern 失效，go 会继续吐最长 1 小时脏树。
+        该 pattern 不是死代码，勿以"本端零写入方"为由清理。
+        """
         return ["dept:tree*", "dept:options*"]
 
 
@@ -415,7 +430,7 @@ async def _publish_invalidation(msg_type: str, key: str | None = None) -> None:
         from app.dependencies.redis import get_redis_client
 
         redis = await get_redis_client()
-        await redis.publish(settings.CACHE_INVALIDATION_CHANNEL, payload)
+        await redis.publish(CACHE_INVALIDATION_CHANNEL, payload)
 
     await redis_operation_with_fallback(
         operation=_publish,
@@ -447,14 +462,14 @@ async def start_cache_invalidation_listener() -> None:
     _pubsub_task = asyncio.create_task(_subscription_loop())
     logger.debug(
         "缓存失效广播订阅已启动: channel=%s, instanceId=%s",
-        settings.CACHE_INVALIDATION_CHANNEL,
+        CACHE_INVALIDATION_CHANNEL,
         _INSTANCE_ID,
     )
 
 
 async def _subscription_loop() -> None:
     """订阅缓存失效频道的循环任务，断开时自动重连。"""
-    channel = settings.CACHE_INVALIDATION_CHANNEL
+    channel = CACHE_INVALIDATION_CHANNEL
 
     while True:
         try:

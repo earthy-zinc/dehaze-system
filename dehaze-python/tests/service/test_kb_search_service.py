@@ -276,6 +276,62 @@ class TestSearchTimeout:
         assert result["results"] == []
         assert await mock_redis.keys("kb:search:*") == []
 
+    async def test_explicit_budget_overrides_injection_budget(self, mock_redis):
+        """显式检索链路传入的预算覆盖对话注入预算：慢依赖在显式预算内完成则正常召回、不降级。
+
+        背景：本地 CPU 向量化单次可达秒级，对话注入用小预算（保对话不被阻塞）会降级为空结果，
+        而 /kb/search、/retrieve/test 这类显式链路返回空结果会被误读为「库内无匹配」。
+        """
+        kb = _kb(kb_id=1)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+
+        async def _slow_embed(provider, model, text):
+            await asyncio.sleep(0.1)
+            return [0.1] * 8
+
+        with _enter(
+            [
+                patch(f"{_SI}.knowledge_base_repository", kb_repo),
+                patch(f"{_SI}.embed_text", _slow_embed),
+                patch(f"{_SI}.settings", _fake_settings(KB_SEARCH_TIMEOUT_MS=1)),
+                _vec_patch(_es_doc(doc_id=1, chunk_id=1, content="显式预算内召回", relevance=0.9)),
+            ]
+        ):
+            result = await search_service.search(
+                _NO_DB,
+                mock_redis,
+                100,
+                "显式预算",
+                knowledge_base_ids=[1],
+                timeout_ms=5_000,
+            )
+        assert len(result["results"]) == 1
+
+    async def test_missing_explicit_budget_falls_back_to_injection_budget(self, mock_redis):
+        """未传 timeout_ms 时沿用 KB_SEARCH_TIMEOUT_MS（对话注入口径）降级"""
+        kb = _kb(kb_id=1)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+
+        async def _slow_embed(provider, model, text):
+            await asyncio.sleep(0.1)
+            return [0.1] * 8
+
+        with _enter(
+            [
+                patch(f"{_SI}.knowledge_base_repository", kb_repo),
+                patch(f"{_SI}.embed_text", _slow_embed),
+                patch(f"{_SI}.settings", _fake_settings(KB_SEARCH_TIMEOUT_MS=1)),
+                _vec_patch(_es_doc(doc_id=1, chunk_id=1, content="不应召回", relevance=0.9)),
+            ]
+        ):
+            result = await search_service.search(
+                _NO_DB, mock_redis, 100, "默认预算", knowledge_base_ids=[1]
+            )
+        assert result["results"] == []
+        assert await mock_redis.keys("kb:search:*") == []
+
 
 class TestSearchDegraded:
     async def test_es_all_raise_returns_empty(self, mock_redis):
@@ -320,6 +376,21 @@ class TestSearchCache:
         assert embed_mock.call_count == 1
         assert second == first
         assert second["results"][0]["content"] == content
+
+    async def test_config_change_bypasses_stale_cache(self):
+        """库检索配置变更后不得命中旧配置缓存（缓存键含策略/阈值等配置）"""
+        from app.service.kb.search_service import _cache_key
+
+        hybrid = _kb(kb_id=1, search_strategy="hybrid", score_threshold=0.5)
+        vector = _kb(kb_id=1, search_strategy="vector", score_threshold=0.5)
+        key_hybrid = _cache_key([hybrid], "同一查询", [], 5, False)
+        key_vector = _cache_key([vector], "同一查询", [], 5, False)
+        assert key_hybrid != key_vector
+
+        # 阈值变化同样换键；同配置稳定（保证正常路径仍能命中缓存）
+        thr_high = _kb(kb_id=1, search_strategy="vector", score_threshold=0.9)
+        assert _cache_key([thr_high], "同一查询", [], 5, False) != key_vector
+        assert _cache_key([vector], "同一查询", [], 5, False) == key_vector
 
     async def test_top_k_change_misses_cache_and_retrieves(self, mock_redis):
         kb = _kb(kb_id=1)
@@ -428,6 +499,38 @@ class TestHybridRrfFusion:
         assert docs == []
         vec_mock.assert_not_called()
         kw_mock.assert_not_called()
+
+    async def test_score_threshold_filters_low_similarity_vector_candidates(self):
+        """hybrid 也具备相关度门禁：低相似度向量候选不进入融合（门禁落在原始 cosine 上）"""
+        vec = [_hybrid_doc(1), _hybrid_doc(2), _hybrid_doc(3)]
+        for d, rel in zip(vec, (0.9, 0.8, 0.3), strict=True):
+            d["relevance"] = rel
+        with _enter(self._patches(vec, [])):
+            kept = await kb_chunk_index.hybrid_search(
+                1, "q", [0.1] * 8, [], top_k=5, score_threshold=0.5
+            )
+        assert [d["chunk_id"] for d in kept] == [1, 2]
+
+    async def test_score_threshold_zero_keeps_all(self):
+        vec = [_hybrid_doc(1), _hybrid_doc(2)]
+        for d, rel in zip(vec, (0.9, 0.1), strict=True):
+            d["relevance"] = rel
+        with _enter(self._patches(vec, [])):
+            kept = await kb_chunk_index.hybrid_search(
+                1, "q", [0.1] * 8, [], top_k=5, score_threshold=0.0
+            )
+        assert [d["chunk_id"] for d in kept] == [1, 2]
+
+    async def test_keyword_only_hit_survives_vector_threshold(self):
+        """仅关键词命中（无向量候选）的文档不受向量阈值影响"""
+        vec = [_hybrid_doc(1)]
+        vec[0]["relevance"] = 0.1
+        kw = [_hybrid_doc(9)]
+        with _enter(self._patches(vec, kw)):
+            kept = await kb_chunk_index.hybrid_search(
+                1, "q", [0.1] * 8, [], top_k=5, score_threshold=0.8
+            )
+        assert [d["chunk_id"] for d in kept] == [9]
 
     async def test_filters_passed_to_both_sub_searches(self):
         vec_mock = AsyncMock(return_value=list(self.VECTOR_DOCS))
@@ -687,3 +790,44 @@ class TestSectionContentFetch:
         top = result["results"][0]
         assert top["content"] == "候选甲\n\n候选乙"
         assert top["chunkIds"] == [1, 2]
+
+
+class TestHybridThresholdWiring:
+    """hybrid 策略下库 score_threshold 须传达到检索引擎（否则门禁形同虚设）"""
+
+    async def test_kb_score_threshold_forwarded_to_hybrid_search(self, mock_redis):
+        kb = _kb(kb_id=1, search_strategy="hybrid", score_threshold=0.7)
+        kb_repo = AsyncMock()
+        kb_repo.get_many.return_value = [kb]
+        hybrid = AsyncMock(return_value=[])
+        with _enter(
+            [
+                patch(f"{_SI}.knowledge_base_repository", kb_repo),
+                patch(f"{_SI}.embed_text", _embed_mock()),
+                patch(f"{_SI}.kb_chunk_index.hybrid_search", hybrid),
+            ]
+        ):
+            await search_service.search(_NO_DB, mock_redis, 100, "阈值透传", knowledge_base_ids=[1])
+        assert hybrid.await_args is not None
+        assert hybrid.await_args.kwargs["score_threshold"] == 0.7
+
+
+class TestVectorScoreCosineContract:
+    """向量分数字段契约 = 原始 cosine（ES _score=(1+cos)/2 须还原，否则阈值语义整体偏移）"""
+
+    def test_score_to_cosine_conversion(self):
+        from app.infrastructure.es.kb_chunk_index import _score_to_cosine
+
+        assert _score_to_cosine(1.0) == 1.0
+        assert _score_to_cosine(0.5) == 0.0
+        assert _score_to_cosine(0.9183) == pytest.approx(0.8366, abs=1e-3)
+        assert _score_to_cosine(1.5) == 1.0  # 上溢钳制
+        assert _score_to_cosine(0.0) == -1.0
+
+    async def test_vector_search_restores_raw_cosine(self, monkeypatch):
+        async def fake_search(index, body):
+            return [{"chunk_id": 1, "relevance": 0.9}, {"chunk_id": 2, "relevance": 0.6}]
+
+        monkeypatch.setattr(kb_chunk_index, "_search", fake_search)
+        docs = await kb_chunk_index.vector_search(1, [0.1] * 8, [], top_n=2)
+        assert [round(d["relevance"], 4) for d in docs] == [0.8, 0.2]

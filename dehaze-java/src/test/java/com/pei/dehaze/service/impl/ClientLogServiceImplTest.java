@@ -1,5 +1,9 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mockStatic;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -8,6 +12,8 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.form.ClientLogBatchForm;
 import com.pei.dehaze.model.form.ClientLogEntryForm;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,13 +23,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mockStatic;
 
 /**
  * ClientLogServiceImpl 单元测试
@@ -157,11 +156,7 @@ class ClientLogServiceImplTest {
     @DisplayName("collect - 匿名多级别混合仅 ERROR 落盘")
     void collect_mixedAnonymousOnlyErrorWrites() {
         ClientLogBatchForm form = new ClientLogBatchForm();
-        form.setLogs(List.of(
-                entry("ERROR", "trace-1"),
-                entry("INFO", "trace-2"),
-                entry("WARN", "trace-3")
-        ));
+        form.setLogs(List.of(entry("ERROR", "trace-1"), entry("INFO", "trace-2"), entry("WARN", "trace-3")));
 
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(null);
@@ -177,11 +172,11 @@ class ClientLogServiceImplTest {
     void collect_levelNormalization() {
         ClientLogBatchForm form = new ClientLogBatchForm();
         form.setLogs(List.of(
-                entry("error", "t1"),  // 小写应识别为 ERROR
-                entry("Warn", "t2"),   // 混合大小写应识别为 WARN
-                entry("", "t3"),       // 空白应默认 INFO
-                entry(null, "t4")      // null 应默认 INFO
-        ));
+                entry("error", "t1"), // 小写应识别为 ERROR
+                entry("Warn", "t2"), // 混合大小写应识别为 WARN
+                entry("", "t3"), // 空白应默认 INFO
+                entry(null, "t4") // null 应默认 INFO
+                ));
 
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(1L);
@@ -200,10 +195,10 @@ class ClientLogServiceImplTest {
     void collect_blankStringFieldsExcluded() {
         ClientLogEntryForm e = entry("ERROR", "trace-abc");
         e.setApp("react");
-        e.setUrl("   ");   // 空白：不应进入
-        e.setUserAgent(null);  // null：不应进入
+        e.setUrl("   "); // 空白：不应进入
+        e.setUserAgent(null); // null：不应进入
         e.setMethod("POST");
-        e.setPath(null);   // null：不应进入
+        e.setPath(null); // null：不应进入
 
         Map<String, Object> fields = service.buildFields(e, null, "trace-abc");
 
@@ -220,7 +215,7 @@ class ClientLogServiceImplTest {
         ClientLogEntryForm e = entry("ERROR", "trace-abc");
         e.setStatus(500);
         e.setDuration(1203.5);
-        e.setMetricValue(null);  // null：不应进入
+        e.setMetricValue(null); // null：不应进入
 
         Map<String, Object> fields = service.buildFields(e, null, "trace-abc");
 

@@ -1,16 +1,14 @@
 package com.pei.dehaze.common.util;
 
-
 import cn.hutool.core.io.FileUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileDTO;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.DigestUtils;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.DigestUtils;
 
 /**
  * @author earthy-zinc
@@ -19,8 +17,7 @@ import java.io.InputStream;
 @Slf4j
 public class FileUploadUtils {
 
-    private FileUploadUtils() {
-    }
+    private FileUploadUtils() {}
 
     /**
      * 获取文件md5值
@@ -61,5 +58,4 @@ public class FileUploadUtils {
             throw new BusinessException("无法创建FileDTO", e);
         }
     }
-
 }

@@ -26,18 +26,17 @@ import com.pei.dehaze.model.vo.ProviderKeyVO;
 import com.pei.dehaze.model.vo.ProviderVO;
 import com.pei.dehaze.service.AiProviderHealthService;
 import com.pei.dehaze.service.AiProviderService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -47,6 +46,7 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
 
     /** 启用供应商列表缓存：与 python 共用同一键，写操作须失效同键 */
     private static final String PROVIDER_LIST_CACHE_KEY = "ai:provider:list";
+
     private static final long PROVIDER_LIST_CACHE_TTL = 3600L;
     private static final String CACHE_INVALIDATION_CHANNEL = "cache:invalidation";
     private static final String INSTANCE_ID = "dehaze-java-" + UUID.randomUUID();
@@ -65,10 +65,11 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
     public Page<ProviderVO> listProviders(ProviderPageQuery query) {
         String keyword = query.getKeyword();
         LambdaQueryWrapper<SysAiProvider> wrapper = new LambdaQueryWrapper<SysAiProvider>()
-                .and(CharSequenceUtil.isNotBlank(keyword), q -> q
-                        .like(SysAiProvider::getDisplayName, keyword)
-                        .or()
-                        .like(SysAiProvider::getProviderCode, keyword))
+                .and(
+                        CharSequenceUtil.isNotBlank(keyword),
+                        q -> q.like(SysAiProvider::getDisplayName, keyword)
+                                .or()
+                                .like(SysAiProvider::getProviderCode, keyword))
                 .orderByAsc(SysAiProvider::getSortOrder)
                 .orderByAsc(SysAiProvider::getId);
         Page<SysAiProvider> page = this.page(new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
@@ -89,8 +90,7 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
     public List<ProviderEnabledVO> listEnabledProviders() {
         String raw = redis.opsForValue().get(PROVIDER_LIST_CACHE_KEY);
         if (CharSequenceUtil.isNotBlank(raw)) {
-            List<ProviderEnabledVO> cached = AiJsonUtils.read(raw, new TypeReference<List<ProviderEnabledVO>>() {
-            });
+            List<ProviderEnabledVO> cached = AiJsonUtils.read(raw, new TypeReference<List<ProviderEnabledVO>>() {});
             if (cached != null) {
                 return cached;
             }
@@ -111,8 +111,8 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
             vo.setStatus(provider.getStatus());
             items.add(vo);
         }
-        redis.opsForValue().set(PROVIDER_LIST_CACHE_KEY, AiJsonUtils.write(items),
-                PROVIDER_LIST_CACHE_TTL, TimeUnit.SECONDS);
+        redis.opsForValue()
+                .set(PROVIDER_LIST_CACHE_KEY, AiJsonUtils.write(items), PROVIDER_LIST_CACHE_TTL, TimeUnit.SECONDS);
         return items;
     }
 
@@ -120,8 +120,8 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
     @Transactional(rollbackFor = Exception.class)
     public ProviderVO createProvider(ProviderForm form) {
         if (this.baseMapper.countByProviderCodeIncludingDeleted(form.getProviderCode()) > 0) {
-            Long active = this.baseMapper.selectCount(new LambdaQueryWrapper<SysAiProvider>()
-                    .eq(SysAiProvider::getProviderCode, form.getProviderCode()));
+            Long active = this.baseMapper.selectCount(
+                    new LambdaQueryWrapper<SysAiProvider>().eq(SysAiProvider::getProviderCode, form.getProviderCode()));
             if (active != null && active > 0) {
                 throw new BusinessException(ResultCode.DATA_EXISTS, "供应商编码已存在");
             }
@@ -136,13 +136,14 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
         provider.setDefaultHeaders(AiJsonUtils.write(form.getDefaultHeaders()));
         provider.setSortOrder(form.getSortOrder());
         provider.setHealthCheckEnabled(form.getHealthCheckEnabled());
+        provider.setRequestTimeoutSeconds(form.getRequestTimeoutSeconds());
         provider.setUserIdentityForward(AiJsonUtils.write(form.getUserIdentityForward()));
         provider.setRemark(form.getRemark());
         provider.setStatus(form.getStatus());
         this.save(provider);
         clearProviderCache();
-        providerHealthService.setHealthCheckEnabled(provider.getId(),
-                provider.getHealthCheckEnabled() != null && provider.getHealthCheckEnabled() == 1);
+        providerHealthService.setHealthCheckEnabled(
+                provider.getId(), provider.getHealthCheckEnabled() != null && provider.getHealthCheckEnabled() == 1);
         return toVO(provider);
     }
 
@@ -182,8 +183,8 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
         }
         this.updateById(provider);
         clearProviderCache();
-        providerHealthService.setHealthCheckEnabled(providerId,
-                provider.getHealthCheckEnabled() != null && provider.getHealthCheckEnabled() == 1);
+        providerHealthService.setHealthCheckEnabled(
+                providerId, provider.getHealthCheckEnabled() != null && provider.getHealthCheckEnabled() == 1);
         return toVO(provider);
     }
 
@@ -191,11 +192,10 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
     @Transactional(rollbackFor = Exception.class)
     public void deleteProvider(Long providerId) {
         getProviderOrRaise(providerId);
-        Long bound = modelMapper.selectCount(new LambdaQueryWrapper<SysAiModel>()
-                .eq(SysAiModel::getProviderId, providerId));
+        Long bound =
+                modelMapper.selectCount(new LambdaQueryWrapper<SysAiModel>().eq(SysAiModel::getProviderId, providerId));
         if (bound != null && bound > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型");
+            throw new BusinessException(ResultCode.DATA_REFERENCED, "存在模型引用该供应商（含禁用模型），请先删除或转移关联模型");
         }
         this.removeById(providerId);
         clearProviderCache();
@@ -224,10 +224,12 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
     public ProviderKeyVO createKey(Long providerId, ProviderKeyForm form) {
         getProviderOrRaise(providerId);
         String keyHash = cipher.hashKey(form.getKey());
+        // 唯一键为 (provider_id, key_hash)：同一把密钥可登记到不同供应商（本地三服务共用 INTERNAL_SERVICE_KEY）
         Long duplicate = keyMapper.selectCount(new LambdaQueryWrapper<SysAiProviderKey>()
+                .eq(SysAiProviderKey::getProviderId, providerId)
                 .eq(SysAiProviderKey::getKeyHash, keyHash));
         if (duplicate != null && duplicate > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "该 API Key 已存在");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "该供应商下该 API Key 已存在");
         }
         SysAiProviderKey key = new SysAiProviderKey();
         key.setProviderId(providerId);
@@ -283,8 +285,7 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
                     .eq(SysAiProviderKey::getProviderId, providerId)
                     .eq(SysAiProviderKey::getStatus, 1));
             if (enabled != null && enabled <= 1) {
-                throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW,
-                        "该供应商唯一启用 Key，不可删除，请先新增其他 Key 或禁用后再删除");
+                throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "该供应商唯一启用 Key，不可删除，请先新增其他 Key 或禁用后再删除");
             }
         }
         keyMapper.deleteById(keyId);
@@ -322,13 +323,12 @@ public class AiProviderServiceImpl extends ServiceImpl<SysAiProviderMapper, SysA
         vo.setApiBaseUrl(provider.getApiBaseUrl());
         vo.setProtocolType(provider.getProtocolType());
         vo.setAuthType(provider.getAuthType());
-        vo.setDefaultHeaders(AiJsonUtils.read(provider.getDefaultHeaders(),
-                new TypeReference<Map<String, Object>>() {
-                }));
+        vo.setDefaultHeaders(
+                AiJsonUtils.read(provider.getDefaultHeaders(), new TypeReference<Map<String, Object>>() {}));
         vo.setSortOrder(provider.getSortOrder());
         vo.setHealthCheckEnabled(provider.getHealthCheckEnabled());
-        vo.setUserIdentityForward(AiJsonUtils.read(provider.getUserIdentityForward(),
-                UserIdentityForwardForm.class));
+        vo.setRequestTimeoutSeconds(provider.getRequestTimeoutSeconds());
+        vo.setUserIdentityForward(AiJsonUtils.read(provider.getUserIdentityForward(), UserIdentityForwardForm.class));
         vo.setRemark(provider.getRemark());
         vo.setStatus(provider.getStatus());
         vo.setCreateTime(provider.getCreateTime());

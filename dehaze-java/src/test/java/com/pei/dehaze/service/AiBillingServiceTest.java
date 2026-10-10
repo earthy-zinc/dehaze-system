@@ -1,5 +1,17 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -41,6 +53,16 @@ import com.pei.dehaze.model.vo.AiCostStatVO;
 import com.pei.dehaze.model.vo.AiModelCostVO;
 import com.pei.dehaze.model.vo.AiRefundVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -54,33 +76,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * AiBillingService 单元测试。
  *
  * <p>锁定与 dehaze-python 一致的关键口径：账单缓存 snake_case 互认与空账期 A0401、
- * 退款校验与审核回补、余额 Redis+MySQL CAS 双写、成本双口径毛利与统计维度校验。
+ * 退款校验与审核回补、余额 Redis+MySQL 相对值 UPDATE 双写、成本双口径毛利与统计维度校验。
  */
 @DisplayName("AiBillingService 单元测试")
 @ExtendWith(MockitoExtension.class)
@@ -141,12 +141,12 @@ class AiBillingServiceTest {
     // ── 账单 ────────────────────────────────────────────────
 
     @Test
-    @DisplayName("账单缓存命中：按 python snake_case JSON 解析并直接返回")
+    @DisplayName("账单缓存命中：按 python snake_case JSON 解析（余额为字符串）并直接返回")
     void getBill_returnsCachedSnakeCasePayload() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("ai:bill:1:2026-07")).thenReturn(
-                "{\"user_id\":1,\"month\":\"2026-07\",\"total_consume\":100,\"total_recharge\":0,"
-                        + "\"total_refund\":0,\"balance_start\":0,\"balance_end\":0,"
+        when(valueOperations.get("ai:bill:1:2026-07"))
+                .thenReturn("{\"user_id\":1,\"month\":\"2026-07\",\"total_consume\":100,\"total_recharge\":0,"
+                        + "\"total_refund\":0,\"balance_start\":\"3000.00\",\"balance_end\":\"1500.00\","
                         + "\"item_summary\":{\"chat\":100}}");
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getUserId).thenReturn(1L);
@@ -155,8 +155,36 @@ class AiBillingServiceTest {
 
             assertThat(bill.getTotalConsume()).isEqualTo(100);
             assertThat(bill.getItemSummary()).containsEntry("chat", 100);
+            // python（model_dump(mode="json")）写入的缓存金额是 JSON 字符串，java 必须照读
+            assertThat(bill.getBalanceStart()).isEqualByComparingTo("3000.00");
+            assertThat(bill.getBalanceEnd()).isEqualByComparingTo("1500.00");
         }
         verify(insightMapper, never()).sumByBillType(anyLong(), any(), any());
+    }
+
+    @Test
+    @DisplayName("账单缓存写入：金额按字符串落 `ai:bill:*`（与 python/go 缓存格式互认）")
+    void getBill_writesStringBalancesToSharedCache() {
+        String month = YearMonth.now(BILLING_ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("ai:bill:1:" + month)).thenReturn(null);
+        when(insightMapper.sumByBillType(eq(1L), any(), any())).thenReturn(List.of());
+        when(insightMapper.sumCreditLogBySource(eq(1L), any(), any())).thenReturn(List.of());
+        when(insightMapper.getBalanceAtOrBefore(eq(1L), any()))
+                .thenReturn(new BigDecimal("3000.00"), new BigDecimal("1500.00"));
+        ArgumentCaptor<String> cachedJson = ArgumentCaptor.forClass(String.class);
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getUserId).thenReturn(1L);
+
+            service.getBill(month);
+        }
+
+        verify(valueOperations).set(eq("ai:bill:1:" + month), cachedJson.capture(), any(Duration.class));
+        assertThat(cachedJson.getValue())
+                .contains("\"balance_start\":\"3000.00\"")
+                .contains("\"balance_end\":\"1500.00\"")
+                // 缓存键名一律 snake_case（python/go 读侧口径）
+                .contains("\"item_summary\"");
     }
 
     @Test
@@ -182,9 +210,9 @@ class AiBillingServiceTest {
     @DisplayName("陈旧空账期缓存命中：抛 A0401 并清除该缓存键")
     void getBill_staleEmptyCacheEvicted() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("ai:bill:1:2020-01")).thenReturn(
-                "{\"user_id\":1,\"month\":\"2020-01\",\"total_consume\":0,\"total_recharge\":0,"
-                        + "\"total_refund\":0,\"balance_start\":0,\"balance_end\":0,\"item_summary\":{}}");
+        when(valueOperations.get("ai:bill:1:2020-01"))
+                .thenReturn("{\"user_id\":1,\"month\":\"2020-01\",\"total_consume\":0,\"total_recharge\":0,"
+                        + "\"total_refund\":0,\"balance_start\":\"0\",\"balance_end\":\"0\",\"item_summary\":{}}");
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getUserId).thenReturn(1L);
 
@@ -336,7 +364,7 @@ class AiBillingServiceTest {
     }
 
     @Test
-    @DisplayName("退款审核通过：余额 INCRBY + MySQL CAS + 写流水，状态置 2")
+    @DisplayName("退款审核通过：余额 INCRBY + MySQL 相对值 UPDATE + 写流水，状态置 2")
     void auditRefund_approveRefundsBalance() {
         SysAiRefund refund = new SysAiRefund();
         refund.setId(5L);
@@ -355,8 +383,7 @@ class AiBillingServiceTest {
         when(billingMapper.selectById(3L)).thenReturn(new SysAiBilling());
         when(refundMapper.selectCount(any())).thenReturn(0L);
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(ledgerMapper.getCreditsBalanceAndVersion(9L)).thenReturn(credits(100));
-        when(ledgerMapper.increaseBalanceCas(eq(9L), any(), any())).thenReturn(1);
+        when(ledgerMapper.increaseBalance(eq(9L), any())).thenReturn(1);
         when(valueOperations.get("ai:balance:9")).thenReturn("100");
 
         AiRefundAuditForm form = new AiRefundAuditForm();
@@ -442,7 +469,7 @@ class AiBillingServiceTest {
     }
 
     @Test
-    @DisplayName("手动调整：Redis INCRBY + MySQL CAS + 清欠费 + 写流水，返回账号视图")
+    @DisplayName("手动调整：Redis INCRBY + MySQL 相对值 UPDATE + 清欠费 + 写流水，返回账号视图")
     void adjustCredits_writesRedisAndLedger() {
         AiBillingAdjustForm form = new AiBillingAdjustForm();
         form.setUserId(9L);
@@ -450,13 +477,14 @@ class AiBillingServiceTest {
         form.setReason("客服补偿");
         when(userMapper.selectById(9L)).thenReturn(new SysUser());
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(ledgerMapper.getCreditsBalanceAndVersion(9L)).thenReturn(credits(100));
-        when(ledgerMapper.increaseBalanceCas(eq(9L), any(), any())).thenReturn(1);
+        when(ledgerMapper.increaseBalance(eq(9L), any())).thenReturn(1);
         when(valueOperations.get("ai:balance:9")).thenReturn("100");
-        when(valueOperations.get("ai:quota:daily:9:" + LocalDate.now(BILLING_ZONE)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))).thenReturn(null);
-        when(valueOperations.get("ai:quota:monthly:9:" + LocalDate.now(BILLING_ZONE)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM")))).thenReturn(null);
+        when(valueOperations.get("ai:quota:daily:9:"
+                        + LocalDate.now(BILLING_ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
+                .thenReturn(null);
+        when(valueOperations.get("ai:quota:monthly:9:"
+                        + LocalDate.now(BILLING_ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM"))))
+                .thenReturn(null);
         when(memberMapper.selectOne(any())).thenReturn(null);
         when(stringRedisTemplate.hasKey("ai:arrears:9")).thenReturn(true);
 
@@ -485,12 +513,13 @@ class AiBillingServiceTest {
     void buildBalance_resetsBrokenCacheValue() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("ai:balance:9")).thenReturn("100.00");
-        when(ledgerMapper.getCreditsBalanceAndVersion(9L))
-                .thenReturn(credits(100));
-        when(valueOperations.get("ai:quota:daily:9:" + LocalDate.now(BILLING_ZONE)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))).thenReturn(null);
-        when(valueOperations.get("ai:quota:monthly:9:" + LocalDate.now(BILLING_ZONE)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM")))).thenReturn(null);
+        when(ledgerMapper.getCreditsBalance(9L)).thenReturn(credits(100));
+        when(valueOperations.get("ai:quota:daily:9:"
+                        + LocalDate.now(BILLING_ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
+                .thenReturn(null);
+        when(valueOperations.get("ai:quota:monthly:9:"
+                        + LocalDate.now(BILLING_ZONE).format(DateTimeFormatter.ofPattern("yyyy-MM"))))
+                .thenReturn(null);
         lenient().when(memberMapper.selectOne(any())).thenReturn(null);
         lenient().when(stringRedisTemplate.hasKey("ai:arrears:9")).thenReturn(false);
 
@@ -596,7 +625,8 @@ class AiBillingServiceTest {
         AiCostStatRead row = new AiCostStatRead();
         row.setDimension("gpt-4o");
         row.setCost(new BigDecimal("12.345"));
-        when(insightMapper.sumCostGroupBy(eq("model"), any(), any(), any(), any())).thenReturn(List.of(row));
+        when(insightMapper.sumCostGroupBy(eq("model"), any(), any(), any(), any()))
+                .thenReturn(List.of(row));
 
         List<AiCostStatVO> stats = service.getCostStats(null, null, "model", "gpt-4o", null);
 
@@ -693,8 +723,7 @@ class AiBillingServiceTest {
         older.setBillingId(7L);
         older.setStatus(3);
         when(refundMapper.selectList(any())).thenReturn(List.of(older, refund));
-        com.pei.dehaze.model.query.AiBillingRecordQuery query =
-                new com.pei.dehaze.model.query.AiBillingRecordQuery();
+        com.pei.dehaze.model.query.AiBillingRecordQuery query = new com.pei.dehaze.model.query.AiBillingRecordQuery();
         try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
             security.when(SecurityUtils::getUserId).thenReturn(1L);
 
@@ -705,10 +734,86 @@ class AiBillingServiceTest {
         }
     }
 
+    // ── VIP 赠送积分月末清零（clearVipGiftExpire） ──────────────
+
+    @Test
+    @DisplayName("月末清零：赠送合计高于余额时按余额清零，写负数流水 vip_gift_expire")
+    void expireVipGiftCredits_cappedByBalance() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("ai:balance:7")).thenReturn("500");
+        when(creditLogMapper.sumAmountByUserAndSource(eq(7L), eq("vip_gift"), any(), any()))
+                .thenReturn(800L);
+        when(ledgerMapper.increaseBalance(eq(7L), any())).thenReturn(1);
+
+        long expired = service.expireVipGiftCredits(7L);
+
+        assertThat(expired).isEqualTo(500L);
+        verify(valueOperations).increment("ai:balance:7", -500L);
+        ArgumentCaptor<SysAiCreditLog> logCaptor = ArgumentCaptor.forClass(SysAiCreditLog.class);
+        verify(creditLogMapper).insert(logCaptor.capture());
+        assertThat(logCaptor.getValue().getSource()).isEqualTo("vip_gift_expire");
+        assertThat(logCaptor.getValue().getAmount()).isEqualTo(-500L);
+        assertThat(logCaptor.getValue().getBalanceAfter()).isEqualTo(500L);
+        assertThat(logCaptor.getValue().getReason()).isEqualTo("VIP 赠送积分月末清零");
+    }
+
+    @Test
+    @DisplayName("月末清零：余额高于赠送合计时按赠送合计清零")
+    void expireVipGiftCredits_usesGiftTotalWhenBalanceHigher() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("ai:balance:7")).thenReturn("900");
+        when(creditLogMapper.sumAmountByUserAndSource(eq(7L), eq("vip_gift"), any(), any()))
+                .thenReturn(300L);
+        when(ledgerMapper.increaseBalance(eq(7L), any())).thenReturn(1);
+
+        assertThat(service.expireVipGiftCredits(7L)).isEqualTo(300L);
+        verify(valueOperations).increment("ai:balance:7", -300L);
+    }
+
+    @Test
+    @DisplayName("月末清零：当月无赠送流水时不写流水、不动余额")
+    void expireVipGiftCredits_noopWithoutGiftLog() {
+        when(creditLogMapper.sumAmountByUserAndSource(eq(7L), eq("vip_gift"), any(), any()))
+                .thenReturn(0L);
+
+        assertThat(service.expireVipGiftCredits(7L)).isZero();
+        verify(creditLogMapper, never()).insert(any(SysAiCreditLog.class));
+        verify(valueOperations, never()).increment(anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("月末清零：余额已用尽（含欠费造成的负余额）时不清零")
+    void expireVipGiftCredits_noopWhenBalanceSpent() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("ai:balance:7")).thenReturn("0");
+        when(creditLogMapper.sumAmountByUserAndSource(eq(7L), eq("vip_gift"), any(), any()))
+                .thenReturn(200L);
+
+        assertThat(service.expireVipGiftCredits(7L)).isZero();
+        verify(creditLogMapper, never()).insert(any(SysAiCreditLog.class));
+        verify(valueOperations, never()).increment(anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("月末清零：待清零用户按当月 vip_gift 流水筛选，区间为月初 00:00:00 ~ 月末 23:59:59")
+    void listVipGiftUserIds_usesCurrentMonthBounds() {
+        when(creditLogMapper.selectDistinctUserIdsBySource(eq("vip_gift"), any(), any()))
+                .thenReturn(List.of(7L, 8L));
+
+        assertThat(service.listVipGiftUserIds()).containsExactly(7L, 8L);
+
+        ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        ArgumentCaptor<LocalDateTime> endCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(creditLogMapper)
+                .selectDistinctUserIdsBySource(eq("vip_gift"), startCaptor.capture(), endCaptor.capture());
+        LocalDateTime monthStart = LocalDate.now(BILLING_ZONE).withDayOfMonth(1).atStartOfDay();
+        assertThat(startCaptor.getValue()).isEqualTo(monthStart);
+        assertThat(endCaptor.getValue()).isEqualTo(monthStart.plusMonths(1).minusSeconds(1));
+    }
+
     private static AiUserCreditsRead credits(long balance) {
         AiUserCreditsRead read = new AiUserCreditsRead();
         read.setCreditsBalance(BigDecimal.valueOf(balance));
-        read.setCreditsVersion(1);
         return read;
     }
 

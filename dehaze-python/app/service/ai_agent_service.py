@@ -1,10 +1,11 @@
 """智能体管理服务：CRUD、启停、复制、删除校验、默认 Agent、关联管理、缓存"""
 
+import logging
+
 from langchain_core.runnables import RunnableConfig
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import defer_after_commit
@@ -32,7 +33,10 @@ from app.repository.ai_mcp_namespace_repository import ai_mcp_namespace_reposito
 from app.repository.ai_skill_repository import ai_skill_repository
 from app.repository.mongo_audit_log_repository import mongo_audit_log_repository
 from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder
+from app.service.ai.service.model_defaults import resolve_platform_default_model
 from app.service.ai_agent_version_service import agent_version_service
+
+logger = logging.getLogger(__name__)
 
 # 默认 Agent 编码（后端实现 §2.1 / §2.11.12，系统预置且不可删除）
 DEFAULT_AGENT_CODE = "default"
@@ -145,11 +149,14 @@ class AgentService:
         self.agent_version_service = agent_version_service
 
     async def ensure_default_agent(self, db: AsyncSession, redis: Redis) -> None:
-        """应用启动时确保默认 Agent（agent_code='default'）存在且有已发布版本（§2.11.12）。
+        """启动时确保默认 Agent（agent_code='default'）就绪（§2.11.12）。
 
         默认 Agent 是未指定 Agent 时的会话兜底，运行面（ReasoningService._load_snapshot）
         按已发布版本快照组装推理图；若只建主表记录而无已发布版本，任何默认会话推理都会
         因"该 Agent 暂无已发布版本"失败。故此处同时保证至少存在一条已发布版本（幂等）。
+
+        模型即平台默认模型（需求 §2.11.12）：平台默认切换后须随启动同步并重发布，否则默认
+        会话与评测会继续用旧模型（本环境曾长期停在已失效的内置本地模型 qwen3-0.6b）。
         """
         existing = await self.ai_agent_repository.get_by_code(db, DEFAULT_AGENT_CODE)
         if not existing or existing.deleted:
@@ -158,7 +165,7 @@ class AgentService:
                 name="默认助手",
                 description="平台通用助手，未指定 Agent 时的默认选择",
                 system_prompt="你是一个乐于助人的通用助手，请用简洁清晰的语言回答用户的问题。",
-                model_id=settings.AI_DEFAULT_MODEL,
+                model_id=await resolve_platform_default_model(db),
                 reasoning_mode="auto",
                 is_subagent=0,
                 is_team=0,
@@ -170,19 +177,36 @@ class AgentService:
             await db.refresh(default)
             existing = default
 
+        # 同步平台默认模型；平台默认未配置时无法同步，记警告跳过（不阻断启动、不覆写现有模型）
+        try:
+            platform_default_model = await resolve_platform_default_model(db)
+        except BusinessException as e:
+            logger.warning("跳过默认 Agent 模型同步：%s", e)
+            platform_default_model = None
+        model_synced = False
+        if platform_default_model and existing.model_id != platform_default_model:
+            existing.model_id = platform_default_model
+            model_synced = True
+            await db.flush()
+
         # 无已发布版本则序列化当前可编辑态为初始已发布版本（status=2，v1），保证默认会话可推理。
         # 若已发布版本的生效 config 缺推理默认键（如历史快照在 sys_dict 默认补齐前生成，
         # resolved_config 为空导致 deep_agent_builder 缺 max_steps_* 快速失败），则按当前
         # 可编辑态重新发布新版本，保证运行面拿到完整默认配置（幂等自愈）。
         published = await self.ai_agent_version_repository.get_latest_published(db, existing.id)
-        need_publish = published is None
+        need_publish = published is None or model_synced
         if published is not None:
             snapshot_cfg = (published.snapshot or {}).get("resolved_config") or {}
             if "max_steps_react" not in snapshot_cfg:
                 need_publish = True
         if need_publish:
+            change_note = (
+                f"默认 Agent 模型同步为平台默认({platform_default_model})"
+                if model_synced
+                else "默认 Agent 初始发布"
+            )
             await self.agent_version_service._write_draft(
-                db, redis, existing, None, "默认 Agent 初始发布", status=2
+                db, redis, existing, None, change_note, status=2
             )
         _defer_clear_agent_caches(db, redis, existing)
 
@@ -329,13 +353,13 @@ class AgentService:
         )
         if conversation_refs > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 f"存在 {conversation_refs} 个会话正在使用该 Agent，请先解绑",
             )
         subagent_refs = await self.ai_agent_repository.count_subagent_references(db, agent_id)
         if subagent_refs > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 f"该 Agent 被 {subagent_refs} 个 Agent 作为子 Agent 引用，请先解绑",
             )
         # 评测资产按 agent_id 挂载，Agent 软删后即失去清理入口：评测集列表与评测中心

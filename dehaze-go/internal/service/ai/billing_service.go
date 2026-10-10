@@ -30,9 +30,8 @@ const (
 	quotaMonthKeyFmt = "ai:quota:monthly:%d:%s"
 	billKeyFmt       = "ai:bill:%d:%s"
 
-	balanceTTL      = 3600 * time.Second
-	billCacheTTL    = 90 * 24 * 3600 * time.Second
-	balanceCASRetry = 3
+	balanceTTL   = 3600 * time.Second
+	billCacheTTL = 90 * 24 * 3600 * time.Second
 )
 
 // chatBillTypes chat 类计费类型：token 口径统计仅含主对话与子 Agent 实报实销，
@@ -47,7 +46,7 @@ var rechargeSources = map[string]bool{
 // shanghaiTZ 配额日/月重置与异常事件时间统一按 Asia/Shanghai（与 python ZoneInfo 一致）
 var shanghaiTZ = time.FixedZone("Asia/Shanghai", 8*3600)
 
-// BillingService AI 计费：余额/配额（Redis 为准实时权威 + MySQL 乐观锁落库）、查询、退款与管理员操作。
+// BillingService AI 计费：余额/配额（Redis 为准实时权威 + MySQL 相对值 UPDATE 落库）、查询、退款与管理员操作。
 type BillingService struct {
 	db    *gorm.DB
 	repo  *airepo.BillingRepository
@@ -156,7 +155,7 @@ func redisIntValue(value any) int64 {
 	return n
 }
 
-// increaseBalance 增加余额：Redis INCRBY → MySQL CAS 落库 → 清欠费标记 → 写流水
+// increaseBalance 增加余额：Redis INCRBY → MySQL 相对值 UPDATE 落库 → 清欠费标记 → 写流水
 //
 // 返回变动后余额（Redis 为准实时权威值）。余额与流水在同一事务内落库，避免账实不一致。
 func (s *BillingService) increaseBalance(
@@ -174,7 +173,7 @@ func (s *BillingService) increaseBalance(
 	var balanceAfter int64
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txRepo := airepo.NewBillingRepository(tx)
-		if casErr := s.addBalanceCAS(ctx, txRepo, userID, amount); casErr != nil {
+		if casErr := s.addBalance(ctx, txRepo, userID, amount); casErr != nil {
 			return casErr
 		}
 		if current, readErr := txRepo.GetUserBalance(ctx, userID); readErr != nil {
@@ -202,26 +201,31 @@ func (s *BillingService) increaseBalance(
 	return strconv.FormatInt(balanceAfter, 10), nil
 }
 
-// addBalanceCAS 乐观锁增加余额，CAS 失败重试 3 次
-func (s *BillingService) addBalanceCAS(ctx context.Context, repo *airepo.BillingRepository, userID, amount int64) error {
-	for i := 0; i < balanceCASRetry; i++ {
-		current, err := repo.GetUserBalance(ctx, userID)
-		if err != nil {
-			return err
-		}
-		if current == nil {
-			// Redis 已加而 MySQL 无账户：静默跳过会造成余额永久背离，必须显式失败
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
-		}
-		ok, err := repo.AddBalanceCAS(ctx, userID, amount, current.Version)
-		if err != nil {
-			return err
-		}
-		if ok {
-			return nil
-		}
+// addBalance 增加余额（相对值 UPDATE，单行原子求值，无 version 乐观锁）
+func (s *BillingService) addBalance(ctx context.Context, repo *airepo.BillingRepository, userID, amount int64) error {
+	ok, err := repo.AddBalance(ctx, userID, amount)
+	if err != nil {
+		return err
 	}
-	return common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "余额落库失败（CAS 重试耗尽）")
+	if !ok {
+		// Redis 已加而 MySQL 无账户：静默跳过会造成余额永久背离，必须显式失败
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
+	}
+	return nil
+}
+
+// GrantVipMonthlyGiftCredits 发放 VIP 月度赠送积分（source=vip_gift）
+func (s *BillingService) GrantVipMonthlyGiftCredits(ctx context.Context, userID, amount int64) error {
+	reason := "VIP 按月赠送"
+	_, err := s.increaseBalance(ctx, userID, amount, "vip_gift", nil, &reason, nil)
+	return err
+}
+
+// ExpireVipGiftCredits 月末清零 VIP 赠送积分未用部分（source=vip_gift_expire）
+func (s *BillingService) ExpireVipGiftCredits(ctx context.Context, userID, amount int64) error {
+	reason := "VIP 赠送积分月末清零"
+	_, err := s.increaseBalance(ctx, userID, -amount, "vip_gift_expire", nil, &reason, nil)
+	return err
 }
 
 // ==================== 用户端查询 ====================
@@ -310,12 +314,19 @@ func (s *BillingService) Records(ctx context.Context, userID int64, q *bo.Billin
 	items := make([]vo.BillingRecordVO, 0, len(records))
 	for i := range records {
 		r := &records[i]
+		var quantity *string
+		if r.Quantity != nil {
+			// decimal(18,4) 按 4 位小数格式化，对齐 python Decimal / java BigDecimal 的字符串口径
+			text := strconv.FormatFloat(*r.Quantity, 'f', 4, 64)
+			quantity = &text
+		}
 		items = append(items, vo.BillingRecordVO{
 			ID: r.ID, UserID: r.UserID,
 			ConversationID: r.ConversationID, MessageID: r.MessageID,
 			Model: r.Model, ActualModel: r.ActualModel, BillType: r.BillType,
 			InputTokens: r.InputTokens, CachedInputTokens: r.CachedInputTokens,
-			OutputTokens: r.OutputTokens, Credits: r.Credits, CreditsSaved: r.CreditsSaved,
+			OutputTokens: r.OutputTokens, Quantity: quantity, QuantityUnit: r.QuantityUnit,
+			Credits: r.Credits, CreditsSaved: r.CreditsSaved,
 			ToolCredits: r.ToolCredits, QuotaConsumed: r.QuotaConsumed, PreDeduct: r.PreDeduct,
 			RefundStatus: statusMap[r.ID], CreateTime: r.CreateTime,
 		})

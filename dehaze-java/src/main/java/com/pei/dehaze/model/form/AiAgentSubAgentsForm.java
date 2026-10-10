@@ -17,5 +17,4 @@ public class AiAgentSubAgentsForm {
 
     @Schema(description = "子Agent关联列表(覆盖式更新)")
     private List<AiSubAgentItemForm> subagents;
-
 }

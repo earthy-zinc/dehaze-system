@@ -1,9 +1,7 @@
 package com.pei.dehaze.service;
 
-
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.entity.SysRoleMenu;
-
 import java.util.List;
 
 /**
@@ -21,7 +19,6 @@ public interface SysRoleMenuService extends IService<SysRoleMenu> {
      * @return 菜单ID集合
      */
     List<Long> listMenuIdsByRoleId(Long roleId);
-
 
     /**
      * 刷新权限缓存(所有角色)
@@ -42,5 +39,4 @@ public interface SysRoleMenuService extends IService<SysRoleMenu> {
      * @param newRoleCode 新角色编码
      */
     void refreshRolePermsCache(String oldRoleCode, String newRoleCode);
-
 }

@@ -20,12 +20,12 @@ import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.UserConverter;
 import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.mapper.SysUserMapper;
-import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysMember;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.security.service.PermissionService;
@@ -34,6 +34,15 @@ import com.pei.dehaze.service.SysMenuService;
 import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
@@ -44,16 +53,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 用户业务实现类
@@ -118,10 +117,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 批量聚合会员信息（in userIds，避免 N+1）
         List<Long> userIds = voPage.getRecords().stream().map(UserPageVO::getId).toList();
         if (!userIds.isEmpty()) {
-            Map<Long, SysMember> memberMap = memberMapper.selectList(new LambdaQueryWrapper<SysMember>()
-                            .in(SysMember::getUserId, userIds))
-                    .stream()
-                    .collect(Collectors.toMap(SysMember::getUserId, Function.identity()));
+            Map<Long, SysMember> memberMap =
+                    memberMapper
+                            .selectList(new LambdaQueryWrapper<SysMember>().in(SysMember::getUserId, userIds))
+                            .stream()
+                            .collect(Collectors.toMap(SysMember::getUserId, Function.identity()));
             voPage.getRecords().forEach(vo -> fillMemberFields(vo, memberMap.get(vo.getId())));
         }
         return voPage;
@@ -137,12 +137,22 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         vo.setMemberLevel(member.getLevelCode());
         vo.setMemberExpireTime(member.getExpireTime());
-        int total = member.getMonthlyDehazeQuota() + member.getMonthlyDerainQuota() + member.getMonthlyDesnowQuota()
-                + member.getMonthlyLowlightQuota() + member.getMonthlySuperResolutionQuota()
-                + member.getMonthlyDenoiseQuota() + member.getMonthlyInpaintQuota() + member.getMonthlyEvaluateQuota();
-        int used = member.getMonthlyDehazeUsed() + member.getMonthlyDerainUsed() + member.getMonthlyDesnowUsed()
-                + member.getMonthlyLowlightUsed() + member.getMonthlySuperResolutionUsed()
-                + member.getMonthlyDenoiseUsed() + member.getMonthlyInpaintUsed() + member.getMonthlyEvaluateUsed();
+        int total = member.getMonthlyDehazeQuota()
+                + member.getMonthlyDerainQuota()
+                + member.getMonthlyDesnowQuota()
+                + member.getMonthlyLowlightQuota()
+                + member.getMonthlySuperResolutionQuota()
+                + member.getMonthlyDenoiseQuota()
+                + member.getMonthlyInpaintQuota()
+                + member.getMonthlyEvaluateQuota();
+        int used = member.getMonthlyDehazeUsed()
+                + member.getMonthlyDerainUsed()
+                + member.getMonthlyDesnowUsed()
+                + member.getMonthlyLowlightUsed()
+                + member.getMonthlySuperResolutionUsed()
+                + member.getMonthlyDenoiseUsed()
+                + member.getMonthlyInpaintUsed()
+                + member.getMonthlyEvaluateUsed();
         vo.setQuotaUsage(used + "/" + total);
     }
 
@@ -286,8 +296,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         boolean result = this.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, passwordEncoder.encode(password))
-                .set(SysUser::getUpdateBy, currentUserId)
-        );
+                .set(SysUser::getUpdateBy, currentUserId));
         if (result) {
             // 重置后踢出该用户全部在线会话，强制重新登录（对齐 python user_service.update_password）
             kickUserSessions(List.of(userId));
@@ -299,8 +308,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      * 密码复杂度：8-20 位且必须同时包含字母与数字（对齐 python validate_password_complexity）
      */
     private void validatePasswordComplexity(String password) {
-        if (password == null || password.length() < 8 || password.length() > 20
-                || !password.matches(".*[a-zA-Z].*") || !password.matches(".*\\d.*")) {
+        if (password == null
+                || password.length() < 8
+                || password.length() > 20
+                || !password.matches(".*[a-zA-Z].*")
+                || !password.matches(".*\\d.*")) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "密码必须包含字母和数字，8-20位");
         }
     }
@@ -325,8 +337,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         boolean result = this.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getStatus, status)
-                .set(SysUser::getUpdateBy, currentUserId)
-        );
+                .set(SysUser::getUpdateBy, currentUserId));
         if (result && status == 0) {
             // 禁用后实时踢出该用户全部在线会话，保证禁用立即生效（对齐 python user_service.update_user_status）
             kickUserSessions(List.of(userId));
@@ -345,7 +356,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         List<String> sessionKeys = new ArrayList<>();
         Map<Long, List<String>> kickedByUser = new HashMap<>();
         try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions()
-                .match(SecurityConstants.SESSION_PREFIX + "*").build())) {
+                .match(SecurityConstants.SESSION_PREFIX + "*")
+                .build())) {
             while (cursor.hasNext()) {
                 String key = cursor.next();
                 if (key.startsWith(SecurityConstants.SESSION_USER_PREFIX)) {
@@ -365,7 +377,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                     continue;
                 }
                 sessionKeys.add(key);
-                kickedByUser.computeIfAbsent(userId, id -> new ArrayList<>())
+                kickedByUser
+                        .computeIfAbsent(userId, id -> new ArrayList<>())
                         .add(key.substring(SecurityConstants.SESSION_PREFIX.length()));
             }
         }
@@ -375,8 +388,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         redisTemplate.delete(sessionKeys);
         // 同步清理多点登录索引（session:user:{userId} ZSet 中移除被踢会话元素）
         for (Map.Entry<Long, List<String>> entry : kickedByUser.entrySet()) {
-            redisTemplate.opsForZSet().remove(
-                    SecurityConstants.SESSION_USER_PREFIX + entry.getKey(), entry.getValue().toArray());
+            redisTemplate
+                    .opsForZSet()
+                    .remove(
+                            SecurityConstants.SESSION_USER_PREFIX + entry.getKey(),
+                            entry.getValue().toArray());
         }
     }
 
@@ -412,7 +428,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         return userAuthInfo;
     }
 
-
     /**
      * 获取登录用户信息
      *
@@ -431,9 +446,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                         SysUser::getUsername,
                         SysUser::getNickname,
                         SysUser::getAvatar,
-                        SysUser::getCreateTime
-                )
-        );
+                        SysUser::getCreateTime));
         // entity->VO
         UserInfoVO userInfoVO = userConverter.toUserInfoVo(user);
 
@@ -448,5 +461,4 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         return userInfoVO;
     }
-
 }

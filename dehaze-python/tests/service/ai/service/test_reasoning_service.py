@@ -213,6 +213,11 @@ async def test_run_direct_masks_pii_before_persisting(monkeypatch):
         "app.service.ai.service.reasoning_service._schedule_conversation_sync",
         lambda *a, **k: None,
     )
+    scheduled_memory = []
+    monkeypatch.setattr(
+        "app.service.ai.service.reasoning_service.schedule_memory_extraction",
+        lambda *a, **k: scheduled_memory.append(a),
+    )
     monkeypatch.setattr(
         "app.service.ai.service.reasoning_service.trace_collector",
         SimpleNamespace(
@@ -264,11 +269,17 @@ async def test_run_direct_masks_pii_before_persisting(monkeypatch):
         stream_session_id="s1",
         messages=[{"role": "user", "content": "我的联系方式"}],
         system_prompt=None,
+        used_memory_ids=[],
     )
 
     assert persisted["final_response"] == "联系我 ***，密钥 ***"
     assert "13812345678" not in persisted["final_response"]
     assert result["final_response"] == persisted["final_response"]
+    # direct 路径补记忆抽取：以 (user_id, model_id, messages, conv_id) 交给后台抽取
+    assert scheduled_memory[0][0] == 2
+    assert scheduled_memory[0][1] == "gpt-4o-mini"
+    assert scheduled_memory[0][2][-1]["role"] == "assistant"
+    assert scheduled_memory[0][3] == 1
     # SSE 出口同样不含明文（converter 侧脱敏）
     assert "13812345678" not in str(emitter.events)
 

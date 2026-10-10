@@ -30,8 +30,8 @@ def _plain_ctx():
 def _valid_form() -> dict:
     return {
         "originalImageUrl": "/images/test_haze.jpg",
-        "algorithmId": 1,
-        "algorithmName": "DCP",
+        "modelId": "aecrnet",
+        "modelName": "AECR-NET",
         "processingTime": 1520,
         "status": 1,
         "inputSource": "upload",
@@ -87,7 +87,7 @@ async def test_create_rejects_invalid_enum_and_range(history_client, field, valu
 
 @pytest.mark.parametrize(
     ("field", "length"),
-    [("originalImageUrl", 501), ("algorithmName", 101)],
+    [("originalImageUrl", 501), ("modelName", 101)],
 )
 async def test_create_rejects_overlength_fields(history_client, field, length):
     form = _valid_form()
@@ -97,10 +97,10 @@ async def test_create_rejects_overlength_fields(history_client, field, length):
     assert resp.json()["code"] == "A0400"
 
 
-async def test_create_rejects_invalid_algorithm_params_json(history_client):
-    """algorithm_params 落库到 MySQL JSON 列，非法 JSON 会在 Java 端 SQL 报错，后端前置拦截"""
+async def test_create_rejects_invalid_model_params_json(history_client):
+    """model_params 落库到 MySQL JSON 列，非法 JSON 会在 Java 端 SQL 报错，后端前置拦截"""
     form = _valid_form()
-    form["algorithmParams"] = "not-a-json{["
+    form["modelParams"] = "not-a-json{["
     resp = await history_client.post("/api/v1/image-input/history", json=form)
     assert resp.status_code == 400
     assert resp.json()["code"] == "A0400"

@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.provider.provider_health_service import provider_health_service
-from app.infrastructure.provider.provider_key_selector import KEY_UNAVAILABLE_PREFIX
+from app.infrastructure.provider.provider_key_selector import provider_key_selector
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_model import SysAiModel
 from app.models.schema.ai_provider import (
@@ -140,7 +140,9 @@ class AiUsageStatsService:
 
     async def _count_unavailable_keys(self, redis: Redis) -> int:
         count = 0
-        async for _ in redis.scan_iter(match=KEY_UNAVAILABLE_PREFIX.format("*")):
+        async for _ in redis.scan_iter(
+            match=f"{provider_key_selector.namespace}:*:unavailable", count=1000
+        ):
             count += 1
         return count
 

@@ -1,9 +1,9 @@
 """上下文组装器（ContextManager）
 
 每次推理前组装发送给 LLM 的消息列表：
-system_prompt → summary（system 消息）→ 长期记忆 → token 预算内的对话历史原文
-（含产物引用行）。超出预算的更早消息经 SummaryService 增量摘要兜底（§4.1），
-不会静默丢失。
+system_prompt → 长期记忆（system 消息）→ 可用知识库提示（system 消息）→ summary（system 消息）
+→ token 预算内的对话历史原文（含产物引用行）。超出预算的更早消息经 SummaryService
+增量摘要兜底（§4.1），不会静默丢失。
 """
 
 import logging
@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
+from app.repository.knowledge_base_repository import knowledge_base_repository
 from app.service.ai.service import trace_collector
 from app.service.ai.service.memory_injection import inject_memories
 from app.service.ai.strategies.prompt_composer import compose_system_prompt
@@ -31,6 +32,8 @@ _FALLBACK_CONTEXT_TOKENS = 32768
 _FALLBACK_OUTPUT_TOKENS = 4096
 # 产物引用行中 summary 字段的最大展示长度
 _ARTIFACT_SUMMARY_MAX_LEN = 200
+# 可用知识库提示块最多列出的库数（防库过多撑大每轮上下文）
+_KB_HINT_MAX = 20
 # 工具调用结果折叠进上下文的单条截断长度（防超大工具输出撑爆上下文）
 _TOOL_RESULT_MAX_LEN = 1000
 
@@ -63,17 +66,46 @@ class ContextManager:
                 last_user_msg = msg["content"]
                 break
         system_block, injected_list = await inject_memories(db, conv.user_id, last_user_msg)
-        # 记忆块以独立 system 消息注入、不参与历史裁剪，须先从窗口预算中扣除
-        reserved = await llm_client.count_tokens(system_block) if system_block else 0
+        kb_block = await self._available_kb_block(db, conv.user_id)
+        # 记忆/知识库块以独立 system 消息注入、不参与历史裁剪，须先从窗口预算中扣除
+        reserved = sum(
+            [await llm_client.count_tokens(text) for text in (system_block, kb_block) if text]
+        )
         await self._trim_to_budget(db, conv, model_id, system_prompt, messages, reserved)
+        insert_at = 0
         if system_block:
-            messages.insert(0, {"role": "system", "content": system_block})
+            messages.insert(insert_at, {"role": "system", "content": system_block})
+            insert_at += 1
+        if kb_block:
+            messages.insert(insert_at, {"role": "system", "content": kb_block})
+            insert_at += 1
         if conv.summary:
-            insert_at = 1 if system_block else 0
             messages.insert(
                 insert_at, {"role": "system", "content": f"之前的对话摘要：{conv.summary}"}
             )
         return messages, system_prompt, injected_list
+
+    async def _available_kb_block(self, db: AsyncSession, user_id: int) -> str:
+        """可用知识库提示块：让模型知道当前有哪些库可检索（避免"有库却不知道"）。
+
+        无可见库或查询失败时返回空串（缺省不注入，不影响主流程）。
+        """
+        try:
+            bases = await knowledge_base_repository.list_visible_by_user(db, user_id)
+        except Exception:
+            logger.warning("可用知识库查询失败，跳过上下文提示", exc_info=True)
+            return ""
+        if not bases:
+            return ""
+        lines = []
+        for base in bases[:_KB_HINT_MAX]:
+            description = (base.description or "").strip()[:80]
+            entry = f"- id={base.id} {base.name}"
+            lines.append(f"{entry}：{description}" if description else entry)
+        return (
+            "当前可用知识库（回答平台/项目/产品知识类问题时，先检索知识库并标注来源）：\n"
+            + "\n".join(lines)
+        )
 
     @staticmethod
     async def _load_agent_snapshot(db: AsyncSession, conv) -> dict | None:

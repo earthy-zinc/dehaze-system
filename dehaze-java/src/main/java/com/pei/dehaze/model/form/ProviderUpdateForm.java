@@ -2,9 +2,8 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 /** AI 供应商更新表单（null 视为不修改；provider_code 为白名单业务键，不可改） */
 @Schema(description = "AI 供应商更新表单")
@@ -28,6 +27,8 @@ public class ProviderUpdateForm {
     private Integer sortOrder;
 
     private Integer healthCheckEnabled;
+
+    private Integer requestTimeoutSeconds;
 
     private UserIdentityForwardForm userIdentityForward;
 

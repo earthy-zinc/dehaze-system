@@ -14,24 +14,29 @@ import com.pei.dehaze.model.query.MessageTemplateQuery;
 import com.pei.dehaze.model.vo.MessageTemplateDetailVO;
 import com.pei.dehaze.model.vo.MessageTemplateVO;
 import com.pei.dehaze.service.MessageTemplateService;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-
 @Service
 @RequiredArgsConstructor
-public class MessageTemplateServiceImpl extends ServiceImpl<SysMessageTemplateMapper, SysMessageTemplate> implements MessageTemplateService {
+public class MessageTemplateServiceImpl extends ServiceImpl<SysMessageTemplateMapper, SysMessageTemplate>
+        implements MessageTemplateService {
 
     @Override
     public Page<MessageTemplateVO> getPage(MessageTemplateQuery query) {
         Page<SysMessageTemplate> page = new Page<>(query.getPageNum(), query.getPageSize());
-        this.page(page, new LambdaQueryWrapper<SysMessageTemplate>()
-                .like(CharSequenceUtil.isNotBlank(query.getName()), SysMessageTemplate::getName, query.getName())
-                .eq(CharSequenceUtil.isNotBlank(query.getType()), SysMessageTemplate::getType, query.getType())
-                .eq(query.getStatus() != null, SysMessageTemplate::getStatus, query.getStatus())
-                .orderByDesc(SysMessageTemplate::getCreateTime));
+        this.page(
+                page,
+                new LambdaQueryWrapper<SysMessageTemplate>()
+                        .like(
+                                CharSequenceUtil.isNotBlank(query.getName()),
+                                SysMessageTemplate::getName,
+                                query.getName())
+                        .eq(CharSequenceUtil.isNotBlank(query.getType()), SysMessageTemplate::getType, query.getType())
+                        .eq(query.getStatus() != null, SysMessageTemplate::getStatus, query.getStatus())
+                        .orderByDesc(SysMessageTemplate::getCreateTime));
 
         Page<MessageTemplateVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(this::toTemplateVO).toList());
@@ -60,7 +65,8 @@ public class MessageTemplateServiceImpl extends ServiceImpl<SysMessageTemplateMa
         }
         if (CharSequenceUtil.isNotBlank(template.getVariables())) {
             @SuppressWarnings({"unchecked", "rawtypes"})
-            List<Map<String, String>> vars = (List) JSONUtil.parseArray(template.getVariables()).toList(Map.class);
+            List<Map<String, String>> vars =
+                    (List) JSONUtil.parseArray(template.getVariables()).toList(Map.class);
             vo.setVariables(vars);
         }
         return vo;
@@ -97,8 +103,7 @@ public class MessageTemplateServiceImpl extends ServiceImpl<SysMessageTemplateMa
 
     @Override
     public SysMessageTemplate getByCode(String code) {
-        return this.getOne(new LambdaQueryWrapper<SysMessageTemplate>()
-                .eq(SysMessageTemplate::getCode, code));
+        return this.getOne(new LambdaQueryWrapper<SysMessageTemplate>().eq(SysMessageTemplate::getCode, code));
     }
 
     private MessageTemplateVO toTemplateVO(SysMessageTemplate template) {

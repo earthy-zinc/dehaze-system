@@ -13,10 +13,10 @@ type IEvalLogRepository interface {
 	Create(ctx context.Context, log *model.SysEvalLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysEvalLog, error)
 
-	FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+	FindPageByUser(ctx context.Context, userID int64, modelID string, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
 	// FindLogPageByUser 评估日志列表分页（**当前用户全部状态**的评估日志，python `list_logs` 口径）
-	FindLogPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
-	UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error
+	FindLogPageByUser(ctx context.Context, userID int64, modelID string, pageNum, pageSize int) ([]model.SysEvalLog, int64, error)
+	UpdateResult(ctx context.Context, id int64, status model.LogStatus, result, predMD5, gtMD5 string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
 }
@@ -42,14 +42,23 @@ func (r *evalLogRepository) FindByID(ctx context.Context, id int64) (*model.SysE
 	return &log, nil
 }
 
-func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, result string, time int) error {
+// UpdateResult 评估完成时写入指标与图片内容 MD5。
+// predMD5/gtMD5 由算法服务下载图片后计算并随响应返回（Go 侧只有 URL，不得用 URL 的 MD5 冒充），为空时不覆盖。
+func (r *evalLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, result, predMD5, gtMD5 string, time int) error {
+	updates := map[string]any{
+		"status": status,
+		"result": result,
+		"time":   time,
+	}
+	if predMD5 != "" {
+		updates["pred_md5"] = predMD5
+	}
+	if gtMD5 != "" {
+		updates["gt_md5"] = gtMD5
+	}
 	return r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
 		Where("id = ?", id).
-		Updates(map[string]any{
-			"status": status,
-			"result": result,
-			"time":   time,
-		}).Error
+		Updates(updates).Error
 }
 
 func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error {
@@ -65,14 +74,14 @@ func (r *evalLogRepository) UpdateStatus(ctx context.Context, id int64, status m
 		Updates(updates).Error
 }
 
-func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
+func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, modelID string, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
 	var list []model.SysEvalLog
 	var total int64
 	// 指标历史仅含效果评估任务，排除同表存储的对比报告行
 	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).
 		Where("create_by = ? AND status = ? AND task_type = ?", userID, model.LogStatusCompleted, "evaluation")
-	if algorithmID > 0 {
-		query = query.Where("algorithm_id = ?", algorithmID)
+	if modelID != "" {
+		query = query.Where("model_id = ?", modelID)
 	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -87,12 +96,12 @@ func (r *evalLogRepository) FindPageByUser(ctx context.Context, userID int64, al
 // FindLogPageByUser 评估日志列表（`GET /evaluation/logs`）分页。
 // 对齐 python `eval_log_repository.get_paginated`：**仅按 create_by 隔离**（不限状态、不限 task_type）、按 id 倒序；
 // 而"指标历史"（`GET /evaluation/metrics`）另有 completed + task_type='evaluation' 的口径，见 FindPageByUser。
-func (r *evalLogRepository) FindLogPageByUser(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
+func (r *evalLogRepository) FindLogPageByUser(ctx context.Context, userID int64, modelID string, pageNum, pageSize int) ([]model.SysEvalLog, int64, error) {
 	var list []model.SysEvalLog
 	var total int64
 	query := r.db.WithContext(ctx).Model(&model.SysEvalLog{}).Where("create_by = ?", userID)
-	if algorithmID > 0 {
-		query = query.Where("algorithm_id = ?", algorithmID)
+	if modelID != "" {
+		query = query.Where("model_id = ?", modelID)
 	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err

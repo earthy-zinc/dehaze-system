@@ -50,7 +50,7 @@ def _sample(**overrides):
         "dataset_id": 5,
         "task_goal": "为用户推荐去雾算法",
         "allowed_input": "一张雾图",
-        "tools": ["algorithm_recommend"],
+        "tools": [{"name": "algorithm_recommend"}],
         "expected_process": None,
         "expected_result": "给出算法建议",
         "forbidden_behavior": None,
@@ -262,7 +262,7 @@ class TestSamples:
             json={
                 "dataset_id": 5,
                 "task_goal": "为用户推荐去雾算法",
-                "tools": ["algorithm_recommend"],
+                "tools": [{"name": "algorithm_recommend"}],
                 "risk_level": "high",
             },
         )

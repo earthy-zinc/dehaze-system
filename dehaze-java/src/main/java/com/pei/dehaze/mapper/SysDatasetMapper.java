@@ -3,13 +3,12 @@ package com.pei.dehaze.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysItemFile;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
-
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 /**
  * @author earthy-zinc
@@ -21,14 +20,13 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
     /**
      * 测试集选项查询（T-DS-046~048）：含清晰图 GT（item_file.type=clear）且启用的数据集。
      */
-    @Select("<script>" +
-            "SELECT DISTINCT d.id AS value, d.name AS label FROM sys_dataset d " +
-            "JOIN sys_dataset_item i ON i.dataset_id = d.id " +
-            "JOIN sys_item_file f ON f.item_id = i.id " +
-            "WHERE d.deleted = 0 AND d.status = 1 AND f.type = 'clear'" +
-            "<if test='taskType != null and taskType != &quot;&quot;'> AND d.type = #{taskType}</if>" +
-            " ORDER BY d.id" +
-            "</script>")
+    @Select("<script>" + "SELECT DISTINCT d.id AS value, d.name AS label FROM sys_dataset d "
+            + "JOIN sys_dataset_item i ON i.dataset_id = d.id "
+            + "JOIN sys_item_file f ON f.item_id = i.id "
+            + "WHERE d.deleted = 0 AND d.status = 1 AND f.type = 'clear'"
+            + "<if test='taskType != null and taskType != &quot;&quot;'> AND d.type = #{taskType}</if>"
+            + " ORDER BY d.id"
+            + "</script>")
     java.util.List<java.util.Map<String, Object>> selectEvaluationOptions(@Param("taskType") String taskType);
 
     /**

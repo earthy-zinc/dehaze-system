@@ -111,7 +111,7 @@ async def test_create_dept_depth_5_ok_and_6_rejected(db, mock_redis):
 
     with pytest.raises(BusinessException) as ei:
         await _create(db, mock_redis, parent_id=chain[-1])
-    assert ei.value.code == ResultCode.DATA_BIND_EXISTS
+    assert ei.value.code == ResultCode.DATA_REFERENCED
     assert "部门层级不能超过5级" in ei.value.message
 
 
@@ -202,7 +202,7 @@ async def test_update_moved_dept_depth_limit_a0504(db, mock_redis):
 
     with pytest.raises(BusinessException) as ei:
         await dept_service.update_dept(db, mock_redis, level2_id, {"parentId": chain[-1]})
-    assert ei.value.code == ResultCode.DATA_BIND_EXISTS
+    assert ei.value.code == ResultCode.DATA_REFERENCED
 
 
 async def test_update_moved_subtree_keeps_tree_path_consistent(db, mock_redis):

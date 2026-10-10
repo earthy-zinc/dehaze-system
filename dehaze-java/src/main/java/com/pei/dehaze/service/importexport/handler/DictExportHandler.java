@@ -11,13 +11,12 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 字典导出处理器
@@ -49,23 +48,41 @@ public class DictExportHandler implements ExportHandler {
     @Override
     public List<ExportFieldConfig> getFieldConfigs() {
         return List.of(
-                ExportFieldConfig.builder().field("typeCode").label("字典类型编码").order(1).build(),
+                ExportFieldConfig.builder()
+                        .field("typeCode")
+                        .label("字典类型编码")
+                        .order(1)
+                        .build(),
                 ExportFieldConfig.builder().field("name").label("字典名称").order(2).build(),
                 ExportFieldConfig.builder().field("value").label("字典值").order(3).build(),
                 ExportFieldConfig.builder().field("sort").label("排序").order(4).build(),
-                ExportFieldConfig.builder().field("statusLabel").label("状态").order(5).build(),
-                ExportFieldConfig.builder().field("defaulted").label("是否默认").order(6).build(),
+                ExportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态")
+                        .order(5)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("defaulted")
+                        .label("是否默认")
+                        .order(6)
+                        .build(),
                 ExportFieldConfig.builder().field("remark").label("备注").order(7).build(),
-                ExportFieldConfig.builder().field("createTime").label("创建时间").order(8)
-                        .dateFormat("yyyy-MM-dd HH:mm:ss").build()
-        );
+                ExportFieldConfig.builder()
+                        .field("createTime")
+                        .label("创建时间")
+                        .order(8)
+                        .dateFormat("yyyy-MM-dd HH:mm:ss")
+                        .build());
     }
 
     @Override
     public ExportDataProvider getDataProvider(ExportContext ctx) {
-        List<ExportFieldConfig> fields = ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
-                ? getFieldConfigs()
-                : getFieldConfigs().stream().filter(f -> ctx.getSelectedFields().contains(f.getField())).toList();
+        List<ExportFieldConfig> fields =
+                ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
+                        ? getFieldConfigs()
+                        : getFieldConfigs().stream()
+                                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
+                                .toList();
 
         return (pageNum, pageSize) -> {
             DictPageQuery query = buildQuery(ctx.getQueryParams(), pageNum, PAGE_SIZE);
@@ -112,14 +129,15 @@ public class DictExportHandler implements ExportHandler {
             case "name" -> nullToEmpty(vo.getName());
             case "value" -> nullToEmpty(vo.getValue());
             case "sort" -> vo.getSort() == null ? "" : vo.getSort();
-            case "statusLabel" -> vo.getStatus() == null
-                    ? ""
-                    : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
+            case "statusLabel" ->
+                vo.getStatus() == null ? "" : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
             case "defaulted" -> vo.getDefaulted() == null ? "" : (vo.getDefaulted() == 1 ? "是" : "否");
             case "remark" -> nullToEmpty(vo.getRemark());
-            case "createTime" -> vo.getCreateTime() == null
-                    ? ""
-                    : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
+            case "createTime" ->
+                vo.getCreateTime() == null
+                        ? ""
+                        : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                                .format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
             default -> "";
         };
     }

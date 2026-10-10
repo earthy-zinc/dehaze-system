@@ -2,13 +2,10 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.model.entity.SysDictType;
 import com.pei.dehaze.model.form.DictTypeForm;
 import com.pei.dehaze.model.query.DictTypePageQuery;
 import com.pei.dehaze.model.vo.DictTypePageVO;
-
-import java.util.List;
 
 /**
  * 数据字典类型业务接口
@@ -26,7 +23,6 @@ public interface SysDictTypeService extends IService<SysDictType> {
      */
     Page<DictTypePageVO> getDictTypePage(DictTypePageQuery queryParams);
 
-
     /**
      * 获取字典类型表单详情
      *
@@ -35,7 +31,6 @@ public interface SysDictTypeService extends IService<SysDictType> {
      */
     DictTypeForm getDictTypeForm(Long id);
 
-
     /**
      * 新增字典类型
      *
@@ -43,7 +38,6 @@ public interface SysDictTypeService extends IService<SysDictType> {
      * @return
      */
     boolean saveDictType(DictTypeForm dictTypeForm);
-
 
     /**
      * 修改字典类型

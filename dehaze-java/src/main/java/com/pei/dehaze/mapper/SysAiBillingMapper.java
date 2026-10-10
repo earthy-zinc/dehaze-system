@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiBilling;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiBillingMapper extends BaseMapper<SysAiBilling> {
-}
+public interface SysAiBillingMapper extends BaseMapper<SysAiBilling> {}

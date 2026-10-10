@@ -13,9 +13,8 @@ import lombok.Getter;
 @Getter
 @Schema(enumAsRef = true)
 public enum GenderEnum implements IBaseEnum<Integer> {
-
     MALE(1, "男"),
-    FEMALE (2, "女");
+    FEMALE(2, "女");
 
     private final Integer value;
 

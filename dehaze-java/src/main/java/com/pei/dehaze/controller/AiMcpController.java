@@ -18,6 +18,7 @@ import com.pei.dehaze.service.AiMcpService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,8 +31,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Tag(name = "MCP Server 管理")
 @RestController
@@ -66,8 +65,7 @@ public class AiMcpController {
     @Operation(summary = "更新 Server")
     @PutMapping("/servers/{serverId}")
     @PreAuthorize("@ss.hasPerm('ai:mcp:manage')")
-    public Result<McpServerVO> updateServer(@PathVariable Long serverId,
-                                            @RequestBody @Valid McpServerUpdateForm form) {
+    public Result<McpServerVO> updateServer(@PathVariable Long serverId, @RequestBody @Valid McpServerUpdateForm form) {
         return Result.success(aiMcpService.updateServer(serverId, form));
     }
 
@@ -82,8 +80,8 @@ public class AiMcpController {
     @Operation(summary = "启停 Server")
     @PatchMapping("/servers/{serverId}/status")
     @PreAuthorize("@ss.hasPerm('ai:mcp:manage')")
-    public Result<McpServerVO> switchServerStatus(@PathVariable Long serverId,
-                                                  @RequestBody @Valid McpServerStatusForm form) {
+    public Result<McpServerVO> switchServerStatus(
+            @PathVariable Long serverId, @RequestBody @Valid McpServerStatusForm form) {
         return Result.success(aiMcpService.switchServerStatus(serverId, form.getStatus()));
     }
 
@@ -97,16 +95,15 @@ public class AiMcpController {
     @Operation(summary = "配置命名空间")
     @PutMapping("/servers/{serverId}/namespaces")
     @PreAuthorize("@ss.hasPerm('ai:mcp:manage')")
-    public Result<List<McpNamespaceVO>> updateNamespaces(@PathVariable Long serverId,
-                                                         @RequestBody List<McpNamespaceForm> namespaces) {
+    public Result<List<McpNamespaceVO>> updateNamespaces(
+            @PathVariable Long serverId, @RequestBody List<McpNamespaceForm> namespaces) {
         return Result.success(aiMcpService.updateNamespaces(serverId, namespaces));
     }
 
     @Operation(summary = "配置外部服务凭据")
     @PutMapping("/servers/{serverId}/credentials")
     @PreAuthorize("@ss.hasPerm('ai:mcp:manage')")
-    public Result<Void> updateCredentials(@PathVariable Long serverId,
-                                          @RequestBody @Valid McpCredentialForm form) {
+    public Result<Void> updateCredentials(@PathVariable Long serverId, @RequestBody @Valid McpCredentialForm form) {
         aiMcpService.updateCredentials(serverId, form);
         return Result.success();
     }

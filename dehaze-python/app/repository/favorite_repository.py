@@ -13,7 +13,7 @@ from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_audit_update_values
-from app.models.entity.sys_algorithm import SysAlgorithm
+from app.models.entity.sys_ai_model import SysAiModel
 from app.models.entity.sys_dataset import SysDataset
 from app.models.entity.sys_favorite import SysFavorite
 from app.models.entity.sys_log import SysPredLog
@@ -97,13 +97,13 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
     ) -> bool:
         """校验收藏目标对象是否存在（合法类型白名单由 Service 层校验）
 
-        algorithm/dataset/result 为已实现类型，必须校验；
+        model/dataset/result 为已实现类型，必须校验；
         image/preset 为预留类型，跳过校验。
         """
-        if target_type == "algorithm":
-            stmt = select(SysAlgorithm.id).where(
-                SysAlgorithm.id == target_id,
-                SysAlgorithm.deleted == 0,
+        if target_type == "model":
+            stmt = select(SysAiModel.id).where(
+                SysAiModel.id == target_id,
+                SysAiModel.deleted == 0,
             )
         elif target_type == "dataset":
             stmt = select(SysDataset.id).where(
@@ -134,7 +134,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
     ) -> tuple[list[dict], int]:
         """收藏列表分页查询
 
-        algorithm 类型 LEFT JOIN sys_algorithm 取 name 作为 targetName。
+        model 类型 LEFT JOIN sys_ai_model 取 display_name 作为 targetName。
         dataset 类型 LEFT JOIN sys_dataset 取 name/img 作为 targetName/targetThumbnail。
         其他类型暂不 JOIN，targetName/targetThumbnail 为空。
         排序仅支持收藏时间（sort_order=asc 正序，其余倒序）。
@@ -142,16 +142,16 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         stmt = (
             select(
                 SysFavorite,
-                SysAlgorithm.name.label("target_name"),
+                SysAiModel.display_name.label("target_name"),
                 SysDataset.name.label("target_name_dataset"),
                 SysDataset.img.label("target_thumbnail"),
             )
             .outerjoin(
-                SysAlgorithm,
+                SysAiModel,
                 and_(
-                    SysFavorite.target_type == "algorithm",
-                    SysFavorite.target_id == SysAlgorithm.id,
-                    SysAlgorithm.deleted == 0,
+                    SysFavorite.target_type == "model",
+                    SysFavorite.target_id == SysAiModel.id,
+                    SysAiModel.deleted == 0,
                 ),
             )
             .outerjoin(
@@ -175,7 +175,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
             escaped = escape_like(keywords)
             like_pattern = f"%{escaped}%"
             stmt = stmt.where(
-                SysAlgorithm.name.like(like_pattern, escape="\\")
+                SysAiModel.display_name.like(like_pattern, escape="\\")
                 | SysDataset.name.like(like_pattern, escape="\\")
             )
 
@@ -285,7 +285,7 @@ class FavoriteRepository(BaseRepository[SysFavorite]):
         count_map = {row[0]: row[1] for row in rows}
 
         counts = []
-        for t in ["algorithm", "result", "dataset", "image", "preset"]:
+        for t in ["model", "result", "dataset", "image", "preset"]:
             if target_type and target_type != t:
                 continue
             counts.append({"target_type": t, "count": count_map.get(t, 0)})

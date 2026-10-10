@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class SysDataset  extends BaseEntity {
+public class SysDataset extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -44,5 +44,4 @@ public class SysDataset  extends BaseEntity {
      * 使用次数（用户使用该数据集的次数）
      */
     private Long usageCount;
-
 }

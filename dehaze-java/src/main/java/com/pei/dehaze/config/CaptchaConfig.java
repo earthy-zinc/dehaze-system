@@ -4,11 +4,10 @@ import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.captcha.generator.MathGenerator;
 import cn.hutool.captcha.generator.RandomGenerator;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
+import java.awt.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.awt.*;
 
 /**
  * 验证码自动装配配置
@@ -50,6 +49,4 @@ public class CaptchaConfig {
         int fontWight = captchaProperties.getFont().getWeight();
         return new Font(fontName, fontWight, fontSize);
     }
-
-
 }

@@ -69,5 +69,4 @@ public class AiAgentCreateForm {
     @Max(value = 1, message = "状态不能大于1")
     @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;
-
 }

@@ -18,14 +18,13 @@ import com.pei.dehaze.model.form.AiEvalSampleUpdateForm;
 import com.pei.dehaze.model.vo.AiEvalDatasetVO;
 import com.pei.dehaze.model.vo.AiEvalRunVO;
 import com.pei.dehaze.model.vo.AiEvalSampleVO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 智能体评测服务（评测集/样本 CRUD、执行记录查询）。
@@ -53,8 +52,8 @@ public class AiEvalService {
     @Transactional
     public AiEvalDatasetVO createDataset(Long agentId, AiEvalDatasetCreateForm form) {
         agentService.getOrThrow(agentId);
-        SysAiAgentEvalDataset existing = datasetMapper.selectByAgentAndTypeIgnoringDeleted(agentId,
-                form.getDatasetType());
+        SysAiAgentEvalDataset existing =
+                datasetMapper.selectByAgentAndTypeIgnoringDeleted(agentId, form.getDatasetType());
         String description = form.getDescription() == null ? "" : form.getDescription();
         if (existing != null) {
             if (existing.getDeleted() == null || existing.getDeleted() == 0) {
@@ -77,10 +76,13 @@ public class AiEvalService {
     }
 
     public List<AiEvalDatasetVO> listDatasets(Long agentId) {
-        return datasetMapper.selectList(new LambdaQueryWrapper<SysAiAgentEvalDataset>()
+        return datasetMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgentEvalDataset>()
                         .eq(SysAiAgentEvalDataset::getAgentId, agentId)
                         .orderByDesc(SysAiAgentEvalDataset::getId))
-                .stream().map(this::toDatasetVO).toList();
+                .stream()
+                .map(this::toDatasetVO)
+                .toList();
     }
 
     @Transactional
@@ -106,8 +108,8 @@ public class AiEvalService {
         beforeValue.put("agent_id", agentId);
         beforeValue.put("name", dataset.getName());
         beforeValue.put("dataset_type", dataset.getDatasetType());
-        auditLogService.recordAudit(operatorId, "ai_eval_dataset", dataset.getId(), "delete", "ai_eval",
-                beforeValue, null, null, null);
+        auditLogService.recordAudit(
+                operatorId, "ai_eval_dataset", dataset.getId(), "delete", "ai_eval", beforeValue, null, null, null);
     }
 
     @Transactional
@@ -131,10 +133,13 @@ public class AiEvalService {
 
     public List<AiEvalSampleVO> listSamples(Long agentId, Long datasetId) {
         getDatasetOfAgent(agentId, datasetId);
-        return sampleMapper.selectList(new LambdaQueryWrapper<SysAiAgentEvalSample>()
+        return sampleMapper
+                .selectList(new LambdaQueryWrapper<SysAiAgentEvalSample>()
                         .eq(SysAiAgentEvalSample::getDatasetId, datasetId)
                         .orderByAsc(SysAiAgentEvalSample::getId))
-                .stream().map(this::toSampleVO).toList();
+                .stream()
+                .map(this::toSampleVO)
+                .toList();
     }
 
     @Transactional
@@ -172,15 +177,16 @@ public class AiEvalService {
         Map<String, Object> beforeValue = new LinkedHashMap<>();
         beforeValue.put("dataset_id", sample.getDatasetId());
         beforeValue.put("task_goal", sample.getTaskGoal());
-        auditLogService.recordAudit(operatorId, "ai_eval_sample", sample.getId(), "delete", "ai_eval",
-                beforeValue, null, null, null);
+        auditLogService.recordAudit(
+                operatorId, "ai_eval_sample", sample.getId(), "delete", "ai_eval", beforeValue, null, null, null);
     }
 
     public IPage<AiEvalRunVO> listRuns(Long agentId, int pageNum, int pageSize, Long datasetId) {
         Page<SysAiAgentEvalRun> page = new Page<>(pageNum, pageSize);
         IPage<SysAiAgentEvalRun> runPage = runMapper.selectRunPage(page, agentId, datasetId);
         Page<AiEvalRunVO> result = new Page<>(pageNum, pageSize, runPage.getTotal());
-        result.setRecords(new ArrayList<>(runPage.getRecords().stream().map(this::toRunVO).toList()));
+        result.setRecords(
+                new ArrayList<>(runPage.getRecords().stream().map(this::toRunVO).toList()));
         return result;
     }
 

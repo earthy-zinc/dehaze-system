@@ -3,8 +3,6 @@ package com.pei.dehaze.service.importexport.handler;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.base.IBaseEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
-import com.pei.dehaze.model.entity.SysRole;
-import com.pei.dehaze.model.form.RoleForm;
 import com.pei.dehaze.model.query.RolePageQuery;
 import com.pei.dehaze.model.vo.RolePageVO;
 import com.pei.dehaze.service.SysRoleService;
@@ -13,13 +11,12 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 角色导出处理器
@@ -54,17 +51,27 @@ public class RoleExportHandler implements ExportHandler {
                 ExportFieldConfig.builder().field("name").label("角色名称").order(1).build(),
                 ExportFieldConfig.builder().field("code").label("角色编码").order(2).build(),
                 ExportFieldConfig.builder().field("sort").label("排序").order(3).build(),
-                ExportFieldConfig.builder().field("statusLabel").label("状态").order(4).build(),
-                ExportFieldConfig.builder().field("createTime").label("创建时间").order(5)
-                        .dateFormat("yyyy-MM-dd HH:mm:ss").build()
-        );
+                ExportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态")
+                        .order(4)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("createTime")
+                        .label("创建时间")
+                        .order(5)
+                        .dateFormat("yyyy-MM-dd HH:mm:ss")
+                        .build());
     }
 
     @Override
     public ExportDataProvider getDataProvider(ExportContext ctx) {
-        List<ExportFieldConfig> fields = ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
-                ? getFieldConfigs()
-                : getFieldConfigs().stream().filter(f -> ctx.getSelectedFields().contains(f.getField())).toList();
+        List<ExportFieldConfig> fields =
+                ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
+                        ? getFieldConfigs()
+                        : getFieldConfigs().stream()
+                                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
+                                .toList();
 
         return (pageNum, pageSize) -> {
             RolePageQuery query = buildQuery(ctx.getQueryParams(), pageNum, PAGE_SIZE);
@@ -106,12 +113,13 @@ public class RoleExportHandler implements ExportHandler {
             case "name" -> nullToEmpty(vo.getName());
             case "code" -> nullToEmpty(vo.getCode());
             case "sort" -> vo.getSort() == null ? "" : vo.getSort();
-            case "statusLabel" -> vo.getStatus() == null
-                    ? ""
-                    : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
-            case "createTime" -> vo.getCreateTime() == null
-                    ? ""
-                    : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
+            case "statusLabel" ->
+                vo.getStatus() == null ? "" : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
+            case "createTime" ->
+                vo.getCreateTime() == null
+                        ? ""
+                        : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                                .format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
             default -> "";
         };
     }

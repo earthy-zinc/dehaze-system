@@ -20,15 +20,14 @@ import com.pei.dehaze.model.vo.RechargeVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.BalanceService;
 import com.pei.dehaze.service.payment.PaymentChannelService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -59,8 +58,9 @@ public class BalanceServiceImpl implements BalanceService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "充值仅支持微信/支付宝支付");
         }
         Long userId = SecurityUtils.getUserId();
-        String rechargeNo = "RC" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + ThreadLocalRandom.current().nextInt(100000, 999999);
+        String rechargeNo =
+                "RC" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                        + ThreadLocalRandom.current().nextInt(100000, 999999);
         PaymentChannelService channel = getPaymentChannel(form.getPayMethod());
         PaymentChannelService.UnifiedOrderResult orderResult =
                 channel.unifiedOrder(rechargeNo, form.getAmount(), "余额充值", Map.of());
@@ -88,8 +88,7 @@ public class BalanceServiceImpl implements BalanceService {
     public BalanceRefundApplyVO applyBalanceRefund(BalanceRefundForm form) {
         Long userId = SecurityUtils.getUserId();
         SysBalance account = getOrCreateAccount(userId);
-        long amount = form.getAmount() != null && form.getAmount() > 0
-                ? form.getAmount() : account.getBalance();
+        long amount = form.getAmount() != null && form.getAmount() > 0 ? form.getAmount() : account.getBalance();
         if (amount > account.getBalance()) {
             throw new BusinessException(ResultCode.BALANCE_INSUFFICIENT);
         }
@@ -101,8 +100,9 @@ public class BalanceServiceImpl implements BalanceService {
             throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "已存在待审核的余额退款申请");
         }
         SysBalanceRefund refund = new SysBalanceRefund();
-        refund.setRefundNo("BR" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
-                + ThreadLocalRandom.current().nextInt(100, 999));
+        refund.setRefundNo(
+                "BR" + LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
+                        + ThreadLocalRandom.current().nextInt(100, 999));
         refund.setUserId(userId);
         refund.setAmount(amount);
         refund.setStatus(1);
@@ -170,8 +170,8 @@ public class BalanceServiceImpl implements BalanceService {
             return null;
         }
         PaymentChannelService paymentChannel = getPaymentChannel(channel);
-        boolean ok = paymentChannel.refund(refund.getRefundNo(), refund.getRefundNo(),
-                refund.getAmount(), refund.getAmount(), "余额退款");
+        boolean ok = paymentChannel.refund(
+                refund.getRefundNo(), refund.getRefundNo(), refund.getAmount(), refund.getAmount(), "余额退款");
         if (!ok) {
             throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "渠道退款失败");
         }
@@ -188,8 +188,8 @@ public class BalanceServiceImpl implements BalanceService {
     }
 
     private SysBalance getOrCreateAccount(Long userId) {
-        SysBalance account = balanceMapper.selectOne(new LambdaQueryWrapper<SysBalance>()
-                .eq(SysBalance::getUserId, userId));
+        SysBalance account =
+                balanceMapper.selectOne(new LambdaQueryWrapper<SysBalance>().eq(SysBalance::getUserId, userId));
         if (account != null) {
             return account;
         }

@@ -4,8 +4,14 @@
 （供应商连通性测试只验证供应商可访问与凭据有效，验证不了具体 model_id 开通）。
 
 - chat：openai_compat 走 /chat/completions（max_tokens=1），anthropic 走 /v1/messages
-- embedding：/embeddings（cohere 特判 /v1/embed），单词向量化
+- embedding：/embeddings（协议族 cohere 走 /v1/embed），单词向量化
 - rerank：/rerank 单文档重排（OpenAI 兼容，同 kb rerank_service 口径）
+- asr/tts/image_edit：发最小真实推理（asr→/v1/audio/transcriptions 静音 WAV、
+  tts→/v1/audio/speech、image_edit→/v1/images/edits 64x64 PNG），验证模型真实开通
+- image_gen：本地引擎仅有 images/edits，保留供应商 GET {api_base_url}/models 可达性探测
+- video_gen/music_gen/3d_gen：无适配器位，不做连通性测试，直接返回提示
+- asr/tts（protocol_type=dashscope_realtime/volc_realtime）：WS 私有帧协议无 HTTP 端点，
+  不做连通性测试，直接返回提示
 - local 供应商（内置本地模型）复用同一探测逻辑：local 服务的 base_url 已配置为
   OpenAI 兼容端点，且无 rerank 模型注册
 
@@ -16,18 +22,22 @@
 
 from __future__ import annotations
 
-import asyncio
+import io
 import logging
 import time
+import wave
 from datetime import datetime, timedelta
 
 import httpx
+from PIL import Image
 from sqlalchemy import bindparam, text
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.embedding.embedding_dispatch import PROTOCOL_COHERE
+from app.infrastructure.llm.client.audio_dispatch import REALTIME_VOICE_PROTOCOLS
 from app.infrastructure.llm.common import build_auth_headers
-from app.infrastructure.llm.local.local_llm_manager import ensure_running
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
 from app.models.entity.sys_ai_model import SysAiModel
 from app.repository.ai_model_repository import ai_model_repository
@@ -39,6 +49,74 @@ logger = logging.getLogger(__name__)
 _TEST_TIMEOUT = 30.0
 _ERROR_MAX_LEN = 500
 
+# 最小真实推理探针类型（本地引擎已提供 OpenAI 兼容端点）
+_MULTIPART_PROBE_TYPES = frozenset({"asr", "tts", "image_edit"})
+# 无生成式实现（本地引擎仅 images/edits）→ 退回 /models 可达性探测
+_MODELS_LIST_PROBE_TYPES = frozenset({"image_gen"})
+# 无适配器位 → 不做连通性测试（占位返回，不落库）
+_UNSUPPORTED_TEST_TYPES = frozenset({"video_gen", "music_gen", "3d_gen"})
+_UNSUPPORTED_TEST_ERROR = "该类型暂不支持连通性测试"
+# 实时语音协议族经 WS 私有帧协议接入，把 base_url 交给 HTTP 探针只会得到无意义的失败
+# （如 wss:// 不被 httpx 支持），故同样占位返回、不落库
+_REALTIME_VOICE_TEST_ERROR = "实时语音协议族（百炼/火山）经 WS 接入，暂不支持连通性测试"
+
+_PROBE_PNG_CACHE: bytes | None = None
+_PROBE_WAV_CACHE: bytes | None = None
+
+
+def _probe_png() -> bytes:
+    """64x64 灰色 PNG：探针用最小合法图（避免 1x1 触发模型对尺寸下限的校验）"""
+    global _PROBE_PNG_CACHE
+    if _PROBE_PNG_CACHE is None:
+        buf = io.BytesIO()
+        Image.new("RGB", (64, 64), (128, 128, 128)).save(buf, format="PNG")
+        _PROBE_PNG_CACHE = buf.getvalue()
+    return _PROBE_PNG_CACHE
+
+
+def _probe_wav() -> bytes:
+    """0.1s / 16kHz / 单声道 / 16bit 静音 WAV：探针用最小合法音频"""
+    global _PROBE_WAV_CACHE
+    if _PROBE_WAV_CACHE is None:
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as writer:
+            writer.setnchannels(1)
+            writer.setsampwidth(2)
+            writer.setframerate(16000)
+            writer.writeframes(b"\x00\x00" * 1600)
+        _PROBE_WAV_CACHE = buf.getvalue()
+    return _PROBE_WAV_CACHE
+
+
+async def _probe_multipart(
+    client: httpx.AsyncClient, provider, model: SysAiModel, headers: dict[str, str]
+) -> httpx.Response:
+    """按模型类型发最小真实推理请求（multipart / JSON，OpenAI 兼容）"""
+    base = provider.api_base_url.rstrip("/")
+    if model.model_type == "image_edit":
+        return await client.post(
+            f"{base}/v1/images/edits",
+            headers=headers,
+            files={"image": ("probe.png", _probe_png(), "image/png")},
+            data={"model": model.model_id},
+        )
+    if model.model_type == "asr":
+        return await client.post(
+            f"{base}/v1/audio/transcriptions",
+            headers=headers,
+            files={"file": ("probe.wav", _probe_wav(), "audio/wav")},
+            data={"model": model.model_id},
+        )
+    return await client.post(
+        f"{base}/v1/audio/speech",
+        headers=headers,
+        json={
+            "model": model.model_id,
+            "input": "你好",
+            "voice": settings.VOICE_TTS_VOICE_ID,
+        },
+    )
+
 
 def _probe_request(
     protocol_type: str, model_type: str, base_url: str, model: str
@@ -46,9 +124,11 @@ def _probe_request(
     """按协议与模型类型组装最小探测 (url, payload)"""
     base = base_url.rstrip("/")
     if model_type == "embedding":
-        if base.endswith("/v1/embed"):
-            return base, {"model": model, "input": "hi", "input_type": "search_query"}
-        return f"{base}/embeddings", {"model": model, "input": "hi"}
+        if protocol_type == PROTOCOL_COHERE:
+            url = base if base.endswith("/v1/embed") else f"{base}/v1/embed"
+            return url, {"model": model, "input": "hi", "input_type": "search_query"}
+        url = base if base.endswith("/embeddings") else f"{base}/embeddings"
+        return url, {"model": model, "input": "hi"}
     if model_type == "rerank":
         url = base if base.endswith("/rerank") else f"{base}/rerank"
         return url, {"model": model, "query": "hi", "documents": ["hello"], "top_n": 1}
@@ -94,28 +174,41 @@ async def test_model(db, redis, model_pk: int) -> dict:
     model = await ai_model_repository.get_by_id(db, model_pk)
     if not model:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在")
+    if model.model_type in _UNSUPPORTED_TEST_TYPES:
+        # 阶段 1 无适配器：占位返回，不做真实探测，保持 last_test_* 原值
+        return {"success": False, "latencyMs": None, "error": _UNSUPPORTED_TEST_ERROR}
     provider = await ai_provider_repository.get_by_id(db, model.provider_id)
     if not provider or provider.status != 1:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "所属供应商不存在或已禁用")
-    if provider.provider_code == "local" and model.model_type != "rerank":
-        # 本地推理服务与主进程分离，调用前确保已拉起（PDEATHSIG 回收后需重新拉起）
-        await asyncio.to_thread(ensure_running)
+    if model.model_type in {"asr", "tts"} and provider.protocol_type in REALTIME_VOICE_PROTOCOLS:
+        # 占位返回，不做真实探测，保持 last_test_* 原值
+        return {"success": False, "latencyMs": None, "error": _REALTIME_VOICE_TEST_ERROR}
     api_key = await provider_key_selector.select_key(db, redis, provider.id)
     if not api_key:
         raise BusinessException(
             ResultCode.OPERATION_NOT_ALLOW, "所属供应商没有可用的启用 API Key，无法测试"
         )
 
-    url, payload = _probe_request(
-        provider.protocol_type, model.model_type, provider.api_base_url, model.model_id
-    )
     headers = build_auth_headers(provider, api_key)
 
     result = {"success": False, "latencyMs": None, "error": None}
     try:
         async with httpx.AsyncClient(timeout=_TEST_TIMEOUT) as client:
             start = time.monotonic()
-            resp = await client.post(url, headers=headers, json=payload)
+            if model.model_type in _MULTIPART_PROBE_TYPES:
+                resp = await _probe_multipart(client, provider, model, headers)
+            elif model.model_type in _MODELS_LIST_PROBE_TYPES:
+                resp = await client.get(
+                    f"{provider.api_base_url.rstrip('/')}/models", headers=headers
+                )
+            else:
+                url, payload = _probe_request(
+                    provider.protocol_type,
+                    model.model_type,
+                    provider.api_base_url,
+                    model.model_id,
+                )
+                resp = await client.post(url, headers=headers, json=payload)
             result["latencyMs"] = int((time.monotonic() - start) * 1000)
             if resp.status_code < 400:
                 result["success"] = True

@@ -3,10 +3,9 @@ package com.pei.dehaze.model.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.pei.dehaze.common.enums.LogStatusEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.Map;
+import lombok.Data;
 
 @Schema(description = "评估指标历史视图对象")
 @Data
@@ -15,11 +14,8 @@ public class EvalMetricsVO {
     @Schema(description = "日志ID")
     private Long id;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
-
-    @Schema(description = "算法名称")
-    private String algorithmName;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
 
     @Schema(description = "预测文件URL")
     private String predUrl;
@@ -30,7 +26,7 @@ public class EvalMetricsVO {
     @Schema(description = "评估指标结果（Map）")
     private Map<String, Double> metrics;
 
-    @Schema(description = "处理时间（毫秒）")
+    @Schema(description = "处理时间（秒）")
     private Integer time;
 
     @Schema(description = "任务状态")

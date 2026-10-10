@@ -9,5 +9,4 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class SysWpxFileServiceImpl extends ServiceImpl<SysWpxFileMapper, SysWpxFile> implements SysWpxFileService {
-}
+public class SysWpxFileServiceImpl extends ServiceImpl<SysWpxFileMapper, SysWpxFile> implements SysWpxFileService {}

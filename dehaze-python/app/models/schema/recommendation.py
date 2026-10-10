@@ -30,13 +30,13 @@ class AnalyzeForm(BaseModel):
     imageUrl: str | None = Field(default=None, description="图片URL(imageId/imageUrl二选一)")
 
 
-class RecommendedAlgorithmVO(BaseModel):
+class RecommendedModelVO(BaseModel):
     recommendationId: int | None = Field(default=None, description="推荐记录ID（用于提交反馈）")
-    algorithmId: int = Field(..., description="算法ID")
-    algorithmName: str = Field(..., description="算法名称")
+    modelId: str = Field(..., description="图像模型标识（统一模型规范 slug）")
+    modelName: str = Field(..., description="模型名称")
     matchScore: int = Field(..., description="匹配度(0-100)")
     reason: str = Field(..., description="推荐理由")
-    rating: float | None = Field(default=None, description="算法评分(0-5)，待真实数据采集后填充")
+    rating: float | None = Field(default=None, description="模型评分(0-5)，待真实数据采集后填充")
     estimatedTime: int | None = Field(
         default=None, description="预估耗时(ms)，待真实数据采集后填充"
     )
@@ -52,7 +52,7 @@ class RecommendationRuleVO(BaseModel):
     id: int = Field(..., description="规则ID")
     ruleName: str = Field(..., description="规则名称")
     sceneType: str = Field(..., description="场景类型")
-    algorithmIds: list[int] = Field(..., description="候选算法ID列表")
+    modelIds: list[str] = Field(..., description="候选图像模型标识列表（统一模型规范 slug）")
     weight: int = Field(..., description="规则权重(0-100)")
     enabled: bool = Field(..., description="是否启用")
 
@@ -62,7 +62,9 @@ class RecommendationRuleForm(BaseModel):
     sceneType: str = Field(
         ..., description="场景类型(urban/landscape/building/night/backlight/indoor)"
     )
-    algorithmIds: list[int] = Field(..., min_length=1, description="候选算法ID列表")
+    modelIds: list[str] = Field(
+        ..., min_length=1, description="候选图像模型标识列表（统一模型规范 slug）"
+    )
     weight: int = Field(..., ge=0, le=100, description="规则权重(0-100)")
     enabled: bool = Field(default=True, description="是否启用")
 

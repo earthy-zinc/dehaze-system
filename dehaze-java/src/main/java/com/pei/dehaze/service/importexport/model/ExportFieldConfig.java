@@ -29,6 +29,10 @@ public class ExportFieldConfig {
     private boolean hidden;
 
     public static ExportFieldConfig of(String field, String label, int order) {
-        return ExportFieldConfig.builder().field(field).label(label).order(order).build();
+        return ExportFieldConfig.builder()
+                .field(field)
+                .label(label)
+                .order(order)
+                .build();
     }
 }

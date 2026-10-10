@@ -1,16 +1,6 @@
 package com.pei.dehaze.service.client;
 
 import com.pei.dehaze.config.property.AlgorithmProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Component;
-import org.springframework.web.socket.BinaryMessage;
-import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.web.socket.handler.AbstractWebSocketHandler;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
@@ -24,6 +14,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.BinaryMessage;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 
 /**
  * 语音流式 ASR 的 WebSocket 转发（{@code /ws/asr} → dehaze-python）。
@@ -43,12 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VoiceAsrProxyHandler extends AbstractWebSocketHandler {
 
     /** 转发到 python 的握手头：会话凭证（cookie 兜底）、链路头 */
-    private static final List<String> FORWARDED_HEADERS = List.of(
-            HttpHeaders.COOKIE,
-            "X-Session-Id",
-            HttpHeaders.USER_AGENT,
-            "X-Forwarded-For",
-            "X-Trace-Id");
+    private static final List<String> FORWARDED_HEADERS =
+            List.of(HttpHeaders.COOKIE, "X-Session-Id", HttpHeaders.USER_AGENT, "X-Forwarded-For", "X-Trace-Id");
 
     private final AlgorithmProperties props;
     private final HttpClient aiProxyHttpClient;
@@ -122,26 +117,25 @@ public class VoiceAsrProxyHandler extends AbstractWebSocketHandler {
                 }
             }
             // 刻意不设 connectTimeout：该超时约束的是握手完成，而 python 侧首次连接要等引擎冷加载
-            builder.buildAsync(upstreamUri(), new UpstreamListener(this))
-                    .whenComplete((webSocket, error) -> {
-                        synchronized (lock) {
-                            if (error != null) {
-                                log.error("语音 ASR 上游连接失败 sessionId={}", downstream.getId(), error);
-                                closed = true;
-                                pending.clear();
-                                closeDownstream(new CloseStatus(1011, "识别服务不可用"));
-                                return;
-                            }
-                            // 上游握手期间下游已断开：直接关掉刚建立的上游连接，不留悬挂会话
-                            if (closed) {
-                                webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "client closed");
-                                return;
-                            }
-                            upstream = webSocket;
-                            pending.forEach(Runnable::run);
-                            pending.clear();
-                        }
-                    });
+            builder.buildAsync(upstreamUri(), new UpstreamListener(this)).whenComplete((webSocket, error) -> {
+                synchronized (lock) {
+                    if (error != null) {
+                        log.error("语音 ASR 上游连接失败 sessionId={}", downstream.getId(), error);
+                        closed = true;
+                        pending.clear();
+                        closeDownstream(new CloseStatus(1011, "识别服务不可用"));
+                        return;
+                    }
+                    // 上游握手期间下游已断开：直接关掉刚建立的上游连接，不留悬挂会话
+                    if (closed) {
+                        webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "client closed");
+                        return;
+                    }
+                    upstream = webSocket;
+                    pending.forEach(Runnable::run);
+                    pending.clear();
+                }
+            });
         }
 
         private URI upstreamUri() {

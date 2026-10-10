@@ -124,7 +124,7 @@ class CouponService:
                 raise BusinessException(ResultCode.COUPON_NOT_FOUND)
         used_count = await user_coupon_repository.count_used_by_coupon_ids(db, ids)
         if used_count > 0:
-            raise BusinessException(ResultCode.DATA_BIND_EXISTS, "优惠券已发放使用，无法删除")
+            raise BusinessException(ResultCode.DATA_REFERENCED, "优惠券已发放使用，无法删除")
         await user_coupon_repository.soft_delete_unused_by_coupon_ids(db, ids)
         await coupon_repository.soft_delete_by_ids(db, ids)
 

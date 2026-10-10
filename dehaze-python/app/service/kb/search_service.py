@@ -23,6 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import (
+    KB_SEARCH_HYBRID_RANK_CONSTANT,
+    KB_SEARCH_HYBRID_RANK_WINDOW,
+    KB_SEARCH_MAX_TOP_K,
+)
 from app.core.exceptions import BusinessException
 from app.infrastructure.embedding.embedding_client import embed_text
 from app.infrastructure.es import kb_chunk_index
@@ -30,7 +35,7 @@ from app.infrastructure.es.kb_chunk_index import build_filters
 from app.models.entity.sys_knowledge_base import SysKnowledgeBase
 from app.repository.knowledge_base_repository import knowledge_base_repository
 from app.repository.knowledge_chunk_repository import knowledge_chunk_repository
-from app.service.billing.estimate_service import _approx_tokens
+from app.service.billing.estimate_service import approx_tokens
 from app.service.kb.kb_billing_service import kb_billing_service
 from app.service.kb.rerank_service import rerank
 
@@ -177,7 +182,8 @@ async def _search_one_kb(
     if strategy == "keyword":
         # BM25 分数无界，不适用 cosine 阈值
         return await kb_chunk_index.keyword_search(kb.id, query, filters, top_n=top_k)
-    # hybrid：RRF 融合分数仅反映排名而非相关度绝对值，不适用阈值过滤（阈值仅对 vector 策略生效）
+    # hybrid：RRF 融合分数仅反映排名、不可比，故门禁落在向量候选的原始 cosine 上
+    # （score_threshold 过滤低相关向量后再融合），使 hybrid 也具备相关度门禁
     if not query_vector:
         return []
     return await kb_chunk_index.hybrid_search(
@@ -186,10 +192,11 @@ async def _search_one_kb(
         query_vector,
         filters,
         top_k=top_k,
-        rank_constant=settings.KB_SEARCH_HYBRID_RANK_CONSTANT,
-        rank_window_size=settings.KB_SEARCH_HYBRID_RANK_WINDOW,
+        rank_constant=KB_SEARCH_HYBRID_RANK_CONSTANT,
+        rank_window_size=KB_SEARCH_HYBRID_RANK_WINDOW,
         vector_weight=float(kb.hybrid_weight or 1.0),
         keyword_weight=1.0 - float(kb.hybrid_weight or 0.5),
+        score_threshold=float(kb.score_threshold or 0),
     )
 
 
@@ -201,7 +208,7 @@ async def _rerank_kb_results(
         return docs[:top_k]
     documents = [d.get("content", "") for d in docs]
     # rerank 计费：query + 全部候选文本的输入 token（后扣费：调用前校验、成功后实扣）
-    rerank_tokens = _approx_tokens(query) + sum(_approx_tokens(d) for d in documents)
+    rerank_tokens = approx_tokens(query) + sum(approx_tokens(d) for d in documents)
     if user_id:
         await kb_billing_service.ensure(
             user_id, kb.embedding_provider, kb.rerank_model, rerank_tokens
@@ -267,7 +274,7 @@ async def _run_retrieval(
         query_vector = None
         if needs_vector:
             # 查询向量化计费：后扣费模式（调用前校验、成功后实扣），token 记 bill_type=embedding
-            query_tokens = _approx_tokens(query)
+            query_tokens = approx_tokens(query)
             if user_id:
                 await kb_billing_service.ensure(user_id, provider, model, query_tokens)
             query_vector = await embed_text(provider, model, query)
@@ -291,11 +298,29 @@ def _result_payload(query: str, kb_ids: list[int], docs: list[dict]) -> dict:
 
 
 def _cache_key(
-    kb_ids: list[int], query: str, filters: list[dict], top_k: int, enable_mmr: bool
+    kbs: list[SysKnowledgeBase], query: str, filters: list[dict], top_k: int, enable_mmr: bool
 ) -> str:
-    """检索缓存键：库集合哈希 + 查询参数哈希。库集合排序后哈希，顺序无关。"""
+    """检索缓存键：库集合（含检索配置）哈希 + 查询参数哈希。
+
+    库的检索配置（策略/阈值/权重/rerank/embedding）一并入键：仅按 kb_ids 建键时，
+    管理员改检索策略或阈值后仍会命中旧配置算出的缓存（TTL 内最长 5 分钟），
+    检索测试/调参场景表现为"改了不生效"。配置入键让改配置即时生效，旧键由 TTL 自然过期。
+    """
+    config = sorted(
+        (
+            kb.id,
+            kb.search_strategy,
+            float(kb.score_threshold or 0),
+            float(kb.hybrid_weight or 0),
+            int(kb.enable_rerank or 0),
+            kb.rerank_model or "",
+            kb.embedding_provider,
+            kb.embedding_model,
+        )
+        for kb in kbs
+    )
     kbs_digest = hashlib.md5(
-        json.dumps(sorted(kb_ids), separators=(",", ":")).encode()
+        json.dumps(config, separators=(",", ":"), ensure_ascii=False).encode()
     ).hexdigest()[:16]
     params_digest = hashlib.md5(
         json.dumps(
@@ -322,12 +347,16 @@ class SearchService:
         filters: dict | None = None,
         enable_mmr: bool = False,
         bill: bool = True,
+        timeout_ms: int | None = None,
     ) -> dict:
         """多库检索（登录用户）。可见性在 service 层过滤：
         指定库时校验可见性（私有库仅 owner，否则抛 A0301）；未指定时检索该用户全部可见库。
 
         bill=False 供内部工具（测试集回归评估）跳过计费，与 search_internal 同口径
         （非用户检索消费）；用户显式检索默认计费。
+        timeout_ms 缺省用 KB_SEARCH_TIMEOUT_MS（对话注入口径）；显式检索接口
+        （/kb/search、/kb/{id}/retrieve/test、测试集执行）传 KB_SEARCH_QUERY_TIMEOUT_MS，
+        避免把「超时降级」当成「库内无匹配」返回给正在等待结果的用户。
         """
         if knowledge_base_ids is not None and not knowledge_base_ids:
             raise BusinessException(ResultCode.PARAM_ERROR, "knowledgeBaseIds 不能为空数组")
@@ -349,7 +378,7 @@ class SearchService:
             return {"query": query, "knowledgeBaseIds": [], "results": []}
 
         return await self._run_search_with_cache(
-            redis, kbs, query, top_k, filters, enable_mmr, user_id if bill else None, db
+            redis, kbs, query, top_k, filters, enable_mmr, user_id if bill else None, db, timeout_ms
         )
 
     async def search_internal(
@@ -398,23 +427,27 @@ class SearchService:
         enable_mmr: bool,
         user_id: int | None = None,
         db: AsyncSession | None = None,
+        timeout_ms: int | None = None,
     ) -> dict:
         """检索公共编排：构建参数 → 查缓存 → 检索 → 写缓存 → 构造 payload。
 
         超时/ES 异常（degraded=True）降级为空结果但**不写缓存**，避免将一次临时降级
         放大为 5 分钟缓存（§6 降级语义）；正常空结果（无匹配）仍可缓存。
+        timeout_ms 缺省用对话注入预算，显式检索链路传更大的预算（见 search 入参说明）。
         """
         kb_ids = [kb.id for kb in kbs]
-        top_k = min(top_k or settings.KB_SEARCH_DEFAULT_TOP_K, settings.KB_SEARCH_MAX_TOP_K)
+        # 未指定 Top-K 时取目标库配置（sys_knowledge_base.top_k，默认 5）；
+        # 多库检索取各库配置的最大值，保证任一库都能按自身配置召回，最终条数以该值为上限
+        top_k = min(top_k or max(kb.top_k for kb in kbs), KB_SEARCH_MAX_TOP_K)
         filter_clauses = build_filters(**(filters or {}))
-        key = _cache_key(kb_ids, query, filter_clauses, top_k, enable_mmr)
+        key = _cache_key(kbs, query, filter_clauses, top_k, enable_mmr)
 
         cached = await redis.get(key)
         if cached:
             return json.loads(cached)
 
         result, degraded = await self._retrieve_with_timeout(
-            kbs, query, filter_clauses, top_k, enable_mmr, user_id, db
+            kbs, query, filter_clauses, top_k, enable_mmr, user_id, db, timeout_ms
         )
         payload = _result_payload(query, kb_ids, result)
         if not degraded:
@@ -430,14 +463,17 @@ class SearchService:
         enable_mmr: bool,
         user_id: int | None = None,
         db: AsyncSession | None = None,
+        timeout_ms: int | None = None,
     ) -> tuple[list[dict], bool]:
         """整体检索包超时降级：超时/ES 异常返回 (空结果, degraded=True) + 告警日志（§6）。
 
         返回第二元为是否发生降级，供调用方决定是否写缓存。
+        timeout_ms 缺省取 KB_SEARCH_TIMEOUT_MS（对话注入口径）。
         计费预校验拒绝（QUOTA_INSUFFICIENT）必须透传而非降级，否则欠费/超配额
         用户会拿到空结果误以为库无内容。
         """
-        timeout = settings.KB_SEARCH_TIMEOUT_MS / 1000
+        budget_ms = timeout_ms or settings.KB_SEARCH_TIMEOUT_MS
+        timeout = budget_ms / 1000
         try:
             docs = await asyncio.wait_for(
                 _run_retrieval(kbs, query, filter_clauses, top_k, enable_mmr, user_id, db),
@@ -447,7 +483,7 @@ class SearchService:
         except TimeoutError:
             logger.warning(
                 "知识库检索超时(>%sms)，降级返回空结果 query=%s",
-                settings.KB_SEARCH_TIMEOUT_MS,
+                budget_ms,
                 query,
             )
             return [], True

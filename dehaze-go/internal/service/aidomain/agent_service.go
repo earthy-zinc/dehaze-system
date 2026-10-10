@@ -312,7 +312,7 @@ func (s *AgentService) Delete(ctx context.Context, id, operatorID int64) error {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询会话引用失败", err)
 	}
 	if conversationRefs > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS,
+		return common.NewBizError(common.DATA_REFERENCED,
 			fmt.Sprintf("存在 %d 个会话正在使用该 Agent，请先解绑", conversationRefs))
 	}
 	subagentRefs, err := s.agents.CountSubagentReferences(ctx, id)
@@ -320,7 +320,7 @@ func (s *AgentService) Delete(ctx context.Context, id, operatorID int64) error {
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询子 Agent 引用失败", err)
 	}
 	if subagentRefs > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS,
+		return common.NewBizError(common.DATA_REFERENCED,
 			fmt.Sprintf("该 Agent 被 %d 个 Agent 作为子 Agent 引用，请先解绑", subagentRefs))
 	}
 

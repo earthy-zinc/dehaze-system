@@ -1,10 +1,10 @@
 """DehazeToolsBuilder：按 Agent 配置装载 dehaze 业务工具为 deepagents tools
 
-将 dehaze 专属能力（算法推荐、批量处理、Skill 加载、MCP 网关元工具、任务状态查询）
-封装为 LangChain StructuredTool。工具所需的运行时上下文（conv_id/user_id/msg_id/
-stream_session_id/model_id）通过共享 ctx 字典传入——该字典由 DeepAgentBuilder 创建，
-DehazeHooksMiddleware 在 abefore_agent 时从 state 填充业务标识，业务工具在执行时
-从 ctx 读取并回写任务状态，供 get_task_status 查询。
+将 dehaze 专属能力（算法推荐、批量处理、知识库检索与发现、产物发现、Skill 加载、
+MCP 网关元工具、任务状态查询）封装为 LangChain StructuredTool。工具所需的运行时上下文
+（conv_id/user_id/msg_id/stream_session_id/model_id）通过共享 ctx 字典传入——该字典由
+DeepAgentBuilder 创建，DehazeHooksMiddleware 在 abefore_agent 时从 state 填充业务标识，
+业务工具在执行时从 ctx 读取并回写任务状态，供 get_task_status 查询。
 """
 
 import json
@@ -52,7 +52,7 @@ def _get_task_status_snapshot(ctx: dict) -> str:
     return json.dumps(
         {
             "task_type": ctx.get("task_type", ""),
-            "algorithm": ctx.get("task_algorithm", ""),
+            "model": ctx.get("task_model", ""),
             "params": ctx.get("task_params", {}),
             "status": ctx.get("task_status", ""),
             "task_id": ctx.get("task_id", ""),
@@ -118,9 +118,9 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
             query,
             ctx["stream_session_id"],
         )
-        top = summary.get("algorithm") if summary else None
+        top = summary.get("model") if summary else None
         if not top:
-            return "未匹配到合适的算法"
+            return "未匹配到合适的模型"
         # 暂停图等待用户确认（interrupt_data 为完整确认载荷，由 SseEventConverter
         # 统一推送 interrupt SSE）；resume 时 interrupt() 同步返回确认数据（图从中断处继续）
         interrupt(interrupt_data)
@@ -128,7 +128,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         ctx.update(
             {
                 "task_type": "dehaze",
-                "task_algorithm": str(top.get("algorithmId", "")),
+                "task_model": str(top.get("modelId", "")),
                 "task_params": {"image_url": image_url, "query": query},
                 "task_id": "",
                 "task_status": "processing",
@@ -137,16 +137,16 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
                         "id": top.get("recommendationId"),
                         "type": "algorithm_recommend",
                         "summary": {
-                            "algorithmName": top.get("algorithmName"),
+                            "modelName": top.get("modelName"),
                             "reason": top.get("reason"),
                         },
                     }
                 ],
             }
         )
-        return f"推荐算法: {top.get('algorithmName')}，原因: {top.get('reason')}"
+        return f"推荐模型: {top.get('modelName')}，原因: {top.get('reason')}"
 
-    async def _async_batch_process(image_urls: list[str], algorithm_id: int) -> str:
+    async def _async_batch_process(image_urls: list[str], model: str) -> str:
         """大批量异步处理：提交后台任务 → 进入 async_wait 中断，任务完成回调自动 resume。
 
         中断点保存 async_wait 数据（taskId/taskType/预计耗时）供断线恢复与回调反查；
@@ -159,7 +159,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
             msg_id=ctx["message_id"],
             user_id=ctx["user_id"],
             image_urls=image_urls,
-            algorithm_id=algorithm_id,
+            model=model,
             stream_session_id=ctx["stream_session_id"],
             thread_id=thread_id,
         )
@@ -189,7 +189,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         ctx.update(
             {
                 "task_type": "dehaze",
-                "task_algorithm": str(algorithm_id),
+                "task_model": str(model),
                 "task_params": {"image_urls": image_urls},
                 "task_status": "completed" if summary.get("failed") == 0 else "failed",
                 "task_id": task_id,
@@ -197,7 +197,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
                     {
                         "id": r["pred_log_id"],
                         "type": "image_result",
-                        "summary": {"algorithmId": algorithm_id},
+                        "summary": {"modelId": model},
                     }
                     for r in summary.get("results", [])
                     if r.get("pred_log_id")
@@ -209,7 +209,7 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         failed = summary.get("failed", 0)
         return f"批量处理完成：共 {total} 张，成功 {success} 张，失败 {failed} 张"
 
-    async def _batch_process(image_urls: list[str], query: str, algorithm_id: int = 0) -> str:
+    async def _batch_process(image_urls: list[str], query: str, model: str = "") -> str:
         ctx = current_run_ctx(template)
         # LLM 给出的地址必须为本系统本人产物，否则预测侧会去下载任意/他人 URL
         async with get_db_session() as db:
@@ -218,26 +218,26 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         # 大批量（>异步阈值）采用异步提交 + interrupt(async_wait)：提交后台任务后暂停图，
         # 任务完成回调自动 resume；小批量保持同步直返，避免轻任务中断体验劣化。
         if len(image_urls) > BATCH_ASYNC_THRESHOLD:
-            return await _async_batch_process(image_urls, algorithm_id)
+            return await _async_batch_process(image_urls, model)
         summary = await process_batch(
             ctx["conversation_id"],
             ctx["message_id"],
             ctx["user_id"],
             image_urls,
-            algorithm_id,
+            model,
             ctx["stream_session_id"],
         )
         ctx.update(
             {
                 "task_type": "dehaze",
-                "task_algorithm": str(algorithm_id),
+                "task_model": str(model),
                 "task_params": {"image_urls": image_urls},
                 "task_status": "completed" if summary["failed"] == 0 else "failed",
                 "task_artifacts": [
                     {
                         "id": r["pred_log_id"],
                         "type": "image_result",
-                        "summary": {"algorithmId": algorithm_id},
+                        "summary": {"modelId": model},
                     }
                     for r in summary.get("results", [])
                     if r.get("pred_log_id")
@@ -302,6 +302,31 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
             return "知识库暂无可检索内容"
         return knowledge_base_client.format_results(results)
 
+    async def _list_knowledge_bases() -> str:
+        """列出当前用户可见的知识库（id/名称/简介），供模型选择检索范围。"""
+        ctx = current_run_ctx(template)
+        bases = await knowledge_base_client.list_bases(ctx["user_id"])
+        if not bases:
+            return "当前没有可用的知识库"
+        return "\n".join(
+            f"- id={b['id']} {b['name']}" + (f"：{b['description']}" if b["description"] else "")
+            for b in bases
+        )
+
+    async def _list_artifacts() -> str:
+        """列出本会话已生成的产物（图片结果/报告等），供引用与 visual_read 取 id。"""
+        ctx = current_run_ctx(template)
+        async with get_db_session() as db:
+            page = await ai_artifact_service.list_by_conversation(
+                db, ctx["conversation_id"], ctx["user_id"], 1, 20
+            )
+        if not page.list:
+            return "本会话暂无可用的产物"
+        return "\n".join(
+            f"- id={a.id} type={a.type} " + json.dumps(a.summary or {}, ensure_ascii=False)[:200]
+            for a in page.list
+        )
+
     async def _execute_code(code: str, language: str = "python", timeout: int = 60) -> str:
         """受限沙箱执行 Python 脚本或 Shell 命令；高风险能力需用户确认（§2.2）。
 
@@ -350,64 +375,103 @@ def build_business_tools(ctx: dict) -> list[StructuredTool]:
         StructuredTool.from_function(
             name="web_search",
             description=(
-                "进行网络搜索获取实时信息，返回标题+摘要+来源链接（Top 5-10 条）。"
-                "单用户每小时有限额；网络搜索不可用或超限时自动降级为知识库检索。"
+                "检索实时网络信息，返回标题+摘要+来源链接（Top 5-10 条）。"
+                "适用：时效性强或训练知识之外的信息（最新算法/论文/新闻、当前价格与事件）。"
+                "单用户每小时有限额；配额用尽或服务不可用时会自动降级为知识库检索。"
             ),
             coroutine=_web_search,
         ),
         StructuredTool.from_function(
             name="knowledge_base_search",
             description=(
-                "检索 AI 知识库，返回带来源引用的结果，命中内容注入上下文供回答引用溯源。"
+                "检索平台知识库（RAG），返回带小节路径与来源引用的命中片段。"
+                "适用：回答本项目/平台的产品设计、系统架构、API 规范、测试与部署等文档类或"
+                "业务知识问题时，必须先调用本工具获取真实内容，不要凭记忆作答；"
+                "回答引用命中内容时标注来源。"
             ),
             coroutine=_knowledge_base_search,
         ),
         StructuredTool.from_function(
+            name="list_knowledge_bases",
+            description=(
+                "列出当前账号可见的知识库（id/名称/简介）。"
+                "不确定有哪些知识库、或需要按库判断检索范围时先调用；"
+                "一般知识问答直接调 knowledge_base_search 即可，无需先列库。"
+            ),
+            coroutine=_list_knowledge_bases,
+        ),
+        StructuredTool.from_function(
+            name="list_artifacts",
+            description=(
+                "列出本会话已生成的产物（图片处理结果/报告等，含产物 id、类型与摘要）。"
+                "适用：需要引用历史产物、或为 visual_read 获取 artifact_id 时。"
+            ),
+            coroutine=_list_artifacts,
+        ),
+        StructuredTool.from_function(
             name="execute_code",
             description=(
-                "在受限沙箱中执行 Python 脚本或 Shell 命令，默认 60s 超时，"
-                "高风险 Shell 命令需用户确认。"
+                "在受限沙箱（与宿主隔离，工作目录为临时目录）中执行 Python 脚本或 Shell 命令，"
+                "默认 60s 超时。适用：数据计算、统计、格式转换等。"
+                "Shell 命令与高风险 Python（网络访问/子进程/沙箱外文件读写）需用户确认后执行。"
             ),
             coroutine=_execute_code,
         ),
         StructuredTool.from_function(
             name="algorithm_recommend",
-            description="为用户图片推荐去雾算法，并推送卡片等待用户确认",
+            description=(
+                "根据用户图片与需求推荐去雾算法，并推送确认卡片等待用户选择。"
+                "适用：用户上传图片并要求去雾/增强但未指定模型时。"
+            ),
             coroutine=_algorithm_recommend,
         ),
         StructuredTool.from_function(
             name="batch_process",
-            description="批量处理多张图片（去雾/增强等）",
+            description=(
+                "批量处理多张图片（去雾/增强等）。适用：用户给出多张图片要求统一处理；"
+                "图片数量超过异步阈值时自动转后台任务并等待结果。"
+            ),
             coroutine=_batch_process,
         ),
         StructuredTool.from_function(
             name="skill_load",
             description=(
-                f"加载指定 Skill 的完整指令并注入上下文。可用 Skills: {_skill_names_desc()}"
+                "加载指定 Skill 的完整工作流指令并注入上下文，随后按其步骤执行。"
+                f"可用 Skills: {_skill_names_desc()}。"
+                "适用：任务有既定标准流程（如去雾效果评估报告生成、算法选型决策）时"
+                "先加载对应 Skill。"
             ),
             func=_skill_load,
         ),
         StructuredTool.from_function(
             name="mcp_lookup_tool",
-            description="查找匹配用户需求的后端 API 工具",
+            description=(
+                "在平台后端 API 工具目录中按自然语言查找匹配的 MCP 工具，返回工具名与参数 schema。"
+                "适用：需要调用平台系统能力但不知道具体工具名时先查找，再用 mcp_execute_tool 执行。"
+            ),
             coroutine=_mcp_lookup_tool,
         ),
         StructuredTool.from_function(
             name="mcp_execute_tool",
-            description="调用指定的 MCP 工具执行后端 API",
+            description=(
+                "按 tool_name 与 arguments 调用 mcp_lookup_tool 找到的 MCP 工具执行后端 API。"
+            ),
             coroutine=_mcp_execute_tool,
         ),
         StructuredTool.from_function(
             name="get_task_status",
-            description="查询当前任务状态（任务类型、算法、参数、进度、产物）",
+            description=(
+                "查询当前任务状态（任务类型、算法模型、参数、状态、产物列表）。"
+                "适用：用户询问处理进度、或需要确认上一步产物时。"
+            ),
             coroutine=_get_task_status,
         ),
         StructuredTool.from_function(
             name="visual_read",
             description=(
-                "评估图片的视觉效果时使用：输入产物ID（artifact_id，从上下文中的"
-                "产物引用行获得），读取对应图片并经多模态模型理解后返回评价。"
-                "受每日视觉读取次数限制。"
+                "读取指定产物图片并交由多模态模型评价其视觉效果。"
+                "入参 artifact_id（来自产物引用行或 list_artifacts 返回）。"
+                "适用：评估去雾/增强结果质量时。受每日视觉读取次数限制。"
             ),
             coroutine=_visual_read,
         ),

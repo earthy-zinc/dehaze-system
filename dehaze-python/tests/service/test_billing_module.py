@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
+from app.core.constants import CAPTCHA_KEY_PREFIX
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_ai_billing import SysAiBilling
 from app.models.entity.sys_ai_credit_log import SysAiCreditLog
@@ -274,13 +275,10 @@ class TestBalanceService:
         await mock_redis.mset({"ai:balance:1": "100"})
         cas = {"amount": None}
 
-        async def _deduct_cas(db, uid, amount):
+        async def _deduct(db, uid, amount):
             cas["amount"] = amount
 
-        monkeypatch.setattr(bm.balance_service, "_deduct_cas", _deduct_cas)
-        from app.repository.ai_credit_log_repository import ai_credit_log_repository as log_repo
-
-        monkeypatch.setattr(log_repo, "create_log", AsyncMock(return_value=None))
+        monkeypatch.setattr(bm.balance_service, "_deduct", _deduct)
         await bm.balance_service.deduct(_DB, 1, 300)
         assert int(await mock_redis.get("ai:balance:1")) == 0
         assert int(await mock_redis.get("ai:arrears:1")) == 1
@@ -293,7 +291,7 @@ class TestBalanceService:
         async def _create_log(db, **kwargs):
             logs.append(kwargs)
 
-        monkeypatch.setattr(bm.balance_service, "_increase_cas", AsyncMock(return_value=None))
+        monkeypatch.setattr(bm.balance_service, "_increase", AsyncMock(return_value=None))
         from app.repository.ai_credit_log_repository import ai_credit_log_repository as log_repo
 
         monkeypatch.setattr(log_repo, "create_log", _create_log)
@@ -921,7 +919,6 @@ class TestRegisterTrialCredits:
         import app.repository.member_repository as mem_mod
         import app.service.auth_service as auth_mod
         import app.service.billing.recharge_service as rec_mod
-        from app.config import settings
         from app.repository.role_repository import role_repository as role_repo
         from app.repository.user_repository import user_repository as user_repo
 
@@ -943,7 +940,7 @@ class TestRegisterTrialCredits:
             AsyncMock(return_value=SimpleNamespace(id=7, data_scope=0)),
         )
 
-        await mock_redis.set(f"{settings.CAPTCHA_KEY_PREFIX}test-key", "abcd")
+        await mock_redis.set(f"{CAPTCHA_KEY_PREFIX}test-key", "abcd")
 
         async def _hash(pw):
             return "hashed"

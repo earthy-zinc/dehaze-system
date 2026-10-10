@@ -6,7 +6,15 @@ import com.pei.dehaze.model.vo.LoginLogVO;
 
 public interface LoginLogService {
 
-    void recordLogin(Long userId, String username, String ip, int status, String message, String browser, String os, String deviceType);
+    void recordLogin(
+            Long userId,
+            String username,
+            String ip,
+            int status,
+            String message,
+            String browser,
+            String os,
+            String deviceType);
 
     /**
      * 分页查询登录日志（MongoDB）

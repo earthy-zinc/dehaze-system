@@ -20,11 +20,11 @@ type ImageFeatureAnalysisVO struct {
 	NoiseLevel        string            `json:"noiseLevel"`
 }
 
-// RecommendedAlgorithmVO 推荐算法项
-type RecommendedAlgorithmVO struct {
+// RecommendedModelVO 推荐图像模型项
+type RecommendedModelVO struct {
 	RecommendationId  int64    `json:"recommendationId"`
-	AlgorithmID       int64    `json:"algorithmId"`
-	AlgorithmName     string   `json:"algorithmName"`
+	ModelID           string   `json:"modelId"`
+	ModelName         string   `json:"modelName"`
 	MatchScore        int      `json:"matchScore"`
 	Reason            string   `json:"reason"`
 	Rating            *float64 `json:"rating"`
@@ -34,12 +34,12 @@ type RecommendedAlgorithmVO struct {
 
 // RecommendationRuleVO 推荐规则
 type RecommendationRuleVO struct {
-	ID           int64   `json:"id"`
-	RuleName     string  `json:"ruleName"`
-	SceneType    string  `json:"sceneType"`
-	AlgorithmIds []int64 `json:"algorithmIds"`
-	Weight       int     `json:"weight"`
-	Enabled      bool    `json:"enabled"`
+	ID        int64    `json:"id"`
+	RuleName  string   `json:"ruleName"`
+	SceneType string   `json:"sceneType"`
+	ModelIds  []string `json:"modelIds"`
+	Weight    int      `json:"weight"`
+	Enabled   bool     `json:"enabled"`
 }
 
 // TrendItem 趋势数据项

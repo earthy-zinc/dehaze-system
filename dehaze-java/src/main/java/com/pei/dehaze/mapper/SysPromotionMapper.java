@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysPromotion;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysPromotionMapper extends BaseMapper<SysPromotion> {
-}
+public interface SysPromotionMapper extends BaseMapper<SysPromotion> {}

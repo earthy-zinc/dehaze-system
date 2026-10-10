@@ -29,7 +29,7 @@ def _ctx(user_id: int):
 def _log(user_id: int, status: int = LogStatus.COMPLETED.value, result=None):
     return SimpleNamespace(
         id=1,
-        algorithm_id=1,
+        model_id="aecrnet",
         pred_md5="a" * 32,
         pred_url="http://storage/pred.jpg",
         gt_md5="b" * 32,
@@ -71,7 +71,11 @@ async def test_get_task_other_users_log_rejected(client, monkeypatch):
 
 
 async def test_get_task_own_completed_returns_metrics(client, monkeypatch):
-    """本人已完成任务 → 返回指标与耗时"""
+    """本人已完成任务 → 返回指标、耗时与两张图的内容 MD5
+
+    java/go 作为业务服务调用 Python 算法服务，它们以响应里的 predMd5/gtMd5
+    落库各自 sys_eval_log 的 pred_md5/gt_md5，缺失即落 null 或被 URL 的 MD5 冒充。
+    """
     _override_log(monkeypatch, _log(OWNER_ID, result={"PSNR": 30.1, "SSIM": 0.9}))
 
     resp = await client.get("/api/v1/evaluation/1")
@@ -80,6 +84,8 @@ async def test_get_task_own_completed_returns_metrics(client, monkeypatch):
     assert resp.status_code == 200
     assert body["data"]["status"] == LogStatus.COMPLETED.value
     assert body["data"]["metrics"] == {"PSNR": 30.1, "SSIM": 0.9}
+    assert body["data"]["predMd5"] == "a" * 32
+    assert body["data"]["gtMd5"] == "b" * 32
     assert body["data"]["time"] == 3
 
 
@@ -117,7 +123,7 @@ async def test_list_logs_scoped_to_current_user(client, monkeypatch):
     """评估日志列表以当前用户身份查询（服务层按 user_id 过滤）"""
     captured = {}
 
-    async def fake_list_logs(db, user_id, algorithm_id=None, page=1, size=10):
+    async def fake_list_logs(db, user_id, model_id=None, page=1, size=10):
         captured["user_id"] = user_id
         return [], 0
 
@@ -133,7 +139,7 @@ async def test_list_metrics_scoped_to_current_user(client, monkeypatch):
     """评估指标历史以当前用户身份查询"""
     captured = {}
 
-    async def fake_list_completed(db, user_id, algorithm_id=None, page=1, size=10):
+    async def fake_list_completed(db, user_id, model_id=None, page=1, size=10):
         captured["user_id"] = user_id
         return [], 0
 

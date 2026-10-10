@@ -3,7 +3,6 @@ package com.pei.dehaze.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.model.entity.SysFile;
-
 import java.io.InputStream;
 
 /**
@@ -36,13 +35,6 @@ public interface SysFileService extends IService<SysFile> {
      * @return 文件记录
      */
     SysFile saveFileRecord(FileDTO fileDTO);
-
-    /**
-     * @param oldFile 源文件信息
-     * @param modelId 模型id
-     * @return file
-     */
-    SysFile getWpxFile(SysFile oldFile, Long modelId);
 
     boolean deleteFile(Long fileId);
 

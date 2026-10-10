@@ -18,19 +18,18 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 用户导入处理器
@@ -64,13 +63,40 @@ public class UserImportHandler implements ImportHandler {
     @Override
     public List<ImportFieldConfig> getFieldConfigs() {
         return List.of(
-                ImportFieldConfig.builder().field("username").label("用户名").required(true).maxLength(64).build(),
-                ImportFieldConfig.builder().field("nickname").label("昵称").required(true).maxLength(50).build(),
-                ImportFieldConfig.builder().field("genderLabel").label("性别").required(false).build(),
-                ImportFieldConfig.builder().field("mobile").label("手机号").required(true).regex("^1[3-9]\\d{9}$").build(),
-                ImportFieldConfig.builder().field("email").label("邮箱").required(false).regex("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$").build(),
-                ImportFieldConfig.builder().field("roleCodes").label("角色编码(多个逗号分隔)").required(false).build()
-        );
+                ImportFieldConfig.builder()
+                        .field("username")
+                        .label("用户名")
+                        .required(true)
+                        .maxLength(64)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("nickname")
+                        .label("昵称")
+                        .required(true)
+                        .maxLength(50)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("genderLabel")
+                        .label("性别")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("mobile")
+                        .label("手机号")
+                        .required(true)
+                        .regex("^1[3-9]\\d{9}$")
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("email")
+                        .label("邮箱")
+                        .required(false)
+                        .regex("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("roleCodes")
+                        .label("角色编码(多个逗号分隔)")
+                        .required(false)
+                        .build());
     }
 
     @Override
@@ -133,8 +159,7 @@ public class UserImportHandler implements ImportHandler {
                         .build());
                 if (!partial) {
                     // 全量模式：任何失败都回滚
-                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage()
-                            + "（全量模式已回滚所有数据）", e);
+                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage() + "（全量模式已回滚所有数据）", e);
                 }
             }
         }
@@ -185,8 +210,8 @@ public class UserImportHandler implements ImportHandler {
         return null;
     }
 
-    private SysUser buildEntity(Map<String, Object> row, Long deptId, String defaultPassword,
-                                Map<String, Long> roleCodeMap) {
+    private SysUser buildEntity(
+            Map<String, Object> row, Long deptId, String defaultPassword, Map<String, Long> roleCodeMap) {
         SysUser entity = new SysUser();
         entity.setUsername(getAsString(row, "username"));
         entity.setNickname(getAsString(row, "nickname"));
@@ -231,7 +256,8 @@ public class UserImportHandler implements ImportHandler {
         if (codes.isEmpty()) {
             return Map.of();
         }
-        return roleService.list(new LambdaQueryWrapper<SysRole>()
+        return roleService
+                .list(new LambdaQueryWrapper<SysRole>()
                         .in(SysRole::getCode, codes)
                         .eq(SysRole::getStatus, StatusEnum.ENABLE.getValue()))
                 .stream()

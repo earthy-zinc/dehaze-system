@@ -1,5 +1,10 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.impl.file.LocalFileService;
@@ -7,6 +12,11 @@ import com.pei.dehaze.service.impl.file.MinioFileService;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,17 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /**
  * 文件存储服务测试
@@ -101,12 +100,10 @@ class FileStorageServiceTest {
             long fileSize = content.length;
             String contentType = "image/jpeg";
 
-            when(minioClient.putObject(any(PutObjectArgs.class)))
-                    .thenThrow(new RuntimeException("Upload failed"));
+            when(minioClient.putObject(any(PutObjectArgs.class))).thenThrow(new RuntimeException("Upload failed"));
 
             // Act & Assert
-            assertThatThrownBy(() ->
-                    minioFileService.uploadFile(objectName, inputStream, fileSize, contentType))
+            assertThatThrownBy(() -> minioFileService.uploadFile(objectName, inputStream, fileSize, contentType))
                     .isInstanceOf(RuntimeException.class);
         }
 

@@ -2,12 +2,6 @@ with-expecter: true
 dir: internal/repository/mocks
 outpkg: mocks
 packages:
-  github.com/earthyzinc/dehaze-go/internal/repository/algorithm:
-    interfaces:
-      IAlgorithmRepository: {}
-  github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite:
-    interfaces:
-      IAlgorithmFavoriteRepository: {}
   github.com/earthyzinc/dehaze-go/internal/repository/api_key:
     interfaces:
       IApiKeyRepository: {}
@@ -114,12 +108,6 @@ packages:
       outpkg: mocks
     interfaces:
       IUserService: {}
-  github.com/earthyzinc/dehaze-go/internal/service/algorithm:
-    config:
-      dir: internal/service/mocks
-      outpkg: mocks
-    interfaces:
-      IAlgorithmService: {}
   github.com/earthyzinc/dehaze-go/internal/service/dept:
     config:
       dir: internal/service/mocks

@@ -38,17 +38,13 @@ async def _drain_pending_tasks():
 
 class TestSubagentSkipsLifecycleHooks:
     async def test_memory_extraction_skipped_for_subagent(self, monkeypatch, db_guard):
-        """子图 run 不触发记忆提取"""
-        touched = []
-
-        async def _extract(*args, **kwargs):
-            touched.append("extract")
-
-        async def _save(*args, **kwargs):
-            touched.append("save")
-
-        monkeypatch.setattr(hooks_module, "extract_memories", _extract)
-        monkeypatch.setattr(hooks_module, "save_extracted_memories", _save)
+        """子图 run 不触发记忆提取（不派发后台抽取任务）"""
+        scheduled = []
+        monkeypatch.setattr(
+            hooks_module,
+            "schedule_memory_extraction",
+            lambda *args: scheduled.append(args),
+        )
 
         state = {
             "is_subagent": True,
@@ -58,9 +54,8 @@ class TestSubagentSkipsLifecycleHooks:
             "messages": [{"role": "user", "content": "子任务描述"}],
         }
         assert await hooks_module._memory_extraction_hook(state) is None
-        await _drain_pending_tasks()
 
-        assert touched == []
+        assert scheduled == []
         assert db_guard["count"] == 0
 
     async def test_title_update_skipped_for_subagent(self, monkeypatch, db_guard):
@@ -81,17 +76,13 @@ class TestSubagentSkipsLifecycleHooks:
 
 class TestMainRunLifecycleHooksUnchanged:
     async def test_memory_extraction_runs_for_main(self, monkeypatch, db_guard):
-        """主图 run 记忆提取链路不变"""
-        saved = []
-
-        async def _extract(*args, **kwargs):
-            return ["用户偏好简洁回答"]
-
-        async def _save(user_id, memories):
-            saved.append((user_id, memories))
-
-        monkeypatch.setattr(hooks_module, "extract_memories", _extract)
-        monkeypatch.setattr(hooks_module, "save_extracted_memories", _save)
+        """主图 run 记忆提取链路不变：钩子把本轮对话交给后台抽取入口"""
+        scheduled = []
+        monkeypatch.setattr(
+            hooks_module,
+            "schedule_memory_extraction",
+            lambda *args: scheduled.append(args),
+        )
 
         state = {
             "user_id": 10,
@@ -100,9 +91,8 @@ class TestMainRunLifecycleHooksUnchanged:
             "messages": [{"role": "user", "content": "帮我总结"}],
         }
         assert await hooks_module._memory_extraction_hook(state) is None
-        await _drain_pending_tasks()
 
-        assert saved == [(10, ["用户偏好简洁回答"])]
+        assert scheduled == [(10, "m1", [{"role": "user", "content": "帮我总结"}], 1)]
 
     async def test_title_update_runs_for_main(self, monkeypatch, db_guard):
         """主图 run 自动标题链路不变（新对话触发 LLM 标题生成）"""

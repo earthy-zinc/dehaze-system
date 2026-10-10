@@ -22,7 +22,7 @@ from app.database import get_db_session
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.service.ai.middleware.tool_recovery import classify_tool_error
 from app.service.ai.service import trace_collector
-from app.service.ai.service.memory_extraction import extract_memories, save_extracted_memories
+from app.service.ai.service.memory_extraction import schedule_memory_extraction
 from app.service.billing.billing_service import billing_service
 from app.service.billing.estimate_service import estimate_service
 
@@ -226,23 +226,11 @@ async def _memory_extraction_hook(state: dict) -> dict | None:
         return None
     user_id = state.get("user_id")
     model_id = state.get("model_id")
-    messages = state.get("messages")
     conversation_id = state.get("conversation_id")
-    if not user_id or not model_id or not messages or not conversation_id:
+    messages = state.get("messages") or []
+    if not user_id or not model_id or not conversation_id or not messages:
         return None
-
-    async def _run() -> None:
-        try:
-            memories = await extract_memories(
-                user_id, model_id, messages, conversation_id=conversation_id
-            )
-            await save_extracted_memories(user_id, memories)
-        except Exception:
-            logger.warning("Memory extraction failed", exc_info=True)
-
-    task = asyncio.create_task(_run())
-    _pending_tasks.add(task)
-    task.add_done_callback(_pending_tasks.discard)
+    schedule_memory_extraction(user_id, model_id, messages, conversation_id)
     return None
 
 

@@ -6,12 +6,14 @@ stream_mode=["messages","updates","custom"]) 产出 {type, ns, data} 事件，
 
 - messages + 文本增量 → content_block.start（首个 delta 前，type=text）→
   content_block.delta（text_delta）
-- messages + 工具调用增量 → content_block.delta（input_json_delta）
+- messages + 工具调用增量 → content_block.start（首见，type=tool_use，index≥2）→
+  content_block.delta（input_json_delta）→ 工具返回时 content_block.stop
 - updates + 工具节点完成 → thought（推理步骤完成，落库 sys_ai_agent_thought）
 - custom → custom
 - updates 中的 __interrupt__ → interrupt
 
-内容块收尾 content_block.stop 由推理层在 message.end 前调用 finish() 推送。
+内容块收尾 content_block.stop 由推理层在 message.end 前调用 finish() 推送
+（未收尾的思考/文本/工具块一并兜底关闭）。
 
 ns 标识事件来源（空为主 Agent，非空为子 Agent），子 Agent 的 thought
 来源标记到 ns，计费经 middleware 归集主会话。
@@ -52,9 +54,14 @@ class SseEventConverter:
         # 思考内容块状态：当前是否打开 / 本轮思考文本累积（用于落库）
         self._thinking_block_open = False
         self._thinking_buffer: list[str] = []
-        # 工具调用跟踪：tool_call_id -> {name, args(增量拼接), started_at}
+        # 工具调用跟踪：tool_call_id -> {name, args(增量拼接), started_at, block_index}
         # ToolMessage 返回时按 id 匹配，还原真实入参与耗时
         self._tool_calls: dict[str, dict[str, Any]] = {}
+        # 工具调用内容块索引：text=0、thinking=1 已占用，工具块从 2 起自增，
+        # 多工具并行各占唯一 index（前端按 index 归约 toolBlocks）
+        self._tool_index_seq = self._THINKING_INDEX + 1
+        # 尚未收到 content_block.stop 的工具块索引（finish 兜底关闭）
+        self._tool_blocks_open: set[int] = set()
         # 当前事件来源 Agent 归属（handle 逐事件解析 ns 更新）
         self._agent_code: str | None = None
         self._is_subagent = 0
@@ -75,9 +82,12 @@ class SseEventConverter:
         await self._emit("content_block.start", {"index": 0, "type": "text"})
 
     async def finish(self) -> None:
-        """流结束收尾：关闭打开的思考/文本内容块并落库残余思考（message.end 前）。"""
+        """流结束收尾：关闭打开的思考/文本/工具内容块并落库残余思考（message.end 前）。"""
         if self._thinking_block_open:
             await self._close_thinking_block()
+        # 兜底关闭未收尾的工具内容块（中断/异常态不留半开块，前端据 stop 解析完整参数）
+        for entry in list(self._tool_calls.values()):
+            await self._close_tool_block(entry)
         pending = self._text_masker.flush()
         if pending:
             await self._ensure_text_block_start()
@@ -87,6 +97,14 @@ class SseEventConverter:
             )
         if self._text_block_started:
             await self._emit("content_block.stop", {"index": 0})
+
+    async def _close_tool_block(self, entry: dict[str, Any]) -> None:
+        """关闭工具调用内容块（content_block.stop），幂等。"""
+        block_index = entry.get("block_index")
+        if block_index is None or block_index not in self._tool_blocks_open:
+            return
+        self._tool_blocks_open.discard(block_index)
+        await self._emit("content_block.stop", {"index": block_index})
 
     async def _open_thinking_block(self) -> None:
         """推送思考内容块 start（type=thinking，独立 index）。
@@ -285,9 +303,11 @@ class SseEventConverter:
     async def _handle_messages(self, data: Any) -> None:
         """messages 事件：data 形如 [AIMessageChunk, metadata]，提取文本/工具调用增量。
 
-        文本内容块在首个 text delta 前推送 content_block.start；工具调用增量同时
-        累积到 _tool_calls（首个 chunk 携带 id/name，后续 chunk 仅携带 args 增量），
-        ToolMessage 返回时按 tool_call_id 匹配还原完整入参。
+        文本内容块在首个 text delta 前推送 content_block.start；工具调用首见时推送
+        content_block.start(type=tool_use, index≥2) 后逐段推 input_json_delta，工具
+        ToolMessage 返回时推 content_block.stop。工具调用增量同时累积到 _tool_calls
+        （首个 chunk 携带 id/name，后续 chunk 仅携带 args 增量），ToolMessage 返回时
+        按 tool_call_id 匹配还原完整入参。
         """
         if not isinstance(data, (list, tuple)) or not data:
             return
@@ -331,20 +351,40 @@ class SseEventConverter:
             await self._close_thinking_block()
         for tc in chunk.tool_call_chunks:
             tc_id = tc.get("id") or latest_tc_id
-            if tc_id:
-                latest_tc_id = tc_id
-                entry = self._tool_calls.setdefault(
-                    tc_id, {"name": "", "args": "", "started_at": time.monotonic()}
+            if not tc_id:
+                continue
+            latest_tc_id = tc_id
+            entry = self._tool_calls.get(tc_id)
+            if entry is None:
+                # 首见该工具调用：分配独立内容块 index 并推送 content_block.start，
+                # 前端据此创建工具参数草稿（缺 start 会导致 input_json_delta 被丢弃）；
+                # 同时携带 id/name，供兼容层（OpenAI/Claude 协议网关）构造工具调用头
+                entry = {
+                    "name": tc.get("name") or "",
+                    "args": "",
+                    "started_at": time.monotonic(),
+                    "block_index": self._tool_index_seq,
+                }
+                self._tool_calls[tc_id] = entry
+                self._tool_index_seq += 1
+                self._tool_blocks_open.add(entry["block_index"])
+                await self._emit(
+                    "content_block.start",
+                    {
+                        "index": entry["block_index"],
+                        "type": "tool_use",
+                        "id": tc_id,
+                        "name": entry["name"],
+                    },
                 )
-                if tc.get("name"):
-                    entry["name"] = tc["name"]
-                if tc.get("args"):
-                    entry["args"] += tc["args"]
+            elif tc.get("name") and not entry["name"]:
+                entry["name"] = tc["name"]
             if tc.get("args"):
+                entry["args"] += tc["args"]
                 await self._emit(
                     "content_block.delta",
                     {
-                        "index": 0,
+                        "index": entry["block_index"],
                         "delta": {
                             "type": "input_json_delta",
                             "partial_json": tc["args"],
@@ -389,6 +429,9 @@ class SseEventConverter:
                     await self._close_thinking_block()
                     await self._flush_thinking()
                     entry = self._tool_calls.pop(msg.tool_call_id, None)
+                    if entry is not None:
+                        # 工具执行完成：关闭对应内容块，前端据此解析完整参数
+                        await self._close_tool_block(entry)
                     latency_ms = (
                         int((time.monotonic() - entry["started_at"]) * 1000) if entry else 0
                     )

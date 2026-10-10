@@ -15,8 +15,11 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 )
 
-// defaultAIModel 与 dehaze-python settings.AI_DEFAULT_MODEL 一致（会话未指定模型时的默认值）。
-const defaultAIModel = "qwen3-0.6b"
+// DefaultModelResolver 对话默认模型解析（请求/会话指定 > 用户偏好 > Agent 配置模型 > 平台默认 > 报错）。
+// 接口定义在消费侧，实现为 ai.UserPreferenceService，避免对话域反向依赖 AI 模型域。
+type DefaultModelResolver interface {
+	ResolveChatModel(ctx context.Context, userID int64, specified *string, agentCode string) (string, error)
+}
 
 // pinnedConversationLimit 置顶会话上限。
 const pinnedConversationLimit = 10
@@ -118,14 +121,21 @@ type ConversationService struct {
 	conversations *repo.ConversationRepository
 	messages      *repo.MessageRepository
 	agents        *repo.AgentRepository
+	defaultModels DefaultModelResolver
 }
 
 func NewConversationService(
 	conversations *repo.ConversationRepository,
 	messages *repo.MessageRepository,
 	agents *repo.AgentRepository,
+	defaultModels DefaultModelResolver,
 ) *ConversationService {
-	return &ConversationService{conversations: conversations, messages: messages, agents: agents}
+	return &ConversationService{
+		conversations: conversations,
+		messages:      messages,
+		agents:        agents,
+		defaultModels: defaultModels,
+	}
 }
 
 // resolveAgentAnchor 解析会话锚定的 (agent_code, agent_version)。
@@ -167,9 +177,9 @@ func (s *ConversationService) Create(ctx context.Context, userID int64, form *Co
 	if form.Title != nil && *form.Title != "" {
 		title = *form.Title
 	}
-	modelID := defaultAIModel
-	if form.Model != nil && *form.Model != "" {
-		modelID = *form.Model
+	modelID, err := s.defaultModels.ResolveChatModel(ctx, userID, form.Model, agentCode)
+	if err != nil {
+		return nil, err
 	}
 	suggestionsEnabled := 1
 	if form.SuggestionsEnabled != nil && !*form.SuggestionsEnabled {
@@ -339,6 +349,16 @@ func (s *ConversationService) Update(ctx context.Context, id, userID int64, form
 		fields["agent_version"] = agentVersion
 		conv.AgentCode = &agentCode
 		conv.AgentVersion = agentVersion
+		// 切换 Agent 且未同时显式指定模型时，会话模型按新 Agent 重新解析
+		// （否则"换了 Agent 模型不变"，与新建会话的解析口径不一致）
+		if form.Model == nil || strings.TrimSpace(*form.Model) == "" {
+			modelID, err := s.defaultModels.ResolveChatModel(ctx, userID, nil, agentCode)
+			if err != nil {
+				return nil, err
+			}
+			fields["model"] = modelID
+			conv.Model = &modelID
+		}
 	}
 	if err := s.conversations.UpdateFields(ctx, id, fields); err != nil {
 		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "更新会话失败", err)

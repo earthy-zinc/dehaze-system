@@ -4,10 +4,9 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.vo.DatasetItemVO;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 @Mapper
 public interface SysDatasetItemMapper extends BaseMapper<SysDatasetItem> {
@@ -28,6 +27,5 @@ public interface SysDatasetItemMapper extends BaseMapper<SysDatasetItem> {
             @Param("minSize") Long minSize,
             @Param("maxSize") Long maxSize,
             @Param("sortBy") String sortBy,
-            @Param("sortOrder") String sortOrder
-    );
+            @Param("sortOrder") String sortOrder);
 }

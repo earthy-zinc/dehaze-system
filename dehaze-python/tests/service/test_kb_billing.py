@@ -3,9 +3,10 @@
 口径（AI计费管理 后端实现 §KB 计费）：
 - 后扣费模式（voice 同款）：调用前 ensure（欠费熔断+配额+余额 fail-closed）、
   调用成功后按实际 token 实扣；调用失败不扣
-- 计量：文档向量化=分块精确 token_count 求和；检索查询/重排序=_approx_tokens
+- 计量：文档向量化=分块精确 token_count 求和；检索查询/重排序=approx_tokens
   （与 chat 预扣同口径）
-- bill_type=embedding/rerank，token 数记 input_tokens；local 模型完全跳过不落记录
+- bill_type=embedding/rerank，token 数记 input_tokens；无 provider 特判（本地模型 0 价
+  由 sys_ai_model_price 的 0 价行承载，仍落归因记录、credits=0 不扣减）
 - 未配置用户售价 warn 回退 0（免费，防误扣）；实扣不足扣至 0 并标记欠费
 - 检索链路计费拒绝（QUOTA_INSUFFICIENT）透传而非降级为空结果
 """
@@ -27,7 +28,7 @@ from app.repository.ai_credit_log_repository import AiCreditLogRepository
 from app.repository.ai_provider_repository import AiProviderRepository
 from app.service.ai_model_price_service import AiModelPriceService
 from app.service.billing.balance_service import BalanceService
-from app.service.billing.estimate_service import _approx_tokens
+from app.service.billing.estimate_service import approx_tokens
 from app.service.billing.quota_service import QuotaService
 from app.service.kb import kb_billing_service as kb_billing_module
 from app.service.kb import search_service as search_module
@@ -182,16 +183,18 @@ class TestCharge:
         assert cap["create"]["bill_type"] == "rerank"
         assert "重排序" in cap["logs"][0]["reason"]
 
-    async def test_local_provider_skipped_entirely(self, monkeypatch):
-        """内置本地模型零成本：不落计费记录、不扣减、不写流水"""
+    async def test_local_provider_no_special_case(self, monkeypatch):
+        """无 provider 身份特判：local 与普通模型同走 sys_ai_model_price 换算并落账
+        （本地 0 价由种子 0 价行承载，非代码跳过；此处用非 0 售价证明未被跳过）"""
         svc, cap = _install(monkeypatch)
         credits = await svc.charge_embedding(10, "local", "qwen3-embedding-0.6b", 500)
 
-        assert credits == 0
-        assert cap["create"] is None
-        assert cap["quota_deduct"] == []
-        assert cap["balance_deduct"] == []
-        assert cap["logs"] == []
+        assert credits == 42
+        assert cap["create"]["credits"] == 42
+        assert cap["create"]["input_tokens"] == 500
+        assert cap["quota_deduct"] == [(10, 42)]
+        assert cap["balance_deduct"] == [(10, 42)]
+        assert len(cap["logs"]) == 1
 
     async def test_unconfigured_price_falls_back_zero(self, monkeypatch):
         """未配置用户售价：warn 回退 0（免费），仍落归因记录但不扣减不写流水"""
@@ -316,7 +319,7 @@ class TestSearchBilling:
         kb_repo.list_public.return_value = [kb]
         monkeypatch.setattr(search_module, "knowledge_base_repository", kb_repo)
 
-    async def test_query_embedding_charged_with_approx_tokens(self, monkeypatch, mock_redis):
+    async def test_query_embedding_charged_withapprox_tokens(self, monkeypatch, mock_redis):
         self._kb_repo(monkeypatch, _kb())
         ensure, charge_embed, charge_rerank = self._billing_mocks(monkeypatch)
         embed_mock = AsyncMock(return_value=[0.1] * 8)
@@ -331,7 +334,7 @@ class TestSearchBilling:
         ):
             await search_service.search(_DB, mock_redis, 100, "量子纠缠", knowledge_base_ids=[1])
 
-        expected = _approx_tokens("量子纠缠")
+        expected = approx_tokens("量子纠缠")
         ensure.assert_awaited_once_with(100, "openai", "text-embedding-3-small", expected)
         charge_embed.assert_awaited_once_with(100, "openai", "text-embedding-3-small", expected)
         charge_rerank.assert_not_awaited()
@@ -391,7 +394,7 @@ class TestSearchBilling:
                 top_k=2,
             )
 
-        expected = _approx_tokens(query) + sum(_approx_tokens(d["content"]) for d in docs)
+        expected = approx_tokens(query) + sum(approx_tokens(d["content"]) for d in docs)
         charge_embed.assert_not_awaited()
         charge_rerank.assert_awaited_once_with(100, "openai", "rerank-v3", expected)
         ensure.assert_awaited_once_with(100, "openai", "rerank-v3", expected)

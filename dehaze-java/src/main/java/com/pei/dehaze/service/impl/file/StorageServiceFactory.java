@@ -2,13 +2,12 @@ package com.pei.dehaze.service.impl.file;
 
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.service.FileService;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * 存储后端工厂：按 storage 标识取得对应的 {@link FileService} 实现。
@@ -24,10 +23,8 @@ public class StorageServiceFactory {
     private final Map<String, FileService> registry;
     private final String defaultStorageType;
 
-    public StorageServiceFactory(List<FileService> services,
-                                 @Value("${file.type}") String defaultStorageType) {
-        this.registry = services.stream()
-                .collect(Collectors.toMap(FileService::getStorageType, Function.identity()));
+    public StorageServiceFactory(List<FileService> services, @Value("${file.type}") String defaultStorageType) {
+        this.registry = services.stream().collect(Collectors.toMap(FileService::getStorageType, Function.identity()));
         this.defaultStorageType = defaultStorageType;
     }
 

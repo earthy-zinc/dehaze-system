@@ -1,5 +1,13 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -16,6 +24,9 @@ import com.pei.dehaze.model.entity.SysKnowledgeChunk;
 import com.pei.dehaze.model.entity.SysKnowledgeDocument;
 import com.pei.dehaze.model.vo.KbChunkVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,18 +35,6 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 /**
  * AI 知识库文档分块列表（GET /kb/documents/{id}/chunks）的可见性与分页测试。
@@ -49,16 +48,22 @@ class AiKnowledgeBaseDocumentTest {
 
     @Mock
     private SysKnowledgeDocumentMapper documentMapper;
+
     @Mock
     private SysKnowledgeTestSetMapper testSetMapper;
+
     @Mock
     private SysKnowledgeChunkMapper chunkMapper;
+
     @Mock
     private SysKnowledgeChunkFeedbackMapper chunkFeedbackMapper;
+
     @Mock
     private AiKbIndexClient kbIndexClient;
+
     @Mock
     private StringRedisTemplate redis;
+
     @Mock
     private SysKnowledgeBaseMapper kbMapper;
 
@@ -66,8 +71,14 @@ class AiKnowledgeBaseDocumentTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        service = new AiKnowledgeBaseServiceImpl(documentMapper, testSetMapper, chunkMapper,
-                chunkFeedbackMapper, kbIndexClient, redis, new ObjectMapper());
+        service = new AiKnowledgeBaseServiceImpl(
+                documentMapper,
+                testSetMapper,
+                chunkMapper,
+                chunkFeedbackMapper,
+                kbIndexClient,
+                redis,
+                new ObjectMapper());
         Field baseMapperField = ServiceImpl.class.getDeclaredField("baseMapper");
         baseMapperField.setAccessible(true);
         baseMapperField.set(service, kbMapper);
@@ -82,10 +93,10 @@ class AiKnowledgeBaseDocumentTest {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(1L);
 
-            BusinessException ex = assertThrows(BusinessException.class,
-                    () -> service.listChunks(DOC_ID, 1, 10));
+            BusinessException ex = assertThrows(BusinessException.class, () -> service.listChunks(DOC_ID, 1, 10));
 
-            assertEquals(ResultCode.ACCESS_UNAUTHORIZED.getCode(), ex.getResultCode().getCode());
+            assertEquals(
+                    ResultCode.ACCESS_UNAUTHORIZED.getCode(), ex.getResultCode().getCode());
             verifyNoInteractions(chunkMapper);
         }
     }
@@ -95,8 +106,7 @@ class AiKnowledgeBaseDocumentTest {
     void listChunks_documentNotFound() {
         when(documentMapper.selectById(DOC_ID)).thenReturn(null);
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.listChunks(DOC_ID, 1, 10));
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.listChunks(DOC_ID, 1, 10));
 
         assertEquals(ResultCode.RESOURCE_NOT_FOUND.getCode(), ex.getResultCode().getCode());
         verifyNoInteractions(chunkMapper);
@@ -109,7 +119,8 @@ class AiKnowledgeBaseDocumentTest {
         when(documentMapper.selectById(DOC_ID)).thenReturn(document());
         Page<SysKnowledgeChunk> chunkPage = new Page<>(1, 10, 1);
         chunkPage.setRecords(List.of(chunk()));
-        when(chunkMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class))).thenReturn(chunkPage);
+        when(chunkMapper.selectPage(any(Page.class), any(LambdaQueryWrapper.class)))
+                .thenReturn(chunkPage);
 
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(1L);

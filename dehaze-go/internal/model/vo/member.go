@@ -1,22 +1,33 @@
 package vo
 
+// BenefitVO 会员等级权益，字段集与取值口径对齐 python `_benefit_to_vo`。
 type BenefitVO struct {
-	LevelCode            string `json:"levelCode"`
-	LevelName            string `json:"levelName"`
-	GrowthMin            int64  `json:"growthMin"`
-	GrowthMax            int64  `json:"growthMax"`
-	MonthlyDehazeQuota   int    `json:"monthlyDehazeQuota"`
-	MonthlyEvaluateQuota int    `json:"monthlyEvaluateQuota"`
-	HistoryRetention     int    `json:"historyRetention"`
-	BatchLimit           int    `json:"batchLimit"`
-	MaxDevices           int    `json:"maxDevices"`
-	Priority             int    `json:"priority"`
-	AdvancedParams       int    `json:"advancedParams"`
-	HdExport             int    `json:"hdExport"`
-	ReportExport         int    `json:"reportExport"`
-	BatchDownload        int    `json:"batchDownload"`
-	Sort                 int    `json:"sort"`
-	Status               int    `json:"status"`
+	LevelCode                   string `json:"levelCode"`
+	LevelName                   string `json:"levelName"`
+	GrowthMin                   int64  `json:"growthMin"`
+	GrowthMax                   int64  `json:"growthMax"`
+	AiCreditsDaily              int64  `json:"aiCreditsDaily"`
+	AiCreditsMonthly            int64  `json:"aiCreditsMonthly"`
+	MultimodalLimit             int    `json:"multimodalLimit"`
+	MaxDevices                  int    `json:"maxDevices"`
+	VipGiftCredits              int64  `json:"vipGiftCredits"`
+	HistoryRetention            int    `json:"historyRetention"`
+	BatchLimit                  int    `json:"batchLimit"`
+	Priority                    int    `json:"priority"`
+	AdvancedParams              int    `json:"advancedParams"`
+	HdExport                    int    `json:"hdExport"`
+	ReportExport                int    `json:"reportExport"`
+	BatchDownload               int    `json:"batchDownload"`
+	Sort                        int    `json:"sort"`
+	Status                      int    `json:"status"`
+	MonthlyDehazeQuota          int    `json:"monthlyDehazeQuota"`
+	MonthlyDerainQuota          int    `json:"monthlyDerainQuota"`
+	MonthlyDesnowQuota          int    `json:"monthlyDesnowQuota"`
+	MonthlyLowlightQuota        int    `json:"monthlyLowlightQuota"`
+	MonthlySuperResolutionQuota int    `json:"monthlySuperResolutionQuota"`
+	MonthlyDenoiseQuota         int    `json:"monthlyDenoiseQuota"`
+	MonthlyInpaintQuota         int    `json:"monthlyInpaintQuota"`
+	MonthlyEvaluateQuota        int    `json:"monthlyEvaluateQuota"`
 }
 
 type MemberProfileVO struct {

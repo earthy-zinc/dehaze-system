@@ -1,16 +1,12 @@
 package com.pei.dehaze.service.client;
 
-import com.pei.dehaze.config.property.AlgorithmProperties;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.pei.dehaze.config.property.AlgorithmProperties;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -21,12 +17,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Flow;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
 
 /**
  * AI 转发客户端单元测试：请求头组装、缓冲区透传与 SSE 流式管道（取消/超时/上游异常）。
@@ -55,8 +54,7 @@ class AiForwardClientTest {
     @Test
     @DisplayName("exchange - 原样透传上游状态码、Content-Type 与信封响应体")
     void exchange_passesThroughEnvelope() throws Exception {
-        byte[] envelope = "{\"code\":\"00000\",\"msg\":\"一切ok\",\"data\":{\"id\":1}}"
-                .getBytes(StandardCharsets.UTF_8);
+        byte[] envelope = "{\"code\":\"00000\",\"msg\":\"一切ok\",\"data\":{\"id\":1}}".getBytes(StandardCharsets.UTF_8);
         HttpResponse<byte[]> upstream = byteResponse(200, "application/json", envelope);
         when(httpClient.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<byte[]>>any()))
                 .thenReturn(upstream);
@@ -76,7 +74,10 @@ class AiForwardClientTest {
         when(httpClient.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<byte[]>>any()))
                 .thenReturn(upstream);
 
-        client.exchange("POST", "/api/v1/ai/agents/5/eval/runs?mode=full", sessionHeaders(),
+        client.exchange(
+                "POST",
+                "/api/v1/ai/agents/5/eval/runs?mode=full",
+                sessionHeaders(),
                 HttpRequest.BodyPublishers.ofString("{\"datasetId\":1}"));
 
         HttpRequest sent = captureRequest();
@@ -97,8 +98,12 @@ class AiForwardClientTest {
         List<String> received = new ArrayList<>();
         int[] status = new int[1];
         String[] contentType = new String[1];
-        client.stream("POST", "/api/v1/ai/conversations/1/messages", sessionHeaders(),
-                HttpRequest.BodyPublishers.noBody(), (code, type, body) -> {
+        client.stream(
+                "POST",
+                "/api/v1/ai/conversations/1/messages",
+                sessionHeaders(),
+                HttpRequest.BodyPublishers.noBody(),
+                (code, type, body) -> {
                     status[0] = code;
                     contentType[0] = type;
                     publisher.emit("event: message.start\ndata: {}\n\n");
@@ -111,8 +116,7 @@ class AiForwardClientTest {
         assertThat(status[0]).isEqualTo(200);
         assertThat(contentType[0]).isEqualTo("text/event-stream");
         // 心跳注释行与事件块原样透传，顺序不变
-        assertThat(received).containsExactly(
-                "event: message.start\ndata: {}\n\n" + ": ping\n\n" + "data: [DONE]\n\n");
+        assertThat(received).containsExactly("event: message.start\ndata: {}\n\n" + ": ping\n\n" + "data: [DONE]\n\n");
         assertThat(publisher.cancelled).isTrue();
     }
 
@@ -122,10 +126,14 @@ class AiForwardClientTest {
         FakeBodyPublisher publisher = new FakeBodyPublisher();
         stubPublisherResponse(200, "text/event-stream", publisher);
 
-        assertThatThrownBy(() -> client.stream("POST", "/api/v1/ai/messages/9/regenerate", sessionHeaders(),
-                HttpRequest.BodyPublishers.noBody(), (code, type, body) -> {
-                    throw new IOException("客户端已断开");
-                }))
+        assertThatThrownBy(() -> client.stream(
+                        "POST",
+                        "/api/v1/ai/messages/9/regenerate",
+                        sessionHeaders(),
+                        HttpRequest.BodyPublishers.noBody(),
+                        (code, type, body) -> {
+                            throw new IOException("客户端已断开");
+                        }))
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining("客户端已断开");
 
@@ -139,9 +147,12 @@ class AiForwardClientTest {
         FakeBodyPublisher publisher = new FakeBodyPublisher();
         stubPublisherResponse(200, "text/event-stream", publisher);
 
-        assertThatThrownBy(() -> client.stream("GET", "/api/v1/ai/conversations/1/messages/stream/s-1",
-                sessionHeaders(), HttpRequest.BodyPublishers.noBody(),
-                (code, type, body) -> body.read()))
+        assertThatThrownBy(() -> client.stream(
+                        "GET",
+                        "/api/v1/ai/conversations/1/messages/stream/s-1",
+                        sessionHeaders(),
+                        HttpRequest.BodyPublishers.noBody(),
+                        (code, type, body) -> body.read()))
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining("空闲超时");
 
@@ -154,11 +165,15 @@ class AiForwardClientTest {
         FakeBodyPublisher publisher = new FakeBodyPublisher();
         stubPublisherResponse(200, "text/event-stream", publisher);
 
-        assertThatThrownBy(() -> client.stream("POST", "/api/v1/ai/conversations/1/messages", sessionHeaders(),
-                HttpRequest.BodyPublishers.noBody(), (code, type, body) -> {
-                    publisher.fail(new IllegalStateException("上游连接中断"));
-                    body.read();
-                }))
+        assertThatThrownBy(() -> client.stream(
+                        "POST",
+                        "/api/v1/ai/conversations/1/messages",
+                        sessionHeaders(),
+                        HttpRequest.BodyPublishers.noBody(),
+                        (code, type, body) -> {
+                            publisher.fail(new IllegalStateException("上游连接中断"));
+                            body.read();
+                        }))
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining("上游连接中断");
     }
@@ -197,8 +212,9 @@ class AiForwardClientTest {
 
     private void stubPublisherResponse(int status, String contentType, FakeBodyPublisher publisher) throws Exception {
         HttpResponse<Flow.Publisher<List<ByteBuffer>>> response = publisherResponse(status, contentType, publisher);
-        when(httpClient.send(any(HttpRequest.class),
-                ArgumentMatchers.<HttpResponse.BodyHandler<Flow.Publisher<List<ByteBuffer>>>>any()))
+        when(httpClient.send(
+                        any(HttpRequest.class),
+                        ArgumentMatchers.<HttpResponse.BodyHandler<Flow.Publisher<List<ByteBuffer>>>>any()))
                 .thenReturn(response);
     }
 
@@ -219,8 +235,7 @@ class AiForwardClientTest {
             this.subscriber = subscriber;
             subscriber.onSubscribe(new Flow.Subscription() {
                 @Override
-                public void request(long n) {
-                }
+                public void request(long n) {}
 
                 @Override
                 public void cancel() {

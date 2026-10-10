@@ -1,5 +1,9 @@
 package com.pei.dehaze.service.importexport.handler;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.model.entity.SysRole;
@@ -8,6 +12,9 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,14 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /**
  * 角色导入处理器单元测试
@@ -131,8 +130,8 @@ class RoleImportHandlerTest {
         row.put("name", "重复角色");
         row.put("code", "existing_code");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("全量模式已回滚"));
         verify(roleService, never()).save(any(SysRole.class));
     }
@@ -140,9 +139,7 @@ class RoleImportHandlerTest {
     @Test
     @DisplayName("部分模式 - 角色编码已存在, 跳过错误行继续导入")
     void testImportBatch_PartialMode_DuplicateCode_Skips() {
-        when(roleService.count(any(LambdaQueryWrapper.class)))
-                .thenReturn(1L)
-                .thenReturn(0L);
+        when(roleService.count(any(LambdaQueryWrapper.class))).thenReturn(1L).thenReturn(0L);
 
         Map<String, Object> badRow = new LinkedHashMap<>();
         badRow.put("name", "重复角色");
@@ -151,8 +148,7 @@ class RoleImportHandlerTest {
         goodRow.put("name", "新角色");
         goodRow.put("code", "new_code");
 
-        ImportResult result = handler.importBatch(List.of(badRow, goodRow),
-                ImportOptions.of("partial"), callback);
+        ImportResult result = handler.importBatch(List.of(badRow, goodRow), ImportOptions.of("partial"), callback);
 
         assertEquals(2, result.getTotalRows());
         assertEquals(1, result.getSuccessCount());
@@ -170,8 +166,8 @@ class RoleImportHandlerTest {
         row.put("name", "");
         row.put("code", "c1");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("角色名称为空"));
     }
 
@@ -182,8 +178,8 @@ class RoleImportHandlerTest {
         row.put("name", "角色");
         row.put("code", "");
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
+        RuntimeException ex = assertThrows(
+                RuntimeException.class, () -> handler.importBatch(List.of(row), ImportOptions.of("all"), callback));
         assertTrue(ex.getMessage().contains("角色编码为空"));
     }
 
@@ -195,8 +191,7 @@ class RoleImportHandlerTest {
         row.put("name", "角色");
         row.put("code", "c1");
 
-        ImportResult result = handler.importBatch(List.of(row),
-                ImportOptions.of("partial"), callback);
+        ImportResult result = handler.importBatch(List.of(row), ImportOptions.of("partial"), callback);
 
         assertEquals(1, result.getFailureCount());
         assertEquals(1, result.getErrors().size());
@@ -249,8 +244,7 @@ class RoleImportHandlerTest {
 
     private static class NoopCallback implements ProgressCallback {
         @Override
-        public void updateProgress(int current, int total, String message) {
-        }
+        public void updateProgress(int current, int total, String message) {}
 
         @Override
         public boolean isCancelled() {

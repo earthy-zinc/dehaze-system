@@ -24,8 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import KB_ASYNC_MAX_RETRY, KB_INDEX_BATCH_SIZE
 from app.core.exceptions import BusinessException
-from app.database import get_db_session
+from app.database import defer_after_commit, get_db_session
 from app.infrastructure.embedding import embedding_client
 from app.infrastructure.es.kb_chunk_index import (
     bulk_index_chunks,
@@ -41,7 +42,7 @@ from app.repository.knowledge_document_repository import knowledge_document_repo
 from app.service.file_service import file_service
 from app.service.kb import chunking_engine, document_parser
 from app.service.kb.kb_billing_service import kb_billing_service
-from app.service.kb.knowledge_base_service import _check_manage_permission
+from app.service.kb.knowledge_base_service import check_manage_permission
 from app.service.storage.factory import get_storage_by_name
 
 logger = logging.getLogger(__name__)
@@ -110,6 +111,22 @@ async def _push_ws(owner_id: int, payload: dict) -> None:
         await manager.send_personal(owner_id, payload)
     except Exception as e:
         logger.debug("WS 推送失败: %s", e)
+
+
+async def _invalidate_kb_stat_caches(kb_id: int) -> None:
+    """知识库统计变更后失效受影响缓存（缓存不可用静默降级，不影响统计落库）。
+
+    详情接口（`GET /api/v1/kb/{id}`）走 30min 缓存，文档处理完成时的统计累加
+    若不失效该键，详情页「文档数/分块数/Token」会在 TTL 内停在建库时的 0，
+    与同页文档列表（实时读库）互相矛盾；`kb:list:admin` 含同一份统计，一并失效。
+    """
+    try:
+        from app.dependencies.redis import get_redis_client
+
+        redis = await get_redis_client()
+        await redis.delete(f"kb:detail:{kb_id}", "kb:list:admin")
+    except Exception as e:
+        logger.debug("知识库统计缓存失效失败（TTL 兜底）: %s", e)
 
 
 class DocumentService:
@@ -278,7 +295,7 @@ class DocumentService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
         if kb.status == 0:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "知识库已禁用")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
         return kb
 
     # ==================== 查询 ====================
@@ -344,7 +361,7 @@ class DocumentService:
         kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
 
         if doc.processing_status in _PROTECTED_STATUSES:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "文档处理中，暂不能删除")
@@ -368,7 +385,7 @@ class DocumentService:
         kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
 
         if doc.processing_status != "failed":
             raise BusinessException(ResultCode.BUSINESS_ERROR, "仅处理失败的文档允许重新处理")
@@ -400,7 +417,7 @@ class DocumentService:
         kb = await self.knowledge_base_repository.get_by_id(db, doc.knowledge_base_id)
         if not kb:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "知识库不存在")
-        await _check_manage_permission(db, kb, user)
+        await check_manage_permission(db, kb, user)
 
         if doc.processing_status in _PROTECTED_STATUSES:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "文档处理中，暂不能更新")
@@ -562,7 +579,7 @@ class DocumentService:
         cleaned = _clean_text(content)
 
         # Step 5-6: 分块 + 写 MySQL + 向量化（重试封装）
-        retry = settings.KB_ASYNC_MAX_RETRY
+        retry = KB_ASYNC_MAX_RETRY
         chunks = self.chunking_engine.chunk_text(
             cleaned, kb.chunking_strategy, kb.chunk_size, kb.chunk_overlap
         )
@@ -576,11 +593,11 @@ class DocumentService:
         total_tokens = sum(c.token_count for c in chunks)
 
         # Step 6.5: 向量化计费预校验（后扣费模式：调用前校验、成功后实扣；
-        # 计费主体为知识库 owner，local 零成本模型照常校验权益但最终不计费）
-        if kb.embedding_provider != "local":
-            await kb_billing_service.ensure(
-                owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
-            )
+        # 计费主体为知识库 owner；无 provider 特判——内置本地模型 0 价由 sys_ai_model_price
+        # 的 0 价行承载，照常校验权益、统一落账）
+        await kb_billing_service.ensure(
+            owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
+        )
 
         # 分块写 MySQL（含 chunk_index 元数据与父子分块小节归属）
         async with get_db_session() as db:
@@ -619,7 +636,7 @@ class DocumentService:
             try:
                 texts = [c.content for c in chunks]
                 vectors = await self.embedding_client.embed_texts(
-                    kb.embedding_provider, kb.embedding_model, texts, settings.KB_INDEX_BATCH_SIZE
+                    kb.embedding_provider, kb.embedding_model, texts, KB_INDEX_BATCH_SIZE
                 )
                 es_docs = []
                 for chunk_ent, c, vec in zip(chunk_entities, chunks, vectors, strict=True):
@@ -652,10 +669,9 @@ class DocumentService:
                     raise
 
         # 向量化+索引成功后按分块精确 token 总量实扣（失败路径不扣）
-        if kb.embedding_provider != "local":
-            await kb_billing_service.charge_embedding(
-                owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
-            )
+        await kb_billing_service.charge_embedding(
+            owner_id, kb.embedding_provider, kb.embedding_model, total_tokens
+        )
 
         # Step 8: CAS 更新知识库统计 + 文档 completed
         async with get_db_session() as db:
@@ -710,11 +726,16 @@ class DocumentService:
     async def _update_kb_stats_cas(
         self, db: AsyncSession, kb_id: int, document_delta: int, chunk_delta: int, token_delta: int
     ) -> None:
-        """CAS 更新知识库统计，冲突时重试（CAS 返回 False 表示并发覆盖，重读后重试）。"""
+        """CAS 更新知识库统计，冲突时重试（CAS 返回 False 表示并发覆盖，重读后重试）。
+
+        成功后在事务提交后失效详情/管理端列表缓存：缓存失效必须晚于统计提交，
+        否则并发读请求可能把未提交的旧统计重新写回缓存（defer_after_commit 保证时序）。
+        """
         for _ in range(3):
             if await self.knowledge_base_repository.update_stats_cas(
                 db, kb_id, document_delta, chunk_delta, token_delta
             ):
+                defer_after_commit(db, lambda: _invalidate_kb_stat_caches(kb_id))
                 return
             await db.flush()
         logger.warning("知识库 %s 统计 CAS 更新 3 次仍冲突，放弃本次累加", kb_id)

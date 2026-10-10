@@ -1,10 +1,9 @@
 package com.pei.dehaze.service.importexport.model;
 
-import lombok.Data;
-
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
+import lombok.Data;
 
 /**
  * 导出上下文

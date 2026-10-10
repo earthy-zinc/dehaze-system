@@ -36,6 +36,8 @@ const (
 	maxWSMessage = 4 << 20
 	// 透传关闭帧的写超时
 	wsWriteWait = 5 * time.Second
+	// 客户端先关后等上游排空最终帧的兜底时长（覆盖编排侧 EOS→最终结果→关闭的 10s 收尾窗）
+	wsDrainTimeout = 15 * time.Second
 )
 
 // wsUpgrader 下游（客户端 → Go）握手升级器；来源放开与 python、java 一致，CORS 由网关统一处理
@@ -313,14 +315,27 @@ func (c *Client) ForwardWebSocket(gc *gin.Context) {
 	}
 
 	// 两个方向各一个 goroutine：各自单向写同一连接，天然无并发写冲突
-	done := make(chan struct{}, 2)
-	go relayWebSocket(upstream, downstream, done)
-	go relayWebSocket(downstream, upstream, done)
-	<-done
-	// 任一方向结束即关闭两端，让另一方向的阻塞读立即返回
+	doneUp := make(chan struct{}, 1)
+	doneDown := make(chan struct{}, 1)
+	go relayWebSocket(upstream, downstream, doneUp)
+	go relayWebSocket(downstream, upstream, doneDown)
+
+	// 上游（python 编排）持有会话生命周期：客户端提前 stop() 后，编排侧仍会向引擎
+	// 补发 EOS 并回传最终结果帧（下行收尾最长 10s）。客户端先关的一侧不得立刻掐断
+	// 连接，否则最终帧被吞、下游以异常断连收场；等上游排空后再收尾，超时兜底防挂死。
+	select {
+	case <-doneUp: // 上游先关（正常收尾/拒绝）：帧已转发完毕
+	case <-doneDown: // 客户端先关：等上游排空最终帧
+		select {
+		case <-doneUp:
+		case <-time.After(wsDrainTimeout):
+		}
+	}
 	_ = downstream.Close()
 	_ = upstream.Close()
-	<-done
+	// 让另一方向的阻塞读立即返回并退出
+	<-doneUp
+	<-doneDown
 }
 
 // wsTarget 上游 WebSocket 绝对地址：(http|https) 基址换算为 (ws|wss)，路径与 query 原样透传

@@ -111,9 +111,12 @@ async def init_xxljob() -> PyxxlRunner | None:
             log_local_dir=settings.XXLJOB_TASK_LOG_DIR,
             executor_logger=executor_logger,
             # 显式声明注册地址（admin 在容器时是 host.docker.internal 这类域名）必须同时绑所有网卡，
-            # 否则 pyxxl 会用注册地址推导监听地址，绑定失败；未声明注册地址时交给 pyxxl 以首网卡 IP 绑定并注册
+            # 否则 pyxxl 会用注册地址推导监听地址，绑定失败；
+            # 未声明注册地址时交给 pyxxl 以首网卡 IP 绑定并注册
             executor_listen_host="0.0.0.0" if executor_ip else "",
-            executor_url=f"http://{executor_ip}:{settings.XXLJOB_EXECUTOR_PORT}" if executor_ip else "",
+            executor_url=(
+                f"http://{executor_ip}:{settings.XXLJOB_EXECUTOR_PORT}" if executor_ip else ""
+            ),
         )
 
         runner = PyxxlRunner(config, handler=xxl_handler)

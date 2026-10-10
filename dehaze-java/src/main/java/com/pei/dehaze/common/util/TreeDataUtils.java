@@ -21,24 +21,18 @@ public class TreeDataUtils {
      * @param <ID>           元素和父元素ID的类型。
      * @return 包含所有根元素ID的列表。 <br/> 主要用于以下的都具有树结构的场景：
      * @see com.pei.dehaze.model.entity.SysDataset
-     * @see com.pei.dehaze.model.entity.SysAlgorithm
      * @see com.pei.dehaze.model.entity.SysMenu
      */
-    public static <T, ID> List<ID> findRootIds(List<T> items, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
+    public static <T, ID> List<ID> findRootIds(
+            List<T> items, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
         // 收集所有元素的ID到一个集合中
-        Set<ID> ids = items.stream()
-                .map(idMapper)
-                .collect(Collectors.toSet());
+        Set<ID> ids = items.stream().map(idMapper).collect(Collectors.toSet());
 
         // 收集所有元素父元素的ID到另一个集合中
-        Set<ID> parentIds = items.stream()
-                .map(parentIdMapper)
-                .collect(Collectors.toSet());
+        Set<ID> parentIds = items.stream().map(parentIdMapper).collect(Collectors.toSet());
 
         // 过滤出不在元素ID集合中的父元素ID，这些就是根元素的ID
-        return parentIds.stream()
-                .filter(id -> !ids.contains(id))
-                .toList();
+        return parentIds.stream().filter(id -> !ids.contains(id)).toList();
     }
 
     /**
@@ -51,16 +45,15 @@ public class TreeDataUtils {
      * @param <ID>           元素ID的类型
      * @return 所有叶子节点ID列表
      */
-    public static <T, ID> List<ID> findAllLeafIds(List<T> items, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
+    public static <T, ID> List<ID> findAllLeafIds(
+            List<T> items, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
         if (items == null || items.isEmpty()) {
             return Collections.emptyList();
         }
 
         // 获取所有作为父节点的ID集合
-        Set<ID> parentIds = items.stream()
-                .map(parentIdMapper)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<ID> parentIds =
+                items.stream().map(parentIdMapper).filter(Objects::nonNull).collect(Collectors.toSet());
 
         // 过滤出不在parentIds中的ID，即为叶子节点
         return items.stream()
@@ -80,9 +73,8 @@ public class TreeDataUtils {
      * @param <ID>           元素ID的类型
      * @return 指定节点下的所有叶子节点ID列表
      */
-    public static <T, ID> List<ID> findLeafIdsUnder(List<T> items, ID rootId,
-                                                    Function<T, ID> idMapper,
-                                                    Function<T, ID> parentIdMapper) {
+    public static <T, ID> List<ID> findLeafIdsUnder(
+            List<T> items, ID rootId, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
         if (items == null || items.isEmpty() || rootId == null) {
             return Collections.emptyList();
         }
@@ -126,9 +118,8 @@ public class TreeDataUtils {
      * @param <ID>           元素ID的类型
      * @return 指定节点及其所有子孙节点ID列表
      */
-    public static <T, ID> List<ID> findDescendantIds(List<T> items, ID rootId,
-                                                     Function<T, ID> idMapper,
-                                                     Function<T, ID> parentIdMapper) {
+    public static <T, ID> List<ID> findDescendantIds(
+            List<T> items, ID rootId, Function<T, ID> idMapper, Function<T, ID> parentIdMapper) {
         if (items == null || items.isEmpty() || rootId == null) {
             return Collections.emptyList();
         }

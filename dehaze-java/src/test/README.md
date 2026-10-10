@@ -19,25 +19,26 @@
 
 ## 2. 技术栈
 
-| 依赖 | 用途 |
-|------|------|
-| JUnit 5 | 测试框架（surefire 跑 `*Test.java`，failsafe 跑 `*IT.java`） |
-| Mockito | 纯单元测试 mock 协作者（`@ExtendWith(MockitoExtension.class)`） |
-| AssertJ / JUnit Assertions | 断言 |
-| spring-boot-test | `@SpringBootTest` 集成测试 |
-| spring-security-test | Controller 层安全测试（`@WithMockUser` 等） |
+| 依赖                       | 用途                                                            |
+| -------------------------- | --------------------------------------------------------------- |
+| JUnit 5                    | 测试框架（surefire 跑 `*Test.java`，failsafe 跑 `*IT.java`）    |
+| Mockito                    | 纯单元测试 mock 协作者（`@ExtendWith(MockitoExtension.class)`） |
+| AssertJ / JUnit Assertions | 断言                                                            |
+| spring-boot-test           | `@SpringBootTest` 集成测试                                      |
+| spring-security-test       | Controller 层安全测试（`@WithMockUser` 等）                     |
 
 ## 3. 测试分层与命名
 
-| 层次 | 命名 | 执行 | Spring 上下文 | 典型对象 |
-|------|------|------|--------------|---------|
-| 纯单元测试 | `*Test.java` | `mvn test`（surefire） | 不启动 | util、策略、注册表、handler（Mapper/Service 用 Mockito mock） |
-| 集成测试 | `*IT.java` | `mvn verify`（failsafe） | `@SpringBootTest` 启动 | Service 落库行为、跨模块交互、并发/事务/级联 |
-| 轻量切片 | `*Test.java` | `mvn test` | `@SpringBootTest(classes = TestConfig.class)` | 需要真实 Bean 装配但不需要 Redis/Security 自动配置的服务测试 |
+| 层次       | 命名         | 执行                     | Spring 上下文          | 典型对象                                                      |
+| ---------- | ------------ | ------------------------ | ---------------------- | ------------------------------------------------------------- |
+| 纯单元测试 | `*Test.java` | `mvn test`（surefire）   | 不启动                 | util、策略、注册表、handler（Mapper/Service 用 Mockito mock） |
+| 集成测试   | `*IT.java`   | `mvn verify`（failsafe） | `@SpringBootTest` 启动 | Service 落库行为、跨模块交互、并发/事务/级联                  |
 
-- `TestConfig`（`config/TestConfig.java`）：排除 `SecurityAutoConfiguration`/`RedisAutoConfiguration`
-  的精简上下文。**需要 `RedisTemplate` 或 `SecurityUtils` 生效的测试不要用它**，直接用默认
-  `SystemApplication` 上下文（如 `TaskServiceIT`）。
+- **集成测试统一用无参 `@SpringBootTest`**（完整 `SystemApplication` 上下文）。不要写成
+  `@SpringBootTest(classes = 某个测试配置类)`：测试配置类标注 `@TestConfiguration`，Spring Boot
+  会跳过它继续探测主配置类，两个上下文叠加后真实 `SecurityConfig` 与测试安全链同时注册，因两条
+  `any request` 过滤器链冲突而启动失败；测试配置类上的 `@ComponentScan` 还会把 `src/test/java`
+  中的测试桩扫进容器，形成歧义映射（`AiProxyMappingTest` 即因此暴露过该问题）。
 - 测试目录镜像主包结构：`src/main/java/com/pei/dehaze/service/impl/` →
   `src/test/java/com/pei/dehaze/service/impl/`。
 
@@ -48,18 +49,18 @@
 `false`——测试进程**不连、不消费、不注册**。需要测 MQ 消费逻辑时直接 new Consumer 调
 handler 方法（Mockito mock `RabbitTemplate`/Mapper），不启监听容器。
 
-| 依赖 | 纯单元测试 | 集成测试（*IT） | 关键约束 |
-|------|------------|----------------|---------|
-| **MySQL** | mock Mapper（仅当被测逻辑不涉 SQL 语义） | 真实 `dehaze_test` 库：`createDatabaseIfNotExist` 自动建库 → `sql.init` 加载 `schema/sys_*.sql`（DROP TABLE 幂等重建）+ `data/sys_*.sql` 种子 → `@Transactional` 测试结束自动回滚 | 通配必须限定 `sys_` 前缀：`xxl_job.sql` 含 `DROP DATABASE xxl_job`+`USE`，混入会切走连接当前库并误删共享实例的调度库 |
-| **Redis** | Mockito mock `RedisTemplate`/`RedissonClient` | 真实实例（`${REDIS_HOST}:${REDIS_PORT}`，源为根 `.env`）**逻辑库 15**；`spring.cache.type: none` 禁用缓存抽象 | 禁止 db 0（开发后端在用）；测试写入的键必须带 TTL 或用后即删 |
-| **MongoDB** | mock `MongoTemplate`/登录日志仓储 | 真实实例 **`dehaze_test` 库**（URI 与开发 `dehaze` 库隔离） | 登录日志/审计日志断言走行为断言（插入后可查回） |
-| **RabbitMQ** | mock `RabbitTemplate`；Consumer 直接 new 后调方法 | **不触达**（`rabbitmq.enabled: false`） | 严禁测试进程消费共享队列——会把开发环境的导出任务 ack 掉 |
-| **Kafka** | — | 不触达（`kafka.enabled: false`，Java 端未使用） | |
-| **MinIO/OSS** | mock `FileService` | **local 后端**（`file.type: local`、`file.minio.enabled: false`、`file.local.upload-path: ./upload`） | 测试数据的 `sys_file.storage` 必须写 `"local"`——`StorageServiceFactory` 按启用的后端解析，写 `minio` 会抛"不支持的存储后端"；URL 断言用 `getUrl()` 的 `baseUrl + "/" + objectName` 拼接结果 |
-| **XXL-Job** | 直接调用 handler 的 `@XxlJob` 方法 | **不触达**（`xxl.job.enabled: false`，不注册执行器/不开 netty 端口） | |
-| **Elasticsearch** | — | — | **Java 端未使用**（ES 是 Python 端依赖，Python 侧用 respx mock） |
-| **Python 算法服务** | Mockito mock HTTP 客户端 bean | 不调真实推理 | |
-| **SecurityContext** | 归属校验逻辑通过构造/参数注入的可测设计优先 | 见 §5.2 模板：`SecurityContextHolder` + `SysUserDetails` | `SecurityUtils.getUserId()` 读 `SecurityContextHolder`，IT 不设上下文时为 null |
+| 依赖                | 纯单元测试                                        | 集成测试（*IT）                                                                                                                                                                   | 关键约束                                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MySQL**           | mock Mapper（仅当被测逻辑不涉 SQL 语义）          | 真实 `dehaze_test` 库：`createDatabaseIfNotExist` 自动建库 → `sql.init` 加载 `schema/sys_*.sql`（DROP TABLE 幂等重建）+ `data/sys_*.sql` 种子 → `@Transactional` 测试结束自动回滚 | 通配必须限定 `sys_` 前缀：`xxl_job.sql` 含 `DROP DATABASE xxl_job`+`USE`，混入会切走连接当前库并误删共享实例的调度库                                                                        |
+| **Redis**           | Mockito mock `RedisTemplate`/`RedissonClient`     | 真实实例（`${REDIS_HOST}:${REDIS_PORT}`，源为根 `.env`）**逻辑库 15**；`spring.cache.type: none` 禁用缓存抽象                                                                     | 禁止 db 0（开发后端在用）；测试写入的键必须带 TTL 或用后即删                                                                                                                                |
+| **MongoDB**         | mock `MongoTemplate`/登录日志仓储                 | 真实实例 **`dehaze_test` 库**（URI 与开发 `dehaze` 库隔离）                                                                                                                       | 登录日志/审计日志断言走行为断言（插入后可查回）                                                                                                                                             |
+| **RabbitMQ**        | mock `RabbitTemplate`；Consumer 直接 new 后调方法 | **不触达**（`rabbitmq.enabled: false`）                                                                                                                                           | 严禁测试进程消费共享队列——会把开发环境的导出任务 ack 掉                                                                                                                                     |
+| **Kafka**           | —                                                 | 不触达（`kafka.enabled: false`，Java 端未使用）                                                                                                                                   |                                                                                                                                                                                             |
+| **MinIO/OSS**       | mock `FileService`                                | **local 后端**（`file.type: local`、`file.minio.enabled: false`、`file.local.upload-path: ./upload`）                                                                             | 测试数据的 `sys_file.storage` 必须写 `"local"`——`StorageServiceFactory` 按启用的后端解析，写 `minio` 会抛"不支持的存储后端"；URL 断言用 `getUrl()` 的 `baseUrl + "/" + objectName` 拼接结果 |
+| **XXL-Job**         | 直接调用 handler 的 `@XxlJob` 方法                | **不触达**（`xxl.job.enabled: false`，不注册执行器/不开 netty 端口）                                                                                                              |                                                                                                                                                                                             |
+| **Elasticsearch**   | —                                                 | —                                                                                                                                                                                 | **Java 端未使用**（ES 是 Python 端依赖，Python 侧用 respx mock）                                                                                                                            |
+| **Python 算法服务** | Mockito mock HTTP 客户端 bean                     | 不调真实推理                                                                                                                                                                      |                                                                                                                                                                                             |
+| **SecurityContext** | 归属校验逻辑通过构造/参数注入的可测设计优先       | 见 §5.2 模板：`SecurityContextHolder` + `SysUserDetails`                                                                                                                          | `SecurityUtils.getUserId()` 读 `SecurityContextHolder`，IT 不设上下文时为 null                                                                                                              |
 
 ## 5. 测试模板
 
@@ -82,7 +83,7 @@ class ExportHandlerRegistryTest {
 `create_by`（两者一致才通过校验）：
 
 ```java
-@SpringBootTest                 // 需 Redis/Security 时用完整上下文；不需要时 classes = TestConfig.class
+@SpringBootTest                 // 完整上下文：Redis/Security 自动配置与真实 SecurityConfig 均生效
 @Transactional                  // 测试结束自动回滚，种子数据零污染
 class TaskServiceIT {
     private static final Long TEST_USER_ID = 1L;
@@ -122,12 +123,15 @@ mvn failsafe:integration-test -DskipTests=false   # 只跑 IT（需先 test-comp
 ```
 
 前置条件：
+
 - 仓库根目录 `.env` 存在按基础设施分区的连接变量（MySQL/Redis/MongoDB 分别对应
   `MYSQL_HOST`/`MYSQL_PORT`、`REDIS_HOST`/`REDIS_PORT`、`MONGODB_HOST`/`MONGODB_PORT`，密码同理，
-  远程实例需先 `ssh -L` 隧道：3306/6379/27017）
+  远程实例需先 `ssh -L` 隧道：3306/6381/27017）
 - MySQL/Redis/MongoDB 可达，否则 fail-fast（配置错误明确报错优于静默跳过）
-- **与 dehaze-python 测试共用 `dehaze_test` 库**（Python conftest 会 DROP + CREATE 全量重置），
-  两端数据库测试勿并行运行
+- 测试库名由 `DEHAZE_TEST_DB` 指定（默认 `dehaze_test`，同时决定 Mongo 库名；`DEHAZE_TEST_REDIS_DB` 决定 Redis 库号）：
+  三端（Java/Python/Go）都用基线库 `dehaze_test` 时**数据库测试必须串行**（各方都会重建该库）；
+  需要并行时各指定独立库（如 `DEHAZE_TEST_DB=dehaze_test_java mvn verify`），
+  详见 dehaze-doc《测试架构》§3.4
 - IntelliJ IDEA 首次运行需 `mvn process-test-resources` 触发 `config/sql` → classpath 复制，
   或启用 "Delegate IDE build/run actions to Maven"
 

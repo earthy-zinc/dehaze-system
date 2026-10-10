@@ -1,18 +1,17 @@
 package com.pei.dehaze.model.form;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.pei.dehaze.model.query.SkillPageQuery;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * 表单/查询约束与 python 侧 parity 校验（字段级）。
@@ -32,7 +31,8 @@ class AiFormValidationParityTest {
     }
 
     @Test
-    @DisplayName("KbUpdateForm：name/searchStrategy/hybridWeight/topK/scoreThreshold/rerankModel/embeddingModel/chunkingStrategy 越界被拒")
+    @DisplayName(
+            "KbUpdateForm：name/searchStrategy/hybridWeight/topK/scoreThreshold/rerankModel/embeddingModel/chunkingStrategy 越界被拒")
     void kbUpdateFormRejectsOutOfRangeValues() {
         assertThat(violations(validKbUpdateForm())).isEmpty();
 
@@ -49,8 +49,16 @@ class AiFormValidationParityTest {
         form.setChunkingStrategy("bogus");
 
         Set<String> properties = violationProperties(form);
-        assertThat(properties).contains("name", "searchStrategy", "hybridWeight", "topK",
-                "scoreThreshold", "rerankModel", "embeddingModel", "chunkingStrategy");
+        assertThat(properties)
+                .contains(
+                        "name",
+                        "searchStrategy",
+                        "hybridWeight",
+                        "topK",
+                        "scoreThreshold",
+                        "rerankModel",
+                        "embeddingModel",
+                        "chunkingStrategy");
 
         KbUpdateForm topKLow = validKbUpdateForm();
         topKLow.setTopK(0);
@@ -103,7 +111,7 @@ class AiFormValidationParityTest {
     }
 
     @Test
-    @DisplayName("ModelPrice 表单：modelId≤64、unit≤24、minTokens≥0、unitPrice≥0；maxTokens 无界不动")
+    @DisplayName("ModelPrice 表单：modelId≤64、unit≤24、billingUnit≤32、usageKind≤16、minTokens≥0、unitPrice≥0；maxTokens 无界不动")
     void modelPriceFormsRejectOutOfRangeValues() {
         ModelPriceForm form = new ModelPriceForm();
         form.setModelId("m");
@@ -113,20 +121,23 @@ class AiFormValidationParityTest {
 
         form.setModelId("x".repeat(65));
         form.setUnit("x".repeat(25));
+        form.setBillingUnit("x".repeat(33));
         ModelPriceForm.Detail detail = form.getDetails().get(0);
         detail.setMinTokens(-1L);
         detail.setUnitPrice(new BigDecimal("-0.01"));
+        detail.setUsageKind("x".repeat(17));
         detail.setMaxTokens(-999L); // python max_tokens 无界 → 不产生违规
 
-        assertThat(violationProperties(form)).contains("modelId", "unit");
+        assertThat(violationProperties(form)).contains("modelId", "unit", "billingUnit");
         assertThat(violations(detail).stream().map(v -> v.getPropertyPath().toString()))
-                .contains("minTokens", "unitPrice")
+                .contains("minTokens", "unitPrice", "usageKind")
                 .doesNotContain("maxTokens");
 
         ModelPriceUpdateForm update = new ModelPriceUpdateForm();
         assertThat(violations(update)).isEmpty();
         update.setUnit("x".repeat(25));
-        assertThat(violationProperties(update)).contains("unit");
+        update.setBillingUnit("x".repeat(33));
+        assertThat(violationProperties(update)).contains("unit", "billingUnit");
     }
 
     @Test
@@ -145,8 +156,13 @@ class AiFormValidationParityTest {
         create.setMaxOutputTokens(0);
         create.setPromptCachePrefixLen(-1);
         assertThat(violationProperties(create))
-                .contains("modelId", "dimension", "displayName", "maxContextTokens",
-                        "maxOutputTokens", "promptCachePrefixLen");
+                .contains(
+                        "modelId",
+                        "dimension",
+                        "displayName",
+                        "maxContextTokens",
+                        "maxOutputTokens",
+                        "promptCachePrefixLen");
 
         AiModelUpdateForm update = new AiModelUpdateForm();
         assertThat(violations(update)).isEmpty();
@@ -157,8 +173,7 @@ class AiFormValidationParityTest {
         update.setMaxOutputTokens(0);
         update.setPromptCachePrefixLen(-1);
         assertThat(violationProperties(update))
-                .contains("dimension", "displayName", "maxContextTokens", "maxOutputTokens",
-                        "promptCachePrefixLen");
+                .contains("dimension", "displayName", "maxContextTokens", "maxOutputTokens", "promptCachePrefixLen");
     }
 
     @Test
@@ -172,8 +187,7 @@ class AiFormValidationParityTest {
         create.setDescription("x".repeat(513));
         create.setEndpoint("x".repeat(513));
         create.setAuthType("x".repeat(33));
-        assertThat(violationProperties(create))
-                .contains("name", "description", "endpoint", "authType");
+        assertThat(violationProperties(create)).contains("name", "description", "endpoint", "authType");
 
         McpServerUpdateForm update = new McpServerUpdateForm();
         assertThat(violations(update)).isEmpty();
@@ -210,8 +224,7 @@ class AiFormValidationParityTest {
         update.setApiBaseUrl("x".repeat(513));
         update.setProtocolType("x".repeat(33));
         update.setAuthType("x".repeat(33));
-        assertThat(violationProperties(update))
-                .contains("displayName", "apiBaseUrl", "protocolType", "authType");
+        assertThat(violationProperties(update)).contains("displayName", "apiBaseUrl", "protocolType", "authType");
     }
 
     @Test
@@ -237,8 +250,7 @@ class AiFormValidationParityTest {
         form.setDescription("x".repeat(501));
         form.setInstruction("");
         form.setScene("x".repeat(256));
-        assertThat(violationProperties(form))
-                .contains("name", "description", "instruction", "scene");
+        assertThat(violationProperties(form)).contains("name", "description", "instruction", "scene");
 
         SkillUpdateForm tooLongName = new SkillUpdateForm();
         tooLongName.setName("x".repeat(129));

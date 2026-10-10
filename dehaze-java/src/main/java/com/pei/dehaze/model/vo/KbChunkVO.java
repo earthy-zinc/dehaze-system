@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** AI 知识库分块视图（对齐 python KnowledgeChunkVO） */
 @Schema(description = "知识库分块视图")

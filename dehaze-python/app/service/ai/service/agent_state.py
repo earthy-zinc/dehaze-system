@@ -43,7 +43,7 @@ class AgentState(TypedDict, total=False):
 
     # 任务状态（不进入对话流，LLM 通过 get_task_status 工具查询）
     task_type: str  # 当前任务类型（如 dehaze/evaluate）
-    task_algorithm: str  # 当前使用的算法标识
+    task_model: str  # 当前使用的图像模型标识
     task_params: dict[str, Any]  # 处理参数（如强度、饱和度）
     task_status: str  # 任务执行状态（processing/completed/failed）
     task_id: str  # 关联的异步任务 ID

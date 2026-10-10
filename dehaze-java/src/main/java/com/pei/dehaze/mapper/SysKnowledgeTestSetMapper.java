@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysKnowledgeTestSet;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysKnowledgeTestSetMapper extends BaseMapper<SysKnowledgeTestSet> {
-}
+public interface SysKnowledgeTestSetMapper extends BaseMapper<SysKnowledgeTestSet> {}

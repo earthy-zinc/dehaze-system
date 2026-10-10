@@ -25,13 +25,17 @@ logger = logging.getLogger(__name__)
 DICT_OPTIONS_CACHE_PREFIX = "dict:data:"
 DICT_OPTIONS_CACHE_TTL = CACHE_TTL_HOUR
 
-# 系统预置字典类型编码（T-DM-025：预置类型不可删除），与 config/sql/data/sys_dict_type.sql 种子一致
+# 系统预置字典类型编码（T-DM-025：预置类型不可删除）——**保护集 8 项**，
+# java/go 各有用例逐项对齐本集合。注意：种子 config/sql/data/sys_dict_type.sql 共 **9 项**，
+# 其中 voice_billing（语音计费单价）不在保护集内（可删）——属既定口径，
+# 勿按"种子全量＝保护集"的直觉把 voice_billing 补进来。
 SYSTEM_PRESET_DICT_TYPE_CODES = frozenset(
     {
         "gender",
         "ai_guardrail_defaults",
         "ai_provider_health",
         "ai_embedding",
+        "ai_model",
         "member_growth_rules",
         "favorite_capacity",
         "ai_eval",
@@ -46,6 +50,7 @@ _SYSTEM_DICT_TYPE_SEEDS: list[tuple[str, str]] = [
     ("ai_guardrail_defaults", "AI 护栏默认"),
     ("ai_provider_health", "AI 供应商健康"),
     ("ai_embedding", "AI 向量化 Embedding"),
+    ("ai_model", "AI 模型默认配置"),
     ("member_growth_rules", "会员成长值规则"),
     ("favorite_capacity", "收藏容量"),
 ]
@@ -73,6 +78,15 @@ _SYSTEM_DICT_ITEM_SEEDS: list[tuple[str, str, str, int, int, str]] = [
     ),
     ("ai_embedding", "model", "text-embedding-3-small", 2, 1, "Embedding 模型标识"),
     ("ai_embedding", "dims", "1536", 3, 1, "向量维度(ES dense_vector dims 联动)"),
+    # AI 模型默认配置（平台默认对话模型：会话/请求未指定时使用，未配置则报错）
+    (
+        "ai_model",
+        "default_model",
+        "qwen3-0.6b",
+        1,
+        1,
+        "平台默认对话模型(会话与请求均未指定模型时使用，须为已启用模型)",
+    ),
     # 会员成长值规则（会员管理 §9.1；营销激励参数）
     ("member_growth_rules", "sign_in_value", "3", 1, 1, "每日签到获得成长值"),
     ("member_growth_rules", "sign_in_streak_bonus", "20", 2, 1, "连续签到奖励（连续7天额外获得）"),
@@ -149,18 +163,23 @@ async def ensure_system_dict_defaults(db: AsyncSession, redis: Redis) -> None:
     await invalidate_guardrail_defaults(redis)
 
 
-# sys_dict int 型键值缓存前缀/TTL（供业务服务读取营销/容量等字典规则时统一走缓存）
+# sys_dict 键值读取缓存前缀/TTL（int/float/str 型读取共用，供业务服务读营销/计费/容量等规则）
 DICT_VALUE_CACHE_PREFIX = "dict:value:"
 DICT_VALUE_CACHE_TTL = CACHE_TTL_HOUR
 
 
-async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int) -> int:
-    """读取 sys_dict 中 int 型字典键值，带缓存（TTL 1 小时）。
+async def get_dict_value(
+    db: AsyncSession, type_code: str, key: str, default: str | None
+) -> str | None:
+    """读取 sys_dict 字典项原始值，带缓存（TTL 1 小时）。
 
-    字典更新时由 DictService/DictTypeService 失效 `dict:data:` 前缀缓存，
-    但本读路径独立缓存，故此处以 `dict:value:` 前缀 + 1 小时 TTL 自洽；
-    运营调整后最长 1 小时生效。缺键或读取失败时记录 warning 并回退设计默认值
-    （与 config/sql/data/sys_dict.sql 种子一致），不抛异常阻断业务。
+    缓存以 `dict:value:` 前缀独立于下拉缓存；字典写路径（DictService/DictTypeService）
+    提交后失效该前缀，运营改值即时生效。缺键或读取失败时记录 warning 并回退 default
+    （由调用方决定是否有默认语义），不抛异常阻断业务。
+
+    `status=0` 的字典项**视同缺项**（停用即不生效，回落 default）——与 go/java 读取字典值
+    的口径一致（如平台默认模型取「启用的字典值」）。注意不能为此改共享仓储
+    `get_by_type_code_and_name`：种子判重/唯一性校验必须能看到停用行。
     """
     from app.dependencies.redis import get_redis_client
 
@@ -168,16 +187,40 @@ async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int)
     cache_key = f"{DICT_VALUE_CACHE_PREFIX}{type_code}:{key}"
     cached = await cache.get_json(cache_key)
     if cached is not None:
-        return int(cached)
+        return str(cached)
     value = default
     try:
         item = await dict_repository.get_by_type_code_and_name(db, type_code, key)
-        if item is not None:
-            value = int(item.value)
+        if item is not None and item.status == 1 and item.value not in (None, ""):
+            value = item.value
     except Exception as exc:
-        logger.warning("读取字典[%s:%s]失败，回退默认值 %d: %s", type_code, key, default, exc)
+        logger.warning("读取字典[%s:%s]失败，回退默认值 %r: %s", type_code, key, default, exc)
     await cache.set_json(cache_key, value, DICT_VALUE_CACHE_TTL)
     return value
+
+
+async def get_dict_int(db: AsyncSession, type_code: str, key: str, default: int) -> int:
+    """读取 sys_dict 中 int 型字典键值（带缓存）；缺键或值非法时回退 default"""
+    raw = await get_dict_value(db, type_code, key, str(default))
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("字典[%s:%s]值非法(%r)，回退默认值 %d", type_code, key, raw, default)
+        return default
+
+
+async def get_dict_float(db: AsyncSession, type_code: str, key: str, default: float) -> float:
+    """读取 sys_dict 中 float 型字典键值（带缓存）；缺键或值非法时回退 default"""
+    raw = await get_dict_value(db, type_code, key, str(default))
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        logger.warning("字典[%s:%s]值非法(%r)，回退默认值 %s", type_code, key, raw, default)
+        return default
 
 
 async def _invalidate_dict_value_cache(redis: Redis, type_code: str) -> None:
@@ -447,7 +490,7 @@ class DictTypeService:
                 for dt in dict_types:
                     if counts.get(dt.code, 0) > 0:
                         raise BusinessException(
-                            ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除"
+                            ResultCode.DATA_REFERENCED, "存在关联的字典数据，无法删除"
                         )
 
         await dict_type_repository.soft_delete_by_ids(db, type_ids)

@@ -201,7 +201,7 @@ class SearchFilters(BaseModel):
     tags: list[str] | None = Field(default=None, description="按标签过滤")
     startTime: datetime | None = Field(default=None, description="按创建时间起始过滤")
     endTime: datetime | None = Field(default=None, description="按创建时间结束过滤")
-    algorithmId: int | None = Field(default=None, description="关联算法ID")
+    modelId: str | None = Field(default=None, description="关联图像模型标识（统一模型规范 slug）")
     entities: list[str] | None = Field(default=None, description="关联实体名称列表")
     relations: list[str] | None = Field(default=None, description="关联关系类型列表")
 

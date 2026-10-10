@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiLlmCall;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiLlmCallMapper extends BaseMapper<SysAiLlmCall> {
-}
+public interface SysAiLlmCallMapper extends BaseMapper<SysAiLlmCall> {}

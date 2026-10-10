@@ -10,9 +10,14 @@ from app.repository.base import BaseRepository
 class AiProviderKeyRepository(BaseRepository[SysAiProviderKey]):
     model = SysAiProviderKey
 
-    async def get_by_hash(self, db: AsyncSession, key_hash: str) -> SysAiProviderKey | None:
-        """按哈希查重"""
-        stmt = select(SysAiProviderKey).where(SysAiProviderKey.key_hash == key_hash)
+    async def get_by_provider_and_hash(
+        self, db: AsyncSession, provider_id: int, key_hash: str
+    ) -> SysAiProviderKey | None:
+        """按供应商 + 哈希查重（同一密钥可在不同供应商各登记一行）"""
+        stmt = select(SysAiProviderKey).where(
+            SysAiProviderKey.provider_id == provider_id,
+            SysAiProviderKey.key_hash == key_hash,
+        )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 

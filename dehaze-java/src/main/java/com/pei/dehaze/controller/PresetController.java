@@ -24,11 +24,11 @@ public class PresetController {
     @Operation(summary = "获取参数预设列表（系统预设 + 用户自定义）")
     @GetMapping
     public PageResult<PresetVO> listPresets(
-            @Parameter(description = "算法ID（可选筛选）") @RequestParam(required = false) Long algorithmId,
+            @Parameter(description = "图像模型标识（可选筛选）") @RequestParam(required = false) String modelId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") int pageNum,
             @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") int pageSize,
             @Parameter(description = "是否系统预设") @RequestParam(required = false) Boolean isSystem) {
-        Page<PresetVO> page = presetService.listPresets(algorithmId, pageNum, pageSize, isSystem);
+        Page<PresetVO> page = presetService.listPresets(modelId, pageNum, pageSize, isSystem);
         return PageResult.success(page);
     }
 
@@ -40,8 +40,8 @@ public class PresetController {
 
     @Operation(summary = "更新自定义预设")
     @PutMapping("/{id}")
-    public Result<PresetVO> updatePreset(@Parameter(description = "预设ID") @PathVariable Long id,
-                                         @Valid @RequestBody PresetForm form) {
+    public Result<PresetVO> updatePreset(
+            @Parameter(description = "预设ID") @PathVariable Long id, @Valid @RequestBody PresetForm form) {
         return Result.success(presetService.updatePreset(id, form));
     }
 

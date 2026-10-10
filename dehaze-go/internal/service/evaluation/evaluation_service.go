@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
-	memberservice "github.com/earthyzinc/dehaze-go/internal/service/member"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/metrics"
-	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -23,13 +21,12 @@ import (
 // EvaluationService 去雾效果评估服务
 type EvaluationService struct {
 	repo      evalrepo.IEvalLogRepository
-	algoRepo  algorepo.IAlgorithmRepository
+	modelRepo *airepo.ModelRepository
 	client    *algo.Client
-	memberSvc memberservice.IMemberService
 }
 
-func NewEvaluationService(repo evalrepo.IEvalLogRepository, algoRepo algorepo.IAlgorithmRepository, client *algo.Client, memberSvc memberservice.IMemberService) *EvaluationService {
-	return &EvaluationService{repo: repo, algoRepo: algoRepo, client: client, memberSvc: memberSvc}
+func NewEvaluationService(repo evalrepo.IEvalLogRepository, modelRepo *airepo.ModelRepository, client *algo.Client) *EvaluationService {
+	return &EvaluationService{repo: repo, modelRepo: modelRepo, client: client}
 }
 
 // EvaluationResult 评估结果 VO
@@ -37,44 +34,39 @@ type EvaluationResult struct {
 	LogID        int64              `json:"logId"`
 	Status       model.LogStatus    `json:"status"`
 	Metrics      map[string]float64 `json:"metrics,omitempty"`
+	PredMd5      string             `json:"predMd5,omitempty"`
+	GtMd5        string             `json:"gtMd5,omitempty"`
 	Time         int                `json:"time"`
 	ErrorMessage string             `json:"errorMessage,omitempty"`
 }
 
 // Evaluate 提交效果评估任务（异步）
-// 流程：校验算法 → 校验权益扣减配额 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
-func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, predURL, gtURL string, userID int64) (*EvaluationResult, error) {
-	algorithm, err := s.algoRepo.FindByID(ctx, algorithmID)
+// 流程：校验模型存在 → 写日志(processing) → 启动 goroutine 执行 → 立即返回
+func (s *EvaluationService) Evaluate(ctx context.Context, modelID, predURL, gtURL string, userID int64) (*EvaluationResult, error) {
+	imgModel, err := s.modelRepo.GetByModelID(ctx, modelID)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询图像模型失败", err)
 	}
-	if algorithm == nil {
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
-	}
-
-	if s.memberSvc != nil {
-		if err := s.memberSvc.CheckAndDeductQuota(ctx, userID, memberservice.QuotaTypeEvaluate); err != nil {
-			return nil, err
-		}
+	if imgModel == nil {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "图像模型不存在")
 	}
 
+	// pred_md5/gt_md5 是图片内容 MD5，由算法服务下载图片后计算并随响应返回；
+	// 创建 processing 日志时先留空，完成后回填（禁止用 URL 的 MD5 冒充）
 	evalLog := &model.SysEvalLog{
-		BaseModel:   model.BaseModel{CreateBy: userID},
-		AlgorithmID: algorithmID,
-		PredMD5:     utils.MD5Hex(predURL),
-		PredURL:     predURL,
-		GtMD5:       utils.MD5Hex(gtURL),
-		GtURL:       gtURL,
-		Status:      model.LogStatusProcessing,
-		TaskType:    "evaluation",
+		BaseModel: model.BaseModel{CreateBy: userID},
+		ModelID:   modelID,
+		PredURL:   predURL,
+		GtURL:     gtURL,
+		Status:    model.LogStatusProcessing,
+		TaskType:  "evaluation",
 	}
 	if err := s.repo.Create(ctx, evalLog); err != nil {
-		s.refundQuota(userID)
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建评估日志失败", err)
 	}
 
 	logID := evalLog.ID
-	go s.executeAsync(logID, algorithmID, predURL, gtURL, userID)
+	go s.executeAsync(logID, modelID, predURL, gtURL)
 
 	return &EvaluationResult{
 		LogID:  logID,
@@ -83,20 +75,20 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 }
 
 // executeAsync 异步执行评估任务，更新日志状态
-func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtURL string, userID int64) {
+func (s *EvaluationService) executeAsync(logID int64, modelID, predURL, gtURL string) {
 	ctx := context.Background()
 	startTime := time.Now()
 
 	resp, err := s.client.Evaluate(ctx, &algo.EvaluationRequest{
-		AlgorithmID: algorithmID,
-		PredURL:     predURL,
-		GtURL:       gtURL,
+		ModelID: modelID,
+		PredURL: predURL,
+		GtURL:   gtURL,
 	})
 
 	if err != nil {
 		elapsed := int(time.Since(startTime).Seconds())
 		logger.Error("异步效果评估失败",
-			zap.Int64("algorithmID", algorithmID),
+			zap.String("modelID", modelID),
 			zap.Int64("logID", logID),
 			zap.Error(err))
 		errMsg := err.Error()
@@ -104,7 +96,6 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
-		s.refundQuota(userID)
 		return
 	}
 
@@ -118,7 +109,6 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 				logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 			}
 			metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
-			s.refundQuota(userID)
 			return
 		}
 	}
@@ -131,31 +121,21 @@ func (s *EvaluationService) executeAsync(logID, algorithmID int64, predURL, gtUR
 			logger.Error("更新评估日志失败状态失败", zap.Int64("logID", logID), zap.Error(updateErr))
 		}
 		metrics.RecordEvaluation("failure", time.Since(startTime).Seconds())
-		s.refundQuota(userID)
 		return
 	}
 
 	metricsJSON, _ := json.Marshal(resp.Metrics)
 	resultStr := string(metricsJSON)
-	if err := s.repo.UpdateResult(ctx, logID, model.LogStatusCompleted, resultStr, resp.Time); err != nil {
+	// pred_md5/gt_md5 取算法服务返回的内容 MD5
+	if err := s.repo.UpdateResult(ctx, logID, model.LogStatusCompleted, resultStr, resp.PredMd5, resp.GtMd5, resp.Time); err != nil {
 		logger.Error("更新评估日志完成状态失败", zap.Int64("logID", logID), zap.Error(err))
 	}
 
 	metrics.RecordEvaluation("success", time.Since(startTime).Seconds())
 
 	logger.Info("异步效果评估完成",
-		zap.Int64("algorithmID", algorithmID),
+		zap.String("modelID", modelID),
 		zap.Int64("logID", logID))
-}
-
-// refundQuota 评估失败时回补用户配额
-func (s *EvaluationService) refundQuota(userID int64) {
-	if s.memberSvc != nil {
-		ctx := context.Background()
-		if err := s.memberSvc.RefundQuota(ctx, userID, memberservice.QuotaTypeEvaluate); err != nil {
-			logger.Warn("回补评估配额失败", zap.Int64("userID", userID), zap.Error(err))
-		}
-	}
 }
 
 // pollEvalTask 轮询 Python 评估任务状态直到终态
@@ -208,6 +188,8 @@ func (s *EvaluationService) GetTaskStatus(ctx context.Context, id int64, userID 
 		if log.Result != nil {
 			_ = json.Unmarshal([]byte(*log.Result), &result.Metrics)
 		}
+		result.PredMd5 = log.PredMD5
+		result.GtMd5 = log.GtMD5
 		result.Time = log.Time
 	case model.LogStatusFailed:
 		if log.ErrorMessage != nil {
@@ -231,32 +213,32 @@ func (s *EvaluationService) GetLogByID(ctx context.Context, id int64) (*model.Sy
 }
 
 // GetUserMetricsPage 获取当前用户的评估指标历史（仅已完成状态）
-func (s *EvaluationService) GetUserMetricsPage(ctx context.Context, userID int64, algorithmID int64, pageNum, pageSize int) (*common.PageResult, error) {
-	list, total, err := s.repo.FindPageByUser(ctx, userID, algorithmID, pageNum, pageSize)
+func (s *EvaluationService) GetUserMetricsPage(ctx context.Context, userID int64, modelID string, pageNum, pageSize int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindPageByUser(ctx, userID, modelID, pageNum, pageSize)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估指标历史失败", err)
 	}
 
 	type EvalMetricsVO struct {
-		ID          int64              `json:"id"`
-		AlgorithmID int64              `json:"algorithmId"`
-		PredURL     string             `json:"predUrl"`
-		GtURL       string             `json:"gtUrl"`
-		Time        int                `json:"time"`
-		Status      model.LogStatus    `json:"status"`
-		Metrics     map[string]float64 `json:"metrics"`
-		CreateTime  string             `json:"createTime"`
+		ID         int64              `json:"id"`
+		ModelID    string             `json:"modelId"`
+		PredURL    string             `json:"predUrl"`
+		GtURL      string             `json:"gtUrl"`
+		Time       int                `json:"time"`
+		Status     model.LogStatus    `json:"status"`
+		Metrics    map[string]float64 `json:"metrics"`
+		CreateTime string             `json:"createTime"`
 	}
 	vos := make([]EvalMetricsVO, 0, len(list))
 	for _, log := range list {
 		vo := EvalMetricsVO{
-			ID:          log.ID,
-			AlgorithmID: log.AlgorithmID,
-			PredURL:     log.PredURL,
-			GtURL:       log.GtURL,
-			Time:        log.Time,
-			Status:      log.Status,
-			CreateTime:  log.CreatedAt.Format("2006-01-02 15:04:05"),
+			ID:         log.ID,
+			ModelID:    log.ModelID,
+			PredURL:    log.PredURL,
+			GtURL:      log.GtURL,
+			Time:       log.Time,
+			Status:     log.Status,
+			CreateTime: log.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 		if log.Result != nil {
 			_ = json.Unmarshal([]byte(*log.Result), &vo.Metrics)
@@ -267,8 +249,8 @@ func (s *EvaluationService) GetUserMetricsPage(ctx context.Context, userID int64
 }
 
 // GetLogPage 分页查询当前用户的评估日志
-func (s *EvaluationService) GetLogPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) (*common.PageResult, error) {
-	list, total, err := s.repo.FindLogPageByUser(ctx, userID, algorithmID, pageNum, pageSize)
+func (s *EvaluationService) GetLogPage(ctx context.Context, modelID string, userID int64, pageNum, pageSize int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindLogPageByUser(ctx, userID, modelID, pageNum, pageSize)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估日志列表失败", err)
 	}

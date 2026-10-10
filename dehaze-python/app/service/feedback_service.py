@@ -44,7 +44,7 @@ STATS_CACHE_TTL = 600
 DAILY_COUNT_TTL = 25 * 3600
 
 RATING_STATS_CACHE_KEY = "rating:stats:global"
-RATING_STATS_ALGORITHM_CACHE_KEY = "rating:stats:algorithm:{algorithm_id}"
+RATING_STATS_MODEL_CACHE_KEY = "rating:stats:model:{model_id}"
 FEEDBACK_STATS_CACHE_KEY = "feedback:stats"
 RATING_DAILY_COUNT_KEY = "rating:daily:{user_id}:{date}"
 FEEDBACK_DAILY_COUNT_KEY = "feedback:daily:{user_id}:{date}"
@@ -87,11 +87,11 @@ def _validate_image_urls(urls: list[str] | None, max_count: int) -> None:
             raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH)
 
 
-def _rating_to_my_vo(rating: SysRating, algorithm_name: str = "") -> dict:
+def _rating_to_my_vo(rating: SysRating, model_name: str = "") -> dict:
     return {
         "id": rating.id,
         "predLogId": rating.pred_log_id,
-        "algorithmName": algorithm_name or "",
+        "modelName": model_name or "",
         "rating": rating.rating,
         "comment": rating.comment,
         "tags": rating.tags,
@@ -108,9 +108,9 @@ def _rating_to_page_vo(
     username: str = "",
     nickname: str | None = None,
     avatar: str | None = None,
-    algorithm_name: str = "",
+    model_name: str = "",
 ) -> dict:
-    vo = _rating_to_my_vo(rating, algorithm_name)
+    vo = _rating_to_my_vo(rating, model_name)
     vo["userId"] = rating.user_id
     vo["username"] = username or ""
     vo["userAvatar"] = avatar
@@ -123,10 +123,10 @@ def _rating_to_detail_vo(
     username: str = "",
     nickname: str | None = None,
     avatar: str | None = None,
-    algorithm_name: str = "",
+    model_name: str = "",
 ) -> dict:
-    vo = _rating_to_page_vo(rating, username, nickname, avatar, algorithm_name)
-    vo["algorithmId"] = rating.algorithm_id
+    vo = _rating_to_page_vo(rating, username, nickname, avatar, model_name)
+    vo["modelId"] = rating.model_id
     return vo
 
 
@@ -235,7 +235,7 @@ class FeedbackService:
         rating = SysRating(
             user_id=user_id,
             pred_log_id=pred_log_id,
-            algorithm_id=pred_log.algorithm_id or 0,
+            model_id=pred_log.model_id or 0,
             rating=form["rating"],
             comment=form.get("comment"),
             tags=form.get("tags"),
@@ -248,9 +248,7 @@ class FeedbackService:
 
         cache = CacheService(redis)
         await cache.delete(RATING_STATS_CACHE_KEY)
-        await cache.delete(
-            RATING_STATS_ALGORITHM_CACHE_KEY.format(algorithm_id=rating.algorithm_id)
-        )
+        await cache.delete(RATING_STATS_MODEL_CACHE_KEY.format(model_id=rating.model_id))
 
         if rating.rating <= LOW_RATING_THRESHOLD:
             await self._publish_low_rating_alert(rating)
@@ -317,7 +315,7 @@ class FeedbackService:
             {
                 "ratingId": rating.id,
                 "userId": rating.user_id,
-                "algorithmId": rating.algorithm_id,
+                "modelId": rating.model_id,
                 "rating": rating.rating,
                 "comment": rating.comment,
                 "createTime": rating.create_time.isoformat() if rating.create_time else None,
@@ -348,9 +346,7 @@ class FeedbackService:
 
         cache = CacheService(redis)
         await cache.delete(RATING_STATS_CACHE_KEY)
-        await cache.delete(
-            RATING_STATS_ALGORITHM_CACHE_KEY.format(algorithm_id=rating.algorithm_id)
-        )
+        await cache.delete(RATING_STATS_MODEL_CACHE_KEY.format(model_id=rating.model_id))
 
     async def list_my_ratings(self, db: AsyncSession, user_id: int, query: dict) -> dict:
         items, total = await self.rating_repository.get_my_page(
@@ -360,7 +356,7 @@ class FeedbackService:
             query["pageSize"],
         )
         list_data = [
-            _rating_to_my_vo(item["rating"], item.get("algorithm_name") or "") for item in items
+            _rating_to_my_vo(item["rating"], item.get("model_name") or "") for item in items
         ]
         return {"list": list_data, "total": total}
 
@@ -390,7 +386,7 @@ class FeedbackService:
             data.get("username") or "",
             data.get("nickname"),
             data.get("avatar"),
-            data.get("algorithm_name") or "",
+            data.get("model_name") or "",
         )
         return _anonymize_rating_vo(vo, rating)
 
@@ -400,7 +396,7 @@ class FeedbackService:
             query["pageNum"],
             query["pageSize"],
             keywords=query.get("keywords"),
-            algorithm_id=query.get("algorithmId"),
+            model_id=query.get("modelId"),
             rating_min=query.get("ratingMin"),
             rating_max=query.get("ratingMax"),
             has_comment=query.get("hasComment"),
@@ -415,7 +411,7 @@ class FeedbackService:
                 item.get("username") or "",
                 item.get("nickname"),
                 item.get("avatar"),
-                item.get("algorithm_name") or "",
+                item.get("model_name") or "",
             )
             list_data.append(_anonymize_rating_vo(vo, item["rating"]))
         return {"list": list_data, "total": total}

@@ -3,10 +3,16 @@ package com.pei.dehaze.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.util.AiDateTimeUtils;
+import com.pei.dehaze.common.util.MongoBsonUtils;
 import com.pei.dehaze.model.entity.AiApiCallLog;
 import com.pei.dehaze.model.query.AiCompatCallQuery;
 import com.pei.dehaze.model.vo.AiCompatCallVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -14,12 +20,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * AI 兼容 API 调用审计查询（仅本人数据），对齐 dehaze-python {@code ai_compat_call.py}
@@ -39,9 +39,12 @@ public class AiCompatCallService {
     private final MongoTemplate mongoTemplate;
 
     public IPage<AiCompatCallVO> listCalls(AiCompatCallQuery query) {
-        Criteria criteria = Criteria.where("user_id").is(SecurityUtils.getUserId());
+        // int32/int64 双类型候选：java/go 新记录是 int64，改造前的历史记录是 int32，
+        // 单类型 is() 会静默漏读（空列表不报错）
+        Criteria criteria =
+                Criteria.where("user_id").in(MongoBsonUtils.int32Int64Candidates(SecurityUtils.getUserId()));
         if (query.getKeyId() != null) {
-            criteria.and("key_id").is(query.getKeyId());
+            criteria.and("key_id").in(MongoBsonUtils.int32Int64Candidates(query.getKeyId()));
         }
         if (StringUtils.hasText(query.getModel())) {
             criteria.and("model").is(query.getModel());
@@ -92,8 +95,8 @@ public class AiCompatCallService {
         vo.setClientIp(log.getClientIp());
         vo.setRequestId(log.getRequestId());
         vo.setErrorMsg(log.getErrorMsg());
-        vo.setCreateTime(log.getCreateTime() == null ? null
-                : LocalDateTime.ofInstant(log.getCreateTime(), ZoneOffset.UTC));
+        vo.setCreateTime(
+                log.getCreateTime() == null ? null : LocalDateTime.ofInstant(log.getCreateTime(), ZoneOffset.UTC));
         return vo;
     }
 

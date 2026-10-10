@@ -11,14 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func memberDehazeUsed(t *testing.T, db *gorm.DB, userID int64) int {
-	t.Helper()
-	var used int
-	require.NoError(t, db.Table("sys_member").
-		Where("user_id = ? AND deleted = 0", userID).Pluck("monthly_dehaze_used", &used).Error)
-	return used
-}
-
 func predLogStatus(t *testing.T, db *gorm.DB, id int64) (model.LogStatus, string) {
 	t.Helper()
 	var row struct {
@@ -34,19 +26,18 @@ func predLogStatus(t *testing.T, db *gorm.DB, id int64) (model.LogStatus, string
 	return row.Status, errMsg
 }
 
-// TestCancelTask 取消预测任务契约（对齐 python `cancel_task`）：
-// 仅本人可取消（不存在/非本人 → A0401 防枚举）；仅"处理中"可取消（置已取消 + 回滚配额）；
-// 终态任务幂等返回当前状态且不重复回滚配额。
+// TestCancelTask 取消图像任务契约（对齐 python `cancel_task`）：
+// 仅本人可取消（不存在/非本人 → A0401 防枚举）；仅"处理中"可取消（置已取消）；
+// 终态任务幂等返回当前状态。
 func TestCancelTask(t *testing.T) {
 	db := testutil.NewTestDB(t)
 	ctx := context.Background()
-	memberSvc := newRealMemberService(t, db)
-	svc := newPredictionService(t, db, "http://127.0.0.1:1", memberSvc)
+	seedImageModel(t, db, "aecrnet")
+	svc := newPredictionService(t, db, "http://127.0.0.1:1", nil)
 
-	t.Run("处理中→取消：状态置 4 并回滚配额", func(t *testing.T) {
+	t.Run("处理中→取消：状态置 4", func(t *testing.T) {
 		userID := int64(880001)
-		createMember(t, db, userID, 1)
-		log := createPredLog(t, db, userID, 13)
+		log := createPredLog(t, db, userID, "aecrnet")
 
 		result, err := svc.CancelTask(ctx, log.ID, userID)
 		require.NoError(t, err)
@@ -55,30 +46,23 @@ func TestCancelTask(t *testing.T) {
 		status, msg := predLogStatus(t, db, log.ID)
 		require.EqualValues(t, model.LogStatusCancelled, status)
 		require.Equal(t, "任务已取消", msg)
-		require.Equal(t, 0, memberDehazeUsed(t, db, userID), "取消应回滚已扣配额")
 	})
 
-	t.Run("幂等：已取消任务再次取消不回滚配额", func(t *testing.T) {
+	t.Run("幂等：已取消任务再次取消返回当前状态", func(t *testing.T) {
 		userID := int64(880002)
-		createMember(t, db, userID, 1)
-		log := createPredLog(t, db, userID, 13)
+		log := createPredLog(t, db, userID, "aecrnet")
 
 		_, err := svc.CancelTask(ctx, log.ID, userID)
 		require.NoError(t, err)
-		// 人为把用量恢复为 1，若第二次取消又回滚则会被打成 0（即重复回滚）
-		require.NoError(t, db.Table("sys_member").Where("user_id = ?", userID).
-			Update("monthly_dehaze_used", 1).Error)
 
 		result, err := svc.CancelTask(ctx, log.ID, userID)
 		require.NoError(t, err)
 		require.EqualValues(t, model.LogStatusCancelled, result.Status)
-		require.Equal(t, 1, memberDehazeUsed(t, db, userID), "非处理中不得重复回滚配额")
 	})
 
 	t.Run("已完成任务：幂等返回当前状态", func(t *testing.T) {
 		userID := int64(880003)
-		createMember(t, db, userID, 0)
-		log := createPredLog(t, db, userID, 13)
+		log := createPredLog(t, db, userID, "aecrnet")
 		require.NoError(t, db.Table("sys_pred_log").Where("id = ?", log.ID).
 			Update("status", model.LogStatusCompleted).Error)
 
@@ -88,7 +72,7 @@ func TestCancelTask(t *testing.T) {
 	})
 
 	t.Run("非本人任务：A0401", func(t *testing.T) {
-		log := createPredLog(t, db, 880004, 13)
+		log := createPredLog(t, db, 880004, "aecrnet")
 		_, err := svc.CancelTask(ctx, log.ID, 880005)
 		requireBizCode(t, err, common.RESOURCE_NOT_FOUND)
 	})

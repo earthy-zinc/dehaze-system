@@ -1,10 +1,25 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.model.query.AiConversationPageQuery;
 import com.pei.dehaze.model.query.AiMessageCursorQuery;
 import com.pei.dehaze.service.AiConversationService;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,22 +35,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.Arrays;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 管理端会话审计视角（view=admin）鉴权单测。
@@ -60,8 +59,7 @@ class AiConversationControllerAdminViewTest {
     void setUp() {
         controller = new AiConversationController(conversationService);
         SecurityContextHolder.clearContext();
-        when(conversationService.list(any(), any(), anyBoolean()))
-                .thenReturn(new Page<>(1, 10, 0));
+        when(conversationService.list(any(), any(), anyBoolean())).thenReturn(new Page<>(1, 10, 0));
     }
 
     @AfterEach
@@ -76,10 +74,10 @@ class AiConversationControllerAdminViewTest {
     }
 
     private void authenticate(String... authorities) {
-        List<SimpleGrantedAuthority> granted = Arrays.stream(authorities)
-                .map(SimpleGrantedAuthority::new).toList();
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("tester", "n/a", granted));
+        List<SimpleGrantedAuthority> granted =
+                Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList();
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("tester", "n/a", granted));
     }
 
     @Test
@@ -135,7 +133,8 @@ class AiConversationControllerAdminViewTest {
     @Test
     @DisplayName("消息列表与消息详情同样受审计鉴权保护")
     void adminViewGuardedOnMessagesAndMessageDetail() {
-        assertThrows(AccessDeniedException.class, () -> controller.listMessages(1L, new AiMessageCursorQuery(), "admin"));
+        assertThrows(
+                AccessDeniedException.class, () -> controller.listMessages(1L, new AiMessageCursorQuery(), "admin"));
         assertThrows(AccessDeniedException.class, () -> controller.getMessage(9L, "admin"));
         assertThrows(AccessDeniedException.class, () -> controller.detail(1L, "admin"));
     }

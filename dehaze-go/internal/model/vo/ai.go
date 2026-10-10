@@ -13,6 +13,7 @@ type AiModelVO struct {
 	ProviderID            int64           `json:"providerId"`
 	ModelID               string          `json:"modelId"`
 	ModelType             string          `json:"modelType"`
+	TaskTags              json.RawMessage `json:"taskTags"`
 	Dimension             *int64          `json:"dimension"`
 	DisplayName           string          `json:"displayName"`
 	MaxContextTokens      int             `json:"maxContextTokens"`
@@ -35,7 +36,10 @@ type AiModelVO struct {
 	LastCallAt            *time.Time      `json:"lastCallAt"`
 	SpeedTier             string          `json:"speedTier"`
 	IsFallbackTarget      bool            `json:"isFallbackTarget"`
-	CreateTime            time.Time       `json:"createTime"`
+	// IsDefault 是否其模型类型的平台默认模型（字典 ai_model.default_model[.{modelType}]）；
+	// 仅启用模型列表计算并返回（缺省 omitempty 不输出），标记在读取时计算、不写入共享缓存快照
+	IsDefault  *bool     `json:"isDefault,omitempty"`
+	CreateTime time.Time `json:"createTime"`
 }
 
 // ModelPriceDetailVO 价格档位明细视图对象（unitPrice 对齐 python Decimal 的字符串序列化）
@@ -43,6 +47,7 @@ type ModelPriceDetailVO struct {
 	ID        int64  `json:"id"`
 	PriceID   int64  `json:"priceId"`
 	TokenType string `json:"tokenType"`
+	UsageKind string `json:"usageKind"`
 	TimeSlot  string `json:"timeSlot"`
 	MinTokens int64  `json:"minTokens"`
 	MaxTokens *int64 `json:"maxTokens"`
@@ -56,12 +61,21 @@ type ModelPriceVO struct {
 	ProviderID    int64                `json:"providerId"`
 	PriceVersion  int                  `json:"priceVersion"`
 	Unit          string               `json:"unit"`
+	BillingUnit   string               `json:"billingUnit"`
 	EffectiveFrom time.Time            `json:"effectiveFrom"`
 	EffectiveTo   *time.Time           `json:"effectiveTo"`
 	Status        int8                 `json:"status"`
 	Details       []ModelPriceDetailVO `json:"details"`
 	CreateTime    time.Time            `json:"createTime"`
 	UpdateTime    time.Time            `json:"updateTime"`
+}
+
+// ==================== 用户偏好 ====================
+
+// UserPreferenceVO 用户偏好设置视图对象：未设置偏好时该键整体不出现（三端统一剔除 null），
+// 出现即表示用户显式选过该模型。
+type UserPreferenceVO struct {
+	DefaultModel *string `json:"defaultModel,omitempty"`
 }
 
 // ==================== AI 供应商 ====================
@@ -76,21 +90,22 @@ type UserIdentityForwardVO struct {
 
 // ProviderVO 供应商视图对象（health 为 Redis 健康快照运行时聚合，不落库）
 type ProviderVO struct {
-	ID                  int64           `json:"id"`
-	ProviderCode        string          `json:"providerCode"`
-	DisplayName         string          `json:"displayName"`
-	ApiBaseUrl          string          `json:"apiBaseUrl"`
-	ProtocolType        string          `json:"protocolType"`
-	AuthType            string          `json:"authType"`
-	DefaultHeaders      json.RawMessage `json:"defaultHeaders"`
-	SortOrder           int             `json:"sortOrder"`
-	HealthCheckEnabled  int8            `json:"healthCheckEnabled"`
-	UserIdentityForward json.RawMessage `json:"userIdentityForward"`
-	Remark              *string         `json:"remark"`
-	Health              *string         `json:"health"`
-	Status              int8            `json:"status"`
-	CreateTime          time.Time       `json:"createTime"`
-	UpdateTime          time.Time       `json:"updateTime"`
+	ID                    int64           `json:"id"`
+	ProviderCode          string          `json:"providerCode"`
+	DisplayName           string          `json:"displayName"`
+	ApiBaseUrl            string          `json:"apiBaseUrl"`
+	ProtocolType          string          `json:"protocolType"`
+	AuthType              string          `json:"authType"`
+	DefaultHeaders        json.RawMessage `json:"defaultHeaders"`
+	SortOrder             int             `json:"sortOrder"`
+	HealthCheckEnabled    int8            `json:"healthCheckEnabled"`
+	RequestTimeoutSeconds *int            `json:"requestTimeoutSeconds"`
+	UserIdentityForward   json.RawMessage `json:"userIdentityForward"`
+	Remark                *string         `json:"remark"`
+	Health                *string         `json:"health"`
+	Status                int8            `json:"status"`
+	CreateTime            time.Time       `json:"createTime"`
+	UpdateTime            time.Time       `json:"updateTime"`
 }
 
 // ProviderEnabledVO 启用供应商精简视图（登录用户可见，不含内部配置）

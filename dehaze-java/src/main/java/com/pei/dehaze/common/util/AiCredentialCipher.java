@@ -3,18 +3,17 @@ package com.pei.dehaze.common.util;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 /**
  * AI 供应商 Key / MCP 凭据的 AES-256-CBC 加解密。
@@ -34,7 +33,7 @@ public class AiCredentialCipher {
     private final String encryptionKey;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public AiCredentialCipher(@Value("${AI_PROVIDER_KEY_ENCRYPTION_KEY:}") String encryptionKey) {
+    public AiCredentialCipher(@Value("${AI_PROVIDER_KEY_ENCRYPTION_KEY}") String encryptionKey) {
         this.encryptionKey = encryptionKey;
     }
 
@@ -79,8 +78,7 @@ public class AiCredentialCipher {
     /** SHA256 十六进制哈希（明文查重，不落明文） */
     public String hashKey(String plaintext) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(plaintext.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(plaintext.getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
                 builder.append(Character.forDigit((b >> 4) & 0xF, 16));
@@ -99,12 +97,10 @@ public class AiCredentialCipher {
 
     private SecretKeySpec secretKey() {
         if (encryptionKey == null || encryptionKey.isBlank()) {
-            throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR,
-                    "AI_PROVIDER_KEY_ENCRYPTION_KEY 未配置，无法处理凭据");
+            throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "AI_PROVIDER_KEY_ENCRYPTION_KEY 未配置，无法处理凭据");
         }
         try {
-            byte[] key = MessageDigest.getInstance("SHA-256")
-                    .digest(encryptionKey.getBytes(StandardCharsets.UTF_8));
+            byte[] key = MessageDigest.getInstance("SHA-256").digest(encryptionKey.getBytes(StandardCharsets.UTF_8));
             return new SecretKeySpec(key, ALGORITHM);
         } catch (Exception e) {
             throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "加密密钥派生失败");

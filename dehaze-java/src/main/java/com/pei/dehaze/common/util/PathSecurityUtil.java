@@ -1,7 +1,6 @@
 package com.pei.dehaze.common.util;
 
 import com.pei.dehaze.common.exception.BusinessException;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -42,9 +41,7 @@ public class PathSecurityUtil {
 
         // 验证规范化后的路径是否在基础路径范围内
         if (!normalizedPath.startsWith(normalizedBasePath)) {
-            throw new IllegalArgumentException(
-                    "无效的文件路径，检测到路径遍历攻击。路径: " + fullPath
-            );
+            throw new IllegalArgumentException("无效的文件路径，检测到路径遍历攻击。路径: " + fullPath);
         }
 
         return normalizedPath;

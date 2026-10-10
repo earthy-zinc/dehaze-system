@@ -36,5 +36,4 @@ public interface SecurityConstants {
 
     /** 登录锁定时间（分钟） */
     int LOCK_DURATION_MINUTES = 30;
-
 }

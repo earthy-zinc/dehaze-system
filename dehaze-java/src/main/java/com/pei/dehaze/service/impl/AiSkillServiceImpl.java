@@ -21,11 +21,6 @@ import com.pei.dehaze.model.vo.SkillVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.AiSkillService;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +29,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -120,7 +119,7 @@ public class AiSkillServiceImpl extends ServiceImpl<SysAiSkillMapper, SysAiSkill
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "SKILL 文件不存在");
         }
         try (InputStream stream = storageServiceFactory.getDefault().downLoadFile(objectKey(skill.getId(), path));
-             ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+                ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
             stream.transferTo(buffer);
             return buffer.toByteArray();
         } catch (Exception e) {
@@ -192,8 +191,8 @@ public class AiSkillServiceImpl extends ServiceImpl<SysAiSkillMapper, SysAiSkill
         SysAiSkill skill = getOrRaise(skillId);
         long refs = this.baseMapper.countAgentReferences(skill.getName());
         if (refs > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "Skill [" + skill.getName() + "] 已被 " + refs + " 个 Agent 关联，请先解绑再删除");
+            throw new BusinessException(
+                    ResultCode.DATA_REFERENCED, "Skill [" + skill.getName() + "] 已被 " + refs + " 个 Agent 关联，请先解绑再删除");
         }
         this.removeById(skillId);
         // 对象存储资源与文件清单清理（软删主表后清理，失败不阻断删除语义）
@@ -230,8 +229,8 @@ public class AiSkillServiceImpl extends ServiceImpl<SysAiSkillMapper, SysAiSkill
 
     private SysAiSkill getOrRaise(Long skillId) {
         SysAiSkill skill = this.getById(skillId);
-        boolean visible = skill != null && (isManager()
-                || (skill.getStatus() != null && skill.getStatus() == STATUS_ENABLED));
+        boolean visible =
+                skill != null && (isManager() || (skill.getStatus() != null && skill.getStatus() == STATUS_ENABLED));
         if (!visible) {
             // 禁用项对普通用户按不存在处理，防止经 ID 直读禁用 Skill 的指令全文
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "Skill 不存在");
@@ -240,9 +239,11 @@ public class AiSkillServiceImpl extends ServiceImpl<SysAiSkillMapper, SysAiSkill
     }
 
     private SysAiSkill getByName(String name) {
-        return this.getOne(new LambdaQueryWrapper<SysAiSkill>()
-                .eq(SysAiSkill::getName, name)
-                .orderByAsc(SysAiSkill::getId), false);
+        return this.getOne(
+                new LambdaQueryWrapper<SysAiSkill>()
+                        .eq(SysAiSkill::getName, name)
+                        .orderByAsc(SysAiSkill::getId),
+                false);
     }
 
     /** 指令内容校验：长度上限（100KB）+ 危险操作拦截 */
@@ -306,8 +307,7 @@ public class AiSkillServiceImpl extends ServiceImpl<SysAiSkillMapper, SysAiSkill
         vo.setInstruction(skill.getInstruction());
         vo.setLicense(skill.getLicense());
         vo.setCompatibility(skill.getCompatibility());
-        vo.setMetadata(AiJsonUtils.read(skill.getMetadata(), new TypeReference<Map<String, Object>>() {
-        }));
+        vo.setMetadata(AiJsonUtils.read(skill.getMetadata(), new TypeReference<Map<String, Object>>() {}));
         vo.setAllowedTools(skill.getAllowedTools());
         vo.setStatus(skill.getStatus());
         vo.setSource(skill.getSource());

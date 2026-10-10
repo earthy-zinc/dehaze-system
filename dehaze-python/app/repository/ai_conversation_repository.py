@@ -195,6 +195,16 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_all_ids(self, db: AsyncSession) -> list[int]:
+        """列出全部会话 ID（含已软删），供 ES 读模型全量重建/对账"""
+        stmt = (
+            select(SysAiConversation.id)
+            .execution_options(include_deleted=True)
+            .order_by(SysAiConversation.id)
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_by_ids_and_user(
         self,
         db: AsyncSession,
@@ -352,6 +362,23 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
                 .values(status=2)
             )
         return rows
+
+    async def list_empty_before(
+        self,
+        db: AsyncSession,
+        before_date: datetime,
+    ) -> list[tuple[int, int]]:
+        """列出「无消息且创建超期」的会话（含已归档），返回 [(conv_id, user_id)] 供清理与缓存失效。
+
+        空会话来自「点了新建会话但没发消息」与集测残留，长期驻留会淹没会话列表。
+        不按 status 过滤：归档对空会话没有意义，归档态的空会话同样是噪声。
+        """
+        stmt = select(SysAiConversation.id, SysAiConversation.user_id).where(
+            SysAiConversation.message_count == 0,
+            SysAiConversation.create_time < before_date,
+        )
+        result = await db.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
 
 
 ai_conversation_repository = AiConversationRepository()

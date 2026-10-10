@@ -2,11 +2,11 @@ package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.query.UserPageQuery;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.plugin.mybatis.annotation.DataPermission;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;

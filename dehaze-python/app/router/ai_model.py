@@ -24,6 +24,8 @@ from app.service.ai.service.model_test_service import test_model_by_model_id
 from app.service.ai_model_price_service import ai_model_price_service
 from app.service.ai_model_service import ai_model_service
 
+# model_id 是含 `/` 的厂商业务键（如 Qwen/Qwen3-8B），不能作路径段（会被当路径分隔符），
+# 故除无 id 的集合端点外一律以 query 参数 modelId 传递。
 router = APIRouter(prefix="/api/v1/ai/models", tags=["AI对话"])
 
 
@@ -35,7 +37,7 @@ async def list_models(
     user: UserContext = Depends(get_current_user),
 ):
     result = await ai_model_service.list_models(
-        db, query.pageNum, query.pageSize, query.keyword, query.model_type
+        db, query.pageNum, query.pageSize, query.keyword, query.model_type, query.task_tags
     )
     return success(result)
 
@@ -43,13 +45,16 @@ async def list_models(
 @router.get("/enabled", response_model=Result[list[AiModelResult]], summary="启用模型列表")
 async def list_enabled_models(
     model_type: str | None = Query(
-        default=None, alias="modelType", description="模型类型筛选(chat/embedding/rerank)"
+        default=None, alias="modelType", description="模型类型筛选(见模型类型白名单)"
+    ),
+    task_tags: str | None = Query(
+        default=None, alias="taskTags", description="任务标签筛选(逗号分隔,含任一即命中)"
     ),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await ai_model_service.list_enabled_models(db, redis, user.id, model_type)
+    result = await ai_model_service.list_enabled_models(db, redis, user.id, model_type, task_tags)
     return success(result)
 
 
@@ -65,11 +70,11 @@ async def create_model(
     return success(result)
 
 
-@router.put("/{model_id}", response_model=Result[AiModelResult], summary="更新模型")
+@router.put("", response_model=Result[AiModelResult], summary="更新模型")
 @require_permission("ai:model:manage")
 async def update_model(
-    model_id: str,
     form: AiModelUpdate,
+    model_id: str = Query(..., alias="modelId", description="模型标识"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -78,10 +83,10 @@ async def update_model(
     return success(result)
 
 
-@router.delete("/{model_id}", response_model=Result[None], summary="删除模型")
+@router.delete("", response_model=Result[None], summary="删除模型")
 @require_permission("ai:model:manage")
 async def delete_model(
-    model_id: str,
+    model_id: str = Query(..., alias="modelId", description="模型标识"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -90,10 +95,10 @@ async def delete_model(
     return success(msg="一切ok")
 
 
-@router.post("/{model_id}/test", response_model=Result[dict], summary="模型可用性测试")
+@router.post("/test", response_model=Result[dict], summary="模型可用性测试")
 @require_permission("ai:model:manage")
 async def test_model(
-    model_id: str,
+    model_id: str = Query(..., alias="modelId", description="模型标识"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
@@ -104,13 +109,13 @@ async def test_model(
 
 
 @router.get(
-    "/{model_id}/prices",
+    "/prices",
     response_model=Result[PageResult[ModelPriceResult]],
     summary="模型用户售价版本分页列表",
 )
 @require_permission("ai:model:manage")
 async def list_model_prices(
-    model_id: str,
+    model_id: str = Query(..., alias="modelId", description="模型标识"),
     query: ModelPriceQuery = Depends(),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
@@ -120,12 +125,9 @@ async def list_model_prices(
     return success(result)
 
 
-@router.post(
-    "/{model_id}/prices", response_model=Result[ModelPriceResult], summary="新增模型用户售价版本"
-)
+@router.post("/prices", response_model=Result[ModelPriceResult], summary="新增模型用户售价版本")
 @require_permission("ai:model:manage")
 async def create_model_price(
-    model_id: str,
     form: ModelPriceCreateRequest,
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
@@ -135,13 +137,12 @@ async def create_model_price(
 
 
 @router.put(
-    "/{model_id}/prices/{price_id}",
+    "/prices/{price_id}",
     response_model=Result[ModelPriceResult],
     summary="更新模型用户售价版本",
 )
 @require_permission("ai:model:manage")
 async def update_model_price(
-    model_id: str,
     price_id: int,
     form: ModelPriceUpdateRequest,
     db: AsyncSession = Depends(get_db),
@@ -153,12 +154,9 @@ async def update_model_price(
     return success(result)
 
 
-@router.delete(
-    "/{model_id}/prices/{price_id}", response_model=Result[None], summary="删除模型用户售价版本"
-)
+@router.delete("/prices/{price_id}", response_model=Result[None], summary="删除模型用户售价版本")
 @require_permission("ai:model:manage")
 async def delete_model_price(
-    model_id: str,
     price_id: int,
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),

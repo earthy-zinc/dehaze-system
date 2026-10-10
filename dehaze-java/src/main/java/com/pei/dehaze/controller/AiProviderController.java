@@ -15,6 +15,7 @@ import com.pei.dehaze.service.AiProviderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,8 +27,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Tag(name = "AI供应商管理")
 @RestController
@@ -61,8 +60,8 @@ public class AiProviderController {
     @Operation(summary = "更新供应商")
     @PutMapping("/{providerId}")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<ProviderVO> updateProvider(@PathVariable Long providerId,
-                                             @RequestBody @Valid ProviderUpdateForm form) {
+    public Result<ProviderVO> updateProvider(
+            @PathVariable Long providerId, @RequestBody @Valid ProviderUpdateForm form) {
         return Result.success(aiProviderService.updateProvider(providerId, form));
     }
 
@@ -84,25 +83,22 @@ public class AiProviderController {
     @Operation(summary = "新增API Key")
     @PostMapping("/{providerId}/keys")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<ProviderKeyVO> createKey(@PathVariable Long providerId,
-                                           @RequestBody @Valid ProviderKeyForm form) {
+    public Result<ProviderKeyVO> createKey(@PathVariable Long providerId, @RequestBody @Valid ProviderKeyForm form) {
         return Result.success(aiProviderService.createKey(providerId, form));
     }
 
     @Operation(summary = "更新API Key")
     @PutMapping("/{providerId}/keys/{keyId}")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<ProviderKeyVO> updateKey(@PathVariable Long providerId,
-                                           @PathVariable Long keyId,
-                                           @RequestBody @Valid ProviderKeyUpdateForm form) {
+    public Result<ProviderKeyVO> updateKey(
+            @PathVariable Long providerId, @PathVariable Long keyId, @RequestBody @Valid ProviderKeyUpdateForm form) {
         return Result.success(aiProviderService.updateKey(providerId, keyId, form));
     }
 
     @Operation(summary = "删除API Key")
     @DeleteMapping("/{providerId}/keys/{keyId}")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<Void> deleteKey(@PathVariable Long providerId,
-                                  @PathVariable Long keyId) {
+    public Result<Void> deleteKey(@PathVariable Long providerId, @PathVariable Long keyId) {
         aiProviderService.deleteKey(providerId, keyId);
         return Result.success();
     }

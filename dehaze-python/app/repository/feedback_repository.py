@@ -4,7 +4,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models.entity.sys_algorithm import SysAlgorithm
+from app.models.entity.sys_ai_model import SysAiModel
 from app.models.entity.sys_feedback import SysFeedback
 from app.models.entity.sys_feedback_reply import SysFeedbackReply
 from app.models.entity.sys_log import SysPredLog
@@ -55,10 +55,10 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysUser.username.label("username"),
                 SysUser.nickname.label("nickname"),
                 SysUser.avatar.label("avatar"),
-                SysAlgorithm.name.label("algorithm_name"),
+                SysAiModel.display_name.label("model_name"),
             )
             .outerjoin(SysUser, SysRating.user_id == SysUser.id)
-            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
+            .outerjoin(SysAiModel, SysRating.model_id == SysAiModel.model_id)
             .where(SysRating.id == rating_id, SysRating.deleted == 0)
         )
         result = await db.execute(stmt)
@@ -70,7 +70,7 @@ class RatingRepository(BaseRepository[SysRating]):
             "username": row[1],
             "nickname": row[2],
             "avatar": row[3],
-            "algorithm_name": row[4],
+            "model_name": row[4],
         }
 
     async def get_my_page(
@@ -83,9 +83,9 @@ class RatingRepository(BaseRepository[SysRating]):
         stmt = (
             select(
                 SysRating,
-                SysAlgorithm.name.label("algorithm_name"),
+                SysAiModel.display_name.label("model_name"),
             )
-            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
+            .outerjoin(SysAiModel, SysRating.model_id == SysAiModel.model_id)
             .where(SysRating.user_id == user_id, SysRating.deleted == 0, SysRating.is_hidden == 0)
         )
 
@@ -97,7 +97,7 @@ class RatingRepository(BaseRepository[SysRating]):
         result = await db.execute(stmt)
         rows = result.all()
 
-        items = [{"rating": row[0], "algorithm_name": row[1]} for row in rows]
+        items = [{"rating": row[0], "model_name": row[1]} for row in rows]
         return items, total
 
     async def get_admin_page(
@@ -107,7 +107,7 @@ class RatingRepository(BaseRepository[SysRating]):
         page_size: int,
         *,
         keywords: str | None = None,
-        algorithm_id: int | None = None,
+        model_id: str | None = None,
         rating_min: int | None = None,
         rating_max: int | None = None,
         has_comment: bool | None = None,
@@ -121,10 +121,10 @@ class RatingRepository(BaseRepository[SysRating]):
                 SysUser.username.label("username"),
                 SysUser.nickname.label("nickname"),
                 SysUser.avatar.label("avatar"),
-                SysAlgorithm.name.label("algorithm_name"),
+                SysAiModel.display_name.label("model_name"),
             )
             .outerjoin(SysUser, SysRating.user_id == SysUser.id)
-            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
+            .outerjoin(SysAiModel, SysRating.model_id == SysAiModel.model_id)
             .where(SysRating.deleted == 0)
         )
 
@@ -137,8 +137,8 @@ class RatingRepository(BaseRepository[SysRating]):
                     SysUser.nickname.like(like_pattern, escape="\\"),
                 )
             )
-        if algorithm_id is not None:
-            stmt = stmt.where(SysRating.algorithm_id == algorithm_id)
+        if model_id is not None:
+            stmt = stmt.where(SysRating.model_id == model_id)
         if rating_min is not None:
             stmt = stmt.where(SysRating.rating >= rating_min)
         if rating_max is not None:
@@ -174,7 +174,7 @@ class RatingRepository(BaseRepository[SysRating]):
                 "username": row[1],
                 "nickname": row[2],
                 "avatar": row[3],
-                "algorithm_name": row[4],
+                "model_name": row[4],
             }
             for row in rows
         ]
@@ -272,15 +272,15 @@ class RatingRepository(BaseRepository[SysRating]):
 
         algo_stmt = (
             select(
-                SysRating.algorithm_id,
-                SysAlgorithm.name.label("algorithm_name"),
+                SysRating.model_id,
+                SysAiModel.display_name.label("model_name"),
                 func.count().label("total"),
                 func.avg(SysRating.rating).label("avg_rating"),
                 func.sum(case((SysRating.rating <= 2, 1), else_=0)).label("low_count"),
             )
-            .outerjoin(SysAlgorithm, SysRating.algorithm_id == SysAlgorithm.id)
+            .outerjoin(SysAiModel, SysRating.model_id == SysAiModel.model_id)
             .where(SysRating.deleted == 0)
-            .group_by(SysRating.algorithm_id, SysAlgorithm.name)
+            .group_by(SysRating.model_id, SysAiModel.display_name)
         )
         if start_time:
             algo_stmt = algo_stmt.where(
@@ -292,14 +292,14 @@ class RatingRepository(BaseRepository[SysRating]):
             )
         algo_rows = (await db.execute(algo_stmt)).all()
 
-        algorithm_stats = []
+        model_stats = []
         for row in algo_rows:
             total = int(row.total or 0)
             low = int(row.low_count or 0)
-            algorithm_stats.append(
+            model_stats.append(
                 {
-                    "algorithmId": int(row.algorithm_id) if row.algorithm_id is not None else None,
-                    "algorithmName": row.algorithm_name or "",
+                    "modelId": row.model_id,
+                    "modelName": row.model_name or "",
                     "averageRating": round(float(row.avg_rating or 0), 2),
                     "totalRatings": total,
                     "lowRatingRate": round(low * 100 / total, 2) if total > 0 else 0,
@@ -312,41 +312,41 @@ class RatingRepository(BaseRepository[SysRating]):
             "ratingDistribution": rating_distribution,
             "positiveTagRanking": positive_ranking,
             "negativeTagRanking": negative_ranking,
-            "algorithmStats": algorithm_stats,
+            "modelStats": model_stats,
         }
 
     async def get_avg_rating(
         self,
         db: AsyncSession,
-        algorithm_id: int,
+        model_id: str,
     ) -> float:
-        """算法平均评分（未评分为 0.0）"""
+        """模型平均评分（未评分为 0.0）"""
         from sqlalchemy import func
 
         stmt = select(func.avg(SysRating.rating)).where(
-            SysRating.algorithm_id == algorithm_id,
+            SysRating.model_id == model_id,
             SysRating.deleted == 0,
         )
         avg = (await db.execute(stmt)).scalar()
         return float(avg) if avg else 0.0
 
-    async def count_by_algorithm(self, db: AsyncSession, algorithm_id: int) -> int:
-        """算法评价总数（算法选择详情页 ratingCount 口径，对齐 Java getDetail）"""
+    async def count_by_model(self, db: AsyncSession, model_id: str) -> int:
+        """模型评价总数（模型详情页 ratingCount 口径，对齐 Java getDetail）"""
         stmt = select(func.count()).where(
-            SysRating.algorithm_id == algorithm_id,
+            SysRating.model_id == model_id,
             SysRating.deleted == 0,
         )
         return (await db.execute(stmt)).scalar() or 0
 
-    async def count_low_ratings_by_algorithm_24h(
+    async def count_low_ratings_by_model_24h(
         self,
         db: AsyncSession,
-        algorithm_id: int,
+        model_id: str,
     ) -> int:
         since = datetime.now() - timedelta(hours=24)
         stmt = select(func.count()).where(
             SysRating.deleted == 0,
-            SysRating.algorithm_id == algorithm_id,
+            SysRating.model_id == model_id,
             SysRating.rating <= 2,
             SysRating.create_time >= since,
         )

@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysRecharge;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysRechargeMapper extends BaseMapper<SysRecharge> {
-}
+public interface SysRechargeMapper extends BaseMapper<SysRecharge> {}

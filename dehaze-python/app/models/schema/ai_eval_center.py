@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.models.schema.ai_agent import EvalToolCall
 from app.models.schema.common import OrmResult
 
 
@@ -138,8 +139,8 @@ class EvalReviewDetailResult(OrmResult):
     expected_result: str | None = Field(default=None, description="期望结果(样本已删除时为null)")
     expected_process: str | None = Field(default=None, description="期望过程(样本已删除时为null)")
     forbidden_behavior: str | None = Field(default=None, description="禁止行为(样本已删除时为null)")
-    tools: list[str] | None = Field(
-        default=None, description="样本声明的可用工具(样本已删除时为null)"
+    tools: list[EvalToolCall] | None = Field(
+        default=None, description="样本声明的期望工具调用序列(样本已删除时为null)"
     )
     risk_level: str = Field(description="样本风险等级快照")
     judge_passed: bool = Field(description="判分模型判定(true:通过;false:失败)")

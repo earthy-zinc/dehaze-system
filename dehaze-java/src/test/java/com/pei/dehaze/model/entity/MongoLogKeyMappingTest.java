@@ -1,15 +1,14 @@
 package com.pei.dehaze.model.entity;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 /**
  * Mongo 审计日志实体键名守卫。
@@ -26,7 +25,8 @@ class MongoLogKeyMappingTest {
     void loginLogFieldsUseSnakeCaseKeys() {
         assertThat(collection(LoginLog.class)).isEqualTo("login_log");
         Map<String, String> keys = persistedKeys(LoginLog.class);
-        assertThat(keys).containsEntry("userId", "user_id")
+        assertThat(keys)
+                .containsEntry("userId", "user_id")
                 .containsEntry("deviceType", "device_type")
                 .containsEntry("createTime", "create_time")
                 .containsEntry("username", "username")
@@ -38,7 +38,8 @@ class MongoLogKeyMappingTest {
     void auditLogFieldsUseSnakeCaseKeys() {
         assertThat(collection(AuditLog.class)).isEqualTo("audit_log");
         Map<String, String> keys = persistedKeys(AuditLog.class);
-        assertThat(keys).containsEntry("operatorId", "operator_id")
+        assertThat(keys)
+                .containsEntry("operatorId", "operator_id")
                 .containsEntry("targetType", "target_type")
                 .containsEntry("targetId", "target_id")
                 .containsEntry("beforeValue", "before_value")
@@ -52,7 +53,8 @@ class MongoLogKeyMappingTest {
     void aiApiCallLogFieldsUseSnakeCaseKeys() {
         assertThat(collection(AiApiCallLog.class)).isEqualTo("ai_api_call_log");
         Map<String, String> keys = persistedKeys(AiApiCallLog.class);
-        assertThat(keys).containsEntry("userId", "user_id")
+        assertThat(keys)
+                .containsEntry("userId", "user_id")
                 .containsEntry("keyPrefix", "key_prefix")
                 .containsEntry("isStream", "is_stream")
                 .containsEntry("statusCode", "status_code")

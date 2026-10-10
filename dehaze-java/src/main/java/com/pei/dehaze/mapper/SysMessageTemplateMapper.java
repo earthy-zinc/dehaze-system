@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysMessageTemplate;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysMessageTemplateMapper extends BaseMapper<SysMessageTemplate> {
-}
+public interface SysMessageTemplateMapper extends BaseMapper<SysMessageTemplate> {}

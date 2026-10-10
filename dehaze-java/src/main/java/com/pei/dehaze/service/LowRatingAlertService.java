@@ -8,7 +8,7 @@ public interface LowRatingAlertService {
 
     boolean sendNormalAlert(SysRating rating);
 
-    boolean sendUrgentAlert(Long algorithmId);
+    boolean sendUrgentAlert(String modelId);
 
     boolean sendSevereAlert();
 }

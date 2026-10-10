@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiProviderKey;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiProviderKeyMapper extends BaseMapper<SysAiProviderKey> {
-}
+public interface SysAiProviderKeyMapper extends BaseMapper<SysAiProviderKey> {}

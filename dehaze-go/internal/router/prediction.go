@@ -5,13 +5,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RegisterPredictionRoutes 图像任务路由（设计 §9.2：/api/v1/images/*）
 func RegisterPredictionRoutes(rg *gin.RouterGroup, predictionApi *api.SysPredictionApi) {
-	predictionGroup := rg.Group("/prediction")
+	imagesGroup := rg.Group("/images")
 
-	predictionGroup.POST("", predictionApi.Predict)                     // 执行去雾预测
-	predictionGroup.GET("/quota", predictionApi.GetQuota)               // 查询剩余次数（必须在 /:id 前）
-	predictionGroup.POST("/batch", predictionApi.BatchPredict)          // 批量去雾预测（必须在 /:id 前）
-	predictionGroup.GET("/logs", predictionApi.ListPredictionLogs)      // 预测日志列表
-	predictionGroup.GET("/:id", predictionApi.GetPredictionLog)         // 查询预测状态
-	predictionGroup.POST("/:id/cancel", predictionApi.CancelPrediction) // 取消预测任务（幂等，仅本人可取消）
+	imagesGroup.POST("/edits", predictionApi.SubmitImageEdit)                // 提交图像编辑任务
+	imagesGroup.GET("/tasks", predictionApi.ListImageTasks)                  // 图像任务历史列表
+	imagesGroup.GET("/tasks/:taskId", predictionApi.GetImageTask)            // 查询图像任务状态
+	imagesGroup.POST("/tasks/:taskId/cancel", predictionApi.CancelImageTask) // 取消图像任务（幂等，仅本人可取消）
 }

@@ -1,5 +1,15 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.service.AiAgentEndpointService;
@@ -21,16 +31,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 分页参数边界校验（AI 域）：pageSize ≤ 100、pageNum ≥ 1，越界返回 400 + A0400。
@@ -58,18 +58,25 @@ class AiPaginationValidationTest {
 
     @Mock
     private AiConversationService conversationService;
+
     @Mock
     private AiAgentService agentService;
+
     @Mock
     private AiAgentVersionService agentVersionService;
+
     @Mock
     private AiEvalService evalService;
+
     @Mock
     private AiMemoryService memoryService;
+
     @Mock
     private AiArtifactService artifactService;
+
     @Mock
     private AiScheduleService scheduleService;
+
     @Mock
     private AiAgentEndpointService endpointService;
 
@@ -93,7 +100,9 @@ class AiPaginationValidationTest {
 
         mockMvc = MockMvcBuilders.standaloneSetup(
                         new AiConversationController(conversationService),
-                        new AiAgentController(agentService, agentVersionService,
+                        new AiAgentController(
+                                agentService,
+                                agentVersionService,
                                 new com.pei.dehaze.service.AiAgentConfigResolver(null)),
                         new AiAgentEvalController(evalService),
                         new AiMemoryController(memoryService),
@@ -140,7 +149,8 @@ class AiPaginationValidationTest {
     @DisplayName("评测执行记录：pageSize=101 返回 A0400（datasetId 与分页同 DTO 校验）")
     void evalRunsPageSizeBoundary() throws Exception {
         mockMvc.perform(get("/api/v1/ai/agents/1/eval/runs")
-                        .param("pageSize", "101").param("datasetId", "5"))
+                        .param("pageSize", "101")
+                        .param("datasetId", "5"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
 
@@ -156,8 +166,7 @@ class AiPaginationValidationTest {
         mockMvc.perform(get("/api/v1/ai/memories").param("pageSize", "101"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
-        mockMvc.perform(get("/api/v1/ai/memories").param("pageSize", "100"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/ai/memories").param("pageSize", "100")).andExpect(status().isOk());
     }
 
     @Test

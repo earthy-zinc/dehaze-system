@@ -7,15 +7,15 @@ db fixture 为真实 MySQL 测试库 + 测试级事务回滚；Redis 用独立 f
 
 import pytest
 
-from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import CAPTCHA_KEY_PREFIX
 from app.core.exceptions import BusinessException
 from app.service.auth_service import auth_service
 from tests.stubs.factories import fake_redis
 
 
 async def _captcha_ok(redis, key: str = "k1", code: str = "abcd"):
-    await redis.set(f"{settings.CAPTCHA_KEY_PREFIX}{key}", code)
+    await redis.set(f"{CAPTCHA_KEY_PREFIX}{key}", code)
     return key, code
 
 
@@ -44,7 +44,7 @@ class TestRegisterSuccess:
         assert "GUEST" in role_codes
 
         # 注册成功后验证码已消费（一次性）
-        assert await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}{key}") is None
+        assert await redis.get(f"{CAPTCHA_KEY_PREFIX}{key}") is None
 
     async def test_username_normalized_to_lowercase(self, db):
         """T-AM-032 依据：注册用户名统一小写化，"Admin" 与 "admin" 冲突。"""

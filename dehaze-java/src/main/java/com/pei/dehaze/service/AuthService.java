@@ -2,13 +2,12 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.model.dto.CaptchaResult;
-import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.form.RegisterForm;
 import com.pei.dehaze.model.query.LoginLogQuery;
 import com.pei.dehaze.model.vo.LoginLogVO;
 import com.pei.dehaze.model.vo.UserSessionVO;
-
 import java.util.List;
 
 public interface AuthService {

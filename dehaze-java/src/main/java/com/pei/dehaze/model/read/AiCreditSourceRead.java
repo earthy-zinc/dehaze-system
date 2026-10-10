@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.read;
 
-import lombok.Data;
-
 import java.math.BigDecimal;
+import lombok.Data;
 
 /** 积分流水按来源汇总行 */
 @Data

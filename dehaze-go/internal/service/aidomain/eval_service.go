@@ -51,27 +51,33 @@ type EvalDatasetUpdateForm struct {
 	Description *string `json:"description"`
 }
 
+// EvalToolCall 期望的工具调用：name 必填；args 为期望参数键值子集（实际调用参数包含这些键值即通过）。
+type EvalToolCall struct {
+	Name string         `json:"name"`
+	Args map[string]any `json:"args,omitempty"`
+}
+
 // EvalSampleCreateForm 创建样本表单（python 侧同为纯 BaseModel，wire 字段 snake_case）。
 type EvalSampleCreateForm struct {
-	DatasetID         int64    `json:"dataset_id"`
-	TaskGoal          string   `json:"task_goal"`
-	AllowedInput      *string  `json:"allowed_input"`
-	Tools             []string `json:"tools"`
-	ExpectedProcess   *string  `json:"expected_process"`
-	ExpectedResult    *string  `json:"expected_result"`
-	ForbiddenBehavior *string  `json:"forbidden_behavior"`
-	RiskLevel         string   `json:"risk_level"`
+	DatasetID         int64           `json:"dataset_id"`
+	TaskGoal          string          `json:"task_goal"`
+	AllowedInput      *string         `json:"allowed_input"`
+	Tools             json.RawMessage `json:"tools"`
+	ExpectedProcess   *string         `json:"expected_process"`
+	ExpectedResult    *string         `json:"expected_result"`
+	ForbiddenBehavior *string         `json:"forbidden_behavior"`
+	RiskLevel         string          `json:"risk_level"`
 }
 
 // EvalSampleUpdateForm 更新样本表单（wire 字段同 Create）。
 type EvalSampleUpdateForm struct {
-	TaskGoal          *string  `json:"task_goal"`
-	AllowedInput      *string  `json:"allowed_input"`
-	Tools             []string `json:"tools"`
-	ExpectedProcess   *string  `json:"expected_process"`
-	ExpectedResult    *string  `json:"expected_result"`
-	ForbiddenBehavior *string  `json:"forbidden_behavior"`
-	RiskLevel         *string  `json:"risk_level"`
+	TaskGoal          *string         `json:"task_goal"`
+	AllowedInput      *string         `json:"allowed_input"`
+	Tools             json.RawMessage `json:"tools"`
+	ExpectedProcess   *string         `json:"expected_process"`
+	ExpectedResult    *string         `json:"expected_result"`
+	ForbiddenBehavior *string         `json:"forbidden_behavior"`
+	RiskLevel         *string         `json:"risk_level"`
 }
 
 // EvalService 评测集与样本 CRUD（评测执行为 B 类，由 python 承接）。
@@ -203,11 +209,15 @@ func (s *EvalService) CreateSample(ctx context.Context, agentID, datasetID int64
 	if _, ok := validRiskLevels[riskLevel]; !ok {
 		return nil, common.NewBizError(common.PARAM_ERROR, "风险等级取值非法")
 	}
+	tools, err := parseEvalTools(form.Tools)
+	if err != nil {
+		return nil, err
+	}
 	sample := &model.SysAiAgentEvalSample{
 		DatasetID:         datasetID,
 		TaskGoal:          form.TaskGoal,
 		AllowedInput:      form.AllowedInput,
-		Tools:             marshalJSON(form.Tools),
+		Tools:             marshalJSON(tools),
 		ExpectedProcess:   form.ExpectedProcess,
 		ExpectedResult:    form.ExpectedResult,
 		ForbiddenBehavior: form.ForbiddenBehavior,
@@ -251,9 +261,13 @@ func (s *EvalService) UpdateSample(ctx context.Context, agentID, sampleID int64,
 		sample.AllowedInput = form.AllowedInput
 	}
 	if form.Tools != nil {
-		tools := marshalJSON(form.Tools)
-		fields["tools"] = tools
-		sample.Tools = tools
+		tools, parseErr := parseEvalTools(form.Tools)
+		if parseErr != nil {
+			return nil, parseErr
+		}
+		raw := marshalJSON(tools)
+		fields["tools"] = raw
+		sample.Tools = raw
 	}
 	if form.ExpectedProcess != nil {
 		fields["expected_process"] = *form.ExpectedProcess
@@ -359,4 +373,22 @@ func toSampleVO(sample *model.SysAiAgentEvalSample) *EvalSampleVO {
 		RiskLevel:         sample.RiskLevel,
 		CreateTime:        formatTime(sample.CreateTime),
 	}
+}
+
+// parseEvalTools 解析并校验期望工具调用序列（有序；每项 name 必填，args 为期望参数子集）。
+// 空值/JSON null 返回 nil；非对象数组或缺少 name 返回参数错误（对齐 python EvalToolCall）。
+func parseEvalTools(raw json.RawMessage) ([]EvalToolCall, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var tools []EvalToolCall
+	if err := json.Unmarshal(raw, &tools); err != nil {
+		return nil, common.NewBizError(common.PARAM_ERROR, "期望工具调用格式非法")
+	}
+	for _, tool := range tools {
+		if tool.Name == "" {
+			return nil, common.NewBizError(common.PARAM_ERROR, "期望工具调用缺少 name")
+		}
+	}
+	return tools, nil
 }

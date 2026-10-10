@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -20,31 +23,40 @@ import (
 )
 
 const (
-	// 默认防重复提交 key 前缀
+	// defaultAntiRepeatPrefix 防重复提交 key 前缀。三端共享同一 Redis，**键格式即跨端契约**
+	// （见 dehaze-doc/docs/05-改造计划/防重复提交三端统一改造计划.md）。
 	defaultAntiRepeatPrefix = "anti_repeat:"
+	// defaultAntiRepeatExpire 统一过期窗口（秒）。三端同一口径，禁止逐路由覆盖。
+	defaultAntiRepeatExpire = 5
+	// maxHashedBodySize 参与摘要的请求体上限；超过则不读，避免大请求体常驻内存。
+	maxHashedBodySize = 256 * 1024
 )
 
 // AntiRepeatConfig 防重复提交配置
 type AntiRepeatConfig struct {
-	// Expire 过期时间，单位：秒，默认 5 秒
+	// Expire 过期时间，单位：秒，默认 5 秒（统一口径，业务路由不应覆盖）
 	Expire int
 	// KeyGenerator 自定义 key 生成函数，如果为 nil 则使用默认策略
 	KeyGenerator func(c *gin.Context) string
-	// IncludeBody 是否包含请求体（POST/PUT/DELETE 等需要请求体的请求），默认 false
-	IncludeBody bool
 	// SkipPaths 需要跳过的路径列表（不进行防重复检查）
 	SkipPaths []string
 	// OnCustomError 自定义错误处理函数，如果为 nil 则使用默认错误处理
 	OnCustomError func(c *gin.Context)
 }
 
-// AntiRepeat 创建防重复提交中间件
-// 使用 Redis SETNX（SET if Not eXists）实现分布式锁
-// 默认基于 JWT 的 jti + 请求方法 + URI 生成唯一 key
+// AntiRepeat 创建防重复提交中间件（Redis SETNX）。
+//
+// 键格式（三端必须完全一致）：
+//
+//	anti_repeat:{identity}:{METHOD}:{path}:{sortedQuery}:{bodyHash}
+//
+// 五段固定（query / bodyHash 为空时保留空段），保证同一请求在三端算出同一键。
+// 参与防重的端点由路由显式挂载决定（白名单制），须与 python 中间件白名单、
+// java @PreventDuplicateSubmit 完全一致（由跨端契约测试对拍）。
 func AntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
 	// 设置默认值
 	if config.Expire == 0 {
-		config.Expire = 5 // 默认 5 秒
+		config.Expire = defaultAntiRepeatExpire
 	}
 
 	// 如果没有提供自定义 key 生成器，使用默认策略
@@ -130,164 +142,81 @@ func AntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
 	}
 }
 
-// defaultKeyGenerator 默认的 key 生成策略
-// 基于 JWT 的 jti + 请求方法 + URI 生成唯一 key
-// 如果 IncludeBody 为 true，还会包含请求体内容的 MD5
+// defaultKeyGenerator 默认的 key 生成策略：
+// 身份 + 请求方法 + 请求路径 + 排序归一后的 query + 请求体摘要（五段固定）。
 func defaultKeyGenerator(c *gin.Context) string {
-	var keyParts []string
+	return resolveIdentity(c) + ":" +
+		c.Request.Method + ":" +
+		c.Request.URL.Path + ":" +
+		normalizeQuery(c.Request.URL.RawQuery) + ":" +
+		resolveBodyHash(c)
+}
 
-	// 1. 获取 JWT 的 jti（如果存在）
+// resolveIdentity 身份统一收敛到用户维度；无有效登录态时退化为客户端 IP。
+// JWT 的 jti 随刷新变化，会让"重新登录后提交同一请求"各自算出新键而绕过防重。
+func resolveIdentity(c *gin.Context) string {
 	if claims, exists := c.Get("claims"); exists {
-		if customClaims, ok := claims.(*security.CustomClaims); ok && customClaims.ID != "" {
-			keyParts = append(keyParts, customClaims.ID)
+		if customClaims, ok := claims.(*security.CustomClaims); ok && customClaims.UserID != 0 {
+			return fmt.Sprintf("user:%d", customClaims.UserID)
 		}
 	}
-
-	// 2. 如果没有 JWT jti，使用客户端 IP
-	if len(keyParts) == 0 {
-		keyParts = append(keyParts, c.ClientIP())
-	}
-
-	// 3. 添加请求方法
-	keyParts = append(keyParts, c.Request.Method)
-
-	// 4. 添加请求路径
-	keyParts = append(keyParts, c.Request.URL.Path)
-
-	// 5. 如果需要包含请求体（POST/PUT/PATCH/DELETE）
-	body := ""
-	if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
-		// 读取请求体
-		bodyBytes, err := io.ReadAll(c.Request.Body)
-		if err == nil && len(bodyBytes) > 0 {
-			body = string(bodyBytes)
-			// 恢复请求体（因为 io.ReadAll 会消耗 Body）
-			c.Request.Body = io.NopCloser(strings.NewReader(body))
-
-			// 对请求体进行 MD5 哈希（避免 key 过长）
-			if body != "" {
-				hash := md5.Sum([]byte(body))
-				bodyHash := hex.EncodeToString(hash[:])
-				keyParts = append(keyParts, bodyHash)
-			}
-		}
-	}
-
-	// 使用冒号连接各部分
-	return strings.Join(keyParts, ":")
+	return "ip:" + c.ClientIP()
 }
 
-// DefaultAntiRepeat 创建使用默认配置的防重复提交中间件
-// 默认配置：
-// - 过期时间：5 秒
-// - 不包含请求体
-// - 跳过路径：空
-// - 错误处理：使用默认错误响应
+// normalizeQuery 将 query 按 (key, value) 全排序后重新编码。
+// 不排序等于留一条绕过路径：?a=1&b=2 与 ?b=2&a=1 会算出不同键。
+func normalizeQuery(rawQuery string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		// 非法 query：整体按空处理，避免解析歧义导致键不稳定
+		return ""
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		items := append([]string(nil), values[key]...)
+		sort.Strings(items)
+		for _, item := range items {
+			parts = append(parts, url.QueryEscape(key)+"="+url.QueryEscape(item))
+		}
+	}
+	return strings.Join(parts, "&")
+}
+
+// resolveBodyHash 计算请求体摘要；multipart 与超大请求体按空摘要参与（与 python/java 口径一致）。
+func resolveBodyHash(c *gin.Context) string {
+	if strings.HasPrefix(strings.ToLower(c.GetHeader("Content-Type")), "multipart/") {
+		return ""
+	}
+	if c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead || c.Request.Body == nil {
+		return ""
+	}
+	if c.Request.ContentLength > maxHashedBodySize {
+		return ""
+	}
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil || len(bodyBytes) == 0 {
+		return ""
+	}
+	// 恢复请求体（io.ReadAll 会消耗 Body），供后续 handler 参数绑定
+	c.Request.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+
+	sum := md5.Sum(bodyBytes)
+	return hex.EncodeToString(sum[:])
+}
+
+// DefaultAntiRepeat 使用统一默认配置（过期 5 秒）创建防重复提交中间件。
+// 业务路由一律使用本函数挂载，避免逐路由覆盖 Expire 造成三端口径漂移。
 func DefaultAntiRepeat() gin.HandlerFunc {
-	return AntiRepeat(AntiRepeatConfig{
-		Expire:      5,
-		IncludeBody: false,
-	})
-}
-
-// CustomKeyGenerator 自定义 key 生成器的示例
-// 可以根据业务需求实现不同的 key 生成策略
-func CustomKeyGenerator(includeBody bool) func(c *gin.Context) string {
-	return func(c *gin.Context) string {
-		var keyParts []string
-
-		// 获取用户 ID（从 JWT claims）
-		if claims, exists := c.Get("claims"); exists {
-			if customClaims, ok := claims.(*security.CustomClaims); ok {
-				keyParts = append(keyParts, fmt.Sprintf("user:%d", customClaims.UserID))
-			}
-		}
-
-		// 添加请求方法
-		keyParts = append(keyParts, c.Request.Method)
-
-		// 添加请求路径
-		keyParts = append(keyParts, c.Request.URL.Path)
-
-		// 可选：包含请求体
-		if includeBody && c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
-			bodyBytes, _ := io.ReadAll(c.Request.Body)
-			if len(bodyBytes) > 0 {
-				// 恢复请求体
-				c.Request.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
-
-				// 对请求体进行 MD5 哈希
-				hash := md5.Sum(bodyBytes)
-				bodyHash := hex.EncodeToString(hash[:])
-				keyParts = append(keyParts, bodyHash)
-			}
-		}
-
-		return strings.Join(keyParts, ":")
-	}
-}
-
-// CustomAntiRepeat 创建自定义配置的防重复提交中间件
-//
-// 示例 1：自定义过期时间（10 秒）
-//
-//	router.POST("/create", middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    Expire: 10,
-//	}), handler.Create)
-//
-// 示例 2：包含请求体
-//
-//	router.POST("/update", middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    Expire:      5,
-//	    IncludeBody: true,
-//	}), handler.Update)
-//
-// 示例 3：跳过特定路径
-//
-//	router.Use(middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    SkipPaths: []string{"/api/public/health", "/api/public/ping"},
-//	}))
-//
-// 示例 4：自定义 key 生成函数
-//
-//	router.POST("/submit", middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    KeyGenerator: middleware.CustomKeyGenerator(true),
-//	}), handler.Submit)
-//
-// 示例 5：自定义错误处理
-//
-//	router.POST("/api/order/create", middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    Expire: 3,
-//	    OnCustomError: func(c *gin.Context) {
-//	        c.JSON(http.StatusOK, gin.H{
-//	            "code": "A0002",
-//	            "msg":  "订单正在处理中，请勿重复提交",
-//	            "data": nil,
-//	        })
-//	    },
-//	}), orderHandler.CreateOrder)
-//
-// 示例 6：组合配置
-//
-//	router.POST("/payment", middleware.AntiRepeat(middleware.AntiRepeatConfig{
-//	    Expire:      10,
-//	    IncludeBody: true,
-//	    SkipPaths:   []string{"/api/payment/callback"},
-//	    KeyGenerator: func(c *gin.Context) string {
-//	        // 自定义基于订单 ID 的 key 生成逻辑
-//	        orderID := c.PostForm("order_id")
-//	        return fmt.Sprintf("payment:%s", orderID)
-//	    },
-//	    OnCustomError: func(c *gin.Context) {
-//	        c.JSON(http.StatusOK, gin.H{
-//	            "code": "A0002",
-//	            "msg":  "支付请求处理中，请稍候...",
-//	            "data": nil,
-//	        })
-//	    },
-//	}), paymentHandler.ProcessPayment)
-func CustomAntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
-	return AntiRepeat(config)
+	return AntiRepeat(AntiRepeatConfig{})
 }
 
 // SetAntiRepeatLock 手动设置防重复提交锁（用于在业务逻辑中调用）
@@ -326,10 +255,10 @@ func SetAntiRepeatLock(ctx context.Context, key string, expire int) (bool, error
 // 返回：
 //   - error: 缓存操作错误
 func DeleteAntiRepeatLock(ctx context.Context, key string) error {
-	cache := cache.GetCache()
-	if cache == nil {
+	cacheClient := cache.GetCache()
+	if cacheClient == nil {
 		return fmt.Errorf("缓存不可用")
 	}
 
-	return cache.Delete(ctx, defaultAntiRepeatPrefix+key)
+	return cacheClient.Delete(ctx, defaultAntiRepeatPrefix+key)
 }

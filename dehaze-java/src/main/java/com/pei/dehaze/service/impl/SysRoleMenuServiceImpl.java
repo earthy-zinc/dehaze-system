@@ -5,18 +5,16 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.mapper.SysRoleMenuMapper;
-import com.pei.dehaze.model.read.RolePermsRead;
 import com.pei.dehaze.model.entity.SysRoleMenu;
+import com.pei.dehaze.model.read.RolePermsRead;
 import com.pei.dehaze.service.SysRoleMenuService;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * 角色菜单业务实现
@@ -67,7 +65,9 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
             list.forEach(item -> {
                 String roleCode = item.getRoleCode();
                 Set<String> perms = item.getPerms();
-                stringRedisTemplate.opsForValue().set(rolePermsKey(roleCode), JSONUtil.toJsonStr(perms), ROLE_PERMS_TTL);
+                stringRedisTemplate
+                        .opsForValue()
+                        .set(rolePermsKey(roleCode), JSONUtil.toJsonStr(perms), ROLE_PERMS_TTL);
             });
         }
     }
@@ -100,7 +100,6 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
         refreshRolePermsCache(newRoleCode);
     }
 
-
     /**
      * 获取角色拥有的菜单ID集合
      *
@@ -111,5 +110,4 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
     public List<Long> listMenuIdsByRoleId(Long roleId) {
         return this.baseMapper.listMenuIdsByRoleId(roleId);
     }
-
 }

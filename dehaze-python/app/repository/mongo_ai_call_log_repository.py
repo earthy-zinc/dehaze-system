@@ -10,10 +10,40 @@ from datetime import UTC, datetime
 from app.config import settings
 from app.dependencies import mongo
 from app.models.entity.mongo_log import AiApiCallLogDocument
+from app.repository.mongo_bson import as_int64, int64_or_int32_in
 
 logger = logging.getLogger(__name__)
 
 _BACKGROUND_CALL_LOG_TASKS: set[asyncio.Task] = set()
+
+
+def _build_doc(fields: dict) -> dict:
+    """由调用审计字段构造写入文档。
+
+    `user_id` / `key_id` 统一编码为 BSON int64：java（`Long`）与 go（`int64`）按这两个
+    字段过滤调用日志，pymongo 对 < 2^31 的裸 int 写 int32 ⇒ 单类型读不到 python 的记录
+    且不报错（见 `app/repository/mongo_bson.py`）。`conversation_id` 无任何端用它过滤，
+    按原值写入。
+    """
+    return {
+        "user_id": as_int64(fields.get("user_id")),
+        "key_id": as_int64(fields.get("key_id")),
+        "key_prefix": fields.get("key_prefix", ""),
+        "conversation_id": fields.get("conversation_id"),
+        "model": fields.get("model"),
+        "endpoint": fields.get("endpoint", ""),
+        "protocol": fields.get("protocol", ""),
+        "is_stream": bool(fields.get("is_stream", False)),
+        "input_tokens": fields.get("input_tokens") or 0,
+        "output_tokens": fields.get("output_tokens") or 0,
+        "credits": fields.get("credits"),
+        "status_code": fields.get("status_code", 500),
+        "duration_ms": fields.get("duration_ms") or 0,
+        "client_ip": fields.get("client_ip", ""),
+        "request_id": fields.get("request_id", ""),
+        "error_msg": fields.get("error_msg"),
+        "create_time": datetime.now(UTC),
+    }
 
 
 class MongoAiCallLogRepository:
@@ -31,32 +61,14 @@ class MongoAiCallLogRepository:
     def insert_async(self, **fields) -> None:
         """异步写入调用审计（不阻塞业务主流程，失败时记录 warn 日志）。
 
-        字段缺省值在此补全；user_id/key_id 允许为 None（401 被拒调用无凭证上下文）。
+        文档构造（字段缺省值 + int64 口径）见 `_build_doc`；user_id/key_id 允许为 None
+        （401 被拒调用无凭证上下文）。
         任务持有强引用（事件循环对 task 仅弱引用，不持有会被 GC 中途丢弃），完成后移出引用集。
         """
 
         async def _write():
             try:
-                doc = {
-                    "user_id": fields.get("user_id"),
-                    "key_id": fields.get("key_id"),
-                    "key_prefix": fields.get("key_prefix", ""),
-                    "conversation_id": fields.get("conversation_id"),
-                    "model": fields.get("model"),
-                    "endpoint": fields.get("endpoint", ""),
-                    "protocol": fields.get("protocol", ""),
-                    "is_stream": bool(fields.get("is_stream", False)),
-                    "input_tokens": fields.get("input_tokens") or 0,
-                    "output_tokens": fields.get("output_tokens") or 0,
-                    "credits": fields.get("credits"),
-                    "status_code": fields.get("status_code", 500),
-                    "duration_ms": fields.get("duration_ms") or 0,
-                    "client_ip": fields.get("client_ip", ""),
-                    "request_id": fields.get("request_id", ""),
-                    "error_msg": fields.get("error_msg"),
-                    "create_time": datetime.now(UTC),
-                }
-                await self.insert(doc)
+                await self.insert(_build_doc(fields))
             except Exception as e:
                 logger.warning(
                     "调用审计写入失败 endpoint=%s status_code=%s: %s",
@@ -82,10 +94,12 @@ class MongoAiCallLogRepository:
         """按用户/Key/模型/时间筛选调用日志（create_time 倒序分页）。
 
         服务对象为登录用户查自己，user_id 强制过滤。
+        user_id/key_id 用 int32/int64 双类型匹配（本端与另两端写入的编码见
+        `app/repository/mongo_bson.py`，历史 int32 记录同样要命中）。
         """
-        filter_cond: dict = {"user_id": user_id}
+        filter_cond: dict = {"user_id": int64_or_int32_in(user_id)}
         if key_id is not None:
-            filter_cond["key_id"] = key_id
+            filter_cond["key_id"] = int64_or_int32_in(key_id)
         if model:
             filter_cond["model"] = model
         time_cond: dict = {}
@@ -116,7 +130,8 @@ class MongoAiCallLogRepository:
         pipeline = [
             {
                 "$match": {
-                    "user_id": user_id,
+                    # int32/int64 双类型匹配（口径同 query，见 app/repository/mongo_bson.py）
+                    "user_id": int64_or_int32_in(user_id),
                     "create_time": {"$gte": start_time, "$lte": end_time},
                 }
             },

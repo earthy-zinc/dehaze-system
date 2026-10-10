@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** 知识库文档视图（列表接口不返回 content 大字段） */
 @Schema(description = "知识库文档视图")

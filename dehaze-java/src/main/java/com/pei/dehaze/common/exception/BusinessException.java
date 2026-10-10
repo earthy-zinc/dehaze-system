@@ -25,20 +25,18 @@ public class BusinessException extends RuntimeException {
         this.resultCode = errorCode;
     }
 
-    public BusinessException(String message){
+    public BusinessException(String message) {
         super(message);
         this.resultCode = ResultCode.BUSINESS_ERROR;
     }
 
-    public BusinessException(String message, Throwable cause){
+    public BusinessException(String message, Throwable cause) {
         super(message, cause);
         this.resultCode = ResultCode.BUSINESS_ERROR;
     }
 
-    public BusinessException(Throwable cause){
+    public BusinessException(Throwable cause) {
         super(cause);
         this.resultCode = ResultCode.SYSTEM_EXECUTION_ERROR;
     }
-
-
 }

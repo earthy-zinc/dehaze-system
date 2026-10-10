@@ -1,5 +1,9 @@
 package com.pei.dehaze.service.strategy;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
@@ -14,10 +18,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 默认进度回调单元测试
@@ -106,9 +106,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(6, 100, "进行中");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 6
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 6));
     }
 
     /**
@@ -154,9 +152,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(5, 100, "进行中");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 5
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 5));
     }
 
     /**
@@ -179,9 +175,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(100, 100, "完成");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 100
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 100));
     }
 
     /**
@@ -201,9 +195,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(0, 0, "无需处理");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 100
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 100));
     }
 
     /**
@@ -230,9 +222,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(2, 100, "第二步");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 2
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 2));
     }
 
     // ==================== 任务取消检测测试 ====================
@@ -328,9 +318,7 @@ class DefaultProgressCallbackTest {
         when(taskMapper.updateById(any(SysTask.class))).thenReturn(1);
 
         // Act & Assert
-        assertThrows(TaskCancelledException.class, () ->
-                progressCallback.updateProgress(50, 100, "处理中")
-        );
+        assertThrows(TaskCancelledException.class, () -> progressCallback.updateProgress(50, 100, "处理中"));
 
         verify(taskMapper, never()).updateById(any(SysTask.class));
     }
@@ -354,9 +342,8 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(150, 100, "超额完成");
 
         // Assert - 实际行为：按公式计算，不裁剪
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 150 && task.getProcessedFiles() == 150
-        ));
+        verify(taskMapper, times(1))
+                .updateById(argThat(task -> task.getProgress() == 150 && task.getProcessedFiles() == 150));
     }
 
     /**
@@ -376,9 +363,8 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(-10, 100, "异常");
 
         // Assert
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == -10 && task.getProcessedFiles() == -10
-        ));
+        verify(taskMapper, times(1))
+                .updateById(argThat(task -> task.getProgress() == -10 && task.getProcessedFiles() == -10));
     }
 
     /**
@@ -401,9 +387,7 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(4, 100, "4%");
 
         // Assert - 只在第一次更新
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 1
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 1));
     }
 
     /**
@@ -426,8 +410,6 @@ class DefaultProgressCallbackTest {
         progressCallback.updateProgress(15, 100, "处理中");
 
         // Assert - 进度变化=5% (15-10=5)，满足>=5%条件，会更新
-        verify(taskMapper, times(1)).updateById(argThat(task ->
-                task.getProgress() == 15
-        ));
+        verify(taskMapper, times(1)).updateById(argThat(task -> task.getProgress() == 15));
     }
 }

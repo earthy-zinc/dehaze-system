@@ -16,9 +16,9 @@ type FeedbackForm struct {
 type RuleForm struct {
 	ID int64 `json:"id"`
 	// 更新与新增共用：body 携带 id 即为更新（python PUT /recommendations/rules 同口径）
-	RuleName     string  `json:"ruleName" binding:"required"`
-	SceneType    string  `json:"sceneType" binding:"required"`
-	AlgorithmIds []int64 `json:"algorithmIds" binding:"required,min=1"`
-	Weight       *int    `json:"weight" binding:"required,min=0,max=100"`
-	Enabled      *bool   `json:"enabled"`
+	RuleName  string   `json:"ruleName" binding:"required"`
+	SceneType string   `json:"sceneType" binding:"required"`
+	ModelIds  []string `json:"modelIds" binding:"required,min=1"`
+	Weight    *int     `json:"weight" binding:"required,min=0,max=100"`
+	Enabled   *bool    `json:"enabled"`
 }

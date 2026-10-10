@@ -52,7 +52,8 @@ public class AiKnowledgeBaseController {
     @GetMapping
     public PageResult<KbVO> listKnowledgeBases(@Valid @ParameterObject KbPageQuery query) {
         // view=admin 管理端视角：仅 kb:audit 可看全量含私有库
-        if ("admin".equals(query.getView()) && !SecurityUtils.isRoot()
+        if ("admin".equals(query.getView())
+                && !SecurityUtils.isRoot()
                 && !SecurityUtils.getPerms().contains(KB_AUDIT_PERMISSION)) {
             throw new BusinessException(ResultCode.ACCESS_UNAUTHORIZED);
         }
@@ -68,15 +69,14 @@ public class AiKnowledgeBaseController {
     @Operation(summary = "编辑知识库")
     @PutMapping("/{kbId}")
     @PreAuthorize("@ss.hasPerm('kb:manage')")
-    public Result<KbVO> updateKnowledgeBase(@PathVariable Long kbId,
-                                            @RequestBody @Valid KbUpdateForm form) {
+    public Result<KbVO> updateKnowledgeBase(@PathVariable Long kbId, @RequestBody @Valid KbUpdateForm form) {
         return Result.success(aiKnowledgeBaseService.update(kbId, form));
     }
 
     @Operation(summary = "知识库文档列表")
     @GetMapping("/{kbId}/documents")
-    public PageResult<KbDocumentVO> listDocuments(@PathVariable Long kbId,
-                                                  @Valid @ParameterObject KbDocumentPageQuery query) {
+    public PageResult<KbDocumentVO> listDocuments(
+            @PathVariable Long kbId, @Valid @ParameterObject KbDocumentPageQuery query) {
         return PageResult.success(aiKnowledgeBaseService.listDocuments(kbId, query));
     }
 
@@ -88,38 +88,34 @@ public class AiKnowledgeBaseController {
 
     @Operation(summary = "文档分块列表")
     @GetMapping("/documents/{documentId}/chunks")
-    public PageResult<KbChunkVO> listDocumentChunks(@PathVariable Long documentId,
-                                                    @Valid @ParameterObject PageParamQuery query) {
-        Page<KbChunkVO> page = aiKnowledgeBaseService.listChunks(
-                documentId, query.getPageNum(), query.getPageSize());
+    public PageResult<KbChunkVO> listDocumentChunks(
+            @PathVariable Long documentId, @Valid @ParameterObject PageParamQuery query) {
+        Page<KbChunkVO> page = aiKnowledgeBaseService.listChunks(documentId, query.getPageNum(), query.getPageSize());
         return PageResult.success(page);
     }
 
     @Operation(summary = "创建召回测试集")
     @PostMapping("/{kbId}/retrieve/test-sets")
     @PreAuthorize("@ss.hasPerm('kb:audit')")
-    public Result<TestSetVO> createTestSet(@PathVariable Long kbId,
-                                           @RequestBody @Valid TestSetForm form) {
+    public Result<TestSetVO> createTestSet(@PathVariable Long kbId, @RequestBody @Valid TestSetForm form) {
         return Result.success(aiKnowledgeBaseService.createTestSet(kbId, form));
     }
 
     @Operation(summary = "召回测试集列表")
     @GetMapping("/{kbId}/retrieve/test-sets")
     @PreAuthorize("@ss.hasPerm('kb:audit')")
-    public PageResult<TestSetVO> listTestSets(@PathVariable Long kbId,
-                                              @Valid @ParameterObject PageParamQuery query) {
-        Page<TestSetVO> page = aiKnowledgeBaseService.listTestSets(
-                kbId, query.getPageNum(), query.getPageSize());
+    public PageResult<TestSetVO> listTestSets(@PathVariable Long kbId, @Valid @ParameterObject PageParamQuery query) {
+        Page<TestSetVO> page = aiKnowledgeBaseService.listTestSets(kbId, query.getPageNum(), query.getPageSize());
         return PageResult.success(page);
     }
 
     @Operation(summary = "低质量片段列表")
     @GetMapping("/{kbId}/chunks/low-quality")
     @PreAuthorize("@ss.hasPerm('kb:audit')")
-    public PageResult<LowQualityChunkVO> listLowQualityChunks(@PathVariable Long kbId,
-                                                              @Valid @ParameterObject PageParamQuery query) {
-        Page<LowQualityChunkVO> page = aiKnowledgeBaseService.listLowQualityChunks(
-                kbId, query.getPageNum(), query.getPageSize());
+    public PageResult<LowQualityChunkVO> listLowQualityChunks(
+            @PathVariable Long kbId, @Valid @ParameterObject PageParamQuery query) {
+        Page<LowQualityChunkVO> page =
+                aiKnowledgeBaseService.listLowQualityChunks(kbId, query.getPageNum(), query.getPageSize());
         return PageResult.success(page);
     }
 }

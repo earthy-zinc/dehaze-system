@@ -4,13 +4,12 @@ import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.result.ResultCode;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 
 /**
  * 响应工具类
@@ -47,5 +46,4 @@ public class ResponseUtils {
             log.error("响应异常处理失败", e);
         }
     }
-
 }

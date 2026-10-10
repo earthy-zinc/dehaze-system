@@ -24,7 +24,9 @@ def _make_model(model_id="gpt-4o", pk=1, provider_id=1, **overrides):
         "id": pk,
         "model_id": model_id,
         "provider_id": provider_id,
+        "model_type": "chat",
         "max_output_tokens": 2048,
+        "supports_tool_call": 1,
         "supports_prompt_cache": 0,
         "prompt_cache_prefix_len": 0,
         "extra_request_params": None,
@@ -200,6 +202,54 @@ async def test_429_switch_key(mock_redis):
 
 
 async def test_key_exhausted_switch_provider(mock_redis):
+    """同一供应商多 Key 全部失败 → 逐个标记冷却后切下一供应商"""
+    routes = [
+        {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}},
+        {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 2, "model_config": {}},
+    ]
+    svc = _patch_cross_services(routes, redis_client=mock_redis)
+    svc.list_usable_keys.side_effect = [
+        [_make_key(1, provider_id=1), _make_key(2, provider_id=1)],
+        [_make_key(3, provider_id=2)],
+    ]
+    model = _make_model()
+    provider_a = _make_provider(provider_id=1)
+    provider_b = _make_provider(provider_id=2)
+    try:
+        with (
+            _patch_route_io(model, AsyncMock(side_effect=[provider_a, provider_b])),
+            respx.mock(assert_all_mocked=True) as router,
+        ):
+            router.post(CHAT_URL_RE).mock(
+                side_effect=[
+                    httpx.Response(429, content=b""),
+                    httpx.Response(429, content=b""),
+                    httpx.Response(200, content=_sse(_ok_lines("ok")), headers=_sse_headers()),
+                ]
+            )
+            client = _make_client()
+            meta = {}
+            chunks = [
+                c
+                async for c in client.stream_chat(
+                    db=None,
+                    model_id="gpt-4o",
+                    messages=[],
+                    on_route_result=meta.update,
+                )
+            ]
+    finally:
+        svc.stop()
+
+    # 多 Key：两个失败 Key 逐个标记冷却（key_id 1、2），随后切到供应商 2
+    assert [c.args[1] for c in svc.mark_call_failed.await_args_list] == [1, 2]
+    assert meta["provider_id"] == 2
+    assert meta["key_id"] == 3
+    assert [c.content for c in chunks] == ["ok"]
+
+
+async def test_single_key_provider_not_cooled_still_switches(mock_redis):
+    """单 Key 供应商失败不冷却（无备用 Key，冷却会让后续请求直接"无可用 Key"），但仍切下一供应商"""
     routes = [
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}},
         {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 2, "model_config": {}},
@@ -237,7 +287,7 @@ async def test_key_exhausted_switch_provider(mock_redis):
     finally:
         svc.stop()
 
-    svc.mark_call_failed.assert_called_once_with(mock_redis, 1, "429")
+    svc.mark_call_failed.assert_not_called()
     assert meta["provider_id"] == 2
     assert meta["key_id"] == 3
     assert [c.content for c in chunks] == ["ok"]
@@ -516,3 +566,101 @@ async def test_wire_error_recorded_when_all_attempts_fail(mock_redis, db):
     assert row.status == 2
     assert row.raw_request == captured["payload"]  # 失败调用 raw_request 照存
     assert row.raw_response == {"error": {"code": "5xx", "message": "供应商服务端错误: HTTP 500"}}
+
+
+# ==================== 工具调用方言：请求侧零冗余注入 ====================
+
+_TOOL_SPEC = [
+    {
+        "type": "function",
+        "function": {
+            "name": "knowledge_base_search",
+            "description": "检索平台知识库",
+            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+        },
+    }
+]
+
+
+def _system_text(payload: dict) -> str:
+    return " ".join(m.get("content", "") for m in payload["messages"] if m.get("role") == "system")
+
+
+async def test_text_dialect_injects_prompt_and_parses_tool_call(mock_redis):
+    """不支持原生工具的模型（命中文本协议家族）：不发 tools、清单进 system、文本调用被解析。"""
+    route = {"model_pk": 1, "model_id": "qwen3-0.6b", "provider_id": 1, "model_config": {}}
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
+    model = _make_model(model_id="qwen3-0.6b", supports_tool_call=0)
+    provider = _make_provider()
+    captured = {}
+    tool_text = (
+        '<tool_call>{"name": "knowledge_base_search", "arguments": {"query": "分页"}}</tool_call>'
+    )
+
+    def _handler(request):
+        captured["payload"] = json.loads(request.content.decode("utf-8"))
+        line = json.dumps({"choices": [{"delta": {"content": tool_text}}]})
+        return httpx.Response(
+            200, content=_sse([f"data: {line}", "data: [DONE]"]), headers=_sse_headers()
+        )
+
+    try:
+        with _patch_route_io(model, provider), respx.mock(assert_all_mocked=True) as router:
+            router.post(CHAT_URL_RE).mock(side_effect=_handler)
+            client = _make_client()
+            chunks = [
+                c
+                async for c in client.stream_chat(
+                    db=None,
+                    model_id="qwen3-0.6b",
+                    messages=[
+                        {"role": "system", "content": "sys"},
+                        {"role": "user", "content": "hi"},
+                    ],
+                    tools=_TOOL_SPEC,
+                )
+            ]
+    finally:
+        svc.stop()
+
+    # 零冗余：文本方言不发 tools 字段，工具清单改注入 system
+    assert "tools" not in captured["payload"]
+    system_text = _system_text(captured["payload"])
+    assert "<tool_call>" in system_text
+    assert "knowledge_base_search" in system_text
+    assert any(c.type == "tool_call_complete" for c in chunks)
+
+
+async def test_native_dialect_sends_tools_without_prompt_block(mock_redis):
+    """原生方言：tools 字段承载工具清单，system 不再复述（不冗余）。"""
+    route = {"model_pk": 1, "model_id": "gpt-4o", "provider_id": 1, "model_config": {}}
+    svc = _patch_cross_services([route], usable_keys=[_make_key(1)], redis_client=mock_redis)
+    model = _make_model(model_id="gpt-4o", supports_tool_call=1)
+    provider = _make_provider()
+    captured = {}
+
+    def _handler(request):
+        captured["payload"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(200, content=_sse(_ok_lines("hi")), headers=_sse_headers())
+
+    try:
+        with _patch_route_io(model, provider), respx.mock(assert_all_mocked=True) as router:
+            router.post(CHAT_URL_RE).mock(side_effect=_handler)
+            client = _make_client()
+            [
+                c
+                async for c in client.stream_chat(
+                    db=None,
+                    model_id="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": "sys"},
+                        {"role": "user", "content": "hi"},
+                    ],
+                    tools=_TOOL_SPEC,
+                )
+            ]
+    finally:
+        svc.stop()
+
+    assert captured["payload"]["tools"] == _TOOL_SPEC
+    assert "<tool_call>" not in _system_text(captured["payload"])

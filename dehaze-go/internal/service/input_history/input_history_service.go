@@ -119,7 +119,7 @@ func validateHistory(h *model.SysInputHistory) error {
 		{"originalThumbnailUrl", h.OriginalThumbnailURL, 500},
 		{"resultImageUrl", h.ResultImageURL, 500},
 		{"resultThumbnailUrl", h.ResultThumbnailURL, 500},
-		{"algorithmName", h.AlgorithmName, 100},
+		{"modelName", h.ModelName, 100},
 	} {
 		if c.v != nil && utf8.RuneCountInString(*c.v) > c.max {
 			return common.NewBizError(common.PARAM_ERROR, c.name+"长度不能超过"+strconv.Itoa(c.max))
@@ -133,9 +133,9 @@ func validateHistory(h *model.SysInputHistory) error {
 		*h.InputSource != "upload" && *h.InputSource != "camera" && *h.InputSource != "sample" {
 		return common.NewBizError(common.PARAM_ERROR, "inputSource 取值无效（upload/camera/sample）")
 	}
-	// algorithmParams 落库为 JSON 字符串，非 JSON 内容会在回读解析时炸（A0400 前置拦截）
-	if h.AlgorithmParams != nil && *h.AlgorithmParams != "" && !json.Valid([]byte(*h.AlgorithmParams)) {
-		return common.NewBizError(common.PARAM_ERROR, "algorithmParams 必须是合法的 JSON 字符串")
+	// modelParams 落库为 JSON 字符串，非 JSON 内容会在回读解析时炸（A0400 前置拦截）
+	if h.ModelParams != nil && *h.ModelParams != "" && !json.Valid([]byte(*h.ModelParams)) {
+		return common.NewBizError(common.PARAM_ERROR, "modelParams 必须是合法的 JSON 字符串")
 	}
 	if h.ProcessingTime != nil && *h.ProcessingTime < 0 {
 		return common.NewBizError(common.PARAM_ERROR, "processingTime 不能为负数")

@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
-# dehaze-python 质量门禁：ruff（lint + 格式）与 pyright（类型）必须全绿。
+# dehaze-python 质量门禁：ruff（lint + 格式）+ pyright（类型）必须全绿。
 #
-# 检查范围（哪些目录纳入、algorithm 为何排除）由仓库根 pyrightconfig.json 单点定义，
-# ruff 范围由 pyproject.toml 的 [tool.ruff] 定义；两者与 IDE 显示口径一致，
-# CI 判定只认本脚本，不认编辑器设置。
+# ruff 规则取各项目自身的 pyproject.toml [tool.ruff]（三个推理服务无独立 venv，
+# 统一用编排侧的 ruff 可执行文件，进入各自目录执行）；
+# pyright 按 Python 子项目逐个执行，各项目自持 pyrightconfig.json（include / venv /
+# extraPaths 各归各），共享口径（typeCheckingMode / pythonPlatform / pythonVersion）单点定义在仓库根
+# pyright.base.json。仓库根 pyrightconfig.json 只服务"以仓库为单根打开 IDE"的场景，
+# 不参与本脚本；CI 判定只认本脚本，不认编辑器设置。
 #
 # 用法：dehaze-python/scripts/check.sh
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(dirname "$PROJECT_DIR")"
+RUFF="$PROJECT_DIR/.venv/bin/ruff"
 
-if [[ ! -x .venv/bin/ruff ]]; then
-    echo "缺少 .venv/bin/ruff：请先在 dehaze-python 下执行 uv sync" >&2
+# 纳入 lint 检查的推理服务
+RUFF_SERVICES=(dehaze-llm dehaze-voice dehaze-modal)
+
+# 纳入类型检查的 Python 子项目：新增子项目时在此登记，并为其提供 pyrightconfig.json
+PYRIGHT_PROJECTS=(
+    dehaze-python
+    dehaze-mcp-gateway
+    dehaze-service/dehaze-llm
+    dehaze-service/dehaze-voice
+    dehaze-service/dehaze-modal
+)
+
+if [[ ! -x "$RUFF" ]]; then
+    echo "缺少 ${RUFF}：请先在 dehaze-python 下执行 uv sync" >&2
     exit 1
 fi
 
@@ -23,8 +40,8 @@ PYRIGHT_VERSION="${PYRIGHT_VERSION:-1.1.414}"
 export PYRIGHT_PYTHON_FORCE_VERSION="$PYRIGHT_VERSION"
 
 # pyright 优先用项目环境内的可执行文件；未安装时回退到 PATH
-if [[ -x .venv/bin/pyright ]]; then
-    PYRIGHT=.venv/bin/pyright
+if [[ -x "$PROJECT_DIR/.venv/bin/pyright" ]]; then
+    PYRIGHT="$PROJECT_DIR/.venv/bin/pyright"
 elif command -v pyright >/dev/null 2>&1; then
     PYRIGHT=pyright
 else
@@ -32,13 +49,25 @@ else
     exit 1
 fi
 
-echo "==> ruff check"
-.venv/bin/ruff check .
+echo "==> ruff check（dehaze-python）"
+(cd "$PROJECT_DIR" && "$RUFF" check .)
 
-echo "==> ruff format --check"
-.venv/bin/ruff format --check .
+echo "==> ruff format --check（dehaze-python）"
+(cd "$PROJECT_DIR" && "$RUFF" format --check .)
 
-echo "==> pyright $PYRIGHT_VERSION（范围见仓库根 pyrightconfig.json）"
-"$PYRIGHT"
+for service in "${RUFF_SERVICES[@]}"; do
+    echo "==> ruff check / format --check（${service}）"
+    (cd "$REPO_ROOT/dehaze-service/$service" && "$RUFF" check . && "$RUFF" format --check .)
+done
+
+for project in "${PYRIGHT_PROJECTS[@]}"; do
+    config="$REPO_ROOT/$project/pyrightconfig.json"
+    if [[ ! -f "$config" ]]; then
+        echo "缺少 ${config}：纳入类型检查的子项目必须自持 pyright 配置" >&2
+        exit 1
+    fi
+    echo "==> pyright ${PYRIGHT_VERSION}（${project}）"
+    "$PYRIGHT" -p "$config" --warnings
+done
 
 echo "==> 全部通过"

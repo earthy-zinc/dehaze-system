@@ -1,4 +1,4 @@
-"""复杂度评估器测试：规则预判优先，LLM 兜底失败降级 L0 但必须可观测。"""
+"""复杂度评估器测试：规则预判优先，LLM 兜底失败降级 L1（工具可用）但必须可观测。"""
 
 from contextlib import asynccontextmanager
 
@@ -35,7 +35,6 @@ class TestRuleBasedEval:
     @pytest.mark.parametrize(
         ("content", "expected_mode"),
         [
-            ("你好", "direct"),
             ("帮我去雾这张图", "react"),
             ("批量处理这些图片", "plan_execute"),
             ("生成一份审查报告", "reflexion"),
@@ -50,10 +49,21 @@ class TestRuleBasedEval:
         assert result["reasoning_mode"] == expected_mode
         assert result["usage"] == {}
 
+    async def test_short_question_defers_to_llm_not_direct(self, monkeypatch):
+        """短问题不得被长度规则判成 L0：由 LLM 区分闲聊与需检索/工具。"""
+
+        async def _stream(*a, **k):
+            yield LLMChunk(content="L1")
+            yield LLMChunk(type="done", usage={})
+
+        monkeypatch.setattr(m.llm_client, "stream_chat", _stream)
+        result = await evaluate_complexity(_state("dehaze 的 API 分页规范是什么"))
+        assert result["reasoning_mode"] == "react"
+
 
 class TestLlmFallbackObservability:
-    async def test_llm_failure_degrades_to_l0_with_log(self, monkeypatch, caplog):
-        """降级行为保留（评估失败降 L0），但必须留下可排查日志，禁止静默吞错。"""
+    async def test_llm_failure_degrades_to_l1_with_log(self, monkeypatch, caplog):
+        """降级行为保留（评估失败降 L1，保留工具访问），但必须留下可排查日志，禁止静默吞错。"""
         caplog.set_level("WARNING")
 
         async def _boom(*a, **k):
@@ -62,8 +72,8 @@ class TestLlmFallbackObservability:
 
         monkeypatch.setattr(m.llm_client, "stream_chat", _boom)
         result = await evaluate_complexity(_state(_UNDETERMINED))
-        assert result["complexity"] == "L0"
-        assert result["reasoning_mode"] == "direct"
+        assert result["complexity"] == "L1"
+        assert result["reasoning_mode"] == "react"
         assert "复杂度评估失败" in caplog.text
         assert "LLM 不可用" in caplog.text
 
@@ -76,7 +86,7 @@ class TestLlmFallbackObservability:
 
         monkeypatch.setattr(m.llm_client, "stream_chat", _stream)
         result = await evaluate_complexity(_state(_UNDETERMINED))
-        assert result["complexity"] == "L0"
+        assert result["complexity"] == "L1"
         assert "无法识别的等级" in caplog.text
 
     async def test_llm_level_and_usage_returned(self, monkeypatch):

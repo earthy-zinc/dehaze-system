@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysAiRefund;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysAiRefundMapper extends BaseMapper<SysAiRefund> {
-}
+public interface SysAiRefundMapper extends BaseMapper<SysAiRefund> {}

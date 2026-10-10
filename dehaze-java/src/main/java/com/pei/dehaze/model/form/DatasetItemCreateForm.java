@@ -15,29 +15,16 @@ import lombok.Data;
 public class DatasetItemCreateForm {
 
     @NotNull(message = "数据集ID不能为空")
-    @Schema(
-            description = "所属数据集ID，指定数据项归属的数据集",
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            example = "1"
-    )
+    @Schema(description = "所属数据集ID，指定数据项归属的数据集", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Long datasetId;
 
-    @Schema(
-            description = "数据项名称，用于标识该数据项（如：scene_001）",
-            example = "城市街道_001"
-    )
+    @Schema(description = "数据项名称，用于标识该数据项（如：scene_001）", example = "城市街道_001")
     @jakarta.validation.constraints.Size(max = 64, message = "数据项名称长度不能超过64")
     private String name;
 
-    @Schema(
-            description = "场景类型，用户自定义的场景分类（如：城市街道、山区风景、海边等）",
-            example = "outdoor"
-    )
+    @Schema(description = "场景类型，用户自定义的场景分类（如：城市街道、山区风景、海边等）", example = "outdoor")
     private String sceneType;
 
-    @Schema(
-            description = "数据项描述信息",
-            example = "城市主干道雾霾场景"
-    )
+    @Schema(description = "数据项描述信息", example = "城市主干道雾霾场景")
     private String description;
 }

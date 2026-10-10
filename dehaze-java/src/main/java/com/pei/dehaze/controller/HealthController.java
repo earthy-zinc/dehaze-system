@@ -2,6 +2,9 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.service.impl.file.MinioFileService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
@@ -14,10 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import javax.sql.DataSource;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * 健康检查端点

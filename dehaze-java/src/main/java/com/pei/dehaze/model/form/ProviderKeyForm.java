@@ -4,9 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 @Schema(description = "供应商 API Key 创建表单")
 @Data

@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 @Schema(description = "MCP 工具清单项")
 @Data

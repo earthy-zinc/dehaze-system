@@ -23,6 +23,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,9 +38,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * AI 智能体管理（CRUD/启停/复制/关联绑定/版本查询与回滚）。
@@ -103,8 +102,9 @@ public class AiAgentController {
     @Operation(summary = "更新 Agent")
     @PutMapping("/{agentId}")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<AiAgentVO> update(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                    @Valid @RequestBody AiAgentUpdateForm form) {
+    public Result<AiAgentVO> update(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Valid @RequestBody AiAgentUpdateForm form) {
         return Result.success(agentService.update(agentId, form));
     }
 
@@ -119,8 +119,9 @@ public class AiAgentController {
     @Operation(summary = "启停 Agent")
     @PatchMapping("/{agentId}/status")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<Void> setStatus(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                  @Valid @RequestBody AiAgentStatusForm form) {
+    public Result<Void> setStatus(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Valid @RequestBody AiAgentStatusForm form) {
         agentService.setStatus(agentId, form.getStatus());
         return Result.success();
     }
@@ -128,16 +129,17 @@ public class AiAgentController {
     @Operation(summary = "复制 Agent")
     @PostMapping("/{agentId}/copy")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<AiAgentVO> copy(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                  @Valid @RequestBody AiAgentCopyForm form) {
+    public Result<AiAgentVO> copy(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId, @Valid @RequestBody AiAgentCopyForm form) {
         return Result.success(agentService.copy(agentId, form.getAgentCode()));
     }
 
     @Operation(summary = "设置 Skills（覆盖式）")
     @PutMapping("/{agentId}/skills")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<Void> setSkills(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                  @Valid @RequestBody AiAgentSkillsForm form) {
+    public Result<Void> setSkills(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Valid @RequestBody AiAgentSkillsForm form) {
         agentService.setSkills(agentId, form.getSkills());
         return Result.success();
     }
@@ -145,8 +147,8 @@ public class AiAgentController {
     @Operation(summary = "设置 MCP 命名空间（覆盖式）")
     @PutMapping("/{agentId}/mcps")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<Void> setMcps(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                @Valid @RequestBody AiAgentMcpForm form) {
+    public Result<Void> setMcps(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId, @Valid @RequestBody AiAgentMcpForm form) {
         agentService.setMcpNamespaces(agentId, form.getMcpNamespaces());
         return Result.success();
     }
@@ -154,8 +156,9 @@ public class AiAgentController {
     @Operation(summary = "设置子 Agent（覆盖式）")
     @PutMapping("/{agentId}/subagents")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<Void> setSubagents(@Parameter(description = "Agent ID") @PathVariable Long agentId,
-                                     @Valid @RequestBody AiAgentSubAgentsForm form) {
+    public Result<Void> setSubagents(
+            @Parameter(description = "Agent ID") @PathVariable Long agentId,
+            @Valid @RequestBody AiAgentSubAgentsForm form) {
         agentService.setSubagents(agentId, form);
         return Result.success();
     }
@@ -166,8 +169,7 @@ public class AiAgentController {
     public PageResult<AiAgentVersionVO> versions(
             @Parameter(description = "Agent ID") @PathVariable Long agentId,
             @Valid @ParameterObject PageParamQuery query) {
-        return PageResult.success(agentVersionService.listVersions(agentId,
-                query.getPageNum(), query.getPageSize()));
+        return PageResult.success(agentVersionService.listVersions(agentId, query.getPageNum(), query.getPageSize()));
     }
 
     @Operation(summary = "版本差异对比")

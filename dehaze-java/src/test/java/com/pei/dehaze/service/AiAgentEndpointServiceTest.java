@@ -1,5 +1,14 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -7,6 +16,7 @@ import com.pei.dehaze.common.util.AiCredentialCipher;
 import com.pei.dehaze.mapper.SysAiAgentEndpointMapper;
 import com.pei.dehaze.model.entity.SysAiAgentEndpoint;
 import com.pei.dehaze.model.form.AiEndpointCreateForm;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,17 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * 外部 A2A 端点服务单测：SSRF 白名单（https + 非内网，含 IPv6 与 DNS 解析口径）与软删行复活。
@@ -54,8 +53,7 @@ class AiAgentEndpointServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AiAgentEndpointService(endpointMapper, credentialCipher, auditLogService,
-                new ObjectMapper());
+        service = new AiAgentEndpointService(endpointMapper, credentialCipher, auditLogService, new ObjectMapper());
     }
 
     /**
@@ -64,10 +62,17 @@ class AiAgentEndpointServiceTest {
      * 把 198.51.100.0/24 图省事写成 198.51.0.0/16 时不会有测试报警。
      */
     @ParameterizedTest(name = "公网字面地址放行：{0}")
-    @ValueSource(strings = {"https://8.8.8.8/card", "https://1.1.1.1:8443/.well-known/agent.json",
-            "https://[2606:4700:4700::1111]/card", "https://198.51.99.1/card",
-            "https://198.20.0.1/card", "https://192.0.3.1/card", "https://203.0.114.1/card",
-            "https://192.88.99.1/card"})
+    @ValueSource(
+            strings = {
+                "https://8.8.8.8/card",
+                "https://1.1.1.1:8443/.well-known/agent.json",
+                "https://[2606:4700:4700::1111]/card",
+                "https://198.51.99.1/card",
+                "https://198.20.0.1/card",
+                "https://192.0.3.1/card",
+                "https://203.0.114.1/card",
+                "https://192.88.99.1/card"
+            })
     void publicAddressAllowed(String url) {
         assertThat(AiAgentEndpointService.isSafeUrl(url)).isTrue();
     }
@@ -79,15 +84,33 @@ class AiAgentEndpointServiceTest {
     }
 
     @ParameterizedTest(name = "内网/环回/保留地址拒绝：{0}")
-    @ValueSource(strings = {"https://localhost/card", "https://LOCALHOST/card", "https://svc.local/card",
-            "https://meta.internal/card", "https://127.0.0.1/card", "https://10.1.2.3/card",
-            "https://172.16.0.1/card", "https://172.31.255.254/card", "https://192.168.1.1/card",
-            "https://169.254.169.254/latest/meta-data", "https://100.64.0.1/card",
-            "https://0.0.0.0/card", "https://224.0.0.1/card", "https://240.0.0.1/card",
-            "https://192.0.2.1/card", "https://198.51.100.1/card", "https://203.0.113.9/card",
-            "https://198.18.0.1/card", "https://198.19.255.1/card",
-            "https://[::1]/card", "https://[fc00::1]/card", "https://[fd12:3456::1]/card",
-            "https://[fe80::1]/card", "https://[::ffff:127.0.0.1]/card"})
+    @ValueSource(
+            strings = {
+                "https://localhost/card",
+                "https://LOCALHOST/card",
+                "https://svc.local/card",
+                "https://meta.internal/card",
+                "https://127.0.0.1/card",
+                "https://10.1.2.3/card",
+                "https://172.16.0.1/card",
+                "https://172.31.255.254/card",
+                "https://192.168.1.1/card",
+                "https://169.254.169.254/latest/meta-data",
+                "https://100.64.0.1/card",
+                "https://0.0.0.0/card",
+                "https://224.0.0.1/card",
+                "https://240.0.0.1/card",
+                "https://192.0.2.1/card",
+                "https://198.51.100.1/card",
+                "https://203.0.113.9/card",
+                "https://198.18.0.1/card",
+                "https://198.19.255.1/card",
+                "https://[::1]/card",
+                "https://[fc00::1]/card",
+                "https://[fd12:3456::1]/card",
+                "https://[fe80::1]/card",
+                "https://[::ffff:127.0.0.1]/card"
+            })
     void internalAddressRejected(String url) {
         assertThat(AiAgentEndpointService.isSafeUrl(url)).isFalse();
     }
@@ -112,7 +135,8 @@ class AiAgentEndpointServiceTest {
         form.setBaseUrl("https://8.8.8.8/a2a");
         form.setAgentCardUrl("https://169.254.169.254/latest/meta-data");
 
-        assertThat(assertThrows(BusinessException.class, () -> service.create(form)).getResultCode())
+        assertThat(assertThrows(BusinessException.class, () -> service.create(form))
+                        .getResultCode())
                 .isEqualTo(ResultCode.PARAM_ERROR);
         verify(endpointMapper, never()).insert(any(SysAiAgentEndpoint.class));
     }
@@ -126,9 +150,11 @@ class AiAgentEndpointServiceTest {
         SysAiAgentEndpoint existing = new SysAiAgentEndpoint();
         existing.setId(7L);
         existing.setDeleted(0L);
-        when(endpointMapper.selectByBaseUrlIgnoringDeleted("https://8.8.8.8/a2a")).thenReturn(existing);
+        when(endpointMapper.selectByBaseUrlIgnoringDeleted("https://8.8.8.8/a2a"))
+                .thenReturn(existing);
 
-        assertThat(assertThrows(BusinessException.class, () -> service.create(form)).getResultCode())
+        assertThat(assertThrows(BusinessException.class, () -> service.create(form))
+                        .getResultCode())
                 .isEqualTo(ResultCode.DATA_EXISTS);
         verify(endpointMapper, never()).insert(any(SysAiAgentEndpoint.class));
     }
@@ -143,7 +169,8 @@ class AiAgentEndpointServiceTest {
         SysAiAgentEndpoint existing = new SysAiAgentEndpoint();
         existing.setId(7L);
         existing.setDeleted(7L);
-        when(endpointMapper.selectByBaseUrlIgnoringDeleted("https://8.8.8.8/a2a")).thenReturn(existing);
+        when(endpointMapper.selectByBaseUrlIgnoringDeleted("https://8.8.8.8/a2a"))
+                .thenReturn(existing);
 
         assertThat(service.create(form).getId()).isEqualTo(7L);
         assertThat(existing.getDeleted()).isZero();
@@ -165,8 +192,17 @@ class AiAgentEndpointServiceTest {
 
         verify(endpointMapper).softDeleteByIds(java.util.List.of(7L));
         ArgumentCaptor<Object> beforeCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(auditLogService).recordAudit(eq(1L), eq("ai_agent_endpoint"), eq(7L), eq("delete"),
-                eq("ai_agent"), beforeCaptor.capture(), isNull(), isNull(), isNull());
+        verify(auditLogService)
+                .recordAudit(
+                        eq(1L),
+                        eq("ai_agent_endpoint"),
+                        eq(7L),
+                        eq("delete"),
+                        eq("ai_agent"),
+                        beforeCaptor.capture(),
+                        isNull(),
+                        isNull(),
+                        isNull());
         Map<?, ?> beforeValue = (Map<?, ?>) beforeCaptor.getValue();
         assertThat(String.valueOf(beforeValue.get("base_url"))).isEqualTo("https://8.8.8.8/a2a");
         assertThat(String.valueOf(beforeValue.get("name"))).isEqualTo("外部端点");

@@ -73,8 +73,7 @@ public class MessageController {
 
     @Operation(summary = "删除消息（支持批量）")
     @DeleteMapping("/{ids}")
-    public Result<Void> deleteByIds(
-            @Parameter(description = "消息ID，多个用逗号分隔") @PathVariable String ids) {
+    public Result<Void> deleteByIds(@Parameter(description = "消息ID，多个用逗号分隔") @PathVariable String ids) {
         messageService.deleteByIds(ids);
         return Result.success();
     }

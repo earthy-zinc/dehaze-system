@@ -18,6 +18,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,11 +35,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * AI 会话与消息（非推理类端点）。
@@ -67,8 +66,8 @@ public class AiConversationController {
     @Operation(summary = "回收站列表")
     @GetMapping("/conversations/trash")
     public PageResult<AiConversationVO> listTrash(@Valid @ParameterObject PageParamQuery query) {
-        return PageResult.success(conversationService.listTrash(currentUserId(),
-                query.getPageNum(), query.getPageSize()));
+        return PageResult.success(
+                conversationService.listTrash(currentUserId(), query.getPageNum(), query.getPageSize()));
     }
 
     @Operation(summary = "批量操作会话(archive/restore/delete)")
@@ -79,15 +78,17 @@ public class AiConversationController {
 
     @Operation(summary = "会话详情")
     @GetMapping("/conversations/{convId}")
-    public Result<AiConversationVO> detail(@Parameter(description = "会话ID") @PathVariable Long convId,
-                                          @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
+    public Result<AiConversationVO> detail(
+            @Parameter(description = "会话ID") @PathVariable Long convId,
+            @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
         return Result.success(conversationService.getDetail(convId, currentUserId(), isAdminView(view)));
     }
 
     @Operation(summary = "更新会话")
     @PatchMapping("/conversations/{convId}")
-    public Result<AiConversationVO> update(@Parameter(description = "会话ID") @PathVariable Long convId,
-                                           @Valid @RequestBody AiConversationUpdateForm form) {
+    public Result<AiConversationVO> update(
+            @Parameter(description = "会话ID") @PathVariable Long convId,
+            @Valid @RequestBody AiConversationUpdateForm form) {
         return Result.success(conversationService.update(convId, currentUserId(), form));
     }
 
@@ -124,15 +125,17 @@ public class AiConversationController {
 
     @Operation(summary = "导出会话（markdown/json）")
     @GetMapping("/conversations/{convId}/export")
-    public void export(@Parameter(description = "会话ID") @PathVariable Long convId,
-                       @Parameter(description = "导出格式") @RequestParam(defaultValue = "markdown") String format,
-                       HttpServletResponse response) throws IOException {
-        AiConversationService.ConversationExport export =
-                conversationService.export(convId, currentUserId(), format);
+    public void export(
+            @Parameter(description = "会话ID") @PathVariable Long convId,
+            @Parameter(description = "导出格式") @RequestParam(defaultValue = "markdown") String format,
+            HttpServletResponse response)
+            throws IOException {
+        AiConversationService.ConversationExport export = conversationService.export(convId, currentUserId(), format);
         response.setContentType(export.contentType());
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.setHeader("Content-Disposition", "attachment; filename=\""
-                + URLEncoder.encode(export.filename(), StandardCharsets.UTF_8) + "\"");
+        response.setHeader(
+                "Content-Disposition",
+                "attachment; filename=\"" + URLEncoder.encode(export.filename(), StandardCharsets.UTF_8) + "\"");
         response.getWriter().write(export.content());
     }
 
@@ -142,14 +145,15 @@ public class AiConversationController {
             @Parameter(description = "会话ID") @PathVariable Long convId,
             @Valid @ParameterObject AiMessageCursorQuery query,
             @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
-        return Result.success(conversationService.listMessages(convId, currentUserId(),
-                query.getBefore(), query.getLimit(), isAdminView(view)));
+        return Result.success(conversationService.listMessages(
+                convId, currentUserId(), query.getBefore(), query.getLimit(), isAdminView(view)));
     }
 
     @Operation(summary = "消息详情（含推理步骤）")
     @GetMapping("/messages/{msgId}")
-    public Result<AiMessageVO> getMessage(@Parameter(description = "消息ID") @PathVariable Long msgId,
-                                          @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
+    public Result<AiMessageVO> getMessage(
+            @Parameter(description = "消息ID") @PathVariable Long msgId,
+            @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
         return Result.success(conversationService.getMessage(msgId, currentUserId(), isAdminView(view)));
     }
 
@@ -162,15 +166,17 @@ public class AiConversationController {
 
     @Operation(summary = "查询消息的分支列表")
     @GetMapping("/conversations/{convId}/messages/{msgId}/branches")
-    public Result<List<AiMessageVO>> branches(@Parameter(description = "会话ID") @PathVariable Long convId,
-                                              @Parameter(description = "消息ID") @PathVariable Long msgId) {
+    public Result<List<AiMessageVO>> branches(
+            @Parameter(description = "会话ID") @PathVariable Long convId,
+            @Parameter(description = "消息ID") @PathVariable Long msgId) {
         return Result.success(conversationService.getBranches(convId, currentUserId(), msgId));
     }
 
     @Operation(summary = "切换当前分支")
     @PutMapping("/conversations/{convId}/branches/{msgId}")
-    public Result<AiConversationVO> switchBranch(@Parameter(description = "会话ID") @PathVariable Long convId,
-                                                 @Parameter(description = "分支末端消息ID") @PathVariable Long msgId) {
+    public Result<AiConversationVO> switchBranch(
+            @Parameter(description = "会话ID") @PathVariable Long convId,
+            @Parameter(description = "分支末端消息ID") @PathVariable Long msgId) {
         return Result.success(conversationService.switchBranch(convId, currentUserId(), msgId));
     }
 

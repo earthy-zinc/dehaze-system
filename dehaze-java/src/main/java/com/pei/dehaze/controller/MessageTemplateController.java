@@ -41,8 +41,8 @@ public class MessageTemplateController {
     @Operation(summary = "编辑消息模板")
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('notify:template:edit')")
-    public Result<Void> update(@Parameter(description = "模板ID") @PathVariable Long id,
-                               @Valid @RequestBody MessageTemplateForm form) {
+    public Result<Void> update(
+            @Parameter(description = "模板ID") @PathVariable Long id, @Valid @RequestBody MessageTemplateForm form) {
         messageTemplateService.update(id, form);
         return Result.success();
     }

@@ -1,17 +1,17 @@
 package vo
 
 type MyRatingVO struct {
-	ID            int64    `json:"id"`
-	PredLogID     int64    `json:"predLogId"`
-	AlgorithmName string   `json:"algorithmName"`
-	Rating        int      `json:"rating"`
-	Comment       string   `json:"comment,omitempty"`
-	Tags          []string `json:"tags"`
-	ImageUrls     []string `json:"imageUrls"`
-	IsAnonymous   int      `json:"isAnonymous"`
-	AdminReply    string   `json:"adminReply,omitempty"`
-	ReplyTime     string   `json:"replyTime,omitempty"`
-	CreateTime    string   `json:"createTime"`
+	ID          int64    `json:"id"`
+	PredLogID   int64    `json:"predLogId"`
+	ModelName   string   `json:"modelName"`
+	Rating      int      `json:"rating"`
+	Comment     string   `json:"comment,omitempty"`
+	Tags        []string `json:"tags"`
+	ImageUrls   []string `json:"imageUrls"`
+	IsAnonymous int      `json:"isAnonymous"`
+	AdminReply  string   `json:"adminReply,omitempty"`
+	ReplyTime   string   `json:"replyTime,omitempty"`
+	CreateTime  string   `json:"createTime"`
 }
 
 type RatingPageVO struct {
@@ -24,7 +24,7 @@ type RatingPageVO struct {
 
 type RatingDetailVO struct {
 	RatingPageVO
-	AlgorithmID int64 `json:"algorithmId"`
+	ModelID string `json:"modelId"`
 }
 
 type FeedbackPageVO struct {
@@ -66,12 +66,21 @@ type FeedbackReplyVO struct {
 }
 
 type RatingStatsVO struct {
-	TotalRatings       int64                 `json:"totalRatings"`
-	AverageRating      float64               `json:"averageRating"`
-	RatingDistribution map[int]int64         `json:"ratingDistribution"`
-	PositiveTagRanking []TagCount            `json:"positiveTagRanking"`
-	NegativeTagRanking []TagCount            `json:"negativeTagRanking"`
-	AlgorithmStats     []AlgorithmRatingStat `json:"algorithmStats"`
+	TotalRatings       int64         `json:"totalRatings"`
+	AverageRating      float64       `json:"averageRating"`
+	RatingDistribution map[int]int64 `json:"ratingDistribution"`
+	PositiveTagRanking []TagCount    `json:"positiveTagRanking"`
+	NegativeTagRanking []TagCount    `json:"negativeTagRanking"`
+	ModelStats         []ModelStat   `json:"modelStats"`
+}
+
+// ModelStat 模型维度评价统计（按 model_id 聚合）
+type ModelStat struct {
+	ModelID       string  `json:"modelId"`
+	ModelName     string  `json:"modelName"`
+	AverageRating float64 `json:"averageRating"`
+	TotalRatings  int64   `json:"totalRatings"`
+	LowRatingRate float64 `json:"lowRatingRate"`
 }
 
 type FeedbackStatsVO struct {
@@ -87,14 +96,6 @@ type FeedbackStatsVO struct {
 type TagCount struct {
 	Tag   string `json:"tag"`
 	Count int64  `json:"count"`
-}
-
-type AlgorithmRatingStat struct {
-	AlgorithmID   int64   `json:"algorithmId"`
-	AlgorithmName string  `json:"algorithmName"`
-	AverageRating float64 `json:"averageRating"`
-	TotalRatings  int64   `json:"totalRatings"`
-	LowRatingRate float64 `json:"lowRatingRate"`
 }
 
 type ModuleCount struct {

@@ -8,44 +8,18 @@ import (
 	"gorm.io/gorm"
 )
 
-// IPredLogRepository 预测日志仓储接口
+// IPredLogRepository 图像任务日志仓储接口
 type IPredLogRepository interface {
 	Create(ctx context.Context, log *model.SysPredLog) error
 	FindByID(ctx context.Context, id int64) (*model.SysPredLog, error)
-	FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error)
-	FindPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
-	GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error)
-	GetDailyStats(ctx context.Context, algorithmID int64, startTime time.Time) ([]DailyStat, error)
-	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error
+	FindPage(ctx context.Context, modelID string, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error)
+	UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5, originMD5 string, time int) error
 	UpdateStatus(ctx context.Context, id int64, status model.LogStatus, errorMessage string, time int) error
 	MarkStuckAsFailed(ctx context.Context, threshold time.Time) (int, error)
-	CountByUserAndMonth(ctx context.Context, userID int64, year, month int) (int64, error)
-	// CountByAlgorithmID 统计指定算法的预测总次数
-	CountByAlgorithmID(ctx context.Context, algorithmID int64) (int64, error)
-	// ExistsByID 检查预测记录是否存在
+	// ExistsByID 检查图像任务记录是否存在
 	ExistsByID(ctx context.Context, id int64) (bool, error)
 	// MarkCancelled 将"处理中"任务置为已取消，返回是否真的流转成功（带 processing 前置，与其它终态写入同口径）
 	MarkCancelled(ctx context.Context, id int64) (bool, error)
-	// FindSampleImagesByAlgorithm 查询算法最近完成的样例效果图
-	FindSampleImagesByAlgorithm(ctx context.Context, algorithmID int64, limit int) ([]model.SysPredLog, error)
-	// GetAlgorithmPredStats 获取算法预测统计（平均耗时、总数、成功数）
-	GetAlgorithmPredStats(ctx context.Context, algorithmID int64) (avgTime float64, totalPred int64, successCount int64, err error)
-}
-
-// MonitorStats 算法监控统计原始数据
-type MonitorStats struct {
-	CallCount      int64
-	TodayCallCount int64
-	AvgTime        float64
-	SuccessCount   int64
-}
-
-// DailyStat 按日聚合统计数据
-type DailyStat struct {
-	Date         string  `json:"date"`
-	CallCount    int64   `json:"callCount"`
-	AvgTime      float64 `json:"avgTime"`
-	SuccessCount int64   `json:"successCount"`
 }
 
 type predLogRepository struct {
@@ -69,27 +43,15 @@ func (r *predLogRepository) FindByID(ctx context.Context, id int64) (*model.SysP
 	return &log, nil
 }
 
-func (r *predLogRepository) FindByAlgorithmAndMD5(ctx context.Context, algorithmID int64, originMD5 string) (*model.SysPredLog, error) {
-	var log model.SysPredLog
-	err := r.db.WithContext(ctx).
-		Where("algorithm_id = ? AND origin_md5 = ?", algorithmID, originMD5).
-		Order("create_time DESC").
-		First(&log).Error
-	if err != nil {
-		return nil, err
-	}
-	return &log, nil
-}
-
-func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error) {
+func (r *predLogRepository) FindPage(ctx context.Context, modelID string, userID int64, pageNum, pageSize int) ([]model.SysPredLog, int64, error) {
 	var list []model.SysPredLog
 	var total int64
 	query := r.db.WithContext(ctx).Model(&model.SysPredLog{})
-	if algorithmID > 0 {
-		query = query.Where("algorithm_id = ?", algorithmID)
+	if modelID != "" {
+		query = query.Where("model_id = ?", modelID)
 	}
 	if userID > 0 {
-		// 归属过滤：仅返回该用户的预测日志
+		// 归属过滤：仅返回该用户的图像任务日志
 		query = query.Where("create_by = ?", userID)
 	}
 	if err := query.Count(&total).Error; err != nil {
@@ -104,15 +66,20 @@ func (r *predLogRepository) FindPage(ctx context.Context, algorithmID int64, use
 
 // UpdateResult 将日志从 processing 流转为 completed 并写入结果。
 // 带 processing 前置条件，终态不可被覆盖（防取消/失败后结果复活）。
-func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5 string, time int) error {
+// originMD5 由算法服务返回（Go 侧只有图片 URL，拿不到原图内容 MD5），为空时不覆盖。
+func (r *predLogRepository) UpdateResult(ctx context.Context, id int64, status model.LogStatus, predURL, predMD5, originMD5 string, time int) error {
+	updates := map[string]any{
+		"status":   status,
+		"pred_url": predURL,
+		"pred_md5": predMD5,
+		"time":     time,
+	}
+	if originMD5 != "" {
+		updates["origin_md5"] = originMD5
+	}
 	return r.db.WithContext(ctx).Model(&model.SysPredLog{}).
 		Where("id = ? AND status = ?", id, model.LogStatusProcessing).
-		Updates(map[string]any{
-			"status":   status,
-			"pred_url": predURL,
-			"pred_md5": predMD5,
-			"time":     time,
-		}).Error
+		Updates(updates).Error
 }
 
 // UpdateStatus 将日志从 processing 流转为终态并写入错误信息。
@@ -131,8 +98,7 @@ func (r *predLogRepository) UpdateStatus(ctx context.Context, id int64, status m
 }
 
 // MarkCancelled 将"处理中"任务置为已取消（python `cancel_task` 的终态写入）。
-// 带 processing 前置：并发取消只有一个生效，调用方据此决定是否回滚配额，防止双重回滚；
-// 同时该前置保证已被取消的任务不会被后续异步推理结果覆盖（UpdateResult 同样带 processing 前置）。
+// 带 processing 前置：并发取消只有一个生效；同时保证已被取消的任务不会被后续异步推理结果覆盖。
 func (r *predLogRepository) MarkCancelled(ctx context.Context, id int64) (bool, error) {
 	res := r.db.WithContext(ctx).Model(&model.SysPredLog{}).
 		Where("id = ? AND status = ?", id, model.LogStatusProcessing).
@@ -154,84 +120,7 @@ func (r *predLogRepository) MarkStuckAsFailed(ctx context.Context, threshold tim
 	return int(result.RowsAffected), result.Error
 }
 
-// GetMonitorStats 获取算法监控统计数据
-func (r *predLogRepository) GetMonitorStats(ctx context.Context, algorithmID int64) (*MonitorStats, error) {
-	stats := &MonitorStats{}
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ?", algorithmID).
-		Count(&stats.CallCount).Error; err != nil {
-		return nil, err
-	}
-
-	now := time.Now()
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	if err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND create_time >= ?", algorithmID, todayStart).
-		Count(&stats.TodayCallCount).Error; err != nil {
-		return nil, err
-	}
-
-	row := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND time IS NOT NULL", algorithmID).
-		Select("COALESCE(AVG(time), 0)").
-		Row()
-	if err := row.Scan(&stats.AvgTime); err != nil {
-		return nil, err
-	}
-
-	if err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND time IS NOT NULL AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
-		Count(&stats.SuccessCount).Error; err != nil {
-		return nil, err
-	}
-
-	return stats, nil
-}
-
-// GetDailyStats 按日聚合查询预测日志统计
-func (r *predLogRepository) GetDailyStats(ctx context.Context, algorithmID int64, startTime time.Time) ([]DailyStat, error) {
-	var stats []DailyStat
-	err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Select("DATE(create_time) as date, COUNT(*) as call_count, COALESCE(AVG(`time`), 0) as avg_time, SUM(CASE WHEN pred_url IS NOT NULL AND pred_url <> '' THEN 1 ELSE 0 END) as success_count").
-		Where("algorithm_id = ? AND create_time >= ?", algorithmID, startTime).
-		Group("DATE(create_time)").
-		Order("date ASC").
-		Scan(&stats).Error
-	if err != nil {
-		return nil, err
-	}
-	return stats, nil
-}
-
-// CountByUserAndMonth 统计指定用户当月预测次数
-func (r *predLogRepository) CountByUserAndMonth(ctx context.Context, userID int64, year, month int) (int64, error) {
-	startTime := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
-	endTime := startTime.AddDate(0, 1, 0)
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("create_by = ? AND create_time >= ? AND create_time < ?", userID, startTime, endTime).
-		Count(&count).Error
-	return count, err
-}
-
-// CountByAlgorithmID 统计指定算法的预测总次数
-func (r *predLogRepository) CountByAlgorithmID(ctx context.Context, algorithmID int64) (int64, error) {
-	var count int64
-	err := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ?", algorithmID).
-		Count(&count).Error
-	return count, err
-}
-
-// ExistsByID 检查预测记录是否存在
+// ExistsByID 检查图像任务记录是否存在
 func (r *predLogRepository) ExistsByID(ctx context.Context, id int64) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
@@ -239,43 +128,4 @@ func (r *predLogRepository) ExistsByID(ctx context.Context, id int64) (bool, err
 		Where("id = ?", id).
 		Count(&count).Error
 	return count > 0, err
-}
-
-// FindSampleImagesByAlgorithm 查询算法最近完成的样例效果图
-func (r *predLogRepository) FindSampleImagesByAlgorithm(ctx context.Context, algorithmID int64, limit int) ([]model.SysPredLog, error) {
-	var logs []model.SysPredLog
-	err := r.db.WithContext(ctx).
-		Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
-		Order("create_time DESC").
-		Limit(limit).
-		Find(&logs).Error
-	return logs, err
-}
-
-// GetAlgorithmPredStats 获取算法预测统计（平均耗时、总数、成功数）
-func (r *predLogRepository) GetAlgorithmPredStats(ctx context.Context, algorithmID int64) (avgTime float64, totalPred int64, successCount int64, err error) {
-	if err = r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ?", algorithmID).
-		Count(&totalPred).Error; err != nil {
-		return
-	}
-	if totalPred == 0 {
-		return
-	}
-	row := r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND time IS NOT NULL", algorithmID).
-		Select("COALESCE(AVG(time), 0)").
-		Row()
-	if err = row.Scan(&avgTime); err != nil {
-		return
-	}
-	if err = r.db.WithContext(ctx).
-		Model(&model.SysPredLog{}).
-		Where("algorithm_id = ? AND pred_url IS NOT NULL AND pred_url <> ''", algorithmID).
-		Count(&successCount).Error; err != nil {
-		return
-	}
-	return
 }

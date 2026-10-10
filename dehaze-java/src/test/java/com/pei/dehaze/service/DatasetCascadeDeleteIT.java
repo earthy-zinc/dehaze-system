@@ -1,25 +1,21 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SystemConstants;
-import com.pei.dehaze.config.TestConfig;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
-import com.pei.dehaze.mapper.SysItemFileMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
-import com.pei.dehaze.model.entity.SysItemFile;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 数据集级联删除完整性测试
@@ -31,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * 注意：由于deleteFile需要完整的文件存储环境，本测试主要验证数据集和数据项层面的级联删除
  */
-@SpringBootTest(classes = TestConfig.class)
+@SpringBootTest
 @Transactional
 @DisplayName("数据集级联删除完整性测试")
 class DatasetCascadeDeleteIT {
@@ -47,9 +43,6 @@ class DatasetCascadeDeleteIT {
 
     @Autowired
     private SysDatasetItemMapper datasetItemMapper;
-
-    @Autowired
-    private SysItemFileMapper itemFileMapper;
 
     private Long parentDatasetId;
     private Long childDatasetId;
@@ -217,8 +210,7 @@ class DatasetCascadeDeleteIT {
     void datasetItem_ShouldBeLinkedToDataset() {
         // Act
         Long itemCount = datasetItemMapper.selectCount(
-                new LambdaQueryWrapper<SysDatasetItem>()
-                        .eq(SysDatasetItem::getDatasetId, childDatasetId));
+                new LambdaQueryWrapper<SysDatasetItem>().eq(SysDatasetItem::getDatasetId, childDatasetId));
 
         // Assert
         assertThat(itemCount).isEqualTo(1);
@@ -250,21 +242,18 @@ class DatasetCascadeDeleteIT {
     void deleteDataset_ShouldCleanupItems() {
         // Arrange - 确认数据项存在
         Long itemCountBefore = datasetItemMapper.selectCount(
-                new LambdaQueryWrapper<SysDatasetItem>()
-                        .eq(SysDatasetItem::getDatasetId, childDatasetId));
+                new LambdaQueryWrapper<SysDatasetItem>().eq(SysDatasetItem::getDatasetId, childDatasetId));
         assertThat(itemCountBefore).isEqualTo(1);
 
         // Act - 先删除数据项，再删除数据集
         datasetItemMapper.delete(
-                new LambdaQueryWrapper<SysDatasetItem>()
-                        .eq(SysDatasetItem::getDatasetId, childDatasetId));
+                new LambdaQueryWrapper<SysDatasetItem>().eq(SysDatasetItem::getDatasetId, childDatasetId));
         datasetMapper.deleteById(childDatasetId);
 
         // Assert
         assertThat(datasetMapper.selectById(childDatasetId)).isNull();
         Long itemCountAfter = datasetItemMapper.selectCount(
-                new LambdaQueryWrapper<SysDatasetItem>()
-                        .eq(SysDatasetItem::getDatasetId, childDatasetId));
+                new LambdaQueryWrapper<SysDatasetItem>().eq(SysDatasetItem::getDatasetId, childDatasetId));
         assertThat(itemCountAfter).isZero();
     }
 

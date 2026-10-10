@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.read;
 
-import lombok.Data;
-
 import java.math.BigDecimal;
+import lombok.Data;
 
 /** 成本聚合行（按 model/provider 维度） */
 @Data

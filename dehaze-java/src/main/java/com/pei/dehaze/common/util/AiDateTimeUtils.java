@@ -3,7 +3,6 @@ package com.pei.dehaze.common.util;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -22,8 +21,7 @@ public final class AiDateTimeUtils {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    private AiDateTimeUtils() {
-    }
+    private AiDateTimeUtils() {}
 
     public static LocalDateTime parse(String value) {
         LocalDateTime parsed = parseOrNull(value);

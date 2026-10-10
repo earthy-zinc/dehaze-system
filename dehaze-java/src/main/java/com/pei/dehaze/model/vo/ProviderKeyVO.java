@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** 供应商 API Key 视图：不含明文与密文，仅前缀展示 */
 @Schema(description = "供应商 API Key 视图")

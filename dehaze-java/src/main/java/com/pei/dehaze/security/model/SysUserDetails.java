@@ -4,16 +4,15 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.model.dto.UserAuthInfo;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Spring Security 用户对象
@@ -63,7 +62,6 @@ public class SysUserDetails implements UserDetails {
         this.deptId = user.getDeptId();
         this.dataScope = user.getDataScope();
     }
-
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

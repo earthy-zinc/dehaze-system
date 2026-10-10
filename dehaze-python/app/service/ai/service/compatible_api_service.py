@@ -15,7 +15,6 @@ from uuid import uuid4
 
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
@@ -27,6 +26,10 @@ from app.service.ai.service.compatible_audit import record_call
 from app.service.ai.service.compatible_governance import (
     GovernanceError,
     compatible_governance_service,
+)
+from app.service.ai.service.model_defaults import (
+    assert_message_fits_context,
+    resolve_default_chat_model,
 )
 from app.service.ai_conversation_service import ai_conversation_service
 from app.service.ai_message_service import ai_message_service
@@ -89,7 +92,7 @@ def _error_status_code(code: ResultCode) -> int:
         ResultCode.DATA_EXISTS,
         ResultCode.DATA_STATE_NOT_ALLOW,
         ResultCode.OPERATION_NOT_ALLOW,
-        ResultCode.DATA_BIND_EXISTS,
+        ResultCode.DATA_REFERENCED,
         ResultCode.AI_LLM_CALL_FAILED,
     ):
         return 400
@@ -241,6 +244,14 @@ async def _openai_stream(
     base = {"id": message_id, "object": "chat.completion.chunk", "created": created, "model": model}
     usage: dict = {}
     error_msg: str | None = None
+    # 内部内容块 index（text=0 / thinking=1 / tool_use≥2）→ OpenAI tool_calls 序号（0 起自增）
+    tool_index_map: dict[int, int] = {}
+
+    def _tool_index(raw: int) -> int:
+        if raw not in tool_index_map:
+            tool_index_map[raw] = len(tool_index_map)
+        return tool_index_map[raw]
+
     try:
         yield _openai_sse(
             {
@@ -281,7 +292,7 @@ async def _openai_stream(
                                     "delta": {
                                         "tool_calls": [
                                             {
-                                                "index": data.get("index", 0),
+                                                "index": _tool_index(data.get("index", 0)),
                                                 "function": {
                                                     "arguments": delta.get("partial_json", "")
                                                 },
@@ -304,7 +315,7 @@ async def _openai_stream(
                                     "delta": {
                                         "tool_calls": [
                                             {
-                                                "index": data.get("index", 0),
+                                                "index": _tool_index(data.get("index", 0)),
                                                 "id": data.get("id", ""),
                                                 "type": "function",
                                                 "function": {
@@ -361,6 +372,7 @@ async def _openai_non_stream(
     """聚合内部 SSE 事件为 OpenAI 非流式 JSON 响应"""
     content = ""
     tool_calls: list[dict] = []
+    tool_calls_by_block: dict[int, dict] = {}
     usage: dict = {}
     stop_reason = "stop"
     error_msg: str | None = None
@@ -370,15 +382,19 @@ async def _openai_non_stream(
             delta = data.get("delta") or {}
             if delta.get("type") == "text_delta":
                 content += delta.get("text", "")
+            elif delta.get("type") == "input_json_delta":
+                call = tool_calls_by_block.get(data.get("index", 0))
+                if call is not None:
+                    call["function"]["arguments"] += delta.get("partial_json", "")
         elif event_type == "content_block.start":
             if data.get("type") == "tool_use":
-                tool_calls.append(
-                    {
-                        "id": data.get("id", ""),
-                        "type": "function",
-                        "function": {"name": data.get("name", ""), "arguments": ""},
-                    }
-                )
+                call = {
+                    "id": data.get("id", ""),
+                    "type": "function",
+                    "function": {"name": data.get("name", ""), "arguments": ""},
+                }
+                tool_calls_by_block[data.get("index", 0)] = call
+                tool_calls.append(call)
         elif event_type == "message.end":
             stop_reason = data.get("stopReason", "stop")
             usage = data.get("usage") or {}
@@ -412,6 +428,15 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
     """将内部 SSE 事件转换为 Anthropic Messages 流式格式"""
     usage: dict = {}
     error_msg: str | None = None
+    # Anthropic 要求 content_block index 从 0 连续；内部 index（text=0/thinking=1/tool_use≥2）
+    # 按首次出现顺序映射为连续序号，保证 start/delta/stop 三事件 index 一致
+    block_index_map: dict[int, int] = {}
+
+    def _claude_index(raw: int) -> int:
+        if raw not in block_index_map:
+            block_index_map[raw] = len(block_index_map)
+        return block_index_map[raw]
+
     try:
         yield _claude_sse(
             "message_start",
@@ -438,7 +463,7 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
                         "content_block_delta",
                         {
                             "type": "content_block_delta",
-                            "index": data.get("index", 0),
+                            "index": _claude_index(data.get("index", 0)),
                             "delta": {"type": "text_delta", "text": delta.get("text", "")},
                         },
                     )
@@ -447,7 +472,7 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
                         "content_block_delta",
                         {
                             "type": "content_block_delta",
-                            "index": data.get("index", 0),
+                            "index": _claude_index(data.get("index", 0)),
                             "delta": {
                                 "type": "input_json_delta",
                                 "partial_json": delta.get("partial_json", ""),
@@ -460,7 +485,7 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
                         "content_block_start",
                         {
                             "type": "content_block_start",
-                            "index": data.get("index", 0),
+                            "index": _claude_index(data.get("index", 0)),
                             "content_block": {
                                 "type": "tool_use",
                                 "id": data.get("id", ""),
@@ -472,7 +497,10 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
             elif event_type == "content_block.stop":
                 yield _claude_sse(
                     "content_block_stop",
-                    {"type": "content_block_stop", "index": data.get("index", 0)},
+                    {
+                        "type": "content_block_stop",
+                        "index": _claude_index(data.get("index", 0)),
+                    },
                 )
             elif event_type == "message.end":
                 usage = data.get("usage") or {}
@@ -618,13 +646,20 @@ class CompatibleApiService:
         """
         if api_key is None or model is not None:
             return
-        used_model = settings.AI_DEFAULT_MODEL
+        # 解析顺序对齐 send_message：会话已存模型优先，均无才回落默认模型解析链
+        # （顺序颠倒会把「会话已有模型」的可用请求误判：平台默认未配置时直接 A0500）
+        used_model: str | None = None
+        conv_agent_code: str | None = None
         if conv_id is not None:
             convs = await self.ai_conversation_repository.get_by_ids_and_user(
                 db, [conv_id], user_id
             )
-            if convs and convs[0].model:
-                used_model = convs[0].model
+            if convs:
+                conv_agent_code = convs[0].agent_code
+                if convs[0].model:
+                    used_model = convs[0].model
+        if used_model is None:
+            used_model = await resolve_default_chat_model(db, user_id, conv_agent_code)
         await compatible_governance_service.check_model_allowed(db, api_key, used_model)
 
     async def handle_openai_chat(
@@ -637,10 +672,6 @@ class CompatibleApiService:
         user_content = _extract_last_user_content(messages)
         if not user_content:
             raise BusinessException(ResultCode.PARAM_ERROR, "缺少用户消息")
-        if len(user_content) > settings.AI_MESSAGE_MAX_LENGTH:
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"消息长度不能超过 {settings.AI_MESSAGE_MAX_LENGTH} 字符"
-            )
         model = body.get("model")
         stream = bool(body.get("stream", False))
         conv_id = await self._resolve_conversation(
@@ -653,6 +684,8 @@ class CompatibleApiService:
         )
         if audit is not None:
             audit["conversation_id"] = conv_id
+        # 单条消息长度按所选模型输入预算校验（未显式指定模型时按平台默认模型预算）
+        await assert_message_fits_context(db, user_content, model)
         await self._enforce_model_whitelist(db, user_id, api_key, model, conv_id)
         internal_response = await ai_message_service.send_message(
             db, conv_id, user_id, MessageSend(content=user_content, model=model), str(uuid4())
@@ -681,10 +714,6 @@ class CompatibleApiService:
         user_content = _extract_last_user_content(messages)
         if not user_content:
             raise BusinessException(ResultCode.PARAM_ERROR, "缺少用户消息")
-        if len(user_content) > settings.AI_MESSAGE_MAX_LENGTH:
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"消息长度不能超过 {settings.AI_MESSAGE_MAX_LENGTH} 字符"
-            )
         model = body.get("model")
         stream = bool(body.get("stream", False))
         conv_id = await self._resolve_conversation(
@@ -692,6 +721,8 @@ class CompatibleApiService:
         )
         if audit is not None:
             audit["conversation_id"] = conv_id
+        # 单条消息长度按所选模型输入预算校验（未显式指定模型时按平台默认模型预算）
+        await assert_message_fits_context(db, user_content, model)
         await self._enforce_model_whitelist(db, user_id, api_key, model, conv_id)
         internal_response = await ai_message_service.send_message(
             db, conv_id, user_id, MessageSend(content=user_content, model=model), str(uuid4())

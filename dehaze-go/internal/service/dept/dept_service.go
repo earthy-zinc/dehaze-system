@@ -198,7 +198,7 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 			return 0, err // 直接返回，calculateDepth已经返回BizError
 		}
 		if depth+1 > MAX_DEPT_DEPTH {
-			return 0, common.NewBizError(common.DATA_BIND_EXISTS, "部门层级不能超过5级")
+			return 0, common.NewBizError(common.DATA_REFERENCED, "部门层级不能超过5级")
 		}
 	}
 
@@ -269,7 +269,7 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 
 	// 移动后层级校验（T-DPT-018a：移动至超深层级报 A0504）
 	if len(strings.Split(treePath, ",")) > MAX_DEPT_DEPTH {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "部门层级不能超过5级")
+		return common.NewBizError(common.DATA_REFERENCED, "部门层级不能超过5级")
 	}
 
 	// 查询原部门信息

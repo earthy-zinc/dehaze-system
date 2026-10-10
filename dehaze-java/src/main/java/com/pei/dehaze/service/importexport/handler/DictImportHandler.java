@@ -9,14 +9,13 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 字典导入处理器
@@ -36,14 +35,44 @@ public class DictImportHandler implements ImportHandler {
     @Override
     public List<ImportFieldConfig> getFieldConfigs() {
         return List.of(
-                ImportFieldConfig.builder().field("typeCode").label("字典类型编码").required(true).maxLength(50).build(),
-                ImportFieldConfig.builder().field("name").label("字典名称").required(true).maxLength(50).build(),
-                ImportFieldConfig.builder().field("value").label("字典值").required(true).maxLength(50).build(),
-                ImportFieldConfig.builder().field("sort").label("排序").required(false).build(),
-                ImportFieldConfig.builder().field("statusLabel").label("状态(启用/禁用)").required(false).build(),
-                ImportFieldConfig.builder().field("defaulted").label("是否默认(是/否)").required(false).build(),
-                ImportFieldConfig.builder().field("remark").label("备注").required(false).build()
-        );
+                ImportFieldConfig.builder()
+                        .field("typeCode")
+                        .label("字典类型编码")
+                        .required(true)
+                        .maxLength(50)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("name")
+                        .label("字典名称")
+                        .required(true)
+                        .maxLength(50)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("value")
+                        .label("字典值")
+                        .required(true)
+                        .maxLength(50)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("sort")
+                        .label("排序")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态(启用/禁用)")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("defaulted")
+                        .label("是否默认(是/否)")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("remark")
+                        .label("备注")
+                        .required(false)
+                        .build());
     }
 
     @Override
@@ -55,8 +84,7 @@ public class DictImportHandler implements ImportHandler {
                 "sort", "1",
                 "statusLabel", "启用",
                 "defaulted", "否",
-                "remark", ""
-        ));
+                "remark", ""));
     }
 
     @Override
@@ -105,8 +133,7 @@ public class DictImportHandler implements ImportHandler {
                         .message(e.getMessage())
                         .build());
                 if (!partial) {
-                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage()
-                            + "（全量模式已回滚所有数据）", e);
+                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage() + "（全量模式已回滚所有数据）", e);
                 }
             }
         }

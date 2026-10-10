@@ -35,6 +35,8 @@ public class SysAiProvider extends BaseEntity {
 
     private Integer healthCheckEnabled;
 
+    private Integer requestTimeoutSeconds;
+
     private String userIdentityForward;
 
     private String remark;

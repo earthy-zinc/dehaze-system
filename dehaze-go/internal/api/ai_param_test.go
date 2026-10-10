@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestLastPathID 同一路径含多个 :id 时（如 /ai/models/:id/prices/:id），
+// TestLastPathID 同一路径含多个 :id 时（如 /ai/providers/:id/keys/:id），
 // gin 的 Param("id") 只返回首个匹配，末位参数必须走 c.Params。
 func TestLastPathID(t *testing.T) {
 	gin.SetMode(gin.TestMode)

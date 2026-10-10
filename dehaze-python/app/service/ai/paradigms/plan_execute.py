@@ -18,13 +18,66 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict, deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # 子任务默认范式：未标注时按 react（单步 ReAct）执行
 DEFAULT_SUBTASK_PARADIGM = "react"
+
+# tool_hint 白名单别名表（自由文本 → 真实工具名）。
+# PRJ-1：Planner 由 LLM 生成，tool_hint 常是「知识库检索」「none」这类自然语言，
+# 直接透传会让计划承诺做不到的事；这里只做收敛，命中不了就丢弃。
+_TOOL_HINT_ALIASES: dict[str, str] = {
+    "知识库检索": "knowledge_base_search",
+    "知识库搜索": "knowledge_base_search",
+    "知识库": "knowledge_base_search",
+    "knowledge_retrieval": "knowledge_base_search",
+    "kb_search": "knowledge_base_search",
+    "knowledge_base_search": "knowledge_base_search",
+    "联网搜索": "web_search",
+    "网络搜索": "web_search",
+    "web_search": "web_search",
+    "任务状态": "get_task_status",
+    "任务查询": "get_task_status",
+    "get_task_status": "get_task_status",
+    "算法推荐": "algorithm_recommend",
+    "algorithm_recommend": "algorithm_recommend",
+    "批量处理": "batch_process",
+    "batch_process": "batch_process",
+    "代码执行": "execute_code",
+    "execute_code": "execute_code",
+    "读取产物": "visual_read",
+    "visual_read": "visual_read",
+}
+
+# 明显不是工具名的字面量：计划里常见 "none"/"无"，一律视为未提示
+_NON_TOOL_HINTS = frozenset({"none", "null", "n/a", "na", "无", "没有", "-", "无工具"})
+
+
+def resolve_tool_hint(hint: str | None, available_tools: Collection[str] | None) -> str | None:
+    """把计划里的自由文本 tool_hint 归一为真实工具名；无法确证时返回 None。
+
+    收敛规则（宁可不提示，也不误导）：
+    - 空值 / none / 无 等非工具字面量一律丢弃；
+    - 给定 available_tools 时严格白名单：与真实工具名一致、或别名命中且在可用集合内才保留；
+    - available_tools 为 None（调用方未提供白名单）时退化为 best-effort：别名命中则归一，
+      否则按旧契约原样保留（生产链路由 ParadigmMiddleware 始终传入工具名列表）。
+    """
+    if hint is None:
+        return None
+    raw = str(hint).strip()
+    if not raw or raw.lower() in _NON_TOOL_HINTS:
+        return None
+    mapped = _TOOL_HINT_ALIASES.get(raw) or _TOOL_HINT_ALIASES.get(raw.lower())
+    if available_tools is None:
+        return mapped or raw
+    known = set(available_tools)
+    if raw in known:
+        return raw
+    return mapped if mapped in known else None
+
 
 # Planner 提示词：要求 LLM 输出结构化 JSON 计划
 _PLANNER_PROMPT = """你是任务分解引擎。将用户任务分解为可并行/串行的子任务列表，
@@ -108,6 +161,7 @@ async def build_plan(
     task: str,
     model_call: Callable[[list[dict], str], Awaitable[str]],
     tool_hint: str | None = None,
+    available_tools: Collection[str] | None = None,
 ) -> dict[str, Any]:
     """调用 LLM 将任务分解为结构化计划。
 
@@ -115,12 +169,18 @@ async def build_plan(
     （非 JSON / 结构非法）时降级为单任务 react 计划（宁可退化为单步也不中断推理）；
     该降级是文档化契约，但会记 warning 日志暴露，便于排查提示词/模型合规问题。
     模型调用本身的异常（含护栏拦截/配额中断）不在此吞掉，直接冒泡交给调用方处理。
+
+    available_tools 为当前范式可用的真实工具名集合：会写进 Planner 提示词的
+    「可用工具白名单」，并把每个任务的 tool_hint 收敛为白名单内的真实工具名或 None
+    （PRJ-1：此前 tool_hint 是自由文本，计划会承诺做不到的工具）。
     """
     plan = new_plan()
     user_prompt = f"用户任务：{task}\n工具提示：{tool_hint or '无'}"
     raw = ""
     try:
-        raw = await model_call([{"role": "user", "content": user_prompt}], _PLANNER_PROMPT)
+        raw = await model_call(
+            [{"role": "user", "content": user_prompt}], _planner_prompt(available_tools)
+        )
         data = _extract_json(raw)
         tasks = []
         for i, item in enumerate(data.get("tasks") or [], start=1):
@@ -129,7 +189,7 @@ async def build_plan(
                     task_id=str(item.get("id") or _auto_id(i)),
                     description=str(item.get("description") or "").strip(),
                     depends_on=[str(d) for d in (item.get("depends_on") or [])],
-                    tool_hint=(item.get("tool_hint") or None),
+                    tool_hint=resolve_tool_hint(item.get("tool_hint"), available_tools),
                     paradigm=(item.get("paradigm") or None),
                 )
             )
@@ -138,8 +198,20 @@ async def build_plan(
     except (ValueError, AttributeError, TypeError) as exc:
         # 仅解析类失败（非 JSON / 结构非法）才降级为单任务，并记日志暴露 LLM 输出不合规
         logger.warning("Planner 输出解析失败，降级为单任务计划: error=%s raw=%r", exc, raw[:500])
-        plan["tasks"] = [_new_task("A", task, [], tool_hint, "react")]
+        plan["tasks"] = [
+            _new_task("A", task, [], resolve_tool_hint(tool_hint, available_tools), "react")
+        ]
     return plan
+
+
+def _planner_prompt(available_tools: Collection[str] | None) -> str:
+    """Planner 提示词：附上可用工具白名单，约束 tool_hint 只能取真实工具名。"""
+    if available_tools:
+        listing = "、".join(sorted(set(available_tools)))
+        whitelist = f"可用工具白名单（tool_hint 只能取以下之一，取不到就留空字符串）：{listing}"
+    else:
+        whitelist = "可用工具白名单：无（本模式未绑定任何工具，tool_hint 一律留空）"
+    return f"{_PLANNER_PROMPT}\n{whitelist}\n"
 
 
 # ── 依赖拓扑分批 ──────────────────────────────────────

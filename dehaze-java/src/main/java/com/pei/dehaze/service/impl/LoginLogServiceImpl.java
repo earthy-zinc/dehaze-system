@@ -4,11 +4,15 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.util.MongoBsonUtils;
 import com.pei.dehaze.model.entity.LoginLog;
 import com.pei.dehaze.model.query.LoginLogQuery;
 import com.pei.dehaze.model.vo.LoginLogVO;
 import com.pei.dehaze.repository.LoginLogRepository;
 import com.pei.dehaze.service.LoginLogService;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -17,10 +21,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -35,8 +35,7 @@ public class LoginLogServiceImpl implements LoginLogService {
     private static final List<DateTimeFormatter> LOG_TIME_PARSERS = List.of(
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    );
+            DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
     private final LoginLogRepository loginLogRepository;
 
@@ -44,7 +43,15 @@ public class LoginLogServiceImpl implements LoginLogService {
 
     @Async("datasetTaskExecutor")
     @Override
-    public void recordLogin(Long userId, String username, String ip, int status, String message, String browser, String os, String deviceType) {
+    public void recordLogin(
+            Long userId,
+            String username,
+            String ip,
+            int status,
+            String message,
+            String browser,
+            String os,
+            String deviceType) {
         try {
             LoginLog loginLog = new LoginLog();
             loginLog.setUserId(userId);
@@ -78,7 +85,9 @@ public class LoginLogServiceImpl implements LoginLogService {
             criteria.and("device_type").is(query.getDeviceType());
         }
         if (restrictedUserId != null) {
-            criteria.and("user_id").is(restrictedUserId);
+            // int32/int64 双类型候选：java/go 新记录是 int64，改造前的历史记录是 int32，
+            // 单类型 is() 会静默漏读（空列表不报错）
+            criteria.and("user_id").in(MongoBsonUtils.int32Int64Candidates(restrictedUserId));
         }
         // 集合由 python 共写共读，条件键必须用实体映射后的 snake_case（见 LoginLog @Field）
         LocalDateTime startTime = parseLogTime(query.getStartTime());

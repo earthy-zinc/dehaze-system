@@ -35,6 +35,10 @@ public class ImportFieldConfig {
     private String defaultValue;
 
     public static ImportFieldConfig of(String field, String label, boolean required) {
-        return ImportFieldConfig.builder().field(field).label(label).required(required).build();
+        return ImportFieldConfig.builder()
+                .field(field)
+                .label(label)
+                .required(required)
+                .build();
     }
 }

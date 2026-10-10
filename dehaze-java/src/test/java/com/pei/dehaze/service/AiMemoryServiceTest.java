@@ -1,24 +1,5 @@
 package com.pei.dehaze.service;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.result.ResultCode;
-import com.pei.dehaze.mapper.SysAiMemoryMapper;
-import com.pei.dehaze.model.entity.SysAiMemory;
-import com.pei.dehaze.model.form.AiMemoryUpdateForm;
-import com.pei.dehaze.service.impl.AiKbIndexClient;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +10,24 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysAiMemoryMapper;
+import com.pei.dehaze.model.entity.SysAiMemory;
+import com.pei.dehaze.model.form.AiMemoryUpdateForm;
+import com.pei.dehaze.service.impl.AiKbIndexClient;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * AI 长期记忆服务单测：归属校验、归档反向操作与衰减计时器刷新、二次确认、检索重激活。
@@ -123,8 +122,17 @@ class AiMemoryServiceTest {
         when(memoryMapper.batchClear(3L, "semantic", start, end, 3L)).thenReturn(4);
 
         assertThat(service.batchClear(3L, true, "semantic", start, end)).isEqualTo(4);
-        verify(auditLogService).recordAudit(eq(3L), eq("ai_memory"), eq(3L), eq("clear"), eq("ai_memory"),
-                isNull(), any(), isNull(), isNull());
+        verify(auditLogService)
+                .recordAudit(
+                        eq(3L),
+                        eq("ai_memory"),
+                        eq(3L),
+                        eq("clear"),
+                        eq("ai_memory"),
+                        isNull(),
+                        any(),
+                        isNull(),
+                        isNull());
     }
 
     @Test
@@ -140,7 +148,8 @@ class AiMemoryServiceTest {
     @Test
     @DisplayName("恢复窗口内无软删记忆返回 0 且不发起更新")
     void restoreDeletedReturnsZeroWhenNothingToRestore() {
-        when(memoryMapper.listDeletedForRestore(eq(3L), eq(null), eq(null), eq(null), any())).thenReturn(List.of());
+        when(memoryMapper.listDeletedForRestore(eq(3L), eq(null), eq(null), eq(null), any()))
+                .thenReturn(List.of());
 
         assertThat(service.restoreDeleted(3L, true, null, null, null)).isZero();
         verify(memoryMapper, never()).restoreByIds(anyList(), any());
@@ -156,16 +165,14 @@ class AiMemoryServiceTest {
         assertThat(service.restoreDeleted(3L, true, "semantic", null, null)).isEqualTo(1);
 
         ArgumentCaptor<LocalDateTime> windowCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(memoryMapper).listDeletedForRestore(eq(3L), eq("semantic"), eq(null), eq(null),
-                windowCaptor.capture());
+        verify(memoryMapper).listDeletedForRestore(eq(3L), eq("semantic"), eq(null), eq(null), windowCaptor.capture());
         assertThat(windowCaptor.getValue()).isBefore(LocalDateTime.now().minusDays(29));
     }
 
     @Test
     @DisplayName("检索命中后逐条重激活（access_count+1 / 刷新衰减 / importance+5）")
     void searchTouchesEveryHit() {
-        when(memoryMapper.selectList(any(Wrapper.class)))
-                .thenReturn(List.of(memory(9L, 3L, 0), memory(10L, 3L, 0)));
+        when(memoryMapper.selectList(any(Wrapper.class))).thenReturn(List.of(memory(9L, 3L, 0), memory(10L, 3L, 0)));
 
         assertThat(service.search(3L, "偏好", 5)).hasSize(2);
         verify(memoryMapper).touch(9L);

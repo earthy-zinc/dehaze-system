@@ -35,7 +35,7 @@ func TestFormsBindSnakeCaseWire(t *testing.T) {
 	})
 
 	t.Run("评测样本 snake_case 全字段", func(t *testing.T) {
-		body := `{"task_goal":"g","allowed_input":"text","tools":["file_read"],
+		body := `{"task_goal":"g","allowed_input":"text","tools":[{"name":"file_read","args":{"path":"a"}}],
 			"expected_process":"p","expected_result":"r","forbidden_behavior":"f","risk_level":"high"}`
 		var form aidomain.EvalSampleCreateForm
 		require.NoError(t, json.Unmarshal([]byte(body), &form))
@@ -45,7 +45,11 @@ func TestFormsBindSnakeCaseWire(t *testing.T) {
 		require.Equal(t, "r", *form.ExpectedResult)
 		require.Equal(t, "f", *form.ForbiddenBehavior)
 		require.Equal(t, "high", form.RiskLevel)
-		require.Equal(t, []string{"file_read"}, form.Tools)
+		var tools []aidomain.EvalToolCall
+		require.NoError(t, json.Unmarshal(form.Tools, &tools))
+		require.Len(t, tools, 1)
+		require.Equal(t, "file_read", tools[0].Name)
+		require.Equal(t, "a", tools[0].Args["path"])
 	})
 
 	t.Run("子 Agent 关联 agent_id/endpoint_id", func(t *testing.T) {

@@ -2,11 +2,10 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
 
 /** 会话审计时间线：轮次（user→assistant 配对）+ 轮内事件按 ts 交织 */
 @Schema(description = "会话审计时间线")

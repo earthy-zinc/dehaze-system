@@ -8,6 +8,8 @@ import com.pei.dehaze.common.enums.DataScopeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.plugin.mybatis.annotation.DataPermission;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.lang.reflect.Method;
+import java.util.List;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
@@ -21,9 +23,6 @@ import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
-
-import java.lang.reflect.Method;
-import java.util.List;
 
 /**
  * 数据权限控制器
@@ -50,7 +49,12 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
                 if (annotation == null || SecurityUtils.isRoot()) {
                     return where;
                 }
-                return dataScopeFilter(annotation.deptAlias(), annotation.deptIdColumnName(), annotation.userAlias(), annotation.userIdColumnName(), where);
+                return dataScopeFilter(
+                        annotation.deptAlias(),
+                        annotation.deptIdColumnName(),
+                        annotation.userAlias(),
+                        annotation.userIdColumnName(),
+                        where);
             }
         }
         return where;
@@ -62,9 +66,14 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
      * @param where 当前查询条件
      * @return 构建后查询条件
      */
-    public static Expression dataScopeFilter(String deptAlias, String deptIdColumnName, String userAlias, String userIdColumnName, Expression where) {
-        String deptColumnName = CharSequenceUtil.isNotBlank(deptAlias) ? (deptAlias + StringPool.DOT + deptIdColumnName) : deptIdColumnName;
-        String userColumnName = CharSequenceUtil.isNotBlank(userAlias) ? (userAlias + StringPool.DOT + userIdColumnName) : userIdColumnName;
+    public static Expression dataScopeFilter(
+            String deptAlias, String deptIdColumnName, String userAlias, String userIdColumnName, Expression where) {
+        String deptColumnName = CharSequenceUtil.isNotBlank(deptAlias)
+                ? (deptAlias + StringPool.DOT + deptIdColumnName)
+                : deptIdColumnName;
+        String userColumnName = CharSequenceUtil.isNotBlank(userAlias)
+                ? (userAlias + StringPool.DOT + userIdColumnName)
+                : userIdColumnName;
 
         // 获取当前用户的数据权限
         Integer dataScope = SecurityUtils.getDataScope();
@@ -107,9 +116,7 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
         plainSelect.addSelectItems(new SelectExpressionItem(new Column("id")));
         plainSelect.setFromItem(new Table("sys_dept"));
         plainSelect.setWhere(new OrExpression(
-                new EqualsTo(new Column("id"), new LongValue(deptId)),
-                buildFindInSet(deptId, "tree_path")
-        ));
+                new EqualsTo(new Column("id"), new LongValue(deptId)), buildFindInSet(deptId, "tree_path")));
 
         SubSelect subSelect = new SubSelect();
         subSelect.setSelectBody(plainSelect);

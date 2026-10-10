@@ -2,12 +2,11 @@ package com.pei.dehaze.model.query;
 
 import com.pei.dehaze.common.base.BasePageQuery;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.springframework.format.annotation.DateTimeFormat;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -17,8 +16,8 @@ public class RatingPageQuery extends BasePageQuery {
     @Schema(description = "用户名/昵称关键字")
     private String keywords;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
 
     @Schema(description = "评分下限")
     private Integer ratingMin;

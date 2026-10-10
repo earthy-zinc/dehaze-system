@@ -1,6 +1,5 @@
 package com.pei.dehaze.model.form;
 
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,27 +10,27 @@ import lombok.Data;
 @Data
 public class DictTypeForm {
 
-    @Schema(description="字典类型ID")
+    @Schema(description = "字典类型ID")
     private Long id;
 
-    @Schema(description="类型名称")
+    @Schema(description = "类型名称")
     @NotBlank(message = "类型名称不能为空")
     @Size(max = 50, message = "类型名称长度不能超过50")
     @Pattern(regexp = "(?s)^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "类型名称不能包含特殊字符")
     private String name;
 
-    @Schema(description="类型编码")
+    @Schema(description = "类型编码")
     @NotBlank(message = "类型编码不能为空")
     @Size(max = 50, message = "类型编码长度不能超过50")
     private String code;
 
-    @Schema(description="类型状态(1:启用;0:禁用)")
+    @Schema(description = "类型状态(1:启用;0:禁用)")
     private Integer status;
 
     @Schema(description = "备注")
     @Size(max = 255, message = "备注长度不能超过255")
     private String remark;
 
-    @Schema(description="是否系统预置(预置 true / 新建 false)")
+    @Schema(description = "是否系统预置(预置 true / 新建 false)")
     private Boolean isPreset;
 }

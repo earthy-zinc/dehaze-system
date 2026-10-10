@@ -9,7 +9,6 @@ import com.pei.dehaze.model.vo.PackageDetailVO;
 import com.pei.dehaze.model.vo.PackagePageVO;
 import com.pei.dehaze.model.vo.PriceResult;
 import com.pei.dehaze.model.vo.SalesStatsVO;
-
 import java.util.List;
 
 public interface PackageService extends IService<SysPackage> {

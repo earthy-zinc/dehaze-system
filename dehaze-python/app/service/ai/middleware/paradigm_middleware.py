@@ -26,12 +26,20 @@ reflexion_threshold、reflexion_expected_format。
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from langchain.agents.middleware.types import AgentMiddleware, hook_config
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langchain_core.tools import BaseTool
 from langgraph.types import interrupt
 
 from app.infrastructure.llm.client.dehaze_chat_model import DehazeChatModel
@@ -53,6 +61,18 @@ PLAN_APPROVE_TYPE = "plan_approve"
 
 # Replanner 修订轮次上限：修订会重算批次，无上限时反复失败会无限重规划
 _MAX_REPLAN_ROUNDS = 5
+
+# 范式路径单次模型调用内允许的工具执行轮次上限：范式子任务绑定与主图同一套工具，
+# 模型一次推理可能连续请求多轮工具；不设上限时工具异常会拖住整批子任务。
+_MAX_TOOL_ROUNDS = 3
+
+# 无工具路径的能力声明：plan_execute 未绑定工具（或 direct 直连）时，必须显式告知
+# 模型「本模式没有检索/工具能力」，否则它会凭参数记忆编造库内事实（PRJ-1）。
+_NO_TOOL_CAPABILITY_NOTICE = (
+    "【能力声明】当前推理模式未绑定任何工具与知识库检索能力，"
+    "你无法查询、检索或调用任何外部系统。若缺少依据，请明确说明「无检索能力、无法确认」，"
+    "严禁编造事实、出处或库内不存在的记录。"
+)
 
 
 class _ParadigmBlocked(Exception):
@@ -97,9 +117,16 @@ class ParadigmMiddleware(AgentMiddleware):
         ctx: dict[str, Any],
         *,
         save_memory: Callable[..., Awaitable[Any]] | None = None,
+        tools: Sequence[BaseTool] | None = None,
     ) -> None:
         self.model = model
         self.config = config
+        # 范式路径的工具集：与主图同一套业务工具（PRJ-1：此前范式完全不绑工具，
+        # 导致「检索知识库」这类子任务只能靠模型参数记忆编造）。
+        # 类型标注与基类声明（AgentMiddleware.tools: Sequence[BaseTool]）保持一致：
+        # 基类该属性可写，子类收窄为 list 属不兼容覆盖
+        self.tools: Sequence[BaseTool] = list(tools or [])
+        self._tools_by_name: dict[str, BaseTool] = {t.name: t for t in self.tools}
         # 图按版本缓存复用，ctx 为静态模板；运行时上下文由 DehazeHooksMiddleware
         # 每 run 经 run_context 创建（计划状态随 run 隔离），无 run 时回退模板
         self._ctx_template = ctx
@@ -110,6 +137,20 @@ class ParadigmMiddleware(AgentMiddleware):
     def ctx(self) -> dict[str, Any]:
         return get_run_ctx() or self._ctx_template
 
+    def _ensure_business_ctx(self, state: Any) -> None:
+        """幂等补齐范式内工具所需的业务标识（与 DehazeHooksMiddleware 同口径）。"""
+        ctx = self.ctx
+        for key in (
+            "user_id",
+            "conversation_id",
+            "message_id",
+            "model_id",
+            "stream_session_id",
+        ):
+            value = state.get(key) if hasattr(state, "get") else None
+            if value is not None:
+                ctx[key] = value
+
     # ── AgentMiddleware 钩子 ────────────────────────────
 
     # 允许从 before_agent 跳到 end（范式编排完成后直接收尾）
@@ -118,6 +159,10 @@ class ParadigmMiddleware(AgentMiddleware):
         mode = state.get("reasoning_mode") or "react"
         if mode not in ("plan_execute", "reflexion"):
             return None
+        # 范式在本钩子内就执行工具，可能早于其它中间件把业务标识写进 run ctx；
+        # 此处按 state 幂等补齐，保证范式内工具（如 knowledge_base_search）能取到
+        # user_id/conversation_id，否则工具回退构图模板并抛 KeyError（PRJ-1 回归暴露）。
+        self._ensure_business_ctx(state)
         usage = _ParadigmUsage()
         try:
             if mode == "plan_execute":
@@ -151,7 +196,11 @@ class ParadigmMiddleware(AgentMiddleware):
         # 中断前的 state 写入随中断丢弃，故再从中断点记录恢复用户已确认的计划
         plan = state.get("plan") or await self._restore_pending_plan(state)
         if plan is None:
-            plan = await plan_execute.build_plan(self._last_user_content(state), model_call)
+            plan = await plan_execute.build_plan(
+                self._last_user_content(state),
+                model_call,
+                available_tools=[t.name for t in self.tools],
+            )
             usage.raise_if_blocked()
             await emit({"type": "plan", "data": {"plan": plan, "phase": "plan"}})
             await self._emit_thought(runtime, tool="planner", observation=_plan_summary(plan))
@@ -254,7 +303,12 @@ class ParadigmMiddleware(AgentMiddleware):
         """构造 (messages, system_prompt) -> str 的模型调用闭包。"""
 
         async def _call(messages: list[dict], system_prompt: str) -> str:
-            hook_state = build_hook_state(self.ctx, messages, system_prompt)
+            # 无工具时补充能力声明（PRJ-1）：范式不绑工具时模型必须知道"查不到"，
+            # 否则会凭参数记忆编造库内事实
+            effective_prompt = (
+                system_prompt if self.tools else f"{system_prompt}\n\n{_NO_TOOL_CAPABILITY_NOTICE}"
+            )
+            hook_state = build_hook_state(self.ctx, messages, effective_prompt)
             block = await agent_hooks.run_hooks("before_model", hook_state)
             if block:
                 if (
@@ -267,21 +321,54 @@ class ParadigmMiddleware(AgentMiddleware):
                     usage.block = block
                     raise _ParadigmBlocked(block)
             self.ctx["step_count"] = self.ctx.get("step_count", 0) + 1
-            lm_messages = [SystemMessage(content=system_prompt)]
+            # 显式标 BaseMessage：后续会追加 AIMessage（模型 tool_calls）与 ToolMessage
+            lm_messages: list[BaseMessage] = [SystemMessage(content=effective_prompt)]
             lm_messages += [
                 HumanMessage(content=m["content"]) for m in messages if m.get("content")
             ]
-            result = await self.model.ainvoke(lm_messages)
-            meta = result.response_metadata or {}
-            llm_usage = meta.get("usage") or {}
-            used = usage.add(llm_usage)
-            usage.call_meta = dict(meta.get("call_meta") or {})
-            hook_state["usage"] = llm_usage
-            await agent_hooks.run_hooks("after_model", hook_state)
-            self.ctx["token_used"] = self.ctx.get("token_used", 0) + used
-            return str(result.content or "")
+            # 范式子任务绑定与主图同一套工具（PRJ-1）：不绑工具时「检索知识库」这类
+            # 子任务只能靠模型参数记忆作答，等于结构性无法完成
+            lm = self.model.bind_tools(self.tools) if self.tools else self.model
+            result = None
+            for _round in range(_MAX_TOOL_ROUNDS + 1):
+                result = await lm.ainvoke(lm_messages)
+                meta = result.response_metadata or {}
+                llm_usage = meta.get("usage") or {}
+                used = usage.add(llm_usage)
+                usage.call_meta = dict(meta.get("call_meta") or {})
+                hook_state["usage"] = llm_usage
+                await agent_hooks.run_hooks("after_model", hook_state)
+                self.ctx["token_used"] = self.ctx.get("token_used", 0) + used
+
+                tool_calls = list(getattr(result, "tool_calls", None) or [])
+                if not tool_calls:
+                    break
+                lm_messages.append(AIMessage(content=result.content or "", tool_calls=tool_calls))
+                for call in tool_calls:
+                    lm_messages.append(
+                        ToolMessage(
+                            content=await self._execute_tool_call(call),
+                            tool_call_id=call.get("id") or "",
+                        )
+                    )
+            return str(getattr(result, "content", "") or "")
 
         return _call
+
+    async def _execute_tool_call(self, call: dict[str, Any]) -> str:
+        """执行范式路径下模型请求的工具，返回文本结果（异常降级为可读文本回灌模型）。"""
+        name = str(call.get("name") or "")
+        args = call.get("args") or {}
+        tool = self._tools_by_name.get(name)
+        if tool is None:
+            return f"工具 {name} 不存在或未启用"
+        # 单工具异常不应中断整批子任务（BLE 规则未启用，此处刻意捕获宽异常并降级为文本）
+        try:
+            out = await tool.ainvoke(args)
+        except Exception as e:
+            logger.error("范式工具执行异常 [tool=%s]: %s", name, e, exc_info=True)
+            return f"工具 {name} 执行异常: {e}"
+        return out if isinstance(out, str) else json.dumps(out, ensure_ascii=False, default=str)
 
     @staticmethod
     def _last_user_content(state: Any) -> str:

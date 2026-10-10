@@ -1,14 +1,15 @@
 package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.util.StrUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
 import io.minio.*;
 import io.minio.errors.*;
 import jakarta.annotation.PostConstruct;
+import java.io.*;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,10 +17,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
-
-import java.io.*;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 
 /**
  * MinIO 文件上传服务类
@@ -136,13 +133,11 @@ public class MinioFileService implements FileService {
         Assert.notBlank(objectName);
 
         File file = fileDTO.getFile();
-        try (FileInputStream stream = new FileInputStream(file)){
-            PutObjectArgs putObjectArgs = PutObjectArgs.builder()
-                    .bucket(bucketName)
-                    .object(objectName)
-                    .contentType(mimeType)
-                    .stream(stream, (long) stream.available(), -1L)
-                    .build();
+        try (FileInputStream stream = new FileInputStream(file)) {
+            PutObjectArgs putObjectArgs =
+                    PutObjectArgs.builder().bucket(bucketName).object(objectName).contentType(mimeType).stream(
+                                    stream, (long) stream.available(), -1L)
+                            .build();
             minioClient.putObject(putObjectArgs);
             fileDTO.setStorage(getStorageType());
             return fileDTO;
@@ -194,10 +189,8 @@ public class MinioFileService implements FileService {
 
     @Override
     public InputStream downLoadFile(String objectName) {
-        GetObjectArgs getObjectArgs = GetObjectArgs.builder()
-                .bucket(bucketName)
-                .object(objectName)
-                .build();
+        GetObjectArgs getObjectArgs =
+                GetObjectArgs.builder().bucket(bucketName).object(objectName).build();
         try {
             // 直接返回响应流，避免将整个文件读入内存导致OOM
             // GetObjectResponse 继承自 FilterInputStream，调用方负责关闭返回的 InputStream
@@ -212,7 +205,8 @@ public class MinioFileService implements FileService {
      */
     public boolean ping() {
         try {
-            return minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+            return minioClient.bucketExists(
+                    BucketExistsArgs.builder().bucket(bucketName).build());
         } catch (Exception e) {
             log.warn("MinIO 健康检查失败: {}", e.getMessage());
             return false;
@@ -226,15 +220,16 @@ public class MinioFileService implements FileService {
      */
     private void createBucketIfAbsent(String bucketName) {
         try {
-            BucketExistsArgs bucketExistsArgs = BucketExistsArgs.builder().bucket(bucketName).build();
+            BucketExistsArgs bucketExistsArgs =
+                    BucketExistsArgs.builder().bucket(bucketName).build();
             if (!minioClient.bucketExists(bucketExistsArgs)) {
-                MakeBucketArgs makeBucketArgs = MakeBucketArgs.builder().bucket(bucketName).build();
+                MakeBucketArgs makeBucketArgs =
+                        MakeBucketArgs.builder().bucket(bucketName).build();
 
                 minioClient.makeBucket(makeBucketArgs);
 
                 // 设置存储桶访问权限为PUBLIC， 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
-                SetBucketPolicyArgs setBucketPolicyArgs = SetBucketPolicyArgs
-                        .builder()
+                SetBucketPolicyArgs setBucketPolicyArgs = SetBucketPolicyArgs.builder()
                         .bucket(bucketName)
                         .config(publicBucketPolicy(bucketName))
                         .build();

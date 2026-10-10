@@ -1,9 +1,8 @@
 package com.pei.dehaze.config.property;
 
+import java.time.Duration;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-
-import java.time.Duration;
 
 /**
  * RabbitMQ 配置属性
@@ -55,7 +54,6 @@ public class RabbitMQProperties {
          * 路由键前缀
          */
         private String routingKeyPrefix = "task.";
-
     }
 
     /**
@@ -83,6 +81,5 @@ public class RabbitMQProperties {
          * 重连间隔乘数 (指数退避)
          */
         private double multiplier = 2.0;
-
     }
 }

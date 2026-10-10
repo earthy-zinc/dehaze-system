@@ -1,12 +1,10 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.List;
+import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 配对图片上传表单

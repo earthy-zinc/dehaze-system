@@ -1,7 +1,7 @@
 """批量处理调度服务：任务分解 → 逐张处理 → 进度推送 → 结果摘要
 
 用户上传多张图片并描述统一处理需求时，将每张图片作为一个子任务，
-按配置策略（serial/parallel/auto）调度预测服务（异步任务模式，立即返回 logId），
+按配置策略（serial/parallel/auto）调度预测服务（异步任务模式，立即返回 taskId），
 注册产物并推送结构化进度，全部完成后生成结果摘要。
 """
 
@@ -64,12 +64,12 @@ async def process_batch(
     msg_id: int,
     user_id: int,
     image_urls: list[str],
-    algorithm_id: int,
+    model: str,
     stream_session_id: str,
 ) -> dict:
     """批量处理调度：按策略调度预测 → 注册产物 → 推送进度 → 生成摘要
 
-    预测服务为异步任务模式（立即返回 logId），产物先注册、结果由后台任务完成，
+    预测服务为异步任务模式（立即返回 taskId），产物先注册、结果由后台任务完成，
     用户通过产物/进度事件感知处理进度。评估需参考图且依赖预测完成，暂不执行。
     """
     image_urls = image_urls[:BATCH_MAX_IMAGES]
@@ -81,7 +81,7 @@ async def process_batch(
             msg_id,
             user_id,
             image_urls,
-            algorithm_id,
+            model,
             stream_session_id,
         )
     else:
@@ -93,7 +93,7 @@ async def process_batch(
                     msg_id,
                     user_id,
                     image_url,
-                    algorithm_id,
+                    model,
                     index,
                     total,
                     stream_session_id,
@@ -114,7 +114,7 @@ async def _run_parallel(
     msg_id: int,
     user_id: int,
     image_urls: list[str],
-    algorithm_id: int,
+    model: str,
     stream_session_id: str,
 ) -> list[dict]:
     """并行调度：用信号量控制并发数，asyncio.gather 收集结果"""
@@ -128,7 +128,7 @@ async def _run_parallel(
                 msg_id,
                 user_id,
                 image_url,
-                algorithm_id,
+                model,
                 index,
                 total,
                 stream_session_id,
@@ -142,7 +142,7 @@ async def _process_single(
     msg_id: int,
     user_id: int,
     image_url: str,
-    algorithm_id: int,
+    model: str,
     index: int,
     total: int,
     stream_session_id: str,
@@ -152,11 +152,11 @@ async def _process_single(
         async with get_db_session() as db:
             await validate_owned_image_url(db, user_id, image_url)
         pred_result = await prediction_service.predict(
-            algorithm_id=algorithm_id,
+            model=model,
             image_url=image_url,
             user_id=user_id,
         )
-        pred_log_id = pred_result.get("logId")
+        pred_log_id = pred_result.get("taskId")
 
         async with get_db_session() as db:
             artifact = await ai_artifact_service.register_artifact(
@@ -166,7 +166,7 @@ async def _process_single(
                 artifact_type="image_result",
                 ref_type="sys_pred_log",
                 ref_id=pred_log_id,
-                summary={"algorithmId": algorithm_id},
+                summary={"modelId": model},
             )
 
         # 评估环节：metric_report 由 evaluation_service.evaluate 异步评估完成后注册

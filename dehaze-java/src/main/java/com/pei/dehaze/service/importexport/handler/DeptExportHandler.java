@@ -11,13 +11,12 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 部门导出处理器
@@ -52,19 +51,33 @@ public class DeptExportHandler implements ExportHandler {
     public List<ExportFieldConfig> getFieldConfigs() {
         return List.of(
                 ExportFieldConfig.builder().field("name").label("部门名称").order(1).build(),
-                ExportFieldConfig.builder().field("parentId").label("父部门ID").order(2).build(),
+                ExportFieldConfig.builder()
+                        .field("parentId")
+                        .label("父部门ID")
+                        .order(2)
+                        .build(),
                 ExportFieldConfig.builder().field("sort").label("排序").order(3).build(),
-                ExportFieldConfig.builder().field("statusLabel").label("状态").order(4).build(),
-                ExportFieldConfig.builder().field("createTime").label("创建时间").order(5)
-                        .dateFormat("yyyy-MM-dd HH:mm:ss").build()
-        );
+                ExportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态")
+                        .order(4)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("createTime")
+                        .label("创建时间")
+                        .order(5)
+                        .dateFormat("yyyy-MM-dd HH:mm:ss")
+                        .build());
     }
 
     @Override
     public ExportDataProvider getDataProvider(ExportContext ctx) {
-        List<ExportFieldConfig> fields = ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
-                ? getFieldConfigs()
-                : getFieldConfigs().stream().filter(f -> ctx.getSelectedFields().contains(f.getField())).toList();
+        List<ExportFieldConfig> fields =
+                ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
+                        ? getFieldConfigs()
+                        : getFieldConfigs().stream()
+                                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
+                                .toList();
 
         // 树形数据一次性加载，内部按批次切片
         return new ExportDataProvider() {
@@ -149,12 +162,13 @@ public class DeptExportHandler implements ExportHandler {
             case "name" -> nullToEmpty(vo.getName());
             case "parentId" -> vo.getParentId() == null ? "" : vo.getParentId();
             case "sort" -> vo.getSort() == null ? "" : vo.getSort();
-            case "statusLabel" -> vo.getStatus() == null
-                    ? ""
-                    : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
-            case "createTime" -> vo.getCreateTime() == null
-                    ? ""
-                    : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
+            case "statusLabel" ->
+                vo.getStatus() == null ? "" : IBaseEnum.getLabelByValue(vo.getStatus(), StatusEnum.class);
+            case "createTime" ->
+                vo.getCreateTime() == null
+                        ? ""
+                        : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                                .format(java.sql.Timestamp.valueOf(vo.getCreateTime()));
             default -> "";
         };
     }

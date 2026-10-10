@@ -1,6 +1,14 @@
 package com.pei.dehaze.service.impl.file;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,15 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * LocalFileService 单元测试
@@ -301,16 +300,14 @@ class LocalFileServiceTest {
 
         // When & Then
         Throwable thrown = catchThrowable(() -> localFileService.downLoadFile(maliciousPath));
-        assertThat(thrown)
-                .isNotNull()
-                .satisfies(e -> {
-                    assertThat(e).isInstanceOfAny(BusinessException.class, IllegalArgumentException.class);
-                    if (e instanceof BusinessException) {
-                        assertThat(e.getMessage()).contains("文件不存在");
-                    } else {
-                        assertThat(e.getMessage()).contains("无效的文件路径");
-                    }
-                });
+        assertThat(thrown).isNotNull().satisfies(e -> {
+            assertThat(e).isInstanceOfAny(BusinessException.class, IllegalArgumentException.class);
+            if (e instanceof BusinessException) {
+                assertThat(e.getMessage()).contains("文件不存在");
+            } else {
+                assertThat(e.getMessage()).contains("无效的文件路径");
+            }
+        });
     }
 
     /**

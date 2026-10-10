@@ -5,6 +5,4 @@ import com.pei.dehaze.model.entity.SysApiKey;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysApiKeyMapper extends BaseMapper<SysApiKey> {
-
-}
+public interface SysApiKeyMapper extends BaseMapper<SysApiKey> {}

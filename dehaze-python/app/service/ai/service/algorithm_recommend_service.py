@@ -1,4 +1,4 @@
-"""算法推荐编排服务：图像特征分析 → 推荐算法 → 注册产物 → 推送 interrupt"""
+"""算法推荐编排服务：图像特征分析 → 推荐模型 → 注册产物 → 推送 interrupt"""
 
 import logging
 
@@ -21,7 +21,7 @@ async def recommend_algorithm(
     """算法推荐编排
 
     1. 调用推荐管理模块分析图像特征
-    2. 调用推荐管理模块获取推荐算法
+    2. 调用推荐管理模块获取推荐模型
     3. 注册 artifact（type=algorithm_recommend, ref_type=sys_recommendation）
     4. 推送 interrupt 事件（type=confirm）等待用户确认
     5. 返回推荐结果摘要
@@ -29,34 +29,34 @@ async def recommend_algorithm(
     async with get_db_session() as db:
         analysis = await recommendation_service.analyze(None, image_url)
 
-        # 2. 推荐算法（内部创建 sys_recommendation 记录）
-        algorithms = await recommendation_service.get_algorithms(
+        # 2. 推荐模型（内部创建 sys_recommendation 记录）
+        models = await recommendation_service.get_models(
             db,
             user_id,
             None,
             analysis.imageMd5,
         )
 
-        if not algorithms:
+        if not models:
             # 与主路径统一返回 (summary, interrupt_data) 二元组；调用方按 summary 判空
             return {"recommendation": None, "alternatives": []}, {}
 
         # 3. 注册 artifact（summary 只存业务摘要，不含图片 URL）
-        top = algorithms[0]
-        alternatives = algorithms[1:]
+        top = models[0]
+        alternatives = models[1:]
         summary = {
-            "algorithm": {
+            "model": {
                 "recommendationId": top.recommendationId,
-                "algorithmId": top.algorithmId,
-                "algorithmName": top.algorithmName,
+                "modelId": top.modelId,
+                "modelName": top.modelName,
                 "reason": top.reason,
                 "effectDescription": top.effectDescription,
             },
             "matchScore": top.matchScore,
             "alternatives": [
                 {
-                    "algorithmId": a.algorithmId,
-                    "algorithmName": a.algorithmName,
+                    "modelId": a.modelId,
+                    "modelName": a.modelName,
                     "matchScore": a.matchScore,
                     "reason": a.reason,
                 }
@@ -81,7 +81,7 @@ async def recommend_algorithm(
         "data": {
             "confirmKind": ConfirmKind.ALGORITHM_RECOMMEND,
             "artifactId": artifact.id,
-            "recommendation": summary["algorithm"],
+            "recommendation": summary["model"],
             "alternatives": summary["alternatives"],
             "imageFeatures": {
                 "hazeLevel": analysis.hazeLevel,
@@ -100,11 +100,11 @@ async def handle_user_confirmation(
     msg_id: int,
     user_id: int,
     confirmed: bool,
-    algorithm_id: int | None = None,
+    model: str | None = None,
 ) -> dict:
     """处理用户对推荐结果的确认/拒绝
 
-    confirmed=True: 用户接受推荐（可指定 algorithm_id 表示选择了备选算法）
+    confirmed=True: 用户接受推荐（可指定 model 表示选择了备选模型）
     confirmed=False: 用户拒绝推荐
     """
     thread_id = f"{conv_id}:{msg_id}"
@@ -115,7 +115,7 @@ async def handle_user_confirmation(
     # 不在此清理中断点：resume 的图执行仍可能失败，提前清理会让消息永久挂起、
     # 用户无法再次确认重试。中断点由 ReasoningService.resume 成功后统一清理。
     if not confirmed:
-        return {"status": "rejected", "algorithmId": None}
+        return {"status": "rejected", "modelId": None}
 
     # 用户确认，提交正向反馈到推荐管理模块（使用 sys_recommendation 记录 id）
     interrupt_data = interrupt.get("data") or {}
@@ -126,4 +126,4 @@ async def handle_user_confirmation(
         async with get_db_session() as db:
             await recommendation_service.submit_feedback(db, user_id, recommendation_id, True)
 
-    return {"status": "accepted", "algorithmId": algorithm_id}
+    return {"status": "accepted", "modelId": model}

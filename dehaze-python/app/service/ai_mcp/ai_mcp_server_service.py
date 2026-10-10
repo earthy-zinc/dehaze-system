@@ -100,7 +100,7 @@ class AiMcpServerService:
         refs = await self._count_agent_references(db, server.id)
         if refs > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 f"MCP Server [{server.name}] 已被 {refs} 个 Agent 关联（命名空间），请先解绑再删除",
             )
         await ai_mcp_server_repository.soft_delete_by_ids(db, [server.id])

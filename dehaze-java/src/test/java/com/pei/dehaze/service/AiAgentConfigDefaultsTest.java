@@ -1,23 +1,21 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.controller.AiAgentController;
 import com.pei.dehaze.mapper.AiInsightMapper;
 import com.pei.dehaze.model.vo.AiAgentConfigDefaultsVO;
+import java.util.Iterator;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 推理参数系统默认值对外契约单测。
@@ -65,9 +63,17 @@ class AiAgentConfigDefaultsTest {
         for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
             keys.add(it.next());
         }
-        assertThat(keys).containsExactlyInAnyOrder(
-                "maxStepsReact", "maxStepsPlan", "maxStepsReflexion", "maxIterationsReflexion",
-                "reflexionThreshold", "maxParallel", "toolTimeout", "tokenBudget", "retryMax");
+        assertThat(keys)
+                .containsExactlyInAnyOrder(
+                        "maxStepsReact",
+                        "maxStepsPlan",
+                        "maxStepsReflexion",
+                        "maxIterationsReflexion",
+                        "reflexionThreshold",
+                        "maxParallel",
+                        "toolTimeout",
+                        "tokenBudget",
+                        "retryMax");
         assertThat(node.findValues("null")).isEmpty();
         assertThat(node.findValues("")).isEmpty();
     }

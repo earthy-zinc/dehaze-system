@@ -44,7 +44,7 @@ func TestRegisterAIProxyRoutes_RegistersWhitelist(t *testing.T) {
 		"POST /api/v1/ai/agents/:id/publish",
 		"POST /api/v1/ai/skills/:id/test",
 		"POST /api/v1/ai/skills/upload",
-		"POST /api/v1/ai/models/:id/test",
+		"POST /api/v1/ai/models/test",
 		"POST /api/v1/ai/providers/:id/test-connection",
 		"GET /api/v1/ai/mcp/servers/:id/health",
 		"GET /api/v1/ai/mcp/servers/:id/tools",
@@ -109,7 +109,7 @@ func TestRegisterAIProxyRoutes_CoexistsWithCrudRoutes(t *testing.T) {
 	}
 	rg.POST("/ai/skills/market", crud)
 	rg.GET("/ai/skills/:id", crud)
-	rg.POST("/ai/models/:id/prices", crud)
+	rg.POST("/ai/models/prices", crud)
 	rg.GET("/kb/documents/:id", crud)
 	rg.GET("/ai/conversations/:id/messages", crud)
 	rg.DELETE("/ai/messages/:id", crud)
@@ -127,7 +127,7 @@ func TestRegisterAIProxyRoutes_CoexistsWithCrudRoutes(t *testing.T) {
 	}{
 		{http.MethodPost, "/api/v1/ai/skills/market"},
 		{http.MethodGet, "/api/v1/ai/skills/2"},
-		{http.MethodPost, "/api/v1/ai/models/3/prices"},
+		{http.MethodPost, "/api/v1/ai/models/prices"},
 		{http.MethodGet, "/api/v1/kb/documents/5"},
 		{http.MethodGet, "/api/v1/ai/conversations/9/messages"},
 		{http.MethodDelete, "/api/v1/ai/messages/4"},

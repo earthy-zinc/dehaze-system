@@ -18,13 +18,15 @@ from app.models.schema.recommendation import (
     RecommendationReportVO,
     RecommendationRuleForm,
     RecommendationRuleVO,
-    RecommendedAlgorithmVO,
+    RecommendedModelVO,
     TrendItem,
 )
-from app.repository.algorithm_repository import algorithm_repository
+from app.repository.ai_model_repository import ai_model_repository
 from app.repository.pred_eval_log_repository import pred_log_repository
 from app.repository.recommendation_repository import recommendation_repository
 from app.repository.recommendation_rule_repository import recommendation_rule_repository
+
+IMAGE_MODEL_TYPE = "image_edit"
 
 VALID_HAZE_LEVELS = ["light", "moderate", "heavy"]
 VALID_SCENE_TYPES = ["urban", "landscape", "building", "night", "backlight", "indoor"]
@@ -92,15 +94,15 @@ class RecommendationService:
             noiseLevel=VALID_NOISE_LEVELS[seed % len(VALID_NOISE_LEVELS)],
         )
 
-    async def get_algorithms(
+    async def get_models(
         self,
         db: AsyncSession,
         user_id: int,
         analysis_id: int | None,
         image_md5: str | None,
-    ) -> list[RecommendedAlgorithmVO]:
-        # 仅取已发布且未删除的算法作为推荐候选池
-        published = await algorithm_repository.list_published(db)
+    ) -> list[RecommendedModelVO]:
+        # 仅取已启用的图像模型作为推荐候选池
+        published = await ai_model_repository.list_enabled(db, IMAGE_MODEL_TYPE)
 
         rules = await recommendation_rule_repository.get_enabled_rules(db)
 
@@ -120,40 +122,40 @@ class RecommendationService:
                     scene_type = st
 
         matched_rules = [r for r in rules if r.scene_type == scene_type] if rules else []
-        candidate_ids: set[int] = set()
-        rule_weight_map: dict[int, int] = {}
+        candidate_ids: set[str] = set()
+        rule_weight_map: dict[str, int] = {}
         for r in matched_rules:
-            for aid in r.algorithm_ids:
-                candidate_ids.add(aid)
-                current = rule_weight_map.get(aid, 0)
+            for mid in r.model_ids:
+                candidate_ids.add(mid)
+                current = rule_weight_map.get(mid, 0)
                 if r.weight > current:
-                    rule_weight_map[aid] = r.weight
+                    rule_weight_map[mid] = r.weight
 
-        candidates = [a for a in published if a.id in candidate_ids] if published else []
+        candidates = [m for m in published if m.model_id in candidate_ids] if published else []
 
         reason = SCENE_REASON_TEMPLATES.get(scene_type, "综合表现优秀")
-        result: list[RecommendedAlgorithmVO] = []
-        for alg in candidates:
-            match_score = min(100, rule_weight_map.get(alg.id, 0))
+        result: list[RecommendedModelVO] = []
+        for row in candidates:
+            match_score = min(100, rule_weight_map.get(row.model_id, 0))
             result.append(
-                RecommendedAlgorithmVO(
-                    algorithmId=alg.id,
-                    algorithmName=alg.name or "",
+                RecommendedModelVO(
+                    modelId=row.model_id,
+                    modelName=row.display_name or "",
                     matchScore=match_score,
-                    reason=f"{alg.name}：{reason}",
-                    effectDescription=f"该算法在{scene_type}场景下表现稳定",
+                    reason=f"{row.display_name}：{reason}",
+                    effectDescription=f"该模型在{scene_type}场景下表现稳定",
                 )
             )
 
-        # 主排序 matchScore 降序，次排序 algorithmId 升序，保证跨端排序一致
-        result.sort(key=lambda x: (-x.matchScore, x.algorithmId))
+        # 主排序 matchScore 降序，次排序 modelId 升序，保证跨端排序一致
+        result.sort(key=lambda x: (-x.matchScore, x.modelId))
         result = result[:TOP_N]
 
         # 无论有无结果，都写入 sys_recommendation 记录，确保 feedback 能找到记录
-        top_algorithms = [
+        top_models = [
             {
-                "algorithmId": vo.algorithmId,
-                "algorithmName": vo.algorithmName,
+                "modelId": vo.modelId,
+                "modelName": vo.modelName,
                 "matchScore": vo.matchScore,
             }
             for vo in result
@@ -161,8 +163,8 @@ class RecommendationService:
         rec = SysRecommendation(
             user_id=user_id,
             image_md5=image_md5,
-            target_type="algorithm",
-            top_algorithms=top_algorithms,
+            target_type="model",
+            top_models=top_models,
             feedback=0,
         )
         db.add(rec)
@@ -192,7 +194,7 @@ class RecommendationService:
                 id=r.id,
                 ruleName=r.rule_name,
                 sceneType=r.scene_type,
-                algorithmIds=r.algorithm_ids or [],
+                modelIds=r.model_ids or [],
                 weight=r.weight,
                 enabled=r.enabled == 1,
             )
@@ -210,18 +212,18 @@ class RecommendationService:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
 
         rules = await recommendation_rule_repository.get_all_rules(db)
-        target = set(form.algorithmIds)
+        target = set(form.modelIds)
         for r in rules:
             if r.id == rule_id or not r.enabled:
                 continue
-            if r.scene_type == form.sceneType and set(r.algorithm_ids) == target:
-                raise BusinessException(ResultCode.DATA_EXISTS, "同场景下已存在相同算法组合的规则")
+            if r.scene_type == form.sceneType and set(r.model_ids) == target:
+                raise BusinessException(ResultCode.DATA_EXISTS, "同场景下已存在相同模型组合的规则")
 
         if rule_id == 0:
             rule = SysRecommendationRule(
                 rule_name=form.ruleName,
                 scene_type=form.sceneType,
-                algorithm_ids=form.algorithmIds,
+                model_ids=form.modelIds,
                 weight=form.weight,
                 enabled=1 if form.enabled else 0,
             )
@@ -236,7 +238,7 @@ class RecommendationService:
 
         rule.rule_name = form.ruleName
         rule.scene_type = form.sceneType
-        rule.algorithm_ids = form.algorithmIds
+        rule.model_ids = form.modelIds
         rule.weight = form.weight
         rule.enabled = 1 if form.enabled else 0
         await db.flush()
@@ -270,12 +272,12 @@ class RecommendationService:
         total = await recommendation_repository.count_total(db, start, end)
         useful_count = await recommendation_repository.count_useful(db, start, end)
         feedback_total = await recommendation_repository.count_feedback_total(db, start, end)
-        adopted_distinct = await recommendation_repository.count_adopted_algorithm_distinct(
+        adopted_distinct = await recommendation_repository.count_adopted_model_distinct(
             db, start, end
         )
         adopted_pred_count = await pred_log_repository.count_recommended(db, start, end)
 
-        all_published = await algorithm_repository.list_published(db)
+        all_published = await ai_model_repository.list_enabled(db, IMAGE_MODEL_TYPE)
         published_count = len(all_published)
 
         # 采纳率口径：带推荐来源（recommended_by）的预测记录数 / 推荐总数，

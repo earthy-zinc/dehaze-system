@@ -51,6 +51,25 @@ class KnowledgeBaseClient:
                 for r in (result.get("results") or [])
             ]
 
+    async def list_bases(self, user_id: int | None = None) -> list[dict]:
+        """列出用户可见的知识库（[{id, name, description}]），供模型选择检索范围。
+
+        查询失败降级返回空列表（工具层语义，不影响对话主流程）。
+        """
+        from app.database import get_db_session
+        from app.repository.knowledge_base_repository import knowledge_base_repository
+
+        async with get_db_session() as db:
+            try:
+                if user_id is not None:
+                    bases = await knowledge_base_repository.list_visible_by_user(db, user_id)
+                else:
+                    bases = await knowledge_base_repository.list_public(db)
+            except Exception as e:
+                logger.warning("知识库列表查询降级返回空结果 user_id=%s: %s", user_id, e)
+                return []
+            return [{"id": b.id, "name": b.name, "description": b.description or ""} for b in bases]
+
     def format_results(self, results: list[dict]) -> str:
         """将检索结果格式化为"标题+摘要+来源引用"列表文本（支持引用溯源）。
 

@@ -1,11 +1,6 @@
 package com.pei.dehaze.service.client;
 
 import com.pei.dehaze.config.property.AlgorithmProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpHeaders;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -19,6 +14,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Component;
 
 /**
  * dehaze-python 转发客户端。
@@ -38,8 +37,7 @@ public class AiForwardClient {
     private final HttpClient aiProxyHttpClient;
 
     /** 非流式转发结果：状态码、Content-Type 与响应体原样回传 */
-    public record BufferedResponse(int status, String contentType, byte[] body) {
-    }
+    public record BufferedResponse(int status, String contentType, byte[] body) {}
 
     /**
      * 流式转发回调：上游响应就绪后由调用方消费响应体
@@ -85,8 +83,8 @@ public class AiForwardClient {
         }
     }
 
-    private HttpRequest buildRequest(String method, String path, HttpHeaders headers,
-                                     HttpRequest.BodyPublisher body, long timeoutMs) {
+    private HttpRequest buildRequest(
+            String method, String path, HttpHeaders headers, HttpRequest.BodyPublisher body, long timeoutMs) {
         HttpRequest.Builder builder;
         try {
             builder = HttpRequest.newBuilder(URI.create(props.getBaseUrl() + path));

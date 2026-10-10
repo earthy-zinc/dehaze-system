@@ -1,10 +1,18 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.model.vo.AiEvalReviewQueueVO;
 import com.pei.dehaze.model.vo.AiNextTimesVO;
 import com.pei.dehaze.service.AiEvalCenterService;
 import com.pei.dehaze.service.AiScheduleService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,15 +26,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
-
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * AI 域标量查询参数校验守卫（非分页）。
@@ -80,7 +79,8 @@ class AiScalarParamValidationTest {
 
     /** 模拟 Boot 的 ValidationAutoConfiguration：@Validated 类需经后置处理器代理才有方法级校验 */
     private static Object proxy(Object controller, MethodValidationPostProcessor processor) {
-        return processor.postProcessAfterInitialization(controller, controller.getClass().getSimpleName());
+        return processor.postProcessAfterInitialization(
+                controller, controller.getClass().getSimpleName());
     }
 
     @ParameterizedTest(name = "trends limit={0} → 400 + A0400")

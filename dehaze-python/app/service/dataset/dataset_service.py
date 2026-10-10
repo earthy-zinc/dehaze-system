@@ -6,6 +6,7 @@ import time
 from typing import Any
 
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
@@ -78,6 +79,63 @@ class DatasetService:
         if name and _XSS_PATTERN.search(name):
             raise BusinessException(ResultCode.PARAM_ERROR, "数据集名称包含不安全的字符")
 
+    @staticmethod
+    async def _discard_corrupt_cache(redis: Redis, key: str, reason: str) -> None:
+        """删除损坏的缓存体（自愈：下一次读回源数据库重建）。
+
+        三端共享 `dict:data:*` 的既有口径同款：解析失败即删键回源，而不是把脏值
+        静默当成"没有缓存"（否则排查时无从定位，且脏值会一直命中到 TTL 到期）。
+        """
+        logger.warning(f"数据集缓存体损坏，删除键后回源: key={key}, reason={reason}")
+        try:
+            await redis.delete(key)
+        except RedisError as e:
+            logger.warning(f"删除损坏缓存失败: key={key}, error={e}")
+
+    async def _read_cache(self, redis: Redis, key: str, expect: type) -> Any | None:
+        """读 JSON 缓存，返回解析结果；不可用时返回 None（由调用方回源）。
+
+        降级判定（逐类显式，不再"任何异常都当缓存未命中"）：
+        - `RedisError`（Redis 不可用/故障）：缓存非唯一数据源 ⇒ 降级回源，**error 级留痕**；
+        - `json.JSONDecodeError` 或结构不符（缓存体损坏）：删键回源自愈，warning 级留痕；
+        - 其余异常一律上抛（程序性错误必须暴露，不得被吞成"缓存未命中"）。
+        """
+        try:
+            cached = await redis.get(key)
+        except RedisError as e:
+            logger.error(f"读取数据集缓存失败（Redis 不可用），回源数据库: key={key}, error={e}")
+            return None
+        if not cached:
+            return None
+        try:
+            parsed = json.loads(cached)
+        except json.JSONDecodeError as e:
+            await self._discard_corrupt_cache(redis, key, f"非法 JSON: {e}")
+            return None
+        if not isinstance(parsed, expect):
+            await self._discard_corrupt_cache(
+                redis, key, f"结构不符（期望 {expect.__name__}）: {type(parsed).__name__}"
+            )
+            return None
+        return parsed
+
+    @staticmethod
+    async def _write_cache(redis: Redis, key: str, ttl: int, value: Any) -> None:
+        """写 JSON 缓存；失败仅降级（缓存是可重建副本，数据源始终是数据库），均留痕。
+
+        - 序列化失败（非预期数据类型）：**error 级**留痕并不写入，接口仍返回数据库结果；
+        - `RedisError`：warning 级留痕。
+        """
+        try:
+            payload = json.dumps(value, ensure_ascii=False, default=str)
+        except (TypeError, ValueError) as e:
+            logger.error(f"数据集缓存序列化失败，跳过写入: key={key}, error={e}")
+            return
+        try:
+            await redis.setex(key, ttl, payload)
+        except RedisError as e:
+            logger.warning(f"写入数据集缓存失败（降级为直接回源）: key={key}, error={e}")
+
     async def _evict_all_cache(self, redis: Redis):
         keys = [
             self.CACHE_ALL_KEY,
@@ -88,30 +146,33 @@ class DatasetService:
         for key in keys:
             try:
                 await redis.delete(key)
-            except Exception as e:
-                logger.warning(f"清除缓存失败 {key}: {e}")
+            except RedisError as e:
+                logger.warning(f"清除数据集缓存失败: key={key}, error={e}")
 
     async def get_all_datasets(self, db: AsyncSession, redis: Redis) -> list[SysDataset]:
-        try:
-            cached = await redis.get(self.CACHE_ALL_KEY)
-            if cached:
-                data = json.loads(cached)
-                result = []
-                for item in data:
-                    ds = SysDataset()
-                    for k, v in item.items():
-                        if hasattr(ds, k):
-                            setattr(ds, k, v)
-                    result.append(ds)
-                if result:
-                    return result
-        except Exception as e:
-            logger.warning(f"读取数据集缓存失败: {e}")
+        cached_items = await self._read_cache(redis, self.CACHE_ALL_KEY, list)
+        if cached_items and not all(isinstance(item, dict) for item in cached_items):
+            # 元素结构不符（缓存体损坏）：按未命中处理并删键自愈，不让脏值喂给下游
+            await self._discard_corrupt_cache(redis, self.CACHE_ALL_KEY, "元素结构不符（期望对象）")
+            cached_items = None
+        if cached_items:
+            result = []
+            for item in cached_items:
+                ds = SysDataset()
+                for k, v in item.items():
+                    if hasattr(ds, k):
+                        setattr(ds, k, v)
+                result.append(ds)
+            if result:
+                return result
 
         datasets = await self.dataset_repository.find_all(db)
 
-        try:
-            serializable = [
+        await self._write_cache(
+            redis,
+            self.CACHE_ALL_KEY,
+            self.CACHE_ALL_TTL,
+            [
                 {
                     "id": ds.id,
                     "parent_id": ds.parent_id,
@@ -125,26 +186,17 @@ class DatasetService:
                     "deleted": ds.deleted,
                 }
                 for ds in datasets
-            ]
-            await redis.setex(
-                self.CACHE_ALL_KEY,
-                self.CACHE_ALL_TTL,
-                json.dumps(serializable, ensure_ascii=False, default=str),
-            )
-        except Exception as e:
-            logger.warning(f"缓存写入失败: {e}")
+            ],
+        )
 
         return datasets
 
     async def get_all_dataset_stats(
         self, db: AsyncSession, redis: Redis
     ) -> dict[int, dict[str, Any]]:
-        try:
-            cached = await redis.get(self.CACHE_STATSMAP_KEY)
-            if cached:
-                return json.loads(cached)
-        except Exception as e:
-            logger.warning(f"读取统计缓存失败: {e}")
+        cached_stats = await self._read_cache(redis, self.CACHE_STATSMAP_KEY, dict)
+        if cached_stats:
+            return cached_stats
 
         start_time = time.time()
         logger.debug("开始计算所有数据集统计信息...")
@@ -242,15 +294,12 @@ class DatasetService:
         cost_ms = int((time.time() - start_time) * 1000)
         logger.debug(f"所有数据集统计信息计算完成，耗时 {cost_ms} ms，叶子节点 {len(leaf_ids)} 个")
 
-        try:
-            str_key_map = {str(k): v for k, v in stats_map.items()}
-            await redis.setex(
-                self.CACHE_STATSMAP_KEY,
-                self.CACHE_STATS_TTL,
-                json.dumps(str_key_map, ensure_ascii=False),
-            )
-        except Exception as e:
-            logger.warning(f"统计缓存写入失败: {e}")
+        await self._write_cache(
+            redis,
+            self.CACHE_STATSMAP_KEY,
+            self.CACHE_STATS_TTL,
+            {str(k): v for k, v in stats_map.items()},
+        )
 
         return stats_map
 
@@ -370,23 +419,13 @@ class DatasetService:
         return result
 
     async def get_dataset_options(self, db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
-        try:
-            cached = await redis.get(self.CACHE_OPTIONS_KEY)
-            if cached:
-                return json.loads(cached)
-        except Exception as e:
-            logger.warning(f"读取选项缓存失败: {e}")
+        cached_options = await self._read_cache(redis, self.CACHE_OPTIONS_KEY, list)
+        if cached_options:
+            return cached_options
 
         options = await self.dataset_repository.get_dataset_options(db)
 
-        try:
-            await redis.setex(
-                self.CACHE_OPTIONS_KEY,
-                self.CACHE_TREE_TTL,
-                json.dumps(options, ensure_ascii=False),
-            )
-        except Exception as e:
-            logger.warning(f"选项缓存写入失败: {e}")
+        await self._write_cache(redis, self.CACHE_OPTIONS_KEY, self.CACHE_TREE_TTL, options)
 
         return options
 
@@ -457,7 +496,8 @@ class DatasetService:
             type=data.get("type", ""),
             name=data.get("name", ""),
             description=data.get("description", ""),
-            path=data.get("path", ""),
+            # 存储路径由服务端按数据集 ID 生成，不接受用户输入（后端实现 §7.3 路径遍历防护）
+            path="",
             status=data.get("status", 1),
             deleted=0,
         )
@@ -513,8 +553,6 @@ class DatasetService:
             dataset.type = data["type"]
         if "description" in data:
             dataset.description = data["description"]
-        if "path" in data:
-            dataset.path = data["path"]
         if "status" in data:
             dataset.status = data["status"]
 
@@ -631,7 +669,13 @@ class DatasetService:
                     results.append({"id": dataset_id, "status": "success"})
 
             except Exception as e:
-                # 批量删除失败，回滚并标记所有有效数据集为失败
+                # 批量删除的异常**不降级**：本条不走"部分成功继续跑"，而是整体回滚、
+                # 有效数据集全部标记失败（跨端契约：逐项 results 返回，不改 500）。
+                # 因此这里保留宽捕，但异常必须按日志规范带全栈留痕（§6 exc_info），
+                # 不允许只把 str(e) 塞进响应体、日志里什么都不留（旧实现即如此）。
+                logger.exception(
+                    f"批量删除数据集失败，已回滚: targetIds={valid_dataset_ids}, error={e}"
+                )
                 await db.rollback()
                 for dataset_id in valid_dataset_ids:
                     failed += 1

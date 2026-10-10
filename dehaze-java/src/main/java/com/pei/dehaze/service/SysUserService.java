@@ -1,6 +1,5 @@
 package com.pei.dehaze.service;
 
-
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.dto.UserAuthInfo;
@@ -25,7 +24,6 @@ public interface SysUserService extends IService<SysUser> {
      */
     IPage<UserPageVO> listPagedUsers(UserPageQuery queryParams);
 
-
     /**
      * 获取用户表单数据
      *
@@ -33,7 +31,6 @@ public interface SysUserService extends IService<SysUser> {
      * @return
      */
     UserForm getUserFormData(Long userId);
-
 
     /**
      * 新增用户
@@ -52,7 +49,6 @@ public interface SysUserService extends IService<SysUser> {
      */
     boolean updateUser(Long userId, UserForm userForm);
 
-
     /**
      * 删除用户
      *
@@ -60,7 +56,6 @@ public interface SysUserService extends IService<SysUser> {
      * @return
      */
     boolean deleteUsers(String idsStr);
-
 
     /**
      * 修改用户密码
@@ -86,9 +81,7 @@ public interface SysUserService extends IService<SysUser> {
      * @param username 用户名
      * @return {@link UserAuthInfo}
      */
-
     UserAuthInfo getUserAuthInfo(String username);
-
 
     /**
      * 获取登录用户信息

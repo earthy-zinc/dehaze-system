@@ -19,7 +19,7 @@ public class SysPreset extends BaseEntity {
 
     private String type;
 
-    private Long algorithmId;
+    private String modelId;
 
     private String params;
 

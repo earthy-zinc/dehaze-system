@@ -6,14 +6,13 @@ import com.pei.dehaze.model.form.ClientLogBatchForm;
 import com.pei.dehaze.model.form.ClientLogEntryForm;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.ClientLogService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.logstash.logback.argument.StructuredArguments;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * 前端日志接收服务实现。
@@ -32,11 +31,7 @@ public class ClientLogServiceImpl implements ClientLogService {
 
     @Override
     public void collect(ClientLogBatchForm form) {
-        if (
-            form == null 
-            || form.getLogs() == null 
-            || form.getLogs().isEmpty()
-        ) {
+        if (form == null || form.getLogs() == null || form.getLogs().isEmpty()) {
             throw new BusinessException("日志列表不能为空");
         }
         for (ClientLogEntryForm entry : form.getLogs()) {
@@ -50,10 +45,7 @@ public class ClientLogServiceImpl implements ClientLogService {
         boolean anonymous = userId == null;
 
         // 匿名仅允许上报 ERROR 且必须携带 trace_id，否则丢弃该条，避免被滥用刷日志
-        if (
-            anonymous 
-            && (!isError(entry.getLevel()) || CharSequenceUtil.isBlank(traceId))
-        ) {
+        if (anonymous && (!isError(entry.getLevel()) || CharSequenceUtil.isBlank(traceId))) {
             return;
         }
 

@@ -32,13 +32,19 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_trace_repository import ai_trace_repository
 from app.service.ai.builders.context_manager import context_manager
-from app.service.ai.builders.deep_agent_builder import DeepAgentBuilder, get_graph_ctx_template
+from app.service.ai.builders.deep_agent_builder import (
+    DeepAgentBuilder,
+    ensure_graph_run_ctx,
+)
 from app.service.ai.builders.team_builder import TeamBuilder
 from app.service.ai.middleware import async_resume
 from app.service.ai.middleware.interrupt_handler import ConfirmKind, interrupt_handler
+from app.service.ai.middleware.paradigm_middleware import _NO_TOOL_CAPABILITY_NOTICE
 from app.service.ai.service import trace_collector
 from app.service.ai.service.conversation_search_service import sync_conversation_to_es
 from app.service.ai.service.credits_service import calculate_credits
+from app.service.ai.service.memory_extraction import schedule_memory_extraction
+from app.service.ai.service.model_defaults import input_budget_tokens
 from app.service.ai.service.step_summarizer import schedule_step_summaries
 from app.service.ai.service.suggestion_service import suggestion_service
 from app.service.ai.service.summary_service import summary_service
@@ -91,15 +97,6 @@ class ReasoningService:
         if self._graphs:
             logger.info("推理图缓存失效，清除 %s 个已构建图", len(self._graphs))
             self._graphs.clear()
-
-    @staticmethod
-    def _ensure_run_ctx(graph: Any) -> None:
-        """astream 前预置本 run 的运行时上下文（图构建时已登记 ctx 模板）。"""
-        from app.service.ai.middleware.run_context import ensure_run_ctx
-
-        template = get_graph_ctx_template(graph)
-        if template is not None:
-            ensure_run_ctx(template)
 
     @staticmethod
     def _thread_id(conv_id: int, msg_id: int) -> str:
@@ -395,6 +392,11 @@ class ReasoningService:
             if reasoning_mode != "direct":
                 graph = await self._build_graph(db, redis, agent_id, version_no, model_id)
 
+        # 注入记忆可见性：两条路径（direct / 图）共用同一份注入清单
+        used_memory_ids = [
+            int(item["memory_id"]) for item in injected_list if item.get("memory_id")
+        ]
+
         if reasoning_mode == "direct":
             return await self._run_direct(
                 conv_id,
@@ -404,15 +406,13 @@ class ReasoningService:
                 stream_session_id,
                 messages,
                 system_prompt,
+                used_memory_ids,
             )
 
         if graph is None:
             # 非 direct 范式必已建图；此处仅为类型收窄兜底，正常不可达
             raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "推理图构建失败")
 
-        used_memory_ids = [
-            int(item["memory_id"]) for item in injected_list if item.get("memory_id")
-        ]
         initial_state = {
             "messages": messages,
             "user_id": user_id,
@@ -436,7 +436,7 @@ class ReasoningService:
         # 预置本 run 上下文：图节点是独立 asyncio 任务，必须先于 astream 在驱动
         # 任务 set，节点才能共享同一 run ctx（否则节点回退图缓存模板，跨 run 串扰：
         # step_count 累积泄漏、billing_context 丢失致结算静默跳过）
-        self._ensure_run_ctx(graph)
+        ensure_graph_run_ctx(graph)
         converter = SseEventConverter({**initial_state})
         stopped = False
         try:
@@ -519,16 +519,18 @@ class ReasoningService:
         stream_session_id: str,
         messages: list[dict],
         system_prompt: str | None,
+        used_memory_ids: list[int],
     ) -> dict:
         """direct 范式：单次 LLM 直连（无工具），跳过 deepagents 图，最小化推理开销。
 
         与常规路径共用 converter/finalize/push_end，仅在消息组装与流式来源上走
         轻量路径；返回 {final_response, stop_reason, usage} 契约与 run 一致。
 
-        计费与图路径对齐（图路径经 before_agent/after_agent 钩子完成，此处直接调用）：
+        计费与记忆抽取与图路径对齐（图路径经 before_agent/after_agent 钩子完成，此处直接调用）：
         推理前 pre_charge 预扣，欠费/配额/余额不足时以中断文案作为回复阻断推理；
-        推理后 settle 实扣结算。direct 无检查点可恢复，配额阻断为终态提示
-        （用户升级后重新提问），不提供图路径的 quota 中断挂起/resume 语义。
+        推理后 settle 实扣结算，并后台补一次记忆抽取（direct 不跑 after_agent 钩子）。
+        direct 无检查点可恢复，配额阻断为终态提示（用户升级后重新提问），不提供图路径的
+        quota 中断挂起/resume 语义。
         """
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -546,7 +548,10 @@ class ReasoningService:
         # 结算在本方法内完成），此处不再重复 start
         lm_messages: list = []
         if system_prompt:
-            lm_messages.append(SystemMessage(content=system_prompt))
+            # direct 范式单次直连、无工具（PRJ-1）：显式声明无检索能力，防编造
+            lm_messages.append(
+                SystemMessage(content=f"{system_prompt}\n\n{_NO_TOOL_CAPABILITY_NOTICE}")
+            )
         # 完整对话历史按序传入（user/assistant/system），direct 范式不能只传最后一句，
         # 否则模型看不到上文，无法回答"我说了什么/复述我的回答"等依赖历史的问题
         for m in messages:
@@ -576,10 +581,8 @@ class ReasoningService:
 
         async with get_db_session() as db:
             model_entity = await ai_model_repository.get_by_model_id(db, model_id)
-        budget = None
-        if model_entity:
-            output_reserve = model_entity.max_output_tokens or 1024
-            budget = max(model_entity.max_context_tokens - output_reserve - 200, 512)
+        # 输入预算与消息入口校验同源（model_defaults.input_budget_tokens）
+        budget = input_budget_tokens(model_entity) if model_entity else None
         if budget:
             total = 0
             for m in lm_messages:
@@ -656,7 +659,14 @@ class ReasoningService:
             }
             await self._clear_stop_flag(conv_id, msg_id)
             return await self._finalize_canceled(
-                conv_id, user_id, msg_id, model_id, result, None, stream_session_id, converter
+                conv_id,
+                user_id,
+                msg_id,
+                model_id,
+                result,
+                used_memory_ids,
+                stream_session_id,
+                converter,
             )
 
         await converter.finish()
@@ -671,7 +681,14 @@ class ReasoningService:
                 "cached_input_tokens": usage.get("cached_input_tokens", 0),
             },
         }
-        credits = await self._finalize_message(msg_id, result, model_id)
+        credits = await self._finalize_message(msg_id, result, model_id, used_memory_ids)
+        # 记忆抽取与图路径 after_agent 钩子同口径：direct 不跑钩子，此处补一次后台抽取
+        schedule_memory_extraction(
+            user_id,
+            model_id,
+            [*messages, {"role": "assistant", "content": full_text}],
+            conv_id,
+        )
         # 过程链先于计费结算落库：结算失败（如价格配置缺失）不得吞掉 trace
         await trace_collector.finalize_success(usage=result.get("usage"), step_count=1)
         try:
@@ -711,7 +728,7 @@ class ReasoningService:
                 msg_id,
                 user_id,
                 resume_data.get("confirmed", False),
-                resume_data.get("algorithmId"),
+                resume_data.get("modelId"),
             )
             return
         if confirm_kind not in (ConfirmKind.TOOL_PERMISSION, ConfirmKind.DANGEROUS_OP):
@@ -780,7 +797,7 @@ class ReasoningService:
                     from_trace_id=interrupted_trace.trace_id if interrupted_trace else None,
                 )
             # 恢复推理并推送 SSE 事件（thought/进度/文本增量续流）
-            self._ensure_run_ctx(graph)
+            ensure_graph_run_ctx(graph)
             converter = SseEventConverter(
                 {
                     "stream_session_id": stream_session_id,

@@ -1,5 +1,14 @@
 package com.pei.dehaze.controller;
 
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.pei.dehaze.common.exception.GlobalExceptionHandler;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.AiAgentEndpointService;
@@ -24,15 +33,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
-
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * AI 域字段约束对齐守卫（P0 数值范围 / P1 字符串长度 / 方法级 limit 下界）。
@@ -65,14 +65,19 @@ class AiFieldConstraintValidationTest {
 
     @Mock
     private AiAgentService agentService;
+
     @Mock
     private AiAgentVersionService agentVersionService;
+
     @Mock
     private AiAgentEndpointService endpointService;
+
     @Mock
     private AiScheduleService scheduleService;
+
     @Mock
     private AiMemoryService memoryService;
+
     @Mock
     private AiConversationService conversationService;
 
@@ -86,8 +91,12 @@ class AiFieldConstraintValidationTest {
         methodValidation.afterPropertiesSet();
 
         mockMvc = MockMvcBuilders.standaloneSetup(
-                        proxy(new AiAgentController(agentService, agentVersionService,
-                                new com.pei.dehaze.service.AiAgentConfigResolver(null)), methodValidation),
+                        proxy(
+                                new AiAgentController(
+                                        agentService,
+                                        agentVersionService,
+                                        new com.pei.dehaze.service.AiAgentConfigResolver(null)),
+                                methodValidation),
                         proxy(new AiAgentEndpointController(endpointService), methodValidation),
                         proxy(new AiScheduleController(scheduleService), methodValidation),
                         proxy(new AiMemoryController(memoryService), methodValidation),
@@ -99,7 +108,8 @@ class AiFieldConstraintValidationTest {
 
     /** 模拟 Boot 的 ValidationAutoConfiguration：@Validated 类需经代理才有方法级校验（limit 下界） */
     private static Object proxy(Object controller, MethodValidationPostProcessor processor) {
-        return processor.postProcessAfterInitialization(controller, controller.getClass().getSimpleName());
+        return processor.postProcessAfterInitialization(
+                controller, controller.getClass().getSimpleName());
     }
 
     private static String json(String body) {
@@ -111,7 +121,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 创建 status=2 → 400 + A0400 且未触达 service")
     void agentCreateStatusOutOfRange() throws Exception {
-        mockMvc.perform(post("/api/v1/ai/agents").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/ai/agents")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json(AGENT_REQUIRED + ",\"status\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -122,7 +133,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 创建 sortOrder=-1 → 400（python 仅 ge=0，无上界）")
     void agentCreateSortOrderNegative() throws Exception {
-        mockMvc.perform(post("/api/v1/ai/agents").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/ai/agents")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json(AGENT_REQUIRED + ",\"sortOrder\":-1")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -131,7 +143,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 更新 sortOrder=-1 → 400（验证 @Valid 触发条件在位）")
     void agentUpdateSortOrderNegative() throws Exception {
-        mockMvc.perform(put("/api/v1/ai/agents/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/agents/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"sortOrder\":-1")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -140,7 +153,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 启停 status=2 → 400 + A0400（@NotNull 已在，仅需范围）")
     void agentStatusOutOfRange() throws Exception {
-        mockMvc.perform(patch("/api/v1/ai/agents/1/status").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/v1/ai/agents/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"status\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -159,7 +173,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("A2A 端点创建 status=2 → 400 + A0400")
     void endpointCreateStatusOutOfRange() throws Exception {
-        mockMvc.perform(post("/api/v1/ai/a2a/endpoints").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/ai/a2a/endpoints")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json(ENDPOINT_REQUIRED + ",\"status\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -170,7 +185,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("A2A 端点更新 status=2 → 400（该端点原先漏 @Valid，本用例即其触发条件守卫）")
     void endpointUpdateStatusOutOfRange() throws Exception {
-        mockMvc.perform(patch("/api/v1/ai/a2a/endpoints/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/v1/ai/a2a/endpoints/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"status\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -189,7 +205,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("定时任务更新 enabled=2 → 400（nullable，缺省不校验但越界必拒）")
     void scheduleUpdateEnabledOutOfRange() throws Exception {
-        mockMvc.perform(put("/api/v1/ai/scheduled-tasks/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/scheduled-tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"enabled\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -198,7 +215,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("定时任务启停 enabled=2 → 400")
     void scheduleStatusEnabledOutOfRange() throws Exception {
-        mockMvc.perform(patch("/api/v1/ai/scheduled-tasks/1/status").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/v1/ai/scheduled-tasks/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"enabled\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -209,7 +227,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("记忆更新 status=2 → 400（该端点原先漏 @Valid）")
     void memoryUpdateStatusOutOfRange() throws Exception {
-        mockMvc.perform(put("/api/v1/ai/memories/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/memories/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"status\":2")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -223,7 +242,8 @@ class AiFieldConstraintValidationTest {
     @CsvSource({"title,256", "model,65", "agentCode,65", "scene,33"})
     @DisplayName("会话创建字符串超长 → 400 + A0400")
     void conversationCreateStringTooLong(String field, int length) throws Exception {
-        mockMvc.perform(post("/api/v1/ai/conversations").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/ai/conversations")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"" + field + "\":\"" + "x".repeat(length) + "\"")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -233,7 +253,8 @@ class AiFieldConstraintValidationTest {
     @CsvSource({"title,256", "model,65", "agentCode,65"})
     @DisplayName("会话更新字符串超长 → 400 + A0400（该端点原先漏 @Valid）")
     void conversationUpdateStringTooLong(String field, int length) throws Exception {
-        mockMvc.perform(patch("/api/v1/ai/conversations/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/v1/ai/conversations/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"" + field + "\":\"" + "x".repeat(length) + "\"")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -242,7 +263,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 创建 modelId 超长(65) → 400")
     void agentCreateModelIdTooLong() throws Exception {
-        mockMvc.perform(post("/api/v1/ai/agents").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/v1/ai/agents")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"agentCode\":\"a1\",\"name\":\"n\",\"modelId\":\"" + "x".repeat(65) + "\"")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -251,7 +273,8 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("Agent 更新 modelId 超长(65) → 400")
     void agentUpdateModelIdTooLong() throws Exception {
-        mockMvc.perform(put("/api/v1/ai/agents/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/agents/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"modelId\":\"" + "x".repeat(65) + "\"")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("A0400"));
@@ -277,7 +300,8 @@ class AiFieldConstraintValidationTest {
     void agentCreateBoundaryAccepted() throws Exception {
         try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getUserId).thenReturn(1L);
-            mockMvc.perform(post("/api/v1/ai/agents").contentType(MediaType.APPLICATION_JSON)
+            mockMvc.perform(post("/api/v1/ai/agents")
+                            .contentType(MediaType.APPLICATION_JSON)
                             .content(json(AGENT_REQUIRED + ",\"status\":0,\"sortOrder\":0")))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("00000"));
@@ -287,9 +311,11 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("边界值放行：会话标题 255 / 模型 64 / Agent编码 64 / 场景 32")
     void conversationCreateBoundaryAccepted() throws Exception {
-        String body = json("\"title\":\"" + "x".repeat(255) + "\",\"model\":\"" + "x".repeat(64)
-                + "\",\"agentCode\":\"" + "x".repeat(64) + "\",\"scene\":\"" + "x".repeat(32) + "\"");
-        mockMvc.perform(post("/api/v1/ai/conversations").contentType(MediaType.APPLICATION_JSON).content(body))
+        String body = json("\"title\":\"" + "x".repeat(255) + "\",\"model\":\"" + "x".repeat(64) + "\",\"agentCode\":\""
+                + "x".repeat(64) + "\",\"scene\":\"" + "x".repeat(32) + "\"");
+        mockMvc.perform(post("/api/v1/ai/conversations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"));
     }
@@ -305,11 +331,13 @@ class AiFieldConstraintValidationTest {
     @Test
     @DisplayName("nullable 放行：端点更新与定时任务更新缺省 status/enabled 不报错（python 为 None 语义）")
     void nullableFieldsAbsentAccepted() throws Exception {
-        mockMvc.perform(patch("/api/v1/ai/a2a/endpoints/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(patch("/api/v1/ai/a2a/endpoints/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"name\":\"ep2\"")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"));
-        mockMvc.perform(put("/api/v1/ai/scheduled-tasks/1").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/ai/scheduled-tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(json("\"name\":\"t2\"")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"));

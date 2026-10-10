@@ -177,6 +177,59 @@ func TestRemoveFromIndex_KeepsOtherMembers(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// seedWrongKindIndexKey 在设备索引键名（session:user:{id}）上写一个字符串型会话载荷。
+//
+// 索引键的真实形态是 ZSet（此时 GET 会因 WRONGTYPE 被跳过，前缀排除并非唯一防线）；本用例需要
+// 让"按 session:user: 前缀排除"本身成为唯一防线——否则删掉排除逻辑用例照样全绿，守卫无判别力。
+func seedWrongKindIndexKey(t *testing.T, userID int64, username string) {
+	t.Helper()
+	payload, err := json.Marshal(middleware.SessionData{UserID: userID, Username: username})
+	assert.NoError(t, err)
+	assert.NoError(t, cacheredis.GetClient().
+		Set(context.Background(), sessionIndexKey(userID), payload, middleware.SessionTTL).Err())
+}
+
+// session:user:{id} 与 session:{sessionId} 同处 `session:*` 扫描面，但前者是设备数 ZSet 索引，
+// 不是会话项：列出在线会话时必须按前缀排除（否则错型/历史写入的索引键会混进会话列表）。
+func TestListByUsername_ExcludesSessionUserIndexKeys(t *testing.T) {
+	testRedis.FlushAll()
+	ctx := context.Background()
+	indexedUser, decoyUser := int64(7009), int64(7010)
+	base := float64(time.Now().Unix() - 60)
+
+	// 真实形态：索引键是 ZSet，与同用户的会话键共存
+	seedSession(t, "s-indexed", indexedUser, base)
+	// 错型形态：索引键名上写字符串会话载荷（去掉前缀排除即会被列为会话）
+	seedWrongKindIndexKey(t, decoyUser, "u"+strconv.FormatInt(decoyUser, 10))
+
+	indexed, err := ListByUsername(ctx, "u"+strconv.FormatInt(indexedUser, 10))
+	assert.NoError(t, err)
+	assert.Len(t, indexed, 1)
+	assert.Equal(t, "s-indexed", indexed[0].SessionID)
+
+	decoy, err := ListByUsername(ctx, "u"+strconv.FormatInt(decoyUser, 10))
+	assert.NoError(t, err)
+	assert.Empty(t, decoy, "设备索引键 session:user:{id} 不得被当作会话项")
+}
+
+// 批量踢出同款口径：索引键不得计入被踢会话数，也不得被当作会话删除。
+func TestKickByUserIDs_ExcludesSessionUserIndexKeys(t *testing.T) {
+	testRedis.FlushAll()
+	ctx := context.Background()
+	targetUser, decoyUser := int64(7011), int64(7012)
+	base := float64(time.Now().Unix() - 60)
+
+	seedSession(t, "s-target", targetUser, base)
+	seedWrongKindIndexKey(t, decoyUser, "u"+strconv.FormatInt(decoyUser, 10))
+
+	kicked, err := KickByUserIDs(ctx, []int64{targetUser, decoyUser})
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, kicked, "设备索引键不得计入被踢会话数")
+	assert.False(t, testRedis.Exists(common.SessionPrefix+"s-target"))
+	assert.True(t, testRedis.Exists(sessionIndexKey(decoyUser)), "未被踢用户的设备索引键不应被删除")
+}
+
 func TestKickByUserIDs_CleansSessionIndex(t *testing.T) {
 	testRedis.FlushAll()
 	ctx := context.Background()

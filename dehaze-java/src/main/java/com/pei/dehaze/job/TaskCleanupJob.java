@@ -8,15 +8,14 @@ import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.xxl.job.core.handler.annotation.XxlJob;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 
 /**
  * 任务定时清理任务
@@ -52,21 +51,15 @@ public class TaskCleanupJob {
 
             physicalDeleteTasks(
                     new LambdaQueryWrapper<SysTask>()
-                            .in(SysTask::getStatus,
-                                    TaskConstants.STATUS_COMPLETED,
-                                    TaskConstants.STATUS_CANCELLED)
+                            .in(SysTask::getStatus, TaskConstants.STATUS_COMPLETED, TaskConstants.STATUS_CANCELLED)
                             .lt(SysTask::getCreateTime, LocalDateTime.now().minusDays(7)),
-                    "7天前已完成/取消任务"
-            );
+                    "7天前已完成/取消任务");
 
             physicalDeleteTasks(
                     new LambdaQueryWrapper<SysTask>()
-                            .notIn(SysTask::getStatus,
-                                    TaskConstants.STATUS_PENDING,
-                                    TaskConstants.STATUS_PROCESSING)
+                            .notIn(SysTask::getStatus, TaskConstants.STATUS_PENDING, TaskConstants.STATUS_PROCESSING)
                             .lt(SysTask::getCreateTime, LocalDateTime.now().minusDays(30)),
-                    "30天前已终止任务"
-            );
+                    "30天前已终止任务");
 
             log.debug("清理过期导出任务完成");
         } finally {
@@ -90,15 +83,13 @@ public class TaskCleanupJob {
                     new LambdaQueryWrapper<SysTask>()
                             .eq(SysTask::getStatus, TaskConstants.STATUS_PROCESSING)
                             .lt(SysTask::getStartedAt, LocalDateTime.now().minusMinutes(30)),
-                    "任务超时（30分钟无进度更新），已被系统自动回收"
-            );
+                    "任务超时（30分钟无进度更新），已被系统自动回收");
 
             markStuckTasksAsFailed(
                     new LambdaQueryWrapper<SysTask>()
                             .eq(SysTask::getStatus, TaskConstants.STATUS_PENDING)
                             .lt(SysTask::getCreateTime, LocalDateTime.now().minusDays(1)),
-                    "任务超时（24h未启动），已被系统自动回收"
-            );
+                    "任务超时（24h未启动），已被系统自动回收");
 
             log.debug("清理僵死任务完成");
         } finally {
@@ -115,9 +106,7 @@ public class TaskCleanupJob {
             return;
         }
 
-        List<Long> ids = tasks.stream()
-                .map(SysTask::getId)
-                .collect(Collectors.toList());
+        List<Long> ids = tasks.stream().map(SysTask::getId).collect(Collectors.toList());
         sysTaskMapper.deleteBatchIds(ids);
 
         for (SysTask task : tasks) {
@@ -142,10 +131,11 @@ public class TaskCleanupJob {
         if (sep <= 0) {
             return;
         }
-        String base = "exports/" + task.getTaskId() + "/" + taskType.substring(0, sep).toLowerCase(Locale.ROOT) + "_";
+        String base =
+                "exports/" + task.getTaskId() + "/" + taskType.substring(0, sep).toLowerCase(Locale.ROOT) + "_";
         String[] candidates = {
-                base + "export.xlsx", base + "export.csv",
-                base + "export.zip", base + "import_errors.csv"
+            base + "export.xlsx", base + "export.csv",
+            base + "export.zip", base + "import_errors.csv"
         };
         for (String objectName : candidates) {
             try {

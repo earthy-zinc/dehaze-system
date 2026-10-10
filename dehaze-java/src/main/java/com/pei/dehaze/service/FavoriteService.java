@@ -8,7 +8,6 @@ import com.pei.dehaze.model.query.FavoritePageQuery;
 import com.pei.dehaze.model.vo.FavoriteCountVO;
 import com.pei.dehaze.model.vo.FavoriteStatusVO;
 import com.pei.dehaze.model.vo.FavoriteVO;
-
 import java.util.List;
 
 public interface FavoriteService extends IService<SysFavorite> {

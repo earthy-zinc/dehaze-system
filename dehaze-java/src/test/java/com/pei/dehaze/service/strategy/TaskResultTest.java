@@ -1,16 +1,15 @@
 package com.pei.dehaze.service.strategy;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 任务结果单元测试
@@ -211,7 +210,8 @@ class TaskResultTest {
         assertEquals(2048000L, result.getMetadata().get("fileSize"));
         assertNotNull(result.getMetadata().get("fileInfo"));
         @SuppressWarnings("unchecked")
-        Map<String, String> retrievedFileInfo = (Map<String, String>) result.getMetadata().get("fileInfo");
+        Map<String, String> retrievedFileInfo =
+                (Map<String, String>) result.getMetadata().get("fileInfo");
         assertEquals("zip", retrievedFileInfo.get("format"));
         assertEquals("UTF-8", retrievedFileInfo.get("encoding"));
     }
@@ -298,7 +298,8 @@ class TaskResultTest {
     @DisplayName("failure(String) - 详细错误消息")
     void testFailure_DetailedMessage() {
         // Arrange
-        String detailedMsg = "导出失败：内存不足\n\tat com.pei.dehaze.export.ExportService.export(ExportService.java:123)\n\tCaused by: java.lang.OutOfMemoryError: Java heap space";
+        String detailedMsg =
+                "导出失败：内存不足\n\tat com.pei.dehaze.export.ExportService.export(ExportService.java:123)\n\tCaused by: java.lang.OutOfMemoryError: Java heap space";
 
         // Act
         TaskResult result = TaskResult.failure(detailedMsg);

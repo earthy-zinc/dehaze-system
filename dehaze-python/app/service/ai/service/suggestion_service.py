@@ -16,7 +16,6 @@ import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.database import get_db_session
 from app.infrastructure.llm.call.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
@@ -24,6 +23,7 @@ from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.service import trace_collector
 from app.service.ai.service.credits_service import calculate_credits
+from app.service.ai.service.model_defaults import resolve_default_chat_model
 from app.service.billing.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
@@ -158,7 +158,7 @@ class SuggestionService:
             msg = await ai_message_repository.get_by_id(db, message_id)
             if not msg:
                 return None
-            model_id = msg.model or conv.model or settings.AI_DEFAULT_MODEL
+            model_id = msg.model or conv.model or await resolve_default_chat_model(db)
 
             generated = await self._generate_questions(
                 db,

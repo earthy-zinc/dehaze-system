@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** AI 积分误扣退款申请（表 sys_ai_refund，状态机 1待审核→2已通过/3已驳回） */
 @Data

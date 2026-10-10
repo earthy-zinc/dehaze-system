@@ -4,12 +4,11 @@ import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.DataScopeEnum;
 import com.pei.dehaze.filter.TraceIdFilter;
 import com.pei.dehaze.security.model.SysUserDetails;
+import java.util.Collections;
+import java.util.UUID;
 import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-
-import java.util.Collections;
-import java.util.UUID;
 
 /**
  * 系统安全上下文工具

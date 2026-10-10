@@ -26,12 +26,6 @@ import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,6 +36,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 数据集操作服务实现
@@ -77,7 +76,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
     private DatasetItemVO doCreateDatasetItemWithImages(DatasetItemUploadForm form) {
         // 清晰图和有雾图均为可选（适配不同数据集规范），但至少上传一张图片
-        if (form.getClearImage() == null && (form.getHazyImages() == null || form.getHazyImages().isEmpty())) {
+        if (form.getClearImage() == null
+                && (form.getHazyImages() == null || form.getHazyImages().isEmpty())) {
             throw new BusinessException("至少上传一张图片（清晰图或有雾图）");
         }
 
@@ -89,30 +89,20 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
         // 保存清晰图（可选）
         if (form.getClearImage() != null) {
-            ItemFileDTO clearItemBO = fileDTOFactory.createItemFileDTO(
-                    form.getClearImage(),
-                    "",
-                    "clear",
-                    "",
-                    form.getSceneType(),
-                    ""
-            );
+            ItemFileDTO clearItemBO =
+                    fileDTOFactory.createItemFileDTO(form.getClearImage(), "", "clear", "", form.getSceneType(), "");
             sysItemFileService.saveItemFile(datasetItem.getId(), clearItemBO);
         }
 
         // 保存有雾图（可选，haze_level 支持多种规范，可为空）
         if (form.getHazyImages() != null) {
             for (int i = 0; i < form.getHazyImages().size(); i++) {
-                String hazeLevel = form.getHazeLevels() != null && i < form.getHazeLevels().size()
-                        ? form.getHazeLevels().get(i) : "";
+                String hazeLevel =
+                        form.getHazeLevels() != null && i < form.getHazeLevels().size()
+                                ? form.getHazeLevels().get(i)
+                                : "";
                 ItemFileDTO hazyItemBO = fileDTOFactory.createItemFileDTO(
-                        form.getHazyImages().get(i),
-                        "",
-                        "hazy",
-                        "",
-                        form.getSceneType(),
-                        hazeLevel
-                );
+                        form.getHazyImages().get(i), "", "hazy", "", form.getSceneType(), hazeLevel);
                 sysItemFileService.saveItemFile(datasetItem.getId(), hazyItemBO);
             }
         }
@@ -144,14 +134,17 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 // 校验分辨率（如有清晰图则需一致）
                 int[] hazyDimensions = imageProcessingService.getImageDimensions(hazyImage);
 
-                if (clearDimensions != null &&
-                        (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1])) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR, String.format(
-                            "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
-                            clearDimensions[0], clearDimensions[1],
-                            hazyImage.getOriginalFilename(),
-                            hazyDimensions[0], hazyDimensions[1]
-                    ));
+                if (clearDimensions != null
+                        && (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1])) {
+                    throw new BusinessException(
+                            ResultCode.PARAM_ERROR,
+                            String.format(
+                                    "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
+                                    clearDimensions[0],
+                                    clearDimensions[1],
+                                    hazyImage.getOriginalFilename(),
+                                    hazyDimensions[0],
+                                    hazyDimensions[1]));
                 }
             }
         }
@@ -185,8 +178,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 group.hazyImages.add(new HazyImageInfo(file, hazeLevel));
             } else {
                 // 无法识别文件类型的文件归入失败列表
-                failedItems.add(new BatchUploadFailedItemVO(fileName,
-                        "无法识别文件类型，文件名需包含 clear/gt/clean、hazy/haze 或 trans 关键字"));
+                failedItems.add(
+                        new BatchUploadFailedItemVO(fileName, "无法识别文件类型，文件名需包含 clear/gt/clean、hazy/haze 或 trans 关键字"));
             }
         }
 
@@ -284,8 +277,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
      */
     private String extractHazeLevel(String fileName) {
         // 1. 人工分级：_hazy_light / _hazy_medium / _hazy_heavy
-        Matcher levelMatcher = Pattern
-                .compile("_hazy_(light|medium|heavy)", Pattern.CASE_INSENSITIVE)
+        Matcher levelMatcher = Pattern.compile("_hazy_(light|medium|heavy)", Pattern.CASE_INSENSITIVE)
                 .matcher(fileName);
         if (levelMatcher.find()) {
             return levelMatcher.group(1).toLowerCase();
@@ -345,11 +337,9 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
         // 批量查询所有数据项的文件，避免 N+1 查询
         List<SysItemFile> allFiles = sysItemFileService.list(
-                new LambdaQueryWrapper<SysItemFile>()
-                        .in(SysItemFile::getItemId, datasetItemIds)
-        );
-        Map<Long, List<SysItemFile>> filesByItemId = allFiles.stream()
-                .collect(Collectors.groupingBy(SysItemFile::getItemId));
+                new LambdaQueryWrapper<SysItemFile>().in(SysItemFile::getItemId, datasetItemIds));
+        Map<Long, List<SysItemFile>> filesByItemId =
+                allFiles.stream().collect(Collectors.groupingBy(SysItemFile::getItemId));
 
         // 批量预检数据项存在性，避免循环内逐条 getById 触发 N+1 查询
         Set<Long> existingItemIds = sysDatasetItemService.listByIds(datasetItemIds).stream()
@@ -419,9 +409,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             if (!existingDatasetIds.contains(datasetId)) {
                 continue;
             }
-            allDatasetIdsToDelete.addAll(
-                    TreeDataUtils.findDescendantIds(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId)
-            );
+            allDatasetIdsToDelete.addAll(TreeDataUtils.findDescendantIds(
+                    allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId));
         }
 
         if (allDatasetIdsToDelete.isEmpty()) {
@@ -434,7 +423,12 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                         .errorCode("RESOURCE_NOT_FOUND")
                         .build());
             }
-            return BatchDeleteResult.builder().total(total).succeeded(succeeded).failed(failed).results(results).build();
+            return BatchDeleteResult.builder()
+                    .total(total)
+                    .succeeded(succeeded)
+                    .failed(failed)
+                    .results(results)
+                    .build();
         }
 
         // 从待删数据集中找出叶子节点（即没有子节点的节点），数据项只存在于叶子节点
@@ -450,18 +444,14 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         List<Long> allItemIds = Collections.emptyList();
         if (!leafDatasetIds.isEmpty()) {
             List<SysDatasetItem> items = sysDatasetItemService.list(
-                    new LambdaQueryWrapper<SysDatasetItem>()
-                            .in(SysDatasetItem::getDatasetId, leafDatasetIds)
-            );
+                    new LambdaQueryWrapper<SysDatasetItem>().in(SysDatasetItem::getDatasetId, leafDatasetIds));
             allItemIds = items.stream().map(SysDatasetItem::getId).toList();
         }
 
         // 一次性查询所有数据项的文件，逐个删除（MinIO 物理文件删除无法批量）
         if (!allItemIds.isEmpty()) {
             List<SysItemFile> allFiles = sysItemFileService.list(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .in(SysItemFile::getItemId, allItemIds)
-            );
+                    new LambdaQueryWrapper<SysItemFile>().in(SysItemFile::getItemId, allItemIds));
             for (SysItemFile itemFile : allFiles) {
                 try {
                     sysItemFileService.deleteFile(itemFile.getId());

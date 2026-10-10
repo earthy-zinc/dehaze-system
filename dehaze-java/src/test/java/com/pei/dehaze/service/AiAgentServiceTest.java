@@ -1,10 +1,20 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.apache.ibatis.builder.MapperBuilderAssistant;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.AiInsightMapper;
@@ -25,6 +35,9 @@ import com.pei.dehaze.model.form.AiAgentSubAgentsForm;
 import com.pei.dehaze.model.form.AiAgentUpdateForm;
 import com.pei.dehaze.model.form.AiSubAgentItemForm;
 import com.pei.dehaze.model.query.AiAgentPageQuery;
+import java.util.Arrays;
+import java.util.List;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,20 +49,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.Arrays;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * 智能体管理单测：默认 Agent 保护、删除引用校验与级联清理、关联覆盖式校验、子 Agent 环检测。
@@ -63,26 +62,37 @@ class AiAgentServiceTest {
 
     @Mock
     private SysAiAgentMapper agentMapper;
+
     @Mock
     private SysAiAgentVersionMapper agentVersionMapper;
+
     @Mock
     private SysAiAgentSkillMapper agentSkillMapper;
+
     @Mock
     private SysAiAgentMcpMapper agentMcpMapper;
+
     @Mock
     private SysAiAgentSubagentMapper agentSubagentMapper;
+
     @Mock
     private SysAiAgentEvalDatasetMapper evalDatasetMapper;
+
     @Mock
     private SysAiAgentEvalSampleMapper evalSampleMapper;
+
     @Mock
     private SysAiAgentEvalRunMapper evalRunMapper;
+
     @Mock
     private SysAiConversationMapper conversationMapper;
+
     @Mock
     private AiInsightMapper insightMapper;
+
     @Mock
     private AiCacheInvalidator cacheInvalidator;
+
     @Mock
     private AuditLogService auditLogService;
 
@@ -102,8 +112,7 @@ class AiAgentServiceTest {
      */
     @BeforeAll
     static void initTableInfo() {
-        TableInfoHelper.initTableInfo(
-                new MapperBuilderAssistant(new MybatisConfiguration(), ""), SysAiAgent.class);
+        TableInfoHelper.initTableInfo(new MapperBuilderAssistant(new MybatisConfiguration(), ""), SysAiAgent.class);
     }
 
     private SysAiAgent agent(Long id, String code) {
@@ -120,17 +129,20 @@ class AiAgentServiceTest {
 
     private AiAgentSubAgentsForm subagents(Long... childIds) {
         AiAgentSubAgentsForm form = new AiAgentSubAgentsForm();
-        form.setSubagents(Arrays.stream(childIds).map(id -> {
-            AiSubAgentItemForm item = new AiSubAgentItemForm();
-            item.setAgentId(id);
-            item.setPriority(1);
-            return item;
-        }).toList());
+        form.setSubagents(Arrays.stream(childIds)
+                .map(id -> {
+                    AiSubAgentItemForm item = new AiSubAgentItemForm();
+                    item.setAgentId(id);
+                    item.setPriority(1);
+                    return item;
+                })
+                .toList());
         return form;
     }
 
     private void assertBizError(ResultCode expected, Executable action) {
-        assertThat(assertThrows(BusinessException.class, action).getResultCode()).isEqualTo(expected);
+        assertThat(assertThrows(BusinessException.class, action).getResultCode())
+                .isEqualTo(expected);
     }
 
     @Test
@@ -190,7 +202,7 @@ class AiAgentServiceTest {
         when(conversationMapper.countByAgentCode("child")).thenReturn(0L);
         when(insightMapper.countSubagentReferences(1L)).thenReturn(2L);
 
-        assertBizError(ResultCode.DATA_BIND_EXISTS, () -> service.delete(1L));
+        assertBizError(ResultCode.DATA_REFERENCED, () -> service.delete(1L));
         verify(agentMapper, never()).deleteById(any(Long.class));
     }
 
@@ -213,8 +225,17 @@ class AiAgentServiceTest {
         verify(evalRunMapper).deleteByAgentId(1L);
         verify(agentMapper).deleteById(1L);
         verify(cacheInvalidator).evictAgentCaches("dead", 1L);
-        verify(auditLogService).recordAudit(isNull(), eq("ai_agent"), eq(1L), eq("delete"), eq("ai_agent"),
-                any(), any(), isNull(), isNull());
+        verify(auditLogService)
+                .recordAudit(
+                        isNull(),
+                        eq("ai_agent"),
+                        eq(1L),
+                        eq("delete"),
+                        eq("ai_agent"),
+                        any(),
+                        any(),
+                        isNull(),
+                        isNull());
     }
 
     @Test

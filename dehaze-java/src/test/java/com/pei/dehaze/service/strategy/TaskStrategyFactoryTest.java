@@ -1,7 +1,14 @@
 package com.pei.dehaze.service.strategy;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.entity.SysTask;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,14 +17,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * 任务策略工厂单元测试
@@ -37,10 +36,8 @@ class TaskStrategyFactoryTest {
 
     @BeforeEach
     void setUp() {
-        when(exportStrategy.getTaskTypes()).thenReturn(List.of(
-                "dataset_export", "user_export", "role_export"));
-        when(importStrategy.getTaskTypes()).thenReturn(List.of(
-                "user_import", "role_import"));
+        when(exportStrategy.getTaskTypes()).thenReturn(List.of("dataset_export", "user_export", "role_export"));
+        when(importStrategy.getTaskTypes()).thenReturn(List.of("user_import", "role_import"));
 
         factory = new TaskStrategyFactory(List.of(exportStrategy, importStrategy));
     }
@@ -64,10 +61,8 @@ class TaskStrategyFactoryTest {
     @Test
     @DisplayName("getStrategy - 不支持的类型抛出异常")
     void testGetStrategy_UnsupportedType() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> factory.getStrategy("unsupported_type")
-        );
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> factory.getStrategy("unsupported_type"));
         assertTrue(exception.getMessage().contains("Unsupported task type"));
         assertTrue(exception.getMessage().contains("unsupported_type"));
     }
@@ -75,20 +70,14 @@ class TaskStrategyFactoryTest {
     @Test
     @DisplayName("getStrategy - null 类型抛出异常")
     void testGetStrategy_NullType() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> factory.getStrategy(null)
-        );
+        BusinessException exception = assertThrows(BusinessException.class, () -> factory.getStrategy(null));
         assertTrue(exception.getMessage().contains("Unsupported task type"));
     }
 
     @Test
     @DisplayName("getStrategy - 空字符串类型抛出异常")
     void testGetStrategy_EmptyType() {
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> factory.getStrategy("")
-        );
+        BusinessException exception = assertThrows(BusinessException.class, () -> factory.getStrategy(""));
         assertTrue(exception.getMessage().contains("Unsupported task type"));
     }
 
@@ -127,9 +116,8 @@ class TaskStrategyFactoryTest {
         TaskStrategy anotherExportStrategy = mock(TaskStrategy.class);
         when(anotherExportStrategy.getTaskTypes()).thenReturn(List.of("dataset_export"));
 
-        TaskStrategyFactory factoryWithDuplicate = new TaskStrategyFactory(
-                List.of(exportStrategy, anotherExportStrategy)
-        );
+        TaskStrategyFactory factoryWithDuplicate =
+                new TaskStrategyFactory(List.of(exportStrategy, anotherExportStrategy));
 
         TaskStrategy strategy = factoryWithDuplicate.getStrategy("dataset_export");
         assertNotNull(strategy);

@@ -16,6 +16,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,10 +30,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 评测中心（跨 Agent 聚合：总览/趋势/对比/判分状态/人工复核）。
@@ -62,20 +61,24 @@ public class AiEvalCenterController {
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
     public Result<List<AiEvalTrendVO>> trends(
             @Parameter(description = "Agent ID") @RequestParam(required = false) Long agentId,
-            @Parameter(description = "起始时间") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-            @Parameter(description = "结束时间") @RequestParam(required = false)
-            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
-            @Parameter(description = "条数上限(1~500)") @Min(1) @Max(500)
-            @RequestParam(defaultValue = "100") int limit) {
+            @Parameter(description = "起始时间")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime startTime,
+            @Parameter(description = "结束时间")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime endTime,
+            @Parameter(description = "条数上限(1~500)") @Min(1) @Max(500) @RequestParam(defaultValue = "100") int limit) {
         return Result.success(evalCenterService.trends(agentId, startTime, endTime, limit));
     }
 
     @Operation(summary = "两次评测 run 得分对比")
     @GetMapping("/runs/{runId}/compare")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
-    public Result<AiEvalCompareVO> compare(@Parameter(description = "本次评测记录ID") @PathVariable Long runId,
-                                           @Parameter(description = "基准评测记录ID") @RequestParam Long baseRunId) {
+    public Result<AiEvalCompareVO> compare(
+            @Parameter(description = "本次评测记录ID") @PathVariable Long runId,
+            @Parameter(description = "基准评测记录ID") @RequestParam Long baseRunId) {
         return Result.success(evalCenterService.compareRuns(runId, baseRunId));
     }
 
@@ -90,8 +93,8 @@ public class AiEvalCenterController {
     @GetMapping("/reviews")
     @PreAuthorize("@ss.hasPerm('ai:agent:manage')")
     public Result<AiEvalReviewQueueVO> reviews(
-            @Parameter(description = "复核状态过滤(1:待复核;2:已复核)") @Min(1) @Max(2)
-            @RequestParam(required = false) Integer status) {
+            @Parameter(description = "复核状态过滤(1:待复核;2:已复核)") @Min(1) @Max(2) @RequestParam(required = false)
+                    Integer status) {
         return Result.success(evalCenterService.listReviews(status));
     }
 
@@ -110,7 +113,7 @@ public class AiEvalCenterController {
     public Result<Map<String, Object>> submitReview(
             @Parameter(description = "复核记录ID") @PathVariable Long reviewId,
             @Valid @RequestBody AiEvalReviewSubmitForm form) {
-        return Result.success(evalCenterService.submitReview(reviewId, form.getAgree(), form.getRemark(),
-                SecurityUtils.getUserId()));
+        return Result.success(
+                evalCenterService.submitReview(reviewId, form.getAgree(), form.getRemark(), SecurityUtils.getUserId()));
     }
 }

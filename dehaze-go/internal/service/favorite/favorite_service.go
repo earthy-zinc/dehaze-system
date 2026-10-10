@@ -9,7 +9,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	favrepo "github.com/earthyzinc/dehaze-go/internal/repository/favorite"
 	memberrepo "github.com/earthyzinc/dehaze-go/internal/repository/member"
@@ -22,39 +22,39 @@ const (
 	// favoriteCapacityDictType 收藏容量字典类型（sys_dict: favorite_capacity）
 	favoriteCapacityDictType = "favorite_capacity"
 
-	targetTypeAlgorithm = "algorithm"
-	targetTypeResult    = "result"
-	targetTypeDataset   = "dataset"
-	targetTypeImage     = "image"
-	targetTypePreset    = "preset"
+	targetTypeModel   = "model"
+	targetTypeResult  = "result"
+	targetTypeDataset = "dataset"
+	targetTypeImage   = "image"
+	targetTypePreset  = "preset"
 )
 
-var validTargetTypes = []string{targetTypeAlgorithm, targetTypeResult, targetTypeDataset, targetTypeImage, targetTypePreset}
+var validTargetTypes = []string{targetTypeModel, targetTypeResult, targetTypeDataset, targetTypeImage, targetTypePreset}
 
 type FavoriteService struct {
-	favRepo       favrepo.IFavoriteRepository
-	memberRepo    memberrepo.IMemberRepository
-	algorithmRepo algorepo.IAlgorithmRepository
-	predLogRepo   predrepo.IPredLogRepository
-	datasetRepo   datasetrepo.IDatasetRepository
-	dictSvc       dictservice.IDictService
+	favRepo     favrepo.IFavoriteRepository
+	memberRepo  memberrepo.IMemberRepository
+	modelRepo   *airepo.ModelRepository
+	predLogRepo predrepo.IPredLogRepository
+	datasetRepo datasetrepo.IDatasetRepository
+	dictSvc     dictservice.IDictService
 }
 
 func NewFavoriteService(
 	favRepo favrepo.IFavoriteRepository,
 	memberRepo memberrepo.IMemberRepository,
-	algorithmRepo algorepo.IAlgorithmRepository,
+	modelRepo *airepo.ModelRepository,
 	predLogRepo predrepo.IPredLogRepository,
 	datasetRepo datasetrepo.IDatasetRepository,
 	dictSvc dictservice.IDictService,
 ) *FavoriteService {
 	return &FavoriteService{
-		favRepo:       favRepo,
-		memberRepo:    memberRepo,
-		algorithmRepo: algorithmRepo,
-		predLogRepo:   predLogRepo,
-		datasetRepo:   datasetRepo,
-		dictSvc:       dictSvc,
+		favRepo:     favRepo,
+		memberRepo:  memberRepo,
+		modelRepo:   modelRepo,
+		predLogRepo: predLogRepo,
+		datasetRepo: datasetRepo,
+		dictSvc:     dictSvc,
 	}
 }
 
@@ -111,13 +111,13 @@ func (s *FavoriteService) Add(ctx context.Context, userID int64, form *bo.Favori
 
 func (s *FavoriteService) checkTargetExists(ctx context.Context, targetType string, targetID int64) error {
 	switch targetType {
-	case targetTypeAlgorithm:
-		exists, err := s.algorithmRepo.ExistsByID(ctx, targetID)
+	case targetTypeModel:
+		imgModel, err := s.modelRepo.GetByPK(ctx, targetID)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+			return common.WrapBizError(common.DATABASE_ERROR, "查询图像模型失败", err)
 		}
-		if !exists {
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+		if imgModel == nil {
+			return common.NewBizError(common.RESOURCE_NOT_FOUND, "图像模型不存在")
 		}
 	case targetTypeDataset:
 		exists, err := s.datasetRepo.ExistsByID(ctx, targetID)
@@ -158,8 +158,8 @@ func (s *FavoriteService) GetPage(ctx context.Context, userID int64, q *query.Fa
 		if !row.CreatedAt.IsZero() {
 			createTime = row.CreatedAt.Format(time.DateTime)
 		}
-		// 算法取算法名称，数据集取数据集名称与缩略图（JOIN 条件带 deleted=0，对象删除后名称为空）
-		targetName := row.AlgorithmName
+		// 模型取显示名，数据集取数据集名称与缩略图（JOIN 条件带 deleted=0，对象删除后名称为空）
+		targetName := row.ModelName
 		targetThumbnail := ""
 		if row.TargetType == targetTypeDataset {
 			targetName = row.DatasetName

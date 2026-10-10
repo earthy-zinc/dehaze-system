@@ -1,5 +1,7 @@
 package com.pei.dehaze.service;
 
+import cn.hutool.json.JSONConfig;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.mapper.AiInsightMapper;
 import com.pei.dehaze.model.read.DowngradeRead;
@@ -10,18 +12,16 @@ import com.pei.dehaze.model.vo.AiDowngradeVO;
 import com.pei.dehaze.model.vo.AiModelUsageVO;
 import com.pei.dehaze.model.vo.AiProviderHealthVO;
 import com.pei.dehaze.model.vo.AiUsageStatsVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * AI 供应商/模型运营统计服务（GET /api/v1/ai/usage/stats）。
@@ -78,9 +78,10 @@ public class AiUsageStatsService {
             vo.setProviderName(provider.getDisplayName());
             vo.setHealth(String.valueOf(snapshot.get("status")));
             vo.setCallCount(intValue(snapshot.get("total_calls_24h")));
-            vo.setSuccessRate(doubleValue(snapshot.get("success_rate")));
-            vo.setRate429(doubleValue(snapshot.get("limit_rate")));
-            vo.setP95LatencyMs(intValue(snapshot.get("p95_latency_ms")));
+            // 快照里比率/P95 为 null 表示近 24h 无调用（无样本），保持 null 交给前端显示「—」
+            vo.setSuccessRate(nullableDouble(snapshot.get("success_rate")));
+            vo.setRate429(nullableDouble(snapshot.get("limit_rate")));
+            vo.setP95LatencyMs(nullableInt(snapshot.get("p95_latency_ms")));
             vo.setCircuitOpen(Boolean.TRUE.equals(snapshot.get("circuit_open")));
             items.add(vo);
         }
@@ -138,15 +139,22 @@ public class AiUsageStatsService {
                 status = "suspicious";
             }
         }
+        // 窗口内无调用（total=0）时比率与延迟都没有样本：写 null，与 python get_health_snapshot 同口径。
+        // 写 Redis 时关闭 hutool 的忽略 null（默认会丢键），否则按契约严格取值的端会当成字段缺失。
         Map<String, Object> snapshot = new HashMap<>();
         snapshot.put("status", status);
         snapshot.put("circuit_open", circuitOpen);
         snapshot.put("total_calls_24h", total);
-        snapshot.put("success_rate", total == 0 ? 1.0 : round((double) (total - failed) / total));
-        snapshot.put("limit_rate", total == 0 ? 0.0 : round((double) limit / total));
-        snapshot.put("p95_latency_ms", p95);
-        stringRedisTemplate.opsForValue().set(String.format(HEALTH_SNAPSHOT_KEY, providerId),
-                JSONUtil.toJsonStr(snapshot), SNAPSHOT_TTL);
+        snapshot.put("success_rate", total == 0 ? null : round((double) (total - failed) / total));
+        snapshot.put("limit_rate", total == 0 ? null : round((double) limit / total));
+        snapshot.put("p95_latency_ms", total == 0 ? null : p95);
+        stringRedisTemplate
+                .opsForValue()
+                .set(
+                        String.format(HEALTH_SNAPSHOT_KEY, providerId),
+                        JSONUtil.toJsonStr(
+                                new JSONObject(snapshot, JSONConfig.create().setIgnoreNullValue(false))),
+                        SNAPSHOT_TTL);
         return snapshot;
     }
 
@@ -237,7 +245,18 @@ public class AiUsageStatsService {
         return value instanceof Number number ? number.doubleValue() : 0.0;
     }
 
+    /** 快照缺键或为 null 表示无样本，保持 null（不可落成 0，否则前端显示成 100% 成功、0ms） */
+    private Double nullableDouble(Object value) {
+        return value instanceof Number number ? number.doubleValue() : null;
+    }
+
+    private Integer nullableInt(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
     private double round(double value) {
-        return new java.math.BigDecimal(value).setScale(4, java.math.RoundingMode.HALF_UP).doubleValue();
+        return new java.math.BigDecimal(value)
+                .setScale(4, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }

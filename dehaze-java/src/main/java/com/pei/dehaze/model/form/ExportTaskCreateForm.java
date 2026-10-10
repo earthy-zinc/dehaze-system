@@ -14,14 +14,12 @@ import lombok.Data;
 @Data
 public class ExportTaskCreateForm {
 
-    @Schema(
-            description = "任务类型：dataset_export, user_export, role_export, user_import 等",
-            example = "user_export"
-    )
+    @Schema(description = "任务类型：dataset_export, user_export, role_export, user_import 等", example = "user_export")
     @NotBlank(message = "任务类型不能为空")
     private String type;
 
-    @Schema(description = "通用任务参数（JSON 字符串，由导入导出框架解析）",
+    @Schema(
+            description = "通用任务参数（JSON 字符串，由导入导出框架解析）",
             example = "{\"module\":\"user\",\"format\":\"excel\",\"query\":{}}")
     private String paramsJson;
 }

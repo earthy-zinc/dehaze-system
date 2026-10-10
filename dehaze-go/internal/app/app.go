@@ -12,8 +12,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/api"
 	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	aidomainrepo "github.com/earthyzinc/dehaze-go/internal/repository/aidomain"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
-	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
 	apikeyrepo "github.com/earthyzinc/dehaze-go/internal/repository/api_key"
 	auditlogrepo "github.com/earthyzinc/dehaze-go/internal/repository/audit_log"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
@@ -40,8 +38,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/router"
 	aiservice "github.com/earthyzinc/dehaze-go/internal/service/ai"
 	aidomainservice "github.com/earthyzinc/dehaze-go/internal/service/aidomain"
-	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
-	algoSelectService "github.com/earthyzinc/dehaze-go/internal/service/algorithm_select"
 	apikeyservice "github.com/earthyzinc/dehaze-go/internal/service/api_key"
 	auditlogservice "github.com/earthyzinc/dehaze-go/internal/service/audit_log"
 	authservice "github.com/earthyzinc/dehaze-go/internal/service/auth"
@@ -179,8 +175,9 @@ func (a *Application) Init() error {
 	deptRepo := deptrepo.NewDeptRepository(gormDB)
 	dictTypeRepo := dictrepo.NewDictTypeRepository(gormDB)
 	dictRepo := dictrepo.NewDictRepository(gormDB)
-	algorithmRepo := algorepo.NewAlgorithmRepository(gormDB)
-	algorithmFavRepo := afrepo.NewRepository(gormDB)
+	// AI 模型/供应商仓储：图像模型选择、预测路由、收藏与评估等模块共用（先行构造）
+	aiModelRepo := airepo.NewModelRepository(gormDB)
+	aiProviderRepo := airepo.NewProviderRepository(gormDB)
 	datasetRepo := datasetrepo.NewDatasetRepository(gormDB)
 	datasetItemRepo := datasetrepo.NewDatasetItemRepository(gormDB)
 	datasetStatsRepo := datasetrepo.NewDatasetStatsRepository(gormDB)
@@ -247,9 +244,8 @@ func (a *Application) Init() error {
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
 	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
-	// favorite module services（需在 algorithmService/datasetOperationService 之前构造：对象删除时标记收藏失效）
-	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, algorithmRepo, predLogRepo, datasetRepo, dictService)
-	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo, favoriteService)
+	// favorite module services（需在 datasetOperationService 之前构造：对象删除时标记收藏失效）
+	favoriteService := favoriteservice.NewFavoriteService(favoriteRepo, memberRepo, aiModelRepo, predLogRepo, datasetRepo, dictService)
 	// 存储服务注册表（根据配置构建所有存储后端实例）
 	cfg := config.GetConfig()
 	storageRegistry, err := storage.NewRegistry(cfg.File)
@@ -280,7 +276,6 @@ func (a *Application) Init() error {
 		handlers.NewMenuExportHandler(gormDB),
 		handlers.NewDictExportHandler(gormDB),
 		handlers.NewDatasetExportHandler(gormDB, defaultStorage),
-		handlers.NewAlgorithmExportHandler(gormDB),
 	}
 	importHandlers := []importexportservice.ImportHandler{
 		handlers.NewUserImportHandler(gormDB, deptRepo, cfg.System.DefaultPassword),
@@ -288,7 +283,6 @@ func (a *Application) Init() error {
 		handlers.NewDeptImportHandler(gormDB),
 		handlers.NewMenuImportHandler(gormDB),
 		handlers.NewDictImportHandler(gormDB),
-		handlers.NewAlgorithmImportHandler(gormDB),
 	}
 	exportRegistry := importexportservice.NewExportHandlerRegistry(exportHandlers)
 	importRegistry := importexportservice.NewImportHandlerRegistry(importHandlers)
@@ -330,7 +324,7 @@ func (a *Application) Init() error {
 	}
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	// 模型白名单存在性校验需读 sys_ai_model（对齐 python ApiKeyService._validate_whitelist）
-	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService, airepo.NewModelRepository(gormDB))
+	apiKeyService := apikeyservice.NewApiKeyService(apiKeyRepo, userService, aiModelRepo)
 
 	// message module services
 	messageService := msgservice.NewMessageService(msgRepo, msgTplRepo, userLookupRepo, cacheClient)
@@ -353,8 +347,8 @@ func (a *Application) Init() error {
 	// authService 依赖 userService + memberService（注册流程通过 UserService 创建用户、MemberService 初始化会员）
 	authService := authservice.NewAuthService(cacheClient, userService, loginLogService, memberService)
 
-	predictionService := predservice.NewPredictionService(predLogRepo, algorithmRepo, algoClient, cacheClient, memberService, a.lifecycleMgr)
-	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algorithmRepo, algoClient, memberService)
+	predictionService := predservice.NewPredictionService(predLogRepo, aiModelRepo, aiProviderRepo, dictService, algoClient, a.lifecycleMgr)
+	evaluationService := evalservice.NewEvaluationService(evalLogRepo, aiModelRepo, algoClient)
 
 	// package & order module services
 	packageService := pkgsaleservice.NewPackageService(gormDB, packageRepo, couponRepo, userCouponRepo, memberBenefitRepo, cacheClient)
@@ -362,9 +356,6 @@ func (a *Application) Init() error {
 	promotionService := pkgsaleservice.NewPromotionService(gormDB, promotionRepo, cacheClient)
 	paymentSvc := paymentsvc.NewPaymentChannelService(cfg.Payment)
 	orderService := orderservice.NewOrderService(gormDB, orderRepo, paymentRepo, refundRepo, autoRenewRepo, packageRepo, couponRepo, userCouponRepo, userRepo, memberRepo, memberBenefitRepo, paymentSvc, cacheClient, a.auditLogService, memberService)
-
-	// algorithm select module services
-	algorithmSelectService := algoSelectService.NewAlgorithmSelectService(algorithmRepo, predLogRepo, ratingRepo, predictionService)
 
 	// feedback module services
 	var alertPublisher *mq.Publisher
@@ -375,15 +366,15 @@ func (a *Application) Init() error {
 		}
 	}
 	a.publisher = alertPublisher
-	lowRatingAlertService := fbservice.NewLowRatingAlertService(ratingRepo, userRepo, algorithmRepo, messageService, alertPublisher, zap.L())
+	lowRatingAlertService := fbservice.NewLowRatingAlertService(ratingRepo, userRepo, aiModelRepo, messageService, alertPublisher, zap.L())
 	ratingService := fbservice.NewRatingService(gormDB, ratingRepo, predLogRepo, memberService, cache.GetCacheManager().GetL2Cache(), lowRatingAlertService, zap.L(), dictService)
 	// 反馈/评价的日限计数器在 python 端直接存 Redis（测试与运维会直接操作该键），
 	// 必须绕过多级缓存的 L1 本地层，否则外部清理 Redis 后计数器仍滞留 L1
 	feedbackService := fbservice.NewFeedbackService(gormDB, feedbackRepo, feedbackReplyRepo, userRepo, cache.GetCacheManager().GetL2Cache())
-	recommendationService := recservice.NewRecommendationService(recommendationRepo, recommendationRuleRepo, algorithmRepo)
+	recommendationService := recservice.NewRecommendationService(recommendationRepo, recommendationRuleRepo, aiModelRepo)
 	presetService := presetservice.NewPresetService(gormDB, presetRepo)
 	presetservice.SeedSystemPresets(gormDB)
-	compareService := compareservice.NewCompareService(evalLogRepo, predLogRepo, algorithmRepo)
+	compareService := compareservice.NewCompareService(evalLogRepo, predLogRepo, aiModelRepo)
 
 	// 启动 MQ Consumer 消费死信队列与低分告警队列
 	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
@@ -403,10 +394,13 @@ func (a *Application) Init() error {
 		}
 	}
 
+	// VIP 月度积分赠送任务（承接原会员月度配额权益）
+	vipGiftService := aiservice.NewVipGiftService(aiBillingService, aiBillingRepo, memberRepo, memberBenefitRepo)
+
 	// 启动 XXL-Job 执行器并注册定时任务
 	xxlExecutor := xxljob.Init(cfg)
 	if xxlExecutor != nil {
-		job.InitJobs(xxlExecutor, defaultStorage, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService, cacheClient)
+		job.InitJobs(xxlExecutor, defaultStorage, predLogRepo, evalLogRepo, orderService, announcementService, messageService, memberService, vipGiftService, cacheClient)
 		go func() {
 			if err := xxlExecutor.Run(); err != nil {
 				logger.Error("XXL-Job 执行器运行失败", zap.Error(err))
@@ -421,7 +415,6 @@ func (a *Application) Init() error {
 	sysDeptApi := api.NewSysDeptApi(deptService)
 	sysDictApi := api.NewSysDictApi(dictService, dictTypeService)
 	sysMenuApi := api.NewSysMenuApi(menuService)
-	algorithmApi := api.NewAlgorithmApi(algorithmService, algorithmFavRepo, importExportApi)
 	datasetApi := api.NewSysDatasetApi(datasetService, datasetOperationService)
 	datasetItemApi := api.NewSysDatasetItemApi(datasetItemService, datasetOperationService, fileService)
 	itemFileApi := api.NewSysItemFileApi(itemFileService, fileService)
@@ -449,9 +442,6 @@ func (a *Application) Init() error {
 	// favorite module apis
 	favoriteApi := api.NewFavoriteApi(favoriteService)
 
-	// algorithm select module apis
-	algorithmSelectApi := api.NewAlgorithmSelectApi(algorithmSelectService)
-
 	// feedback module apis
 	feedbackApi := api.NewFeedbackApi(ratingService, feedbackService)
 
@@ -471,18 +461,24 @@ func (a *Application) Init() error {
 	aiProxyApi := api.NewAIProxyApi(aiClient)
 
 	// AI 域 A 类端点（原生实现，共享 MySQL/Redis，行为对齐 dehaze-python）
-	aiModelRepo := airepo.NewModelRepository(gormDB)
-	aiProviderRepo := airepo.NewProviderRepository(gormDB)
 	aiProviderKeyRepo := airepo.NewProviderKeyRepository(gormDB)
 	aiModelPriceRepo := airepo.NewModelPriceRepository(gormDB)
 	aiMcpRepo := airepo.NewMcpRepository(gormDB)
 	aiSkillRepo := airepo.NewSkillRepository(gormDB)
 	aiHealthService := aiservice.NewHealthService(gormDB)
-	aiModelService := aiservice.NewModelService(gormDB, aiModelRepo, aiModelPriceRepo, aiHealthService, messageService)
+	aiModelService := aiservice.NewModelService(
+		gormDB, aiModelRepo, aiModelPriceRepo, aiHealthService, messageService, favoriteService, dictService,
+	)
+	aiAgentRepo := aidomainrepo.NewAgentRepository(gormDB)
+	aiUserPreferenceService := aiservice.NewUserPreferenceService(
+		airepo.NewUserPreferenceRepository(gormDB), aiModelRepo, dictService, aiHealthService,
+		aiAgentRepo,
+	)
 	aiProviderService := aiservice.NewProviderService(aiProviderRepo, aiProviderKeyRepo, aiHealthService)
 	aiMcpService := aiservice.NewMcpServerService(gormDB, aiMcpRepo)
 	aiSkillService := aiservice.NewSkillService(aiSkillRepo, storageRegistry)
 	aiModelApi := api.NewAiModelApi(aiModelService)
+	aiUserPreferenceApi := api.NewAiUserPreferenceApi(aiUserPreferenceService)
 	aiProviderApi := api.NewAiProviderApi(aiProviderService)
 	aiMcpApi := api.NewAiMcpApi(aiMcpService)
 	aiSkillApi := api.NewAiSkillApi(aiSkillService)
@@ -498,11 +494,10 @@ func (a *Application) Init() error {
 	// AI 对话域 A 类端点（会话/消息/反馈/产物/记忆/Agent 与版本/A2A 端点/评测中心/定时任务）
 	aiConvRepo := aidomainrepo.NewConversationRepository(gormDB)
 	aiMsgRepo := aidomainrepo.NewMessageRepository(gormDB)
-	aiAgentRepo := aidomainrepo.NewAgentRepository(gormDB)
 	aiEvalRepo := aidomainrepo.NewEvalRepository(gormDB)
 	aiMemoryRepo := aidomainrepo.NewMemoryRepository(gormDB)
 	aiConversationApi := api.NewAiConversationApi(
-		aidomainservice.NewConversationService(aiConvRepo, aiMsgRepo, aiAgentRepo),
+		aidomainservice.NewConversationService(aiConvRepo, aiMsgRepo, aiAgentRepo, aiUserPreferenceService),
 		aidomainservice.NewMessageService(aiConvRepo, aiMsgRepo, aidomainrepo.NewThoughtRepository(gormDB)),
 		aidomainservice.NewFeedbackService(aiMsgRepo, aidomainrepo.NewMessageFeedbackRepository(gormDB), aiMemoryRepo),
 		aidomainservice.NewArtifactService(aidomainrepo.NewArtifactRepository(gormDB), aiConvRepo, aiMsgRepo, storageRegistry),
@@ -576,7 +571,6 @@ func (a *Application) Init() error {
 	router.RegisterFileRoutes(protectedV1, fileApi)
 	router.RegisterDatasetItemRoutes(protectedV1, datasetItemApi)
 	router.RegisterItemFileRoutes(protectedV1, itemFileApi)
-	router.RegisterAlgorithmRoutes(protectedV1, algorithmApi)
 	router.RegisterTaskRoutes(protectedV1, taskApi)
 	router.RegisterImageInputRoutes(protectedV1, inputHistoryApi)
 	router.RegisterPredictionRoutes(protectedV1, predictionApi)
@@ -595,9 +589,9 @@ func (a *Application) Init() error {
 	router.RegisterFavoriteRoutes(protectedV1, favoriteApi)
 	router.RegisterPresetRoutes(protectedV1, presetApi)
 	router.RegisterCompareRoutes(protectedV1, compareApi)
-	router.RegisterAlgorithmSelectRoutes(protectedV1, algorithmSelectApi)
 	// AI 域 A 类端点（原生 CRUD/查询，共享 MySQL/Redis，行为对齐 dehaze-python）
 	router.RegisterAiModelRoutes(protectedV1, aiModelApi)
+	router.RegisterAiUserPreferenceRoutes(protectedV1, aiUserPreferenceApi)
 	router.RegisterAiProviderRoutes(protectedV1, aiProviderApi)
 	router.RegisterAiMcpRoutes(protectedV1, aiMcpApi)
 	router.RegisterAiSkillRoutes(protectedV1, aiSkillApi)

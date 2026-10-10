@@ -39,5 +39,4 @@ public class AiEndpointUpdateForm {
     @Max(value = 1, message = "状态不能大于1")
     @Schema(description = "状态")
     private Integer status;
-
 }

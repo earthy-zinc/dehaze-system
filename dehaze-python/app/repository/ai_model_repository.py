@@ -1,4 +1,6 @@
-from sqlalchemy import func, select
+import json
+
+from sqlalchemy import func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_ai_conversation import SysAiConversation
@@ -124,6 +126,7 @@ class AiModelRepository(BaseRepository[SysAiModel]):
         size: int,
         keyword: str | None = None,
         model_type: str | None = None,
+        task_tags: list[str] | None = None,
     ) -> tuple[list[SysAiModel], int]:
         stmt = select(SysAiModel)
         if keyword:
@@ -135,8 +138,36 @@ class AiModelRepository(BaseRepository[SysAiModel]):
             )
         if model_type:
             stmt = stmt.where(SysAiModel.model_type == model_type)
+        if task_tags:
+            # 逗号分隔标签取 OR：task_tags JSON 数组含任一即命中；NULL 行不参与命中。
+            # 参数用 literal 传 JSON 文本：cast(..., mysql.JSON) 会被 JSON 类型的
+            # bind_processor 二次序列化成字符串标量，导致 JSON_OVERLAPS 永不命中
+            stmt = stmt.where(
+                func.json_overlaps(
+                    SysAiModel.task_tags,
+                    literal(json.dumps(task_tags, ensure_ascii=False)),
+                )
+            )
         stmt = stmt.order_by(SysAiModel.id.desc())
         return await self.paginate(db, stmt, page, size)
+
+    async def list_by_provider_and_type(
+        self,
+        db: AsyncSession,
+        provider_id: int,
+        model_type: str,
+    ) -> list[SysAiModel]:
+        """按供应商 + 模型类型查询全部模型行（含停用，供价格播种等注册表维护）"""
+        stmt = (
+            select(SysAiModel)
+            .where(
+                SysAiModel.provider_id == provider_id,
+                SysAiModel.model_type == model_type,
+            )
+            .order_by(SysAiModel.id)
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
 
 
 ai_model_repository = AiModelRepository()

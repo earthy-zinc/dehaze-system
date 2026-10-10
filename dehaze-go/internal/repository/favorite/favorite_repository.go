@@ -66,8 +66,8 @@ func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *quer
 	// JOIN 条件带 deleted=0，对象被逻辑删除后名称为空（对齐 Java selectFavoritePage）
 	db := r.db.WithContext(ctx).
 		Table("sys_favorite f").
-		Select("f.*, COALESCE(a.name, '') as algorithm_name, COALESCE(d.name, '') as dataset_name, COALESCE(d.img, '') as dataset_img").
-		Joins("LEFT JOIN sys_algorithm a ON f.target_type = 'algorithm' AND f.target_id = a.id AND a.deleted = 0").
+		Select("f.*, COALESCE(m.display_name, '') as model_name, COALESCE(d.name, '') as dataset_name, COALESCE(d.img, '') as dataset_img").
+		Joins("LEFT JOIN sys_ai_model m ON f.target_type = 'model' AND f.target_id = m.id AND m.deleted = 0").
 		Joins("LEFT JOIN sys_dataset d ON f.target_type = 'dataset' AND f.target_id = d.id AND d.deleted = 0").
 		Where("f.user_id = ? AND f.deleted = 0", userID)
 
@@ -76,7 +76,7 @@ func (r *FavoriteRepository) FindPage(ctx context.Context, userID int64, q *quer
 	}
 	if q.Keywords != "" {
 		kw := "%" + q.Keywords + "%"
-		db = db.Where("(f.target_type = 'algorithm' AND a.name LIKE ?) OR (f.target_type = 'dataset' AND d.name LIKE ?)", kw, kw)
+		db = db.Where("(f.target_type = 'model' AND m.display_name LIKE ?) OR (f.target_type = 'dataset' AND d.name LIKE ?)", kw, kw)
 	}
 
 	var total int64

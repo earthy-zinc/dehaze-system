@@ -5,11 +5,10 @@ import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.form.RoleForm;
 import com.pei.dehaze.model.vo.RolePageVO;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
-
-import java.util.List;
 
 /**
  * 角色对象转换器
@@ -50,19 +49,18 @@ public interface RoleConverter {
     RolePageVO entity2PageVO(SysRole role);
 
     @Mappings({
-            @Mapping(target = "value", source = "id"),
-            @Mapping(target = "label", source = "name"),
-            @Mapping(ignore = true, target = "children")
+        @Mapping(target = "value", source = "id"),
+        @Mapping(target = "label", source = "name"),
+        @Mapping(ignore = true, target = "children")
     })
     Option<Long> entity2Option(SysRole role);
-
 
     List<Option<Long>> entities2Options(List<SysRole> roles);
 
     @Mappings({
-            @Mapping(target = "createTime", ignore = true),
-            @Mapping(target = "updateTime", ignore = true),
-            @Mapping(target = "deleted", ignore = true),
+        @Mapping(target = "createTime", ignore = true),
+        @Mapping(target = "updateTime", ignore = true),
+        @Mapping(target = "deleted", ignore = true),
     })
     SysRole form2Entity(RoleForm roleForm);
 

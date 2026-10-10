@@ -272,6 +272,10 @@ func (s *EndpointService) refreshAgentCard(ctx context.Context, endpointID int64
 	}
 }
 
+// lookupIP 域名解析入口，单测可替换以覆盖解析失败/解析到内网等分支：
+// 内网 DNS 常把不存在的域名通配解析到某个地址，按真实解析结果断言会随环境假绿/假红。
+var lookupIP = net.LookupIP
+
 // isSafeURL SSRF 防护：仅允许 https，主机（含域名解析出的全部地址）不得为环回/内网/链路本地/保留地址。
 //
 // 对齐 python app/utils/ssrf.is_safe_url：域名按全部解析结果判定（防 DNS 重绑定）、解析失败保守拒绝。
@@ -296,7 +300,7 @@ func isSafeURL(raw string) bool {
 	if ip := net.ParseIP(lowered); ip != nil {
 		return !isInternalIP(ip)
 	}
-	addresses, err := net.LookupIP(lowered)
+	addresses, err := lookupIP(lowered)
 	if err != nil || len(addresses) == 0 {
 		return false
 	}

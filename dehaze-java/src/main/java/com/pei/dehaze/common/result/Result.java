@@ -1,10 +1,9 @@
 package com.pei.dehaze.common.result;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.io.Serializable;
 import lombok.Data;
 import org.slf4j.MDC;
-
-import java.io.Serializable;
 
 /**
  * 统一响应结构体

@@ -11,5 +11,4 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2026-01-10
  */
 @Mapper
-public interface SysTaskMapper extends BaseMapper<SysTask> {
-}
+public interface SysTaskMapper extends BaseMapper<SysTask> {}

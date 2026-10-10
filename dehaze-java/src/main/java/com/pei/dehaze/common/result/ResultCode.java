@@ -12,7 +12,6 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ResultCode implements IResultCode {
-
     SUCCESS("00000", "一切ok"),
 
     USER_ERROR("A0001", "用户端错误"),
@@ -38,7 +37,6 @@ public enum ResultCode implements IResultCode {
     ACCESS_UNAUTHORIZED("A0301", "访问未授权"),
     FORBIDDEN_OPERATION("A0302", "演示环境禁止新增、修改和删除数据，请本地部署后测试"),
 
-
     PARAM_ERROR("A0400", "用户请求参数错误"),
     RESOURCE_NOT_FOUND("A0401", "请求资源不存在"),
     PARAM_IS_NULL("A0410", "请求必填参数为空"),
@@ -47,7 +45,7 @@ public enum ResultCode implements IResultCode {
     DATA_EXISTS("A0501", "数据已存在"),
     DATA_STATE_NOT_ALLOW("A0502", "数据状态不允许"),
     OPERATION_NOT_ALLOW("A0503", "操作不允许"),
-    DATA_BIND_EXISTS("A0504", "存在关联数据，无法删除"),
+    DATA_REFERENCED("A0504", "存在关联数据，无法删除"),
     ROOT_USER_PROTECTED("A0505", "超级管理员不可删除"),
     // 会员模块业务错误码 A051x
     MEMBER_NOT_FOUND("A0510", "会员不存在"),
@@ -101,6 +99,9 @@ public enum ResultCode implements IResultCode {
     NOTIFICATION_SETTING_NOT_FOUND("A0557", "通知设置不存在"),
     TEMPLATE_DISABLED("A0558", "模板已禁用"),
     MESSAGE_ALREADY_READ("A0559", "消息已读"),
+
+    // AI 模块错误码 A060x
+    AI_MODEL_NOT_AVAILABLE("A0601", "模型不可用或已禁用"),
 
     // AI 计费管理模块错误码 A068x
     AI_REFUND_ALREADY_EXISTS("A0680", "退款申请已存在"),
@@ -167,9 +168,6 @@ public enum ResultCode implements IResultCode {
 
     @Override
     public String toString() {
-        return "{" +
-                "\"code\":\"" + code + '\"' +
-                ", \"msg\":\"" + msg + '\"' +
-                '}';
+        return "{" + "\"code\":\"" + code + '\"' + ", \"msg\":\"" + msg + '\"' + '}';
     }
 }

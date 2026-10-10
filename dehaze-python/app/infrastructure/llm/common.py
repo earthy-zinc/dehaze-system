@@ -49,9 +49,10 @@ def build_user_identity(provider, user_id: int | None) -> tuple[str, str] | None
     """按供应商透传配置生成用户身份标识，返回 (注入字段路径, 值)；不注入返回 None。
 
     值 = prefix + sha256(userId) 十六进制，按 max_len 截断（AI模型管理 §2.7.8，
-    不透传任何用户隐私信息）。内置本地模型 / 未配置 / 未启用 / 无用户上下文均不注入。
+    不透传任何用户隐私信息）。未配置 / 未启用 / 无用户上下文均不注入——是否透传
+    完全由供应商行的 user_identity_forward 决定（内置供应商种子该列为 NULL，天然不注入）。
     """
-    if not user_id or provider.provider_code == "local":
+    if not user_id:
         return None
     config = provider.user_identity_forward
     if not config or not config.get("enabled"):

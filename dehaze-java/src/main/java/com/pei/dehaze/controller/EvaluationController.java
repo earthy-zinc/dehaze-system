@@ -21,14 +21,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "11.效果评估接口")
 @RestController
@@ -48,8 +47,7 @@ public class EvaluationController {
 
     @Operation(summary = "查询评估任务状态")
     @GetMapping("/{taskId}")
-    public Result<EvaluationResultVO> getTaskStatus(
-            @Parameter(description = "评估任务ID") @PathVariable Long taskId) {
+    public Result<EvaluationResultVO> getTaskStatus(@Parameter(description = "评估任务ID") @PathVariable Long taskId) {
         var evalLog = evalLogService.getById(taskId);
         // 非本人任务按不存在处理，不泄露资源存在性
         if (evalLog == null || !Objects.equals(evalLog.getCreateBy(), SecurityUtils.getUserId())) {
@@ -60,6 +58,8 @@ public class EvaluationController {
         result.setStatus(evalLog.getStatus());
         if (LogStatusEnum.COMPLETED == evalLog.getStatus()) {
             result.setMetrics(parseMetrics(evalLog.getResult()));
+            result.setPredMd5(evalLog.getPredMd5());
+            result.setGtMd5(evalLog.getGtMd5());
             result.setTime(evalLog.getTime());
         } else if (LogStatusEnum.FAILED == evalLog.getStatus()) {
             result.setErrorMessage(evalLog.getErrorMessage());
@@ -75,26 +75,28 @@ public class EvaluationController {
         Page<SysEvalLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysEvalLog> wrapper = new LambdaQueryWrapper<SysEvalLog>()
                 .eq(SysEvalLog::getCreateBy, userId)
-                .eq(query.getAlgorithmId() != null, SysEvalLog::getAlgorithmId, query.getAlgorithmId())
+                .eq(query.getModelId() != null, SysEvalLog::getModelId, query.getModelId())
                 .eq(SysEvalLog::getStatus, LogStatusEnum.COMPLETED)
                 // 排除对比报告任务行（同表存储），指标历史仅含效果评估任务
                 .eq(SysEvalLog::getTaskType, "evaluation")
                 .orderByDesc(SysEvalLog::getCreateTime);
         Page<SysEvalLog> result = evalLogMapper.selectPage(page, wrapper);
         Page<EvalMetricsVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
-        voPage.setRecords(result.getRecords().stream().map(log -> {
-            EvalMetricsVO vo = new EvalMetricsVO();
-            vo.setId(log.getId());
-            vo.setAlgorithmId(log.getAlgorithmId());
-            vo.setPredUrl(log.getPredUrl());
-            vo.setGtUrl(log.getGtUrl());
-            vo.setTime(log.getTime());
-            vo.setStatus(log.getStatus());
-            vo.setErrorMessage(log.getErrorMessage());
-            vo.setCreateTime(log.getCreateTime());
-            vo.setMetrics(parseMetrics(log.getResult()));
-            return vo;
-        }).collect(Collectors.toList()));
+        voPage.setRecords(result.getRecords().stream()
+                .map(log -> {
+                    EvalMetricsVO vo = new EvalMetricsVO();
+                    vo.setId(log.getId());
+                    vo.setModelId(log.getModelId());
+                    vo.setPredUrl(log.getPredUrl());
+                    vo.setGtUrl(log.getGtUrl());
+                    vo.setTime(log.getTime());
+                    vo.setStatus(log.getStatus());
+                    vo.setErrorMessage(log.getErrorMessage());
+                    vo.setCreateTime(log.getCreateTime());
+                    vo.setMetrics(parseMetrics(log.getResult()));
+                    return vo;
+                })
+                .collect(Collectors.toList()));
         return PageResult.success(voPage);
     }
 

@@ -94,7 +94,7 @@ func round4(v float64) float64 {
 func (h *HealthService) Snapshot(ctx context.Context, providerID int64) map[string]any {
 	client := redisClient()
 	if client == nil {
-		return map[string]any{"status": "healthy", "circuit_open": false, "success_rate": 1.0, "error_rate": 0.0, "limit_rate": 0.0, "p95_latency_ms": 0}
+		return noSampleSnapshot("healthy", false)
 	}
 	key := fmt.Sprintf(snapshotKeyFmt, providerID)
 	if raw, err := client.Get(ctx, key).Bytes(); err == nil && len(raw) > 0 {
@@ -122,14 +122,13 @@ func (h *HealthService) Snapshot(ctx context.Context, providerID int64) map[stri
 		status = "open"
 	}
 
-	snapshot := map[string]any{
-		"status":          status,
-		"circuit_open":    circuitOpen,
-		"total_calls_24h": total,
-		"success_rate":    rateOr(total-failed, total, 1.0),
-		"error_rate":      rateOr(failed, total, 0.0),
-		"limit_rate":      rateOr(limit, total, 0.0),
-		"p95_latency_ms":  p95,
+	snapshot := noSampleSnapshot(status, circuitOpen)
+	snapshot["total_calls_24h"] = total
+	if total > 0 {
+		snapshot["success_rate"] = round4(float64(total-failed) / float64(total))
+		snapshot["error_rate"] = round4(float64(failed) / float64(total))
+		snapshot["limit_rate"] = round4(float64(limit) / float64(total))
+		snapshot["p95_latency_ms"] = p95
 	}
 	if b, err := json.Marshal(snapshot); err == nil {
 		client.Set(ctx, key, b, snapshotTTL)
@@ -146,11 +145,19 @@ func (h *HealthService) Status(ctx context.Context, providerID int64) string {
 	return "healthy"
 }
 
-func rateOr(numerator, total int, empty float64) float64 {
-	if total == 0 {
-		return empty
+// noSampleSnapshot 无样本快照：状态位与调用量是确定值，比率与延迟为 null。
+// 与 python get_health_snapshot 同口径——窗口内无调用时不用 1.0/0 这类伪值，
+// 否则看板会把「无数据」显示成 100% 成功、0ms。
+func noSampleSnapshot(status string, circuitOpen bool) map[string]any {
+	return map[string]any{
+		"status":          status,
+		"circuit_open":    circuitOpen,
+		"total_calls_24h": 0,
+		"success_rate":    nil,
+		"error_rate":      nil,
+		"limit_rate":      nil,
+		"p95_latency_ms":  nil,
 	}
-	return round4(float64(numerator) / float64(total))
 }
 
 func (h *HealthService) windowCounts(ctx context.Context, providerID int64) (int, int, int) {

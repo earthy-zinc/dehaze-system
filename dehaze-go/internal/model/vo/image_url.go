@@ -10,10 +10,8 @@ type ImageUrlVO struct {
 	DatasetID int64 `json:"datasetId,omitempty"`
 	// 图片类型：clear/hazy/trans/depth/segment
 	Type string `json:"type"`
-	// 图片访问URL
+	// 图片访问URL（即原图；java `ImageUrlVO` / python `ItemFileVO` 均无 originUrl，勿再下发该键）
 	URL string `json:"url"`
-	// 原始图片URL
-	OriginURL string `json:"originUrl,omitempty"`
 	// 缩略图URL
 	ThumbnailURL string `json:"thumbnailUrl,omitempty"`
 	// 图片描述信息

@@ -10,7 +10,7 @@ import (
 
 // supportedImportExportModules 支持导入导出的业务模块（与 python 侧 handler registry 一致）。
 // 路径段即模块名本身（python `GET /api/v1/{module}/_export`），不做单复数映射。
-var supportedImportExportModules = []string{"user", "role", "dept", "menu", "dict", "dataset", "algorithm"}
+var supportedImportExportModules = []string{"user", "role", "dept", "menu", "dict", "dataset"}
 
 // RegisterImportExportRoutes 通用导入导出路由。
 //
@@ -25,18 +25,17 @@ var supportedImportExportModules = []string{"user", "role", "dept", "menu", "dic
 func RegisterImportExportRoutes(rg *gin.RouterGroup, importExportApi *api.ImportExportApi) {
 	for _, module := range supportedImportExportModules {
 		rg.GET("/"+module+"/_export", withModule(module), modulePermission("export"), importExportApi.Export)
-		rg.POST("/"+module+"/_export", withModule(module), modulePermission("export"),
-			middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), importExportApi.ExportPost)
+		// 导出为只读查询（POST 仅因筛选条件复杂），不挂防重；导入为写操作，挂防重
+		rg.POST("/"+module+"/_export", withModule(module), modulePermission("export"), importExportApi.ExportPost)
 		rg.POST("/"+module+"/_import", withModule(module), modulePermission("import"),
-			middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), importExportApi.Import)
+			middleware.DefaultAntiRepeat(), importExportApi.Import)
 		rg.GET("/"+module+"/template", withModule(module), modulePermission("import"), importExportApi.DownloadTemplate)
 	}
 
+	// 动态兜底段不挂防重：防重白名单只覆盖上方的静态模块集合（与 python/java 白名单一致）
 	rg.GET("/:module/_export", modulePermission("export"), importExportApi.Export)
-	rg.POST("/:module/_export", modulePermission("export"),
-		middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), importExportApi.ExportPost)
-	rg.POST("/:module/_import", modulePermission("import"),
-		middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), importExportApi.Import)
+	rg.POST("/:module/_export", modulePermission("export"), importExportApi.ExportPost)
+	rg.POST("/:module/_import", modulePermission("import"), importExportApi.Import)
 	rg.GET("/:module/template", modulePermission("import"), importExportApi.DownloadTemplate)
 }
 

@@ -3,9 +3,9 @@ package com.pei.dehaze.converter;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.base.IBaseEnum;
 import com.pei.dehaze.common.enums.GenderEnum;
-import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
+import com.pei.dehaze.model.read.UserRead;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import org.mapstruct.Mapper;
@@ -18,11 +18,15 @@ import org.mapstruct.Mappings;
  * @author earthyzinc
  * @since 2022/6/8
  */
-@Mapper(componentModel = "spring", imports = {IBaseEnum.class, GenderEnum.class})
+@Mapper(
+        componentModel = "spring",
+        imports = {IBaseEnum.class, GenderEnum.class})
 public interface UserConverter {
 
     @Mappings({
-            @Mapping(target = "genderLabel", expression = "java(IBaseEnum.getLabelByValue(read.getGender(), GenderEnum.class))")
+        @Mapping(
+                target = "genderLabel",
+                expression = "java(IBaseEnum.getLabelByValue(read.getGender(), GenderEnum.class))")
     })
     UserPageVO read2PageVo(UserRead read);
 
@@ -37,18 +41,18 @@ public interface UserConverter {
     Page<UserPageVO> read2PageVo(Page<UserRead> read);
 
     @Mappings({
-            @Mapping(target = "id", ignore = true),
-                    @Mapping(target = "createTime", ignore = true),
-                    @Mapping(target = "updateTime", ignore = true),
-                    @Mapping(target = "deleted", ignore = true),
-                    @Mapping(target = "password", ignore = true),
+        @Mapping(target = "id", ignore = true),
+        @Mapping(target = "createTime", ignore = true),
+        @Mapping(target = "updateTime", ignore = true),
+        @Mapping(target = "deleted", ignore = true),
+        @Mapping(target = "password", ignore = true),
     })
     SysUser form2Entity(UserForm entity);
 
     @Mappings({
-            @Mapping(target = "userId", source = "id"),
-            @Mapping(target = "roles", ignore = true),
-            @Mapping(target = "perms", ignore = true),
+        @Mapping(target = "userId", source = "id"),
+        @Mapping(target = "roles", ignore = true),
+        @Mapping(target = "perms", ignore = true),
     })
     UserInfoVO toUserInfoVo(SysUser entity);
 }

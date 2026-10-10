@@ -5,14 +5,13 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.security.model.SysUserDetails;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 public class SecurityUtils {
 
@@ -69,7 +68,6 @@ public class SecurityUtils {
         return null;
     }
 
-
     /**
      * 获取用户角色集合
      *
@@ -80,7 +78,8 @@ public class SecurityUtils {
         if (authentication != null) {
             Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
             if (CollUtil.isNotEmpty(authorities)) {
-                return authorities.stream().filter(item -> item.getAuthority().startsWith(SecurityConstants.ROLE_PREFIX))
+                return authorities.stream()
+                        .filter(item -> item.getAuthority().startsWith(SecurityConstants.ROLE_PREFIX))
                         .map(item -> CharSequenceUtil.removePrefix(item.getAuthority(), SecurityConstants.ROLE_PREFIX))
                         .collect(Collectors.toSet());
             }

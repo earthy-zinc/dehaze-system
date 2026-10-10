@@ -43,57 +43,64 @@ async def _minio_ready() -> bool:
     )
 
 
-async def _probe(name: str, checker) -> bool:
+async def _probe(name: str, checker, timeout: float = 5) -> bool:
     """带超时地探测某个基础设施，失败返回 False（不抛出，避免拖垮探针）。
 
     探针本身不因单个依赖故障而中断，但失败原因必须留痕——否则就绪探针只报
     DOWN 而无从定位是哪个依赖、因何失败。
     """
     try:
-        return bool(await asyncio.wait_for(checker(), timeout=5))
+        return bool(await asyncio.wait_for(checker(), timeout=timeout))
     except Exception as exc:
         logger.warning("就绪探针 %s 失败: %s", name, exc, exc_info=True)
         return False
 
 
-def _llm_http_healthy() -> bool:
-    """只读探测本地 LLM 子进程 /health，要求服务就绪且模型已加载"""
+def _llm_ready_sync() -> bool:
+    """只读探测 dehaze-llm 的 /ready（对话与向量模型预热完成才 200）。
+
+    禁止在此触发模型下载或进程拉起：模型由该服务自身预热，探测只反映事实。
+    """
     try:
         resp = httpx.get(
-            f"http://{settings.LOCAL_LLM_HOST}:{settings.LOCAL_LLM_PORT}/health", timeout=3
+            f"{settings.LOCAL_LLM_BASE_URL.rstrip('/')}/ready",
+            headers={"Authorization": f"Bearer {settings.INTERNAL_SERVICE_KEY}"},
+            timeout=2,
         )
-        return resp.status_code == 200 and resp.json().get("loaded") is True
+        return resp.status_code == 200
     except Exception as exc:
-        logger.warning("本地 LLM /health 探测失败: %s", exc, exc_info=True)
+        logger.warning("dehaze-llm /ready 探测失败: %s", exc, exc_info=True)
         return False
 
 
 async def _local_llm_ready() -> bool:
-    """本地 LLM 子进程就绪检查：先只读探测，未就绪则尝试拉起（核心依赖）"""
-    if _llm_http_healthy():
-        return True
-    try:
-        from app.infrastructure.llm.local.local_llm_manager import ensure_running
-
-        # ensure_running 为同步阻塞（可能拉起子进程/等模型加载），放线程池并限时
-        await asyncio.wait_for(asyncio.to_thread(ensure_running), timeout=4)
-    except Exception as exc:
-        logger.warning("本地 LLM 拉起失败: %s", exc, exc_info=True)
-        return False
-    return _llm_http_healthy()
+    return await asyncio.to_thread(_llm_ready_sync)
 
 
-def _voice_engine_status() -> dict:
-    """ASR/TTS 引擎只读状态（进程内引擎，模型懒加载；不触发加载，不阻断就绪）"""
-    from app.infrastructure.voice.funasr_engine import engine_status as funasr_status
-    from app.infrastructure.voice.piper_tts_engine import engine_status as piper_status
+async def _voice_engine_status() -> dict:
+    """ASR/TTS 默认引擎只读状态（内置引擎探测 dehaze-voice，第三方引擎按其厂商协议探活）。
 
-    asr = funasr_status()
-    tts = piper_status()
-    return {
-        "voice_asr": asr["engine_status"],
-        "voice_tts": tts["engine_status"],
-    }
+    引擎侧模型懒加载，此处不触发加载，且不参与整体就绪判定；未配置默认引擎或引擎
+    不可达时按 offline 上报（状态聚合内部已吞异常，不拖垮探针）。
+    """
+    from app.service.voice.voice_service_status import voice_service_status
+
+    status: dict[str, str] = {}
+    for engine_type in ("asr", "tts"):
+        engine = await voice_service_status.engine_status(engine_type)
+        status[f"voice_{engine_type}"] = engine.get("engine_status", "offline")
+    return status
+
+
+async def _modal_engine_status() -> dict:
+    """图像推理引擎只读状态（外置引擎服务 dehaze-service/dehaze-modal）。
+
+    只探测服务就绪（不触发权重下载），不参与整体就绪判定（设计 §3.3）。
+    """
+    from app.infrastructure.modal import engine_client
+
+    status = "online" if await engine_client.ready() else "offline"
+    return {"modal_inference": status}
 
 
 @router.get("")
@@ -169,15 +176,19 @@ async def readiness_check():
         if not ok:
             all_healthy = False
 
-    # 本地 LLM 子进程（核心依赖，默认启用；纯云端 LLM 部署可置 LOCAL_LLM_ENABLED=False 跳过）
-    if settings.LOCAL_LLM_ENABLED:
-        ok = await _probe("local_llm", _local_llm_ready)
-        components["local_llm"] = "UP" if ok else "DOWN"
-        if not ok:
-            all_healthy = False
+    # 内置本地推理服务 dehaze-llm（非必选依赖）：始终探测并展示状态；
+    # LOCAL_LLM_REQUIRED=True（本地推理为必选依赖的部署）时不可用才阻断整体就绪
+    ok = await _probe("local_llm", _local_llm_ready, timeout=2)
+    components["local_llm"] = "UP" if ok else "DOWN"
+    if not ok and settings.LOCAL_LLM_REQUIRED:
+        all_healthy = False
 
-    # ASR/TTS 引擎（进程内、懒加载）：附带只读状态，不阻断整体就绪
-    components = {**components, **_voice_engine_status()}
+    # ASR/TTS 与图像推理引擎（外置引擎服务、模型懒加载）：附带只读状态，不阻断整体就绪
+    components = {
+        **components,
+        **await _voice_engine_status(),
+        **await _modal_engine_status(),
+    }
 
     status = "UP" if all_healthy else "DOWN"
     status_code = 200 if all_healthy else 503

@@ -7,7 +7,6 @@ import com.pei.dehaze.model.form.MenuForm;
 import com.pei.dehaze.model.query.MenuQuery;
 import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
-
 import java.util.List;
 import java.util.Set;
 
@@ -25,7 +24,6 @@ public interface SysMenuService extends IService<SysMenu> {
      * @return
      */
     List<MenuVO> listMenus(MenuQuery queryParams);
-
 
     /**
      * 获取菜单下拉列表

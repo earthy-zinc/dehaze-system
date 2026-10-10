@@ -3,11 +3,10 @@ package com.pei.dehaze.common.util;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.ImageUrlVO;
-import lombok.experimental.UtilityClass;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import lombok.experimental.UtilityClass;
 
 /**
  * 图片分类工具类
@@ -68,8 +67,7 @@ public class ImageClassificationUtils {
             return false;
         }
         String lowerType = type.toLowerCase();
-        return lowerType.contains("clear") || lowerType.contains("clean") ||
-                type.contains("清晰") || type.contains("无雾");
+        return lowerType.contains("clear") || lowerType.contains("clean") || type.contains("清晰") || type.contains("无雾");
     }
 
     /**
@@ -84,8 +82,7 @@ public class ImageClassificationUtils {
             return false;
         }
         String lowerType = type.toLowerCase();
-        return lowerType.contains("haze") || lowerType.contains("hazy") ||
-                type.contains("有雾");
+        return lowerType.contains("haze") || lowerType.contains("hazy") || type.contains("有雾");
     }
 
     /**
@@ -134,8 +131,7 @@ public class ImageClassificationUtils {
      * @return 分类结果
      */
     public static ClassificationResult classifyItemFiles(
-            List<SysItemFile> itemFiles,
-            java.util.function.Function<SysItemFile, ImageUrlVO> converter) {
+            List<SysItemFile> itemFiles, java.util.function.Function<SysItemFile, ImageUrlVO> converter) {
 
         if (itemFiles == null || itemFiles.isEmpty()) {
             return new ClassificationResult();
@@ -164,8 +160,7 @@ public class ImageClassificationUtils {
         }
         hazyImages.sort(Comparator.comparing(
                 ImageUrlVO::getHazeLevel,
-                Comparator.nullsLast(Comparator.comparingInt(ImageClassificationUtils::getHazeLevelOrder))
-        ));
+                Comparator.nullsLast(Comparator.comparingInt(ImageClassificationUtils::getHazeLevelOrder))));
     }
 
     /**

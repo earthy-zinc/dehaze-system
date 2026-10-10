@@ -11,7 +11,9 @@ import lombok.EqualsAndHashCode;
 public class MessageTemplateQuery extends BasePageQuery {
 
     /** python message_template.py:21 默认 20 */
-    { setPageSize(20); }
+    {
+        setPageSize(20);
+    }
 
     @Schema(description = "模板名称（模糊）")
     private String name;

@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysMemberSignIn;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysMemberSignInMapper extends BaseMapper<SysMemberSignIn> {
-}
+public interface SysMemberSignInMapper extends BaseMapper<SysMemberSignIn> {}

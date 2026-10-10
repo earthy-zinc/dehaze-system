@@ -6,15 +6,17 @@ import (
 )
 
 type EvaluationRequest struct {
-	AlgorithmID int64  `json:"algorithmId"`
-	PredURL     string `json:"predUrl"`
-	GtURL       string `json:"gtUrl"`
+	ModelID string `json:"modelId"`
+	PredURL string `json:"predUrl"`
+	GtURL   string `json:"gtUrl"`
 }
 
 type EvaluationResponse struct {
 	LogID        int64              `json:"logId"`
 	Status       int8               `json:"status"`
 	Metrics      map[string]float64 `json:"metrics,omitempty"`
+	PredMd5      string             `json:"predMd5,omitempty"`
+	GtMd5        string             `json:"gtMd5,omitempty"`
 	Time         int                `json:"time,omitempty"`
 	ErrorMessage string             `json:"errorMessage,omitempty"`
 }

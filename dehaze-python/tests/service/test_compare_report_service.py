@@ -27,7 +27,7 @@ USER_B = 2003002
 
 async def _create_pred_log(db, user_id: int, status: int = LogStatus.COMPLETED.value) -> SysPredLog:
     log = SysPredLog(
-        algorithm_id=1,
+        model_id="aecrnet",
         origin_md5="c" * 32,
         origin_url="http://storage/origin.jpg",
         pred_md5="d" * 32,
@@ -43,7 +43,7 @@ async def _create_report_log(
     db, user_id: int, status: int, result=None, error_message: str | None = None
 ) -> SysEvalLog:
     log = SysEvalLog(
-        algorithm_id=1,
+        model_id="aecrnet",
         pred_md5="",
         pred_url="http://storage/pred.jpg",
         gt_md5="",
@@ -64,8 +64,8 @@ def _no_background_generation(monkeypatch):
 
     import app.service.prediction.prediction_service as prediction_module
 
-    algorithm_stub = AsyncMock(return_value=SimpleNamespace(name="测试算法"))
-    monkeypatch.setattr(prediction_module.prediction_service, "get_algorithm", algorithm_stub)
+    model_stub = AsyncMock(return_value=SimpleNamespace(name="测试模型", display_name="AECR-NET"))
+    monkeypatch.setattr(prediction_module.prediction_service, "get_model", model_stub)
 
 
 # ===== 报告任务归属校验 =====
@@ -174,13 +174,13 @@ async def test_get_report_html_empty_content_rejected(db):
 
 
 def test_build_report_html_escapes_dynamic_fields():
-    """算法名与图片 URL 中的 HTML 特殊字符被转义，不构成存储型 XSS"""
+    """模型名与图片 URL 中的 HTML 特殊字符被转义，不构成存储型 XSS"""
     html = compare_service._build_report_html(
-        algorithm_name="<script>alert(1)</script>",
+        model_name="<script>alert(1)</script>",
         generated_at="2026-09-12 00:00:00",
         origin_url='http://x/a.jpg" onerror="alert(1)',
         result_url="http://x/b.jpg",
-        algorithm_id=1,
+        model_id="aecrnet",
     )
 
     assert "<script>alert(1)</script>" not in html

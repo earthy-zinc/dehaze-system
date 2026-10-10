@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.vo;
 
-import lombok.Data;
-
 import java.time.OffsetDateTime;
 import java.util.List;
+import lombok.Data;
 
 /**
  * Cron 解释与下次执行时间预览

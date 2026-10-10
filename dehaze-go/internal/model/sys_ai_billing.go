@@ -22,11 +22,14 @@ type SysAiBilling struct {
 	InputTokens       int     `gorm:"column:input_tokens" json:"inputTokens"`
 	CachedInputTokens int     `gorm:"column:cached_input_tokens" json:"cachedInputTokens"`
 	OutputTokens      int     `gorm:"column:output_tokens" json:"outputTokens"`
-	Credits           int     `gorm:"column:credits" json:"credits"`
-	CreditsSaved      int     `gorm:"column:credits_saved" json:"creditsSaved"`
-	ToolCredits       *int    `gorm:"column:tool_credits" json:"toolCredits"`
-	QuotaConsumed     int     `gorm:"column:quota_consumed" json:"quotaConsumed"`
-	PreDeduct         int     `gorm:"column:pre_deduct" json:"preDeduct"`
+	// 非 token 计量（asr 秒数/tts 万字符/image 张数），token 模型为 NULL；不进计费明细响应体（json:"-"）
+	Quantity      *float64 `gorm:"column:quantity;type:decimal(18,4)" json:"-"`
+	QuantityUnit  *string  `gorm:"column:quantity_unit;type:varchar(32)" json:"-"`
+	Credits       int      `gorm:"column:credits" json:"credits"`
+	CreditsSaved  int      `gorm:"column:credits_saved" json:"creditsSaved"`
+	ToolCredits   *int     `gorm:"column:tool_credits" json:"toolCredits"`
+	QuotaConsumed int      `gorm:"column:quota_consumed" json:"quotaConsumed"`
+	PreDeduct     int      `gorm:"column:pre_deduct" json:"preDeduct"`
 	// 成本（元，成本线异步回填）：仅管理端聚合口径使用，绝不随计费记录下发（json:"-"）
 	Cost       *float64  `gorm:"column:cost" json:"-"`
 	CreateTime time.Time `gorm:"column:create_time;autoCreateTime" json:"createTime"`

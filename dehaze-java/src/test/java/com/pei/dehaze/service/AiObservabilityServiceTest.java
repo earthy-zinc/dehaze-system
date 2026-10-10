@@ -1,5 +1,15 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
@@ -31,6 +41,11 @@ import com.pei.dehaze.model.vo.AiObservabilityTraceDetailVO;
 import com.pei.dehaze.model.vo.AiObservabilityTraceItemVO;
 import com.pei.dehaze.model.vo.AiObservabilityTrendVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,22 +55,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * AiObservabilityService 单元测试。
@@ -103,8 +102,16 @@ class AiObservabilityServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AiObservabilityService(observabilityMapper, traceMapper, llmCallMapper, thoughtMapper,
-                artifactMapper, messageMapper, conversationMapper, billingMapper, new ObjectMapper());
+        service = new AiObservabilityService(
+                observabilityMapper,
+                traceMapper,
+                llmCallMapper,
+                thoughtMapper,
+                artifactMapper,
+                messageMapper,
+                conversationMapper,
+                billingMapper,
+                new ObjectMapper());
     }
 
     @Test
@@ -231,8 +238,7 @@ class AiObservabilityServiceTest {
         }
 
         assertThat(detail.getLlmCalls()).hasSize(1);
-        assertThat(detail.getLlmCalls().get(0).getToolCall())
-                .isEqualTo(Map.of("has_tool_call", true));
+        assertThat(detail.getLlmCalls().get(0).getToolCall()).isEqualTo(Map.of("has_tool_call", true));
         assertThat(detail.getThoughts()).hasSize(1);
         assertThat(detail.getThoughts().get(0).getTool()).isEqualTo("predict");
         assertThat(detail.getBilling()).hasSize(1);
@@ -317,9 +323,11 @@ class AiObservabilityServiceTest {
 
         assertThat(timeline.getConversation().getId()).isEqualTo(5L);
         assertThat(timeline.getRounds()).hasSize(1);
-        List<AiObservabilityTimelineVO.Event> events = timeline.getRounds().get(0).getTraces().get(0).getEvents();
+        List<AiObservabilityTimelineVO.Event> events =
+                timeline.getRounds().get(0).getTraces().get(0).getEvents();
         // 同刻事件按业务序：input(0) → context(1) → system_event(2) → llm_call(3) → tool_exec(4) → billing(5)
-        assertThat(events).extracting(AiObservabilityTimelineVO.Event::getKind)
+        assertThat(events)
+                .extracting(AiObservabilityTimelineVO.Event::getKind)
                 .containsExactly("input", "context", "system_event", "llm_call", "tool_exec", "billing");
         AiObservabilityTimelineVO.Event inputEvent = events.get(0);
         assertThat(inputEvent.getMessage().getId()).isEqualTo(1L);
@@ -369,9 +377,12 @@ class AiObservabilityServiceTest {
             timeline = service.getTimeline(5L, "summary");
         }
 
-        List<AiObservabilityTimelineVO.Event> events = timeline.getRounds().get(0).getTraces().get(0).getEvents();
+        List<AiObservabilityTimelineVO.Event> events =
+                timeline.getRounds().get(0).getTraces().get(0).getEvents();
         AiObservabilityTimelineVO.Event llmEvent = events.stream()
-                .filter(event -> "llm_call".equals(event.getKind())).findFirst().orElseThrow();
+                .filter(event -> "llm_call".equals(event.getKind()))
+                .findFirst()
+                .orElseThrow();
         assertThat(llmEvent.getRawRequest()).isNull();
         assertThat(llmEvent.getRawResponse()).isNull();
         @SuppressWarnings("unchecked")

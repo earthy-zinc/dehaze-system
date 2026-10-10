@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.vo;
 
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 /**
  * 降级与 Key 故障统计

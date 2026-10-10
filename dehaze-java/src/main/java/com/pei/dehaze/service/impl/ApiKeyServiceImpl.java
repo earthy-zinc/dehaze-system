@@ -5,6 +5,8 @@ import cn.hutool.crypto.SecureUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysApiKeyMapper;
 import com.pei.dehaze.model.dto.ApiKeyResult;
@@ -16,16 +18,13 @@ import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.ApiKeyService;
 import com.pei.dehaze.service.SysUserService;
-import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.result.ResultCode;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,19 +80,21 @@ public class ApiKeyServiceImpl extends ServiceImpl<SysApiKeyMapper, SysApiKey> i
                 .eq(SysApiKey::getUserId, userId)
                 .isNull(SysApiKey::getRevokedAt)
                 .orderByDesc(SysApiKey::getCreateTime));
-        return keys.stream().map(k -> ApiKeyResult.builder()
-                .id(k.getId())
-                .name(k.getName())
-                .keyPrefix(k.getKeyPrefix())
-                .status(k.getStatus())
-                .expiresAt(k.getExpiresAt())
-                .lastUsedAt(k.getLastUsedAt())
-                .createTime(k.getCreateTime())
-                .dailyQuota(k.getDailyQuota())
-                .monthlyQuota(k.getMonthlyQuota())
-                .rpmLimit(k.getRpmLimit())
-                .modelWhitelist(k.getModelWhitelist())
-                .build()).collect(Collectors.toList());
+        return keys.stream()
+                .map(k -> ApiKeyResult.builder()
+                        .id(k.getId())
+                        .name(k.getName())
+                        .keyPrefix(k.getKeyPrefix())
+                        .status(k.getStatus())
+                        .expiresAt(k.getExpiresAt())
+                        .lastUsedAt(k.getLastUsedAt())
+                        .createTime(k.getCreateTime())
+                        .dailyQuota(k.getDailyQuota())
+                        .monthlyQuota(k.getMonthlyQuota())
+                        .rpmLimit(k.getRpmLimit())
+                        .modelWhitelist(k.getModelWhitelist())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     @Override

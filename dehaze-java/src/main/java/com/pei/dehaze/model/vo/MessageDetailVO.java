@@ -7,5 +7,4 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "消息详情视图对象")
-public class MessageDetailVO extends MessageVO {
-}
+public class MessageDetailVO extends MessageVO {}

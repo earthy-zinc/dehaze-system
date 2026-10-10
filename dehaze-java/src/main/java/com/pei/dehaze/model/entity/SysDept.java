@@ -49,5 +49,4 @@ public class SysDept extends BaseEntity {
      */
     @TableLogic(value = "0", delval = "id")
     private Long deleted;
-
 }

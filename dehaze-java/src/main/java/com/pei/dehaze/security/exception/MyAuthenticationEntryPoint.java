@@ -18,8 +18,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class MyAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response,
-                         AuthenticationException authException) {
+    public void commence(
+            HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) {
         int status = response.getStatus();
         if (status == HttpServletResponse.SC_NOT_FOUND) {
             ResponseUtils.writeErrMsg(response, ResultCode.RESOURCE_NOT_FOUND);

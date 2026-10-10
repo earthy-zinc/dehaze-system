@@ -2,15 +2,6 @@ package com.pei.dehaze.service.impl;
 
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.service.ImageProcessingService;
-import lombok.extern.slf4j.Slf4j;
-import net.coobird.thumbnailator.Thumbnails;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -18,6 +9,14 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.Set;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import lombok.extern.slf4j.Slf4j;
+import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 图片处理服务实现
@@ -131,7 +130,7 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
             if (readers.hasNext()) {
                 ImageReader reader = readers.next();
                 reader.setInput(iis, true);
-                return new int[]{reader.getWidth(0), reader.getHeight(0)};
+                return new int[] {reader.getWidth(0), reader.getHeight(0)};
             }
             throw new IOException("不支持的图片格式");
         }

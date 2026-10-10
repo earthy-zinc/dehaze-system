@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysUserCoupon;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysUserCouponMapper extends BaseMapper<SysUserCoupon> {
-}
+public interface SysUserCouponMapper extends BaseMapper<SysUserCoupon> {}

@@ -4,16 +4,15 @@ import com.pei.dehaze.config.property.RabbitMQProperties;
 import com.pei.dehaze.filter.TraceIdFilter;
 import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.rabbitmq.client.Channel;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
 /**
  * RabbitMQ 消息消费者基类
@@ -111,8 +110,8 @@ public abstract class RabbitMQConsumer {
         return new String(message.getBody(), StandardCharsets.UTF_8);
     }
 
-    private void handleRetryOrDlx(Message message, Channel channel, String queueName,
-                                  String traceId, long deliveryTag, Exception e) {
+    private void handleRetryOrDlx(
+            Message message, Channel channel, String queueName, String traceId, long deliveryTag, Exception e) {
         log.error("RabbitMQ 消息处理失败: queue={}, traceId={}", queueName, traceId, e);
         try {
             MessageProperties props = message.getMessageProperties();
@@ -125,21 +124,20 @@ public abstract class RabbitMQConsumer {
                 String retryRoutingKey = resolveRoutingKey(queueName + ".retry." + retryCount);
                 final int nextRetryCount = retryCount + 1;
                 rabbitTemplate.convertAndSend(
-                        rabbitMQProperties.getExchange().getName(),
-                        retryRoutingKey,
-                        message,
-                        m -> {
+                        rabbitMQProperties.getExchange().getName(), retryRoutingKey, message, m -> {
                             m.getMessageProperties().getHeaders().put("x-retry-count", nextRetryCount);
                             return m;
-                        }
-                );
+                        });
                 channel.basicAck(deliveryTag, false);
-                log.debug("消息已投递到重试队列: queue={}.retry.{}, retryCount={}, traceId={}",
-                        queueName, retryCount, retryCount + 1, traceId);
+                log.debug(
+                        "消息已投递到重试队列: queue={}.retry.{}, retryCount={}, traceId={}",
+                        queueName,
+                        retryCount,
+                        retryCount + 1,
+                        traceId);
             } else {
                 channel.basicNack(deliveryTag, false, false);
-                log.warn("消息重试耗尽，已投递到死信队列: queue={}.dlx, totalRetries={}, traceId={}",
-                        queueName, retryCount, traceId);
+                log.warn("消息重试耗尽，已投递到死信队列: queue={}.dlx, totalRetries={}, traceId={}", queueName, retryCount, traceId);
             }
         } catch (IOException ex) {
             log.error("重试/死信处理失败: queue={}, traceId={}", queueName, traceId, ex);

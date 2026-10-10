@@ -1,13 +1,14 @@
 package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Data;
 
 /** AI 模型成本单价版本（含档位明细） */
 @Schema(description = "AI 模型成本单价版本")
@@ -56,6 +57,8 @@ public class AiModelCostVO {
 
         private Long maxTokens;
 
+        /** 单价：python `ModelCostDetailResult.unit_price` 为 Decimal → JSON 字符串，前端计算前需转 Number */
+        @JsonSerialize(using = ToStringSerializer.class)
         private BigDecimal unitPrice;
     }
 }

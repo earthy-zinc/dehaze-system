@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -20,13 +20,13 @@ import (
 
 // CompareService 效果对比服务
 type CompareService struct {
-	evalRepo evalrepo.IEvalLogRepository
-	predRepo predrepo.IPredLogRepository
-	algoRepo algorepo.IAlgorithmRepository
+	evalRepo  evalrepo.IEvalLogRepository
+	predRepo  predrepo.IPredLogRepository
+	modelRepo *airepo.ModelRepository
 }
 
-func NewCompareService(evalRepo evalrepo.IEvalLogRepository, predRepo predrepo.IPredLogRepository, algoRepo algorepo.IAlgorithmRepository) *CompareService {
-	return &CompareService{evalRepo: evalRepo, predRepo: predRepo, algoRepo: algoRepo}
+func NewCompareService(evalRepo evalrepo.IEvalLogRepository, predRepo predrepo.IPredLogRepository, modelRepo *airepo.ModelRepository) *CompareService {
+	return &CompareService{evalRepo: evalRepo, predRepo: predRepo, modelRepo: modelRepo}
 }
 
 // CompareReportForm 对比报告生成表单（格式固定为 HTML，无其他可选项）
@@ -64,15 +64,15 @@ func (s *CompareService) GenerateReport(ctx context.Context, userID int64, form 
 	}
 	paramsJSON, _ := json.Marshal(params)
 
+	// pred=处理结果图、gt=原图（与 python 实现及效果对比后端实现文档一致）；
+	// 报告任务不落 MD5，pred_md5/gt_md5 用于评估任务的缓存键
 	reportTask := &model.SysEvalLog{
-		BaseModel:   model.BaseModel{CreateBy: userID},
-		AlgorithmID: predLog.AlgorithmID,
-		PredURL:     predLog.OriginURL,
-		GtURL:       predLog.PredURL,
-		PredMD5:     predLog.OriginMD5,
-		GtMD5:       predLog.PredMD5,
-		Status:      model.LogStatusProcessing,
-		TaskType:    "report",
+		BaseModel: model.BaseModel{CreateBy: userID},
+		ModelID:   predLog.ModelID,
+		PredURL:   predLog.PredURL,
+		GtURL:     predLog.OriginURL,
+		Status:    model.LogStatusProcessing,
+		TaskType:  "report",
 	}
 	paramsStr := string(paramsJSON)
 	reportTask.Result = &paramsStr
@@ -94,15 +94,15 @@ func (s *CompareService) generateReportAsync(taskID int64, predLog *model.SysPre
 	ctx := context.Background()
 	startTime := time.Now()
 
-	algorithmName := "未知算法"
-	if predLog.AlgorithmID > 0 {
-		algo, err := s.algoRepo.FindByID(ctx, predLog.AlgorithmID)
-		if err == nil && algo != nil {
-			algorithmName = algo.Name
+	modelName := "未知模型"
+	if predLog.ModelID != "" {
+		imgModel, err := s.modelRepo.GetByModelID(ctx, predLog.ModelID)
+		if err == nil && imgModel != nil {
+			modelName = imgModel.DisplayName
 		}
 	}
 
-	html := buildReportHTML(predLog, algorithmName)
+	html := buildReportHTML(predLog, modelName)
 	generatedAt := time.Now().Format("2006-01-02 15:04:05")
 
 	result := map[string]string{
@@ -113,7 +113,8 @@ func (s *CompareService) generateReportAsync(taskID int64, predLog *model.SysPre
 	resultStr := string(resultJSON)
 	elapsed := int(time.Since(startTime).Seconds())
 
-	if err := s.evalRepo.UpdateResult(ctx, taskID, model.LogStatusCompleted, resultStr, elapsed); err != nil {
+	// 报告任务不落 MD5（md5 仅评估任务在图片下载阶段记录），故传空
+	if err := s.evalRepo.UpdateResult(ctx, taskID, model.LogStatusCompleted, resultStr, "", "", elapsed); err != nil {
 		logger.Error("更新报告任务完成状态失败", zap.Int64("taskID", taskID), zap.Error(err))
 		return
 	}
@@ -190,12 +191,12 @@ func (s *CompareService) GetReportHTML(ctx context.Context, taskID int64, userID
 }
 
 // buildReportHTML 生成对比报告HTML（动态字段 HTML 转义，防报告页存储型 XSS）
-func buildReportHTML(predLog *model.SysPredLog, algorithmName string) string {
+func buildReportHTML(predLog *model.SysPredLog, modelName string) string {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	originURL := html.EscapeString(predLog.OriginURL)
 	resultURL := html.EscapeString(predLog.PredURL)
-	algorithmName = html.EscapeString(algorithmName)
-	algoID := predLog.AlgorithmID
+	modelName = html.EscapeString(modelName)
+	modelID := html.EscapeString(predLog.ModelID)
 	processTime := predLog.Time
 
 	return fmt.Sprintf(`<!DOCTYPE html>
@@ -229,7 +230,7 @@ func buildReportHTML(predLog *model.SysPredLog, algorithmName string) string {
     <div class="container">
         <div class="header">
             <h1>去雾效果对比报告</h1>
-            <div class="meta">算法：%s | 生成时间：%s</div>
+            <div class="meta">模型：%s | 生成时间：%s</div>
         </div>
         <div class="section">
             <h2>图片对比</h2>
@@ -248,12 +249,12 @@ func buildReportHTML(predLog *model.SysPredLog, algorithmName string) string {
             <h2>处理信息</h2>
             <div class="info-grid">
                 <div class="info-item">
-                    <div class="label">算法名称</div>
+                    <div class="label">模型名称</div>
                     <div class="value">%s</div>
                 </div>
                 <div class="info-item">
-                    <div class="label">算法ID</div>
-                    <div class="value">%d</div>
+                    <div class="label">模型标识</div>
+                    <div class="value">%s</div>
                 </div>
                 <div class="info-item">
                     <div class="label">处理时间</div>
@@ -270,5 +271,5 @@ func buildReportHTML(predLog *model.SysPredLog, algorithmName string) string {
         </div>
     </div>
 </body>
-</html>`, algorithmName, now, originURL, resultURL, algorithmName, algoID, processTime)
+</html>`, modelName, now, originURL, resultURL, modelName, modelID, processTime)
 }

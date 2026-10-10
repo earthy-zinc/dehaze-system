@@ -1,5 +1,13 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -18,14 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * AI 定时任务服务单测：会员门槛、数量上限、频率标识归一化、Cron 校验与下次触发时间、熔断重置。
  *
@@ -41,8 +41,10 @@ class AiScheduleServiceTest {
 
     @Mock
     private SysAiScheduleMapper scheduleMapper;
+
     @Mock
     private SysAiScheduleRunMapper scheduleRunMapper;
+
     @Mock
     private AiInsightMapper insightMapper;
 
@@ -67,7 +69,8 @@ class AiScheduleServiceTest {
     }
 
     private void assertBizError(ResultCode expected, Executable action) {
-        assertThat(assertThrows(BusinessException.class, action).getResultCode()).isEqualTo(expected);
+        assertThat(assertThrows(BusinessException.class, action).getResultCode())
+                .isEqualTo(expected);
     }
 
     @Test
@@ -102,8 +105,10 @@ class AiScheduleServiceTest {
 
         assertThat(preview.getDescription()).isEqualTo("每天 09点30分");
         assertThat(preview.getNextTimes()).hasSize(3);
-        assertThat(preview.getNextTimes().get(0)).isBefore(preview.getNextTimes().get(1));
-        assertThat(preview.getNextTimes().get(1)).isBefore(preview.getNextTimes().get(2));
+        assertThat(preview.getNextTimes().get(0))
+                .isBefore(preview.getNextTimes().get(1));
+        assertThat(preview.getNextTimes().get(1))
+                .isBefore(preview.getNextTimes().get(2));
     }
 
     @Test
@@ -216,8 +221,10 @@ class AiScheduleServiceTest {
         assertThat(service.previewNextTimes("* * * * *", 1).getDescription()).isEqualTo("每分钟");
         assertThat(service.previewNextTimes("0 * * * *", 1).getDescription()).isEqualTo("每小时整点");
         assertThat(service.previewNextTimes("15 * * * *", 1).getDescription()).isEqualTo("每小时 15分");
-        assertThat(service.previewNextTimes("weekly@mon@08:00", 1).getDescription()).contains("每周");
-        assertThat(service.previewNextTimes("monthly@1@08:00", 1).getDescription()).contains("每月");
+        assertThat(service.previewNextTimes("weekly@mon@08:00", 1).getDescription())
+                .contains("每周");
+        assertThat(service.previewNextTimes("monthly@1@08:00", 1).getDescription())
+                .contains("每月");
     }
 
     @Test
@@ -229,9 +236,12 @@ class AiScheduleServiceTest {
     @Test
     @DisplayName("列表仅返回本人任务并按启用优先排序")
     void listScopesToCurrentUser() {
-        when(scheduleMapper.selectPage(any(), any(Wrapper.class))).thenReturn(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10, 0));
+        when(scheduleMapper.selectPage(any(), any(Wrapper.class)))
+                .thenReturn(new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, 10, 0));
 
-        assertThat(service.list(USER_ID, new com.pei.dehaze.model.query.AiSchedulePageQuery()).getRecords()).isEmpty();
+        assertThat(service.list(USER_ID, new com.pei.dehaze.model.query.AiSchedulePageQuery())
+                        .getRecords())
+                .isEmpty();
         verify(scheduleRunMapper, never()).selectLatestByScheduleIds(any());
     }
 
@@ -239,7 +249,6 @@ class AiScheduleServiceTest {
     @DisplayName("每年规则可归类；无法归类的分钟列表回退为 Cron(...) 原始表达式")
     void describeFallsBackToRawExpression() {
         assertThat(service.previewNextTimes("0 0 1 1 *", 1).getDescription()).startsWith("每年");
-        assertThat(service.previewNextTimes("1,2 * * * *", 1).getDescription())
-                .isEqualTo("Cron(1,2 * * * *)");
+        assertThat(service.previewNextTimes("1,2 * * * *", 1).getDescription()).isEqualTo("Cron(1,2 * * * *)");
     }
 }

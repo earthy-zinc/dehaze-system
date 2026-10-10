@@ -3,7 +3,7 @@ import mimetypes
 import re
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,7 +63,6 @@ def _build_file_url(file_info) -> str | None:
 )
 async def upload_file(
     file: UploadFile = File(..., description="要上传的文件"),
-    modelId: int | None = Form(default=None, description="模型ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileUploadResultVO]:
     filename = _validate_file(file)

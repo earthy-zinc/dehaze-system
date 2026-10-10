@@ -10,16 +10,15 @@ import com.pei.dehaze.model.entity.SysAiMessage;
 import com.pei.dehaze.model.entity.SysAiMessageFeedback;
 import com.pei.dehaze.model.form.AiFeedbackCreateForm;
 import com.pei.dehaze.model.vo.AiFeedbackVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 消息反馈服务。
@@ -38,8 +37,8 @@ public class AiFeedbackService {
 
     private static final Set<String> LIKE_TAGS = Set.of("accurate", "detailed", "concise", "creative");
 
-    private static final Set<String> DISLIKE_TAGS = Set.of("incorrect", "irrelevant", "incomplete",
-            "too_long", "bad_citation", "harmful");
+    private static final Set<String> DISLIKE_TAGS =
+            Set.of("incorrect", "irrelevant", "incomplete", "too_long", "bad_citation", "harmful");
 
     /** 点踩标签 → 偏好语义记忆（source=feedback，is_preference=1），供记忆注入常驻生效 */
     private static final Map<String, String> DISLIKE_PREFERENCE_MEMORIES = Map.of(
@@ -88,8 +87,14 @@ public class AiFeedbackService {
         }
         SysAiMessageFeedback feedback = feedbackMapper.selectByUserAndMessageIgnoringDeleted(messageId, userId);
         if (feedback != null) {
-            feedbackMapper.revive(feedback.getId(), form.getRating(), writeTags(tags), form.getComment(),
-                    message.getConversationId(), message.getModel(), "internal");
+            feedbackMapper.revive(
+                    feedback.getId(),
+                    form.getRating(),
+                    writeTags(tags),
+                    form.getComment(),
+                    message.getConversationId(),
+                    message.getModel(),
+                    "internal");
             feedback = feedbackMapper.selectById(feedback.getId());
         } else {
             feedback = new SysAiMessageFeedback();
@@ -143,8 +148,7 @@ public class AiFeedbackService {
         SysAiMemory memory = new SysAiMemory();
         memory.setUserId(userId);
         memory.setMemoryType("semantic");
-        memory.setContent(comment != null && !comment.isBlank()
-                ? mapped + "（用户补充：" + comment.trim() + "）" : mapped);
+        memory.setContent(comment != null && !comment.isBlank() ? mapped + "（用户补充：" + comment.trim() + "）" : mapped);
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("category", "preference");
         metadata.put("is_preference", 1);

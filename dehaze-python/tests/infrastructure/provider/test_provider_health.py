@@ -78,6 +78,22 @@ async def test_state_machine_suspicious(mock_redis):
     assert await provider_health_service.get_status(mock_redis, provider_id) == "suspicious"
 
 
+async def test_snapshot_without_window_calls_has_no_rates_nor_p95(mock_redis):
+    """窗口内无调用：比率与延迟都没有样本 → None（看板据此显示「—」，而非 100%/0ms）。
+
+    延迟列表不按窗口裁剪，故窗口无调用时列表里的残留样本（如 36887ms）不能当作当前 P95。
+    """
+    await _seed_thresholds(mock_redis)
+    provider_id = 30
+    await mock_redis.lpush("ai:provider:30:latency", 36887)
+    snapshot = await provider_health_service.get_health_snapshot(mock_redis, provider_id)
+    assert snapshot["total_calls_24h"] == 0
+    assert snapshot["success_rate"] is None
+    assert snapshot["error_rate"] is None
+    assert snapshot["limit_rate"] is None
+    assert snapshot["p95_latency_ms"] is None
+
+
 async def test_circuit_open_ttl_set(mock_redis):
     await _seed_thresholds(mock_redis)
     for _ in range(5):

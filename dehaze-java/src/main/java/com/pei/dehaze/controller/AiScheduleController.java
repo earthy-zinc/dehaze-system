@@ -65,8 +65,7 @@ public class AiScheduleController {
     @GetMapping("/next-times")
     public Result<AiNextTimesVO> previewNextTimes(
             @Parameter(description = "Cron 触发规则(5位表达式或常用频率标识)") @RequestParam String cron,
-            @Parameter(description = "返回的触发时间次数(1~20)") @Min(1) @Max(20)
-            @RequestParam(defaultValue = "5") int count) {
+            @Parameter(description = "返回的触发时间次数(1~20)") @Min(1) @Max(20) @RequestParam(defaultValue = "5") int count) {
         return Result.success(scheduleService.previewNextTimes(cron, count));
     }
 
@@ -78,15 +77,17 @@ public class AiScheduleController {
 
     @Operation(summary = "更新定时任务")
     @PutMapping("/{scheduleId}")
-    public Result<AiScheduleVO> update(@Parameter(description = "任务ID") @PathVariable Long scheduleId,
-                                       @Valid @RequestBody AiScheduleUpdateForm form) {
+    public Result<AiScheduleVO> update(
+            @Parameter(description = "任务ID") @PathVariable Long scheduleId,
+            @Valid @RequestBody AiScheduleUpdateForm form) {
         return Result.success(scheduleService.update(SecurityUtils.getUserId(), scheduleId, form));
     }
 
     @Operation(summary = "启停定时任务")
     @PatchMapping("/{scheduleId}/status")
-    public Result<Void> setStatus(@Parameter(description = "任务ID") @PathVariable Long scheduleId,
-                                  @Valid @RequestBody AiScheduleStatusForm form) {
+    public Result<Void> setStatus(
+            @Parameter(description = "任务ID") @PathVariable Long scheduleId,
+            @Valid @RequestBody AiScheduleStatusForm form) {
         scheduleService.setEnabled(SecurityUtils.getUserId(), scheduleId, form.getEnabled());
         return Result.success();
     }
@@ -103,7 +104,7 @@ public class AiScheduleController {
     public PageResult<AiScheduleHistoryVO> history(
             @Parameter(description = "任务ID") @PathVariable Long scheduleId,
             @Valid @ParameterObject PageParamQuery query) {
-        return PageResult.success(scheduleService.listHistory(SecurityUtils.getUserId(), scheduleId,
-                query.getPageNum(), query.getPageSize()));
+        return PageResult.success(scheduleService.listHistory(
+                SecurityUtils.getUserId(), scheduleId, query.getPageNum(), query.getPageSize()));
     }
 }

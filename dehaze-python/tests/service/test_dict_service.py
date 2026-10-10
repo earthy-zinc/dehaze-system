@@ -166,7 +166,7 @@ async def test_delete_type_with_data_blocked_without_force(db, mock_redis):
     await dict_service.create_dict(db, mock_redis, _dict_data(created_type.code))
     with pytest.raises(BusinessException) as ei:
         await dict_type_service.delete_dict_types(db, mock_redis, [created_type.id])
-    assert ei.value.code == ResultCode.DATA_BIND_EXISTS
+    assert ei.value.code == ResultCode.DATA_REFERENCED
     assert await dict_type_service.get_dict_type_form(db, created_type.id) is not None
 
 

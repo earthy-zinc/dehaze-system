@@ -1,7 +1,12 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
 import com.pei.dehaze.service.AiA2aService;
 import com.pei.dehaze.service.client.AiForwardClient;
+import java.lang.reflect.Method;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
@@ -18,12 +23,6 @@ import org.springframework.web.context.support.AnnotationConfigWebApplicationCon
 import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-
-import java.lang.reflect.Method;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * 转发通配映射与 A 类/原生精确映射的共存性测试。
@@ -54,10 +53,12 @@ class AiProxyMappingTest {
             assertThat(handlerType(mapping, "GET", "/api/v1/messages")).isEqualTo(NotificationController.class);
             assertThat(handlerType(mapping, "POST", "/api/v1/messages/send")).isEqualTo(NotificationController.class);
             // B 类端点：通配转发入口承接
-            assertThat(handlerType(mapping, "GET", "/api/v1/ai/mcp/servers/7/health")).isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "GET", "/api/v1/ai/mcp/servers/7/health"))
+                    .isEqualTo(AiProxyController.class);
             assertThat(handlerType(mapping, "POST", "/api/v1/ai/agents/5/a2a")).isEqualTo(AiProxyController.class);
             // 发布门禁依赖 LLM，java 侧不保留原生实现，由转发入口承接
-            assertThat(handlerType(mapping, "POST", "/api/v1/ai/agents/5/publish")).isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "POST", "/api/v1/ai/agents/5/publish"))
+                    .isEqualTo(AiProxyController.class);
             assertThat(handlerType(mapping, "POST", "/a2a")).isEqualTo(AiProxyController.class);
             assertThat(handlerType(mapping, "GET", "/.well-known/agent.json")).isEqualTo(AiProxyController.class);
             // 文档版本更新/删除：原生实现不驱动 python 的 _process_document_guarded，已移除，由通配转发承接
@@ -68,14 +69,20 @@ class AiProxyMappingTest {
             assertThat(handlerType(mapping, "DELETE", "/api/v1/kb/7")).isEqualTo(AiProxyController.class);
             assertThat(handlerType(mapping, "GET", "/api/v1/kb/7/index-stats")).isEqualTo(AiProxyController.class);
             // 语音域：ASR/TTS 引擎只在 python 进程内，java 无原生实现，四类形态（JSON/multipart/
-            // 二进制响应/无尾段静态兄弟）都须由通配转发承接
+            // 二进制响应/无尾段静态兄弟）都须由通配转发承接。语音管理端（引擎注册表）已在阶段 2 退役，
+            // 但仍落在 /api/v1/** 通配范围内，其"不得转发"由 AiProxyRoutes 白名单保证（见 AiProxyRoutesTest）
             assertThat(handlerType(mapping, "POST", "/api/v1/voice/tts")).isEqualTo(AiProxyController.class);
             assertThat(handlerType(mapping, "GET", "/api/v1/voice/tts/voices")).isEqualTo(AiProxyController.class);
-            assertThat(handlerType(mapping, "GET", "/api/v1/voice/tts/audio/abc123")).isEqualTo(AiProxyController.class);
-            assertThat(handlerType(mapping, "POST", "/api/v1/voice/asr/offline")).isEqualTo(AiProxyController.class);
-            assertThat(handlerType(mapping, "GET", "/api/v1/voice/hotwords/global")).isEqualTo(AiProxyController.class);
-            assertThat(handlerType(mapping, "GET", "/api/v1/voice/providers/enabled")).isEqualTo(AiProxyController.class);
-            assertThat(handlerType(mapping, "PUT", "/api/v1/voice/providers/3/keys/5")).isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "GET", "/api/v1/voice/tts/audio/abc123"))
+                    .isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "POST", "/api/v1/voice/asr/offline"))
+                    .isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "GET", "/api/v1/voice/hotwords/global"))
+                    .isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "GET", "/api/v1/voice/service/status"))
+                    .isEqualTo(AiProxyController.class);
+            assertThat(handlerType(mapping, "DELETE", "/api/v1/voice/hotwords/9"))
+                    .isEqualTo(AiProxyController.class);
             // 挂载路径 Agent Card：java 原生实现落在 /api/v1/** 通配范围内，精确映射优先命中
             assertThat(handlerType(mapping, "GET", "/api/v1/ai/agents/5/a2a/.well-known/agent.json"))
                     .isEqualTo(AiA2aController.class);
@@ -130,7 +137,8 @@ class AiProxyMappingTest {
     /** 该 Controller 是否声明了能命中「HTTP 方法 + 具体请求路径」的映射（含变量名差异与通配） */
     private static boolean declaresMappingFor(Class<?> controller, String method, String concretePath) {
         AntPathMatcher matcher = new AntPathMatcher();
-        List<String> classPaths = patternsOf(AnnotatedElementUtils.findMergedAnnotation(controller, RequestMapping.class));
+        List<String> classPaths =
+                patternsOf(AnnotatedElementUtils.findMergedAnnotation(controller, RequestMapping.class));
         for (Method candidate : controller.getMethods()) {
             RequestMapping methodMapping = AnnotatedElementUtils.findMergedAnnotation(candidate, RequestMapping.class);
             if (methodMapping == null || !acceptsMethod(methodMapping, method)) {
@@ -157,7 +165,8 @@ class AiProxyMappingTest {
 
     private static boolean acceptsMethod(RequestMapping mapping, String method) {
         return mapping.method().length == 0
-                || List.of(mapping.method()).stream().anyMatch(candidate -> candidate.name().equals(method));
+                || List.of(mapping.method()).stream()
+                        .anyMatch(candidate -> candidate.name().equals(method));
     }
 
     private static Class<?> handlerType(RequestMappingHandlerMapping mapping, String method, String uri)

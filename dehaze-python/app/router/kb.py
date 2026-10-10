@@ -9,6 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Pa
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.result import success
 from app.database import get_db
@@ -47,7 +48,7 @@ def _filters_to_dict(f) -> dict | None:
         "tags": f.tags,
         "start_time": f.startTime,
         "end_time": f.endTime,
-        "algorithm_id": f.algorithmId,
+        "model_id": f.modelId,
         "entities": f.entities,
         "relations": f.relations,
     }
@@ -392,6 +393,8 @@ async def search_knowledge_base(
         top_k=body.topK,
         filters=_filters_to_dict(body.filters),
         enable_mmr=body.enableMMR,
+        # 显式检索：调用方正等待真实结果，用显式检索预算而非对话注入预算（超时降级会被误读为无匹配）
+        timeout_ms=settings.KB_SEARCH_QUERY_TIMEOUT_MS,
     )
     return success(result)
 
@@ -414,6 +417,8 @@ async def retrieve_test(
         knowledge_base_ids=[kb_id],
         top_k=body.topK,
         enable_mmr=body.enableMMR,
+        # 调试工具必须给出真实召回：超时降级返回的空结果会被误判为「库内无匹配」
+        timeout_ms=settings.KB_SEARCH_QUERY_TIMEOUT_MS,
     )
     return success(result)
 

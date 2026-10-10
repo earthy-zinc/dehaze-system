@@ -4,10 +4,9 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /**
  * AI 计费记录（表 sys_ai_billing，只追加不删除）。
@@ -49,6 +48,12 @@ public class SysAiBilling {
     private Integer cachedInputTokens;
 
     private Integer outputTokens;
+
+    /** 非 token 计量数量(如 asr 秒数、tts 万字符、image 张数)，token 模型为 NULL */
+    private BigDecimal quantity;
+
+    /** 非 token 计量单位(million_tokens/image/second/ten_thousand_chars/frame) */
+    private String quantityUnit;
 
     private Integer credits;
 

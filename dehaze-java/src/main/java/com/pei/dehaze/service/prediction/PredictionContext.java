@@ -1,18 +1,18 @@
 package com.pei.dehaze.service.prediction;
 
-import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysFile;
 import lombok.Builder;
 import lombok.Data;
 
 /**
- * 预测请求上下文，供拦截器读取
+ * 图像任务请求上下文，供拦截器读取
  */
 @Data
 @Builder
 public class PredictionContext {
 
-    private final SysAlgorithm algorithm;
+    /** 图像模型标识（统一模型规范 slug） */
+    private final String modelId;
 
     private final Long fileId;
 

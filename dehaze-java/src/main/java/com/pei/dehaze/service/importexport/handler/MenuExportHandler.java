@@ -11,12 +11,11 @@ import com.pei.dehaze.service.importexport.model.ExportContext;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 菜单导出处理器
@@ -49,23 +48,45 @@ public class MenuExportHandler implements ExportHandler {
     public List<ExportFieldConfig> getFieldConfigs() {
         return List.of(
                 ExportFieldConfig.builder().field("name").label("菜单名称").order(1).build(),
-                ExportFieldConfig.builder().field("parentId").label("父菜单ID").order(2).build(),
-                ExportFieldConfig.builder().field("typeLabel").label("类型").order(3).build(),
+                ExportFieldConfig.builder()
+                        .field("parentId")
+                        .label("父菜单ID")
+                        .order(2)
+                        .build(),
+                ExportFieldConfig.builder()
+                        .field("typeLabel")
+                        .label("类型")
+                        .order(3)
+                        .build(),
                 ExportFieldConfig.builder().field("path").label("路由路径").order(4).build(),
-                ExportFieldConfig.builder().field("component").label("组件路径").order(5).build(),
+                ExportFieldConfig.builder()
+                        .field("component")
+                        .label("组件路径")
+                        .order(5)
+                        .build(),
                 ExportFieldConfig.builder().field("perm").label("权限标识").order(6).build(),
-                ExportFieldConfig.builder().field("visible").label("是否可见").order(7).build(),
+                ExportFieldConfig.builder()
+                        .field("visible")
+                        .label("是否可见")
+                        .order(7)
+                        .build(),
                 ExportFieldConfig.builder().field("sort").label("排序").order(8).build(),
                 ExportFieldConfig.builder().field("icon").label("图标").order(9).build(),
-                ExportFieldConfig.builder().field("redirect").label("跳转路径").order(10).build()
-        );
+                ExportFieldConfig.builder()
+                        .field("redirect")
+                        .label("跳转路径")
+                        .order(10)
+                        .build());
     }
 
     @Override
     public ExportDataProvider getDataProvider(ExportContext ctx) {
-        List<ExportFieldConfig> fields = ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
-                ? getFieldConfigs()
-                : getFieldConfigs().stream().filter(f -> ctx.getSelectedFields().contains(f.getField())).toList();
+        List<ExportFieldConfig> fields =
+                ctx.getSelectedFields() == null || ctx.getSelectedFields().isEmpty()
+                        ? getFieldConfigs()
+                        : getFieldConfigs().stream()
+                                .filter(f -> ctx.getSelectedFields().contains(f.getField()))
+                                .toList();
 
         return new ExportDataProvider() {
             private List<MenuVO> flattened;
@@ -151,9 +172,10 @@ public class MenuExportHandler implements ExportHandler {
         return switch (f.getField()) {
             case "name" -> nullToEmpty(vo.getName());
             case "parentId" -> vo.getParentId() == null ? "" : vo.getParentId();
-            case "typeLabel" -> vo.getType() == null
-                    ? ""
-                    : IBaseEnum.getLabelByValue(vo.getType().getValue(), MenuTypeEnum.class);
+            case "typeLabel" ->
+                vo.getType() == null
+                        ? ""
+                        : IBaseEnum.getLabelByValue(vo.getType().getValue(), MenuTypeEnum.class);
             case "path" -> nullToEmpty(vo.getPath());
             case "component" -> nullToEmpty(vo.getComponent());
             case "perm" -> nullToEmpty(vo.getPerm());

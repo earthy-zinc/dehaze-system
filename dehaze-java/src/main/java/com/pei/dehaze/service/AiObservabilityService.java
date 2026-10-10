@@ -37,10 +37,6 @@ import com.pei.dehaze.model.vo.AiObservabilityTraceDetailVO;
 import com.pei.dehaze.model.vo.AiObservabilityTraceItemVO;
 import com.pei.dehaze.model.vo.AiObservabilityTrendVO;
 import com.pei.dehaze.security.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +53,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 /**
  * AI 可观测性查询服务（F-M08-013）：异常总览、过程链检索/详情/导出、会话审计时间线、
@@ -75,8 +74,8 @@ public class AiObservabilityService {
     private static final String AUDIT_PERMISSION = "ai:conversation:audit";
 
     /** 采集链路写入的配额拒绝类 error_type（中断类型 quota / 计费拒绝收尾路径） */
-    private static final List<String> QUOTA_REJECT_ERROR_TYPES = List.of(
-            "quota", "quota_exceeded", "precharge_blocked", "arrears", "balance_exceeded");
+    private static final List<String> QUOTA_REJECT_ERROR_TYPES =
+            List.of("quota", "quota_exceeded", "precharge_blocked", "arrears", "balance_exceeded");
 
     /** 高风险调用：推理步数超阈值（防循环观测） */
     private static final int HIGH_RISK_STEP_THRESHOLD = 40;
@@ -84,8 +83,8 @@ public class AiObservabilityService {
     private static final Set<String> CAPABILITIES = Set.of("memory", "kb", "tools");
 
     /** 轮内事件同类同刻的业务优先级（input→context→system_event→llm_call→tool_exec→billing） */
-    private static final Map<String, Integer> EVENT_PRIORITY = Map.of(
-            "input", 0, "context", 1, "system_event", 2, "llm_call", 3, "tool_exec", 4, "billing", 5);
+    private static final Map<String, Integer> EVENT_PRIORITY =
+            Map.of("input", 0, "context", 1, "system_event", 2, "llm_call", 3, "tool_exec", 4, "billing", 5);
 
     private static final DateTimeFormatter CSV_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -149,7 +148,8 @@ public class AiObservabilityService {
      */
     public AiObservabilityTraceDetailVO getTrace(String traceId) {
         SysAiTrace trace = traceMapper.selectOne(new LambdaQueryWrapper<SysAiTrace>()
-                .eq(SysAiTrace::getTraceId, traceId).last("LIMIT 1"));
+                .eq(SysAiTrace::getTraceId, traceId)
+                .last("LIMIT 1"));
         if (trace == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "过程链不存在");
         }
@@ -177,8 +177,10 @@ public class AiObservabilityService {
     }
 
     public AiObservabilityTimelineVO getTimeline(Long conversationId, String include) {
-        return buildTimeline(conversationId, isAudit(), include == null
-                || Arrays.stream(include.split(",")).anyMatch("raw"::equals));
+        return buildTimeline(
+                conversationId,
+                isAudit(),
+                include == null || Arrays.stream(include.split(",")).anyMatch("raw"::equals));
     }
 
     /** 会话时间线导出：审计口径全量（含 raw 原始报文），camelCase JSON 整体下载 */
@@ -201,7 +203,8 @@ public class AiObservabilityService {
         long total = observabilityMapper.countCostGroups(dimension, start, end);
         long offset = (long) (query.getPageNum() - 1) * query.getPageSize();
         List<AiObservabilityCostsVO.Item> items = new ArrayList<>();
-        for (AiTraceCostRead row : observabilityMapper.selectCostRows(dimension, start, end, offset, query.getPageSize())) {
+        for (AiTraceCostRead row :
+                observabilityMapper.selectCostRows(dimension, start, end, offset, query.getPageSize())) {
             AiObservabilityCostsVO.Item item = new AiObservabilityCostsVO.Item();
             if ("model".equals(dimension)) {
                 item.setModel(row.getDimension());
@@ -241,8 +244,8 @@ public class AiObservabilityService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "dimension 仅支持 model/agent");
         }
         List<AiObservabilityTrendVO> items = new ArrayList<>();
-        for (AiTraceTrendRead row : observabilityMapper.selectTrends(dimension,
-                AiDateTimeUtils.parse(query.getStartTime()), AiDateTimeUtils.parse(query.getEndTime()))) {
+        for (AiTraceTrendRead row : observabilityMapper.selectTrends(
+                dimension, AiDateTimeUtils.parse(query.getStartTime()), AiDateTimeUtils.parse(query.getEndTime()))) {
             AiObservabilityTrendVO item = new AiObservabilityTrendVO();
             if ("model".equals(dimension)) {
                 item.setModel(row.getDimension());
@@ -254,9 +257,12 @@ public class AiObservabilityService {
             item.setSuccessCount(row.getSuccessCount());
             long callCount = row.getCallCount() == null ? 0 : row.getCallCount();
             long successCount = row.getSuccessCount() == null ? 0 : row.getSuccessCount();
-            item.setSuccessRate(callCount == 0 ? 0.0
-                    : BigDecimal.valueOf(successCount * 100.0)
-                            .divide(BigDecimal.valueOf(callCount), 2, RoundingMode.HALF_UP).doubleValue());
+            item.setSuccessRate(
+                    callCount == 0
+                            ? 0.0
+                            : BigDecimal.valueOf(successCount * 100.0)
+                                    .divide(BigDecimal.valueOf(callCount), 2, RoundingMode.HALF_UP)
+                                    .doubleValue());
             item.setAvgFirstTokenMs(scale2(row.getAvgFirstTokenMs()));
             item.setAvgDurationMs(scale2(row.getAvgDurationMs()));
             items.add(item);
@@ -270,21 +276,50 @@ public class AiObservabilityService {
         LocalDateTime end = AiDateTimeUtils.parse(query.getEndTime());
         long count = observabilityMapper.countTraces(query, start, end);
         if (count > TaskConstants.MAX_ROWS) {
-            throw new BusinessException(ResultCode.EXPORT_ROWS_EXCEED_LIMIT,
-                    "导出行数 " + count + " 超出限制 " + TaskConstants.MAX_ROWS);
+            throw new BusinessException(
+                    ResultCode.EXPORT_ROWS_EXCEED_LIMIT, "导出行数 " + count + " 超出限制 " + TaskConstants.MAX_ROWS);
         }
-        StringBuilder csv = new StringBuilder(String.join(",",
-                "trace_id", "conversation_id", "message_id", "agent_code", "model", "status", "error_type",
-                "duration_ms", "first_token_ms", "llm_call_count", "total_tokens", "prompt_tokens",
-                "completion_tokens", "cached_tokens", "step_count", "create_time")).append('\n');
+        StringBuilder csv = new StringBuilder(String.join(
+                        ",",
+                        "trace_id",
+                        "conversation_id",
+                        "message_id",
+                        "agent_code",
+                        "model",
+                        "status",
+                        "error_type",
+                        "duration_ms",
+                        "first_token_ms",
+                        "llm_call_count",
+                        "total_tokens",
+                        "prompt_tokens",
+                        "completion_tokens",
+                        "cached_tokens",
+                        "step_count",
+                        "create_time"))
+                .append('\n');
         for (SysAiTrace trace : observabilityMapper.selectTraces(query, start, end)) {
-            csv.append(String.join(",",
-                    text(trace.getTraceId()), text(trace.getConversationId()), text(trace.getMessageId()),
-                    text(trace.getAgentCode()), text(trace.getModel()), text(trace.getStatus()),
-                    text(trace.getErrorType()), text(trace.getDurationMs()), text(trace.getFirstTokenMs()),
-                    text(trace.getLlmCallCount()), text(trace.getTotalTokens()), text(trace.getPromptTokens()),
-                    text(trace.getCompletionTokens()), text(trace.getCachedTokens()), text(trace.getStepCount()),
-                    trace.getCreateTime() == null ? "" : trace.getCreateTime().format(CSV_TIME))).append('\n');
+            csv.append(String.join(
+                            ",",
+                            text(trace.getTraceId()),
+                            text(trace.getConversationId()),
+                            text(trace.getMessageId()),
+                            text(trace.getAgentCode()),
+                            text(trace.getModel()),
+                            text(trace.getStatus()),
+                            text(trace.getErrorType()),
+                            text(trace.getDurationMs()),
+                            text(trace.getFirstTokenMs()),
+                            text(trace.getLlmCallCount()),
+                            text(trace.getTotalTokens()),
+                            text(trace.getPromptTokens()),
+                            text(trace.getCompletionTokens()),
+                            text(trace.getCachedTokens()),
+                            text(trace.getStepCount()),
+                            trace.getCreateTime() == null
+                                    ? ""
+                                    : trace.getCreateTime().format(CSV_TIME)))
+                    .append('\n');
         }
         byte[] payload = csv.toString().getBytes(StandardCharsets.UTF_8);
         byte[] withBom = new byte[payload.length + 3];
@@ -312,7 +347,8 @@ public class AiObservabilityService {
 
         // 沿当前激活分支链取全量消息（分支对话时间序与链序可能不一致，以链为准）
         Long chainStart = conv.getCurrentBranchMessageId() != null
-                ? conv.getCurrentBranchMessageId() : messageMapper.getLastMessageId(conversationId);
+                ? conv.getCurrentBranchMessageId()
+                : messageMapper.getLastMessageId(conversationId);
         List<SysAiMessage> chain = chainByTail(conversationId, chainStart);
         List<Round> rounds = splitRounds(chain);
         List<SysAiTrace> traces = traceMapper.selectList(new LambdaQueryWrapper<SysAiTrace>()
@@ -321,9 +357,13 @@ public class AiObservabilityService {
                 .orderByAsc(SysAiTrace::getId));
         attachTraces(rounds, traces);
 
-        Map<String, List<SysAiLlmCall>> callsMap = callsByTraces(traces.stream().map(SysAiTrace::getTraceId).toList());
-        List<Long> assistantIds = rounds.stream().map(round -> round.assistant).filter(Objects::nonNull)
-                .map(SysAiMessage::getId).toList();
+        Map<String, List<SysAiLlmCall>> callsMap =
+                callsByTraces(traces.stream().map(SysAiTrace::getTraceId).toList());
+        List<Long> assistantIds = rounds.stream()
+                .map(round -> round.assistant)
+                .filter(Objects::nonNull)
+                .map(SysAiMessage::getId)
+                .toList();
         Map<Long, List<SysAiAgentThought>> thoughtsMap = thoughtsByMessages(assistantIds);
 
         Map<String, List<SysAiBilling>> billingByRequest = new HashMap<>();
@@ -332,9 +372,13 @@ public class AiObservabilityService {
                 .eq(SysAiBilling::getConversationId, conversationId)
                 .orderByAsc(SysAiBilling::getId))) {
             if (billing.getRequestId() != null && !billing.getRequestId().isBlank()) {
-                billingByRequest.computeIfAbsent(billing.getRequestId(), k -> new ArrayList<>()).add(billing);
+                billingByRequest
+                        .computeIfAbsent(billing.getRequestId(), k -> new ArrayList<>())
+                        .add(billing);
             } else {
-                billingByMessage.computeIfAbsent(billing.getMessageId(), k -> new ArrayList<>()).add(billing);
+                billingByMessage
+                        .computeIfAbsent(billing.getMessageId(), k -> new ArrayList<>())
+                        .add(billing);
             }
         }
 
@@ -357,10 +401,12 @@ public class AiObservabilityService {
                 item.setModel(trace.getModel());
                 item.setDurationMs(trace.getDurationMs());
                 item.setCreateTime(trace.getCreateTime());
-                item.setEvents(traceEvents(trace,
+                item.setEvents(traceEvents(
+                        trace,
                         callsMap.getOrDefault(trace.getTraceId(), List.of()),
                         isPrimary && round.assistant != null
-                                ? thoughtsMap.getOrDefault(round.assistant.getId(), List.of()) : List.of(),
+                                ? thoughtsMap.getOrDefault(round.assistant.getId(), List.of())
+                                : List.of(),
                         billing == null ? List.of() : billing,
                         isPrimary ? round.user : null,
                         includeRaw));
@@ -386,8 +432,7 @@ public class AiObservabilityService {
         return vo;
     }
 
-    private record Round(SysAiMessage user, SysAiMessage assistant, List<SysAiTrace> traces) {
-    }
+    private record Round(SysAiMessage user, SysAiMessage assistant, List<SysAiTrace> traces) {}
 
     /** 消息链切轮次：user 开新轮，assistant 归属当前轮（链首 assistant 单独成轮） */
     private List<Round> splitRounds(List<SysAiMessage> chain) {
@@ -414,8 +459,8 @@ public class AiObservabilityService {
             if (trace.getMessageId() != null) {
                 for (Round round : rounds) {
                     if (Objects.equals(round.user == null ? null : round.user.getId(), trace.getMessageId())
-                            || Objects.equals(round.assistant == null ? null : round.assistant.getId(),
-                            trace.getMessageId())) {
+                            || Objects.equals(
+                                    round.assistant == null ? null : round.assistant.getId(), trace.getMessageId())) {
                         target = round;
                         break;
                     }
@@ -440,20 +485,24 @@ public class AiObservabilityService {
             }
         }
         for (Round round : rounds) {
-            round.traces().sort(Comparator
-                    .comparing((SysAiTrace t) -> !"conversation".equals(t.getTraceType()))
-                    .thenComparing(SysAiTrace::getCreateTime)
-                    .thenComparing(SysAiTrace::getId));
+            round.traces()
+                    .sort(Comparator.comparing((SysAiTrace t) -> !"conversation".equals(t.getTraceType()))
+                            .thenComparing(SysAiTrace::getCreateTime)
+                            .thenComparing(SysAiTrace::getId));
         }
     }
 
-    private List<AiObservabilityTimelineVO.Event> traceEvents(SysAiTrace trace, List<SysAiLlmCall> calls,
-                                                              List<SysAiAgentThought> thoughts,
-                                                              List<SysAiBilling> billingRows,
-                                                              SysAiMessage userMessage, boolean includeRaw) {
+    private List<AiObservabilityTimelineVO.Event> traceEvents(
+            SysAiTrace trace,
+            List<SysAiLlmCall> calls,
+            List<SysAiAgentThought> thoughts,
+            List<SysAiBilling> billingRows,
+            SysAiMessage userMessage,
+            boolean includeRaw) {
         List<AiObservabilityTimelineVO.Event> events = new ArrayList<>();
         Object snapshot = readJson(trace.getContextSnapshot());
-        LocalDateTime approxStart = trace.getDurationMs() == null ? trace.getCreateTime()
+        LocalDateTime approxStart = trace.getDurationMs() == null
+                ? trace.getCreateTime()
                 : trace.getCreateTime().minusNanos(trace.getDurationMs() * 1_000_000L);
         AiObservabilityTimelineVO.Event contextEvent = new AiObservabilityTimelineVO.Event();
         contextEvent.setKind("context");
@@ -528,8 +577,7 @@ public class AiObservabilityService {
             event.setMessage(toTimelineMessage(userMessage));
             events.add(event);
         }
-        events.sort(Comparator
-                .comparing((AiObservabilityTimelineVO.Event e) -> e.getTs() == null)
+        events.sort(Comparator.comparing((AiObservabilityTimelineVO.Event e) -> e.getTs() == null)
                 .thenComparing(e -> e.getTs() == null ? LocalDateTime.MIN : e.getTs())
                 .thenComparing(e -> EVENT_PRIORITY.getOrDefault(e.getKind(), 9))
                 .thenComparing(e -> e.getSeq() == null ? 0 : e.getSeq())
@@ -625,7 +673,8 @@ public class AiObservabilityService {
         for (SysAiAgentThought thought : thoughtMapper.selectList(new LambdaQueryWrapper<SysAiAgentThought>()
                 .in(SysAiAgentThought::getMessageId, messageIds)
                 .orderByAsc(SysAiAgentThought::getPosition))) {
-            grouped.computeIfAbsent(thought.getMessageId(), k -> new ArrayList<>()).add(thought);
+            grouped.computeIfAbsent(thought.getMessageId(), k -> new ArrayList<>())
+                    .add(thought);
         }
         return grouped;
     }
@@ -688,11 +737,14 @@ public class AiObservabilityService {
             return Map.of();
         }
         Map<Long, String> titles = new HashMap<>();
-        for (SysAiConversation conversation : conversationMapper.selectList(
-                new LambdaQueryWrapper<SysAiConversation>()
-                        .select(SysAiConversation::getId, SysAiConversation::getTitle)
-                        .in(SysAiConversation::getId,
-                                traces.stream().map(SysAiTrace::getConversationId).distinct().toList()))) {
+        for (SysAiConversation conversation : conversationMapper.selectList(new LambdaQueryWrapper<SysAiConversation>()
+                .select(SysAiConversation::getId, SysAiConversation::getTitle)
+                .in(
+                        SysAiConversation::getId,
+                        traces.stream()
+                                .map(SysAiTrace::getConversationId)
+                                .distinct()
+                                .toList()))) {
             titles.put(conversation.getId(), conversation.getTitle());
         }
         return titles;

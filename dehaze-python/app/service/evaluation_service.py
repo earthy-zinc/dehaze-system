@@ -1,8 +1,8 @@
 """
 评估服务 —— 编排去雾效果评估流程（异步任务模式）
 
-对比预测结果与参考图像，计算 PSNR/SSIM/LPIPS/NIQE/Entropy 等多维指标，
-并基于阈值判定是否合格。
+对比预测结果与参考图像，由 dehaze-modal 计算 PSNR/SSIM/LPIPS/NIQE 等多维指标，
+编排侧基于阈值判定是否合格。
 
 状态机：processing → completed/failed
 POST 立即返回 logId + status=processing，asyncio.create_task 后台执行
@@ -16,8 +16,10 @@ import time
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from algorithm.metrics import calculate as calculate_metrics
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.database import get_db_session
+from app.infrastructure.modal import engine_client
 from app.models.entity.sys_log import SysEvalLog
 from app.models.enum.log_status import LogStatus
 from app.repository.pred_eval_log_repository import eval_log_repository
@@ -27,12 +29,22 @@ from app.utils.file import calculate_bytes_md5
 
 logger = logging.getLogger(__name__)
 
+# 指标计算上限（秒）：编排侧新增（设计 §3.4），引擎侧无自限、逐指标隔离失败。
+# 引擎侧（dehaze-modal）首次评估需加载 pyiqa 指标模型，取值需覆盖该冷启动。
+METRICS_TIMEOUT_SECONDS = 120
+
 QUALIFIED_THRESHOLDS = {
     "psnr": 30.0,
     "ssim": 0.8,
     "lpips": 0.3,
     "niqe": 5.0,
 }
+
+
+async def _metric_catalog() -> list[dict]:
+    """指标集目录：由 dehaze-modal 能力发现下发（指标名、展示标签、是否需要参考图）"""
+    items = await engine_client.describe_models()
+    return [item for item in items if item["type"] == "metrics"]
 
 
 def _is_qualified(metrics: dict[str, float]) -> bool:
@@ -73,11 +85,10 @@ class EvaluationService:
 
     async def evaluate(
         self,
-        algorithm_id: int,
+        model_id: str,
         pred_url: str,
         gt_url: str,
         user_id: int | None = None,
-        skip_quota_check: bool = False,
         conv_id: int | None = None,
         msg_id: int | None = None,
     ) -> dict:
@@ -85,47 +96,29 @@ class EvaluationService:
         提交效果评估任务（异步）
 
         流程：
-        1. 权益校验 + Redis 原子扣减评估配额
-        2. 校验算法、并行下载 pred/gt 图片、计算 MD5
-        3. 创建 processing 日志
-        4. 提交 asyncio.create_task 后台执行
-        5. 立即返回 {logId, status: "processing"}
+        1. 校验算法、并行下载 pred/gt 图片、计算 MD5
+        2. 创建 processing 日志
+        3. 提交 asyncio.create_task 后台执行
+        4. 立即返回 {logId, status: "processing"}
+
+        评估为平台免费能力，不计费（设计 §9.1）。
         """
-        logger.debug("评估请求: algorithmId=%s", algorithm_id)
+        logger.debug("评估请求: modelId=%s", model_id)
 
-        from app.service.member.quota_service import member_quota_service
+        # 1. 校验算法存在
+        await prediction_service.get_model(model_id)
 
-        # 扣减/归还主体：有用户且未跳过配额校验时才参与。用收窄后的本地变量承载，
-        # 使判定与使用共用同一条件，避免叠加冗余的 user_id is not None 来消 pyright 告警。
-        quota_user_id = user_id if not skip_quota_check else None
-        if quota_user_id is not None:
-            async with get_db_session() as db:
-                await member_quota_service.check_and_deduct_quota(db, quota_user_id, "evaluate")
+        # 2. 并行下载预测图和参考图
+        pred_bytes, gt_bytes = await asyncio.gather(
+            fetch_image(pred_url),
+            fetch_image(gt_url),
+        )
 
-        # 1-3. 校验算法、下载图片、计算 MD5（此阶段失败日志尚未创建，需归还配额）
-        try:
-            # 1. 校验算法存在
-            await prediction_service.get_algorithm(algorithm_id)
-
-            # 2. 并行下载预测图和参考图
-            pred_bytes, gt_bytes = await asyncio.gather(
-                fetch_image(pred_url),
-                fetch_image(gt_url),
-            )
-
-            # 3. 计算图片 MD5（CPU 密集型，移至线程池）
-            pred_md5, gt_md5 = await asyncio.gather(
-                asyncio.to_thread(calculate_bytes_md5, pred_bytes),
-                asyncio.to_thread(calculate_bytes_md5, gt_bytes),
-            )
-        except Exception:
-            if quota_user_id is not None:
-                try:
-                    async with get_db_session() as db:
-                        await member_quota_service.restore_quota(db, quota_user_id, "evaluate")
-                except Exception:
-                    logger.warning("评估前置失败归还配额异常: userId=%s", user_id, exc_info=True)
-            raise
+        # 3. 计算图片 MD5（CPU 密集型，移至线程池）
+        pred_md5, gt_md5 = await asyncio.gather(
+            asyncio.to_thread(calculate_bytes_md5, pred_bytes),
+            asyncio.to_thread(calculate_bytes_md5, gt_bytes),
+        )
 
         # 4. 创建 processing 日志
         from app.models.base import set_current_user_id
@@ -135,7 +128,7 @@ class EvaluationService:
             async with get_db_session() as db:
                 log = await eval_log_repository.create_pending_log(
                     db=db,
-                    algorithm_id=algorithm_id,
+                    model_id=model_id,
                     pred_md5=pred_md5,
                     pred_url=pred_url,
                     gt_md5=gt_md5,
@@ -150,7 +143,7 @@ class EvaluationService:
         background_task = loop.create_task(
             self._execute_async(
                 log_id=log_id,
-                algorithm_id=algorithm_id,
+                model_id=model_id,
                 pred_bytes=pred_bytes,
                 gt_bytes=gt_bytes,
                 user_id=user_id,
@@ -167,7 +160,7 @@ class EvaluationService:
                 task_id=f"eval:{log_id}",
                 task=background_task,
                 task_type="evaluation",
-                metadata={"log_id": log_id, "algorithm_id": algorithm_id, "user_id": user_id},
+                metadata={"log_id": log_id, "model_id": model_id, "user_id": user_id},
             )
         except Exception as e:
             logger.warning("评估任务追踪注册失败（不影响执行）: %s", e)
@@ -182,13 +175,13 @@ class EvaluationService:
         self,
         db: AsyncSession,
         user_id: int,
-        algorithm_id: int | None = None,
+        model_id: str | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:
         """分页查询当前用户的评估日志（按用户隔离）"""
         return await eval_log_repository.get_paginated(
-            db, user_id=user_id, algorithm_id=algorithm_id, page=page, size=size
+            db, user_id=user_id, model_id=model_id, page=page, size=size
         )
 
     async def get_log(
@@ -197,9 +190,6 @@ class EvaluationService:
         log_id: int,
     ) -> SysEvalLog:
         """按 ID 取评估日志，不存在抛 A0401"""
-        from app.core.code import ResultCode
-        from app.core.exceptions import BusinessException
-
         log = await eval_log_repository.get_by_id(db, log_id)
         if not log:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在")
@@ -209,7 +199,7 @@ class EvaluationService:
         self,
         db: AsyncSession,
         user_id: int,
-        algorithm_id: int | None = None,
+        model_id: str | None = None,
         page: int = 1,
         size: int = 10,
     ) -> tuple[list[SysEvalLog], int]:
@@ -222,8 +212,8 @@ class EvaluationService:
             SysEvalLog.status == LogStatus.COMPLETED.value,
             SysEvalLog.task_type == "evaluation",
         )
-        if algorithm_id is not None:
-            stmt = stmt.where(SysEvalLog.algorithm_id == algorithm_id)
+        if model_id is not None:
+            stmt = stmt.where(SysEvalLog.model_id == model_id)
         stmt = stmt.order_by(desc(SysEvalLog.id))
 
         count_stmt = select(func.count()).select_from(stmt.subquery())
@@ -236,7 +226,7 @@ class EvaluationService:
     async def _execute_async(
         self,
         log_id: int,
-        algorithm_id: int,
+        model_id: str,
         pred_bytes,
         gt_bytes,
         user_id: int | None = None,
@@ -249,18 +239,34 @@ class EvaluationService:
         set_current_user_id(user_id)
         start_time = time.time()
         try:
-            # 1. 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
-            pred_bytes.seek(0)
-            gt_bytes.seek(0)
-            metrics_list = await asyncio.to_thread(calculate_metrics, pred_bytes, gt_bytes)
-            metrics = {m["label"]: m["value"] for m in metrics_list}
+            # 1. 调用 dehaze-modal 计算指标：指标名与展示标签由能力发现下发，
+            #    落库 key 用 label（跨端契约：前端雷达图按 PSNR/SSIM 等标签取值）
+            catalog = await _metric_catalog()
+            if not catalog:
+                raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "指标集为空，无法评估")
+            labels = {item["id"]: item["capabilities"]["label"] for item in catalog}
+            payload = await engine_client.compute_metrics(
+                model_id="pyiqa",  # 指标集标识，仅用于引擎侧日志与指标维度
+                names=list(labels),
+                image=pred_bytes,
+                reference=gt_bytes
+                if any(item["capabilities"]["requires_clear"] for item in catalog)
+                else None,
+                timeout=METRICS_TIMEOUT_SECONDS,
+            )
+            if payload["failed"]:
+                # 逐指标隔离失败：部分失败仍落已完成项（设计 §6.2）
+                logger.warning("评估指标部分失败: logId=%s, failed=%s", log_id, payload["failed"])
+            metrics = {labels[name]: value for name, value in payload["metrics"].items()}
+            if not metrics:
+                raise BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR, "评估指标计算全部失败")
 
             elapsed_ms = int((time.time() - start_time) * 1000)
             qualified = _is_qualified(metrics)
             logger.info(
-                "异步评估完成: logId=%s, algorithmId=%s, time=%sms, qualified=%s, metrics=%s",
+                "异步评估完成: logId=%s, modelId=%s, time=%sms, qualified=%s, metrics=%s",
                 log_id,
-                algorithm_id,
+                model_id,
                 elapsed_ms,
                 qualified,
                 metrics,
@@ -293,9 +299,9 @@ class EvaluationService:
             elapsed_ms = int((time.time() - start_time) * 1000)
             error_msg = str(e)
             logger.error(
-                "异步评估失败: logId=%s, algorithmId=%s, error=%s",
+                "异步评估失败: logId=%s, modelId=%s, error=%s",
                 log_id,
-                algorithm_id,
+                model_id,
                 error_msg,
                 exc_info=True,
             )
@@ -308,10 +314,6 @@ class EvaluationService:
                         error_message=error_msg,
                         time_ms=elapsed_ms,
                     )
-                    if user_id is not None:
-                        from app.service.member.quota_service import member_quota_service
-
-                        await member_quota_service.restore_quota(db, user_id, "evaluate")
             except Exception as update_err:
                 logger.error(
                     "更新评估日志失败状态失败: logId=%s, error=%s",

@@ -24,5 +24,4 @@ public class AiConversationBatchForm {
 
     @Schema(description = "批量删除二次确认标记")
     private Boolean confirm;
-
 }

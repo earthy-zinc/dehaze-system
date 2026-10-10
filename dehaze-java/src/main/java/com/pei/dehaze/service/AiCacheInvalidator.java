@@ -1,13 +1,12 @@
 package com.pei.dehaze.service;
 
 import cn.hutool.json.JSONObject;
+import java.util.Arrays;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.util.Arrays;
-import java.util.UUID;
 
 /**
  * AI 域缓存失效器。
@@ -34,7 +33,8 @@ public class AiCacheInvalidator {
      * Agent 更新/启停/删除/关联变更后的缓存失效（事务提交后执行）
      */
     public void evictAgentCaches(String agentCode, Long agentId) {
-        evict("ai:agent:" + agentCode,
+        evict(
+                "ai:agent:" + agentCode,
                 "ai:agent:" + agentId + ":skills",
                 "ai:agent:" + agentId + ":mcp",
                 "ai:agent:" + agentId + ":subagents",

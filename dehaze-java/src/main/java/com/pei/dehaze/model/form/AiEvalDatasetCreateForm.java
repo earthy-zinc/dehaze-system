@@ -28,5 +28,4 @@ public class AiEvalDatasetCreateForm {
     @NotBlank(message = "评测集类型不能为空")
     @Schema(description = "评测集类型(dev/regression/heldout)")
     private String datasetType;
-
 }

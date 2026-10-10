@@ -18,11 +18,8 @@ var traceHeaders = []string{"X-Trace-ID", "traceparent", "sw8"}
 func CorsByRules() gin.HandlerFunc {
 	cfg := config.GetConfig()
 
-	// 构建允许的 origins 列表
-	allowOrigins := make([]string, 0, len(cfg.Cors.Whitelist))
-	for _, w := range cfg.Cors.Whitelist {
-		allowOrigins = append(allowOrigins, w.AllowOrigin)
-	}
+	// 允许的 origins 列表（逗号分隔，由 CORS_ALLOWED_ORIGINS 注入）
+	allowOrigins := splitAndTrim(cfg.Cors.AllowedOrigins)
 
 	if len(allowOrigins) == 0 {
 		// 白名单为空：拒绝所有跨域请求
@@ -31,14 +28,12 @@ func CorsByRules() gin.HandlerFunc {
 		}
 	}
 
-	// 获取第一个白名单配置作为默认 headers/methods 配置
-	first := cfg.Cors.Whitelist[0]
 	corsConfig := cors.Config{
 		AllowOrigins:     allowOrigins,
-		AllowMethods:     splitAndTrim(first.AllowMethods),
-		AllowHeaders:     ensureHeaders(splitAndTrim(first.AllowHeaders), traceHeaders),
-		ExposeHeaders:    ensureHeaders(splitAndTrim(first.ExposeHeaders), traceHeaders),
-		AllowCredentials: first.AllowCredentials,
+		AllowMethods:     splitAndTrim(cfg.Cors.AllowMethods),
+		AllowHeaders:     ensureHeaders(splitAndTrim(cfg.Cors.AllowHeaders), traceHeaders),
+		ExposeHeaders:    ensureHeaders(splitAndTrim(cfg.Cors.ExposeHeaders), traceHeaders),
+		AllowCredentials: cfg.Cors.AllowCredentials,
 		MaxAge:           12 * time.Hour,
 	}
 

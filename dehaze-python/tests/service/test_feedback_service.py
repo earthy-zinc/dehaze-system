@@ -23,7 +23,7 @@ def _fake_rating(**overrides) -> SysRating:
     base: dict[str, Any] = {
         "id": 1,
         "pred_log_id": 100,
-        "algorithm_id": 1,
+        "model_id": "aecrnet",
         "user_id": 10,
         "rating": 4,
         "comment": "不错",
@@ -77,7 +77,7 @@ class TestGetRatingByPrediction:
             "username": "user10",
             "nickname": "昵称",
             "avatar": "http://x/a.png",
-            "algorithm_name": "去雾算法",
+            "model_name": "AECR-NET",
         }
         monkeypatch.setattr(
             feedback_service, "rating_repository", _FakeRatingRepo(visible=rating, detail=detail)
@@ -92,7 +92,7 @@ class TestGetRatingByPrediction:
         assert result["username"] == exp_username
         assert result["userAvatar"] == exp_avatar
         assert result["isAnonymous"] == is_anonymous
-        assert result["algorithmId"] == 1
+        assert result["modelId"] == "aecrnet"
         assert result["rating"] == 4
 
     async def test_other_user_rating_rejected(self, monkeypatch):
@@ -116,14 +116,14 @@ class TestListPagedRatingsAnonymize:
                 "username": "u1",
                 "nickname": "n1",
                 "avatar": "a1",
-                "algorithm_name": "algo",
+                "model_name": "AECR-NET",
             },
             {
                 "rating": normal,
                 "username": "u2",
                 "nickname": "n2",
                 "avatar": "a2",
-                "algorithm_name": "algo",
+                "model_name": "AECR-NET",
             },
         ]
         monkeypatch.setattr(
@@ -303,7 +303,7 @@ class TestRatingGrowthDictDriven:
         from app.repository.member_repository import member_repository
 
         await member_repository.get_or_init_member(db, user_id)
-        rating = SysRating(id=9001, algorithm_id=1, user_id=user_id)
+        rating = SysRating(id=9001, model_id="aecrnet", user_id=user_id)
         await feedback_service._award_rating_growth(db, redis, user_id, rating.id)
         return rating
 

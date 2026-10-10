@@ -42,6 +42,11 @@ func LoadTestConfig(t *testing.T) *config.AppConfig {
 			loadConfigErr = fmt.Errorf("读取测试配置 (%s) 失败: %w", configPath, err)
 			return
 		}
+		// config.test.yaml 用 ${DEHAZE_TEST_DB} 占位，而 os.ExpandEnv 不支持默认值：
+		// 未指定时补默认库名，与 TestDBName() 同源
+		if os.Getenv("DEHAZE_TEST_DB") == "" {
+			_ = os.Setenv("DEHAZE_TEST_DB", TestDBName())
+		}
 		v := viper.New()
 		v.SetConfigType("yaml")
 		if err := v.ReadConfig(strings.NewReader(os.ExpandEnv(string(raw)))); err != nil {
@@ -65,4 +70,3 @@ func LoadTestConfig(t *testing.T) *config.AppConfig {
 	}
 	return testConfig
 }
-

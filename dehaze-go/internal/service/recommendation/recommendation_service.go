@@ -12,7 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
-	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
 	recrepo "github.com/earthyzinc/dehaze-go/internal/repository/recommendation"
 	"github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -34,22 +34,22 @@ var (
 )
 
 type RecommendationService struct {
-	recRepo       recrepo.RecommendationRepository
-	ruleRepo      recrepo.RuleRepository
-	algorithmRepo algorepo.IAlgorithmRepository
-	ruleCache     []model.SysRecommendationRule
-	mu            sync.RWMutex
+	recRepo   recrepo.RecommendationRepository
+	ruleRepo  recrepo.RuleRepository
+	modelRepo *airepo.ModelRepository
+	ruleCache []model.SysRecommendationRule
+	mu        sync.RWMutex
 }
 
 func NewRecommendationService(
 	recRepo recrepo.RecommendationRepository,
 	ruleRepo recrepo.RuleRepository,
-	algorithmRepo algorepo.IAlgorithmRepository,
+	modelRepo *airepo.ModelRepository,
 ) *RecommendationService {
 	return &RecommendationService{
-		recRepo:       recRepo,
-		ruleRepo:      ruleRepo,
-		algorithmRepo: algorithmRepo,
+		recRepo:   recRepo,
+		ruleRepo:  ruleRepo,
+		modelRepo: modelRepo,
 	}
 }
 
@@ -86,10 +86,10 @@ func (s *RecommendationService) Analyze(ctx context.Context, form *bo.AnalyzeFor
 	}, nil
 }
 
-func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context, userID int64, analysisID *int64, imageMd5 string) ([]vo.RecommendedAlgorithmVO, error) {
+func (s *RecommendationService) GetModelRecommendations(ctx context.Context, userID int64, analysisID *int64, imageMd5 string) ([]vo.RecommendedModelVO, error) {
 	rules := s.getEnabledRules(ctx)
 	if len(rules) == 0 {
-		return []vo.RecommendedAlgorithmVO{}, nil
+		return []vo.RecommendedModelVO{}, nil
 	}
 
 	// 确定场景类型：优先从 analysisId 查，其次 imageMd5，默认 urban
@@ -127,91 +127,68 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 	matchedRules := s.matchRulesByScene(rules, sceneType)
 	if len(matchedRules) == 0 {
 		// 无匹配规则时仍写入 sys_recommendation 记录，确保 feedback 能关联
-		rec := &model.SysRecommendation{
-			UserID:        userID,
-			ImageMd5:      imageMd5,
-			TargetType:    "algorithm",
-			TopAlgorithms: "[]",
-			Feedback:      0,
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
 		}
-		if createErr := s.recRepo.Create(ctx, rec); createErr != nil {
-			return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", createErr)
-		}
-		return []vo.RecommendedAlgorithmVO{}, nil
+		return []vo.RecommendedModelVO{}, nil
 	}
 
-	// 获取已发布算法作为候选池
-	publishedAlgs, err := s.algorithmRepo.FindAllPublished(ctx)
+	// 获取启用图像模型作为候选池
+	enabledModels, err := s.modelRepo.ListEnabled(ctx, "image_edit")
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法列表失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询图像模型列表失败", err)
 	}
-	if len(publishedAlgs) == 0 {
-		// 无已发布算法时仍写入 sys_recommendation 记录
-		rec := &model.SysRecommendation{
-			UserID:        userID,
-			ImageMd5:      imageMd5,
-			TargetType:    "algorithm",
-			TopAlgorithms: "[]",
-			Feedback:      0,
+	if len(enabledModels) == 0 {
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
 		}
-		if createErr := s.recRepo.Create(ctx, rec); createErr != nil {
-			return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", createErr)
-		}
-		return []vo.RecommendedAlgorithmVO{}, nil
+		return []vo.RecommendedModelVO{}, nil
 	}
 
-	// 收集候选算法ID
-	candidateIDs := make(map[int64]bool)
+	// 收集候选模型标识
+	candidateIDs := make(map[string]bool)
 	for _, r := range matchedRules {
-		var ids []int64
-		if err := json.Unmarshal([]byte(r.AlgorithmIds), &ids); err == nil {
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err == nil {
 			for _, id := range ids {
 				candidateIDs[id] = true
 			}
 		}
 	}
 
-	// 筛选已发布算法中的候选
-	var candidates []model.SysAlgorithm
-	for _, alg := range publishedAlgs {
-		if candidateIDs[alg.ID] {
-			candidates = append(candidates, alg)
+	// 筛选启用模型中的候选
+	var candidates []model.SysAiModel
+	for _, m := range enabledModels {
+		if candidateIDs[m.ModelID] {
+			candidates = append(candidates, m)
 		}
 	}
 	if len(candidates) == 0 {
-		// 无候选算法时仍写入 sys_recommendation 记录
-		rec := &model.SysRecommendation{
-			UserID:        userID,
-			ImageMd5:      imageMd5,
-			TargetType:    "algorithm",
-			TopAlgorithms: "[]",
-			Feedback:      0,
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
 		}
-		if createErr := s.recRepo.Create(ctx, rec); createErr != nil {
-			return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", createErr)
-		}
-		return []vo.RecommendedAlgorithmVO{}, nil
+		return []vo.RecommendedModelVO{}, nil
 	}
 
 	// 计算得分并排序
-	result := make([]vo.RecommendedAlgorithmVO, 0, len(candidates))
-	for _, alg := range candidates {
-		matchScore := s.computeMatchScore(alg.ID, matchedRules)
-		result = append(result, vo.RecommendedAlgorithmVO{
-			AlgorithmID:       alg.ID,
-			AlgorithmName:     alg.Name,
+	result := make([]vo.RecommendedModelVO, 0, len(candidates))
+	for _, m := range candidates {
+		matchScore := s.computeMatchScore(m.ModelID, matchedRules)
+		result = append(result, vo.RecommendedModelVO{
+			ModelID:           m.ModelID,
+			ModelName:         m.DisplayName,
 			MatchScore:        matchScore,
-			Reason:            s.buildReason(sceneType, alg.Name),
-			EffectDescription: fmt.Sprintf("该算法在%s场景下表现稳定", sceneType),
+			Reason:            s.buildReason(sceneType, m.DisplayName),
+			EffectDescription: fmt.Sprintf("该模型在%s场景下表现稳定", sceneType),
 		})
 	}
 
-	// 主排序 matchScore 降序，次排序 algorithmId 升序，保证跨端排序一致
+	// 主排序 matchScore 降序，次排序 modelId 升序，保证跨端排序一致
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].MatchScore != result[j].MatchScore {
 			return result[i].MatchScore > result[j].MatchScore
 		}
-		return result[i].AlgorithmID < result[j].AlgorithmID
+		return result[i].ModelID < result[j].ModelID
 	})
 
 	if len(result) > topN {
@@ -219,34 +196,42 @@ func (s *RecommendationService) GetAlgorithmRecommendations(ctx context.Context,
 	}
 
 	// 写入 sys_recommendation 记录，确保 feedback 能找到记录
-	topAlgorithms := make([]map[string]interface{}, 0, len(result))
-	for _, vo := range result {
-		topAlgorithms = append(topAlgorithms, map[string]interface{}{
-			"algorithmId":   vo.AlgorithmID,
-			"algorithmName": vo.AlgorithmName,
-			"matchScore":    vo.MatchScore,
+	topModels := make([]map[string]interface{}, 0, len(result))
+	for _, item := range result {
+		topModels = append(topModels, map[string]interface{}{
+			"modelId":    item.ModelID,
+			"modelName":  item.ModelName,
+			"matchScore": item.MatchScore,
 		})
 	}
-	topAlgJSON, _ := json.Marshal(topAlgorithms)
+	topModelJSON, _ := json.Marshal(topModels)
 
-	rec := &model.SysRecommendation{
-		UserID:        userID,
-		ImageMd5:      imageMd5,
-		TargetType:    "algorithm",
-		TopAlgorithms: string(topAlgJSON),
-		Feedback:      0,
-	}
-	if createErr := s.recRepo.Create(ctx, rec); createErr != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", createErr)
+	rec, err := s.createRecommendation(ctx, userID, imageMd5, string(topModelJSON))
+	if err != nil {
+		return nil, err
 	}
 
 	// 回填 recommendationId 到 VO
-	recommendationID := rec.ID
 	for i := range result {
-		result[i].RecommendationId = recommendationID
+		result[i].RecommendationId = rec.ID
 	}
 
 	return result, nil
+}
+
+// createRecommendation 写入一条推荐记录（TopModels 为 JSON 数组字符串），返回记录实体。
+func (s *RecommendationService) createRecommendation(ctx context.Context, userID int64, imageMd5, topModelsJSON string) (*model.SysRecommendation, error) {
+	rec := &model.SysRecommendation{
+		UserID:     userID,
+		ImageMd5:   imageMd5,
+		TargetType: "model",
+		TopModels:  topModelsJSON,
+		Feedback:   0,
+	}
+	if err := s.recRepo.Create(ctx, rec); err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", err)
+	}
+	return rec, nil
 }
 
 func (s *RecommendationService) SubmitFeedback(ctx context.Context, userID int64, form *bo.FeedbackForm) (int64, error) {
@@ -289,8 +274,8 @@ func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *
 		return 0, common.NewBizError(common.PARAM_ERROR,
 			"场景类型不合法，仅支持："+strings.Join(validSceneTypes, "/"))
 	}
-	if len(form.AlgorithmIds) == 0 {
-		return 0, common.NewBizError(common.PARAM_ERROR, "候选算法ID列表不能为空")
+	if len(form.ModelIds) == 0 {
+		return 0, common.NewBizError(common.PARAM_ERROR, "候选模型标识列表不能为空")
 	}
 
 	if id != 0 {
@@ -307,16 +292,16 @@ func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *
 	if err != nil {
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
 	}
-	target := make(map[int64]struct{}, len(form.AlgorithmIds))
-	for _, v := range form.AlgorithmIds {
+	target := make(map[string]struct{}, len(form.ModelIds))
+	for _, v := range form.ModelIds {
 		target[v] = struct{}{}
 	}
 	for _, r := range rules {
 		if r.ID == id || r.SceneType != form.SceneType || r.Enabled != 1 {
 			continue
 		}
-		var ids []int64
-		if err := json.Unmarshal([]byte(r.AlgorithmIds), &ids); err != nil || len(ids) != len(target) {
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err != nil || len(ids) != len(target) {
 			continue
 		}
 		dup := true
@@ -327,23 +312,23 @@ func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *
 			}
 		}
 		if dup {
-			return 0, common.NewBizError(common.DATA_EXISTS, "同场景下已存在相同算法组合的规则")
+			return 0, common.NewBizError(common.DATA_EXISTS, "同场景下已存在相同模型组合的规则")
 		}
 	}
 
 	if id == 0 {
 		// 新增
-		algIDsJSON, _ := json.Marshal(form.AlgorithmIds)
+		modelIDsJSON, _ := json.Marshal(form.ModelIds)
 		enabled := int8(1)
 		if form.Enabled != nil && !*form.Enabled {
 			enabled = 0
 		}
 		rule := &model.SysRecommendationRule{
-			RuleName:     form.RuleName,
-			SceneType:    form.SceneType,
-			AlgorithmIds: string(algIDsJSON),
-			Weight:       *form.Weight,
-			Enabled:      enabled,
+			RuleName:  form.RuleName,
+			SceneType: form.SceneType,
+			ModelIds:  string(modelIDsJSON),
+			Weight:    *form.Weight,
+			Enabled:   enabled,
 		}
 		if err := s.ruleRepo.Create(ctx, rule); err != nil {
 			return 0, common.WrapBizError(common.DATABASE_ERROR, "创建规则失败", err)
@@ -361,12 +346,12 @@ func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *
 		return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "规则不存在")
 	}
 
-	algIDsJSON, _ := json.Marshal(form.AlgorithmIds)
+	modelIDsJSON, _ := json.Marshal(form.ModelIds)
 	updates := map[string]interface{}{
-		"rule_name":     form.RuleName,
-		"scene_type":    form.SceneType,
-		"algorithm_ids": string(algIDsJSON),
-		"weight":        *form.Weight,
+		"rule_name":  form.RuleName,
+		"scene_type": form.SceneType,
+		"model_ids":  string(modelIDsJSON),
+		"weight":     *form.Weight,
 	}
 	if form.Enabled != nil {
 		if *form.Enabled {
@@ -400,9 +385,9 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计反馈总数失败", err)
 	}
-	adoptedDistinct, err := s.recRepo.CountAdoptedAlgorithmDistinct(ctx, startTime, endTime)
+	adoptedDistinct, err := s.recRepo.CountAdoptedModelDistinct(ctx, startTime, endTime)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计采纳算法数失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计采纳模型数失败", err)
 	}
 	// 采纳数：带推荐来源（recommended_by）的预测记录数
 	adoptedPredCount, err := s.recRepo.CountRecommended(ctx, startTime, endTime)
@@ -410,11 +395,12 @@ func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDat
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计推荐采纳数失败", err)
 	}
 
-	// 获取已发布算法总数
-	publishedCount, err := s.algorithmRepo.CountPublished(ctx)
+	// 获取启用图像模型总数
+	enabledModels, err := s.modelRepo.ListEnabled(ctx, "image_edit")
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计已发布算法失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计启用图像模型失败", err)
 	}
+	publishedCount := int64(len(enabledModels))
 
 	report := &vo.RecommendationReportVO{
 		TotalRecommendations: total,
@@ -514,15 +500,15 @@ func (s *RecommendationService) matchRulesByScene(rules []model.SysRecommendatio
 	return matched
 }
 
-func (s *RecommendationService) computeMatchScore(algorithmID int64, matchedRules []model.SysRecommendationRule) int {
+func (s *RecommendationService) computeMatchScore(modelID string, matchedRules []model.SysRecommendationRule) int {
 	maxWeight := 0
 	for _, r := range matchedRules {
-		var ids []int64
-		if err := json.Unmarshal([]byte(r.AlgorithmIds), &ids); err != nil {
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err != nil {
 			continue
 		}
 		for _, id := range ids {
-			if id == algorithmID && r.Weight > maxWeight {
+			if id == modelID && r.Weight > maxWeight {
 				maxWeight = r.Weight
 			}
 		}
@@ -533,27 +519,27 @@ func (s *RecommendationService) computeMatchScore(algorithmID int64, matchedRule
 	return maxWeight
 }
 
-func (s *RecommendationService) buildReason(sceneType, algorithmName string) string {
+func (s *RecommendationService) buildReason(sceneType, modelName string) string {
 	reason := reasonTemplates[sceneType]
 	if reason == "" {
 		reason = "综合表现优秀"
 	}
-	return algorithmName + "：" + reason
+	return modelName + "：" + reason
 }
 
 func (s *RecommendationService) toRuleVO(entity *model.SysRecommendationRule) vo.RecommendationRuleVO {
-	var ids []int64
-	json.Unmarshal([]byte(entity.AlgorithmIds), &ids)
+	var ids []string
+	json.Unmarshal([]byte(entity.ModelIds), &ids)
 	if ids == nil {
-		ids = []int64{}
+		ids = []string{}
 	}
 	return vo.RecommendationRuleVO{
-		ID:           entity.ID,
-		RuleName:     entity.RuleName,
-		SceneType:    entity.SceneType,
-		AlgorithmIds: ids,
-		Weight:       entity.Weight,
-		Enabled:      entity.Enabled == 1,
+		ID:        entity.ID,
+		RuleName:  entity.RuleName,
+		SceneType: entity.SceneType,
+		ModelIds:  ids,
+		Weight:    entity.Weight,
+		Enabled:   entity.Enabled == 1,
 	}
 }
 

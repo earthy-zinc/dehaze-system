@@ -88,8 +88,8 @@ func (r *recommendationRepository) CountFeedbackTotal(ctx context.Context, start
 	return count, err
 }
 
-func (r *recommendationRepository) CountAdoptedAlgorithmDistinct(ctx context.Context, startTime, endTime string) (int64, error) {
-	db := r.db.WithContext(ctx).Model(&model.SysRecommendation{}).Where("adopted_algorithm_id IS NOT NULL")
+func (r *recommendationRepository) CountAdoptedModelDistinct(ctx context.Context, startTime, endTime string) (int64, error) {
+	db := r.db.WithContext(ctx).Model(&model.SysRecommendation{}).Where("adopted_model_id IS NOT NULL")
 	if startTime != "" {
 		db = db.Where("create_time >= ?", startTime)
 	}
@@ -97,7 +97,7 @@ func (r *recommendationRepository) CountAdoptedAlgorithmDistinct(ctx context.Con
 		db = db.Where("create_time <= ?", endTime)
 	}
 	var count int64
-	err := db.Distinct("adopted_algorithm_id").Count(&count).Error
+	err := db.Distinct("adopted_model_id").Count(&count).Error
 	return count, err
 }
 

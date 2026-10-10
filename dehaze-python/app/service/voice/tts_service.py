@@ -1,4 +1,4 @@
-"""TTS 语音合成服务：参数校验 → 缓存 → 余额预校验 → 本地合成 → 加密存储 → 实扣。
+"""TTS 语音合成服务：参数校验 → 缓存 → 余额预校验 → 引擎合成 → 加密存储 → 实扣。
 
 缓存策略（后端实现 §4.3/§6.4）：
 - 缓存 Key = SHA256(text + voiceId + speed)，索引存 Redis：
@@ -14,7 +14,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import math
 import os
 import time
 from collections.abc import Awaitable
@@ -28,12 +27,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.infrastructure.voice.provider.registry import voice_engine_registry
+from app.infrastructure.llm.client.audio_dispatch import get_audio_client
 from app.models.entity.sys_file import SysFile
-from app.models.schema.voice_tts import FORMAT_VALUES, SAMPLE_RATE_VALUES, VOICE_CATALOG
+from app.models.schema.voice_tts import FORMAT_VALUES, SAMPLE_RATE_VALUES, is_supported_voice
 from app.service.file_service import file_service
 from app.service.storage.factory import get_storage_by_name
 from app.service.voice.voice_billing_service import voice_billing_service
+from app.service.voice.voice_model_route import resolve_voice_model
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +78,9 @@ class TtsService:
         self,
         file_service=file_service,
         voice_billing_service=voice_billing_service,
-        engine_registry=voice_engine_registry,
     ):
         self.file_service = file_service
         self.voice_billing_service = voice_billing_service
-        self.engine_registry = engine_registry
 
     # ==================== 合成 ====================
 
@@ -101,33 +99,62 @@ class TtsService:
 
         返回 {"audioUrl", "format"} 契约字段。
         """
+        # 统一模型路由先解析默认 tts 模型（sys_ai_model + sys_ai_provider），
+        # 音色需按其所属供应商的协议族目录校验，故先于参数校验解析路由；
+        # 引擎侧映射后的业务错误码原样上抛（参数类 C/A0400 不降级为业务异常）
+        try:
+            route = await resolve_voice_model(db, "tts")
+        except BusinessException:
+            raise
+        except Exception as exc:
+            logger.error("TTS 模型路由失败 user_id=%s: %s", user_id, exc)
+            raise BusinessException(ResultCode.BUSINESS_ERROR, f"语音合成失败: {exc}") from exc
+
         voice = voice or settings.VOICE_TTS_VOICE_ID
-        self._validate_params(text, voice, format_, sample_rate)
+        self._validate_params(text, voice, format_, sample_rate, route.provider.protocol_type)
 
         cache_key = _cache_key(text, voice, speed)
         cache_hit = await self._get_cached(redis, user_id, cache_key)
         if cache_hit:
             return cache_hit
 
-        # 余额预校验（预估 = 字符数 × 单价）
-        estimated = math.ceil(len(text) * settings.VOICE_TTS_CREDITS_PER_CHAR)
+        # 余额预校验（预估 = 字符数 × 模型单价，保守向上取整）
+        estimated = await self.voice_billing_service.estimate_tts_credits(
+            db, route.model_id, route.provider.id, len(text)
+        )
         await self.voice_billing_service.ensure_balance(db, user_id, estimated)
 
-        # 经注册表获取 TTS Provider 并合成（本地 Piper / 云端，应用侧透明）
         try:
-            provider = await self.engine_registry.get_tts_provider()
-            audio = await provider.synthesize(text, voice, speed, format_, sample_rate)
+            audio = await get_audio_client(route.provider.protocol_type).synthesize(
+                route.provider,
+                route.model_id,
+                text,
+                voice,
+                speed,
+                format_,
+                sample_rate,
+            )
+        except BusinessException:
+            raise
         except Exception as exc:
             logger.error("TTS 合成失败 user_id=%s: %s", user_id, exc)
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"语音合成失败: {exc}") from exc
 
         # 加密存储 + 写缓存索引
         audio_url = await self._store_and_cache(db, redis, user_id, cache_key, audio, format_)
-        await self.voice_billing_service.charge_tts(db, user_id, len(text))
+        await self.voice_billing_service.charge_tts(
+            db, user_id, route.model_id, route.provider.id, len(text)
+        )
         return {"audioUrl": audio_url, "format": format_}
 
-    def _validate_params(self, text: str, voice: str, format_: str, sample_rate: int) -> None:
-        """参数校验：空文本/超长/音色/格式/采样率非法 → A0400。"""
+    def _validate_params(
+        self, text: str, voice: str, format_: str, sample_rate: int, protocol_type: str
+    ) -> None:
+        """参数校验：空文本/超长/音色/格式/采样率非法 → A0400。
+
+        音色目录按默认 tts 模型所属供应商的协议族（protocol_type）取，云厂商音色
+        （如火山 voice_type）与内置引擎音色分属不同目录，互不通用。
+        """
         if not text or not text.strip():
             raise BusinessException(ResultCode.PARAM_ERROR, "待合成文本不能为空")
         if len(text) > settings.VOICE_TTS_MAX_TEXT_LENGTH:
@@ -139,7 +166,7 @@ class TtsService:
             raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的音频格式: {format_}")
         if sample_rate not in SAMPLE_RATE_VALUES:
             raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的采样率: {sample_rate}")
-        if voice not in {v["id"] for v in VOICE_CATALOG}:
+        if not is_supported_voice(protocol_type, voice):
             raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的音色: {voice}")
 
     # ==================== 缓存 ====================

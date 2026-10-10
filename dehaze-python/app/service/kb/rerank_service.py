@@ -1,6 +1,7 @@
 """AI 知识库 Rerank 重排序服务
 
-调用 OpenAI 兼容 /rerank 端点，对检索候选文本按 query 相关度二次排序。
+对检索候选文本按 query 相关度二次排序：端点与报文由协议分派层（rerank_dispatch）
+按供应商 protocol_type 选择适配器（OpenAI 兼容 /rerank 等差异收敛在适配器内）。
 模型取自知识库记录的 rerank_model，API Key 复用对应供应商体系。
 
 失败语义：调用失败抛 BusinessException，由上层决定降级（跳过 Rerank 直接用检索原序）。
@@ -9,29 +10,14 @@
 import logging
 from typing import Any
 
-import httpx
-
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
 from app.repository.ai_provider_repository import ai_provider_repository
+from app.service.kb.rerank_dispatch import get_rerank_adapter
 
 logger = logging.getLogger(__name__)
-
-
-def _rerank_url(provider_code: str, api_base_url: str) -> str:
-    """从供应商 api_base_url 派生 OpenAI 兼容 rerank 端点（配置化路由）。
-
-    新增 rerank 供应商仅需在 sys_ai_provider 配置 api_base_url。
-    """
-    base = (api_base_url or "").rstrip("/")
-    if not base:
-        raise BusinessException(
-            ResultCode.AI_MODEL_NOT_AVAILABLE,
-            f"Rerank 供应商 {provider_code} 未配置 api_base_url",
-        )
-    return base + "/rerank" if not base.endswith("/rerank") else base
 
 
 async def _get_provider_and_key(provider_code: str):
@@ -69,32 +55,19 @@ async def rerank(
     if not documents:
         return []
     provider, api_key = await _get_provider_and_key(provider_code)
-    url = _rerank_url(provider_code, provider.api_base_url)
-    payload: dict[str, Any] = {"model": model, "query": query, "documents": documents}
-    if top_n:
-        payload["top_n"] = top_n
+    adapter = get_rerank_adapter(provider.protocol_type)
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                url,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json=payload,
-            )
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
-            results = data.get("results") or []
-            return [
-                {
-                    "index": item.get("index"),
-                    "relevance": item.get("relevance_score"),
-                    "document": (
-                        documents[item["index"]] if 0 <= item["index"] < len(documents) else None
-                    ),
-                }
-                for item in sorted(
-                    results, key=lambda r: r.get("relevance_score", 0.0), reverse=True
-                )
-            ]
+        ranked = await adapter(provider, api_key, model, query, documents, top_n)
+    except BusinessException:
+        raise
     except Exception as e:
         logger.warning("Rerank 调用失败(provider=%s model=%s): %s", provider_code, model, e)
         raise BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Rerank 调用失败") from e
+    return [
+        {
+            "index": item["index"],
+            "relevance": item["relevance"],
+            "document": (documents[item["index"]] if 0 <= item["index"] < len(documents) else None),
+        }
+        for item in ranked
+    ]

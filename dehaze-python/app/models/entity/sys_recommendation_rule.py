@@ -19,8 +19,8 @@ class SysRecommendationRule(BaseModel, SoftDeleteMixin):
     )
     rule_name: Mapped[str] = mapped_column(String(64), nullable=False, comment="规则名称")
     scene_type: Mapped[str] = mapped_column(String(32), nullable=False, comment="场景类型")
-    algorithm_ids: Mapped[list] = mapped_column(
-        JSON, nullable=False, comment="候选算法ID列表（JSON数组）"
+    model_ids: Mapped[list] = mapped_column(
+        JSON, nullable=False, comment="候选图像模型标识列表（JSON数组，统一模型规范 slug）"
     )
     weight: Mapped[int] = mapped_column(
         mysql_types.INTEGER, nullable=False, default=0, comment="规则权重（数值越大越优先）"

@@ -57,6 +57,4 @@ public class MenuForm {
 
     @Schema(description = "【目录】只有一个子路由是否始终显示", example = "1")
     private Integer alwaysShow;
-
-
 }

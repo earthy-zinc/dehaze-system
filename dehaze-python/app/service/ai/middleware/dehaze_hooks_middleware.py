@@ -80,15 +80,30 @@ def _messages_to_dicts(messages: Sequence[BaseMessage] | None) -> list[dict]:
 
 
 def _extract_usage(messages: Sequence[BaseMessage] | None) -> dict:
-    """从消息列表中提取最近一条 AI 消息携带的 usage（计费结算透出）。"""
+    """汇总本轮所有 AI 消息携带的 usage（多轮推理跨轮累加，计费结算透出）。
+
+    一轮推理可能包含多次 LLM 调用（工具循环的各轮），每次调用的 usage 挂在对应
+    AIMessage 上，必须逐条累加；只取最近一条会漏掉中间轮、令 token 落 0。
+    历史消息由上下文层以 {role, content} 注入、不带 usage，故按线程（conv:msg）
+    汇总不会重复计入往轮。
+    """
     if not messages:
         return {}
-    for m in reversed(messages):
-        if isinstance(m, AIMessage):
-            usage = (m.response_metadata or {}).get("usage")
-            if usage:
-                return dict(usage)
-    return {}
+    totals: dict = {}
+    found = False
+    for m in messages:
+        if not isinstance(m, AIMessage):
+            continue
+        usage = (m.response_metadata or {}).get("usage")
+        if not usage:
+            continue
+        found = True
+        for key, value in usage.items():
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                totals[key] = totals.get(key, 0) + value
+            else:
+                totals.setdefault(key, value)
+    return totals if found else {}
 
 
 def _extract_call_meta(messages: Sequence[BaseMessage] | None) -> dict:

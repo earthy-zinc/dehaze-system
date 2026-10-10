@@ -10,5 +10,4 @@ import org.apache.ibatis.annotations.Mapper;
  * @author dehaze
  */
 @Mapper
-public interface SysAiArtifactMapper extends BaseMapper<SysAiArtifact> {
-}
+public interface SysAiArtifactMapper extends BaseMapper<SysAiArtifact> {}

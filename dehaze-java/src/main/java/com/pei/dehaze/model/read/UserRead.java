@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.read;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.Data;
-
 import java.util.Date;
+import lombok.Data;
 
 /**
  * 用户持久化对象

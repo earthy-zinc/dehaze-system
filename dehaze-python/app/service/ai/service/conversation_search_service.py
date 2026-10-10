@@ -70,3 +70,30 @@ async def search_conversations(
         INDEX_NAME, query, filters, page=page, size=size
     )
     return [h["id"] for h in hits], total
+
+
+async def rebuild_conversation_index() -> dict[str, int]:
+    """全量重建会话 ES 读模型（幂等对账，修复读模型与 MySQL 的存量漂移）。
+
+    历史异步同步漏写/中断会留下存量漂移：MySQL 已软删的会话在 ES 仍为
+    ``deleted=0``，使 keyword 搜索的 ``total``（取 ES 命中数）虚高、翻页出空页。
+    本能力按 MySQL 为准重建读模型：
+
+    - 遍历全部会话（含已软删，不按 deleted 过滤）重写 ES 文档，doc id = 会话 id，
+      天然幂等，修正 deleted/status/title/message_contents 漂移；
+    - 删除 ES 中在 MySQL 已不存在的孤儿文档。
+
+    读路径（search_conversations）不受影响，total 仍取 ES，契约不变。
+    """
+    async with get_db_session() as db:
+        conv_ids = await ai_conversation_repository.list_all_ids(db)
+
+    for conv_id in conv_ids:
+        await sync_conversation_to_es(conv_id)
+
+    mysql_ids = {str(conv_id) for conv_id in conv_ids}
+    deleted_orphans = 0
+    for doc_id in await es_client.list_doc_ids(INDEX_NAME):
+        if doc_id not in mysql_ids and await es_client.delete_doc(INDEX_NAME, doc_id):
+            deleted_orphans += 1
+    return {"resynced": len(conv_ids), "deleted_orphans": deleted_orphans}

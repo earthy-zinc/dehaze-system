@@ -26,14 +26,7 @@ func (api *SysPresetApi) ListPresets(c *gin.Context) {
 		return
 	}
 
-	var algorithmID int64
-	if v := c.Query("algorithmId"); v != "" {
-		algorithmID, err = strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
-			return
-		}
-	}
+	modelID := c.Query("modelId")
 
 	pageNum, pageSize, ok := parsePagination(c)
 	if !ok {
@@ -46,7 +39,7 @@ func (api *SysPresetApi) ListPresets(c *gin.Context) {
 		isSystem = &b
 	}
 
-	result, err := api.service.ListPresets(ctx, algorithmID, userID, isSystem, pageNum, pageSize)
+	result, err := api.service.ListPresets(ctx, modelID, userID, isSystem, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return

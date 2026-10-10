@@ -16,12 +16,11 @@ from app.service.order.balance_account_service import BalanceAccountService
 pytestmark = pytest.mark.requires_db
 
 
-async def _seed_account(db, user_id: int, *, balance: int = 0, frozen: int = 0, version: int = 0):
+async def _seed_account(db, user_id: int, *, balance: int = 0, frozen: int = 0):
     acct = SysBalance(
         user_id=user_id,
         balance=balance,
         frozen_balance=frozen,
-        version=version,
     )
     await balance_account_repository.create(db, acct)
     await db.flush()
@@ -129,29 +128,23 @@ class TestUnfreezeDeductRefund:
 
 
 class TestConcurrentDeduct:
-    async def test_stale_version_cas_rejected(self, db):
-        """乐观锁 CAS 不超卖：同一 version 发起两次扣减，仅第一次生效（version 递增），
-        第二次因版本已过期被拒绝，余额不被重复扣减。"""
+    async def test_deduct_stops_when_frozen_exhausted(self, db):
+        """相对值 UPDATE 不超卖：冻结 200，第一次扣 150 生效，第二次因冻结余额不足被拒。"""
         user_id = 3001
         await _seed_account(db, user_id, balance=1000, frozen=200)
-        acct = await _get_account(db, user_id)
 
-        ok = await balance_account_repository.deduct(db, user_id, 150, acct.version)
-        assert ok is True
-        second = await balance_account_repository.deduct(db, user_id, 150, acct.version)
-        assert second is False
+        assert await balance_account_repository.deduct(db, user_id, 150) is True
+        assert await balance_account_repository.deduct(db, user_id, 150) is False
 
         refreshed = await _get_account(db, user_id)
         assert refreshed.balance == 850
         assert refreshed.frozen_balance == 50
 
-    async def test_cas_prevents_oversell_beyond_frozen(self, db):
-        """扣减超过冻结余额的 CAS 不生效：冻结 100，一次性扣 150 应失败。"""
+    async def test_deduct_beyond_frozen_rejected(self, db):
+        """扣减超过冻结余额不生效：冻结 100，一次性扣 150 应失败。"""
         user_id = 3002
         await _seed_account(db, user_id, balance=100, frozen=100)
-        acct = await _get_account(db, user_id)
-        ok = await balance_account_repository.deduct(db, user_id, 150, acct.version)
-        assert ok is False
+        assert await balance_account_repository.deduct(db, user_id, 150) is False
         refreshed = await _get_account(db, user_id)
         assert refreshed.balance == 100
         assert refreshed.frozen_balance == 100

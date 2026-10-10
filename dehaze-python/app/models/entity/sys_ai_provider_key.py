@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Index, Integer, SmallInteger, String
+from sqlalchemy import BigInteger, DateTime, Index, Integer, SmallInteger, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel
@@ -9,6 +9,9 @@ from app.models.base import BaseModel
 class SysAiProviderKey(BaseModel):
     __tablename__ = "sys_ai_provider_key"
     __table_args__ = (
+        # 按供应商查重：同一密钥可在不同供应商登记（内置 local/local-voice/local-modal
+        # 共用一把 INTERNAL_SERVICE_KEY；某厂商多能力共用一把 Key）
+        UniqueConstraint("provider_id", "key_hash", name="uk_provider_key"),
         Index("idx_provider", "provider_id", "status"),
         {"comment": "AI供应商API密钥表"},
     )
@@ -23,7 +26,9 @@ class SysAiProviderKey(BaseModel):
         String(128), nullable=False, comment="Key名称(备注,如OpenAI主账号;备用账号)"
     )
     key_hash: Mapped[str] = mapped_column(
-        String(64), unique=True, nullable=False, comment="密钥哈希(SHA256 hex,固定64字符,用于查重)"
+        String(64),
+        nullable=False,
+        comment="密钥哈希(SHA256 hex,固定64字符,与 provider_id 联合查重)",
     )
     key_prefix: Mapped[str | None] = mapped_column(
         String(16), nullable=True, comment="密钥前缀(展示用,如sk-proj-aB...)"

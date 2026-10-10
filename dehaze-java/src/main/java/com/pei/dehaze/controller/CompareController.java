@@ -15,13 +15,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Objects;
 
 @Tag(name = "19.效果对比")
 @RestController
@@ -44,7 +43,8 @@ public class CompareController {
     public ResponseEntity<?> getOrDownloadReport(
             @Parameter(description = "报告任务ID") @PathVariable Long taskId,
             @Parameter(description = "下载标识（true时返回HTML文件流，否则返回JSON状态）")
-            @RequestParam(required = false, defaultValue = "false") boolean download) {
+                    @RequestParam(required = false, defaultValue = "false")
+                    boolean download) {
         SysEvalLog reportTask = evalLogMapper.selectById(taskId);
         // 非本人报告按不存在处理，不泄露资源存在性
         if (reportTask == null || !Objects.equals(reportTask.getCreateBy(), SecurityUtils.getUserId())) {
@@ -70,7 +70,8 @@ public class CompareController {
             return ResponseEntity.ok(Result.success(vo));
         }
         if (reportTask.getStatus() == LogStatusEnum.FAILED) {
-            return ResponseEntity.ok(Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR,
+            return ResponseEntity.ok(Result.failed(
+                    ResultCode.SYSTEM_EXECUTION_ERROR,
                     "报告生成失败：" + (reportTask.getErrorMessage() != null ? reportTask.getErrorMessage() : "未知错误")));
         }
 

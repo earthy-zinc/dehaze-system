@@ -2,17 +2,16 @@ package com.pei.dehaze.service.payment.impl;
 
 import com.pei.dehaze.config.property.PaymentProperties;
 import com.pei.dehaze.service.payment.PaymentChannelService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Map;
+import java.util.TreeMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.Map;
-import java.util.TreeMap;
 
 @Slf4j
 @Service
@@ -25,6 +24,7 @@ public class AlipayService implements PaymentChannelService {
     private static final String CLOSE_PATH = "/gateway.do?method=alipay.trade.close";
 
     private final PaymentProperties paymentProperties;
+
     @Qualifier("paymentRestTemplate")
     private final RestTemplate restTemplate;
 
@@ -39,7 +39,8 @@ public class AlipayService implements PaymentChannelService {
     }
 
     @Override
-    public UnifiedOrderResult unifiedOrder(String orderNo, long amountFen, String description, Map<String, String> extra) {
+    public UnifiedOrderResult unifiedOrder(
+            String orderNo, long amountFen, String description, Map<String, String> extra) {
         if (!isEnabled()) {
             return mockOrder(orderNo);
         }
@@ -49,14 +50,16 @@ public class AlipayService implements PaymentChannelService {
             Map<String, Object> bizContent = Map.of(
                     "out_trade_no", orderNo,
                     "total_amount", formatYuan(amountFen),
-                    "subject", description
-            );
+                    "subject", description);
             Map<String, Object> body = Map.of(
-                    "app_id", cfg.getAppId(),
-                    "method", "alipay.trade.precreate",
-                    "biz_content", bizContent,
-                    "notify_url", cfg.getNotifyUrl()
-            );
+                    "app_id",
+                    cfg.getAppId(),
+                    "method",
+                    "alipay.trade.precreate",
+                    "biz_content",
+                    bizContent,
+                    "notify_url",
+                    cfg.getNotifyUrl());
             ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
             if (resp.getStatusCode().is2xxSuccessful() && resp.getBody() != null) {
                 String qrCode = (String) resp.getBody().get("qr_code");
@@ -103,16 +106,16 @@ public class AlipayService implements PaymentChannelService {
             PaymentProperties.ChannelConfig cfg = paymentProperties.getAlipay();
             String url = cfg.getBaseUrl() + REFUND_PATH;
             Map<String, Object> bizContent = Map.of(
-                    "out_trade_no", orderNo,
-                    "out_request_no", refundNo,
-                    "refund_amount", formatYuan(refundAmountFen),
-                    "refund_reason", reason != null ? reason : ""
-            );
-            Map<String, Object> body = Map.of(
-                    "app_id", cfg.getAppId(),
-                    "method", "alipay.trade.refund",
-                    "biz_content", bizContent
-            );
+                    "out_trade_no",
+                    orderNo,
+                    "out_request_no",
+                    refundNo,
+                    "refund_amount",
+                    formatYuan(refundAmountFen),
+                    "refund_reason",
+                    reason != null ? reason : "");
+            Map<String, Object> body =
+                    Map.of("app_id", cfg.getAppId(), "method", "alipay.trade.refund", "biz_content", bizContent);
             ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
             return resp.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
@@ -137,14 +140,9 @@ public class AlipayService implements PaymentChannelService {
         try {
             PaymentProperties.ChannelConfig cfg = paymentProperties.getAlipay();
             String url = cfg.getBaseUrl() + CLOSE_PATH;
-            Map<String, Object> bizContent = Map.of(
-                    "out_trade_no", orderNo
-            );
-            Map<String, Object> body = Map.of(
-                    "app_id", cfg.getAppId(),
-                    "method", "alipay.trade.close",
-                    "biz_content", bizContent
-            );
+            Map<String, Object> bizContent = Map.of("out_trade_no", orderNo);
+            Map<String, Object> body =
+                    Map.of("app_id", cfg.getAppId(), "method", "alipay.trade.close", "biz_content", bizContent);
             ResponseEntity<Map> resp = restTemplate.postForEntity(url, body, Map.class);
             return resp.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {

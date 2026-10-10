@@ -14,22 +14,23 @@ import com.pei.dehaze.model.form.NotificationSettingForm;
 import com.pei.dehaze.model.vo.NotificationSettingsVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.NotificationSettingService;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationSettingMapper, SysNotificationSetting> implements NotificationSettingService {
+public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationSettingMapper, SysNotificationSetting>
+        implements NotificationSettingService {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final String DEFAULT_PREFERENCES = "{\"typeChannels\":{\"announcement\":{\"push\":true},\"business\":{\"push\":false},\"member\":{\"push\":true}},\"moduleSwitches\":{\"prediction\":true,\"feedback\":true,\"announcement\":true}}";
+    private static final String DEFAULT_PREFERENCES =
+            "{\"typeChannels\":{\"announcement\":{\"push\":true},\"business\":{\"push\":false},\"member\":{\"push\":true}},\"moduleSwitches\":{\"prediction\":true,\"feedback\":true,\"announcement\":true}}";
     /** 默认偏好的解析结果：JSON 常量非法属编码错误，启动即暴露而非请求时兜底 */
     private static final Map<String, Object> DEFAULT_PREFERENCES_MAP = parseDefaultPreferences();
 
@@ -40,8 +41,8 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
         Long userId = SecurityUtils.getUserId();
         // upsert 确保记录存在（复活软删行或新建）
         baseMapper.upsertByUser(userId, null, null, null);
-        SysNotificationSetting setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                .eq(SysNotificationSetting::getUserId, userId));
+        SysNotificationSetting setting = this.getOne(
+                new LambdaQueryWrapper<SysNotificationSetting>().eq(SysNotificationSetting::getUserId, userId));
         return toVO(setting != null ? setting : buildDefault(userId));
     }
 
@@ -49,12 +50,12 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
     @Transactional(rollbackFor = Exception.class)
     public void update(NotificationSettingForm form) {
         Long userId = SecurityUtils.getUserId();
-        SysNotificationSetting setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                .eq(SysNotificationSetting::getUserId, userId));
+        SysNotificationSetting setting = this.getOne(
+                new LambdaQueryWrapper<SysNotificationSetting>().eq(SysNotificationSetting::getUserId, userId));
         if (setting == null) {
             baseMapper.upsertByUser(userId, null, null, null);
-            setting = this.getOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                    .eq(SysNotificationSetting::getUserId, userId));
+            setting = this.getOne(
+                    new LambdaQueryWrapper<SysNotificationSetting>().eq(SysNotificationSetting::getUserId, userId));
         }
         if (form.getPushEnabled() != null) {
             setting.setPushEnabled(form.getPushEnabled() ? 1 : 0);
@@ -70,7 +71,8 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
         }
         if (form.getPreferences() != null) {
             JSONObject prefs = CharSequenceUtil.isNotBlank(setting.getPreferences())
-                    ? JSONUtil.parseObj(setting.getPreferences()) : new JSONObject();
+                    ? JSONUtil.parseObj(setting.getPreferences())
+                    : new JSONObject();
             JSONObject formPrefs = new JSONObject(form.getPreferences());
             for (String key : formPrefs.keySet()) {
                 Object formValue = formPrefs.get(key);
@@ -112,8 +114,8 @@ public class NotificationSettingServiceImpl extends ServiceImpl<SysNotificationS
             return vo;
         }
         try {
-            vo.setPreferences(objectMapper.readValue(setting.getPreferences(),
-                    new TypeReference<Map<String, Object>>() {}));
+            vo.setPreferences(
+                    objectMapper.readValue(setting.getPreferences(), new TypeReference<Map<String, Object>>() {}));
         } catch (JsonProcessingException e) {
             log.warn("通知偏好 JSON 解析失败，回退默认值: {}", setting.getPreferences(), e);
             vo.setPreferences(DEFAULT_PREFERENCES_MAP);

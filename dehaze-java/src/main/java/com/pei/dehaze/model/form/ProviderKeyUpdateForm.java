@@ -3,9 +3,8 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /** 供应商 API Key 更新表单（null 视为不修改；Key 明文不可改） */
 @Schema(description = "供应商 API Key 更新表单")

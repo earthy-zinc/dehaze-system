@@ -239,16 +239,20 @@ async def test_resolve_conversation_reuses_existing(monkeypatch):
     assert created == []
 
 
-async def test_enforce_model_whitelist(monkeypatch):
+@pytest.mark.requires_db
+async def test_enforce_model_whitelist(db, monkeypatch):
+    """未显式指定模型时按会话默认模型校验白名单（会话无模型才回落平台默认模型）"""
     api_key = _api_key(model_whitelist=["gpt-4"])
 
     async def _get_by_ids_and_user(db, conv_ids, user_id):
-        return [SimpleNamespace(model="claude-3")]
+        return [SimpleNamespace(model="claude-3", agent_code="default")]
 
     svc = m.CompatibleApiService(ai_conversation_repository=_ListConvRepo(_get_by_ids_and_user))
-    await svc._enforce_model_whitelist(None, 1, api_key, "claude-3", None)
+    # 显式指定模型：precheck 已校验，此处直接放行
+    await svc._enforce_model_whitelist(db, 1, api_key, "claude-3", None)
+    # 会话默认模型 claude-3 不在白名单 → 拒绝
     with pytest.raises(m.GovernanceError):
-        await svc._enforce_model_whitelist(None, 1, api_key, None, 42)
+        await svc._enforce_model_whitelist(db, 1, api_key, None, 42)
 
 
 def _service(api_key):

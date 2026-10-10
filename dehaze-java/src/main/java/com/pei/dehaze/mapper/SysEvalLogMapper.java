@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysEvalLog;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysEvalLogMapper extends BaseMapper<SysEvalLog> {
-}
+public interface SysEvalLogMapper extends BaseMapper<SysEvalLog> {}

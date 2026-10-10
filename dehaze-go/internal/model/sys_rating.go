@@ -6,7 +6,7 @@ type SysRating struct {
 	BaseModel
 	UserID      int64      `gorm:"column:user_id;type:bigint;not null;index:idx_user_id;comment:评价用户ID" json:"userId"`
 	PredLogID   int64      `gorm:"column:pred_log_id;type:bigint;not null;uniqueIndex:uk_pred_log_id;comment:关联处理日志ID" json:"predLogId"`
-	AlgorithmID int64      `gorm:"column:algorithm_id;type:bigint;not null;index:idx_algorithm_id;comment:算法ID" json:"algorithmId"`
+	ModelID     string     `gorm:"column:model_id;type:varchar(64);not null;index:idx_model_id;comment:图像模型标识（统一模型规范 slug）" json:"modelId"`
 	Rating      int8       `gorm:"column:rating;type:tinyint;not null;index:idx_rating;comment:评分(1-5星)" json:"rating"`
 	Comment     string     `gorm:"column:comment;type:varchar(500);comment:评价文字" json:"comment"`
 	Tags        string     `gorm:"column:tags;type:json;comment:评价标签（JSON数组）" json:"tags"`

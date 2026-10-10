@@ -15,30 +15,28 @@ func NewImportError(code *common.ResultCode, message string) error {
 }
 
 const (
-	TypeUserExport      = "user_export"
-	TypeRoleExport      = "role_export"
-	TypeDeptExport      = "dept_export"
-	TypeMenuExport      = "menu_export"
-	TypeDictExport      = "dict_export"
-	TypeDatasetExport   = "dataset_export"
-	TypeAlgorithmExport = "algorithm_export"
+	TypeUserExport    = "user_export"
+	TypeRoleExport    = "role_export"
+	TypeDeptExport    = "dept_export"
+	TypeMenuExport    = "menu_export"
+	TypeDictExport    = "dict_export"
+	TypeDatasetExport = "dataset_export"
 
-	TypeUserImport      = "user_import"
-	TypeRoleImport      = "role_import"
-	TypeDeptImport      = "dept_import"
-	TypeMenuImport      = "menu_import"
-	TypeDictImport      = "dict_import"
-	TypeAlgorithmImport = "algorithm_import"
+	TypeUserImport = "user_import"
+	TypeRoleImport = "role_import"
+	TypeDeptImport = "dept_import"
+	TypeMenuImport = "menu_import"
+	TypeDictImport = "dict_import"
 )
 
 var ExportTaskTypes = []string{
 	TypeUserExport, TypeRoleExport, TypeDeptExport, TypeMenuExport,
-	TypeDictExport, TypeDatasetExport, TypeAlgorithmExport,
+	TypeDictExport, TypeDatasetExport,
 }
 
 var ImportTaskTypes = []string{
 	TypeUserImport, TypeRoleImport, TypeDeptImport, TypeMenuImport,
-	TypeDictImport, TypeAlgorithmImport,
+	TypeDictImport,
 }
 
 func IsExportTaskType(taskType string) bool {

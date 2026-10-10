@@ -7,13 +7,18 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	airepo "github.com/earthyzinc/dehaze-go/internal/repository/ai"
+	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
+	favoriteservice "github.com/earthyzinc/dehaze-go/internal/service/favorite"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -24,11 +29,13 @@ type MessageSender interface {
 
 // ModelService AI 模型注册表与用户售价管理
 type ModelService struct {
-	db        *gorm.DB
-	modelRepo *airepo.ModelRepository
-	priceRepo *airepo.ModelPriceRepository
-	health    *HealthService
-	notifier  MessageSender
+	db          *gorm.DB
+	modelRepo   *airepo.ModelRepository
+	priceRepo   *airepo.ModelPriceRepository
+	health      *HealthService
+	notifier    MessageSender
+	favoriteSvc favoriteservice.IFavoriteService
+	dictSvc     dictservice.IDictService
 }
 
 func NewModelService(
@@ -37,8 +44,13 @@ func NewModelService(
 	priceRepo *airepo.ModelPriceRepository,
 	health *HealthService,
 	notifier MessageSender,
+	favoriteSvc favoriteservice.IFavoriteService,
+	dictSvc dictservice.IDictService,
 ) *ModelService {
-	return &ModelService{db: db, modelRepo: modelRepo, priceRepo: priceRepo, health: health, notifier: notifier}
+	return &ModelService{
+		db: db, modelRepo: modelRepo, priceRepo: priceRepo,
+		health: health, notifier: notifier, favoriteSvc: favoriteSvc, dictSvc: dictSvc,
+	}
 }
 
 // ListModels 模型分页列表（含近 24h 真实调用统计）
@@ -51,7 +63,7 @@ func (s *ModelService) ListModels(ctx context.Context, q *bo.AiModelQuery) (*vo.
 		}
 	}
 	page, size := q.PageNum, q.PageSize
-	models, total, err := s.modelRepo.PaginateModels(ctx, page, size, q.Keyword, q.ModelType)
+	models, total, err := s.modelRepo.PaginateModels(ctx, page, size, q.Keyword, q.ModelType, parseTaskTags(q.TaskTags))
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询模型列表失败", err)
 	}
@@ -73,12 +85,15 @@ func (s *ModelService) ListModels(ctx context.Context, q *bo.AiModelQuery) (*vo.
 }
 
 // ListEnabledModels 启用模型列表（登录用户可见，按 VIP 等级过滤；缓存 ai:model:list TTL 1h）
-func (s *ModelService) ListEnabledModels(ctx context.Context, userID int64, modelType string) ([]vo.AiModelVO, error) {
+func (s *ModelService) ListEnabledModels(
+	ctx context.Context, userID int64, modelType, taskTags string,
+) ([]vo.AiModelVO, error) {
 	cached, err := s.loadEnabledModelCache(ctx)
 	if err != nil {
 		return nil, err
 	}
 	level := s.health.UserLevel(ctx, userID)
+	wanted := parseTaskTags(taskTags)
 	items := make([]vo.AiModelVO, 0, len(cached))
 	for _, item := range cached {
 		if item.VipLevel > int8(level) {
@@ -87,9 +102,72 @@ func (s *ModelService) ListEnabledModels(ctx context.Context, userID int64, mode
 		if modelType != "" && item.ModelType != modelType {
 			continue
 		}
+		if len(wanted) > 0 && !taskTagsHit(item.TaskTags, wanted) {
+			continue
+		}
 		items = append(items, item)
 	}
+	s.markPlatformDefaults(ctx, items)
 	return items, nil
+}
+
+// platformDefaultDictType 平台默认模型所在字典类型（sys_dict: ai_model）
+const platformDefaultDictType = "ai_model"
+
+// platformDefaultDictKey 模型类型的平台默认模型字典键：chat 用 `default_model`，其余
+// `default_model.{modelType}`（与 config/sql/data/sys_dict.sql 键约定、python
+// `model_defaults.default_model_dict_key`、java `AiDefaultModelResolver.dictKeyFor` 同源）。
+func platformDefaultDictKey(modelType string) string {
+	if modelType == "chat" {
+		return "default_model"
+	}
+	return "default_model." + modelType
+}
+
+// markPlatformDefaults 回填"是否平台默认"标记（isDefault）：按 model_type 分键读字典，
+// 命中平台默认的模型行 isDefault=true，其余 false。**读取时计算而非写入共享缓存快照**：
+// 字典改动即失效，避免缓存 TTL 内标记滞后。标记语义为"该模型是否为其类型的平台默认模型"
+// ——同一 model_id 配多供应商时该模型各行都为 true。
+func (s *ModelService) markPlatformDefaults(ctx context.Context, items []vo.AiModelVO) {
+	defaults := make(map[string]*string)
+	for i := range items {
+		modelType := items[i].ModelType
+		if _, ok := defaults[modelType]; ok {
+			continue
+		}
+		defaults[modelType] = s.platformDefaultModelID(ctx, modelType)
+	}
+	for i := range items {
+		want := defaults[items[i].ModelType]
+		isDefault := want != nil && *want == items[i].ModelID
+		items[i].IsDefault = &isDefault
+	}
+}
+
+// platformDefaultModelID 读取某模型类型的平台默认模型标识（sys_dict: ai_model 的
+// default_model / default_model.{modelType} 启用字典值）；未配置/字典项停用/值为空返回 nil，
+// 不回落代码常量（与 python `resolve_platform_default_model_id`、java 同名方法同口径）。
+func (s *ModelService) platformDefaultModelID(ctx context.Context, modelType string) *string {
+	if s.dictSvc == nil {
+		return nil
+	}
+	options, err := s.dictSvc.GetByTypeCode(ctx, platformDefaultDictType)
+	if err != nil {
+		logger.Warn("读取平台默认模型字典失败", zap.String("modelType", modelType), zap.Error(err))
+		return nil
+	}
+	key := platformDefaultDictKey(modelType)
+	for _, option := range options {
+		if option.Label != key {
+			continue
+		}
+		value := strings.TrimSpace(fmt.Sprint(option.Value))
+		if value == "" {
+			return nil
+		}
+		return &value
+	}
+	return nil
 }
 
 func (s *ModelService) loadEnabledModelCache(ctx context.Context) ([]vo.AiModelVO, error) {
@@ -145,6 +223,7 @@ type modelCacheDTO struct {
 	ProviderID            int64           `json:"provider_id"`
 	ModelID               string          `json:"model_id"`
 	ModelType             string          `json:"model_type"`
+	TaskTags              json.RawMessage `json:"task_tags"`
 	Dimension             *int64          `json:"dimension"`
 	DisplayName           string          `json:"display_name"`
 	MaxContextTokens      int             `json:"max_context_tokens"`
@@ -179,7 +258,7 @@ func modelToCache(item *vo.AiModelVO) modelCacheDTO {
 	}
 	return modelCacheDTO{
 		ID: item.ID, ProviderID: item.ProviderID, ModelID: item.ModelID, ModelType: item.ModelType,
-		Dimension: item.Dimension, DisplayName: item.DisplayName,
+		TaskTags: item.TaskTags, Dimension: item.Dimension, DisplayName: item.DisplayName,
 		MaxContextTokens: item.MaxContextTokens, MaxOutputTokens: item.MaxOutputTokens,
 		SupportsMultimodal: item.SupportsMultimodal, SupportsToolCall: item.SupportsToolCall,
 		SupportsStreaming: item.SupportsStreaming, SupportsPromptCache: item.SupportsPromptCache,
@@ -197,7 +276,7 @@ func modelToCache(item *vo.AiModelVO) modelCacheDTO {
 func modelFromCache(dto *modelCacheDTO) vo.AiModelVO {
 	item := vo.AiModelVO{
 		ID: dto.ID, ProviderID: dto.ProviderID, ModelID: dto.ModelID, ModelType: dto.ModelType,
-		Dimension: dto.Dimension, DisplayName: dto.DisplayName,
+		TaskTags: dto.TaskTags, Dimension: dto.Dimension, DisplayName: dto.DisplayName,
 		MaxContextTokens: dto.MaxContextTokens, MaxOutputTokens: dto.MaxOutputTokens,
 		SupportsMultimodal: dto.SupportsMultimodal, SupportsToolCall: dto.SupportsToolCall,
 		SupportsStreaming: dto.SupportsStreaming, SupportsPromptCache: dto.SupportsPromptCache,
@@ -216,14 +295,54 @@ func modelFromCache(dto *modelCacheDTO) vo.AiModelVO {
 }
 
 // ValidateModelType 模型类型合法集校验（python `AiModelCreate/Update.model_type` 与
-// `AiModelPageQuery.model_type` 均为 Literal[chat/embedding/rerank]）：创建/更新/列表筛选三处共用同一信息源。
+// `AiModelPageQuery.model_type` 均为全模态 Literal）：创建/更新/列表筛选三处共用同一信息源。
 // python 由 pydantic 在请求校验阶段报 A0400，go 无该层，在 service 层拦成同码错误。
 func ValidateModelType(modelType string) error {
 	switch modelType {
-	case "chat", "embedding", "rerank":
+	case "chat", "embedding", "rerank", "image_gen", "image_edit", "video_gen",
+		"asr", "tts", "music_gen", "3d_gen":
 		return nil
 	}
-	return common.NewBizError(common.PARAM_ERROR, "模型类型仅支持 chat/embedding/rerank")
+	return common.NewBizError(common.PARAM_ERROR, modelTypeHint)
+}
+
+const modelTypeHint = "模型类型仅支持 chat/embedding/rerank/image_gen/image_edit/video_gen/asr/tts/music_gen/3d_gen"
+
+// parseTaskTags 解析逗号分隔的 taskTags 查询参数（去空白、丢空项），空结果表示不筛选
+func parseTaskTags(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	tags := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if tag := strings.TrimSpace(part); tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	if len(tags) == 0 {
+		return nil
+	}
+	return tags
+}
+
+// taskTagsHit task_tags JSON 数组与筛选标签有交集即命中（NULL/非法 JSON 视为不命中）
+func taskTagsHit(raw json.RawMessage, wanted []string) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var owned []string
+	if err := json.Unmarshal(raw, &owned); err != nil {
+		return false
+	}
+	for _, tag := range owned {
+		for _, want := range wanted {
+			if tag == want {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *ModelService) CreateModel(ctx context.Context, form *bo.AiModelCreateForm, operatorID int64) (*vo.AiModelVO, error) {
@@ -249,6 +368,7 @@ func (s *ModelService) CreateModel(ctx context.Context, form *bo.AiModelCreateFo
 		ProviderID:           form.ProviderID,
 		ModelID:              form.ModelID,
 		ModelType:            modelType,
+		TaskTags:             normalizedTaskTags(form.TaskTags),
 		DisplayName:          form.DisplayName,
 		MaxContextTokens:     4096,
 		MaxOutputTokens:      4096,
@@ -317,6 +437,13 @@ func (s *ModelService) UpdateModel(ctx context.Context, modelID string, form *bo
 	}
 	if form.DisplayName != nil {
 		updates["display_name"] = *form.DisplayName
+	}
+	if provided, isNull := rawProvided(form.TaskTags); provided {
+		if isNull {
+			updates["task_tags"] = nil
+		} else {
+			updates["task_tags"] = form.TaskTags
+		}
 	}
 	if form.MaxContextTokens != nil {
 		updates["max_context_tokens"] = *form.MaxContextTokens
@@ -429,17 +556,21 @@ func (s *ModelService) DeleteModel(ctx context.Context, modelID string, operator
 		return common.WrapBizError(common.DATABASE_ERROR, "统计活跃会话失败", err)
 	}
 	if active > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "存在活跃会话正在使用该模型，请先禁用（status=0）")
+		return common.NewBizError(common.DATA_REFERENCED, "存在活跃会话正在使用该模型，请先禁用（status=0）")
 	}
 	fallbackRefs, err := s.modelRepo.CountFallbackTargets(ctx, m.ID)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "统计降级引用失败", err)
 	}
 	if fallbackRefs > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id")
+		return common.NewBizError(common.DATA_REFERENCED, "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id")
 	}
 	if err := s.modelRepo.SoftDeleteByIDs(ctx, []int64{m.ID}, operatorID); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除模型失败", err)
+	}
+	// 失效联动：标记该模型的收藏为已失效（与数据集删除路径同口径）
+	if err := s.favoriteSvc.MarkInvalid(ctx, "model", []int64{m.ID}); err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "标记收藏失效失败", err)
 	}
 	clearModelCache(ctx)
 	return nil
@@ -467,6 +598,7 @@ func (s *ModelService) ListModelPrices(ctx context.Context, modelID string, q *b
 			ID:        details[i].ID,
 			PriceID:   details[i].PriceID,
 			TokenType: details[i].TokenType,
+			UsageKind: details[i].UsageKind,
 			TimeSlot:  details[i].TimeSlot,
 			MinTokens: details[i].MinTokens,
 			MaxTokens: details[i].MaxTokens,
@@ -485,6 +617,23 @@ func (s *ModelService) CreateModelPrice(ctx context.Context, modelID string, for
 	if unit == "" {
 		unit = "credits_per_million"
 	}
+	// billing_unit/usage_kind 未显式传时按模型类型派生：图像按张、asr 按秒、tts 按万字符、视频按帧，其余按百万 token
+	owner, err := s.modelRepo.GetByModelAndProvider(ctx, modelID, form.ProviderID)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询模型失败", err)
+	}
+	modelType := ""
+	if owner != nil {
+		modelType = owner.ModelType
+	}
+	billingUnit := form.BillingUnit
+	if billingUnit == "" {
+		billingUnit = defaultBillingUnit(modelType)
+	}
+	defaultUsageKind := "token"
+	if defaultBillingUnit(modelType) != "million_tokens" {
+		defaultUsageKind = "unit"
+	}
 	version, err := s.priceRepo.NextPriceVersion(ctx, modelID, form.ProviderID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询价格版本失败", err)
@@ -498,6 +647,7 @@ func (s *ModelService) CreateModelPrice(ctx context.Context, modelID string, for
 		ProviderID:    form.ProviderID,
 		PriceVersion:  version,
 		Unit:          unit,
+		BillingUnit:   billingUnit,
 		EffectiveFrom: effectiveFrom,
 		EffectiveTo:   form.EffectiveTo,
 		Status:        int8Or(form.Status, 1),
@@ -510,9 +660,14 @@ func (s *ModelService) CreateModelPrice(ctx context.Context, modelID string, for
 
 	details := make([]model.SysAiModelPriceDetail, 0, len(form.Details))
 	for _, d := range form.Details {
+		usageKind := d.UsageKind
+		if usageKind == "" {
+			usageKind = defaultUsageKind
+		}
 		details = append(details, model.SysAiModelPriceDetail{
 			PriceID:   price.ID,
 			TokenType: d.TokenType,
+			UsageKind: usageKind,
 			TimeSlot:  d.TimeSlot,
 			MinTokens: d.MinTokens,
 			MaxTokens: d.MaxTokens,
@@ -541,6 +696,9 @@ func (s *ModelService) UpdateModelPrice(ctx context.Context, priceID int64, form
 	updates := map[string]interface{}{"update_by": operatorID}
 	if form.Unit != nil {
 		updates["unit"] = *form.Unit
+	}
+	if form.BillingUnit != nil {
+		updates["billing_unit"] = *form.BillingUnit
 	}
 	if form.EffectiveFrom != nil {
 		updates["effective_from"] = *form.EffectiveFrom
@@ -683,6 +841,7 @@ func toAiModelVO(m *model.SysAiModel) vo.AiModelVO {
 		ProviderID:            m.ProviderID,
 		ModelID:               m.ModelID,
 		ModelType:             m.ModelType,
+		TaskTags:              m.TaskTags,
 		Dimension:             m.Dimension,
 		DisplayName:           m.DisplayName,
 		MaxContextTokens:      m.MaxContextTokens,
@@ -715,6 +874,7 @@ func toModelPriceVO(p *model.SysAiModelPrice, details []vo.ModelPriceDetailVO) v
 		ProviderID:    p.ProviderID,
 		PriceVersion:  p.PriceVersion,
 		Unit:          p.Unit,
+		BillingUnit:   p.BillingUnit,
 		EffectiveFrom: p.EffectiveFrom,
 		EffectiveTo:   p.EffectiveTo,
 		Status:        p.Status,
@@ -731,6 +891,7 @@ func toDetailVOs(details []model.SysAiModelPriceDetail) []vo.ModelPriceDetailVO 
 			ID:        details[i].ID,
 			PriceID:   details[i].PriceID,
 			TokenType: details[i].TokenType,
+			UsageKind: details[i].UsageKind,
 			TimeSlot:  details[i].TimeSlot,
 			MinTokens: details[i].MinTokens,
 			MaxTokens: details[i].MaxTokens,
@@ -780,6 +941,30 @@ func rawProvided(raw json.RawMessage) (bool, bool) {
 		return false, false
 	}
 	return true, string(bytes.TrimSpace(raw)) == "null"
+}
+
+// normalizedTaskTags 落库前归一：未传或显式 null 均写 SQL NULL，数组原样写入
+func normalizedTaskTags(raw json.RawMessage) json.RawMessage {
+	if provided, isNull := rawProvided(raw); provided && !isNull {
+		return raw
+	}
+	return nil
+}
+
+// defaultBillingUnit 未显式指定 billing_unit 时按模型类型派生计量单位（非 token 计量模型按单位计费）
+func defaultBillingUnit(modelType string) string {
+	switch modelType {
+	case "image_gen", "image_edit":
+		return "image"
+	case "asr":
+		return "second"
+	case "tts":
+		return "ten_thousand_chars"
+	case "video_gen":
+		return "frame"
+	default:
+		return "million_tokens"
+	}
 }
 
 func intOr(v *int, fallback int) int {

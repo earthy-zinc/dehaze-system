@@ -1,6 +1,6 @@
 """会话 ES 全文索引定义与读写原语（技术适配层）
 
-索引名：ai_conversation
+索引名：{ES_INDEX_PREFIX}ai_conversation
 字段：id, user_id, title, message_contents, last_message_at, status, deleted
 只承载索引定义（INDEX_NAME/_MAPPINGS）、ensure、纯文档写入（sync_conversation）；
 聚合与过滤策略（DB 会话打开、with_deleted 语义、消息拼接格式、用户隔离过滤）
@@ -10,11 +10,13 @@
 import logging
 from datetime import datetime
 
+from app.config import settings
 from app.infrastructure.es.es_client import es_client
 
 logger = logging.getLogger(__name__)
 
-INDEX_NAME = "ai_conversation"
+# 索引名带环境前缀（ES_INDEX_PREFIX），避免多环境共用 ES 时互串
+INDEX_NAME = f"{settings.ES_INDEX_PREFIX}ai_conversation"
 
 _MAPPINGS = {
     "properties": {

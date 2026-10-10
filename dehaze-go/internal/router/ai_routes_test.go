@@ -27,6 +27,7 @@ func TestAIRoutesRegistrationHasNoConflict(t *testing.T) {
 		RegisterAiAgentRoutes(protected, api.NewAiAgentApi(nil, nil, nil))
 		RegisterAiEvalRoutes(protected, api.NewAiEvalApi(nil, nil))
 		RegisterAiScheduleRoutes(protected, api.NewAiScheduleApi(nil), api.NewAiUsageApi(nil))
+		RegisterAiUserPreferenceRoutes(protected, api.NewAiUserPreferenceApi(nil))
 	})
 
 	routes := engine.Routes()
@@ -50,6 +51,8 @@ func TestAIRoutesRegistrationHasNoConflict(t *testing.T) {
 		"GET /api/v1/ai/scheduled-tasks/next-times":               "",
 		"GET /api/v1/ai/usage/stats":                              "",
 		"GET /api/v1/ai/agents/config-defaults":                   "",
+		"GET /api/v1/ai/user-preference":                          "",
+		"PUT /api/v1/ai/user-preference":                          "",
 	}
 	registered := map[string]struct{}{}
 	for _, route := range routes {

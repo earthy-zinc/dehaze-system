@@ -55,5 +55,4 @@ public class AiAgentUpdateForm {
     @Min(value = 0, message = "排序序号不能小于0")
     @Schema(description = "排序序号")
     private Integer sortOrder;
-
 }

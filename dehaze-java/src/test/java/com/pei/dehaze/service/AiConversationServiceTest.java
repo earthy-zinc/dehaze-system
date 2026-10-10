@@ -1,5 +1,16 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
 import com.baomidou.mybatisplus.core.conditions.AbstractWrapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
@@ -17,9 +28,16 @@ import com.pei.dehaze.mapper.SysAiMessageMapper;
 import com.pei.dehaze.model.entity.SysAiAgentThought;
 import com.pei.dehaze.model.entity.SysAiConversation;
 import com.pei.dehaze.model.entity.SysAiMessage;
+import com.pei.dehaze.model.form.AiConversationBatchForm;
+import com.pei.dehaze.model.form.AiConversationCreateForm;
+import com.pei.dehaze.model.vo.AiConversationVO;
 import com.pei.dehaze.model.vo.AiMessagePageVO;
 import com.pei.dehaze.model.vo.AiMessageVO;
-import com.pei.dehaze.model.form.AiConversationBatchForm;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.builder.MapperBuilderAssistant;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,23 +55,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * 会话与消息服务单测：归属校验、置顶名额（用户级锁 + 已置顶不刷新）、批量操作语义、消息删除限制、导出。
  */
@@ -64,18 +65,28 @@ class AiConversationServiceTest {
 
     @Mock
     private SysAiConversationMapper conversationMapper;
+
     @Mock
     private SysAiMessageMapper messageMapper;
+
     @Mock
     private SysAiAgentThoughtMapper thoughtMapper;
+
     @Mock
     private SysAiAgentMapper agentMapper;
+
     @Mock
     private SysAiAgentVersionMapper agentVersionMapper;
+
     @Mock
     private AiInsightMapper insightMapper;
+
+    @Mock
+    private AiDefaultModelResolver defaultModelResolver;
+
     @Mock
     private StringRedisTemplate stringRedisTemplate;
+
     @Mock
     private ValueOperations<String, String> valueOperations;
 
@@ -120,6 +131,29 @@ class AiConversationServiceTest {
 
     private void stubOwned(SysAiConversation conv) {
         when(conversationMapper.selectOne(any(Wrapper.class))).thenReturn(conv);
+    }
+
+    @Test
+    @DisplayName("创建会话未指定模型：走解析链取用户偏好/平台默认")
+    void createWithoutModelUsesResolvedDefault() {
+        when(defaultModelResolver.resolveForUser(USER_ID, "default")).thenReturn("qwen3-0.6b");
+        AiConversationCreateForm form = new AiConversationCreateForm();
+
+        AiConversationVO vo = service.create(USER_ID, form);
+
+        assertThat(vo.getModel()).isEqualTo("qwen3-0.6b");
+        verify(defaultModelResolver).resolveForUser(USER_ID, "default");
+        verify(conversationMapper).insert(any(SysAiConversation.class));
+    }
+
+    @Test
+    @DisplayName("创建会话显式指定模型：不触达解析链")
+    void createWithExplicitModelSkipsResolver() {
+        AiConversationCreateForm form = new AiConversationCreateForm();
+        form.setModel("gpt-4o");
+
+        assertThat(service.create(USER_ID, form).getModel()).isEqualTo("gpt-4o");
+        verify(defaultModelResolver, never()).resolveForUser(any(), any());
     }
 
     @Test
@@ -240,7 +274,8 @@ class AiConversationServiceTest {
     @DisplayName("置顶：名额校验与写入在用户级锁内完成，锁在 finally 释放")
     void pinHoldsUserLevelLockAndReleasesIt() {
         stubOwned(conv(1L, USER_ID, 0));
-        when(valueOperations.setIfAbsent(eq("ai:conv:pin:" + USER_ID), anyString(), any())).thenReturn(true);
+        when(valueOperations.setIfAbsent(eq("ai:conv:pin:" + USER_ID), anyString(), any()))
+                .thenReturn(true);
         when(conversationMapper.countActivePinned(USER_ID)).thenReturn(0L);
 
         service.pin(1L, USER_ID);
@@ -286,8 +321,8 @@ class AiConversationServiceTest {
     void listMessagesEnforcesOwnershipForNormalUser() {
         when(conversationMapper.selectOne(any(Wrapper.class))).thenReturn(null);
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> service.listMessages(1L, USER_ID, null, 50, false));
+        BusinessException ex =
+                assertThrows(BusinessException.class, () -> service.listMessages(1L, USER_ID, null, 50, false));
         assertThat(ex.getResultCode()).isEqualTo(ResultCode.RESOURCE_NOT_FOUND);
     }
 
@@ -310,8 +345,9 @@ class AiConversationServiceTest {
     @DisplayName("消息列表：hasMore=true 时按 limit+1 单次取数并裁掉多余一条（不额外往返）")
     void listMessagesHasMoreTrimsExtraRow() {
         stubOwned(conv(1L, USER_ID, 0));
-        when(messageMapper.selectPage(any(Page.class), any(Wrapper.class))).thenReturn(messagePage(
-                List.of(message(5L, "user", "5"), message(4L, "user", "4"), message(3L, "user", "3"))));
+        when(messageMapper.selectPage(any(Page.class), any(Wrapper.class)))
+                .thenReturn(messagePage(
+                        List.of(message(5L, "user", "5"), message(4L, "user", "4"), message(3L, "user", "3"))));
         when(messageMapper.selectCount(any(Wrapper.class))).thenReturn(9L);
 
         AiMessagePageVO result = service.listMessages(1L, USER_ID, null, 2, false);
@@ -404,7 +440,8 @@ class AiConversationServiceTest {
         assertThat(p2.getList()).extracting(AiMessageVO::getId).containsExactly(3L, 2L);
         assertThat(p2.isHasMore()).isTrue();
 
-        AiMessagePageVO p3 = service.listMessages(1L, USER_ID, p2.getList().get(1).getId(), 2, false);
+        AiMessagePageVO p3 =
+                service.listMessages(1L, USER_ID, p2.getList().get(1).getId(), 2, false);
         assertThat(p3.getList()).extracting(AiMessageVO::getId).containsExactly(1L);
         assertThat(p3.isHasMore()).isFalse();
 
@@ -467,10 +504,7 @@ class AiConversationServiceTest {
         AiConversationService.ConversationExport export = service.export(1L, USER_ID, "markdown");
 
         assertThat(export.contentType()).isEqualTo("text/markdown");
-        assertThat(export.content())
-                .contains("帮我处理图片")
-                .contains("已处理")
-                .doesNotContain("tool");
+        assertThat(export.content()).contains("帮我处理图片").contains("已处理").doesNotContain("tool");
     }
 
     @Test
@@ -482,8 +516,7 @@ class AiConversationServiceTest {
         when(messageMapper.selectList(any(Wrapper.class)))
                 .thenReturn(List.of(message(1L, "user", "问题"), message(2L, "assistant", "回答")));
 
-        AiConversationService.ConversationExport export =
-                service.export(1L, USER_ID, "json");
+        AiConversationService.ConversationExport export = service.export(1L, USER_ID, "json");
 
         assertThat(export.contentType()).isEqualTo("application/json");
         assertThat(export.content())
@@ -495,7 +528,8 @@ class AiConversationServiceTest {
     @Test
     @DisplayName("回收站恢复：超出 30 天窗口报 A0401")
     void restoreOutsideWindowRejected() {
-        when(conversationMapper.selectInTrash(eq(1L), eq(USER_ID), any(LocalDateTime.class))).thenReturn(null);
+        when(conversationMapper.selectInTrash(eq(1L), eq(USER_ID), any(LocalDateTime.class)))
+                .thenReturn(null);
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.restore(1L, USER_ID));
         assertThat(ex.getResultCode()).isEqualTo(ResultCode.RESOURCE_NOT_FOUND);

@@ -3,12 +3,12 @@ package model
 // SysRecommendationRule 推荐规则配置表
 type SysRecommendationRule struct {
 	BaseModel
-	RuleName     string `gorm:"column:rule_name;type:varchar(64);not null;comment:规则名称" json:"ruleName"`
-	SceneType    string `gorm:"column:scene_type;type:varchar(32);not null;index:idx_scene_type;comment:场景类型" json:"sceneType"`
-	AlgorithmIds string `gorm:"column:algorithm_ids;type:json;not null;comment:候选算法ID列表(JSON数组)" json:"algorithmIds"`
-	Weight       int    `gorm:"column:weight;type:int;not null;default:0;comment:规则权重" json:"weight"`
-	Enabled      int8   `gorm:"column:enabled;type:tinyint;not null;default:1;index:idx_enabled;comment:是否启用" json:"enabled"`
-	Deleted      int64  `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
+	RuleName  string `gorm:"column:rule_name;type:varchar(64);not null;comment:规则名称" json:"ruleName"`
+	SceneType string `gorm:"column:scene_type;type:varchar(32);not null;index:idx_scene_type;comment:场景类型" json:"sceneType"`
+	ModelIds  string `gorm:"column:model_ids;type:json;not null;comment:候选图像模型标识列表(JSON数组，统一模型规范 slug)" json:"modelIds"`
+	Weight    int    `gorm:"column:weight;type:int;not null;default:0;comment:规则权重" json:"weight"`
+	Enabled   int8   `gorm:"column:enabled;type:tinyint;not null;index:idx_enabled;comment:是否启用" json:"enabled"`
+	Deleted   int64  `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`
 }
 
 func (SysRecommendationRule) TableName() string {

@@ -31,7 +31,6 @@ from app.service.member.growth_service import (
     member_growth_service,
 )
 from app.service.member.member_service import member_service
-from app.service.member.quota_service import member_quota_service
 
 pytestmark = pytest.mark.requires_db
 
@@ -297,35 +296,4 @@ async def test_get_page_keywords_like_wildcards_escaped(db):
         assert isinstance(page["list"], list)
 
 
-# ===================== 配额扣减不变量 =====================
-
-
-async def test_quota_invariant_used_not_exceed_quota_after_cycle(db):
-    """扣减-归还循环后 used ≤ quota 恒成立，权益概览 remaining 不为负"""
-    await _setup_benefit(db, "level_1", growth_min=1000, growth_max=4999, quota=5)
-    member = await _setup_member(db, level_code="level_1", growth_value=1500)
-    # 配额快照仅随等级联动路径刷新（adjust_level/on_order_paid/月度重置等），
-    # 直改 level_code 绕过联动时需同步快照，与真实履约后的会员状态对齐
-    for task_type in QUOTA_TASK_TYPES:
-        setattr(member, f"monthly_{task_type}_quota", 5)
-    await db.flush()
-
-    for _ in range(5):
-        await member_quota_service.check_and_deduct_quota(db, USER_ID, "dehaze")
-    with pytest.raises(BusinessException) as exc:
-        await member_quota_service.check_and_deduct_quota(db, USER_ID, "dehaze")
-    assert exc.value.code == ResultCode.QUOTA_EXCEEDED
-    await member_quota_service.restore_quota(db, USER_ID, "dehaze")
-    await db.flush()
-
-    member = await member_repository.get_by_user_id(db, USER_ID)
-    assert member is not None
-    assert member.monthly_dehaze_quota == 5
-    assert member.monthly_dehaze_used == 4
-    assert member.monthly_dehaze_used <= member.monthly_dehaze_quota
-
-    summary = await member_service.get_benefit_summary(db, USER_ID)
-    dehaze_detail = next(
-        d for d in summary["imageCategory"]["details"] if d["taskType"] == "dehaze"
-    )
-    assert dehaze_detail["remaining"] == 1
+# 注：原「配额扣减不变量」用例随 D1 全积分制退役（图像任务不再扣会员配额）

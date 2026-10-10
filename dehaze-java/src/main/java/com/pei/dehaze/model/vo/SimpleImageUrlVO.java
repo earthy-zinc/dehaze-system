@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 /**
  * 图片简要视图对象（用于列表展示和配对关系展示）
@@ -55,7 +54,10 @@ public class SimpleImageUrlVO {
     @Schema(description = "文件大小，格式化显示", example = "2.44MB")
     private String formattedSize;
 
-    @Schema(description = "文件格式", example = "jpg", allowableValues = {"jpg", "jpeg", "webp", "png", "gif"})
+    @Schema(
+            description = "文件格式",
+            example = "jpg",
+            allowableValues = {"jpg", "jpeg", "webp", "png", "gif"})
     private String format;
 
     @Schema(description = "图片创建时间", example = "2024-01-01 10:00:00")

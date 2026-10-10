@@ -60,12 +60,12 @@ class FavoriteService:
         """添加收藏
 
         1. 合法类型校验（非法 targetType 抛 A0400，image/preset 预留类型跳过存在性校验）
-        2. 对象存在性校验（algorithm/dataset/result 必须存在，否则 A0401）
+        2. 对象存在性校验（model/dataset/result 必须存在，否则 A0401）
         3. 已收藏幂等返回原 id（先于容量校验，保证重复收藏不因容量满而失败）
         4. 容量校验
         5. 单条 upsert（重复收藏幂等返回原行；取消后重收藏插入新的未删除行，软删历史行保留）
         """
-        if target_type not in ("algorithm", "result", "dataset", "image", "preset"):
+        if target_type not in ("model", "result", "dataset", "image", "preset"):
             raise BusinessException(ResultCode.PARAM_ERROR, "非法的收藏对象类型")
 
         if not await favorite_repository.target_exists(db, target_type, target_id):

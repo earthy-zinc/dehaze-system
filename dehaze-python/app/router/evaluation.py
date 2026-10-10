@@ -33,12 +33,12 @@ router = APIRouter(
 class EvaluationRequest(BaseModel):
     """评估请求
 
-    与 Java 端 PythonAlgorithmClient.evaluate 的请求体一致：
+    与 Java 端评估客户端请求体一致：
     Java 已在 SysEvalLogServiceImpl 中将 predFileId/gtFileId 解析为 URL 字符串，
     始终以 predUrl/gtUrl 字符串形式转发给 Python，不再透传文件ID。
     """
 
-    algorithmId: int = Field(description="算法ID")
+    modelId: str = Field(description="图像模型标识（统一模型规范 slug）")
     predUrl: str = Field(description="预测结果图片URL")
     gtUrl: str = Field(description="Ground Truth参考图片URL")
     params: str | None = Field(default=None, description="评估参数(JSON)")
@@ -52,7 +52,13 @@ class EvaluationResponse(BaseModel):
     metrics: dict[str, float] | None = Field(
         default=None, description="评估指标（completed 时返回）"
     )
-    time: int = Field(default=0, description="处理时间(毫秒)")
+    predMd5: str | None = Field(
+        default=None, description="预测图内容MD5（completed 时返回，调用方业务服务据此落库）"
+    )
+    gtMd5: str | None = Field(
+        default=None, description="参考图内容MD5（completed 时返回，调用方业务服务据此落库）"
+    )
+    time: int = Field(default=0, description="评估耗时(秒)")
     errorMessage: str | None = Field(default=None, description="失败错误信息（failed 时返回）")
 
 
@@ -67,11 +73,10 @@ async def evaluate(
     立即返回 logId + status=processing，需通过 GET /{taskId} 轮询结果
     """
     result = await evaluation_service.evaluate(
-        algorithm_id=body.algorithmId,
+        model_id=body.modelId,
         pred_url=body.predUrl,
         gt_url=body.gtUrl,
         user_id=user.id,
-        skip_quota_check=user.is_m2m,
     )
     return success(
         EvaluationResponse(
@@ -85,8 +90,10 @@ class EvaluationLogVO(BaseModel):
     """评估日志VO"""
 
     id: int = Field(description="日志ID")
-    algorithmId: int = Field(
-        validation_alias="algorithm_id", serialization_alias="algorithmId", description="算法ID"
+    modelId: str = Field(
+        validation_alias="model_id",
+        serialization_alias="modelId",
+        description="图像模型标识（统一模型规范 slug）",
     )
     predMd5: str | None = Field(
         default=None,
@@ -129,7 +136,7 @@ def _to_log_dict(log) -> dict:
     """将评估日志实体组装为 VO dict（result 经归一化，兼容存量 JSON 字符串行）"""
     return {
         "id": log.id,
-        "algorithm_id": log.algorithm_id,
+        "model_id": log.model_id,
         "pred_md5": log.pred_md5,
         "pred_url": log.pred_url,
         "gt_md5": log.gt_md5,
@@ -144,7 +151,7 @@ def _to_log_dict(log) -> dict:
 
 @router.get("/logs", response_model=Result[PageResult[EvaluationLogVO]], summary="评估日志列表")
 async def list_evaluation_logs(
-    algorithmId: int | None = Query(default=None, description="算法ID筛选"),
+    modelId: str | None = Query(default=None, description="图像模型标识筛选"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
@@ -154,7 +161,7 @@ async def list_evaluation_logs(
     logs, total = await evaluation_service.list_logs(
         db,
         user_id=user.id,
-        algorithm_id=algorithmId,
+        model_id=modelId,
         page=pageNum,
         size=pageSize,
     )
@@ -163,7 +170,7 @@ async def list_evaluation_logs(
 
 @router.get("/metrics", response_model=Result[PageResult[EvaluationLogVO]], summary="评估指标历史")
 async def get_evaluation_metrics(
-    algorithmId: int | None = Query(default=None, description="算法ID筛选"),
+    modelId: str | None = Query(default=None, description="图像模型标识筛选"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
@@ -173,7 +180,7 @@ async def get_evaluation_metrics(
     logs, total = await evaluation_service.list_completed_metrics(
         db=db,
         user_id=user.id,
-        algorithm_id=algorithmId,
+        model_id=modelId,
         page=pageNum,
         size=pageSize,
     )
@@ -202,6 +209,8 @@ async def get_evaluation_task(
     resp = EvaluationResponse(logId=log.id, status=log.status)
     if log.status == LogStatus.COMPLETED.value:
         resp.metrics = parse_eval_result(log.result)
+        resp.predMd5 = log.pred_md5
+        resp.gtMd5 = log.gt_md5
         resp.time = log.time or 0
     elif log.status == LogStatus.FAILED.value:
         resp.errorMessage = log.error_message

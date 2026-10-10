@@ -76,6 +76,37 @@ class EsClient:
             logger.warning("ES 删除文档 %s/%s 失败: %s", index_name, doc_id, e)
             return False
 
+    async def list_doc_ids(self, index_name: str) -> list[str]:
+        """枚举索引全部文档 id（scroll 全量拉取，供读模型对账清理孤儿）"""
+        client = await self.get_client()
+        if client is None:
+            return []
+        ids: list[str] = []
+        scroll_id: str | None = None
+        try:
+            resp = await client.search(
+                index=index_name,
+                body={"query": {"match_all": {}}, "_source": False, "size": 1000},
+                scroll="1m",
+            )
+            scroll_id = resp.get("_scroll_id")
+            hits = resp["hits"]["hits"]
+            while hits:
+                ids.extend(hit["_id"] for hit in hits)
+                resp = await client.scroll(scroll_id=scroll_id, scroll="1m")
+                scroll_id = resp.get("_scroll_id")
+                hits = resp["hits"]["hits"]
+            return ids
+        except Exception as e:
+            logger.warning("ES 枚举文档 id %s 失败: %s", index_name, e)
+            return []
+        finally:
+            if scroll_id:
+                try:
+                    await client.clear_scroll(scroll_id=scroll_id)
+                except Exception as e:
+                    logger.warning("ES 清理 scroll %s 失败: %s", scroll_id, e)
+
     async def vector_search(
         self,
         index_name: str,

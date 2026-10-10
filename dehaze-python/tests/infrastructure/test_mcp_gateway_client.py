@@ -96,10 +96,10 @@ def test_initialize_before_call(monkeypatch):
 
 
 def test_gateway_key_header_sent(monkeypatch):
-    """每个会话必须经 X-MCP-Key 请求头携带网关共享密钥。"""
+    """每个会话必须经 Authorization: Bearer 携带网关共享密钥。"""
     _, http_headers = _install(monkeypatch, {})
     asyncio.run(mod.mcp_gateway_client.lookup_tool("预测"))
-    assert http_headers[0] == {"X-MCP-Key": "test-key"}
+    assert http_headers[0] == {"Authorization": "Bearer test-key"}
 
 
 def test_missing_gateway_key_rejected(monkeypatch):
@@ -148,3 +148,35 @@ def test_list_tools_timeout_returns_empty(monkeypatch):
     _install(monkeypatch, {"list_delay": 5.0})
     monkeypatch.setattr(mod, "_MCP_LIST_TIMEOUT", 0.1)
     assert asyncio.run(mod.mcp_gateway_client.list_tools()) == []
+
+
+def _patch_call_raising_cancelled(monkeypatch):
+    """模拟真实故障：网关不可达时会话取消域跨任务泄漏，抛 CancelledError（BaseException）。
+
+    该异常不被 `except Exception` 捕获，修复前会冒泡到 LangGraph 工具节点并取消整轮推理
+    （实测：Node 'tools' raised asyncio.CancelledError）。
+    """
+
+    async def _boom(self, tool_name, arguments):
+        raise asyncio.CancelledError("Cancelled via cancel scope")
+
+    monkeypatch.setattr(mod.McpGatewayClient, "_call", _boom)
+
+
+def test_lookup_tool_cancel_leak_degrades(monkeypatch):
+    _install(monkeypatch, {})
+    _patch_call_raising_cancelled(monkeypatch)
+    assert asyncio.run(mod.mcp_gateway_client.lookup_tool("x")) == ""
+
+
+def test_lookup_param_schema_cancel_leak_degrades(monkeypatch):
+    _install(monkeypatch, {})
+    _patch_call_raising_cancelled(monkeypatch)
+    assert asyncio.run(mod.mcp_gateway_client.lookup_tool_param_schema("t")) == ""
+
+
+def test_execute_tool_cancel_leak_degrades_to_error_text(monkeypatch):
+    _install(monkeypatch, {})
+    _patch_call_raising_cancelled(monkeypatch)
+    out = asyncio.run(mod.mcp_gateway_client.execute_tool("t", {}))
+    assert "工具执行失败" in out

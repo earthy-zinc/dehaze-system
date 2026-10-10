@@ -2,10 +2,9 @@ package com.pei.dehaze.model.vo;
 
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
 
 /**
  * 导入结果 VO（同步导入时返回）

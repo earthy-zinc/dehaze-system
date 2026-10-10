@@ -8,13 +8,12 @@ import com.pei.dehaze.security.util.SystemSecurityContext;
 import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.notify.MessagePushDispatcher;
 import com.xxl.job.core.handler.annotation.XxlJob;
+import java.time.LocalTime;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalTime;
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -75,8 +74,8 @@ public class DelayedPushJob {
     }
 
     private boolean isStillInDnd(Long userId) {
-        SysNotificationSetting setting = settingMapper.selectOne(new LambdaQueryWrapper<SysNotificationSetting>()
-                .eq(SysNotificationSetting::getUserId, userId));
+        SysNotificationSetting setting = settingMapper.selectOne(
+                new LambdaQueryWrapper<SysNotificationSetting>().eq(SysNotificationSetting::getUserId, userId));
         if (setting == null || setting.getDndEnabled() == null || setting.getDndEnabled() == 0) {
             return false;
         }

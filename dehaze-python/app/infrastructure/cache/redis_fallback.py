@@ -7,6 +7,7 @@
 """
 
 import asyncio
+import inspect
 import logging
 import time
 from collections.abc import Awaitable, Callable
@@ -156,6 +157,34 @@ async def _try_fallback(
     return default
 
 
+def _validate_operation(operation: object, operation_name: str) -> None:
+    """入口校验首参是「可无参调用」的可调用对象，不合法时抛出明确的 TypeError。
+
+    传错签名（如带必填参数的函数）时 `operation()` 抛出的 TypeError 不属于 Redis 异常族、
+    不会被降级分支捕获，会一路穿透到接口层变成 500，把编码错误伪装成"服务异常"。
+    此处前置拒绝并指出调用约束，错误在开发期即暴露。
+    """
+    if not callable(operation):
+        raise TypeError(
+            f"redis_operation_with_fallback 的 operation 必须是可调用对象"
+            f"（operation_name={operation_name}）：实际为 {type(operation).__name__}"
+        )
+    try:
+        signature = inspect.signature(operation)
+    except (TypeError, ValueError):
+        # 无法内省签名的可调用对象（部分内置/扩展实现）：跳过零参校验，
+        # 由调用处的 awaitable 校验兜底
+        return
+    # bind() 按"零参调用"试绑定：带必填参数（含带参 partial）在此失败，且不执行函数
+    try:
+        signature.bind()
+    except TypeError as e:
+        raise TypeError(
+            f"redis_operation_with_fallback 的 operation 必须无参调用"
+            f"（operation_name={operation_name}）：实际签名为 {signature}"
+        ) from e
+
+
 async def redis_operation_with_fallback(
     operation: Callable[[], Awaitable[T]],
     fallback: Callable[[], Awaitable[T]] | None = None,
@@ -171,7 +200,8 @@ async def redis_operation_with_fallback(
     3. 重试仍失败或其他 RedisError → 记录熔断器失败 + 走降级
 
     Args:
-        operation: Redis 操作函数（异步）
+        operation: Redis 操作（**无参**可调用对象：async 函数，或返回 awaitable 的
+            零参可调用对象如 `lambda: redis.get(key)`）
         fallback: 降级操作函数（异步），Redis 不可用时执行
         operation_name: 操作名称，用于日志和指标
         default: 默认返回值，当没有 fallback 时使用
@@ -179,6 +209,8 @@ async def redis_operation_with_fallback(
     Returns:
         操作结果，或降级结果/默认值
     """
+    _validate_operation(operation, operation_name)
+
     # 熔断器检查：OPEN 状态快速失败
     if not await _circuit_breaker.allow_request():
         REDIS_FALLBACK_TOTAL.labels(operation=operation_name, reason="circuit_open").inc()
@@ -189,7 +221,14 @@ async def redis_operation_with_fallback(
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES + 1):
         try:
-            result = await operation()
+            returned = operation()
+            if not inspect.isawaitable(returned):
+                # 同步函数/返回非 awaitable：同样不属于 Redis 异常族，显式报错而非静默降级
+                raise TypeError(
+                    f"redis_operation_with_fallback 的 operation 必须返回 awaitable"
+                    f"（operation_name={operation_name}）：实际返回 {type(returned).__name__}"
+                )
+            result = await returned
             await _circuit_breaker.record_success()
             return result
         except (ConnectionError, TimeoutError) as e:

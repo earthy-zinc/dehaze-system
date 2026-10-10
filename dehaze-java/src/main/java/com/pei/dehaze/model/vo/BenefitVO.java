@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "会员等级权益配置视图对象")
+@Schema(description = "会员等级权益配置视图对象，字段集与取值口径对齐 python `_benefit_to_vo`")
 public class BenefitVO {
 
     @Schema(description = "等级标识")
@@ -21,11 +21,17 @@ public class BenefitVO {
     @Schema(description = "成长值上限（0表示无上限）")
     private Long growthMax;
 
-    @Schema(description = "月度去雾次数配额")
-    private Integer monthlyDehazeQuota;
+    @Schema(description = "AI对话日限额（积分/天，每日0点重置）")
+    private Long aiCreditsDaily;
 
-    @Schema(description = "月度评估次数配额")
-    private Integer monthlyEvaluateQuota;
+    @Schema(description = "AI对话月限额（积分/月，每月1日重置）")
+    private Long aiCreditsMonthly;
+
+    @Schema(description = "多模态视觉读取日限额（次/天，每日0点重置）")
+    private Integer multimodalLimit;
+
+    @Schema(description = "VIP按月赠送积分（0表示该等级不赠送）")
+    private Long vipGiftCredits;
 
     @Schema(description = "历史记录保留条数")
     private Integer historyRetention;
@@ -56,4 +62,28 @@ public class BenefitVO {
 
     @Schema(description = "状态(1:启用;0:禁用)")
     private Integer status;
+
+    @Schema(description = "月度去雾次数配额")
+    private Integer monthlyDehazeQuota;
+
+    @Schema(description = "月度去雨次数配额")
+    private Integer monthlyDerainQuota;
+
+    @Schema(description = "月度去雪次数配额")
+    private Integer monthlyDesnowQuota;
+
+    @Schema(description = "月度低光增强次数配额")
+    private Integer monthlyLowlightQuota;
+
+    @Schema(description = "月度超分辨率次数配额")
+    private Integer monthlySuperResolutionQuota;
+
+    @Schema(description = "月度去噪次数配额")
+    private Integer monthlyDenoiseQuota;
+
+    @Schema(description = "月度图像修复次数配额")
+    private Integer monthlyInpaintQuota;
+
+    @Schema(description = "月度评估次数配额")
+    private Integer monthlyEvaluateQuota;
 }

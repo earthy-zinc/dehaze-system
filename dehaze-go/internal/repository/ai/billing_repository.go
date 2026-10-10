@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// BillingRepository AI 计费域数据访问：计费记录 / 余额流水 / 退款申请 / 异常事件 / 余额乐观锁。
+// BillingRepository AI 计费域数据访问：计费记录 / 余额流水 / 退款申请 / 异常事件 / 余额相对值 UPDATE。
 // 计费记录、流水、退款、异常均为只追加表（无逻辑删除）；余额落在共享表 sys_user。
 type BillingRepository struct {
 	db *gorm.DB
@@ -315,6 +315,15 @@ func (r *BillingRepository) SumCreditLogBySource(ctx context.Context, userID int
 	return result, nil
 }
 
+// DistinctUserIDsBySource 按来源统计时段内有流水的用户（月末清零等批量任务）
+func (r *BillingRepository) DistinctUserIDsBySource(ctx context.Context, source string, start, end time.Time) ([]int64, error) {
+	var userIDs []int64
+	err := r.db.WithContext(ctx).Model(&model.SysAiCreditLog{}).
+		Where("source = ? AND create_time >= ? AND create_time <= ?", source, start, end).
+		Distinct("user_id").Pluck("user_id", &userIDs).Error
+	return userIDs, err
+}
+
 // BalanceAtOrBefore 指定时刻前最近一笔流水的变动后余额（账单期初/期末余额）
 func (r *BillingRepository) BalanceAtOrBefore(ctx context.Context, userID int64, at time.Time) (int64, error) {
 	var balance int64
@@ -436,31 +445,29 @@ func (r *BillingRepository) PaginateAnomalies(
 	return items, total, err
 }
 
-// ==================== 用户余额（sys_user 乐观锁 CAS） ====================
+// ==================== 用户余额（sys_user 相对值 UPDATE） ====================
 
-// UserBalance 余额与乐观锁版本
+// UserBalance 用户积分余额
 type UserBalance struct {
 	Balance float64 `gorm:"column:credits_balance"`
-	Version int     `gorm:"column:credits_version"`
 }
 
-// GetUserBalance 读取余额与版本号，用户不存在或已删返回 nil
+// GetUserBalance 读取余额，用户不存在或已删返回 nil
 func (r *BillingRepository) GetUserBalance(ctx context.Context, userID int64) (*UserBalance, error) {
 	var row UserBalance
 	err := r.db.WithContext(ctx).Table("sys_user").
-		Select("credits_balance, credits_version").
+		Select("credits_balance").
 		Where("id = ? AND deleted = 0", userID).Limit(1).Scan(&row).Error
 	if err != nil {
 		return nil, err
 	}
-	if row.Balance == 0 && row.Version == 0 {
+	if row.Balance == 0 {
 		// 需区分"余额为 0 的真实账户"与"用户不存在"，用存在性单独判定
-		var count int64
-		if err := r.db.WithContext(ctx).Table("sys_user").
-			Where("id = ? AND deleted = 0", userID).Count(&count).Error; err != nil {
+		exists, err := r.ExistsUser(ctx, userID)
+		if err != nil {
 			return nil, err
 		}
-		if count == 0 {
+		if !exists {
 			return nil, nil
 		}
 	}
@@ -475,11 +482,11 @@ func (r *BillingRepository) ExistsUser(ctx context.Context, userID int64) (bool,
 	return count > 0, err
 }
 
-// AddBalanceCAS 乐观锁增加余额（version 不匹配返回 false，由调用方重试）
-func (r *BillingRepository) AddBalanceCAS(ctx context.Context, userID int64, amount int64, version int) (bool, error) {
+// AddBalance 增加余额：相对值 UPDATE 天然原子（无 version 乐观锁），未命中用户返回 false
+func (r *BillingRepository) AddBalance(ctx context.Context, userID, amount int64) (bool, error) {
 	result := r.db.WithContext(ctx).Exec(
-		"UPDATE sys_user SET credits_balance = credits_balance + ?, credits_version = credits_version + 1 WHERE id = ? AND credits_version = ?",
-		amount, userID, version,
+		"UPDATE sys_user SET credits_balance = credits_balance + ? WHERE id = ? AND deleted = 0",
+		amount, userID,
 	)
 	if result.Error != nil {
 		return false, result.Error

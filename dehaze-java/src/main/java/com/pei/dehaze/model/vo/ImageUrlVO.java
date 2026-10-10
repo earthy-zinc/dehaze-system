@@ -3,10 +3,9 @@ package com.pei.dehaze.model.vo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.Data;
 
 /**
  * @author earthy-zinc
@@ -63,7 +62,10 @@ public class ImageUrlVO {
     @Schema(description = "文件大小，格式化显示", example = "2.44MB")
     private String formattedSize;
 
-    @Schema(description = "文件格式", example = "jpg", allowableValues = {"jpg", "jpeg", "webp", "png", "gif"})
+    @Schema(
+            description = "文件格式",
+            example = "jpg",
+            allowableValues = {"jpg", "jpeg", "webp", "png", "gif"})
     private String format;
 
     @Schema(description = "文件MD5值", example = "abc123...")
@@ -88,10 +90,13 @@ public class ImageUrlVO {
     // 以下字段不序列化，仅用于 mapper 映射 objectName + storage，由 service 层拼接 url
     @JsonIgnore
     private String objectName;
+
     @JsonIgnore
     private String storage;
+
     @JsonIgnore
     private String thumbnailObjectName;
+
     @JsonIgnore
     private String thumbnailStorage;
 }

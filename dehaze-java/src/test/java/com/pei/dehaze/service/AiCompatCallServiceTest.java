@@ -1,11 +1,29 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.mongodb.MongoClientSettings;
 import com.pei.dehaze.model.entity.AiApiCallLog;
 import com.pei.dehaze.model.query.AiCompatCallQuery;
 import com.pei.dehaze.model.vo.AiCompatCallVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import org.bson.BsonDocument;
+import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,19 +35,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * AiCompatCallService 单元测试。
  *
@@ -40,6 +45,8 @@ import static org.mockito.Mockito.when;
 @DisplayName("AiCompatCallService 单元测试")
 @ExtendWith(MockitoExtension.class)
 class AiCompatCallServiceTest {
+
+    private static final CodecRegistry CODEC_REGISTRY = MongoClientSettings.getDefaultCodecRegistry();
 
     @Mock
     private MongoTemplate mongoTemplate;
@@ -71,7 +78,11 @@ class AiCompatCallServiceTest {
         assertThat(mongoQuery.getSkip()).isEqualTo(20L);
         assertThat(mongoQuery.getLimit()).isEqualTo(20);
         assertThat(mongoQuery.getSortObject()).isEqualTo(new Document("create_time", -1));
-        assertThat(mongoQuery.getQueryObject().get("user_id")).isEqualTo(7L);
+        // user_id 必须双类型 $in：改造前的 int32 历史记录否则静默读不到
+        Document filter = mongoQuery.getQueryObject();
+        assertThat(candidatesOf(filter, "user_id")).containsExactly(7L, 7);
+        assertThat(bsonTypesOfCandidates(filter, "user_id"))
+                .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
     }
 
     @Test
@@ -93,12 +104,16 @@ class AiCompatCallServiceTest {
         ArgumentCaptor<Query> captor = ArgumentCaptor.forClass(Query.class);
         verify(mongoTemplate).count(captor.capture(), eq(AiApiCallLog.class));
         Document filter = captor.getValue().getQueryObject();
-        assertThat(filter.get("user_id")).isEqualTo(7L);
-        assertThat(filter.get("key_id")).isEqualTo(3L);
+        assertThat(candidatesOf(filter, "user_id")).containsExactly(7L, 7);
+        assertThat(candidatesOf(filter, "key_id")).containsExactly(3L, 3);
+        assertThat(bsonTypesOfCandidates(filter, "key_id"))
+                .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
         assertThat(filter.get("model")).isEqualTo("gpt-4o");
         Document timeRange = (Document) filter.get("create_time");
-        assertThat(epochMillis(timeRange.get("$gte"))).isEqualTo(Instant.parse("2026-09-17T00:00:00Z").toEpochMilli());
-        assertThat(epochMillis(timeRange.get("$lte"))).isEqualTo(Instant.parse("2026-09-17T00:00:00Z").toEpochMilli());
+        assertThat(epochMillis(timeRange.get("$gte")))
+                .isEqualTo(Instant.parse("2026-09-17T00:00:00Z").toEpochMilli());
+        assertThat(epochMillis(timeRange.get("$lte")))
+                .isEqualTo(Instant.parse("2026-09-17T00:00:00Z").toEpochMilli());
     }
 
     @Test
@@ -118,6 +133,27 @@ class AiCompatCallServiceTest {
         ArgumentCaptor<Query> captor = ArgumentCaptor.forClass(Query.class);
         verify(mongoTemplate).count(captor.capture(), eq(AiApiCallLog.class));
         assertThat(captor.getValue().getQueryObject()).doesNotContainKey("create_time");
+    }
+
+    @Test
+    @DisplayName("查询：key_id 超出 int32 值域时只留 int64 候选（python 同样写 int64，intValue() 会溢出）")
+    void listCalls_keepsInt64OnlyForOutOfInt32RangeKeyId() {
+        long bigKeyId = (long) Integer.MAX_VALUE + 1;
+        when(mongoTemplate.count(any(Query.class), eq(AiApiCallLog.class))).thenReturn(0L);
+        when(mongoTemplate.find(any(Query.class), eq(AiApiCallLog.class))).thenReturn(List.of());
+        AiCompatCallQuery query = new AiCompatCallQuery();
+        query.setKeyId(bigKeyId);
+
+        try (MockedStatic<SecurityUtils> security = mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getUserId).thenReturn(7L);
+            service.listCalls(query);
+        }
+
+        ArgumentCaptor<Query> captor = ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).find(captor.capture(), eq(AiApiCallLog.class));
+        Document filter = captor.getValue().getQueryObject();
+        assertThat(candidatesOf(filter, "key_id")).containsExactly(bigKeyId);
+        assertThat(bsonTypesOfCandidates(filter, "key_id")).containsExactly(BsonType.INT64);
     }
 
     @Test
@@ -159,6 +195,21 @@ class AiCompatCallServiceTest {
         assertThat(vo.getStatusCode()).isEqualTo(200);
         assertThat(vo.getCreateTime()).isEqualTo(LocalDateTime.of(2026, 9, 17, 10, 0));
         assertThat(vo.getErrorMsg()).isNull();
+    }
+
+    /** 过滤条件中某字段 `$in` 的候选值（证明双类型候选的取值）。 */
+    private static List<Object> candidatesOf(Document filter, String field) {
+        return ((Document) filter.get(field)).getList("$in", Object.class);
+    }
+
+    /** 过滤条件中 `$in` 候选值的 BSON 类型（真编码：Document → BsonDocument）。 */
+    private static List<BsonType> bsonTypesOfCandidates(Document filter, String field) {
+        BsonDocument encoded = filter.toBsonDocument(BsonDocument.class, CODEC_REGISTRY);
+        List<BsonType> types = new ArrayList<>();
+        for (BsonValue value : encoded.getDocument(field).getArray("$in")) {
+            types.add(value.getBsonType());
+        }
+        return types;
     }
 
     private static long epochMillis(Object value) {

@@ -121,9 +121,12 @@ func (r *ProviderKeyRepository) GetByID(ctx context.Context, id int64) (*model.S
 	return &k, err
 }
 
-func (r *ProviderKeyRepository) GetByHash(ctx context.Context, hash string) (*model.SysAiProviderKey, error) {
+// GetByProviderAndHash 按 (provider_id, key_hash) 联合键查询密钥。
+// 唯一键 uk_provider_key 为 (provider_id, key_hash)，同一把密钥可登记到不同供应商（本地三服务共用密钥），
+// 故查重必须带 provider 维度，不能按 key_hash 全局取行。
+func (r *ProviderKeyRepository) GetByProviderAndHash(ctx context.Context, providerID int64, hash string) (*model.SysAiProviderKey, error) {
 	var k model.SysAiProviderKey
-	err := r.db.WithContext(ctx).Where("key_hash = ?", hash).First(&k).Error
+	err := r.db.WithContext(ctx).Where("provider_id = ? AND key_hash = ?", providerID, hash).First(&k).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}

@@ -7,8 +7,7 @@ import com.pei.dehaze.model.vo.IdVO;
 import com.pei.dehaze.model.vo.ImageFeatureAnalysisVO;
 import com.pei.dehaze.model.vo.RecommendationReportVO;
 import com.pei.dehaze.model.vo.RecommendationRuleVO;
-import com.pei.dehaze.model.vo.RecommendedAlgorithmVO;
-
+import com.pei.dehaze.model.vo.RecommendedModelVO;
 import java.util.List;
 
 public interface RecommendationService {
@@ -19,9 +18,9 @@ public interface RecommendationService {
     ImageFeatureAnalysisVO analyze(AnalyzeForm form);
 
     /**
-     * 获取算法推荐（F-REC-002）
+     * 获取图像模型推荐（F-REC-002）
      */
-    List<RecommendedAlgorithmVO> getAlgorithmRecommendations(Long analysisId, String imageMd5);
+    List<RecommendedModelVO> getModelRecommendations(Long analysisId, String imageMd5);
 
     /**
      * 提交推荐反馈（F-REC-003）

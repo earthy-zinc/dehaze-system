@@ -1,9 +1,9 @@
 package com.pei.dehaze.service.impl;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * 消息搜索 LIKE 转义单测：与 Python escape_like、Go EscapeLike 口径一致（\ % _ 按字面匹配）。

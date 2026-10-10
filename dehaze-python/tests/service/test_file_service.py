@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import select
 
 import app.service.file_service as fs
+from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_file import SysFile
@@ -123,7 +124,9 @@ async def test_upload_file_rejects_forged_image(db, local_storage):
 
 
 async def test_upload_file_accepts_real_png(db, local_storage, tmp_path):
-    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 24
+    # 内容每轮唯一：库中残留同 md5 的 sys_file 行会让 upload_file 命中秒传早返回，
+    # 跳过本次物理写入，使"真实写盘"断言沦为假绿
+    png = b"\x89PNG\r\n\x1a\n" + uuid.uuid4().bytes + b"\x00" * 8
     created = await fs.file_service.upload_file(
         db, filename="real.png", content=png, content_type="image/png"
     )
@@ -135,7 +138,8 @@ async def test_upload_file_accepts_real_png(db, local_storage, tmp_path):
 
 
 async def test_upload_file_stores_content_and_metadata(db, local_storage, tmp_path):
-    content = b"hello dehaze file"
+    # 内容每轮唯一：共享库残留同 md5 行会命中秒传早返回，不再写本次 tmp_path 物理文件
+    content = f"hello dehaze file {uuid.uuid4()}".encode()
     created = await fs.file_service.upload_file(
         db, filename="hello.txt", content=content, content_type="text/plain"
     )
@@ -150,11 +154,13 @@ async def test_upload_file_stores_content_and_metadata(db, local_storage, tmp_pa
     assert created.object_name.startswith("upload/")
     assert created.object_name.endswith(f"/{created.md5}.txt")
     # 物理文件真实写入存储
-    assert local_storage.exists("dehaze", created.object_name) is True
+    assert local_storage.exists(settings.MINIO_BUCKET, created.object_name) is True
 
 
 async def test_upload_file_md5_dedup_reuses_record(db, local_storage):
-    content = b"dedup-content-1"
+    # 内容每轮唯一：本用例要断言"同内容两次上传复用同一行"，固定内容会被上一轮残留行
+    # 抢先命中，使断言不再覆盖本次写入链路
+    content = f"dedup-content-{uuid.uuid4()}".encode()
     first = await fs.file_service.upload_file(
         db, filename="a.txt", content=content, content_type="text/plain"
     )
@@ -166,7 +172,8 @@ async def test_upload_file_md5_dedup_reuses_record(db, local_storage):
 
 
 async def test_upload_file_revives_soft_deleted_record(db, local_storage):
-    content = b"revive-content-1"
+    # 内容每轮唯一：残留活跃行会让首次上传直接秒传返回，掩盖"软删不占唯一键位"验证
+    content = f"revive-content-{uuid.uuid4()}".encode()
     created = await fs.file_service.upload_file(
         db, filename="revive.txt", content=content, content_type="text/plain"
     )
@@ -196,13 +203,15 @@ async def test_upload_file_zero_byte(db, local_storage):
 
 
 async def test_delete_file_removes_physical_and_soft_deletes(db, local_storage):
-    content = b"delete-me-1"
+    # 内容每轮唯一：残留同 md5 行会让上传早返回，物理文件从未写入本次 tmp_path，
+    # 随后的"物理已删除"断言即假失败
+    content = f"delete-me-{uuid.uuid4()}".encode()
     created = await fs.file_service.upload_file(
         db, filename="del.txt", content=content, content_type="text/plain"
     )
     await fs.file_service.delete_file_with_storage(db, created.id)
 
-    assert local_storage.exists("dehaze", created.object_name) is False
+    assert local_storage.exists(settings.MINIO_BUCKET, created.object_name) is False
     # （单会话事务模式下实体属性可能过期，用列查询读库验证；查软删行需绕过全局过滤）
     row = await db.execute(
         select(SysFile.deleted)
@@ -270,16 +279,16 @@ async def test_cleanup_orphan_files_respects_retention_threshold(db, tmp_path, m
 
     stale = "upload/20260101/stale_orphan.bin"
     fresh = "upload/20260101/fresh_orphan.bin"
-    storage.upload("dehaze", stale, b"stale", "application/octet-stream")
-    storage.upload("dehaze", fresh, b"fresh", "application/octet-stream")
+    storage.upload(settings.MINIO_BUCKET, stale, b"stale", "application/octet-stream")
+    storage.upload(settings.MINIO_BUCKET, fresh, b"fresh", "application/octet-stream")
 
     # 陈旧孤儿改为 72 小时前（超过 48h 阈值）；新孤儿保持当前时间
-    stale_path = tmp_path / "dehaze" / stale
+    stale_path = tmp_path / settings.MINIO_BUCKET / stale
     old_ts = time.time() - 72 * 3600
     os.utime(stale_path, (old_ts, old_ts))
 
     msg = await handlers.cleanup_orphan_files()
 
-    assert storage.exists("dehaze", stale) is False
-    assert storage.exists("dehaze", fresh) is True
+    assert storage.exists(settings.MINIO_BUCKET, stale) is False
+    assert storage.exists(settings.MINIO_BUCKET, fresh) is True
     assert "已删除=1" in msg

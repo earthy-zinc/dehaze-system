@@ -24,6 +24,7 @@ type AiModelCreateForm struct {
 	ProviderID            int64           `json:"providerId" binding:"required"`
 	ModelID               string          `json:"modelId" binding:"required,max=64"`
 	ModelType             string          `json:"modelType"`
+	TaskTags              json.RawMessage `json:"taskTags"`
 	Dimension             *int64          `json:"dimension"`
 	DisplayName           string          `json:"displayName" binding:"required,max=128"`
 	MaxContextTokens      *int            `json:"maxContextTokens"`
@@ -42,8 +43,10 @@ type AiModelCreateForm struct {
 
 // AiModelUpdateForm 更新模型表单（仅传需要变更的字段；modelType/dimension 创建后不可改）
 type AiModelUpdateForm struct {
-	ProviderID            *int64          `json:"providerId"`
-	ModelType             *string         `json:"modelType"`
+	ProviderID *int64  `json:"providerId"`
+	ModelType  *string `json:"modelType"`
+	// TaskTags：nil=未传；"null"=显式清空为 NULL；数组=全量替换（对齐 python exclude_unset）
+	TaskTags              json.RawMessage `json:"taskTags"`
 	Dimension             *int64          `json:"dimension"`
 	DisplayName           *string         `json:"displayName"`
 	MaxContextTokens      *int            `json:"maxContextTokens"`
@@ -61,11 +64,17 @@ type AiModelUpdateForm struct {
 	VipLevel             *int8           `json:"vipLevel"`
 }
 
-// AiModelQuery 模型分页查询
+// AiModelQuery 模型分页查询（taskTags 逗号分隔，JSON 数组含任一即命中）
 type AiModelQuery struct {
 	AiPageQuery
 	Keyword   string `form:"keyword"`
 	ModelType string `form:"modelType"`
+	TaskTags  string `form:"taskTags"`
+}
+
+// UserPreferenceForm 用户偏好默认模型表单：nil（未传或显式 null）＝清除偏好
+type UserPreferenceForm struct {
+	DefaultModel *string `json:"defaultModel"`
 }
 
 // ==================== 模型用户售价 ====================
@@ -73,16 +82,19 @@ type AiModelQuery struct {
 // ModelPriceDetailForm 价格档位明细表单
 type ModelPriceDetailForm struct {
 	TokenType string  `json:"tokenType" binding:"required"`
+	UsageKind string  `json:"usageKind"`
 	TimeSlot  string  `json:"timeSlot" binding:"required"`
 	MinTokens int64   `json:"minTokens"`
 	MaxTokens *int64  `json:"maxTokens"`
 	UnitPrice float64 `json:"unitPrice"`
 }
 
-// ModelPriceCreateForm 新增价格版本表单（model_id 由路径参数指定）
+// ModelPriceCreateForm 新增价格版本表单（业务键 modelId 随表单提交）
 type ModelPriceCreateForm struct {
+	ModelID       string                 `json:"modelId" binding:"required"`
 	ProviderID    int64                  `json:"providerId" binding:"required"`
 	Unit          string                 `json:"unit"`
+	BillingUnit   string                 `json:"billingUnit"`
 	EffectiveFrom *time.Time             `json:"effectiveFrom"`
 	EffectiveTo   *time.Time             `json:"effectiveTo"`
 	Status        *int8                  `json:"status"`
@@ -92,6 +104,7 @@ type ModelPriceCreateForm struct {
 // ModelPriceUpdateForm 更新价格版本表单（仅主表字段）
 type ModelPriceUpdateForm struct {
 	Unit          *string    `json:"unit"`
+	BillingUnit   *string    `json:"billingUnit"`
 	EffectiveFrom *time.Time `json:"effectiveFrom"`
 	EffectiveTo   *time.Time `json:"effectiveTo"`
 	Status        *int8      `json:"status"`
@@ -108,28 +121,30 @@ type ModelPriceQuery struct {
 
 // ProviderCreateForm 新增供应商表单
 type ProviderCreateForm struct {
-	ProviderCode        string          `json:"providerCode" binding:"required,max=32"`
-	DisplayName         string          `json:"displayName" binding:"required,max=128"`
-	ApiBaseUrl          string          `json:"apiBaseUrl" binding:"required,max=512"`
-	ProtocolType        string          `json:"protocolType"`
-	AuthType            string          `json:"authType"`
-	DefaultHeaders      json.RawMessage `json:"defaultHeaders"`
-	SortOrder           *int            `json:"sortOrder"`
-	HealthCheckEnabled  *int8           `json:"healthCheckEnabled"`
-	UserIdentityForward json.RawMessage `json:"userIdentityForward"`
-	Remark              json.RawMessage `json:"remark"`
-	Status              *int8           `json:"status"`
+	ProviderCode          string          `json:"providerCode" binding:"required,max=32"`
+	DisplayName           string          `json:"displayName" binding:"required,max=128"`
+	ApiBaseUrl            string          `json:"apiBaseUrl" binding:"required,max=512"`
+	ProtocolType          string          `json:"protocolType"`
+	AuthType              string          `json:"authType"`
+	DefaultHeaders        json.RawMessage `json:"defaultHeaders"`
+	SortOrder             *int            `json:"sortOrder"`
+	HealthCheckEnabled    *int8           `json:"healthCheckEnabled"`
+	RequestTimeoutSeconds *int            `json:"requestTimeoutSeconds"`
+	UserIdentityForward   json.RawMessage `json:"userIdentityForward"`
+	Remark                json.RawMessage `json:"remark"`
+	Status                *int8           `json:"status"`
 }
 
 // ProviderUpdateForm 更新供应商表单
 type ProviderUpdateForm struct {
-	DisplayName        *string         `json:"displayName"`
-	ApiBaseUrl         *string         `json:"apiBaseUrl"`
-	ProtocolType       *string         `json:"protocolType"`
-	AuthType           *string         `json:"authType"`
-	DefaultHeaders     json.RawMessage `json:"defaultHeaders"`
-	SortOrder          *int            `json:"sortOrder"`
-	HealthCheckEnabled *int8           `json:"healthCheckEnabled"`
+	DisplayName           *string         `json:"displayName"`
+	ApiBaseUrl            *string         `json:"apiBaseUrl"`
+	ProtocolType          *string         `json:"protocolType"`
+	AuthType              *string         `json:"authType"`
+	DefaultHeaders        json.RawMessage `json:"defaultHeaders"`
+	SortOrder             *int            `json:"sortOrder"`
+	HealthCheckEnabled    *int8           `json:"healthCheckEnabled"`
+	RequestTimeoutSeconds *int            `json:"requestTimeoutSeconds"`
 	// UserIdentityForward / Remark：nil=未传；"null"=显式清空
 	UserIdentityForward json.RawMessage `json:"userIdentityForward"`
 	Remark              json.RawMessage `json:"remark"`

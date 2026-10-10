@@ -1,5 +1,15 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -11,7 +21,7 @@ import com.pei.dehaze.model.entity.SysAiAgentEvalRun;
 import com.pei.dehaze.model.entity.SysAiAgentEvalSample;
 import com.pei.dehaze.model.form.AiEvalDatasetCreateForm;
 import com.pei.dehaze.model.form.AiEvalSampleCreateForm;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,18 +30,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * 智能体评测服务单测：跨 Agent 越权不可见、评测集软删行复活、样本随集级联清理、执行记录分页。
@@ -46,12 +44,16 @@ class AiEvalServiceTest {
 
     @Mock
     private SysAiAgentEvalDatasetMapper datasetMapper;
+
     @Mock
     private SysAiAgentEvalSampleMapper sampleMapper;
+
     @Mock
     private SysAiAgentEvalRunMapper runMapper;
+
     @Mock
     private AiAgentService agentService;
+
     @Mock
     private AuditLogService auditLogService;
 
@@ -72,13 +74,15 @@ class AiEvalServiceTest {
     void createDatasetRejectsDuplicateType() {
         SysAiAgentEvalDataset existing = dataset(5L, 1L);
         existing.setDeleted(0L);
-        when(datasetMapper.selectByAgentAndTypeIgnoringDeleted(1L, "regression")).thenReturn(existing);
+        when(datasetMapper.selectByAgentAndTypeIgnoringDeleted(1L, "regression"))
+                .thenReturn(existing);
 
         AiEvalDatasetCreateForm form = new AiEvalDatasetCreateForm();
         form.setName("回归集");
         form.setDatasetType("regression");
 
-        assertThat(assertThrows(BusinessException.class, () -> service.createDataset(1L, form)).getResultCode())
+        assertThat(assertThrows(BusinessException.class, () -> service.createDataset(1L, form))
+                        .getResultCode())
                 .isEqualTo(ResultCode.DATA_EXISTS);
         verify(datasetMapper, never()).insert(any(SysAiAgentEvalDataset.class));
     }
@@ -88,7 +92,8 @@ class AiEvalServiceTest {
     void createDatasetRevivesSoftDeletedRow() {
         SysAiAgentEvalDataset existing = dataset(5L, 1L);
         existing.setDeleted(5L);
-        when(datasetMapper.selectByAgentAndTypeIgnoringDeleted(1L, "regression")).thenReturn(existing);
+        when(datasetMapper.selectByAgentAndTypeIgnoringDeleted(1L, "regression"))
+                .thenReturn(existing);
 
         AiEvalDatasetCreateForm form = new AiEvalDatasetCreateForm();
         form.setName("回归集(重建)");
@@ -107,7 +112,8 @@ class AiEvalServiceTest {
     void crossAgentDatasetIsNotFound() {
         when(datasetMapper.selectById(5L)).thenReturn(dataset(5L, 2L));
 
-        assertThat(assertThrows(BusinessException.class, () -> service.deleteDataset(1L, 5L, 9L)).getResultCode())
+        assertThat(assertThrows(BusinessException.class, () -> service.deleteDataset(1L, 5L, 9L))
+                        .getResultCode())
                 .isEqualTo(ResultCode.RESOURCE_NOT_FOUND);
         verify(datasetMapper, never()).softDeleteByIds(anyList());
     }
@@ -121,8 +127,17 @@ class AiEvalServiceTest {
 
         verify(sampleMapper).deleteByDatasetIds(List.of(5L));
         verify(datasetMapper).softDeleteByIds(List.of(5L));
-        verify(auditLogService).recordAudit(eq(9L), eq("ai_eval_dataset"), eq(5L), eq("delete"), eq("ai_eval"),
-                any(), isNull(), isNull(), isNull());
+        verify(auditLogService)
+                .recordAudit(
+                        eq(9L),
+                        eq("ai_eval_dataset"),
+                        eq(5L),
+                        eq("delete"),
+                        eq("ai_eval"),
+                        any(),
+                        isNull(),
+                        isNull(),
+                        isNull());
     }
 
     @Test
@@ -132,7 +147,8 @@ class AiEvalServiceTest {
         form.setDatasetId(6L);
         form.setTaskGoal("目标");
 
-        assertThat(assertThrows(BusinessException.class, () -> service.createSample(1L, 5L, form)).getResultCode())
+        assertThat(assertThrows(BusinessException.class, () -> service.createSample(1L, 5L, form))
+                        .getResultCode())
                 .isEqualTo(ResultCode.PARAM_ERROR);
         verify(sampleMapper, never()).insert(any(SysAiAgentEvalSample.class));
     }
@@ -161,8 +177,17 @@ class AiEvalServiceTest {
         service.deleteSample(1L, 7L, 9L);
 
         verify(sampleMapper).deleteById(7L);
-        verify(auditLogService).recordAudit(eq(9L), eq("ai_eval_sample"), eq(7L), eq("delete"), eq("ai_eval"),
-                any(), isNull(), isNull(), isNull());
+        verify(auditLogService)
+                .recordAudit(
+                        eq(9L),
+                        eq("ai_eval_sample"),
+                        eq(7L),
+                        eq("delete"),
+                        eq("ai_eval"),
+                        any(),
+                        isNull(),
+                        isNull(),
+                        isNull());
     }
 
     @Test

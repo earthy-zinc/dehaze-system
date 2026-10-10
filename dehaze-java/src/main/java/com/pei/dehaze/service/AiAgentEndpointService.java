@@ -13,11 +13,6 @@ import com.pei.dehaze.model.form.AiEndpointCreateForm;
 import com.pei.dehaze.model.form.AiEndpointUpdateForm;
 import com.pei.dehaze.model.query.AiEndpointPageQuery;
 import com.pei.dehaze.model.vo.AiEndpointVO;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -29,6 +24,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 外部 A2A 端点管理服务（注册/更新/删除/分页）。
@@ -73,8 +72,10 @@ public class AiAgentEndpointService {
         static Cidr of(String literal) {
             String[] parts = literal.split("/");
             String[] octets = parts[0].split("\\.");
-            int network = Integer.parseInt(octets[0]) << 24 | Integer.parseInt(octets[1]) << 16
-                    | Integer.parseInt(octets[2]) << 8 | Integer.parseInt(octets[3]);
+            int network = Integer.parseInt(octets[0]) << 24
+                    | Integer.parseInt(octets[1]) << 16
+                    | Integer.parseInt(octets[2]) << 8
+                    | Integer.parseInt(octets[3]);
             return new Cidr(network, Integer.parseInt(parts[1]));
         }
 
@@ -85,8 +86,7 @@ public class AiAgentEndpointService {
     }
 
     private static int ipv4ToInt(byte[] bytes) {
-        return (bytes[0] & 0xFF) << 24 | (bytes[1] & 0xFF) << 16
-                | (bytes[2] & 0xFF) << 8 | (bytes[3] & 0xFF);
+        return (bytes[0] & 0xFF) << 24 | (bytes[1] & 0xFF) << 16 | (bytes[2] & 0xFF) << 8 | (bytes[3] & 0xFF);
     }
 
     private final SysAiAgentEndpointMapper endpointMapper;
@@ -103,13 +103,14 @@ public class AiAgentEndpointService {
                 .orderByDesc(SysAiAgentEndpoint::getId);
         if (query.getKeyword() != null && !query.getKeyword().isBlank()) {
             String keyword = query.getKeyword();
-            wrapper.and(w -> w.like(SysAiAgentEndpoint::getName, keyword)
-                    .or().like(SysAiAgentEndpoint::getBaseUrl, keyword));
+            wrapper.and(w ->
+                    w.like(SysAiAgentEndpoint::getName, keyword).or().like(SysAiAgentEndpoint::getBaseUrl, keyword));
         }
         Page<SysAiAgentEndpoint> page = new Page<>(query.getPageNum(), query.getPageSize());
         IPage<SysAiAgentEndpoint> endpointPage = endpointMapper.selectPage(page, wrapper);
         Page<AiEndpointVO> result = new Page<>(query.getPageNum(), query.getPageSize(), endpointPage.getTotal());
-        result.setRecords(new ArrayList<>(endpointPage.getRecords().stream().map(this::toVO).toList()));
+        result.setRecords(new ArrayList<>(
+                endpointPage.getRecords().stream().map(this::toVO).toList()));
         return result;
     }
 
@@ -120,7 +121,8 @@ public class AiAgentEndpointService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "base_url/agent_card_url 仅支持 https 且禁止内网地址");
         }
         String credential = form.getCredential() == null || form.getCredential().isBlank()
-                ? null : credentialCipher.encrypt(form.getCredential());
+                ? null
+                : credentialCipher.encrypt(form.getCredential());
         String authType = form.getAuthType() == null ? "http" : form.getAuthType();
         Integer status = form.getStatus() == null ? 1 : form.getStatus();
         SysAiAgentEndpoint existing = endpointMapper.selectByBaseUrlIgnoringDeleted(baseUrl);
@@ -159,8 +161,8 @@ public class AiAgentEndpointService {
         Map<String, Object> beforeValue = new LinkedHashMap<>();
         beforeValue.put("name", endpoint.getName());
         beforeValue.put("base_url", endpoint.getBaseUrl());
-        auditLogService.recordAudit(operatorId, "ai_agent_endpoint", endpointId, "delete", "ai_agent",
-                beforeValue, null, null, null);
+        auditLogService.recordAudit(
+                operatorId, "ai_agent_endpoint", endpointId, "delete", "ai_agent", beforeValue, null, null, null);
     }
 
     @Transactional
@@ -260,8 +262,11 @@ public class AiAgentEndpointService {
     }
 
     private static boolean isInternalAddress(InetAddress address) {
-        if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
-                || address.isSiteLocalAddress() || address.isMulticastAddress()) {
+        if (address.isAnyLocalAddress()
+                || address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isSiteLocalAddress()
+                || address.isMulticastAddress()) {
             return true;
         }
         byte[] bytes = address.getAddress();

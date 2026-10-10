@@ -9,6 +9,6 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "评价详情VO")
 public class RatingDetailVO extends RatingPageVO {
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
 }

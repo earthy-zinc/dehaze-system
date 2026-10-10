@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -15,13 +16,12 @@ import com.pei.dehaze.model.query.HistoryQuery;
 import com.pei.dehaze.model.vo.InputHistoryVO;
 import com.pei.dehaze.service.MemberBenefitService;
 import com.pei.dehaze.service.SysInputHistoryService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 /**
  * 图像输入历史记录服务实现
@@ -51,14 +51,26 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
                 .eq(query.getStatus() != null, SysInputHistory::getStatus, query.getStatus())
                 .eq(query.getInputSource() != null, SysInputHistory::getInputSource, query.getInputSource())
                 .orderByDesc(SysInputHistory::getCreateTime);
+        if (StrUtil.isNotBlank(query.getKeywords())) {
+            // 转义 LIKE 通配符：否则关键词里的 %/_ 会被当作通配符匹配任意内容
+            String keywords = query.getKeywords()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            wrapper.and(w -> w.like(SysInputHistory::getModelName, keywords)
+                    .or()
+                    .like(SysInputHistory::getOriginalImageUrl, keywords));
+        }
 
         Page<SysInputHistory> result = this.page(page, wrapper);
         Page<InputHistoryVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
-        voPage.setRecords(result.getRecords().stream().map(h -> {
-            InputHistoryVO vo = new InputHistoryVO();
-            BeanUtil.copyProperties(h, vo);
-            return vo;
-        }).toList());
+        voPage.setRecords(result.getRecords().stream()
+                .map(h -> {
+                    InputHistoryVO vo = new InputHistoryVO();
+                    BeanUtil.copyProperties(h, vo);
+                    return vo;
+                })
+                .toList());
         return voPage;
     }
 
@@ -76,19 +88,18 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
 
     @Override
     public Long createHistory(HistoryForm form) {
-        // algorithmParams 须为合法 JSON（python A0400 口径）
-        if (cn.hutool.core.util.StrUtil.isNotBlank(form.getAlgorithmParams())) {
+        // modelParams 须为合法 JSON（python A0400 口径）
+        if (cn.hutool.core.util.StrUtil.isNotBlank(form.getModelParams())) {
             try {
-                cn.hutool.json.JSONUtil.parse(form.getAlgorithmParams());
+                cn.hutool.json.JSONUtil.parse(form.getModelParams());
             } catch (Exception e) {
-                throw new BusinessException(ResultCode.PARAM_ERROR, "algorithmParams 必须为合法 JSON 字符串");
+                throw new BusinessException(ResultCode.PARAM_ERROR, "modelParams 必须为合法 JSON 字符串");
             }
         }
         Long userId = getCurrentUserId();
 
         // 配额检查：超过会员等级保留条数时自动清理最旧记录
-        long count = this.count(new LambdaQueryWrapper<SysInputHistory>()
-                .eq(SysInputHistory::getUserId, userId));
+        long count = this.count(new LambdaQueryWrapper<SysInputHistory>().eq(SysInputHistory::getUserId, userId));
         if (count >= getHistoryRetention(userId)) {
             autoCleanup(userId);
         }
@@ -129,8 +140,8 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
     @Override
     public int clearAllHistory() {
         Long userId = getCurrentUserId();
-        LambdaQueryWrapper<SysInputHistory> wrapper = new LambdaQueryWrapper<SysInputHistory>()
-                .eq(SysInputHistory::getUserId, userId);
+        LambdaQueryWrapper<SysInputHistory> wrapper =
+                new LambdaQueryWrapper<SysInputHistory>().eq(SysInputHistory::getUserId, userId);
         long count = this.count(wrapper);
         this.remove(wrapper);
         log.debug("用户 {} 清空了 {} 条历史记录", userId, count);

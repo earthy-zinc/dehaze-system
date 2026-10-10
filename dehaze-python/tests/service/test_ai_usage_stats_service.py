@@ -42,13 +42,16 @@ async def _seed_billing(db, **overrides):
 
 
 async def test_provider_health_aggregation(db, mock_redis):
+    """无调用供应商的健康行：状态可判定，但近 24h 比率与 P95 无样本 → null"""
     await _seed_provider(db, provider_code="prov_health", display_name="健康供应商")
     result = await ai_usage_stats_service.get_usage_stats(db, mock_redis, UsageStatsQuery())
     prov = next(p for p in result.provider_health if p.provider_name == "健康供应商")
     assert prov.provider_id > 0
     assert prov.health in ("healthy", "suspicious", "open")
-    assert prov.call_count >= 0
-    assert 0 <= prov.success_rate <= 1
+    assert prov.call_count == 0
+    assert prov.success_rate is None
+    assert prov.rate429 is None
+    assert prov.p95_latency_ms is None
     assert isinstance(prov.circuit_open, bool)
 
 

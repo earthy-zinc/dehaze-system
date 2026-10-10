@@ -6,12 +6,13 @@
 - execute_tool: 调用工具
 
 MCP 网关地址由配置 MCP_GATEWAY_URL 指定，默认 http://127.0.0.1:8082/mcp；
-每个请求经 X-MCP-Key 请求头携带共享密钥 MCP_GATEWAY_KEY（网关侧强校验）
+每个请求经 Authorization: Bearer 携带共享密钥 MCP_GATEWAY_KEY（网关侧强校验）
 """
 
 import asyncio
 import json
 import logging
+from collections.abc import Coroutine
 from typing import Any
 
 from mcp.client.session import ClientSession
@@ -23,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 # list_tools 单独调用超时（秒）：预筛选为可选能力，超时即降级，不阻塞模型调用
 _MCP_LIST_TIMEOUT = 5.0
+# 元 tool 调用超时（秒）：execute_tool 会触发一次后端 API，给较宽裕的上限，仅防挂死
+_MCP_CALL_TIMEOUT = 30.0
 
 
 class McpGatewayClient:
@@ -35,37 +38,54 @@ class McpGatewayClient:
     async def lookup_tool(self, query: str) -> str:
         """搜索后端 API，返回工具名、描述和参数名列表"""
         try:
-            async with self._session() as session:
-                result = await session.call_tool("lookup_tool", {"query": query})
-                return _extract_text(result)
-        except Exception as e:
+            return await self._isolated(self._call("lookup_tool", {"query": query}))
+        except BaseException as e:
             logger.warning("MCP lookup_tool failed: %s", e)
             return ""
 
     async def lookup_tool_param_schema(self, tool_name: str) -> str:
         """查看指定工具的完整参数定义"""
         try:
-            async with self._session() as session:
-                result = await session.call_tool(
-                    "lookup_tool_param_schema", {"tool_name": tool_name}
-                )
-                return _extract_text(result)
-        except Exception as e:
+            return await self._isolated(
+                self._call("lookup_tool_param_schema", {"tool_name": tool_name})
+            )
+        except BaseException as e:
             logger.warning("MCP lookup_tool_param_schema failed: %s", e)
             return ""
 
     async def execute_tool(self, tool_name: str, arguments: dict[str, Any]) -> str:
         """调用指定工具，执行后端 API 调用"""
         try:
-            async with self._session() as session:
-                result = await session.call_tool(
+            return await self._isolated(
+                self._call(
                     "execute_tool",
                     {"tool_name": tool_name, "arguments": json.dumps(arguments)},
                 )
-                return _extract_text(result)
-        except Exception as e:
+            )
+        except BaseException as e:
             logger.warning("MCP execute_tool failed: %s", e)
             return f"工具执行失败: {e}"
+
+    @staticmethod
+    async def _isolated(coro: Coroutine[Any, Any, str]) -> str:
+        """在独立任务中执行一次会话体，隔离 anyio 取消域（同 `list_tools` 的说明）。
+
+        MCP 会话基于 anyio 取消域：请求失败（如网关不可达）时取消域可能跨任务泄漏，
+        抛出 `CancelledError` 这类 **BaseException**——它不被 `except Exception` 捕获，
+        会一路冒泡到 LangGraph 工具节点并取消整轮推理。故整段会话生命周期放进独立任务，
+        失败/超时只终止该任务；取消后重抛由调用方按工具语义转成降级文案。
+        """
+        task = asyncio.create_task(coro)
+        try:
+            return await asyncio.wait_for(task, timeout=_MCP_CALL_TIMEOUT)
+        except BaseException:
+            task.cancel()
+            raise
+
+    async def _call(self, tool_name: str, arguments: dict[str, Any]) -> str:
+        async with self._session() as session:
+            result = await session.call_tool(tool_name, arguments)
+            return _extract_text(result)
 
     async def list_tools(self) -> list[dict[str, Any]]:
         """获取网关注册的全部工具摘要（name + description + inputSchema）。
@@ -132,7 +152,9 @@ class _McpSessionContext:
         self._session = None
 
     async def __aenter__(self) -> ClientSession:
-        self._http_ctx = streamablehttp_client(self._url, headers={"X-MCP-Key": self._gateway_key})
+        self._http_ctx = streamablehttp_client(
+            self._url, headers={"Authorization": f"Bearer {self._gateway_key}"}
+        )
         read, write, _ = await self._http_ctx.__aenter__()
         self._session_ctx = ClientSession(read, write)
         self._session = await self._session_ctx.__aenter__()

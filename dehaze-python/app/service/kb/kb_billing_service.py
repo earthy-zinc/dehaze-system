@@ -14,8 +14,8 @@
 - 单价读 sys_ai_model_price 用户售价（与 chat 同源同换算函数）；未配置售价
   warn 回退 0（免费）不拒绝——文档向量化是后台任务，计费配置缺失不应让文档
   永久卡在失败
-- provider_code=local（内置本地模型零边际成本）不产生计费记录，但预校验
-  照常执行（欠费/权益缺失与 chat 同口径拦截）
+- 计费无 provider 身份特判：统一按 sys_ai_model_price 用户售价换算；内置本地模型
+  种子售价为 0，仅落归因记录不扣减（预校验照常执行，欠费/权益缺失与 chat 同口径拦截）
 """
 
 import logging
@@ -34,8 +34,6 @@ from app.service.billing.balance_service import balance_service
 from app.service.billing.quota_service import quota_service
 
 logger = logging.getLogger(__name__)
-
-_LOCAL_PROVIDER_CODE = "local"
 
 # bill_type → 消费流水 reason 文案
 _BILL_REASONS = {"embedding": "知识库向量化", "rerank": "知识库重排序"}
@@ -97,10 +95,8 @@ class KbBillingService:
     ) -> int:
         """模型调用成功后实扣配额与余额并落计费记录（voice 后扣费同款）
 
-        local 模型完全跳过不落记录；0 积分（免费/未配置售价）仅落归因记录不扣减。
+        0 积分（免费/未配置售价，含内置本地模型）仅落归因记录不扣减。
         """
-        if provider_code == _LOCAL_PROVIDER_CODE:
-            return 0
         async with get_db_session() as db:
             credits = await self._calc_credits(db, provider_code, model, tokens)
             provider = await self.ai_provider_repository.get_by_provider_code(db, provider_code)
@@ -145,8 +141,6 @@ class KbBillingService:
 
     async def _calc_credits(self, db: Any, provider_code: str, model: str, tokens: int) -> int:
         """按用户售价换算积分；未配置售价 warn 回退 0（免费，防误扣）"""
-        if provider_code == _LOCAL_PROVIDER_CODE:
-            return 0
         provider = await self.ai_provider_repository.get_by_provider_code(db, provider_code)
         calc = await self.ai_model_price_service.calculate(
             db, model, provider.id if provider else None, datetime.now(), tokens, 0, 0

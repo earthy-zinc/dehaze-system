@@ -2,8 +2,6 @@
 导入导出处理器实现
 """
 
-from app.service.import_export.handlers.algorithm_export import AlgorithmExportHandler
-from app.service.import_export.handlers.algorithm_import import AlgorithmImportHandler
 from app.service.import_export.handlers.dataset_export import DatasetExportHandler
 from app.service.import_export.handlers.dept_export import DeptExportHandler
 from app.service.import_export.handlers.dept_import import DeptImportHandler
@@ -27,6 +25,4 @@ export_handler_registry.register(MenuExportHandler())
 import_handler_registry.register(MenuImportHandler())
 export_handler_registry.register(DictExportHandler())
 import_handler_registry.register(DictImportHandler())
-export_handler_registry.register(AlgorithmExportHandler())
-import_handler_registry.register(AlgorithmImportHandler())
 export_handler_registry.register(DatasetExportHandler())

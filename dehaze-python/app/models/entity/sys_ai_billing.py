@@ -37,13 +37,15 @@ class SysAiBilling(AppendOnlyModel):
         String(64), nullable=True, comment="用户原选模型标识(NULL表示未降级)"
     )
     error_code: Mapped[str | None] = mapped_column(
-        String(16), nullable=True, comment="调用失败错误码(如429/5xx,成功为NULL)"
+        String(16),
+        nullable=True,
+        comment="失败错误码(如429/5xx;成功为NULL;不得写配置类标记)",
     )
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="调用耗时(毫秒)")
     bill_type: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        comment="计费类型(chat;chat_subagent;tool_llm;kb_inject;asr;tts)",
+        comment="计费类型(chat;chat_subagent;tool_llm;kb_inject;embedding;rerank;asr;tts)",
     )
     input_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="输入Token数(含缓存命中部分)"
@@ -53,6 +55,16 @@ class SysAiBilling(AppendOnlyModel):
     )
     output_tokens: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="输出Token数"
+    )
+    quantity: Mapped[Decimal | None] = mapped_column(
+        Numeric(18, 4),
+        nullable=True,
+        comment="非token计量数量(如张数/秒数/万字符数;token类模型为NULL,见quantity_unit)",
+    )
+    quantity_unit: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment="非token计量单位(image:张;second:秒;ten_thousand_chars:万字符;frame:帧)",
     )
     credits: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, comment="消耗积分数(按实际模型计费比例换算)"

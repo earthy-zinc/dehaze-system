@@ -31,6 +31,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,9 +45,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * AI 计费管理（用户端余额/明细/账单/退款；管理端统计/调整/审核/成本/对账）。
@@ -71,8 +70,7 @@ public class AiBillingController {
     @Operation(summary = "消耗汇总查询")
     @GetMapping("/summary")
     public Result<AiBillingSummaryVO> summary(
-            @Parameter(description = "统计时段：day-当日 / month-当月")
-            @RequestParam(defaultValue = "day") String dimension) {
+            @Parameter(description = "统计时段：day-当日 / month-当月") @RequestParam(defaultValue = "day") String dimension) {
         return Result.success(billingService.getSummary(dimension));
     }
 
@@ -98,8 +96,7 @@ public class AiBillingController {
 
     @Operation(summary = "账单下载")
     @GetMapping("/bills/{month}/download")
-    public Result<AiBillVO> downloadBill(
-            @Parameter(description = "账期月份（YYYY-MM）") @PathVariable String month) {
+    public Result<AiBillVO> downloadBill(@Parameter(description = "账期月份（YYYY-MM）") @PathVariable String month) {
         return Result.success(billingService.getBill(month));
     }
 
@@ -136,8 +133,7 @@ public class AiBillingController {
     @Operation(summary = "退款审核")
     @PostMapping("/refunds/{refundId}/audit")
     @PreAuthorize("@ss.hasPerm('ai:billing:refund')")
-    public Result<AiRefundVO> auditRefund(@PathVariable Long refundId,
-                                          @Valid @RequestBody AiRefundAuditForm form) {
+    public Result<AiRefundVO> auditRefund(@PathVariable Long refundId, @Valid @RequestBody AiRefundAuditForm form) {
         return Result.success(billingService.auditRefund(refundId, form));
     }
 
@@ -167,8 +163,7 @@ public class AiBillingController {
     @Operation(summary = "更新成本单价")
     @PutMapping("/costs/{costId}")
     @PreAuthorize("@ss.hasPerm('ai:billing:cost')")
-    public Result<AiModelCostVO> updateCost(@PathVariable Long costId,
-                                           @Valid @RequestBody AiModelCostUpdateForm form) {
+    public Result<AiModelCostVO> updateCost(@PathVariable Long costId, @Valid @RequestBody AiModelCostUpdateForm form) {
         return Result.success(billingService.updateCost(costId, form));
     }
 
@@ -186,8 +181,8 @@ public class AiBillingController {
     public Result<List<AiCostStatVO>> costStats(
             @Parameter(description = "开始时间") @RequestParam(required = false) String startTime,
             @Parameter(description = "结束时间") @RequestParam(required = false) String endTime,
-            @Parameter(description = "分组维度：overall/model/provider")
-            @RequestParam(defaultValue = "overall") String groupBy,
+            @Parameter(description = "分组维度：overall/model/provider") @RequestParam(defaultValue = "overall")
+                    String groupBy,
             @RequestParam(required = false) String modelId,
             @RequestParam(required = false) Long providerId) {
         return Result.success(billingService.getCostStats(startTime, endTime, groupBy, modelId, providerId));

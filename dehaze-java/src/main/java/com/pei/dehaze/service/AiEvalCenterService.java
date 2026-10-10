@@ -23,10 +23,6 @@ import com.pei.dehaze.model.vo.AiEvalSampleDiffVO;
 import com.pei.dehaze.model.vo.AiEvalTrendVO;
 import com.pei.dehaze.model.vo.AiJudgeReviewStatsVO;
 import com.pei.dehaze.model.vo.AiJudgeStatusVO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +31,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 评测中心聚合服务（跨 Agent 总览/趋势/对比/判分状态/人工复核）。
@@ -60,8 +59,8 @@ public class AiEvalCenterService {
 
     private static final int REVIEW_AGGREGATE_LIMIT = 1000;
 
-    private static final List<String> DIMENSIONS = List.of("result_quality", "process_compliance",
-            "safety_boundary", "efficiency");
+    private static final List<String> DIMENSIONS =
+            List.of("result_quality", "process_compliance", "safety_boundary", "efficiency");
 
     private final SysAiAgentMapper agentMapper;
 
@@ -80,8 +79,11 @@ public class AiEvalCenterService {
         int threshold = dictInt("judge_consistency_threshold", CONSISTENCY_THRESHOLD_DEFAULT);
         List<SysAiEvalReview> reviews = reviewMapper.listAll(REVIEW_AGGREGATE_LIMIT);
         List<SysAiEvalReview> reviewed = reviews.stream()
-                .filter(r -> Integer.valueOf(2).equals(r.getStatus())).toList();
-        int agreeCount = (int) reviewed.stream().filter(r -> Integer.valueOf(1).equals(r.getAgree())).count();
+                .filter(r -> Integer.valueOf(2).equals(r.getStatus()))
+                .toList();
+        int agreeCount = (int) reviewed.stream()
+                .filter(r -> Integer.valueOf(1).equals(r.getAgree()))
+                .count();
         int disagreeCount = reviewed.size() - agreeCount;
         AiJudgeReviewStatsVO stats = new AiJudgeReviewStatsVO();
         stats.setTotal(reviews.size());
@@ -89,8 +91,7 @@ public class AiEvalCenterService {
         stats.setReviewed(reviewed.size());
         stats.setAgreeCount(agreeCount);
         stats.setDisagreeCount(disagreeCount);
-        stats.setAgreementRate(reviewed.isEmpty() ? 0.0
-                : round(agreeCount * 100.0 / reviewed.size(), 2));
+        stats.setAgreementRate(reviewed.isEmpty() ? 0.0 : round(agreeCount * 100.0 / reviewed.size(), 2));
         String state;
         if (reviewed.isEmpty()) {
             state = "insufficient_data";
@@ -113,7 +114,9 @@ public class AiEvalCenterService {
         List<SysAiAgentEvalRun> runs = runMapper.selectLatestPerAgent(2);
         Map<Long, List<SysAiAgentEvalRun>> runsByAgent = new HashMap<>();
         for (SysAiAgentEvalRun run : runs) {
-            runsByAgent.computeIfAbsent(run.getAgentId(), k -> new ArrayList<>()).add(run);
+            runsByAgent
+                    .computeIfAbsent(run.getAgentId(), k -> new ArrayList<>())
+                    .add(run);
         }
         int threshold = dictInt("regression_threshold", REGRESSION_THRESHOLD_DEFAULT);
         List<AiEvalOverviewVO> items = new ArrayList<>();
@@ -129,14 +132,18 @@ public class AiEvalCenterService {
             item.setRunId(latest == null ? null : latest.getId());
             item.setRunTime(latest == null ? null : latest.getCreateTime());
             item.setTriggerType(latest == null ? null : latest.getTriggerType());
-            item.setGateStatus(latest == null ? "none"
-                    : (Integer.valueOf(2).equals(latest.getStatus()) ? "passed" : "failed"));
+            item.setGateStatus(
+                    latest == null ? "none" : (Integer.valueOf(2).equals(latest.getStatus()) ? "passed" : "failed"));
             item.setTotalScore(total);
-            item.setDimensions(latest == null ? null
-                    : (Map<String, Object>) (latest.getScoreSummary() == null ? Map.of()
-                    : latest.getScoreSummary().get("dimensions")));
-            item.setDegraded(isDegraded(total,
-                    previous == null ? null : totalScore(previous.getScoreSummary()), threshold));
+            item.setDimensions(
+                    latest == null
+                            ? null
+                            : (Map<String, Object>)
+                                    (latest.getScoreSummary() == null
+                                            ? Map.of()
+                                            : latest.getScoreSummary().get("dimensions")));
+            item.setDegraded(
+                    isDegraded(total, previous == null ? null : totalScore(previous.getScoreSummary()), threshold));
             item.setHighRiskFailed(hasHighRiskFailed(latest));
             items.add(item);
         }
@@ -148,7 +155,8 @@ public class AiEvalCenterService {
      */
     public List<AiEvalTrendVO> trends(Long agentId, LocalDateTime startTime, LocalDateTime endTime, int limit) {
         List<SysAiAgentEvalRun> runs = runMapper.selectCompleted(agentId, startTime, endTime, limit);
-        Map<Long, String> agentNames = agentNames(runs.stream().map(SysAiAgentEvalRun::getAgentId).toList());
+        Map<Long, String> agentNames =
+                agentNames(runs.stream().map(SysAiAgentEvalRun::getAgentId).toList());
         List<AiEvalTrendVO> items = new ArrayList<>();
         for (SysAiAgentEvalRun run : runs) {
             AiEvalTrendVO item = new AiEvalTrendVO();
@@ -158,8 +166,10 @@ public class AiEvalCenterService {
             item.setTriggerType(run.getTriggerType());
             item.setStatus(run.getStatus());
             item.setTotalScore(totalScore(run.getScoreSummary()));
-            item.setDimensions(run.getScoreSummary() == null ? null
-                    : (Map<String, Object>) run.getScoreSummary().get("dimensions"));
+            item.setDimensions(
+                    run.getScoreSummary() == null
+                            ? null
+                            : (Map<String, Object>) run.getScoreSummary().get("dimensions"));
             item.setCreateTime(run.getCreateTime());
             items.add(item);
         }
@@ -206,7 +216,8 @@ public class AiEvalCenterService {
         if (status != null) {
             reviews = reviews.stream().filter(r -> status.equals(r.getStatus())).toList();
         }
-        Map<Long, String> agentNames = agentNames(reviews.stream().map(SysAiEvalReview::getAgentId).toList());
+        Map<Long, String> agentNames =
+                agentNames(reviews.stream().map(SysAiEvalReview::getAgentId).toList());
         List<AiEvalReviewItemVO> items = new ArrayList<>();
         for (SysAiEvalReview review : reviews) {
             AiEvalReviewItemVO item = new AiEvalReviewItemVO();
@@ -225,8 +236,12 @@ public class AiEvalCenterService {
         }
         AiEvalReviewQueueVO vo = new AiEvalReviewQueueVO();
         vo.setItems(items);
-        vo.setPending((int) reviews.stream().filter(r -> Integer.valueOf(1).equals(r.getStatus())).count());
-        vo.setReviewed((int) reviews.stream().filter(r -> Integer.valueOf(2).equals(r.getStatus())).count());
+        vo.setPending((int) reviews.stream()
+                .filter(r -> Integer.valueOf(1).equals(r.getStatus()))
+                .count());
+        vo.setReviewed((int) reviews.stream()
+                .filter(r -> Integer.valueOf(2).equals(r.getStatus()))
+                .count());
         return vo;
     }
 
@@ -249,15 +264,19 @@ public class AiEvalCenterService {
         vo.setAgentId(run.getAgentId());
         vo.setAgentName(agent == null ? null : agent.getName());
         vo.setSampleId(sampleId);
-        vo.setTaskGoal(result.get("task_goal") != null ? String.valueOf(result.get("task_goal"))
-                : (sample == null ? "" : sample.getTaskGoal()));
+        vo.setTaskGoal(
+                result.get("task_goal") != null
+                        ? String.valueOf(result.get("task_goal"))
+                        : (sample == null ? "" : sample.getTaskGoal()));
         vo.setAllowedInput(sample == null ? null : sample.getAllowedInput());
         vo.setExpectedResult(sample == null ? null : sample.getExpectedResult());
         vo.setExpectedProcess(sample == null ? null : sample.getExpectedProcess());
         vo.setForbiddenBehavior(sample == null ? null : sample.getForbiddenBehavior());
         vo.setTools(sample == null ? null : sample.getTools());
-        vo.setRiskLevel(result.get("risk_level") != null ? String.valueOf(result.get("risk_level"))
-                : (sample == null ? "low" : sample.getRiskLevel()));
+        vo.setRiskLevel(
+                result.get("risk_level") != null
+                        ? String.valueOf(result.get("risk_level"))
+                        : (sample == null ? "low" : sample.getRiskLevel()));
         vo.setJudgePassed(Boolean.TRUE.equals(result.get("passed")));
         vo.setActualOutput(result.get("actual_output") == null ? null : String.valueOf(result.get("actual_output")));
         vo.setError(result.get("error") == null ? null : String.valueOf(result.get("error")));
@@ -305,8 +324,8 @@ public class AiEvalCenterService {
         }
         int ratio = dictInt("judge_review_ratio", REVIEW_RATIO_DEFAULT);
         Set<String> existing = new HashSet<>();
-        for (SysAiEvalReview review : reviewMapper.listByRunIds(runs.stream()
-                .map(SysAiAgentEvalRun::getId).toList())) {
+        for (SysAiEvalReview review : reviewMapper.listByRunIds(
+                runs.stream().map(SysAiAgentEvalRun::getId).toList())) {
             existing.add(review.getRunId() + ":" + review.getSampleId());
         }
         for (SysAiAgentEvalRun run : runs) {
@@ -328,8 +347,8 @@ public class AiEvalCenterService {
                 review.setSampleId(sampleId);
                 review.setAgentId(run.getAgentId());
                 review.setJudgePassed(passed ? 1 : 0);
-                review.setRiskLevel(result.get("risk_level") == null ? "low"
-                        : String.valueOf(result.get("risk_level")));
+                review.setRiskLevel(
+                        result.get("risk_level") == null ? "low" : String.valueOf(result.get("risk_level")));
                 review.setStatus(1);
                 reviewMapper.insert(review);
             }
@@ -361,8 +380,8 @@ public class AiEvalCenterService {
             return Map.of();
         }
         Map<Long, String> names = new HashMap<>();
-        for (SysAiAgent agent : agentMapper.selectList(
-                new LambdaQueryWrapper<SysAiAgent>().in(SysAiAgent::getId, ids))) {
+        for (SysAiAgent agent :
+                agentMapper.selectList(new LambdaQueryWrapper<SysAiAgent>().in(SysAiAgent::getId, ids))) {
             names.put(agent.getId(), agent.getName());
         }
         return names;
@@ -431,8 +450,7 @@ public class AiEvalCenterService {
         return vo;
     }
 
-    private AiEvalSampleDiffItemVO diffItem(Long sampleId, Map<String, Object> result,
-                                            Map<String, Object> baseResult) {
+    private AiEvalSampleDiffItemVO diffItem(Long sampleId, Map<String, Object> result, Map<String, Object> baseResult) {
         AiEvalSampleDiffItemVO item = new AiEvalSampleDiffItemVO();
         item.setSampleId(sampleId);
         item.setTaskGoal(result.get("task_goal") == null ? "" : String.valueOf(result.get("task_goal")));
@@ -440,8 +458,7 @@ public class AiEvalCenterService {
         item.setBasePassed(baseResult == null ? null : Boolean.TRUE.equals(baseResult.get("passed")));
         item.setCurrentScore(sampleTotal(result));
         item.setBaseScore(baseResult == null ? null : sampleTotal(baseResult));
-        item.setScoreDelta(baseResult == null ? null
-                : round(sampleTotal(result) - sampleTotal(baseResult), 2));
+        item.setScoreDelta(baseResult == null ? null : round(sampleTotal(result) - sampleTotal(baseResult), 2));
         return item;
     }
 
@@ -515,6 +532,8 @@ public class AiEvalCenterService {
     }
 
     private double round(double value, int scale) {
-        return new java.math.BigDecimal(value).setScale(scale, java.math.RoundingMode.HALF_UP).doubleValue();
+        return new java.math.BigDecimal(value)
+                .setScale(scale, java.math.RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }

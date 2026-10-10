@@ -29,5 +29,4 @@ public interface JwtClaimConstants {
      * 权限(角色Code)集合
      */
     String AUTHORITIES = "authorities";
-
 }

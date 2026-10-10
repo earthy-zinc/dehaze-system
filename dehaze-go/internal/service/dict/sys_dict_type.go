@@ -2,7 +2,6 @@ package dict
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -84,11 +83,11 @@ func (s *DictTypeService) GetFormData(ctx context.Context, id int64) (*bo.DictTy
 	return form, nil
 }
 
-// systemPresetDictTypeCodes 系统预置字典类型编码（T-DM-025：预置类型不可删除），与种子数据一致
+// systemPresetDictTypeCodes 系统预置字典类型编码（T-DM-025：预置类型不可删除），对齐 python SYSTEM_PRESET_DICT_TYPE_CODES
 var systemPresetDictTypeCodes = map[string]bool{
 	"gender": true, "ai_guardrail_defaults": true, "ai_provider_health": true,
-	"ai_embedding": true, "member_growth_rules": true, "favorite_capacity": true,
-	"ai_eval": true,
+	"ai_embedding": true, "ai_model": true, "member_growth_rules": true,
+	"favorite_capacity": true, "ai_eval": true,
 }
 
 // Create 创建字典类型
@@ -148,8 +147,8 @@ func (s *DictTypeService) Update(ctx context.Context, id int64, form *bo.DictTyp
 		return common.WrapBizError(common.DATABASE_ERROR, "更新字典类型失败", err)
 	}
 
-	// 清除缓存
-	s.clearOptionsCache(ctx, oldDictType.Code)
+	// 清除缓存（下拉选项 + python 业务值缓存；类型状态变更会让原取值为空）
+	clearDictCaches(ctx, s.cache, oldDictType.Code)
 
 	return nil
 }
@@ -184,7 +183,7 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64, force bool) e
 				return common.WrapBizError(common.DATABASE_ERROR, "级联删除字典数据失败", err)
 			}
 			for _, code := range dictTypeCodes {
-				s.clearOptionsCache(ctx, code)
+				clearDictCaches(ctx, s.cache, code)
 			}
 		} else {
 			count, err := s.dictRepo.CountByTypeCodes(ctx, dictTypeCodes)
@@ -192,7 +191,7 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64, force bool) e
 				return common.WrapBizError(common.DATABASE_ERROR, "检查关联字典数据失败", err)
 			}
 			if count > 0 {
-				return common.NewBizError(common.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除")
+				return common.NewBizError(common.DATA_REFERENCED, "存在关联的字典数据，无法删除")
 			}
 		}
 	}
@@ -202,13 +201,4 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64, force bool) e
 		return common.WrapBizError(common.DATABASE_ERROR, "删除字典类型失败", err)
 	}
 	return nil
-}
-
-// clearOptionsCache 清除字典下拉选项缓存
-func (s *DictTypeService) clearOptionsCache(ctx context.Context, typeCode string) {
-	if s.cache == nil || typeCode == "" {
-		return
-	}
-	cacheKey := fmt.Sprintf("%s%s", DictOptionsCachePrefix, typeCode)
-	_ = s.cache.Delete(ctx, cacheKey)
 }

@@ -15,8 +15,8 @@ zap:
   show-line: true
   encode-level: LowercaseColorLevelEncoder
   stacktrace-key: stacktrace
-  # 生产环境日志落盘到文件，不重复输出到控制台
-  log-in-console: false
+  # 生产环境日志落盘到文件，不重复输出到控制台（pre 覆盖为 true，便于 run.py 收控制台日志）
+  log-in-console: ${LOG_IN_CONSOLE:false}
   retention-day: 30
   max-size: 100 # 单文件大小上限（MB），超限归档为 {级别}.{n}.log 并开新活动文件
   # 生产环境启动时不归档（避免覆盖运维已归档的日志）
@@ -31,103 +31,27 @@ system:
   ip-limit-count: 100000
   #  IP限制一个小时
   ip-limit-time: 3600
-  # 登录/注册接口 IP 限流次数（每分钟），生产建议收紧至安全默认值
-  login-ip-limit-count: 10
-  # 优惠券领取限流（每分钟），生产使用安全默认值
-  coupon-receive-rate-limit: 5
+  # 登录/注册接口 IP 限流次数（每分钟）：生产默认收紧；pre 经根 .env 放宽（冒烟与契约集测短时高并发）
+  login-ip-limit-count: ${LOGIN_IP_LIMIT_COUNT:10}
+  # 优惠券领取限流（每分钟）：生产默认收紧；pre 同上放宽
+  coupon-receive-rate-limit: ${COUPON_RECEIVE_RATE_LIMIT:5}
   coupon-receive-rate-window: 60
   #  路由全局前缀
   router-prefix: ""
   # 新用户初始密码（由 .env 的 DEFAULT_PASSWORD 展开）
   default-password: "${DEFAULT_PASSWORD}"
 
-# CORS 跨域配置
-# 注意：生产部署前请移除以下 localhost 开发条目，
-# 仅保留真实前端域名白名单，避免任意本地来源跨域访问。
+# CORS 跨域配置：来源白名单由根 .env 的 CORS_ALLOWED_ORIGINS 注入（逗号分隔，三端同名），
+# 与 Java 的 cors.allowed-origins / Python 的 CORS_ALLOWED_ORIGINS 同源，
+# 换环境即换 .env；缺失该变量服务拒绝启动（不静默回落 localhost 白名单）。
 cors:
   # 模式：strict-whitelist（严格白名单校验，推荐）
   mode: strict-whitelist
-  whitelist:
-    - allow-origin: "http://localhost:5173"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5174"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5175"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5176"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5177"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5183"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:5184"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:8081"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5173"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5174"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5175"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5176"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5177"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5183"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:5184"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://127.0.0.1:8081"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+  allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+  expose-headers: "X-Trace-ID"
+  allow-credentials: true
 
 captcha:
   length: 4
@@ -144,8 +68,9 @@ jwt:
 session:
   cookie:
     # 生产环境使用 HTTPS，Secure 必须为 true 否则 Cookie 不会被浏览器发送
-    secure: true
-    path: /
+    # （pre 覆盖为 false：pre 走 HTTP，Secure 会让浏览器丢弃 Cookie）
+    secure: ${SESSION_COOKIE_SECURE:true}
+    path: ${SESSION_COOKIE_PATH:/}
 
 db:
   driver: mysql
@@ -183,11 +108,8 @@ cache:
     enabled: true
     addr: ${REDIS_HOST}:${REDIS_PORT}
     password: ${REDIS_PASSWORD}
-    # Redis db 隔离规范（推荐配置，不强制分库以避免破坏现有 Session）：
-    #   db=0 业务缓存（当前使用）
-    #   db=1 Session + 分布式锁（需后续迁移）
-    #   db=2 限流计数器
-    db: 0
+    # Redis db 按环境隔离（无后缀 = 生产）：生产 0 / dev 1 / pre 2；变量未设置时取零值 0
+    db: ${REDIS_DATABASE}
     useCluster: false
     timeout: 5
     poolSize: 20
@@ -255,7 +177,7 @@ ai:
 
 rabbitmq:
   enabled: true
-  url: "amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/%2F"
+  url: "amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"
@@ -269,6 +191,7 @@ es:
   url: "${ES_URL}"
   username: "${ES_USERNAME}"
   password: "${ES_PASSWORD}"
+  index-prefix: "${ES_INDEX_PREFIX}"
 
 file:
   type: minio # 默认存储后端：minio/local/nginx-static
@@ -280,7 +203,7 @@ file:
       secretKey: "${MINIO_SECRET_KEY}"
       bucketName: "${MINIO_BUCKET}"
     local:
-      uploadPath: "${UPLOAD_DIR}" # 留空则落到 <仓库根>/data/upload（三端共用，见 pkg/config/paths.go）
+      uploadPath: "${UPLOAD_DIR:}" # 留空则落到 <仓库根>/data/upload（三端共用，见 pkg/config/paths.go）
       baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 本地下载接口基础 URL（完整地址）
     nginx-static:
       baseUrl: "http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}" # nginx 静态服务根地址（不带 /datasets 等资源子路径）
@@ -297,9 +220,9 @@ xxljob:
   enabled: true
   server-addr: "http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin"
   access-token: "${XXLJOB_ACCESS_TOKEN}"
-  executor-ip: "${XXLJOB_EXECUTOR_IP}" # 留空自动探测本机 IP；admin 在容器时由 scripts/run.py 注入 host.docker.internal
+  executor-ip: "${XXLJOB_EXECUTOR_IP:}" # 留空自动探测本机 IP；admin 在容器时由 scripts/run.py 注入 host.docker.internal
   executor-port: "9997"
-  registry-key: "xxl-job-executor-dehaze-go"
+  registry-key: "xxl-job-executor-dehaze-go${XXLJOB_ENV_SUFFIX}"
 
 # 支付渠道配置（默认关闭，未启用时降级为 mock）
 payment:

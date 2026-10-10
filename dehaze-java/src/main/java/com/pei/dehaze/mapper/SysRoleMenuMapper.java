@@ -1,11 +1,10 @@
 package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.pei.dehaze.model.read.RolePermsRead;
 import com.pei.dehaze.model.entity.SysRoleMenu;
-import org.apache.ibatis.annotations.Mapper;
-
+import com.pei.dehaze.model.read.RolePermsRead;
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
  * 角色菜单访问层

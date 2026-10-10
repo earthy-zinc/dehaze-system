@@ -10,21 +10,19 @@ import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.mapper.SysFileMapper;
 import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysAiArtifact;
-import com.pei.dehaze.model.entity.SysAiConversation;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysPredLog;
 import com.pei.dehaze.model.vo.AiArtifactVO;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 /**
  * AI 中间产物服务。
@@ -53,8 +51,8 @@ public class AiArtifactService {
     public IPage<AiArtifactVO> listByConversation(Long convId, Long userId, int pageNum, int pageSize) {
         conversationService.getOwned(convId, userId);
         Page<SysAiArtifact> page = new Page<>(pageNum, pageSize);
-        IPage<SysAiArtifact> artifactPage = artifactMapper.selectPage(page, newestFirst()
-                .eq(SysAiArtifact::getConversationId, convId));
+        IPage<SysAiArtifact> artifactPage =
+                artifactMapper.selectPage(page, newestFirst().eq(SysAiArtifact::getConversationId, convId));
         return pageOf(page, artifactPage.getRecords().stream().map(this::toVO).toList(), artifactPage.getTotal());
     }
 
@@ -62,21 +60,22 @@ public class AiArtifactService {
         if (conversationService.getOwnedMessage(msgId, userId) == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
         }
-        return artifactMapper.selectList(newestFirst().eq(SysAiArtifact::getMessageId, msgId))
-                .stream().map(this::toVO).toList();
+        return artifactMapper.selectList(newestFirst().eq(SysAiArtifact::getMessageId, msgId)).stream()
+                .map(this::toVO)
+                .toList();
     }
 
     /**
      * 按业务引用反查产物（仅返回当前用户所属会话的产物）
      */
     public List<AiArtifactVO> listByRef(String refType, Long refId, Long userId) {
-        List<SysAiArtifact> artifacts = artifactMapper.selectList(newestFirst()
-                .eq(SysAiArtifact::getRefType, refType)
-                .eq(SysAiArtifact::getRefId, refId));
+        List<SysAiArtifact> artifacts = artifactMapper.selectList(
+                newestFirst().eq(SysAiArtifact::getRefType, refType).eq(SysAiArtifact::getRefId, refId));
         if (artifacts.isEmpty()) {
             return List.of();
         }
-        Set<Long> convIds = artifacts.stream().map(SysAiArtifact::getConversationId).collect(Collectors.toSet());
+        Set<Long> convIds =
+                artifacts.stream().map(SysAiArtifact::getConversationId).collect(Collectors.toSet());
         Set<Long> ownedConvIds = conversationService.listOwnedIds(convIds, userId);
         return artifacts.stream()
                 .filter(a -> ownedConvIds.contains(a.getConversationId()))

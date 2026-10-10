@@ -3,7 +3,6 @@ package com.pei.dehaze.service.importexport.handler;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.StatusEnum;
-import com.pei.dehaze.model.entity.SysDept;
 import com.pei.dehaze.model.form.DeptForm;
 import com.pei.dehaze.service.SysDeptService;
 import com.pei.dehaze.service.importexport.ImportHandler;
@@ -11,14 +10,13 @@ import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 部门导入处理器
@@ -38,11 +36,27 @@ public class DeptImportHandler implements ImportHandler {
     @Override
     public List<ImportFieldConfig> getFieldConfigs() {
         return List.of(
-                ImportFieldConfig.builder().field("name").label("部门名称").required(true).maxLength(64).build(),
-                ImportFieldConfig.builder().field("parentId").label("父部门ID(0为顶级)").required(false).build(),
-                ImportFieldConfig.builder().field("sort").label("排序").required(false).build(),
-                ImportFieldConfig.builder().field("statusLabel").label("状态(启用/禁用)").required(false).build()
-        );
+                ImportFieldConfig.builder()
+                        .field("name")
+                        .label("部门名称")
+                        .required(true)
+                        .maxLength(64)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("parentId")
+                        .label("父部门ID(0为顶级)")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("sort")
+                        .label("排序")
+                        .required(false)
+                        .build(),
+                ImportFieldConfig.builder()
+                        .field("statusLabel")
+                        .label("状态(启用/禁用)")
+                        .required(false)
+                        .build());
     }
 
     @Override
@@ -51,8 +65,7 @@ public class DeptImportHandler implements ImportHandler {
                 "name", "研发部",
                 "parentId", "0",
                 "sort", "1",
-                "statusLabel", "启用"
-        ));
+                "statusLabel", "启用"));
     }
 
     @Override
@@ -90,8 +103,7 @@ public class DeptImportHandler implements ImportHandler {
                         .message(e.getMessage())
                         .build());
                 if (!partial) {
-                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage()
-                            + "（全量模式已回滚所有数据）", e);
+                    throw new RuntimeException("第 " + rowNum + " 行导入失败: " + e.getMessage() + "（全量模式已回滚所有数据）", e);
                 }
             }
         }

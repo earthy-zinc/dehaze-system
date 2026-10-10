@@ -15,6 +15,7 @@ import com.pei.dehaze.service.AiModelService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Tag(name = "AI模型管理")
 @RestController
@@ -49,8 +48,8 @@ public class AiModelController {
     @Operation(summary = "启用模型列表")
     @GetMapping("/enabled")
     public Result<List<AiModelVO>> listEnabledModels(
-            @RequestParam(required = false) String modelType) {
-        return Result.success(aiModelService.listEnabledModels(modelType));
+            @RequestParam(required = false) String modelType, @RequestParam(required = false) String taskTags) {
+        return Result.success(aiModelService.listEnabledModels(modelType, taskTags));
     }
 
     @Operation(summary = "新增模型")
@@ -61,52 +60,48 @@ public class AiModelController {
     }
 
     @Operation(summary = "更新模型")
-    @PutMapping("/{modelId}")
+    @PutMapping
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<AiModelVO> updateModel(@PathVariable String modelId,
-                                         @RequestBody @Valid AiModelUpdateForm form) {
+    public Result<AiModelVO> updateModel(@RequestParam String modelId, @RequestBody @Valid AiModelUpdateForm form) {
         return Result.success(aiModelService.updateModel(modelId, form));
     }
 
     @Operation(summary = "删除模型")
-    @DeleteMapping("/{modelId}")
+    @DeleteMapping
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<Void> deleteModel(@PathVariable String modelId) {
+    public Result<Void> deleteModel(@RequestParam String modelId) {
         aiModelService.deleteModel(modelId);
         return Result.success();
     }
 
     @Operation(summary = "模型用户售价版本分页列表")
-    @GetMapping("/{modelId}/prices")
+    @GetMapping("/prices")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public PageResult<ModelPriceVO> listModelPrices(@PathVariable String modelId,
-                                                    @Valid @ParameterObject ModelPriceQuery query) {
+    public PageResult<ModelPriceVO> listModelPrices(
+            @RequestParam String modelId, @Valid @ParameterObject ModelPriceQuery query) {
         query.setModelId(modelId);
         return PageResult.success(aiModelService.listPrices(query));
     }
 
     @Operation(summary = "新增模型用户售价版本")
-    @PostMapping("/{modelId}/prices")
+    @PostMapping("/prices")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<ModelPriceVO> createModelPrice(@PathVariable String modelId,
-                                                 @RequestBody @Valid ModelPriceForm form) {
+    public Result<ModelPriceVO> createModelPrice(@RequestBody @Valid ModelPriceForm form) {
         return Result.success(aiModelService.createPrice(form));
     }
 
     @Operation(summary = "更新模型用户售价版本")
-    @PutMapping("/{modelId}/prices/{priceId}")
+    @PutMapping("/prices/{priceId}")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<ModelPriceVO> updateModelPrice(@PathVariable String modelId,
-                                                 @PathVariable Long priceId,
-                                                 @RequestBody @Valid ModelPriceUpdateForm form) {
+    public Result<ModelPriceVO> updateModelPrice(
+            @PathVariable Long priceId, @RequestBody @Valid ModelPriceUpdateForm form) {
         return Result.success(aiModelService.updatePrice(priceId, form));
     }
 
     @Operation(summary = "删除模型用户售价版本")
-    @DeleteMapping("/{modelId}/prices/{priceId}")
+    @DeleteMapping("/prices/{priceId}")
     @PreAuthorize("@ss.hasPerm('ai:model:manage')")
-    public Result<Void> deleteModelPrice(@PathVariable String modelId,
-                                         @PathVariable Long priceId) {
+    public Result<Void> deleteModelPrice(@PathVariable Long priceId) {
         aiModelService.deletePrice(priceId);
         return Result.success();
     }

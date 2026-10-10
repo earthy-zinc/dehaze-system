@@ -10,5 +10,4 @@ import org.apache.ibatis.annotations.Mapper;
  * @author dehaze
  */
 @Mapper
-public interface SysAiAgentSubagentMapper extends BaseMapper<SysAiAgentSubagent> {
-}
+public interface SysAiAgentSubagentMapper extends BaseMapper<SysAiAgentSubagent> {}

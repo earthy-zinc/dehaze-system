@@ -1,8 +1,7 @@
 package com.pei.dehaze.model.read;
 
-import lombok.Data;
-
 import java.util.Set;
+import lombok.Data;
 
 /**
  * 角色权限业务对象
@@ -22,5 +21,4 @@ public class RolePermsRead {
      * 权限标识集合
      */
     private Set<String> perms;
-
 }

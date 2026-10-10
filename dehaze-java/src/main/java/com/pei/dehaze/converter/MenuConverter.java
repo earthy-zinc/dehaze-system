@@ -26,5 +26,4 @@ public interface MenuConverter {
         @Mapping(target = "treePath", ignore = true),
     })
     SysMenu form2Entity(MenuForm menuForm);
-
 }

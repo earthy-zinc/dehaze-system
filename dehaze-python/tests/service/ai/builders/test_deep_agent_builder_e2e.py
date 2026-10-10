@@ -160,7 +160,7 @@ class TestBuildAgentCore:
             "token_used": 0,
             "step_count": 0,
             "task_type": "",
-            "task_algorithm": "",
+            "task_model": "",
             "task_params": {},
             "task_status": "",
             "task_id": "",
@@ -203,8 +203,8 @@ class TestE2E:
         assert result.get("final_response"), "final_response 缺失"
         assert "去雾完成" in result["final_response"]
 
-    async def test_extract_tool_sequence_from_graph_output(self):
-        from app.service.ai.service.eval_runner import _extract_tool_sequence
+    async def test_extract_tool_calls_from_graph_output(self):
+        from app.service.ai.service.eval_runner import _extract_tool_calls
 
         with_tools = {
             "messages": [],
@@ -213,8 +213,11 @@ class TestE2E:
                 {"name": "process_batch"},
             ],
         }
-        assert _extract_tool_sequence(with_tools) == ["recommend_algorithm", "process_batch"]
+        assert _extract_tool_calls(with_tools) == [
+            {"name": "recommend_algorithm", "args": {}},
+            {"name": "process_batch", "args": {}},
+        ]
 
         msg = SimpleNamespace(tool_calls=[{"name": "lookup_tool", "args": {}, "id": "c1"}])
         without_thoughts = {"messages": [msg], "thoughts": []}
-        assert _extract_tool_sequence(without_thoughts) == ["lookup_tool"]
+        assert _extract_tool_calls(without_thoughts) == [{"name": "lookup_tool", "args": {}}]

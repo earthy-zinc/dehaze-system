@@ -17,7 +17,6 @@ XXL-Job 定时任务 Handler
 - completeExpiredOrders:   已支付订单到期归档（每天凌晨 3 点）
 - expireUserCoupons:       用户优惠券过期处理（每天凌晨 4 点）
 - autoRenew:               自动续费扣款（每天凌晨 8 点）
-- resetMonthlyQuota:       会员月度配额重置（每月 1 日凌晨 0 点）
 - processExpiredMembers:  会员过期降级（每天凌晨 2 点）
 - retryFailedRefunds:     退款失败重试（每 30 分钟）
 - reconciliation:         渠道对账（每天凌晨 2 点）
@@ -25,6 +24,7 @@ XXL-Job 定时任务 Handler
 - refreshUnreadCountCache: 未读数缓存全量刷新（每小时）
 - archiveInactiveConversations: AI 会话自动归档（每天凌晨 0 点）
 - purgeDeletedConversations: AI 会话物理清理（软删超 30 天，每天凌晨 1:30）
+- cleanupEmptyConversations: AI 空会话清理（无消息且超 24 小时，每天凌晨 3 点）
 - aiMemoryForget:         记忆遗忘归档（每天凌晨 3 点）
 - aiMemoryReflection:     记忆反思整合（每天凌晨 4 点）
 - aiMemoryMerge:          记忆合并去重（每天凌晨 5 点）
@@ -40,6 +40,7 @@ XXL-Job 定时任务 Handler
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from datetime import datetime, timedelta
@@ -188,12 +189,42 @@ async def cleanup_stuck_tasks() -> str:
         set_current_user_id(None)
 
 
+async def _check_inference_service() -> list[str]:
+    """推理服务检查：能力发现（模型/指标集可用性）+ 就绪 + GPU 显存使用率。
+
+    GPU 指标由 dehaze-modal 采集并暴露，编排侧不再持有 CUDA 上下文（设计 §6.10）；
+    显存告警阈值（>95%）与拆分前一致。
+    """
+    from app.infrastructure.modal import engine_client
+
+    issues: list[str] = []
+
+    unavailable = [
+        item["id"] for item in await engine_client.describe_models() if not item["available"]
+    ]
+    if unavailable:
+        preview = ", ".join(unavailable[:5]) + ("..." if len(unavailable) > 5 else "")
+        issues.append(f"不可服务的模型/指标集({len(unavailable)}): {preview}")
+
+    if not await engine_client.ready():
+        issues.append("推理服务未就绪")
+
+    usages = await engine_client.gpu_memory_usage()
+    if not usages:
+        issues.append("CUDA 不可用")
+    for device_id, used_pct in usages:
+        if used_pct > 95:
+            issues.append(f"GPU:{device_id} 显存使用率过高: {used_pct:.1f}%")
+
+    return issues
+
+
 @xxl_handler.register(name="modelHealthCheck")
 async def model_health_check() -> str:
     """
     模型健康检查
 
-    检查 GPU 设备可用性和已加载模型的状态，
+    检查推理服务（dehaze-modal）可用性、GPU 显存使用率与 DB/Redis 连通性，
     异常时记录告警日志（后续可对接告警通知）。
 
     CRON 建议: 0 */30 * * * ? （每 30 分钟）
@@ -202,21 +233,11 @@ async def model_health_check() -> str:
     try:
         issues: list[str] = []
 
-        # 检查 GPU 可用性
+        # 检查推理服务可用性与 GPU 显存
         try:
-            import torch
-
-            if not torch.cuda.is_available():
-                issues.append("CUDA 不可用")
-            else:
-                device_count = torch.cuda.device_count()
-                for i in range(device_count):
-                    free_mem, total_mem = torch.cuda.mem_get_info(i)
-                    used_pct = (total_mem - free_mem) / total_mem * 100
-                    if used_pct > 95:
-                        issues.append(f"GPU:{i} 显存使用率过高: {used_pct:.1f}%")
+            issues.extend(await _check_inference_service())
         except Exception as e:
-            issues.append(f"GPU 检查异常: {e}")
+            issues.append(f"推理服务检查异常: {e}")
 
         # 检查数据库连接
         try:
@@ -239,7 +260,7 @@ async def model_health_check() -> str:
             msg = f"健康检查发现 {len(issues)} 个问题: {'; '.join(issues)}"
             logger.warning(msg)
         else:
-            msg = "健康检查通过: GPU/DB/Redis 均正常"
+            msg = "健康检查通过: 推理服务/GPU/DB/Redis 均正常"
             logger.debug(msg)
 
         return msg
@@ -266,8 +287,6 @@ async def _cleanup_task_redis_keys(task_ids: list[str]) -> int:
         from app.dependencies.redis import get_redis_client
 
         redis = await get_redis_client()
-        if redis is None:
-            return 0
 
         # 精准删除：根据 task_id 构造 Key
         keys_to_delete = []
@@ -679,36 +698,6 @@ async def auto_renew_task() -> str:
         set_current_user_id(None)
 
 
-@xxl_handler.register(name="resetMonthlyQuota")
-async def reset_monthly_quota() -> str:
-    """
-    会员月度配额重置
-
-    每月 1 日扫描 sys_member WHERE quota_reset_month != 当前月份，
-    按当前等级权益重置 monthly_dehaze_quota/monthly_evaluate_quota 字段，
-    并将 used 字段清零，quota_reset_month 更新为当前月份。
-    与 Java MemberMonthlyQuotaResetJob、Go resetMonthlyQuota 对齐。
-
-    CRON 建议: 0 0 0 * * ? （每日凌晨 0 点）
-    """
-    from app.service.member.quota_service import member_quota_service
-
-    set_current_user_id(SYSTEM_USER_ID)
-    try:
-        async with get_db_session() as db:
-            count = await member_quota_service.reset_monthly_quota(db)
-
-        if count > 0:
-            msg = f"会员月度配额重置完成: 已重置={count}"
-            logger.debug(msg)
-        else:
-            msg = "会员月度配额重置: 无待处理记录"
-            logger.debug(msg)
-        return msg
-    finally:
-        set_current_user_id(None)
-
-
 @xxl_handler.register(name="processExpiredMembers")
 async def process_expired_members() -> str:
     """
@@ -896,7 +885,6 @@ async def ai_memory_reflection() -> str:
 
     CRON 建议: 0 0 4 * * ? （每天凌晨 4 点）
     """
-    from app.config import settings
     from app.repository.ai_memory_repository import ai_memory_repository
     from app.service.ai.service.memory_extraction import reflect_and_consolidate
 
@@ -908,7 +896,7 @@ async def ai_memory_reflection() -> str:
         for user_id in user_ids:
             try:
                 async with get_db_session() as db:
-                    total += await reflect_and_consolidate(db, user_id, settings.AI_DEFAULT_MODEL)
+                    total += await reflect_and_consolidate(db, user_id)
             except Exception as e:
                 logger.warning("记忆反思失败 user_id=%s: %s", user_id, e)
         msg = f"记忆反思整合完成: 处理用户={len(user_ids)}, 新增洞察={total}"
@@ -929,7 +917,6 @@ async def ai_memory_merge() -> str:
 
     CRON 建议: 0 0 5 * * ? （每天凌晨 5 点）
     """
-    from app.config import settings
     from app.repository.ai_memory_repository import ai_memory_repository
     from app.service.ai.service.memory_extraction import merge_duplicates
 
@@ -941,7 +928,7 @@ async def ai_memory_merge() -> str:
         for user_id in user_ids:
             try:
                 async with get_db_session() as db:
-                    total += await merge_duplicates(db, user_id, settings.AI_DEFAULT_MODEL)
+                    total += await merge_duplicates(db, user_id)
             except Exception as e:
                 logger.warning("记忆合并失败 user_id=%s: %s", user_id, e)
         msg = f"记忆合并去重完成: 处理用户={len(user_ids)}, 合并={total}"
@@ -1042,7 +1029,69 @@ async def purge_deleted_conversations() -> str:
         set_current_user_id(None)
 
 
+@xxl_handler.register(name="cleanupEmptyConversations")
+async def cleanup_empty_conversations() -> str:
+    """
+    AI 空会话清理（无消息且创建超 24 小时）
+
+    扫描 message_count=0、status=1 且 create_time < NOW() - 24h 的会话，软删除进回收站
+    （保留 30 天恢复窗口，与 purgeDeletedConversations 衔接），并清除相关用户的会话列表缓存。
+    空会话来自「点了新建会话但未发消息」与集测残留，长期驻留会淹没会话列表（设计评审已发现）。
+
+    CRON 建议: 0 0 3 * * ? （每天凌晨 3 点）
+    """
+    from app.dependencies.redis import get_redis_client
+    from app.repository.ai_conversation_repository import ai_conversation_repository
+    from app.service.ai.service.conversation_search_service import defer_conversation_sync
+
+    set_current_user_id(SYSTEM_USER_ID)
+    try:
+        before_date = datetime.now() - timedelta(hours=24)
+        async with get_db_session() as db:
+            rows = await ai_conversation_repository.list_empty_before(db, before_date)
+            if rows:
+                conv_ids = [conv_id for conv_id, _ in rows]
+                await ai_conversation_repository.soft_delete_by_ids(db, conv_ids)
+                # 软删同步 ES 读模型（事务提交后执行，否则读到未提交状态）
+                for conv_id in conv_ids:
+                    defer_conversation_sync(db, conv_id)
+                await db.commit()
+
+        user_ids = {uid for _, uid in rows}
+        if user_ids:
+            redis = await get_redis_client()
+            for uid in user_ids:
+                await redis.delete(f"ai:conv:list:{uid}")
+
+        msg = f"AI 空会话清理完成: 已清理={len(rows)}, 涉及用户={len(user_ids)}"
+        logger.debug(msg)
+        return msg
+    finally:
+        set_current_user_id(None)
+
+
 # ==================== AI 供应商管理定时任务 ====================
+
+
+async def _scan_last_used_buffer(
+    redis, namespace: str
+) -> tuple[list[str], list[tuple[int, datetime, int]]]:
+    """扫描某域的 last_used 缓冲（{namespace}:provider_key:{key_id}:last_used）"""
+    pattern = f"{namespace}:provider_key:*:last_used"
+    keys = [key async for key in redis.scan_iter(match=pattern, count=1000)]
+    updates: list[tuple[int, datetime, int]] = []
+    for key in keys:
+        try:
+            key_id = int(key.split(":")[2])
+            raw = await redis.get(key)
+            if not raw:
+                continue
+            data = json.loads(raw)
+            used_at = datetime.fromisoformat(data["last_used_at"])
+            updates.append((key_id, used_at, data.get("last_used_by")))
+        except (ValueError, KeyError, TypeError):
+            logger.warning("跳过非法 last_used 缓冲: %s", key)
+    return keys, updates
 
 
 @xxl_handler.register(name="flushProviderKeyLastUsed")
@@ -1050,49 +1099,36 @@ async def flush_provider_key_last_used() -> str:
     """
     供应商 API Key 最近使用信息批量刷库
 
-    每分钟读取 Redis 缓冲（ai:provider_key:{id}:last_used），批量调用
-    batch_update_last_used 刷新 last_used_at/last_used_by，并清除已落库的缓冲。
+    每分钟读取 Redis 缓冲（ai:provider_key:{id}:last_used），批量刷
+    sys_ai_provider_key 的 last_used_at/last_used_by，并清除已落库的缓冲。
     与 Java ProviderKeyLastUsedFlushJob、Go flushProviderKeyLastUsed 对齐。
+    （语音 Key 已并入统一 sys_ai_provider_key，voice 域缓冲随阶段 2 退役。）
 
     CRON 建议: 0 * * * * ? （每分钟）
     """
     from app.dependencies.redis import get_redis_client
+    from app.infrastructure.provider.provider_key_selector import provider_key_selector
     from app.repository.ai_provider_key_repository import ai_provider_key_repository
 
     set_current_user_id(SYSTEM_USER_ID)
     try:
-        import json as _json
-
         redis = await get_redis_client()
-        if redis is None:
-            return "供应商Key最近使用刷库: Redis 不可用"
 
-        keys = [key async for key in redis.scan_iter(match="ai:provider_key:*:last_used")]
+        flushed = 0
+        for selector, repository in ((provider_key_selector, ai_provider_key_repository),):
+            keys, updates = await _scan_last_used_buffer(redis, selector.namespace)
+            if not updates:
+                continue
+            async with get_db_session() as db:
+                await repository.batch_update_last_used(db, updates)
+                await db.commit()
+            # 落库成功后清除缓冲
+            await redis.delete(*keys)
+            flushed += len(updates)
 
-        updates: list[tuple[int, datetime, int]] = []
-        for key in keys:
-            # key 形如 ai:provider_key:{key_id}:last_used
-            try:
-                key_id = int(key.split(":")[2])
-                raw = await redis.get(key)
-                if not raw:
-                    continue
-                data = _json.loads(raw)
-                used_at = datetime.fromisoformat(data["last_used_at"])
-                updates.append((key_id, used_at, data.get("last_used_by")))
-            except (ValueError, KeyError, TypeError):
-                logger.warning("跳过非法 last_used 缓冲: %s", key)
-
-        if not updates:
+        if not flushed:
             return "供应商Key最近使用刷库: 无待刷缓冲"
-
-        async with get_db_session() as db:
-            await ai_provider_key_repository.batch_update_last_used(db, updates)
-            await db.commit()
-
-        # 落库成功后清除缓冲
-        await redis.delete(*keys)
-        msg = f"供应商Key最近使用刷库完成: 已刷 {len(updates)} 条"
+        msg = f"供应商Key最近使用刷库完成: 已刷 {flushed} 条"
         logger.debug(msg)
         return msg
     finally:
@@ -1176,8 +1212,6 @@ async def ai_schedule_trigger() -> str:
     set_current_user_id(SYSTEM_USER_ID)
     try:
         redis = await get_redis_client()
-        if redis is None:
-            return "定时任务扫描触发: Redis 不可用"
 
         async with get_db_session() as db:
             summary = await schedule_executor.scan_and_trigger(db, redis)

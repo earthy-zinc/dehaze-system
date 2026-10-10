@@ -39,13 +39,13 @@ public @interface RateLimit {
     LimiterType limiter() default LimiterType.TOKEN_BUCKET;
 
     enum LimitType {
-        IP,      // 按客户端IP限流
-        USER,    // 按登录用户限流
-        GLOBAL   // 全局限流
+        IP, // 按客户端IP限流
+        USER, // 按登录用户限流
+        GLOBAL // 全局限流
     }
 
     enum LimiterType {
-        TOKEN_BUCKET,  // 令牌桶算法
-        FIXED_WINDOW   // 固定窗口算法
+        TOKEN_BUCKET, // 令牌桶算法
+        FIXED_WINDOW // 固定窗口算法
     }
 }

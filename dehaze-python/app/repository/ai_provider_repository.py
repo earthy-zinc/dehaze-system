@@ -51,6 +51,11 @@ class AiProviderRepository(BaseRepository[SysAiProvider]):
         stmt = stmt.order_by(SysAiProvider.sort_order, SysAiProvider.id)
         return await self.paginate(db, stmt, page, size)
 
+    async def list_all_active(self, db: AsyncSession) -> list[SysAiProvider]:
+        """查询全部未删除供应商（含禁用；供缓存预热等需要全量的场景）"""
+        stmt = select(SysAiProvider).where(SysAiProvider.deleted == 0)
+        return list((await db.execute(stmt)).scalars().all())
+
     async def count_models(self, db: AsyncSession, provider_id: int) -> int:
         """统计该供应商下的模型数量（含禁用，用于删除前校验，防悬挂引用）"""
         stmt = (

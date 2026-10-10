@@ -28,16 +28,16 @@ func (api *SysEvaluationApi) Evaluate(c *gin.Context) {
 	}
 
 	var req struct {
-		AlgorithmID int64  `json:"algorithmId" binding:"required"`
-		PredURL     string `json:"predUrl" binding:"required"`
-		GtURL       string `json:"gtUrl" binding:"required"`
+		ModelID string `json:"modelId" binding:"required"`
+		PredURL string `json:"predUrl" binding:"required"`
+		GtURL   string `json:"gtUrl" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	result, err := api.service.Evaluate(ctx, req.AlgorithmID, req.PredURL, req.GtURL, userID)
+	result, err := api.service.Evaluate(ctx, req.ModelID, req.PredURL, req.GtURL, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -77,20 +77,13 @@ func (api *SysEvaluationApi) GetMetrics(c *gin.Context) {
 		return
 	}
 
-	var algorithmID int64
-	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
-		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
-			return
-		}
-	}
+	modelID := c.Query("modelId")
 	pageNum, pageSize, ok := parsePagination(c)
 	if !ok {
 		return
 	}
 
-	result, err := api.service.GetUserMetricsPage(ctx, userID, algorithmID, pageNum, pageSize)
+	result, err := api.service.GetUserMetricsPage(ctx, userID, modelID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -106,21 +99,13 @@ func (api *SysEvaluationApi) ListEvaluationLogs(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	var algorithmID int64
-	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
-		var err error
-		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
-			return
-		}
-	}
+	modelID := c.Query("modelId")
 	pageNum, pageSize, ok := parsePagination(c)
 	if !ok {
 		return
 	}
 
-	result, err := api.service.GetLogPage(ctx, algorithmID, userID, pageNum, pageSize)
+	result, err := api.service.GetLogPage(ctx, modelID, userID, pageNum, pageSize)
 	if err != nil {
 		_ = c.Error(err)
 		return

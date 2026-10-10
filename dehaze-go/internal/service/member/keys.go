@@ -9,7 +9,6 @@ const (
 	memberLevelKeyFmt   = "member:level:%d"
 	memberBenefitKeyFmt = "member:benefit:%s"
 	memberBenefitAllKey = "member:benefit:all"
-	memberQuotaKeyFmt   = "member:quota:%d:%s"
 	// memberBenefitSummaryKeyFmt 权益概览缓存键：与 python `member:benefit-summary:{userId}` 逐字一致，
 	// 保证两端共用同一份缓存（跨端互认）。
 	memberBenefitSummaryKeyFmt = "member:benefit-summary:%d"
@@ -19,9 +18,6 @@ func MemberProfileKey(userID int64) string     { return fmt.Sprintf(memberProfil
 func MemberLevelKey(userID int64) string       { return fmt.Sprintf(memberLevelKeyFmt, userID) }
 func MemberBenefitKey(levelCode string) string { return fmt.Sprintf(memberBenefitKeyFmt, levelCode) }
 func MemberBenefitAllKey() string              { return memberBenefitAllKey }
-func MemberQuotaKey(userID int64, quotaType QuotaType) string {
-	return fmt.Sprintf(memberQuotaKeyFmt, userID, quotaType)
-}
 func MemberBenefitSummaryKey(userID int64) string {
 	return fmt.Sprintf(memberBenefitSummaryKeyFmt, userID)
 }

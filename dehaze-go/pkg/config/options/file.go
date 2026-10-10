@@ -33,7 +33,7 @@ type FileLocal struct {
 }
 
 // FileNginxStatic nginx 静态服务后端配置
-// BaseURL: nginx 静态服务根地址（完整 URL，不带 /datasets 等资源子路径），如 http://host:9000
+// BaseURL: nginx 静态服务根地址（完整 URL，不带 /datasets 等资源子路径），如 http://host:19000
 type FileNginxStatic struct {
 	BaseURL string `mapstructure:"baseUrl" json:"baseUrl" yaml:"baseUrl"`
 }

@@ -1,17 +1,14 @@
 package com.pei.dehaze.model.query;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
- * 预测日志查询参数
- *
- * @author earthyzinc
- * @since 2024-06-12
+ * 图像任务历史查询参数
  */
-@Schema(description = "预测日志查询参数")
+@Schema(description = "图像任务历史查询参数")
 @Data
 public class PredLogQuery {
 
@@ -24,6 +21,6 @@ public class PredLogQuery {
     @Max(value = 100, message = "每页大小不能超过100")
     private Integer pageSize = 10;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识筛选")
+    private String model;
 }

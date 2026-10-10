@@ -1,21 +1,20 @@
 package com.pei.dehaze.service.impl;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.service.ImageProcessingService;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * ImageProcessingService 单元测试
@@ -41,8 +40,8 @@ class ImageProcessingServiceImplTest {
     void validateImageFile_withNullFile_shouldThrowException() {
         File nullFile = null;
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> imageProcessingService.validateImageFile(nullFile));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> imageProcessingService.validateImageFile(nullFile));
 
         assertEquals("文件不能为空", exception.getMessage());
     }
@@ -52,8 +51,8 @@ class ImageProcessingServiceImplTest {
     void validateImageFile_withNonExistentFile_shouldThrowException() {
         File nonExistentFile = new File("/non/existent/path/file.jpg");
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> imageProcessingService.validateImageFile(nonExistentFile));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> imageProcessingService.validateImageFile(nonExistentFile));
 
         assertEquals("文件不能为空", exception.getMessage());
     }
@@ -66,8 +65,8 @@ class ImageProcessingServiceImplTest {
         byte[] largeContent = new byte[11 * 1024 * 1024]; // 11MB
         Files.write(largeFilePath, largeContent);
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> imageProcessingService.validateImageFile(largeFilePath.toFile()));
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> imageProcessingService.validateImageFile(largeFilePath.toFile()));
 
         assertTrue(exception.getMessage().contains("文件大小不能超过"));
     }
@@ -78,8 +77,8 @@ class ImageProcessingServiceImplTest {
         Path unsupportedFile = tempDir.resolve("document.pdf");
         Files.write(unsupportedFile, "PDF content".getBytes());
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> imageProcessingService.validateImageFile(unsupportedFile.toFile()));
+        BusinessException exception = assertThrows(
+                BusinessException.class, () -> imageProcessingService.validateImageFile(unsupportedFile.toFile()));
 
         assertTrue(exception.getMessage().contains("仅支持"));
     }
@@ -96,11 +95,10 @@ class ImageProcessingServiceImplTest {
     @Test
     @DisplayName("校验空MultipartFile应抛出异常")
     void validateImageFile_withEmptyMultipartFile_shouldThrowException() {
-        MockMultipartFile emptyFile = new MockMultipartFile(
-                "file", "empty.jpg", "image/jpeg", new byte[0]);
+        MockMultipartFile emptyFile = new MockMultipartFile("file", "empty.jpg", "image/jpeg", new byte[0]);
 
-        BusinessException exception = assertThrows(BusinessException.class,
-                () -> imageProcessingService.validateImageFile(emptyFile));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> imageProcessingService.validateImageFile(emptyFile));
 
         assertEquals("文件不能为空", exception.getMessage());
     }
@@ -154,7 +152,6 @@ class ImageProcessingServiceImplTest {
         Path textFile = tempDir.resolve("text.jpg");
         Files.write(textFile, "not an image".getBytes());
 
-        assertThrows(BusinessException.class,
-                () -> imageProcessingService.getImageDimensions(textFile.toFile()));
+        assertThrows(BusinessException.class, () -> imageProcessingService.getImageDimensions(textFile.toFile()));
     }
 }

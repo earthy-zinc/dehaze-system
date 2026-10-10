@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Duration;
+import java.util.UUID;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,9 +23,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
-
-import java.time.Duration;
-import java.util.UUID;
 
 /**
  * 缓存配置（L1 Caffeine + L2 Redis 多级缓存）
@@ -50,7 +49,8 @@ public class RedisCacheConfig {
      * L2 Redis CacheManager（不暴露为 @Primary，仅作为多级缓存的 L2 后端）
      */
     @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory, CacheProperties cacheProperties) {
+    public RedisCacheManager redisCacheManager(
+            RedisConnectionFactory redisConnectionFactory, CacheProperties cacheProperties) {
         // 允许缓存 null 值（防穿透），通过 cacheConfiguration 的 disableCachingNullValues() 控制
         return RedisCacheManager.builder(RedisCacheWriter.nonLockingRedisCacheWriter(redisConnectionFactory))
                 .cacheDefaults(redisCacheConfiguration(cacheProperties))
@@ -64,11 +64,11 @@ public class RedisCacheConfig {
      */
     @Bean
     @Primary
-    public MultiLevelCacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry,
-                                               StringRedisTemplate stringRedisTemplate) {
+    public MultiLevelCacheManager cacheManager(
+            RedisCacheManager redisCacheManager, MeterRegistry meterRegistry, StringRedisTemplate stringRedisTemplate) {
         String senderId = UUID.randomUUID().toString();
-        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5),
-                stringRedisTemplate, senderId);
+        return new MultiLevelCacheManager(
+                redisCacheManager, meterRegistry, Duration.ofMinutes(5), stringRedisTemplate, senderId);
     }
 
     /**
@@ -93,7 +93,8 @@ public class RedisCacheConfig {
         objectMapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL);
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-        config = config.serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()));
+        config = config.serializeKeysWith(
+                RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()));
         config = config.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer));
 
         CacheProperties.Redis redisProperties = cacheProperties.getRedis();

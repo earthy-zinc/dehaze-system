@@ -1,18 +1,5 @@
 package com.pei.dehaze.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.util.Collection;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -21,6 +8,18 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collection;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
  * AI 域缓存失效器单测：键清单必须与 dehaze-python 的 ai_agent_service 键规范逐字一致，
@@ -49,13 +48,14 @@ class AiCacheInvalidatorTest {
 
         ArgumentCaptor<Collection<String>> keysCaptor = ArgumentCaptor.forClass(Collection.class);
         verify(stringRedisTemplate).delete(keysCaptor.capture());
-        assertThat(keysCaptor.getValue()).containsExactlyInAnyOrder(
-                "ai:agent:default",
-                "ai:agent:7:skills",
-                "ai:agent:7:mcp",
-                "ai:agent:7:subagents",
-                "ai:agent:7:published",
-                "ai:agent:list:enabled");
+        assertThat(keysCaptor.getValue())
+                .containsExactlyInAnyOrder(
+                        "ai:agent:default",
+                        "ai:agent:7:skills",
+                        "ai:agent:7:mcp",
+                        "ai:agent:7:subagents",
+                        "ai:agent:7:published",
+                        "ai:agent:list:enabled");
         verify(stringRedisTemplate, times(6)).convertAndSend(eq("cache:invalidation"), anyString());
     }
 

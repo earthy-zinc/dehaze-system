@@ -39,9 +39,9 @@ import com.pei.dehaze.model.query.AiCreditLogQuery;
 import com.pei.dehaze.model.query.AiModelCostQuery;
 import com.pei.dehaze.model.query.AiRefundQuery;
 import com.pei.dehaze.model.read.AiBillTypeRead;
-import com.pei.dehaze.model.read.AiBillingStatRead;
 import com.pei.dehaze.model.read.AiBillingModelRead;
 import com.pei.dehaze.model.read.AiBillingPeriodRead;
+import com.pei.dehaze.model.read.AiBillingStatRead;
 import com.pei.dehaze.model.read.AiCostStatRead;
 import com.pei.dehaze.model.read.AiCreditSourceRead;
 import com.pei.dehaze.model.read.AiOrderIncomeRead;
@@ -57,12 +57,6 @@ import com.pei.dehaze.model.vo.AiCreditLogVO;
 import com.pei.dehaze.model.vo.AiModelCostVO;
 import com.pei.dehaze.model.vo.AiRefundVO;
 import com.pei.dehaze.security.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -80,13 +74,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AI 计费管理服务（用户端余额/明细/账单/退款 + 管理端统计/调整/审核/成本）。
  *
  * <p>对齐 dehaze-python {@code app/service/billing/*}：余额与配额以 Redis 为准实时权威
  * （{@code ai:balance:*} / {@code ai:arrears:*} / {@code ai:quota:*}），MySQL 为持久化权威
- * （sys_user.credits_balance 乐观锁 CAS），账单缓存 {@code ai:bill:*} 以 snake_case JSON 与
+ * （sys_user.credits_balance 相对值 UPDATE），账单缓存 {@code ai:bill:*} 以 snake_case JSON 与
  * python 互认。
  *
  * @author dehaze
@@ -119,8 +118,6 @@ public class AiBillingService {
 
     /** 账单缓存 TTL：python AI_BILLING_BILL_CACHE_TTL = 90 天 */
     private static final Duration BILL_CACHE_TTL = Duration.ofDays(90);
-
-    private static final int CAS_RETRY = 3;
 
     /** 计入充值的流水来源（vip_gift_expire 为过期为负值，一并计入充减） */
     private static final Set<String> RECHARGE_SOURCES =
@@ -180,8 +177,7 @@ public class AiBillingService {
             throw new BusinessException(ResultCode.PARAM_ERROR, "dimension 仅支持 day/month");
         }
 
-        List<AiBillingPeriodRead> rows =
-                insightMapper.sumGroupByPeriod(userId, periodStart, nowCeiling, fmt);
+        List<AiBillingPeriodRead> rows = insightMapper.sumGroupByPeriod(userId, periodStart, nowCeiling, fmt);
         List<AiBillingSummaryVO.TrendPoint> trend = new ArrayList<>();
         int inputTokens = 0;
         int outputTokens = 0;
@@ -202,8 +198,10 @@ public class AiBillingService {
             creditsSaved += intOf(row.getCreditsSaved());
         }
 
-        List<AiBillingModelRead> distRows = new ArrayList<>(insightMapper.sumGroupByModel(userId, periodStart, nowCeiling));
-        distRows.sort(Comparator.comparingLong((AiBillingModelRead r) -> longOf(r.getCredits())).reversed());
+        List<AiBillingModelRead> distRows =
+                new ArrayList<>(insightMapper.sumGroupByModel(userId, periodStart, nowCeiling));
+        distRows.sort(Comparator.comparingLong((AiBillingModelRead r) -> longOf(r.getCredits()))
+                .reversed());
         List<AiBillingSummaryVO.ModelDist> distribution = new ArrayList<>();
         for (AiBillingModelRead row : distRows.subList(0, Math.min(MODEL_DIST_TOP, distRows.size()))) {
             AiBillingSummaryVO.ModelDist item = new AiBillingSummaryVO.ModelDist();
@@ -232,19 +230,28 @@ public class AiBillingService {
         LambdaQueryWrapper<SysAiBilling> wrapper = new LambdaQueryWrapper<SysAiBilling>()
                 .eq(SysAiBilling::getUserId, userId)
                 .eq(query.getConversationId() != null, SysAiBilling::getConversationId, query.getConversationId())
-                .eq(org.springframework.util.StringUtils.hasText(query.getBillType()),
-                        SysAiBilling::getBillType, query.getBillType())
-                .eq(org.springframework.util.StringUtils.hasText(query.getModelId()),
-                        SysAiBilling::getModel, query.getModelId())
-                .ge(query.getDateStart() != null && !query.getDateStart().isBlank(),
-                        SysAiBilling::getCreateTime, AiDateTimeUtils.parse(query.getDateStart()))
-                .le(query.getDateEnd() != null && !query.getDateEnd().isBlank(),
-                        SysAiBilling::getCreateTime, AiDateTimeUtils.parse(query.getDateEnd()))
+                .eq(
+                        org.springframework.util.StringUtils.hasText(query.getBillType()),
+                        SysAiBilling::getBillType,
+                        query.getBillType())
+                .eq(
+                        org.springframework.util.StringUtils.hasText(query.getModelId()),
+                        SysAiBilling::getModel,
+                        query.getModelId())
+                .ge(
+                        query.getDateStart() != null && !query.getDateStart().isBlank(),
+                        SysAiBilling::getCreateTime,
+                        AiDateTimeUtils.parse(query.getDateStart()))
+                .le(
+                        query.getDateEnd() != null && !query.getDateEnd().isBlank(),
+                        SysAiBilling::getCreateTime,
+                        AiDateTimeUtils.parse(query.getDateEnd()))
                 .orderByDesc(SysAiBilling::getCreateTime)
                 .orderByDesc(SysAiBilling::getId);
         Page<SysAiBilling> page = new Page<>(query.getPageNum(), query.getPageSize());
         IPage<SysAiBilling> result = billingMapper.selectPage(page, wrapper);
-        List<Long> billingIds = result.getRecords().stream().map(SysAiBilling::getId).toList();
+        List<Long> billingIds =
+                result.getRecords().stream().map(SysAiBilling::getId).toList();
         Map<Long, Integer> refundStatus = latestRefundStatus(billingIds);
         List<AiBillingRecordVO> records = new ArrayList<>();
         for (SysAiBilling billing : result.getRecords()) {
@@ -260,9 +267,13 @@ public class AiBillingService {
         LambdaQueryWrapper<SysAiCreditLog> wrapper = new LambdaQueryWrapper<SysAiCreditLog>()
                 .eq(SysAiCreditLog::getUserId, userId)
                 .eq(hasText(query.getSource()), SysAiCreditLog::getSource, query.getSource())
-                .ge(hasText(query.getDateStart()), SysAiCreditLog::getCreateTime,
+                .ge(
+                        hasText(query.getDateStart()),
+                        SysAiCreditLog::getCreateTime,
                         AiDateTimeUtils.parse(query.getDateStart()))
-                .le(hasText(query.getDateEnd()), SysAiCreditLog::getCreateTime,
+                .le(
+                        hasText(query.getDateEnd()),
+                        SysAiCreditLog::getCreateTime,
                         AiDateTimeUtils.parse(query.getDateEnd()))
                 .orderByDesc(SysAiCreditLog::getCreateTime)
                 .orderByDesc(SysAiCreditLog::getId);
@@ -301,7 +312,8 @@ public class AiBillingService {
         if (isEmptyBill(bill, month)) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "账单不存在");
         }
-        stringRedisTemplate.opsForValue()
+        stringRedisTemplate
+                .opsForValue()
                 .set(BILL_KEY.formatted(userId, month), AiJsonUtils.write(bill), BILL_CACHE_TTL);
         return bill;
     }
@@ -339,10 +351,11 @@ public class AiBillingService {
         LambdaQueryWrapper<SysAiRefund> wrapper = new LambdaQueryWrapper<SysAiRefund>()
                 .eq(query.getStatus() != null, SysAiRefund::getStatus, query.getStatus())
                 .eq(query.getUserId() != null, SysAiRefund::getUserId, query.getUserId())
-                .ge(hasText(query.getDateStart()), SysAiRefund::getCreateTime,
+                .ge(
+                        hasText(query.getDateStart()),
+                        SysAiRefund::getCreateTime,
                         AiDateTimeUtils.parse(query.getDateStart()))
-                .le(hasText(query.getDateEnd()), SysAiRefund::getCreateTime,
-                        AiDateTimeUtils.parse(query.getDateEnd()))
+                .le(hasText(query.getDateEnd()), SysAiRefund::getCreateTime, AiDateTimeUtils.parse(query.getDateEnd()))
                 .orderByDesc(SysAiRefund::getCreateTime)
                 .orderByDesc(SysAiRefund::getId);
         Page<SysAiRefund> page = new Page<>(query.getPageNum(), query.getPageSize());
@@ -370,10 +383,12 @@ public class AiBillingService {
             vo.setTotalCredits(intOf(row.getTotalCredits()));
             vo.setTotalInputTokens(intOf(row.getTotalInputTokens()));
             vo.setTotalOutputTokens(intOf(row.getTotalOutputTokens()));
-            vo.setCacheHitRate(chatInput > 0
-                    ? BigDecimal.valueOf(longOf(row.getChatCachedTokens()))
-                            .divide(BigDecimal.valueOf(chatInput), 4, RoundingMode.HALF_UP).doubleValue()
-                    : 0.0);
+            vo.setCacheHitRate(
+                    chatInput > 0
+                            ? BigDecimal.valueOf(longOf(row.getChatCachedTokens()))
+                                    .divide(BigDecimal.valueOf(chatInput), 4, RoundingMode.HALF_UP)
+                                    .doubleValue()
+                            : 0.0);
             vo.setCreditsSaved(intOf(row.getCreditsSaved()));
             vo.setDegradationCount(intOf(row.getDegradationCount()));
             results.add(vo);
@@ -394,9 +409,64 @@ public class AiBillingService {
         if (userMapper.selectById(form.getUserId()) == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户不存在");
         }
-        increaseBalance(form.getUserId(), amount.intValueExact(), "admin_adjust", null, form.getReason(),
+        increaseBalance(
+                form.getUserId(),
+                amount.intValueExact(),
+                "admin_adjust",
+                null,
+                form.getReason(),
                 SecurityUtils.getUserId());
         return buildBalance(form.getUserId());
+    }
+
+    /**
+     * VIP 按月赠送积分（source=vip_gift），供 grantVipMonthlyGift 定时任务逐会员发放。
+     */
+    @Transactional
+    public void grantVipMonthlyGift(Long userId, Integer amount) {
+        if (amount == null || amount <= 0) {
+            return;
+        }
+        increaseBalance(userId, amount, "vip_gift", null, "VIP 按月赠送", null);
+    }
+
+    /**
+     * 当月产生过 VIP 赠送流水的用户（source=vip_gift），供 clearVipGiftExpire 任务筛选待清零用户。
+     */
+    public List<Long> listVipGiftUserIds() {
+        LocalDateTime[] bounds = vipGiftMonthBounds();
+        return creditLogMapper.selectDistinctUserIdsBySource("vip_gift", bounds[0], bounds[1]);
+    }
+
+    /**
+     * 清零单用户当月 VIP 赠送积分未用部分（source=vip_gift_expire），返回清零额。
+     *
+     * <p>清零额 = min(当月 vip_gift 赠送合计, 当前余额)，与 python clear_vip_gift_expire、
+     * Go ClearVipGiftExpire 同口径；余额不足时只清零可用部分，不产生欠费。
+     */
+    @Transactional
+    public long expireVipGiftCredits(Long userId) {
+        LocalDateTime[] bounds = vipGiftMonthBounds();
+        Long giftTotal = creditLogMapper.sumAmountByUserAndSource(userId, "vip_gift", bounds[0], bounds[1]);
+        if (giftTotal == null || giftTotal <= 0) {
+            return 0L;
+        }
+        long expireAmount =
+                Math.min(giftTotal, readBalance(userId).toBigInteger().longValue());
+        if (expireAmount <= 0) {
+            return 0L;
+        }
+        // 积分口径为整数，溢出即异常（由任务逐用户兜底记录），不得静默截断
+        increaseBalance(userId, -Math.toIntExact(expireAmount), "vip_gift_expire", null, "VIP 赠送积分月末清零", null);
+        return expireAmount;
+    }
+
+    /**
+     * 当月统计区间：月初 00:00:00 ~ 月末 23:59:59（计费时区，与账单口径一致）
+     */
+    private LocalDateTime[] vipGiftMonthBounds() {
+        LocalDateTime monthStart = LocalDate.now(BILLING_ZONE).withDayOfMonth(1).atStartOfDay();
+        return new LocalDateTime[] {monthStart, monthStart.plusMonths(1).minusSeconds(1)};
     }
 
     @Transactional
@@ -421,9 +491,14 @@ public class AiBillingService {
             if (approvedExists != null && approvedExists > 0) {
                 throw new BusinessException(ResultCode.REFUND_AUDIT_FAILED, "原计费记录已退款");
             }
-            // 余额回补（Redis INCR + MySQL CAS + 流水），不调整配额已用计数
-            increaseBalance(refund.getUserId(), refund.getAmount(), "refund", refund.getBillingId(),
-                    "退款: " + refund.getReason(), operatorId);
+            // 余额回补（Redis INCR + MySQL 相对值 UPDATE + 流水），不调整配额已用计数
+            increaseBalance(
+                    refund.getUserId(),
+                    refund.getAmount(),
+                    "refund",
+                    refund.getBillingId(),
+                    "退款: " + refund.getReason(),
+                    operatorId);
             refund.setStatus(2);
         } else {
             refund.setStatus(3);
@@ -486,8 +561,10 @@ public class AiBillingService {
         cost.setProviderId(form.getProviderId());
         cost.setPriceVersion(modelCostMapper.nextPriceVersion(form.getModelId(), form.getProviderId()));
         cost.setCurrency(hasText(form.getCurrency()) ? form.getCurrency() : "CNY");
-        cost.setEffectiveFrom(form.getEffectiveFrom() != null
-                ? form.getEffectiveFrom() : LocalDateTime.now(BILLING_ZONE).withNano(0));
+        cost.setEffectiveFrom(
+                form.getEffectiveFrom() != null
+                        ? form.getEffectiveFrom()
+                        : LocalDateTime.now(BILLING_ZONE).withNano(0));
         cost.setEffectiveTo(form.getEffectiveTo());
         cost.setStatus(form.getStatus() == null ? 1 : form.getStatus());
         modelCostMapper.insert(cost);
@@ -535,12 +612,12 @@ public class AiBillingService {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "成本单价不存在");
         }
         modelCostMapper.deleteById(costId);
-        modelCostDetailMapper.delete(new LambdaQueryWrapper<SysAiModelCostDetail>()
-                .eq(SysAiModelCostDetail::getPriceId, costId));
+        modelCostDetailMapper.delete(
+                new LambdaQueryWrapper<SysAiModelCostDetail>().eq(SysAiModelCostDetail::getPriceId, costId));
     }
 
-    public List<AiCostStatVO> getCostStats(String startTime, String endTime, String groupBy,
-                                           String modelId, Long providerId) {
+    public List<AiCostStatVO> getCostStats(
+            String startTime, String endTime, String groupBy, String modelId, Long providerId) {
         LocalDateTime start = AiDateTimeUtils.parse(startTime);
         LocalDateTime end = AiDateTimeUtils.parse(endTime);
         if ("overall".equals(groupBy)) {
@@ -560,7 +637,8 @@ public class AiBillingService {
     }
 
     public Map<String, Object> importReconcile(AiReconcileImportForm form) {
-        int imported = (int) form.getContent().lines().filter(line -> !line.isBlank()).count();
+        int imported =
+                (int) form.getContent().lines().filter(line -> !line.isBlank()).count();
         return Map.of("imported", imported);
     }
 
@@ -609,20 +687,20 @@ public class AiBillingService {
         if (cached != null) {
             stringRedisTemplate.delete(key);
         }
-        AiUserCreditsRead current = ledgerMapper.getCreditsBalanceAndVersion(userId);
-        BigDecimal balance = current == null || current.getCreditsBalance() == null
-                ? BigDecimal.ZERO : current.getCreditsBalance();
+        AiUserCreditsRead current = ledgerMapper.getCreditsBalance(userId);
+        BigDecimal balance =
+                current == null || current.getCreditsBalance() == null ? BigDecimal.ZERO : current.getCreditsBalance();
         stringRedisTemplate.opsForValue().set(key, balance.toBigInteger().toString(), BALANCE_TTL);
         return balance;
     }
 
     private int[] getQuotaUsed(Long userId) {
         LocalDate today = LocalDate.now(BILLING_ZONE);
-        String daily = stringRedisTemplate.opsForValue()
-                .get(QUOTA_DAILY_KEY.formatted(userId, today.format(DAY_SUFFIX)));
-        String monthly = stringRedisTemplate.opsForValue()
-                .get(QUOTA_MONTHLY_KEY.formatted(userId, today.format(MONTH_SUFFIX)));
-        return new int[]{intOf(daily), intOf(monthly)};
+        String daily =
+                stringRedisTemplate.opsForValue().get(QUOTA_DAILY_KEY.formatted(userId, today.format(DAY_SUFFIX)));
+        String monthly =
+                stringRedisTemplate.opsForValue().get(QUOTA_MONTHLY_KEY.formatted(userId, today.format(MONTH_SUFFIX)));
+        return new int[] {intOf(daily), intOf(monthly)};
     }
 
     /**
@@ -630,25 +708,30 @@ public class AiBillingService {
      */
     private long[] getQuotaLimits(Long userId) {
         SysMember member = memberMapper.selectOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId).last("LIMIT 1"));
+                .eq(SysMember::getUserId, userId)
+                .last("LIMIT 1"));
         if (member == null) {
             return null;
         }
         SysMemberBenefit benefit = memberBenefitMapper.selectOne(new LambdaQueryWrapper<SysMemberBenefit>()
-                .eq(SysMemberBenefit::getLevelCode, member.getLevelCode()).last("LIMIT 1"));
+                .eq(SysMemberBenefit::getLevelCode, member.getLevelCode())
+                .last("LIMIT 1"));
         if (benefit == null || !Integer.valueOf(1).equals(benefit.getStatus())) {
             return null;
         }
-        return new long[]{longOf(benefit.getAiCreditsDaily()), longOf(benefit.getAiCreditsMonthly())};
+        return new long[] {longOf(benefit.getAiCreditsDaily()), longOf(benefit.getAiCreditsMonthly())};
     }
 
     /**
-     * 增加余额：Redis INCRBY → MySQL CAS 落库 → 清欠费标记 → 写流水
+     * 增加余额：Redis INCRBY → MySQL 相对值 UPDATE 落库 → 清欠费标记 → 写流水
      */
-    private void increaseBalance(Long userId, Integer amount, String source, Long relatedId,
-                                 String reason, Long operatorId) {
+    private void increaseBalance(
+            Long userId, Integer amount, String source, Long relatedId, String reason, Long operatorId) {
         stringRedisTemplate.opsForValue().increment(BALANCE_KEY.formatted(userId), amount);
-        increaseBalanceCas(userId, BigDecimal.valueOf(amount));
+        if (ledgerMapper.increaseBalance(userId, BigDecimal.valueOf(amount)) <= 0) {
+            // Redis 已加而 MySQL 无账户：静默跳过会造成余额永久背离，必须显式失败
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "余额增加落库失败（用户余额账户不存在）: user_id=" + userId);
+        }
         stringRedisTemplate.delete(ARREARS_KEY.formatted(userId));
         BigDecimal balance = readBalance(userId);
         SysAiCreditLog log = new SysAiCreditLog();
@@ -660,22 +743,6 @@ public class AiBillingService {
         log.setReason(reason);
         log.setOperatorId(operatorId);
         creditLogMapper.insert(log);
-    }
-
-    private void increaseBalanceCas(Long userId, BigDecimal amount) {
-        for (int i = 0; i < CAS_RETRY; i++) {
-            AiUserCreditsRead current = ledgerMapper.getCreditsBalanceAndVersion(userId);
-            if (current == null) {
-                // Redis 已加而 MySQL 无账户：静默跳过会造成余额永久背离，必须显式失败
-                throw new BusinessException(ResultCode.BUSINESS_ERROR,
-                        "余额增加落库失败（用户余额账户不存在）: user_id=" + userId);
-            }
-            if (ledgerMapper.increaseBalanceCas(userId, amount, current.getCreditsVersion()) > 0) {
-                return;
-            }
-        }
-        throw new BusinessException(ResultCode.BUSINESS_ERROR,
-                "余额增加落库失败（CAS 重试耗尽）: user_id=" + userId);
     }
 
     private Map<Long, Integer> latestRefundStatus(List<Long> billingIds) {
@@ -734,7 +801,8 @@ public class AiBillingService {
                 .map(Map.Entry::getValue)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         int totalRecharge = rechargeAmount.toBigInteger().intValue();
-        int totalRefund = bySource.getOrDefault("refund", BigDecimal.ZERO).toBigInteger().intValue();
+        int totalRefund =
+                bySource.getOrDefault("refund", BigDecimal.ZERO).toBigInteger().intValue();
 
         AiBillVO bill = new AiBillVO();
         bill.setUserId(userId);
@@ -763,7 +831,7 @@ public class AiBillingService {
 
     private LocalDateTime[] monthBounds(String month) {
         LocalDateTime start = parseMonth(month);
-        return new LocalDateTime[]{start, start.plusMonths(1).minusSeconds(1)};
+        return new LocalDateTime[] {start, start.plusMonths(1).minusSeconds(1)};
     }
 
     private LocalDateTime parseMonth(String month) {
@@ -811,8 +879,10 @@ public class AiBillingService {
         vo.setRevenue(scale2(revenue).doubleValue());
         vo.setCost(scale2(cost).doubleValue());
         vo.setProfit(scale2(profit).doubleValue());
-        vo.setProfitRate(revenue.signum() == 0 ? 0.0
-                : profit.divide(revenue, 4, RoundingMode.HALF_UP).doubleValue());
+        vo.setProfitRate(
+                revenue.signum() == 0
+                        ? 0.0
+                        : profit.divide(revenue, 4, RoundingMode.HALF_UP).doubleValue());
         return vo;
     }
 
@@ -828,6 +898,8 @@ public class AiBillingService {
         vo.setInputTokens(billing.getInputTokens());
         vo.setCachedInputTokens(billing.getCachedInputTokens());
         vo.setOutputTokens(billing.getOutputTokens());
+        vo.setQuantity(billing.getQuantity());
+        vo.setQuantityUnit(billing.getQuantityUnit());
         vo.setCredits(billing.getCredits());
         vo.setCreditsSaved(billing.getCreditsSaved());
         vo.setToolCredits(billing.getToolCredits());

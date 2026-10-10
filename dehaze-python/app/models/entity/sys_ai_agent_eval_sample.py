@@ -24,7 +24,7 @@ class SysAiAgentEvalSample(BaseModel):
         Text, nullable=True, comment="允许输入(输入范围/约束说明,可空)"
     )
     tools: Mapped[Any | None] = mapped_column(
-        JSON, nullable=True, comment="可用工具JSON(样本预期调用的工具列表,可空)"
+        JSON, nullable=True, comment="期望工具调用JSON(有序;每项含name与可选args,可空)"
     )
     expected_process: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment="期望过程(正确的推理/调用过程,可空)"

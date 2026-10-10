@@ -1,12 +1,11 @@
 package com.pei.dehaze.service.strategy;
 
 import com.pei.dehaze.common.exception.BusinessException;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 /**
  * 任务策略工厂
@@ -28,8 +27,10 @@ public class TaskStrategyFactory {
                 }
             }
         }
-        log.info("Initialized TaskStrategyFactory with {} strategies, registered types: {}",
-                strategies.size(), strategyMap.keySet());
+        log.info(
+                "Initialized TaskStrategyFactory with {} strategies, registered types: {}",
+                strategies.size(),
+                strategyMap.keySet());
     }
 
     /**

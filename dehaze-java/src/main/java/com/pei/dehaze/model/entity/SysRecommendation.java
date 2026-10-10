@@ -6,12 +6,11 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.dehaze.common.base.BaseEntity;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -28,14 +27,14 @@ public class SysRecommendation extends BaseEntity {
     private String targetType;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<Map<String, Object>> topAlgorithms;
+    private List<Map<String, Object>> topModels;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> analysisResult;
 
     private Integer feedback;
 
-    private Long adoptedAlgorithmId;
+    private String adoptedModelId;
 
     @Serial
     private static final long serialVersionUID = 1L;

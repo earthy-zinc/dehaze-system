@@ -9,9 +9,10 @@ type SysAiModelPrice struct {
 	ProviderID    int64      `gorm:"column:provider_id;type:bigint;not null;index:idx_provider;comment:供应商ID" json:"providerId"`
 	PriceVersion  int        `gorm:"column:price_version;type:int;not null;default:1;comment:价格版本号" json:"priceVersion"`
 	Unit          string     `gorm:"column:unit;type:varchar(24);not null;default:credits_per_million;comment:单价单位" json:"unit"`
+	BillingUnit   string     `gorm:"column:billing_unit;type:varchar(32);not null;default:million_tokens;comment:计费计量单位(million_tokens/image/second/ten_thousand_chars/frame)" json:"billingUnit"`
 	EffectiveFrom time.Time  `gorm:"column:effective_from;type:datetime;not null;comment:生效时间" json:"effectiveFrom"`
 	EffectiveTo   *time.Time `gorm:"column:effective_to;type:datetime;comment:失效时间(NULL表示当前版本)" json:"effectiveTo"`
-	Status        int8       `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:生效;0:停用)" json:"status"`
+	Status        int8       `gorm:"column:status;type:tinyint;not null;comment:状态(1:生效;0:停用)" json:"status"`
 	Deleted       int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
 }
 
@@ -24,6 +25,7 @@ type SysAiModelPriceDetail struct {
 	BaseModel
 	PriceID   int64   `gorm:"column:price_id;type:bigint;not null;index:idx_price;comment:价格版本ID" json:"priceId"`
 	TokenType string  `gorm:"column:token_type;type:varchar(16);not null;comment:计费类型(input/cached/output)" json:"tokenType"`
+	UsageKind string  `gorm:"column:usage_kind;type:varchar(16);not null;default:token;comment:计量种类(token:token计量;unit:按计量单位计费)" json:"usageKind"`
 	TimeSlot  string  `gorm:"column:time_slot;type:varchar(16);not null;comment:时段档位(peak/idle)" json:"timeSlot"`
 	MinTokens int64   `gorm:"column:min_tokens;type:bigint;not null;default:0;comment:上下文分段下界" json:"minTokens"`
 	MaxTokens *int64  `gorm:"column:max_tokens;type:bigint;comment:上下文分段上界" json:"maxTokens"`

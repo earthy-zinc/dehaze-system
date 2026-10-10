@@ -16,8 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
  * 图像输入模块 —— 历史记录管理
  *
@@ -41,8 +39,7 @@ public class ImageInputController {
 
     @Operation(summary = "获取历史记录详情")
     @GetMapping("/{id}")
-    public Result<InputHistoryVO> getHistoryById(
-            @Parameter(description = "记录ID") @PathVariable Long id) {
+    public Result<InputHistoryVO> getHistoryById(@Parameter(description = "记录ID") @PathVariable Long id) {
         InputHistoryVO vo = historyService.getHistoryById(id);
         return Result.success(vo);
     }
@@ -56,8 +53,7 @@ public class ImageInputController {
 
     @Operation(summary = "删除单条历史记录")
     @DeleteMapping("/{id}")
-    public Result<Void> deleteHistory(
-            @Parameter(description = "记录ID") @PathVariable Long id) {
+    public Result<Void> deleteHistory(@Parameter(description = "记录ID") @PathVariable Long id) {
         boolean result = historyService.deleteHistory(id);
         return Result.judge(result);
     }

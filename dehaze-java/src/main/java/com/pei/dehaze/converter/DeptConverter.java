@@ -30,5 +30,4 @@ public interface DeptConverter {
         @Mapping(target = "updateBy", ignore = true)
     })
     SysDept form2Entity(DeptForm deptForm);
-
 }

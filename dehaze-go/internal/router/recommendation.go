@@ -11,7 +11,7 @@ func RegisterRecommendationRoutes(rg *gin.RouterGroup, recApi *api.Recommendatio
 	{
 		// 登录用户接口
 		recRouter.POST("/analyze", recApi.Analyze)
-		recRouter.GET("/algorithms", recApi.GetAlgorithmRecommendations)
+		recRouter.GET("/models", recApi.GetModelRecommendations)
 		recRouter.POST("/feedback", recApi.SubmitFeedback)
 
 		// 管理员接口

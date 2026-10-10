@@ -10,10 +10,8 @@ import lombok.Getter;
  * @author earthyzinc
  * @since 2022/4/23 9:36
  */
-
 @Getter
 public enum MenuTypeEnum implements IBaseEnum<Integer> {
-
     NULL(0, null),
     MENU(1, "菜单"),
     CATALOG(2, "目录"),
@@ -30,5 +28,4 @@ public enum MenuTypeEnum implements IBaseEnum<Integer> {
         this.value = value;
         this.label = label;
     }
-
 }

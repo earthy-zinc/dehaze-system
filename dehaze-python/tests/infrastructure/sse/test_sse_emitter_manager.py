@@ -122,9 +122,10 @@ async def test_send_error_keeps_business_code(emitter):
 async def test_idle_timeout_ends_stream_without_error(emitter, monkeypatch):
     """空闲超时只结束连接：不推 error（推理仍在跑），连接结束后事件仍进缓存。"""
     e, redis = emitter
-    # 心跳间隔大于超时：首轮空闲即判定超时，无心跳干扰
-    monkeypatch.setattr(m.settings, "AI_MESSAGE_HEARTBEAT_INTERVAL", 0.06)
-    monkeypatch.setattr(m.settings, "AI_MESSAGE_STREAM_TIMEOUT", 0.05)
+    # 心跳间隔远大于空闲超时：首轮空闲即判定超时。两者差值须远大于事件循环时钟分辨率
+    # （Windows 15.6ms，定时器可提前一个分辨率触发），否则首轮会误判为未超时并推心跳
+    monkeypatch.setattr(m.settings, "AI_MESSAGE_HEARTBEAT_INTERVAL", 0.3)
+    monkeypatch.setattr(m.settings, "AI_MESSAGE_STREAM_TIMEOUT", 0.01)
 
     async def _late_event():
         await asyncio.sleep(0.5)

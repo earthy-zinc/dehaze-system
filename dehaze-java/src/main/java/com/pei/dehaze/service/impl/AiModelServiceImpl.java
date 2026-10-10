@@ -12,11 +12,9 @@ import com.pei.dehaze.common.util.AiJsonUtils;
 import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysAiModelPriceDetailMapper;
 import com.pei.dehaze.mapper.SysAiModelPriceMapper;
-import com.pei.dehaze.mapper.SysMemberMapper;
 import com.pei.dehaze.model.entity.SysAiModel;
 import com.pei.dehaze.model.entity.SysAiModelPrice;
 import com.pei.dehaze.model.entity.SysAiModelPriceDetail;
-import com.pei.dehaze.model.entity.SysMember;
 import com.pei.dehaze.model.form.AiModelForm;
 import com.pei.dehaze.model.form.AiModelUpdateForm;
 import com.pei.dehaze.model.form.MessageSendForm;
@@ -27,15 +25,12 @@ import com.pei.dehaze.model.query.ModelPriceQuery;
 import com.pei.dehaze.model.vo.AiModelVO;
 import com.pei.dehaze.model.vo.ModelPriceVO;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.AiDefaultModelResolver;
 import com.pei.dehaze.service.AiModelService;
 import com.pei.dehaze.service.AiProviderHealthService;
+import com.pei.dehaze.service.AiUserLevelResolver;
+import com.pei.dehaze.service.FavoriteService;
 import com.pei.dehaze.service.MessageService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,9 +38,15 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -54,33 +55,36 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
 
     /** 启用模型列表缓存：与 python 共用同一键，写操作须失效同键 */
     private static final String MODEL_LIST_CACHE_KEY = "ai:model:list";
+
     private static final long MODEL_LIST_CACHE_TTL = 3600L;
-    private static final String USER_LEVEL_CACHE_PREFIX = "user:level:";
-    private static final long USER_LEVEL_CACHE_TTL = 1800L;
     private static final String CACHE_INVALIDATION_CHANNEL = "cache:invalidation";
     private static final String INSTANCE_ID = "dehaze-java-" + UUID.randomUUID();
 
     /** 速度档位阈值（与 python settings.AI_SPEED_TIER_* 同源，属纯技术参数，不进配置中心） */
     private static final int SPEED_TIER_FAST_P95_MS = 2000;
+
     private static final int SPEED_TIER_MEDIUM_P95_MS = 8000;
 
-    private static final Map<String, Integer> LEVEL_MAP = Map.of(
-            "level_0", 0, "level_1", 1, "level_2", 2, "level_3", 3);
-
     /**
-     * python {@code AiModelCreate/AiModelUpdate.model_type} 为 {@code Literal["chat","embedding","rerank"]}，
+     * python {@code AiModelType} 为 {@code Literal["chat","embedding","rerank",...]} 全模态白名单，
      * 非法字面量在 python 属请求校验阶段（A0400）。白名单取值校验保持 service 层单一信息源（不搬 @Pattern 到 DTO），
      * 否则拼错的类型会直接落库并污染模型类型筛选与目录展示。
      */
-    private static final Set<String> MODEL_TYPES = Set.of("chat", "embedding", "rerank");
+    private static final Set<String> MODEL_TYPES = Set.of(
+            "chat", "embedding", "rerank", "image_gen", "image_edit", "video_gen", "asr", "tts", "music_gen", "3d_gen");
+
+    private static final String MODEL_TYPE_HINT =
+            "模型类型仅支持 chat/embedding/rerank/image_gen/image_edit/video_gen/asr/tts/music_gen/3d_gen";
 
     private final SysAiModelPriceMapper priceMapper;
     private final SysAiModelPriceDetailMapper priceDetailMapper;
-    private final SysMemberMapper memberMapper;
+    private final AiUserLevelResolver userLevelResolver;
     private final AiProviderHealthService providerHealthService;
     private final MessageService messageService;
+    private final FavoriteService favoriteService;
     private final StringRedisTemplate redis;
     private final ObjectMapper objectMapper;
+    private final AiDefaultModelResolver aiDefaultModelResolver;
 
     // ==================== 模型 ====================
 
@@ -90,16 +94,20 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         // 列表筛选同为 Literal 约束：python 对非法筛选值报 A0400（而非"过滤后空列表"），
         // 空串在 python 亦被 Literal 拒绝，故此处按非 null 校验、不额外放过空串
         if (query.getModelType() != null && !MODEL_TYPES.contains(query.getModelType())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "模型类型仅支持 chat/embedding/rerank");
+            throw new BusinessException(ResultCode.PARAM_ERROR, MODEL_TYPE_HINT);
         }
         String keyword = query.getKeyword();
         LambdaQueryWrapper<SysAiModel> wrapper = new LambdaQueryWrapper<SysAiModel>()
                 .eq(CharSequenceUtil.isNotBlank(query.getModelType()), SysAiModel::getModelType, query.getModelType())
-                .and(CharSequenceUtil.isNotBlank(keyword), q -> q
-                        .like(SysAiModel::getDisplayName, keyword)
-                        .or()
-                        .like(SysAiModel::getModelId, keyword))
-                .orderByDesc(SysAiModel::getId);
+                .and(
+                        CharSequenceUtil.isNotBlank(keyword),
+                        q -> q.like(SysAiModel::getDisplayName, keyword).or().like(SysAiModel::getModelId, keyword));
+        List<String> taskTags = parseTaskTags(query.getTaskTags());
+        if (!taskTags.isEmpty()) {
+            // task_tags 为 NULL 时 JSON_OVERLAPS 结果为 NULL（不命中），与"无标签不参与筛选"一致
+            wrapper.apply("JSON_OVERLAPS(task_tags, CAST({0} AS JSON))", writeJsonList(taskTags));
+        }
+        wrapper.orderByDesc(SysAiModel::getId);
         Page<SysAiModel> page = this.page(new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
 
         Map<Long, Map<String, Object>> stats = usageStats24h(page.getRecords());
@@ -121,14 +129,15 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
 
     @Override
     @Transactional(readOnly = true)
-    public List<AiModelVO> listEnabledModels(String modelType) {
+    public List<AiModelVO> listEnabledModels(String modelType, String taskTags) {
         List<AiModelVO> models = readEnabledCache();
         if (models == null) {
             models = buildEnabledSnapshot();
-            redis.opsForValue().set(MODEL_LIST_CACHE_KEY, AiJsonUtils.write(models),
-                    MODEL_LIST_CACHE_TTL, TimeUnit.SECONDS);
+            redis.opsForValue()
+                    .set(MODEL_LIST_CACHE_KEY, AiJsonUtils.write(models), MODEL_LIST_CACHE_TTL, TimeUnit.SECONDS);
         }
-        int userLevel = userLevel();
+        int userLevel = userLevelResolver.levelOf(SecurityUtils.getUserId());
+        List<String> wanted = parseTaskTags(taskTags);
         List<AiModelVO> result = new ArrayList<>();
         for (AiModelVO model : models) {
             int vipLevel = model.getVipLevel() == null ? 0 : model.getVipLevel();
@@ -138,16 +147,39 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             if (modelType != null && !modelType.equals(model.getModelType())) {
                 continue;
             }
+            if (!wanted.isEmpty() && !taskTagsHit(model.getTaskTags(), wanted)) {
+                continue;
+            }
             result.add(model);
         }
+        markPlatformDefaults(result);
         return result;
+    }
+
+    /**
+     * 回填"是否平台默认"标记（isDefault）：按 model_type 分键读字典
+     * （{@code ai_model.default_model}（chat）/ {@code default_model.{modelType}}），
+     * 标记语义为"该模型是否为其类型的平台默认模型"——同一 model_id 配多供应商时该模型各行都为
+     * true。**读取时计算而非写入共享缓存快照**：字典改动即失效，避免缓存 TTL 内标记滞后。
+     */
+    private void markPlatformDefaults(List<AiModelVO> models) {
+        Map<String, String> defaultByType = new HashMap<>();
+        for (AiModelVO model : models) {
+            String type = model.getModelType();
+            if (!defaultByType.containsKey(type)) {
+                defaultByType.put(type, aiDefaultModelResolver.resolvePlatformDefaultModelId(type));
+            }
+        }
+        for (AiModelVO model : models) {
+            model.setIsDefault(Objects.equals(defaultByType.get(model.getModelType()), model.getModelId()));
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AiModelVO createModel(AiModelForm form) {
         if (form.getModelType() == null || !MODEL_TYPES.contains(form.getModelType())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "模型类型仅支持 chat/embedding/rerank");
+            throw new BusinessException(ResultCode.PARAM_ERROR, MODEL_TYPE_HINT);
         }
         if ("embedding".equals(form.getModelType()) && form.getDimension() == null) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "embedding 模型必须填写向量维度 dimension");
@@ -165,6 +197,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         model.setProviderId(form.getProviderId());
         model.setModelId(form.getModelId());
         model.setModelType(form.getModelType());
+        model.setTaskTags(writeJsonList(form.getTaskTags()));
         model.setDimension(dimension);
         model.setDisplayName(form.getDisplayName());
         model.setMaxContextTokens(form.getMaxContextTokens());
@@ -190,7 +223,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         // 与 createModel 同口径：非法 modelType 先报 A0400（python pydantic 先于 service 拒绝），
         // 合法值才落到下面的"创建后不可修改"业务拒绝，避免拼错的值被误报成不可修改
         if (form.getModelType() != null && !MODEL_TYPES.contains(form.getModelType())) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "模型类型仅支持 chat/embedding/rerank");
+            throw new BusinessException(ResultCode.PARAM_ERROR, MODEL_TYPE_HINT);
         }
         SysAiModel model = getByModelId(modelId);
         if (model == null) {
@@ -204,8 +237,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             if (form.getDimension() != null) {
                 immutable.add("dimension");
             }
-            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW,
-                    "模型类型与向量维度创建后不可修改: " + immutable);
+            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "模型类型与向量维度创建后不可修改: " + immutable);
         }
 
         Integer oldStatus = model.getStatus();
@@ -214,6 +246,9 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         }
         if (form.getDisplayName() != null) {
             model.setDisplayName(form.getDisplayName());
+        }
+        if (form.getTaskTags() != null) {
+            model.setTaskTags(writeJsonList(form.getTaskTags()));
         }
         if (form.getMaxContextTokens() != null) {
             model.setMaxContextTokens(form.getMaxContextTokens());
@@ -254,8 +289,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         this.updateById(model);
 
         // 禁用模型（status 1→0）即"标记即将下线"，向使用中会话推送替换模型推荐
-        boolean disabling = form.getStatus() != null && oldStatus != null
-                && oldStatus == 1 && form.getStatus() == 0;
+        boolean disabling = form.getStatus() != null && oldStatus != null && oldStatus == 1 && form.getStatus() == 0;
         if (disabling) {
             notifyModelReplacement(model);
         }
@@ -271,18 +305,19 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "模型不存在");
         }
         if (this.baseMapper.countActiveConversations(modelId) > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "存在活跃会话正在使用该模型，请先禁用（status=0）");
+            throw new BusinessException(ResultCode.DATA_REFERENCED, "存在活跃会话正在使用该模型，请先禁用（status=0）");
         }
         // 被其他启用模型作为降级目标引用时不可删除，避免其降级链静默断裂
         Long fallbackRefs = this.baseMapper.selectCount(new LambdaQueryWrapper<SysAiModel>()
                 .eq(SysAiModel::getFallbackModelId, model.getId())
                 .eq(SysAiModel::getStatus, 1));
         if (fallbackRefs != null && fallbackRefs > 0) {
-            throw new BusinessException(ResultCode.DATA_BIND_EXISTS,
-                    "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id");
+            throw new BusinessException(ResultCode.DATA_REFERENCED, "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id");
         }
         this.removeById(model.getId());
+        // 收藏失效联动：模型删除后其收藏标记失效（target_id 存 sys_ai_model.id，与收藏写入口径一致；
+        // 与 python delete_model、数据集删除路径同序：软删 → 标记失效 → 清缓存）
+        favoriteService.markInvalid("model", List.of(model.getId()));
         clearModelCache();
     }
 
@@ -310,11 +345,15 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ModelPriceVO createPrice(ModelPriceForm form) {
+        // billing_unit/usage_kind 未显式传时按模型类型派生：图像按张、asr 按秒、tts 按万字符、视频按帧，其余按百万 token
+        String modelType = modelTypeOf(form.getModelId(), form.getProviderId());
+        String defaultUsageKind = isUnitBilling(modelType) ? "unit" : "token";
         SysAiModelPrice price = new SysAiModelPrice();
         price.setModelId(form.getModelId());
         price.setProviderId(form.getProviderId());
         price.setPriceVersion(priceMapper.nextPriceVersion(form.getModelId(), form.getProviderId()));
         price.setUnit(form.getUnit());
+        price.setBillingUnit(form.getBillingUnit() != null ? form.getBillingUnit() : defaultBillingUnit(modelType));
         price.setEffectiveFrom(form.getEffectiveFrom() != null ? form.getEffectiveFrom() : LocalDateTime.now());
         price.setEffectiveTo(form.getEffectiveTo());
         price.setStatus(form.getStatus());
@@ -325,6 +364,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             SysAiModelPriceDetail entity = new SysAiModelPriceDetail();
             entity.setPriceId(price.getId());
             entity.setTokenType(detail.getTokenType());
+            entity.setUsageKind(detail.getUsageKind() != null ? detail.getUsageKind() : defaultUsageKind);
             entity.setTimeSlot(detail.getTimeSlot());
             entity.setMinTokens(detail.getMinTokens());
             entity.setMaxTokens(detail.getMaxTokens());
@@ -344,6 +384,9 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         }
         if (form.getUnit() != null) {
             price.setUnit(form.getUnit());
+        }
+        if (form.getBillingUnit() != null) {
+            price.setBillingUnit(form.getBillingUnit());
         }
         if (form.getEffectiveFrom() != null) {
             price.setEffectiveFrom(form.getEffectiveFrom());
@@ -366,8 +409,8 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "用户售价不存在");
         }
         priceMapper.deleteById(priceId);
-        priceDetailMapper.delete(new LambdaQueryWrapper<SysAiModelPriceDetail>()
-                .eq(SysAiModelPriceDetail::getPriceId, priceId));
+        priceDetailMapper.delete(
+                new LambdaQueryWrapper<SysAiModelPriceDetail>().eq(SysAiModelPriceDetail::getPriceId, priceId));
     }
 
     // ==================== 内部实现 ====================
@@ -390,6 +433,33 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
                 .orderByAsc(SysAiModelPriceDetail::getId));
     }
 
+    /** 价格归属模型的类型（价格按 model_id + provider_id 唯一定位模型），模型不存在返回 null */
+    private String modelTypeOf(String modelId, Long providerId) {
+        SysAiModel model = this.getBaseMapper()
+                .selectOne(new LambdaQueryWrapper<SysAiModel>()
+                        .eq(SysAiModel::getModelId, modelId)
+                        .eq(SysAiModel::getProviderId, providerId));
+        return model == null ? null : model.getModelType();
+    }
+
+    /** 未显式指定 billing_unit 时按模型类型派生计量单位 */
+    private static String defaultBillingUnit(String modelType) {
+        if (modelType == null) {
+            return "million_tokens";
+        }
+        return switch (modelType) {
+            case "image_gen", "image_edit" -> "image";
+            case "asr" -> "second";
+            case "tts" -> "ten_thousand_chars";
+            case "video_gen" -> "frame";
+            default -> "million_tokens";
+        };
+    }
+
+    private static boolean isUnitBilling(String modelType) {
+        return !"million_tokens".equals(defaultBillingUnit(modelType));
+    }
+
     private ModelPriceVO toPriceVO(SysAiModelPrice price, List<SysAiModelPriceDetail> details) {
         ModelPriceVO vo = new ModelPriceVO();
         vo.setId(price.getId());
@@ -397,6 +467,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         vo.setProviderId(price.getProviderId());
         vo.setPriceVersion(price.getPriceVersion());
         vo.setUnit(price.getUnit());
+        vo.setBillingUnit(price.getBillingUnit());
         vo.setEffectiveFrom(price.getEffectiveFrom());
         vo.setEffectiveTo(price.getEffectiveTo());
         vo.setStatus(price.getStatus());
@@ -408,6 +479,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             detailVO.setId(detail.getId());
             detailVO.setPriceId(detail.getPriceId());
             detailVO.setTokenType(detail.getTokenType());
+            detailVO.setUsageKind(detail.getUsageKind());
             detailVO.setTimeSlot(detail.getTimeSlot());
             detailVO.setMinTokens(detail.getMinTokens());
             detailVO.setMaxTokens(detail.getMaxTokens());
@@ -424,6 +496,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         vo.setProviderId(model.getProviderId());
         vo.setModelId(model.getModelId());
         vo.setModelType(model.getModelType());
+        vo.setTaskTags(readJsonList(model.getTaskTags()));
         vo.setDimension(model.getDimension());
         vo.setDisplayName(model.getDisplayName());
         vo.setMaxContextTokens(model.getMaxContextTokens());
@@ -476,8 +549,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         if (CharSequenceUtil.isBlank(raw)) {
             return null;
         }
-        List<AiModelVO> cached = AiJsonUtils.read(raw, new TypeReference<List<AiModelVO>>() {
-        });
+        List<AiModelVO> cached = AiJsonUtils.read(raw, new TypeReference<List<AiModelVO>>() {});
         if (cached == null) {
             log.warn("启用模型缓存解析失败，删除后回源");
             redis.delete(MODEL_LIST_CACHE_KEY);
@@ -507,42 +579,20 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         return "slow";
     }
 
-    private int userLevel() {
-        Long userId = SecurityUtils.getUserId();
-        if (userId == null) {
-            return 0;
-        }
-        String key = USER_LEVEL_CACHE_PREFIX + userId;
-        String cached = redis.opsForValue().get(key);
-        if (cached != null) {
-            try {
-                return Integer.parseInt(cached);
-            } catch (NumberFormatException e) {
-                redis.delete(key);
-            }
-        }
-        SysMember member = memberMapper.selectOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId)
-                .select(SysMember::getLevelCode));
-        int level = member == null ? 0 : LEVEL_MAP.getOrDefault(member.getLevelCode(), 0);
-        redis.opsForValue().set(key, String.valueOf(level), USER_LEVEL_CACHE_TTL, TimeUnit.SECONDS);
-        return level;
-    }
-
     /** 模型下线通知：向使用该模型的所有活跃会话用户推送替换模型推荐（站内信） */
     private void notifyModelReplacement(SysAiModel model) {
         List<Long> userIds = this.baseMapper.selectActiveConversationUserIds(model.getModelId());
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
-        SysAiModel fallback = model.getFallbackModelId() == null ? null
+        SysAiModel fallback = model.getFallbackModelId() == null
+                ? null
                 : this.getOne(new LambdaQueryWrapper<SysAiModel>()
-                .eq(SysAiModel::getId, model.getFallbackModelId())
-                .eq(SysAiModel::getStatus, 1));
+                        .eq(SysAiModel::getId, model.getFallbackModelId())
+                        .eq(SysAiModel::getStatus, 1));
         String title = "模型 " + model.getDisplayName() + " 即将不可用";
         String content = fallback != null
-                ? "您正在使用的模型「" + model.getDisplayName() + "」即将停用，建议切换到替代模型「"
-                + fallback.getDisplayName() + "」。"
+                ? "您正在使用的模型「" + model.getDisplayName() + "」即将停用，建议切换到替代模型「" + fallback.getDisplayName() + "」。"
                 : "您正在使用的模型「" + model.getDisplayName() + "」即将停用，暂未配置替代模型，请及时更换其他可用模型。";
         try {
             MessageSendForm form = new MessageSendForm();
@@ -576,8 +626,8 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             }
         }
         if (!chatPkByModelId.isEmpty()) {
-            List<Map<String, Object>> rows = this.baseMapper.selectChatUsage24h(
-                    since, new ArrayList<>(chatPkByModelId.keySet()));
+            List<Map<String, Object>> rows =
+                    this.baseMapper.selectChatUsage24h(since, new ArrayList<>(chatPkByModelId.keySet()));
             for (Map<String, Object> row : rows) {
                 Long pk = chatPkByModelId.get(str(row.get("model")));
                 if (pk == null) {
@@ -593,8 +643,8 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             }
         }
         if (!kbPkByModelId.isEmpty()) {
-            List<Map<String, Object>> rows = this.baseMapper.selectKbUsage24h(
-                    since, new ArrayList<>(kbPkByModelId.keySet()));
+            List<Map<String, Object>> rows =
+                    this.baseMapper.selectKbUsage24h(since, new ArrayList<>(kbPkByModelId.keySet()));
             for (Map<String, Object> row : rows) {
                 Long pk = kbPkByModelId.get(str(row.get("model")));
                 if (pk == null) {
@@ -640,8 +690,7 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
             return null;
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
-            });
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             log.warn("模型扩展参数解析失败: {}", e.getMessage());
             return null;
@@ -657,6 +706,58 @@ public class AiModelServiceImpl extends ServiceImpl<SysAiModelMapper, SysAiModel
         } catch (Exception e) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "厂商私有请求参数格式非法");
         }
+    }
+
+    /** task_tags 为 JSON 数组文本：null 不改；空数组写入 []（与 python 全量替换语义一致） */
+    private List<String> readJsonList(String json) {
+        if (CharSequenceUtil.isBlank(json)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("模型任务标签解析失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String writeJsonList(List<String> value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "任务归类标签格式非法");
+        }
+    }
+
+    /** taskTags 查询参数：逗号分隔，去空白与空项；空结果表示不筛选 */
+    private static List<String> parseTaskTags(String raw) {
+        if (CharSequenceUtil.isBlank(raw)) {
+            return List.of();
+        }
+        List<String> tags = new ArrayList<>();
+        for (String part : raw.split(",")) {
+            String tag = part.trim();
+            if (!tag.isEmpty()) {
+                tags.add(tag);
+            }
+        }
+        return tags;
+    }
+
+    /** task_tags 数组与筛选标签有交集即命中（无标签行不参与筛选） */
+    private static boolean taskTagsHit(List<String> owned, List<String> wanted) {
+        if (owned == null || owned.isEmpty()) {
+            return false;
+        }
+        for (String tag : owned) {
+            if (wanted.contains(tag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int bool(Boolean value) {

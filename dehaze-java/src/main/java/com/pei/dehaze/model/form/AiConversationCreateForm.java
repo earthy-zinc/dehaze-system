@@ -40,5 +40,4 @@ public class AiConversationCreateForm {
     @Size(max = 32, message = "会话场景长度不能超过32")
     @Schema(description = "会话场景(general/image_dispatch/multi_step/algorithm_recommend/scheduled_task)")
     private String scene;
-
 }

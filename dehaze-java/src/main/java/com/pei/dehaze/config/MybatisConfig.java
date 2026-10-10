@@ -28,15 +28,14 @@ public class MybatisConfig {
     @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        //数据权限
+        // 数据权限
         interceptor.addInnerInterceptor(new DataPermissionInterceptor(new MyDataPermissionHandler()));
-        //分页插件：校验层与兜底层分层——参数校验缺失时（如新端点忘记 @Valid）在此静默截断，
-        //避免 pageSize 越界直接打出大结果集拖垮 DB；负数 size 也会被 clamp（原先等价于不分页取全表）
+        // 分页插件：校验层与兜底层分层——参数校验缺失时（如新端点忘记 @Valid）在此静默截断，
+        // 避免 pageSize 越界直接打出大结果集拖垮 DB；负数 size 也会被 clamp（原先等价于不分页取全表）
         PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.MYSQL);
         pagination.setMaxLimit(PAGE_SIZE_MAX_LIMIT);
         interceptor.addInnerInterceptor(pagination);
 
         return interceptor;
     }
-
 }

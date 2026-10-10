@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysMemberGrowthLog;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysMemberGrowthLogMapper extends BaseMapper<SysMemberGrowthLog> {
-}
+public interface SysMemberGrowthLogMapper extends BaseMapper<SysMemberGrowthLog> {}

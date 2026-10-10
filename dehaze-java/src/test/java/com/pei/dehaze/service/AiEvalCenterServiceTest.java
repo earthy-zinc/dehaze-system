@@ -1,5 +1,14 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
@@ -11,6 +20,9 @@ import com.pei.dehaze.mapper.SysAiEvalReviewMapper;
 import com.pei.dehaze.model.entity.SysAiAgent;
 import com.pei.dehaze.model.entity.SysAiAgentEvalRun;
 import com.pei.dehaze.model.entity.SysAiEvalReview;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,19 +33,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * 评测中心聚合服务单测：判分一致性三态、总览门禁状态、复核详情字段映射、复核回填幂等。
@@ -48,12 +47,16 @@ class AiEvalCenterServiceTest {
 
     @Mock
     private SysAiAgentMapper agentMapper;
+
     @Mock
     private SysAiAgentEvalRunMapper runMapper;
+
     @Mock
     private SysAiAgentEvalSampleMapper sampleMapper;
+
     @Mock
     private SysAiEvalReviewMapper reviewMapper;
+
     @Mock
     private AiInsightMapper insightMapper;
 
@@ -93,7 +96,8 @@ class AiEvalCenterServiceTest {
     }
 
     private void assertBizError(ResultCode expected, Executable action) {
-        assertThat(assertThrows(BusinessException.class, action).getResultCode()).isEqualTo(expected);
+        assertThat(assertThrows(BusinessException.class, action).getResultCode())
+                .isEqualTo(expected);
     }
 
     @Test
@@ -110,8 +114,7 @@ class AiEvalCenterServiceTest {
     @Test
     @DisplayName("判分状态：一致率低于阈值判 drifted 并暂停门禁，达标判 normal")
     void judgeStatusDerivesFromAgreementRate() {
-        when(reviewMapper.listAll(anyInt()))
-                .thenReturn(List.of(review(1L, 2, 1), review(2L, 2, 0)));
+        when(reviewMapper.listAll(anyInt())).thenReturn(List.of(review(1L, 2, 1), review(2L, 2, 0)));
         var drifted = service.judgeStatus();
         assertThat(drifted.getConsistencyState()).isEqualTo("drifted");
         assertThat(drifted.getDriftPaused()).isTrue();
@@ -173,13 +176,20 @@ class AiEvalCenterServiceTest {
     void reviewDetailFallsBackToRunSnapshot() {
         SysAiAgentEvalRun run = run(11L, 1L, 2);
         run.setResults(List.of(Map.of(
-                "sample_id", 21,
-                "task_goal", "清理图片",
-                "risk_level", "high",
-                "passed", false,
-                "actual_output", "实际输出",
-                "scores", Map.of("result_quality", 3),
-                "notes", Map.of("result_quality", "细节缺失"))));
+                "sample_id",
+                21,
+                "task_goal",
+                "清理图片",
+                "risk_level",
+                "high",
+                "passed",
+                false,
+                "actual_output",
+                "实际输出",
+                "scores",
+                Map.of("result_quality", 3),
+                "notes",
+                Map.of("result_quality", "细节缺失"))));
         when(runMapper.selectById(11L)).thenReturn(run);
         when(sampleMapper.selectById(21L)).thenReturn(null);
         when(agentMapper.selectById(1L)).thenReturn(agent(1L));
@@ -199,8 +209,7 @@ class AiEvalCenterServiceTest {
     void submitReviewRejectsSecondSubmit() {
         when(reviewMapper.selectById(31L)).thenReturn(review(31L, 2, 1));
 
-        assertBizError(ResultCode.OPERATION_NOT_ALLOW,
-                () -> service.submitReview(31L, true, "再次复核", 9L));
+        assertBizError(ResultCode.OPERATION_NOT_ALLOW, () -> service.submitReview(31L, true, "再次复核", 9L));
     }
 
     @Test
@@ -223,8 +232,7 @@ class AiEvalCenterServiceTest {
     @Test
     @DisplayName("复核队列：按状态过滤并统计待复核/已复核数量")
     void listReviewsCountsByStatus() {
-        when(reviewMapper.listAll(anyInt()))
-                .thenReturn(List.of(review(1L, 1, null), review(2L, 2, 1)));
+        when(reviewMapper.listAll(anyInt())).thenReturn(List.of(review(1L, 1, null), review(2L, 2, 1)));
         when(agentMapper.selectList(any(Wrapper.class))).thenReturn(List.of(agent(1L)));
 
         var queue = service.listReviews(null);

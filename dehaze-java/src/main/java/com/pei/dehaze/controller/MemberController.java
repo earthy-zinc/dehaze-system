@@ -22,13 +22,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 @Tag(name = "11.会员管理")
 @RestController
@@ -102,16 +101,16 @@ public class MemberController {
     @Operation(summary = "会员成长值流水（管理端）")
     @GetMapping("/{userId}/growth-logs")
     @PreAuthorize("@ss.hasPerm('member:list')")
-    public PageResult<GrowthLogVO> getMemberGrowthLogs(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                                       @Valid @ParameterObject GrowthLogQuery query) {
+    public PageResult<GrowthLogVO> getMemberGrowthLogs(
+            @Parameter(description = "用户ID") @PathVariable Long userId, @Valid @ParameterObject GrowthLogQuery query) {
         return PageResult.success(memberService.getGrowthLogsByUser(userId, query));
     }
 
     @Operation(summary = "会员消费记录（管理端）")
     @GetMapping("/{userId}/consumption-records")
     @PreAuthorize("@ss.hasPerm('member:list')")
-    public PageResult<MyOrderVO> getConsumptionRecords(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                                       @Valid @ParameterObject MyOrderQuery query) {
+    public PageResult<MyOrderVO> getConsumptionRecords(
+            @Parameter(description = "用户ID") @PathVariable Long userId, @Valid @ParameterObject MyOrderQuery query) {
         return PageResult.success(orderService.listByUserId(userId, query));
     }
 
@@ -125,17 +124,19 @@ public class MemberController {
     @Operation(summary = "会员操作日志（管理端）")
     @GetMapping("/{userId}/operation-logs")
     @PreAuthorize("@ss.hasPerm('member:list')")
-    public Result<Map<String, Object>> getOperationLogs(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                                        @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-                                                        @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize) {
+    public Result<Map<String, Object>> getOperationLogs(
+            @Parameter(description = "用户ID") @PathVariable Long userId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页条数") @RequestParam(defaultValue = "10") Integer pageSize) {
         return Result.success(memberService.listMemberAuditLogs(userId, pageNum, pageSize));
     }
 
     @Operation(summary = "等级调整")
     @PutMapping("/{userId}/level")
     @PreAuthorize("@ss.hasPerm('member:level:edit')")
-    public Result<Void> adjustLevel(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                    @Valid @RequestBody MemberLevelAdjustForm form) {
+    public Result<Void> adjustLevel(
+            @Parameter(description = "用户ID") @PathVariable Long userId,
+            @Valid @RequestBody MemberLevelAdjustForm form) {
         memberService.adjustLevel(userId, form);
         return Result.success();
     }
@@ -143,8 +144,9 @@ public class MemberController {
     @Operation(summary = "成长值调整")
     @PutMapping("/{userId}/growth")
     @PreAuthorize("@ss.hasPerm('member:growth:edit')")
-    public Result<Void> adjustGrowth(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                     @Valid @RequestBody MemberGrowthAdjustForm form) {
+    public Result<Void> adjustGrowth(
+            @Parameter(description = "用户ID") @PathVariable Long userId,
+            @Valid @RequestBody MemberGrowthAdjustForm form) {
         memberService.adjustGrowth(userId, form);
         return Result.success();
     }
@@ -152,8 +154,8 @@ public class MemberController {
     @Operation(summary = "冻结/解冻")
     @PutMapping("/{userId}/status")
     @PreAuthorize("@ss.hasPerm('member:status:edit')")
-    public Result<Void> updateStatus(@Parameter(description = "用户ID") @PathVariable Long userId,
-                                     @Valid @RequestBody MemberStatusForm form) {
+    public Result<Void> updateStatus(
+            @Parameter(description = "用户ID") @PathVariable Long userId, @Valid @RequestBody MemberStatusForm form) {
         memberService.updateStatus(userId, form);
         return Result.success();
     }
@@ -167,8 +169,8 @@ public class MemberController {
     @Operation(summary = "修改权益配置")
     @PutMapping("/benefits/{level}")
     @PreAuthorize("@ss.hasPerm('member:benefit:edit')")
-    public Result<Void> updateBenefit(@Parameter(description = "等级标识") @PathVariable String level,
-                                      @Valid @RequestBody BenefitForm form) {
+    public Result<Void> updateBenefit(
+            @Parameter(description = "等级标识") @PathVariable String level, @Valid @RequestBody BenefitForm form) {
         memberBenefitService.updateByLevelCode(level, form);
         return Result.success();
     }

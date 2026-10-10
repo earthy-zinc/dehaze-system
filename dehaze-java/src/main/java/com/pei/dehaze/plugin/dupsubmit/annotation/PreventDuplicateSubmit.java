@@ -1,6 +1,5 @@
 package com.pei.dehaze.plugin.dupsubmit.annotation;
 
-
 import java.lang.annotation.*;
 
 /**
@@ -21,5 +20,4 @@ public @interface PreventDuplicateSubmit {
      * 默认5秒内不允许重复提交
      */
     int expire() default 5;
-
 }

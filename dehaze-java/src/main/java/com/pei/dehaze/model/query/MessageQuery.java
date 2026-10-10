@@ -11,7 +11,9 @@ import lombok.EqualsAndHashCode;
 public class MessageQuery extends BasePageQuery {
 
     /** python message.py:23 默认 20 */
-    { setPageSize(20); }
+    {
+        setPageSize(20);
+    }
 
     @Schema(description = "消息类型")
     private String type;

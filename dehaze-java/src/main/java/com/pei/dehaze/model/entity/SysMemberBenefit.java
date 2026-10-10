@@ -5,10 +5,9 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
+import java.io.Serial;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.io.Serial;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -61,6 +60,12 @@ public class SysMemberBenefit extends BaseEntity {
     private Long aiCreditsDaily;
 
     private Long aiCreditsMonthly;
+
+    /** VIP 按月赠送积分（0 表示该等级不赠送），由 grantVipMonthlyGift 任务发放 */
+    private Long vipGiftCredits;
+
+    /** 多模态视觉读取日限额（次/天，按用户全局日计数，每日 0 点重置） */
+    private Integer multimodalLimit;
 
     private Integer sort;
 

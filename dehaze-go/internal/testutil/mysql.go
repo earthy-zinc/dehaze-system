@@ -1,10 +1,10 @@
 // Package testutil 提供 Go 测试的公共基建。
 //
 // 数据库策略（对齐 dehaze-python/tests/conftest.py，2026-08-23 三端决策）：
-// 真实 MySQL 测试库 dehaze_test（与开发同实例），schema/种子数据同源于根目录
-// config/sql/，规避 SQLite 方言漂移（DECIMAL 精度/外键/锁语义）。测试数据隔离
-// 用外部事务 + SAVEPOINT：被测代码内部 db.Transaction() 自动降级为 SAVEPOINT，
-// 测试结束整体 ROLLBACK，种子数据零污染。
+// 真实 MySQL 测试库（与开发同实例、不同库；库名由 DEHAZE_TEST_DB 指定，默认
+// dehaze_test），schema/种子数据同源于根目录 config/sql/，规避 SQLite 方言漂移
+// （DECIMAL 精度/外键/锁语义）。测试数据隔离用外部事务 + SAVEPOINT：被测代码内部
+// db.Transaction() 自动降级为 SAVEPOINT，测试结束整体 ROLLBACK，种子数据零污染。
 package testutil
 
 import (
@@ -21,8 +21,8 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // 注册 database/sql 的 mysql driver
 	"github.com/earthyzinc/dehaze-go/pkg/config"
+	_ "github.com/go-sql-driver/mysql" // 注册 database/sql 的 mysql driver
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -30,12 +30,17 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-// TestDBName 测试库名，与 config.test.yaml 的 database 保持一致。
-const TestDBName = "dehaze_test"
+// defaultTestDBName 基线测试库名：config.test.yaml 的 database 与各方默认值与之一致。
+const defaultTestDBName = "dehaze_test"
 
-// rebuildLockName 跨进程重建互斥锁：go test ./... 会并行跑多个测试二进制，
-// 各自触发重建，须用 MySQL 命名锁串行化，避免同时 DROP/CREATE 互相踩踏。
-const rebuildLockName = "dehaze_test_rebuild"
+// TestDBName 返回本次运行的测试库名：DEHAZE_TEST_DB 指定独立库（如 dehaze_test_go）
+// 即可与 java/python 两端的测试并行运行，各方独立建库、独立重建、互不阻塞。
+func TestDBName() string {
+	if name := os.Getenv("DEHAZE_TEST_DB"); name != "" {
+		return name
+	}
+	return defaultTestDBName
+}
 
 // rebuildLockTimeoutSec 获取重建锁的超时：需覆盖另一进程完成全量重建（导入
 // schema+data 全部脚本）的时间。
@@ -63,7 +68,7 @@ type mySQLConfig struct {
 	database string
 }
 
-// NewTestDB 返回一个基于 dehaze_test 库、包在独立事务中的 *gorm.DB，供 repository
+// NewTestDB 返回一个基于测试库（TestDBName）、包在独立事务中的 *gorm.DB，供 repository
 // 构造函数注入。测试结束整体回滚，写入不落库。首次调用触发进程级库重建（带
 // schema 指纹跳过与跨进程锁），MySQL 不可达或脚本失败时 fail-fast。
 func NewTestDB(t *testing.T) *gorm.DB {
@@ -87,7 +92,7 @@ func NewTestDB(t *testing.T) *gorm.DB {
 	return tx.Session(&gorm.Session{Logger: silentLogger})
 }
 
-// NewPoolTestDB 返回直连 dehaze_test 的池化 *gorm.DB（不包事务），用于并发/
+// NewPoolTestDB 返回直连测试库（TestDBName）的池化 *gorm.DB（不包事务），用于并发/
 // CAS 乐观锁类用例：多个 goroutine 需要各自独立连接与真实行锁竞争，单事务
 // 回滚模式（NewTestDB）会把全部操作串在同一连接上，无法产生真实并发。用例
 // 须自管数据清理（t.Cleanup 中 DELETE 自建数据），不得污染种子数据。
@@ -128,37 +133,40 @@ func rebuildIfStale() error {
 	}
 	defer conn.Close()
 
+	// 重建锁名含库名：跨进程（go test ./... 每个包一个测试二进制）串行化重建，
+	// 独立库（DEHAZE_TEST_DB）之间互不阻塞
+	lockName := cfg.database + "_rebuild"
 	var got sql.NullInt64
-	if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(?, ?)", rebuildLockName, rebuildLockTimeoutSec).Scan(&got); err != nil {
+	if err := conn.QueryRowContext(ctx, "SELECT GET_LOCK(?, ?)", lockName, rebuildLockTimeoutSec).Scan(&got); err != nil {
 		return fmt.Errorf("获取重建锁失败: %w", err)
 	}
 	if !got.Valid || got.Int64 != 1 {
-		return fmt.Errorf("获取重建锁超时（%s），另一测试进程可能在长时间重建", rebuildLockName)
+		return fmt.Errorf("获取重建锁超时（%s），另一测试进程可能在长时间重建", lockName)
 	}
-	defer conn.ExecContext(ctx, "SELECT RELEASE_LOCK(?)", rebuildLockName)
+	defer conn.ExecContext(ctx, "SELECT RELEASE_LOCK(?)", lockName)
 
 	hash, err := sqlFingerprint()
 	if err != nil {
 		return err
 	}
-	stale, err := isSchemaStale(ctx, conn, hash)
+	stale, err := isSchemaStale(ctx, conn, cfg.database, hash)
 	if err != nil {
 		return fmt.Errorf("检查测试库 `%s` 指纹失败: %w", cfg.database, err)
 	}
 	if !stale {
 		return nil
 	}
-	if err := rebuildSchema(ctx, conn, hash); err != nil {
+	if err := rebuildSchema(ctx, conn, cfg.database, hash); err != nil {
 		return fmt.Errorf("重建测试库 `%s` 失败: %w", cfg.database, err)
 	}
 	return nil
 }
 
 // isSchemaStale 返回库是否需要重建：库不存在、meta 表缺失或指纹不一致时重建。
-func isSchemaStale(ctx context.Context, conn *sql.Conn, hash string) (bool, error) {
+func isSchemaStale(ctx context.Context, conn *sql.Conn, dbName, hash string) (bool, error) {
 	var schemaName sql.NullString
 	err := conn.QueryRowContext(ctx,
-		"SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?", TestDBName).Scan(&schemaName)
+		"SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?", dbName).Scan(&schemaName)
 	if err == sql.ErrNoRows {
 		return true, nil
 	}
@@ -167,7 +175,7 @@ func isSchemaStale(ctx context.Context, conn *sql.Conn, hash string) (bool, erro
 	}
 	var stored string
 	err = conn.QueryRowContext(ctx,
-		"SELECT schema_hash FROM `"+TestDBName+"`._test_schema_meta WHERE id = 1").Scan(&stored)
+		"SELECT schema_hash FROM `"+dbName+"`._test_schema_meta WHERE id = 1").Scan(&stored)
 	if err != nil {
 		// 表不存在（首次建库后未写过指纹）按不一致处理
 		return true, nil
@@ -175,20 +183,20 @@ func isSchemaStale(ctx context.Context, conn *sql.Conn, hash string) (bool, erro
 	return stored != hash, nil
 }
 
-func rebuildSchema(ctx context.Context, conn *sql.Conn, hash string) error {
+func rebuildSchema(ctx context.Context, conn *sql.Conn, dbName, hash string) error {
 	exec := func(stmt string) error {
 		if _, err := conn.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("%s: %w\n语句: %.200s", stmt, err, stmt)
 		}
 		return nil
 	}
-	if err := exec("DROP DATABASE IF EXISTS `" + TestDBName + "`"); err != nil {
+	if err := exec("DROP DATABASE IF EXISTS `" + dbName + "`"); err != nil {
 		return err
 	}
-	if err := exec("CREATE DATABASE `" + TestDBName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"); err != nil {
+	if err := exec("CREATE DATABASE `" + dbName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"); err != nil {
 		return err
 	}
-	if err := exec("USE `" + TestDBName + "`"); err != nil {
+	if err := exec("USE `" + dbName + "`"); err != nil {
 		return err
 	}
 	root := config.RepoRoot()
@@ -368,7 +376,7 @@ func loadMySQLConfig() mySQLConfig {
 		port:     port,
 		user:     os.Getenv("MYSQL_USERNAME"), // 与 config.yaml/config.test.yaml 的 mysql.username 一致
 		password: os.Getenv("MYSQL_PASSWORD"),
-		database: TestDBName,
+		database: TestDBName(),
 	}
 }
 

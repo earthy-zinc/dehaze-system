@@ -1,10 +1,9 @@
 package com.pei.dehaze.service.importexport;
 
 import com.pei.dehaze.service.importexport.model.ExportContext;
-import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
+import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-
 import java.util.List;
 import java.util.Map;
 
@@ -16,7 +15,7 @@ import java.util.Map;
 public interface ExportHandler {
 
     /**
-     * 获取模块标识（如 user/role/dept/menu/dict/dataset/algorithm）
+     * 获取模块标识（如 user/role/dept/menu/dict/dataset）
      */
     String getModule();
 

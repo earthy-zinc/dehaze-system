@@ -15,10 +15,9 @@ public interface SysMemberMapper extends BaseMapper<SysMember> {
      * UPDATE 分支通过 LAST_INSERT_ID(id) 拿回原行 id；
      * 冲突时降级为 level_0、清空 monthly_*_quota，保留 total_consumption（风控用）。
      */
-    @Insert("INSERT INTO sys_member (user_id, level_code, total_consumption, deleted, update_time) " +
-            "VALUES (#{userId}, 'level_0', #{totalConsumption}, 0, NOW()) " +
-            "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), level_code = VALUES(level_code), " +
-            "total_consumption = VALUES(total_consumption), update_time = NOW()")
-    int upsertByUser(@Param("userId") Long userId,
-                     @Param("totalConsumption") Long totalConsumption);
+    @Insert("INSERT INTO sys_member (user_id, level_code, total_consumption, deleted, update_time) "
+            + "VALUES (#{userId}, 'level_0', #{totalConsumption}, 0, NOW()) "
+            + "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), level_code = VALUES(level_code), "
+            + "total_consumption = VALUES(total_consumption), update_time = NOW()")
+    int upsertByUser(@Param("userId") Long userId, @Param("totalConsumption") Long totalConsumption);
 }

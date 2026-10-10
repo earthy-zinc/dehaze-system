@@ -13,8 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public final class AiTxSupport {
 
-    private AiTxSupport() {
-    }
+    private AiTxSupport() {}
 
     public static void afterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {

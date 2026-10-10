@@ -1,5 +1,12 @@
 package com.pei.dehaze.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -10,14 +17,6 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Controller 路由唯一性守卫。
@@ -47,14 +46,11 @@ class ControllerMappingUniquenessTest {
             }
         }
 
-        assertThat(duplicates)
-                .as("重复路由会导致 Spring 启动失败（Ambiguous mapping）")
-                .isEmpty();
+        assertThat(duplicates).as("重复路由会导致 Spring 启动失败（Ambiguous mapping）").isEmpty();
     }
 
     private static List<Class<?>> controllers() throws ClassNotFoundException {
-        ClassPathScanningCandidateComponentProvider scanner =
-                new ClassPathScanningCandidateComponentProvider(false);
+        ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new org.springframework.core.type.filter.AnnotationTypeFilter(RestController.class));
         scanner.addIncludeFilter(new org.springframework.core.type.filter.AnnotationTypeFilter(Controller.class));
         List<Class<?>> controllers = new ArrayList<>();

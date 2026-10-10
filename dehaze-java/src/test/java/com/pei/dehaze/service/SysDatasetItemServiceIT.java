@@ -1,28 +1,25 @@
 package com.pei.dehaze.service;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.entity.SysDataset;
-import com.pei.dehaze.model.entity.SysDatasetItem;
-import com.pei.dehaze.model.entity.SysFile;
-import com.pei.dehaze.model.entity.SysItemFile;
-import com.pei.dehaze.model.query.DatasetItemQuery;
-import com.pei.dehaze.model.vo.BatchOperationResultVO;
-import com.pei.dehaze.model.vo.DatasetItemVO;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.mapper.SysFileMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
+import com.pei.dehaze.model.entity.SysDataset;
+import com.pei.dehaze.model.entity.SysDatasetItem;
+import com.pei.dehaze.model.query.DatasetItemQuery;
+import com.pei.dehaze.model.vo.BatchOperationResultVO;
+import com.pei.dehaze.model.vo.DatasetItemVO;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * 数据项服务集成测试
@@ -187,8 +184,8 @@ class SysDatasetItemServiceIT {
         SysDatasetItem item1 = datasetItemService.createDatasetItem(testDataset.getId(), null);
         SysDatasetItem item2 = datasetItemService.createDatasetItem(testDataset.getId(), null);
 
-        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(
-                List.of(item1.getId(), item2.getId()));
+        BatchOperationResultVO result =
+                datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(List.of(item1.getId(), item2.getId()));
 
         assertNotNull(result);
         assertEquals(2, result.getSuccessCount());
@@ -253,9 +250,8 @@ class SysDatasetItemServiceIT {
     void testGetDatasetItem_NotFound() {
         Long nonExistentId = 999999L;
 
-        BusinessException exception = assertThrows(
-                BusinessException.class,
-                () -> datasetItemService.getDatasetItem(nonExistentId));
+        BusinessException exception =
+                assertThrows(BusinessException.class, () -> datasetItemService.getDatasetItem(nonExistentId));
 
         assertTrue(exception.getMessage().contains("数据项不存在"));
     }

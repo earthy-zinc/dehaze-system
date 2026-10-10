@@ -2,19 +2,19 @@
 
 ## 文件来源
 
-| 文件 | 来源 | 说明 |
-|------|------|------|
+| 文件           | 来源                                         | 说明                                                         |
+| -------------- | -------------------------------------------- | ------------------------------------------------------------ |
 | `schema/*.sql` | **Maven 自动复制** from `config/sql/schema/` | 按表名拆分的建表语句，每张表一个文件，文件头部含设计思路注释 |
-| `data/*.sql` | **Maven 自动复制** from `config/sql/data/` | 按表名拆分的初始化数据，文件名与 `schema/` 一一对应 |
+| `data/*.sql`   | **Maven 自动复制** from `config/sql/data/`   | 按表名拆分的初始化数据，文件名与 `schema/` 一一对应          |
 
 测试统一使用真实 MySQL 测试库 `dehaze_test`（与开发同实例，零方言漂移；
 2026-08-23 决策废弃 H2 内存库方案，原因同 dehaze-python：DDL/SQL 语义双层漂移）：
 
 - `application-test.yml` 通过 `createDatabaseIfNotExist=true` 首次连接自动建库，
   再由 `spring.sql.init` 加载 `schema/sys_*.sql`（DROP TABLE IF EXISTS，幂等全量重建）+
-  `data/sys_*.sql`（种子数据）；**通配必须限定 `sys_` 前缀**——`schema/` 中的
-  `xxl_job.sql` 是调度中心库引导脚本（`DROP DATABASE xxl_job` + `USE xxl_job`），
-  仅供 Docker 首次初始化使用，混入会切走连接当前库并误删共享实例的 xxl_job 库
+  `data/sys_*.sql`（种子数据）；**通配必须限定 `sys_` 前缀**——调度中心库引导脚本
+  `xxl_job.sql`（`DROP DATABASE xxl_job` + `USE xxl_job`）已于 2026-10 移出 `config/sql/schema/`、
+  存于 `config/sql/schema-external/`，仅供 Docker 首次初始化使用，混入会切走连接当前库并误删共享实例的 xxl_job 库
 - 凭证来自仓库根目录 `.env` 的按基础设施分区变量：MySQL 用 `MYSQL_HOST` / `MYSQL_PORT` /
   `MYSQL_USERNAME` / `MYSQL_PASSWORD`，Redis/MongoDB 同理（`REDIS_*` / `MONGODB_*`）
 - 与 dehaze-python 测试共用同一 `dehaze_test` 库，**勿并行运行两端的数据库测试**

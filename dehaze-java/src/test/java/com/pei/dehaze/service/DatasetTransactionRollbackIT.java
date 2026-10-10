@@ -1,9 +1,11 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.config.TestConfig;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
@@ -12,18 +14,14 @@ import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.vo.BatchDeleteResult;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 数据集事务回滚测试
@@ -34,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 3. 批量操作中途异常时回滚
  * 4. 嵌套事务异常传播
  */
-@SpringBootTest(classes = TestConfig.class)
+@SpringBootTest
 @DisplayName("数据集事务回滚测试")
 class DatasetTransactionRollbackIT {
 
@@ -128,11 +126,10 @@ class DatasetTransactionRollbackIT {
 
         // Assert
         assertThat(result.getFailed()).isGreaterThan(0);
-        assertThat(result.getResults())
-                .anySatisfy(item -> {
-                    assertThat(item.getId()).isEqualTo(nonExistentId);
-                    assertThat(item.getStatus()).isEqualTo("failed");
-                });
+        assertThat(result.getResults()).anySatisfy(item -> {
+            assertThat(item.getId()).isEqualTo(nonExistentId);
+            assertThat(item.getStatus()).isEqualTo("failed");
+        });
     }
 
     /**
@@ -232,11 +229,10 @@ class DatasetTransactionRollbackIT {
         // Assert - 第二次删除应标记失败
         BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(List.of(datasetId));
         assertThat(result.getFailed()).isGreaterThan(0);
-        assertThat(result.getResults())
-                .anySatisfy(item -> {
-                    assertThat(item.getId()).isEqualTo(datasetId);
-                    assertThat(item.getStatus()).isEqualTo("failed");
-                });
+        assertThat(result.getResults()).anySatisfy(item -> {
+            assertThat(item.getId()).isEqualTo(datasetId);
+            assertThat(item.getStatus()).isEqualTo("failed");
+        });
     }
 
     /**
@@ -260,9 +256,8 @@ class DatasetTransactionRollbackIT {
         datasetMapper.insert(dataset);
 
         // Assert - 在同一事务中可以查询到
-        SysDataset found = datasetMapper.selectOne(
-                new LambdaQueryWrapper<SysDataset>()
-                        .eq(SysDataset::getName, uniqueName));
+        SysDataset found =
+                datasetMapper.selectOne(new LambdaQueryWrapper<SysDataset>().eq(SysDataset::getName, uniqueName));
         assertThat(found).isNotNull();
         assertThat(found.getName()).isEqualTo(uniqueName);
 

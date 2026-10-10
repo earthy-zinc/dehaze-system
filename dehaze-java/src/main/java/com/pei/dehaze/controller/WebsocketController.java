@@ -1,6 +1,7 @@
 package com.pei.dehaze.controller;
 
 import com.pei.dehaze.model.dto.ChatMessage;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -9,8 +10,6 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.security.Principal;
 
 /**
  * WebSocket 测试控制器
@@ -25,7 +24,6 @@ import java.security.Principal;
 public class WebsocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
-
 
     /**
      * 广播发送消息
@@ -56,5 +54,4 @@ public class WebsocketController {
         // 发送消息给指定用户，拼接后路径 /user/{receiver}/queue/greeting
         messagingTemplate.convertAndSendToUser(userId, "/queue/greeting", new ChatMessage(senderId, message));
     }
-
 }

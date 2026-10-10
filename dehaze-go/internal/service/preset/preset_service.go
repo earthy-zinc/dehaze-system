@@ -16,14 +16,14 @@ import (
 
 // 系统预设种子数据（对齐 Python seed_system_presets）
 var systemPresetSeeds = []struct {
-	Name        string
-	AlgorithmID int64
-	Params      json.RawMessage
-	IsDefault   int8
+	Name      string
+	ModelID   string
+	Params    json.RawMessage
+	IsDefault int8
 }{
-	{Name: "默认去雾", AlgorithmID: 13, Params: json.RawMessage(`{"gamma":1.0,"strength":"medium"}`), IsDefault: 1},
-	{Name: "轻度去雾", AlgorithmID: 13, Params: json.RawMessage(`{"gamma":0.8,"strength":"light"}`), IsDefault: 0},
-	{Name: "深度去雾", AlgorithmID: 13, Params: json.RawMessage(`{"gamma":1.5,"strength":"strong"}`), IsDefault: 0},
+	{Name: "默认去雾", ModelID: "aecrnet", Params: json.RawMessage(`{"gamma":1.0,"strength":"medium"}`), IsDefault: 1},
+	{Name: "轻度去雾", ModelID: "aecrnet", Params: json.RawMessage(`{"gamma":0.8,"strength":"light"}`), IsDefault: 0},
+	{Name: "深度去雾", ModelID: "aecrnet", Params: json.RawMessage(`{"gamma":1.5,"strength":"strong"}`), IsDefault: 0},
 }
 
 type PresetService struct {
@@ -37,25 +37,25 @@ func NewPresetService(db *gorm.DB, repo presetrepo.IPresetRepository) *PresetSer
 
 // PresetVO 参数预设视图
 type PresetVO struct {
-	ID          int64           `json:"id"`
-	Name        string          `json:"name"`
-	Type        string          `json:"type"`
-	AlgorithmID int64           `json:"algorithmId"`
-	Params      json.RawMessage `json:"params"`
-	UserID      *int64          `json:"userId"`
-	IsDefault   int8            `json:"isDefault"`
-	CreateTime  string          `json:"createTime"`
+	ID         int64           `json:"id"`
+	Name       string          `json:"name"`
+	Type       string          `json:"type"`
+	ModelID    string          `json:"modelId"`
+	Params     json.RawMessage `json:"params"`
+	UserID     *int64          `json:"userId"`
+	IsDefault  int8            `json:"isDefault"`
+	CreateTime string          `json:"createTime"`
 }
 
 func toPresetVO(p *model.SysPreset) PresetVO {
 	vo := PresetVO{
-		ID:          p.ID,
-		Name:        p.Name,
-		Type:        p.Type,
-		AlgorithmID: p.AlgorithmID,
-		IsDefault:   p.IsDefault,
-		UserID:      p.UserID,
-		CreateTime:  p.CreatedAt.Format("2006-01-02 15:04:05"),
+		ID:         p.ID,
+		Name:       p.Name,
+		Type:       p.Type,
+		ModelID:    p.ModelID,
+		IsDefault:  p.IsDefault,
+		UserID:     p.UserID,
+		CreateTime: p.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 	if p.Params != nil {
 		vo.Params = *p.Params
@@ -64,7 +64,7 @@ func toPresetVO(p *model.SysPreset) PresetVO {
 }
 
 // ListPresets 获取预设列表（系统预设 + 用户自定义）
-func (s *PresetService) ListPresets(ctx context.Context, algorithmID int64, userID int64, isSystem *bool, page, pageSize int) (*common.PageResult, error) {
+func (s *PresetService) ListPresets(ctx context.Context, modelID string, userID int64, isSystem *bool, page, pageSize int) (*common.PageResult, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -72,7 +72,7 @@ func (s *PresetService) ListPresets(ctx context.Context, algorithmID int64, user
 		pageSize = 10
 	}
 
-	list, total, err := s.repo.FindPage(ctx, algorithmID, userID, isSystem, page, pageSize)
+	list, total, err := s.repo.FindPage(ctx, modelID, userID, isSystem, page, pageSize)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询预设列表失败", err)
 	}
@@ -90,10 +90,10 @@ func (s *PresetService) ListPresets(ctx context.Context, algorithmID int64, user
 
 // PresetForm 预设表单
 type PresetForm struct {
-	Name        string          `json:"name" binding:"required"`
-	AlgorithmID int64           `json:"algorithmId" binding:"required"`
-	Params      json.RawMessage `json:"params" binding:"required"`
-	IsDefault   *int8           `json:"isDefault"`
+	Name      string          `json:"name" binding:"required"`
+	ModelID   string          `json:"modelId" binding:"required"`
+	Params    json.RawMessage `json:"params" binding:"required"`
+	IsDefault *int8           `json:"isDefault"`
 }
 
 // CreatePreset 创建自定义预设
@@ -107,13 +107,13 @@ func (s *PresetService) CreatePreset(ctx context.Context, userID int64, form *Pr
 	}
 
 	preset := &model.SysPreset{
-		BaseModel:   model.BaseModel{CreateBy: userID},
-		Name:        form.Name,
-		Type:        "custom",
-		AlgorithmID: form.AlgorithmID,
-		Params:      &form.Params,
-		UserID:      &userID,
-		IsDefault:   isDefault,
+		BaseModel: model.BaseModel{CreateBy: userID},
+		Name:      form.Name,
+		Type:      "custom",
+		ModelID:   form.ModelID,
+		Params:    &form.Params,
+		UserID:    &userID,
+		IsDefault: isDefault,
 	}
 	if err := s.repo.Create(ctx, preset); err != nil {
 		if isDuplicateKeyError(err) {
@@ -145,10 +145,10 @@ func (s *PresetService) UpdatePreset(ctx context.Context, id int64, userID int64
 	}
 
 	updates := map[string]interface{}{
-		"name":         form.Name,
-		"algorithm_id": form.AlgorithmID,
-		"params":       form.Params,
-		"update_by":    userID,
+		"name":      form.Name,
+		"model_id":  form.ModelID,
+		"params":    form.Params,
+		"update_by": userID,
 	}
 	if form.IsDefault != nil {
 		updates["is_default"] = *form.IsDefault
@@ -205,11 +205,11 @@ func SeedSystemPresets(db *gorm.DB) {
 
 	for _, seed := range systemPresetSeeds {
 		preset := &model.SysPreset{
-			Name:        seed.Name,
-			Type:        "system",
-			AlgorithmID: seed.AlgorithmID,
-			Params:      &seed.Params,
-			IsDefault:   seed.IsDefault,
+			Name:      seed.Name,
+			Type:      "system",
+			ModelID:   seed.ModelID,
+			Params:    &seed.Params,
+			IsDefault: seed.IsDefault,
 		}
 		if err := db.WithContext(ctx).Create(preset).Error; err != nil {
 			logger.Error("创建系统预设种子数据失败", zap.String("name", seed.Name), zap.Error(err))

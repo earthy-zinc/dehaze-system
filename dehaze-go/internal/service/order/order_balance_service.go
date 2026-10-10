@@ -15,9 +15,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 )
 
-// balanceCASRetry 乐观锁 CAS 失败重试上限（python balance_account_service._CAS_RETRY 同口径）
-const balanceCASRetry = 3
-
 // GetBalance 查询用户余额账户（不存在则初始化零账户）
 func (s *OrderService) GetBalance(ctx context.Context, userID int64) (*vo.BalanceVO, error) {
 	account, err := orderrepo.NewBalanceAccountRepository(s.db).GetOrCreate(ctx, userID)
@@ -155,34 +152,32 @@ func (s *OrderService) AuditBalanceRefund(ctx context.Context, auditorID, refund
 	return nil
 }
 
-// withdrawBalance 原路退回后扣减可用余额（CAS 重试，与 python withdraw 口径一致）
+// withdrawBalance 原路退回后扣减可用余额（相对值 UPDATE，与 python withdraw 口径一致）
 func (s *OrderService) withdrawBalance(ctx context.Context, userID, amount int64, relatedID int64) error {
 	accountRepo := orderrepo.NewBalanceAccountRepository(s.db)
 	logRepo := orderrepo.NewBalanceLogRepository(s.db)
-	for i := 0; i < balanceCASRetry; i++ {
-		account, err := accountRepo.GetOrCreate(ctx, userID)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询余额账户失败", err)
+	account, err := accountRepo.GetOrCreate(ctx, userID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询余额账户失败", err)
+	}
+	if account.Balance < amount {
+		return common.NewBizError(common.BALANCE_INSUFFICIENT, "余额不足")
+	}
+	ok, err := accountRepo.AdjustBalance(ctx, userID, -amount)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "扣减余额失败", err)
+	}
+	if ok {
+		if err := logRepo.Create(ctx, &model.SysBalanceLog{
+			UserID:       userID,
+			ChangeType:   "refund",
+			Amount:       -amount,
+			BalanceAfter: account.Balance - amount,
+			RelatedID:    &relatedID,
+		}); err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "写入余额流水失败", err)
 		}
-		if account.Balance < amount {
-			return common.NewBizError(common.BALANCE_INSUFFICIENT, "余额不足")
-		}
-		ok, err := accountRepo.AdjustBalance(ctx, userID, -amount, account.Version)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "扣减余额失败", err)
-		}
-		if ok {
-			if err := logRepo.Create(ctx, &model.SysBalanceLog{
-				UserID:       userID,
-				ChangeType:   "refund",
-				Amount:       -amount,
-				BalanceAfter: account.Balance - amount,
-				RelatedID:    &relatedID,
-			}); err != nil {
-				return common.WrapBizError(common.DATABASE_ERROR, "写入余额流水失败", err)
-			}
-			return nil
-		}
+		return nil
 	}
 	return common.NewBizError(common.BUSINESS_ERROR, "余额退款扣减失败，请重试")
 }

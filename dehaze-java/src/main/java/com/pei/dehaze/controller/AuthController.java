@@ -4,8 +4,8 @@ import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.CaptchaResult;
-import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.form.RegisterForm;
 import com.pei.dehaze.model.query.LoginLogQuery;
 import com.pei.dehaze.model.vo.LoginLogVO;
@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,8 +27,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Tag(name = "01.认证中心")
 @RestController
@@ -47,8 +46,12 @@ public class AuthController {
     private static final long SESSION_MAX_AGE = 604800L;
 
     @Operation(summary = "登录")
-    @RateLimit(key = "rate:limit:login:", timeWindow = 60, maxRequests = 100,
-            type = RateLimit.LimitType.IP, message = "登录尝试过于频繁，请60秒后再试")
+    @RateLimit(
+            key = "rate:limit:login:",
+            timeWindow = 60,
+            maxRequests = 100,
+            type = RateLimit.LimitType.IP,
+            message = "登录尝试过于频繁，请60秒后再试")
     @PostMapping("/login")
     public Result<LoginResult> login(@RequestBody @Valid LoginForm form, HttpServletResponse response) {
         LoginResult loginResult = authService.login(form);
@@ -58,8 +61,12 @@ public class AuthController {
     }
 
     @Operation(summary = "注册")
-    @RateLimit(key = "rate:limit:register:", timeWindow = 60, maxRequests = 10,
-            type = RateLimit.LimitType.IP, message = "注册请求过于频繁，请60秒后再试")
+    @RateLimit(
+            key = "rate:limit:register:",
+            timeWindow = 60,
+            maxRequests = 10,
+            type = RateLimit.LimitType.IP,
+            message = "注册请求过于频繁，请60秒后再试")
     @PostMapping("/register")
     public Result<LoginResult> register(@RequestBody @Valid RegisterForm form, HttpServletResponse response) {
         LoginResult result = authService.register(form);
@@ -90,9 +97,7 @@ public class AuthController {
 
     @Operation(summary = "登录日志查询（分页，管理员全量/普通用户仅本人）")
     @GetMapping("/login-logs")
-    public PageResult<LoginLogVO> listLoginLogs(
-            @Valid @ParameterObject LoginLogQuery query
-    ) {
+    public PageResult<LoginLogVO> listLoginLogs(@Valid @ParameterObject LoginLogQuery query) {
         return PageResult.success(authService.listLoginLogs(query));
     }
 
@@ -100,17 +105,14 @@ public class AuthController {
     @GetMapping("/sessions")
     @PreAuthorize("@ss.hasPerm('sys:auth:session:list')")
     public Result<List<UserSessionVO>> listSessions(
-            @Parameter(description = "用户名（精确匹配）") @RequestParam String username
-    ) {
+            @Parameter(description = "用户名（精确匹配）") @RequestParam String username) {
         return Result.success(authService.listSessions(username));
     }
 
     @Operation(summary = "踢出指定在线会话（管理员）")
     @DeleteMapping("/sessions/{sessionId}")
     @PreAuthorize("@ss.hasPerm('sys:auth:session:kick')")
-    public Result<Void> kickSession(
-            @Parameter(description = "会话ID") @PathVariable String sessionId
-    ) {
+    public Result<Void> kickSession(@Parameter(description = "会话ID") @PathVariable String sessionId) {
         authService.kickSession(sessionId);
         return Result.success();
     }

@@ -10,8 +10,8 @@ type SysMenu struct {
 	Path       string    `gorm:"column:path;type:varchar(128);default:'';comment:路由路径(浏览器地址栏路径)" json:"path"`
 	Component  string    `gorm:"column:component;type:varchar(128);comment:组件路径(vue页面完整路径，省略.vue后缀)" json:"component"`
 	Perm       string    `gorm:"column:perm;type:varchar(128);comment:权限标识" json:"perm"`
-	Visible    int8      `gorm:"column:visible;type:tinyint;not null;default:1;comment:显示状态(1-显示;0-隐藏)" json:"visible"`
-	Status     int8      `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:启用;0:禁用)" json:"status"`
+	Visible    int8      `gorm:"column:visible;type:tinyint;not null;comment:显示状态(1-显示;0-隐藏)" json:"visible"`
+	Status     int8      `gorm:"column:status;type:tinyint;not null;comment:状态(1:启用;0:禁用)" json:"status"`
 	Sort       int       `gorm:"column:sort;type:int;default:0;comment:排序" json:"sort"`
 	Icon       string    `gorm:"column:icon;type:varchar(64);default:'';comment:菜单图标" json:"icon"`
 	Redirect   string    `gorm:"column:redirect;type:varchar(128);comment:跳转路径" json:"redirect"`

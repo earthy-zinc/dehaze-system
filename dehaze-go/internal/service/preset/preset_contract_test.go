@@ -26,7 +26,7 @@ func TestCreatePresetDuplicateNameIsA0501(t *testing.T) {
 	svc := NewPresetService(db, presetrepo.NewPresetRepository(db))
 	ctx := context.Background()
 
-	form := &PresetForm{Name: "conflict_regression", AlgorithmID: 1, Params: []byte(`{"gamma":1}`)}
+	form := &PresetForm{Name: "conflict_regression", ModelID: "aecrnet", Params: []byte(`{"gamma":1}`)}
 	_, err := svc.CreatePreset(ctx, 960011, form)
 	require.NoError(t, err)
 
@@ -45,9 +45,9 @@ func TestCreatePresetHasNoCountLimit(t *testing.T) {
 
 	for i := 1; i <= 6; i++ {
 		_, err := svc.CreatePreset(ctx, 960012, &PresetForm{
-			Name:        fmt.Sprintf("no_limit_%d", i),
-			AlgorithmID: 1,
-			Params:      []byte(`{"gamma":1}`),
+			Name:    fmt.Sprintf("no_limit_%d", i),
+			ModelID: "aecrnet",
+			Params:  []byte(`{"gamma":1}`),
 		})
 		require.NoError(t, err, "第 %d 条自定义预设不应被数量上限拦截", i)
 	}

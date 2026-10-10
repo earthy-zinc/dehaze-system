@@ -41,7 +41,7 @@ from app.models.entity.sys_ai_schedule_run import SysAiScheduleRun
 from app.models.entity.sys_ai_skill import SysAiSkill
 from app.models.entity.sys_ai_skill_file import SysAiSkillFile
 from app.models.entity.sys_ai_trace import SysAiTrace
-from app.models.entity.sys_algorithm import SysAlgorithm
+from app.models.entity.sys_ai_user_preference import SysAiUserPreference
 from app.models.entity.sys_auto_renew import SysAutoRenew
 from app.models.entity.sys_balance import SysBalance
 from app.models.entity.sys_balance_log import SysBalanceLog
@@ -59,7 +59,6 @@ from app.models.entity.sys_log import SysEvalLog, SysPredLog
 from app.models.entity.sys_member import SysMember
 from app.models.entity.sys_member_benefit import SysMemberBenefit
 from app.models.entity.sys_member_growth_log import SysMemberGrowthLog
-from app.models.entity.sys_member_quota import SysMemberQuota
 from app.models.entity.sys_member_sign_in import SysMemberSignIn
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
 from app.models.entity.sys_order import SysOrder
@@ -71,9 +70,6 @@ from app.models.entity.sys_refund_record import SysRefundRecord
 from app.models.entity.sys_task import SysTask
 from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
 from app.models.entity.sys_user_coupon import SysUserCoupon
-from app.models.entity.sys_voice_model import SysVoiceModel
-from app.models.entity.sys_voice_provider import SysVoiceProvider
-from app.models.entity.sys_voice_provider_key import SysVoiceProviderKey
 from app.models.entity.sys_wpx_file import SysWpxFile
 
 __all__ = [
@@ -115,8 +111,8 @@ __all__ = [
     "SysAiSkillFile",
     # 可观测性
     "SysAiTrace",
+    "SysAiUserPreference",
     # 算法
-    "SysAlgorithm",
     "SysApiKey",
     "SysAutoRenew",
     "SysBalance",
@@ -144,7 +140,6 @@ __all__ = [
     "SysMember",
     "SysMemberBenefit",
     "SysMemberGrowthLog",
-    "SysMemberQuota",
     "SysMemberSignIn",
     # 菜单
     "SysMenu",
@@ -168,10 +163,6 @@ __all__ = [
     "SysUser",
     "SysUserCoupon",
     "SysUserRole",
-    "SysVoiceModel",
-    # 语音引擎注册表
-    "SysVoiceProvider",
-    "SysVoiceProviderKey",
     # WPX 文件映射
     "SysWpxFile",
 ]

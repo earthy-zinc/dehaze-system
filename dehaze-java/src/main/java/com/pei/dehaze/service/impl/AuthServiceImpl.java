@@ -18,12 +18,12 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.dto.CaptchaResult;
-import com.pei.dehaze.model.form.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
-import com.pei.dehaze.model.form.RegisterForm;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.entity.SysUserRole;
+import com.pei.dehaze.model.form.LoginForm;
+import com.pei.dehaze.model.form.RegisterForm;
 import com.pei.dehaze.model.query.LoginLogQuery;
 import com.pei.dehaze.model.vo.LoginLogVO;
 import com.pei.dehaze.model.vo.UserSessionVO;
@@ -38,6 +38,16 @@ import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import java.awt.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,17 +68,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import java.awt.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -208,11 +207,13 @@ public class AuthServiceImpl implements AuthService {
         session.set("loginTime", now);
         session.set("lastAccessTime", now);
 
-        redisTemplate.opsForValue().set(
-                SecurityConstants.SESSION_PREFIX + sessionId,
-                session.toString(),
-                SecurityConstants.SESSION_TTL,
-                TimeUnit.SECONDS);
+        redisTemplate
+                .opsForValue()
+                .set(
+                        SecurityConstants.SESSION_PREFIX + sessionId,
+                        session.toString(),
+                        SecurityConstants.SESSION_TTL,
+                        TimeUnit.SECONDS);
 
         return LoginResult.builder()
                 .sessionId(sessionId)
@@ -269,9 +270,7 @@ public class AuthServiceImpl implements AuthService {
         userDetails.setNickname(user.getNickname());
         userDetails.setDeptId(null);
         userDetails.setDataScope(guestRole != null ? guestRole.getDataScope() : null);
-        userDetails.setAuthorities(guestRole != null
-                ? Set.of(new SimpleGrantedAuthority("ROLE_GUEST"))
-                : Set.of());
+        userDetails.setAuthorities(guestRole != null ? Set.of(new SimpleGrantedAuthority("ROLE_GUEST")) : Set.of());
 
         String sessionId = IdUtil.fastSimpleUUID();
         JSONObject session = new JSONObject();
@@ -285,11 +284,13 @@ public class AuthServiceImpl implements AuthService {
                 .collect(Collectors.toList());
         session.set("authorities", authorities);
 
-        redisTemplate.opsForValue().set(
-                SecurityConstants.SESSION_PREFIX + sessionId,
-                session.toString(),
-                SecurityConstants.SESSION_TTL,
-                TimeUnit.SECONDS);
+        redisTemplate
+                .opsForValue()
+                .set(
+                        SecurityConstants.SESSION_PREFIX + sessionId,
+                        session.toString(),
+                        SecurityConstants.SESSION_TTL,
+                        TimeUnit.SECONDS);
 
         // 注册签发的会话同样登记进设备数索引，否则该会话不占额度（与登录路径一致）
         if (useMultiPoint) {
@@ -308,7 +309,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void logout() {
-        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (requestAttributes == null) throw new BusinessException("请求上下文为空");
         HttpServletRequest request = requestAttributes.getRequest();
 
@@ -352,8 +354,13 @@ public class AuthServiceImpl implements AuthService {
         String imageBase64Data = captcha.getImageBase64Data();
 
         String captchaKey = IdUtil.fastSimpleUUID();
-        redisTemplate.opsForValue().set(SecurityConstants.CAPTCHA_CODE_PREFIX + captchaKey, captchaCode,
-                captchaProperties.getExpireSeconds(), TimeUnit.SECONDS);
+        redisTemplate
+                .opsForValue()
+                .set(
+                        SecurityConstants.CAPTCHA_CODE_PREFIX + captchaKey,
+                        captchaCode,
+                        captchaProperties.getExpireSeconds(),
+                        TimeUnit.SECONDS);
 
         return CaptchaResult.builder()
                 .captchaKey(captchaKey)
@@ -440,13 +447,16 @@ public class AuthServiceImpl implements AuthService {
         if (evicted.isEmpty()) {
             return;
         }
-        redisTemplate.delete(evicted.stream().map(id -> SecurityConstants.SESSION_PREFIX + id).toList());
+        redisTemplate.delete(evicted.stream()
+                .map(id -> SecurityConstants.SESSION_PREFIX + id)
+                .toList());
         zset.remove(indexKey, evicted.toArray());
     }
 
     private void recordLogin(Long userId, String username, int status, String message, String deviceType) {
         try {
-            ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            ServletRequestAttributes requestAttributes =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             String ip = null;
             String browser = null;
             String os = null;
@@ -477,7 +487,8 @@ public class AuthServiceImpl implements AuthService {
     public List<UserSessionVO> listSessions(String username) {
         List<UserSessionVO> sessions = new ArrayList<>();
         try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions()
-                .match(SecurityConstants.SESSION_PREFIX + "*").build())) {
+                .match(SecurityConstants.SESSION_PREFIX + "*")
+                .build())) {
             while (cursor.hasNext()) {
                 String key = cursor.next();
                 if (key.startsWith(SecurityConstants.SESSION_USER_PREFIX)) {

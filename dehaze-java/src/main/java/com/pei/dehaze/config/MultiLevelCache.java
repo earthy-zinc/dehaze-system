@@ -1,20 +1,18 @@
 package com.pei.dehaze.config;
 
 import cn.hutool.json.JSONObject;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.Cache;
-import org.springframework.cache.support.AbstractValueAdaptingCache;
-import org.springframework.data.redis.core.StringRedisTemplate;
-
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.github.benmanes.caffeine.cache.Caffeine;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.support.AbstractValueAdaptingCache;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 /**
  * 多级缓存（L1 Caffeine + L2 Redis）
@@ -131,8 +129,9 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
         }
 
         // SingleFlight：合并并发回源
-        CompletableFuture<Object> future = inFlight.computeIfAbsent(key, k ->
-                CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Object> future = inFlight.computeIfAbsent(
+                key,
+                k -> CompletableFuture.supplyAsync(() -> {
                     try {
                         Object result = valueLoader.call();
                         return toStoreValue(result);

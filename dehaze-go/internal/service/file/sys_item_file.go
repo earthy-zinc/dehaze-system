@@ -457,7 +457,6 @@ func BuildImageUrlVO(file *model.SysFile, itemFile *model.SysItemFile, url strin
 	result := vo.ImageUrlVO{
 		Type:        itemFile.Type,
 		URL:         url,
-		OriginURL:   url,
 		Description: utils.StringVal(itemFile.Description),
 		SceneType:   utils.StringVal(itemFile.SceneType),
 		HazeLevel:   utils.StringVal(itemFile.HazeLevel),

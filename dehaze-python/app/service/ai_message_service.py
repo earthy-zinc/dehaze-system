@@ -23,6 +23,11 @@ from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
 from app.service.ai.message_streaming import run_reasoning, stream_generator
 from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.service.model_defaults import (
+    assert_message_fits_context,
+    assert_message_fits_model,
+    resolve_default_chat_model,
+)
 from app.service.ai.service.reasoning_service import reasoning_service
 from app.service.ai_conversation_service import ai_conversation_service
 from app.service.ai_model_service import ai_model_service
@@ -83,13 +88,14 @@ class AiMessageService:
             )
 
     async def _needs_tool_call(self, db: AsyncSession, conv) -> bool:
-        """判断本次会话推理是否需要工具调用（用于 supports_tool_call 校验）。
+        """判断本次会话推理是否需要工具调用（用于模型工具能力校验）。
 
-        why: 推理引擎已重构为 deepagents，主 Agent 恒定装载业务工具
-        （algorithm_recommend 等），除 reasoning_mode=direct 直连路径外几乎所有
-        推理都要求模型 supports_tool_call。故默认按 True 校验（宁可对 direct 误拦，
-        也不放行后让推理到 tool_call 阶段才中途失败）。仅当会话锚定的 Agent 显式
-        固定为 direct（无工具直连回复）且未在模型参数里显式声明 needTools 时才跳过。
+        why: 主 Agent 恒定装载业务工具（algorithm_recommend 等），除 reasoning_mode=direct
+        直连路径外几乎所有推理都需要工具。故默认按 True 校验。校验不通过不再等同于
+        "该模型不可用"——`validate_model_caps` 已放宽为"原生 function calling 或命中文本
+        工具协议家族"（后者由编排层把工具清单注入提示词），仅真正无法使用工具的模型才拒绝。
+        仅当会话锚定的 Agent 显式固定为 direct（无工具直连回复）且未在模型参数里显式
+        声明 needTools 时才跳过。
         """
         if (conv.model_config or {}).get("needTools") is not None:
             return bool(conv.model_config["needTools"])
@@ -175,10 +181,6 @@ class AiMessageService:
         if conv.status != 1:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "会话已归档，无法发送消息")
         await self._assert_conversation_not_suspended(conv)
-        if len(form.content) > settings.AI_MESSAGE_MAX_LENGTH:
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"消息长度不能超过 {settings.AI_MESSAGE_MAX_LENGTH} 字符"
-            )
 
         redis = await self.get_redis_client()
         idem_key = f"{_IDEMPOTENT_PREFIX}{user_id}:{idempotency_key}"
@@ -201,7 +203,11 @@ class AiMessageService:
             await redis.delete(idem_key)
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
-        model = form.model or conv.model or settings.AI_DEFAULT_MODEL
+        model = (
+            form.model
+            or conv.model
+            or await resolve_default_chat_model(db, conv.user_id, conv.agent_code)
+        )
 
         stream_session_id = str(uuid4())
         try:
@@ -214,6 +220,8 @@ class AiMessageService:
                 has_attachments=_has_attachments(form.content),
                 need_tools=await self._needs_tool_call(db, conv),
             )
+            # 单条消息长度按所选模型的输入预算校验（1 字符≈1 token 保守折算）
+            assert_message_fits_model(form.content, model_entity, model)
 
             # 捕获"首条消息"判定所需的本条消息前状态：update_last_message 的批量 UPDATE
             # 会经 SQLAlchemy synchronize_session 使 conv 属性失效，之后访问 conv.message_count
@@ -293,10 +301,6 @@ class AiMessageService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
         if msg.role != "user":
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "仅用户消息可编辑")
-        if len(form.content) > settings.AI_MESSAGE_MAX_LENGTH:
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, f"消息长度不能超过 {settings.AI_MESSAGE_MAX_LENGTH} 字符"
-            )
 
         conv_id = msg.conversation_id
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
@@ -308,7 +312,8 @@ class AiMessageService:
         if not await self.sse_emitter_manager.acquire_lock(conv_id):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
-        model = conv.model or settings.AI_DEFAULT_MODEL
+        model = conv.model or await resolve_default_chat_model(db, conv.user_id, conv.agent_code)
+        await assert_message_fits_context(db, form.content, model)
         stream_session_id = str(uuid4())
         try:
             # 原消息标记为已编辑，保留原文（content 不变，前端用 original_content 展示编辑前）

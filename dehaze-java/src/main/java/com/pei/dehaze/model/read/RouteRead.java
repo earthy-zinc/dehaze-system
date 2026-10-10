@@ -1,9 +1,8 @@
 package com.pei.dehaze.model.read;
 
 import com.pei.dehaze.common.enums.MenuTypeEnum;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 /**
  * 路由
@@ -77,5 +76,4 @@ public class RouteRead {
      * 【菜单】是否开启页面缓存(1:是 0:否)
      */
     private Integer keepAlive;
-
 }

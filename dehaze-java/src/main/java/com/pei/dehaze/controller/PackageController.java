@@ -23,12 +23,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Tag(name = "12.套餐管理")
 @RestController
@@ -83,8 +82,8 @@ public class PackageController {
     @Operation(summary = "后台：修改套餐")
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('package:edit')")
-    public Result<Void> update(@Parameter(description = "套餐ID") @PathVariable Long id,
-                               @Valid @RequestBody PackageForm form) {
+    public Result<Void> update(
+            @Parameter(description = "套餐ID") @PathVariable Long id, @Valid @RequestBody PackageForm form) {
         packageService.update(id, form);
         return Result.success();
     }
@@ -92,8 +91,9 @@ public class PackageController {
     @Operation(summary = "后台：上架/下架")
     @PutMapping("/{id}/status")
     @PreAuthorize("@ss.hasPerm('package:edit')")
-    public Result<Void> updateStatus(@Parameter(description = "套餐ID") @PathVariable Long id,
-                                     @Parameter(description = "状态(1:上架;0:下架)", required = true) @RequestParam Integer status) {
+    public Result<Void> updateStatus(
+            @Parameter(description = "套餐ID") @PathVariable Long id,
+            @Parameter(description = "状态(1:上架;0:下架)", required = true) @RequestParam Integer status) {
         packageService.updateStatus(id, status);
         return Result.success();
     }
@@ -152,8 +152,8 @@ public class PackageController {
     @Operation(summary = "后台：修改优惠券")
     @PutMapping("/coupons/{id}")
     @PreAuthorize("@ss.hasPerm('package:coupon:edit')")
-    public Result<Void> updateCoupon(@Parameter(description = "优惠券ID") @PathVariable Long id,
-                                     @Valid @RequestBody CouponForm form) {
+    public Result<Void> updateCoupon(
+            @Parameter(description = "优惠券ID") @PathVariable Long id, @Valid @RequestBody CouponForm form) {
         couponService.update(id, form);
         return Result.success();
     }

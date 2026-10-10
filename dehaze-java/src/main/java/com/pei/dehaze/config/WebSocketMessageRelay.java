@@ -3,18 +3,17 @@ package com.pei.dehaze.config;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
 import jakarta.annotation.PostConstruct;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * WebSocket 消息中继
@@ -41,8 +40,7 @@ public class WebSocketMessageRelay implements MessageListener {
 
     @PostConstruct
     public void init() {
-        redisMessageListenerContainer.addMessageListener(this,
-                new ChannelTopic(TaskConstants.WS_CHANNEL));
+        redisMessageListenerContainer.addMessageListener(this, new ChannelTopic(TaskConstants.WS_CHANNEL));
         log.info("WebSocket 消息中继已订阅频道: {}", TaskConstants.WS_CHANNEL);
     }
 

@@ -10,7 +10,7 @@ type SysAiProviderKey struct {
 	KeyHash    string     `gorm:"column:key_hash;type:char(64);not null;comment:密钥SHA256哈希" json:"keyHash"`
 	KeyPrefix  *string    `gorm:"column:key_prefix;type:varchar(16);comment:密钥前缀(展示用)" json:"keyPrefix"`
 	KeyCipher  string     `gorm:"column:key_cipher;type:varchar(512);not null;comment:密钥密文(AES-256-CBC base64)" json:"keyCipher"`
-	Status     int8       `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:启用;0:禁用)" json:"status"`
+	Status     int8       `gorm:"column:status;type:tinyint;not null;comment:状态(1:启用;0:禁用)" json:"status"`
 	Priority   int        `gorm:"column:priority;type:int;not null;default:0;comment:优先级" json:"priority"`
 	Weight     int        `gorm:"column:weight;type:int;not null;default:1;comment:权重" json:"weight"`
 	DailyQuota *int       `gorm:"column:daily_quota;type:int;comment:日调用上限" json:"dailyQuota"`

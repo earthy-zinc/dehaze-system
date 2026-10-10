@@ -16,21 +16,12 @@ import lombok.EqualsAndHashCode;
 @Schema(description = "任务查询参数")
 public class TaskQuery extends BasePageQuery {
 
-    @Schema(
-            description = "任务类型（支持逗号分隔多个）：如 dataset_export, user_export, user_import 等",
-            example = "user_export"
-    )
+    @Schema(description = "任务类型（支持逗号分隔多个）：如 dataset_export, user_export, user_import 等", example = "user_export")
     private String taskType;
 
-    @Schema(
-            description = "任务状态：1=待处理,2=处理中,3=已完成,4=失败,5=已取消",
-            example = "2"
-    )
+    @Schema(description = "任务状态：1=待处理,2=处理中,3=已完成,4=失败,5=已取消", example = "2")
     private Integer status;
 
-    @Schema(
-            description = "任务类别筛选：import-导入, export-导出",
-            example = "export"
-    )
+    @Schema(description = "任务类别筛选：import-导入, export-导出", example = "export")
     private String taskCategory;
 }

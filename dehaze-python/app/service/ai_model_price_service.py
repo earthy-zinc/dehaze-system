@@ -45,6 +45,7 @@ class AiModelPriceService:
                 provider_id=request.provider_id,
                 price_version=version,
                 unit=request.unit,
+                billing_unit=request.billing_unit,
                 effective_from=request.effective_from or datetime.now(_TZ),
                 effective_to=request.effective_to,
                 status=request.status,
@@ -149,6 +150,39 @@ class AiModelPriceService:
             "configured": True,
         }
 
+    async def calculate_unit_credits(
+        self,
+        db: AsyncSession,
+        model_id: str,
+        provider_id: int | None,
+        at_time: datetime,
+        quantity: Decimal,
+    ) -> dict:
+        """非 token 计费（asr/tts/image）换算积分：生效价格版本的单行 `unit` 档。
+
+        `quantity` 以价格行 `billing_unit` 的计量单位表达（秒 / 万字符 / 张），
+        因此 `credits = round(quantity × 单价)` 恒成立，支撑按 quantity 复算对账。
+        返回 {"credits", "configured", "billing_unit"}：
+        - 无生效价格版本 / 无 unit 档 → `configured=False, credits=0`（按未配置处理、不阻断）；
+        - Decimal 精确乘 → ROUND_HALF_UP 取整，沿用 token 口径"单次至少 1 积分"。
+        """
+        version = await self.price_repository.get_effective_version(
+            db, model_id, provider_id, at_time
+        )
+        if version is None:
+            return {"credits": 0, "configured": False, "billing_unit": None}
+        details = await self.price_repository.list_details(db, version.id)
+        unit_price = next((d.unit_price for d in details if d.usage_kind == "unit"), None)
+        if unit_price is None:
+            # 价格版本配置为 token 档却按计量单位计价：视为未配置（配置错误由管理端纠正）
+            return {"credits": 0, "configured": False, "billing_unit": version.billing_unit}
+        credits = (quantity * unit_price).to_integral_value(rounding=ROUND_HALF_UP)
+        return {
+            "credits": max(int(credits), 1),
+            "configured": True,
+            "billing_unit": version.billing_unit,
+        }
+
     @staticmethod
     def _to_result(price, details) -> ModelPriceResult:
         result = ModelPriceResult(
@@ -157,6 +191,7 @@ class AiModelPriceService:
             provider_id=price.provider_id,
             price_version=price.price_version,
             unit=price.unit,
+            billing_unit=price.billing_unit,
             effective_from=price.effective_from,
             effective_to=price.effective_to,
             status=price.status,

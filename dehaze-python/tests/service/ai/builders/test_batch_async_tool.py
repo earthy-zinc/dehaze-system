@@ -2,7 +2,7 @@ from app.service.ai.builders import dehaze_tools_builder as builder
 from tests.stubs.fakes import NullDBSession
 
 
-async def _invoke_batch(monkeypatch, image_urls, algorithm_id=1):
+async def _invoke_batch(monkeypatch, image_urls, model="aecrnet"):
     # 图片归属校验不在本文件覆盖范围内（见 test_tool_security.py）
     async def _allow(db, user_id, image_url):
         return None
@@ -17,7 +17,7 @@ async def _invoke_batch(monkeypatch, image_urls, algorithm_id=1):
         "token_budget": 1000,
         "max_steps": 20,
         "task_type": "",
-        "task_algorithm": "",
+        "task_model": "",
         "task_params": {},
         "task_status": "",
         "task_id": "",
@@ -25,9 +25,7 @@ async def _invoke_batch(monkeypatch, image_urls, algorithm_id=1):
     }
     tools = builder.build_business_tools(ctx)
     batch_tool = next(t for t in tools if t.name == "batch_process")
-    result = await batch_tool.ainvoke(
-        {"image_urls": image_urls, "query": "去雾", "algorithm_id": algorithm_id}
-    )
+    result = await batch_tool.ainvoke({"image_urls": image_urls, "query": "去雾", "model": model})
     return result, ctx
 
 

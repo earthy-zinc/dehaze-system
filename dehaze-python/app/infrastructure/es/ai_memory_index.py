@@ -1,6 +1,6 @@
 """记忆 ES 向量索引定义与读写原语（技术适配层）
 
-索引名：ai_memory
+索引名：{ES_INDEX_PREFIX}ai_memory
 字段：id, user_id, memory_type, content, content_vector, importance, status, archived, deleted
 只承载索引定义、ensure（dims 由调用方传入）、纯文档写入/删除与向量检索原语；
 Embedding 计算、配置读取（sys_dict）、API Key 选择等业务编排见 service 层
@@ -9,11 +9,13 @@ memory_es_service，勿在此引入 httpx / repository / db session。
 
 import logging
 
+from app.config import settings
 from app.infrastructure.es.es_client import es_client
 
 logger = logging.getLogger(__name__)
 
-INDEX_NAME = "ai_memory"
+# 索引名带环境前缀（ES_INDEX_PREFIX），避免多环境共用 ES 时互串
+INDEX_NAME = f"{settings.ES_INDEX_PREFIX}ai_memory"
 
 # Embedding 缺省回落值（与 config/sql/data/sys_dict.sql 的 ai_embedding 种子同源，
 # 供 seed 契约测试校验；实际配置读取见 service 层 memory_es_service）

@@ -24,7 +24,7 @@ func wrapWithTrace(handler func(ctx context.Context, param *xxl.RunReq) string) 
 	}
 }
 
-func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberJobRunner, cache types.ICache) {
+func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo predrepo.IPredLogRepository, evalLogRepo evalrepo.IEvalLogRepository, orderRunner OrderJobRunner, announcementSvc AnnouncementRunner, messageSvc MessageRunner, memberRunner MemberJobRunner, vipGiftRunner VipGiftRunner, cache types.ICache) {
 	if executor == nil {
 		logger.Warn("XXL-Job 执行器未初始化，跳过任务注册")
 		return
@@ -34,7 +34,8 @@ func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo pred
 	orderJob := NewOrderJob(orderRunner, cache)
 	announcementJob := NewAnnouncementJob(announcementSvc)
 	messageJob := NewMessageJob(messageSvc)
-	memberJob := NewMemberJob(memberRunner, cache)
+	memberJob := NewMemberJob(memberRunner)
+	vipGiftJob := NewVipGiftJob(vipGiftRunner, cache)
 
 	executor.RegTask("cleanupExpiredTasks", wrapWithTrace(cleanupJob.HandleCleanupExpiredTasks))
 	executor.RegTask("cleanupStuckTasks", wrapWithTrace(cleanupJob.HandleCleanupStuckTasks))
@@ -46,7 +47,8 @@ func InitJobs(executor xxl.Executor, storageSvc StorageService, predLogRepo pred
 	executor.RegTask("sendScheduledAnnouncements", wrapWithTrace(announcementJob.HandleSendScheduledAnnouncements))
 	executor.RegTask("cleanupExpiredMessages", wrapWithTrace(messageJob.HandleCleanupExpiredMessages))
 	executor.RegTask("refreshUnreadCountCache", wrapWithTrace(messageJob.HandleRefreshUnreadCountCache))
-	executor.RegTask("resetMonthlyQuota", wrapWithTrace(memberJob.HandleResetMonthlyQuota))
+	executor.RegTask("grantVipMonthlyGift", wrapWithTrace(vipGiftJob.HandleGrantVipMonthlyGift))
+	executor.RegTask("clearVipGiftExpire", wrapWithTrace(vipGiftJob.HandleClearVipGiftExpire))
 	executor.RegTask("processExpiredMembers", wrapWithTrace(memberJob.HandleProcessExpiredMembers))
 	executor.RegTask("retryFailedRefunds", wrapWithTrace(orderJob.HandleRetryFailedRefunds))
 	executor.RegTask("sendExpireReminders", wrapWithTrace(memberJob.HandleSendExpireReminders))

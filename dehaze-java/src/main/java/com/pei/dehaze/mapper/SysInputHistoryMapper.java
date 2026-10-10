@@ -9,5 +9,4 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2024-06-12
  */
 @Mapper
-public interface SysInputHistoryMapper extends BaseMapper<SysInputHistory> {
-}
+public interface SysInputHistoryMapper extends BaseMapper<SysInputHistory> {}

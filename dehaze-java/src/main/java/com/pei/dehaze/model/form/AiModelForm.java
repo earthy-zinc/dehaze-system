@@ -6,9 +6,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
+import java.util.List;
 import java.util.Map;
+import lombok.Data;
 
 @Schema(description = "AI 模型创建表单")
 @Data
@@ -21,8 +21,13 @@ public class AiModelForm {
     @Size(min = 1, max = 64)
     private String modelId;
 
-    @Schema(description = "模型类型(chat:对话;embedding:向量;rerank:重排)")
+    @Schema(
+            description =
+                    "模型类型(chat:对话;embedding:向量;rerank:重排;image_gen:文生图;image_edit:图像编辑;video_gen:视频生成;asr:语音识别;tts:语音合成;music_gen:音乐生成;3d_gen:3D生成)")
     private String modelType = "chat";
+
+    @Schema(description = "任务归类标签(图像模型[dehaze];asr[stream]/[offline];embedding[text]/[image])")
+    private List<String> taskTags;
 
     @Schema(description = "embedding 向量维度(modelType=embedding 时必填)")
     @Min(1)

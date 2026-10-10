@@ -2,9 +2,8 @@ package com.pei.dehaze.model.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 @Schema(description = "参数预设视图对象")
 @Data
@@ -20,7 +19,7 @@ public class PresetVO {
     private String type;
 
     @Schema(description = "关联算法ID")
-    private Long algorithmId;
+    private String modelId;
 
     @Schema(description = "参数键值对(JSON)")
     private String params;

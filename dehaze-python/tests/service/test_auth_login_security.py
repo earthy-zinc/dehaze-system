@@ -56,7 +56,7 @@ def _patch_wrong_password(monkeypatch, username: str):
 class TestLoginLockout:
     async def test_five_failures_lock_account(self, monkeypatch):
         """T-AM-050：连续 5 次错误密码后，第 6 次返回锁定错误。"""
-        redis = await fake_redis({f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_wrong_password(monkeypatch, "admin")
         for _ in range(m.settings.LOGIN_FAIL_MAX_ATTEMPTS):
             with pytest.raises(BusinessException):
@@ -70,7 +70,7 @@ class TestLoginLockout:
         redis = await fake_redis(
             {
                 m.LOGIN_FAIL_PREFIX + "admin": str(m.settings.LOGIN_FAIL_MAX_ATTEMPTS),
-                f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd",
+                f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd",
             }
         )
         _patch_user_lookup(monkeypatch, "admin")
@@ -83,7 +83,7 @@ class TestLoginLockout:
         redis = await fake_redis(
             {
                 m.LOGIN_FAIL_PREFIX + "admin": "3",
-                f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd",
+                f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd",
             }
         )
         _patch_user_lookup(monkeypatch, "admin")
@@ -98,7 +98,7 @@ class TestLoginLockout:
         redis = await fake_redis(
             {
                 m.LOGIN_FAIL_IP_PREFIX + "2.2.2.2": str(m.settings.LOGIN_FAIL_MAX_ATTEMPTS),
-                f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd",
+                f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd",
             }
         )
         _patch_user_lookup(monkeypatch, "admin")
@@ -110,7 +110,7 @@ class TestLoginLockout:
 class TestLoginFailureMessages:
     async def test_user_not_found_uses_masked_message(self, monkeypatch):
         """T-AM-004：用户名不存在返回 A0210 脱敏提示，不泄露用户是否存在。"""
-        redis = await fake_redis({f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd"})
         monkeypatch.setattr(m.user_repository, "get_by_username", AsyncMock(return_value=None))
         with pytest.raises(BusinessException) as exc:
             await auth_service._authenticate(_DB, redis, "ghost", "pw", "1.1.1.1", "k1", "abcd")
@@ -118,7 +118,7 @@ class TestLoginFailureMessages:
 
     async def test_wrong_password_uses_masked_message(self, monkeypatch):
         """T-AM-005：密码错误与用户名不存在返回同一错误码（脱敏一致）。"""
-        redis = await fake_redis({f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_wrong_password(monkeypatch, "admin")
         with pytest.raises(BusinessException) as exc:
             await auth_service._authenticate(_DB, redis, "admin", "bad", "1.1.1.1", "k1", "abcd")
@@ -132,7 +132,7 @@ class TestLoginFailureMessages:
         USER_ACCOUNT_LOCKED（A0202 用户账户被冻结）——文档与实现不一致，
         已上报待决策，此处按当前实现断言。
         """
-        redis = await fake_redis({f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_user_lookup(monkeypatch, "admin", status=0)
         monkeypatch.setattr(m, "check_password_async", AsyncMock(return_value=True))
         with pytest.raises(BusinessException) as exc:
@@ -146,7 +146,7 @@ class TestLoginLogAudit:
         import json as _json
         from unittest.mock import MagicMock
 
-        redis = await fake_redis({f"{m.settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{m.CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_wrong_password(monkeypatch, "admin")
         repo_mock = MagicMock()
         repo_mock.create_log = AsyncMock()
@@ -165,7 +165,7 @@ class TestLoginLogAudit:
         from app.repository.member_repository import member_repository
 
         monkeypatch.setattr(member_repository, "get_or_init_member", AsyncMock())
-        await redis.set(f"{m.settings.CAPTCHA_KEY_PREFIX}k2", "abcd")
+        await redis.set(f"{m.CAPTCHA_KEY_PREFIX}k2", "abcd")
         _patch_user_lookup(monkeypatch, "admin")
         await auth_service.login(_DB, redis, "admin", "pw", "3.3.3.3", "k2", "abcd", "UA")
         assert repo_mock.create_log.await_count == 2
@@ -198,8 +198,8 @@ class TestLoginMemberProfile:
 
         redis = await fake_redis(
             {
-                f"{m.settings.CAPTCHA_KEY_PREFIX}k3": "abcd",
-                f"{m.settings.CAPTCHA_KEY_PREFIX}k4": "abcd",
+                f"{m.CAPTCHA_KEY_PREFIX}k3": "abcd",
+                f"{m.CAPTCHA_KEY_PREFIX}k4": "abcd",
             }
         )
         await auth_service.login(db, redis, username, "pw123456", "4.4.4.4", "k3", "abcd", "UA")

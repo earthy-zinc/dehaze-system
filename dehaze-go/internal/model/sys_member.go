@@ -28,7 +28,7 @@ type SysMember struct {
 	MonthlyEvaluateQuota        int        `gorm:"column:monthly_evaluate_quota;type:int;not null;default:0;comment:本月评估配额" json:"monthlyEvaluateQuota"`
 	MonthlyEvaluateUsed         int        `gorm:"column:monthly_evaluate_used;type:int;not null;default:0;comment:本月已用评估次数" json:"monthlyEvaluateUsed"`
 	QuotaResetMonth             *int       `gorm:"column:quota_reset_month;type:int;index:idx_quota_reset_month;comment:配额所属月份" json:"quotaResetMonth"`
-	Status                      int8       `gorm:"column:status;type:tinyint;not null;default:1;index:idx_status;comment:状态(1:正常;0:冻结)" json:"status"`
+	Status                      int8       `gorm:"column:status;type:tinyint;not null;index:idx_status;comment:状态(1:正常;0:冻结)" json:"status"`
 	FrozenReason                string     `gorm:"column:frozen_reason;type:varchar(256);comment:冻结原因" json:"frozenReason"`
 	FrozenTime                  *time.Time `gorm:"column:frozen_time;type:datetime;comment:冻结时间" json:"frozenTime"`
 	Deleted                     int64      `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识(0:未删除;>0:已删除,值为删除时的行id)" json:"deleted"`

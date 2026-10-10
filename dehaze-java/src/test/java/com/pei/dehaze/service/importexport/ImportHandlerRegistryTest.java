@@ -1,18 +1,17 @@
 package com.pei.dehaze.service.importexport;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportOptions;
 import com.pei.dehaze.service.importexport.model.ImportResult;
 import com.pei.dehaze.service.strategy.ProgressCallback;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * 导入处理器注册表单元测试
@@ -37,8 +36,7 @@ class ImportHandlerRegistryTest {
     @Test
     @DisplayName("supports - 已注册返回 true,未注册返回 false")
     void testSupports() {
-        ImportHandlerRegistry registry = new ImportHandlerRegistry(
-                List.of(new StubImportHandler("user")));
+        ImportHandlerRegistry registry = new ImportHandlerRegistry(List.of(new StubImportHandler("user")));
 
         assertTrue(registry.supports("user"));
         assertFalse(registry.supports("role"));
@@ -49,9 +47,10 @@ class ImportHandlerRegistryTest {
     void testGetHandler_NotRegistered() {
         ImportHandlerRegistry registry = new ImportHandlerRegistry(List.of());
 
-        BusinessException ex = assertThrows(BusinessException.class,
-                () -> registry.getHandler("user"));
-        assertEquals(ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(), ex.getResultCode().getCode());
+        BusinessException ex = assertThrows(BusinessException.class, () -> registry.getHandler("user"));
+        assertEquals(
+                ResultCode.MODULE_IMPORT_NOT_SUPPORTED.getCode(),
+                ex.getResultCode().getCode());
     }
 
     @Test
@@ -60,8 +59,7 @@ class ImportHandlerRegistryTest {
         ImportHandler h1 = new StubImportHandler("user");
         ImportHandler h2 = new StubImportHandler("user");
 
-        assertThrows(IllegalStateException.class,
-                () -> new ImportHandlerRegistry(List.of(h1, h2)));
+        assertThrows(IllegalStateException.class, () -> new ImportHandlerRegistry(List.of(h1, h2)));
     }
 
     private static class StubImportHandler implements ImportHandler {
@@ -82,7 +80,8 @@ class ImportHandlerRegistryTest {
         }
 
         @Override
-        public ImportResult importBatch(List<Map<String, Object>> rows, ImportOptions options, ProgressCallback callback) {
+        public ImportResult importBatch(
+                List<Map<String, Object>> rows, ImportOptions options, ProgressCallback callback) {
             return ImportResult.success(0, 0);
         }
     }

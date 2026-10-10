@@ -59,7 +59,7 @@ spring:
           slow-sql-millis: 1000
   data:
     redis:
-      database: ${REDIS_DATABASE:0}
+      database: ${REDIS_DATABASE}
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
@@ -75,7 +75,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 4
     mongodb:
-      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/dehaze?authSource=admin
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin
   cache:
     enabled: true
     # 缓存类型 redis、none(不使用缓存)
@@ -120,7 +120,7 @@ dehaze:
 # 安全配置
 security:
   jwt:
-    key: ${JWT_SECRET_KEY:SecretKey012345678901234567890123456789012345678901234567890123456789}
+    key: ${JWT_SECRET_KEY}
     ttl: 7200
     refresh-ttl: 604800
   session:
@@ -210,7 +210,7 @@ xxl:
       addresses: http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin
     accessToken: ${XXLJOB_ACCESS_TOKEN}
     executor:
-      appname: xxl-job-executor-${spring.application.name}
+      appname: xxl-job-executor-${spring.application.name}${XXLJOB_ENV_SUFFIX}
       address:
       # 由 scripts/run.py 按部署拓扑注入：admin 跑在 Docker 时注入 host.docker.internal
       # （后端在宿主，注册地址须是容器可回调的域名；留空则 xxl-tool 在 WSL 镜像网络下探测返回 null）
@@ -244,14 +244,6 @@ algorithm:
     circuit-breaker-half-open-delay: 30000
     # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致；由根 .env 注入）
     api-key: ${M2M_API_KEY}
-  # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
-  model:
-    # 算法权重访问 URL = {baseUrl}/{algorithm.path}，如 http://{NGINX_STATIC_HOST}:9000/models/AECR-Net/NH_train.pk
-    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/models
-    # HTTP HEAD 校验连接超时（毫秒）
-    connect-timeout: 5000
-    # HTTP HEAD 校验读取超时（毫秒）
-    read-timeout: 10000
 
 # 验证码配置
 captcha:
@@ -282,7 +274,7 @@ rabbitmq:
   # 是否启用 RabbitMQ
   enabled: true
   # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
-  url: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/%2F
+  url: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}
   # 交换机配置
   exchange:
     # 任务交换机名称 (与 Go 端保持一致)

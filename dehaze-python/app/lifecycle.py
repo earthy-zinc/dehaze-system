@@ -64,7 +64,6 @@ def _try_become_main_worker() -> bool:
 
     在多 Worker 部署（uvicorn --workers N）下，某些资源只需启动一次：
     - XXL-Job executor daemon（绑定端口，多实例会冲突）
-    - GPU 指标采集器（重复采集同一块 GPU 无意义）
 
     Linux/Mac 使用 fcntl 文件锁，第一个获取锁的 Worker 为主 Worker。
     Windows 总是返回 True（开发环境通常使用 --workers 1）。
@@ -97,7 +96,7 @@ def _try_become_main_worker() -> bool:
         _main_worker_lock_file = None
         # flock LOCK_NB 抢锁失败（EACCES/EAGAIN/EWOULDBLOCK）＝"已有主 Worker"，属正常；
         # 其余 OSError（日志目录不可写/磁盘满等）会让本进程静默降级为非主 Worker，
-        # 导致 XXL-Job/GPU 采集等独占资源无人启动，必须暴露
+        # 导致 XXL-Job 等独占资源无人启动，必须暴露
         if e.errno in (errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK):
             logger.debug("未获取主 Worker 锁（已有主 Worker 持有）: %s", e)
         else:
@@ -117,7 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("启动 %s v%s", settings.APP_NAME, settings.APP_VERSION)
 
     # 多 Worker 守卫：判断当前 Worker 是否为主 Worker
-    # XXL-Job daemon 和 GPU 指标采集器只需在主 Worker 中启动
+    # XXL-Job daemon 只需在主 Worker 中启动
     is_main_worker = _try_become_main_worker()
     if is_main_worker:
         logger.info("当前 Worker 为主 Worker (pid=%d)，将启动独占资源", os.getpid())
@@ -147,50 +146,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             logger.warning("SKILL 资源对象 key 迁移失败（不影响启动）: %s", exc)
         await skill_manager.refresh_index(db)
 
-    # 内置本地模型：幂等播种 local provider/Key/LLM+Embedding 模型（默认模型路由目标）
-    from app.infrastructure.llm.local.model_seeder import ensure_local_models
-
-    async with get_db_session() as db:
-        await ensure_local_models(db)
-
-    # 内置本地语音引擎：幂等播种 local asr/tts provider 与默认模型/音色（语音引擎注册表）
-    try:
-        from app.infrastructure.voice.seeder import ensure_local_engines
-
-        async with get_db_session() as db:
-            await ensure_local_engines(db)
-    except Exception as exc:
-        logger.warning("内置本地语音引擎播种失败（不影响启动）: %s", exc)
-
-    # 主 Worker 后台预下载模型文件（不阻塞启动；首次对话时 ensure_running 兜底）
-    if is_main_worker:
-        import threading
-
-        from app.infrastructure.llm.local.local_llm_model import (
-            ensure_embedding_model,
-            ensure_model,
-            is_downloaded,
-            is_embedding_downloaded,
-        )
-
-        def _prefetch_local_model() -> None:
-            try:
-                if not is_downloaded():
-                    logger.info("后台预下载内置本地对话模型（Qwen3-0.6B，约 378MB）")
-                ensure_model()
-                if not is_embedding_downloaded():
-                    logger.info("后台预下载内置本地向量模型（Qwen3-Embedding-0.6B，约 610MB）")
-                ensure_embedding_model()
-            except Exception as exc:
-                logger.warning("本地模型预下载失败（首次调用时将重试）: %s", exc)
-
-        threading.Thread(
-            target=_prefetch_local_model, name="local-llm-prefetch", daemon=True
-        ).start()
+    # 内置本地模型/语音/图像供应商的初始化不在启动期执行（配置权威源是数据库与
+    # config/sql/data/ 种子数据，见 dehaze-doc）；需要初始化或轮换内置服务密钥时显式执行：
+    #   dehaze-python/.venv/bin/python -m app.cli init-builtin
 
     redis = await get_redis_client()
     app.state.redis = redis
     await check_redis_health()
+
+    # 供应商健康开关缓存预热：DB 是权威源、Redis 仅缓存（缓存缺省语义为"开启"），
+    # 启动同步一次，避免迁移直改 DB / Redis 清空后运行行为与配置漂移
+    try:
+        from app.infrastructure.provider.provider_health_service import (
+            warmup_provider_health_cache,
+        )
+
+        await warmup_provider_health_cache(redis)
+    except Exception as exc:
+        logger.warning("供应商健康开关缓存预热失败（不影响启动）: %s", exc)
 
     # 幂等补齐系统预置字典默认项（ai_guardrail_defaults / ai_provider_health / ai_embedding
     # / member_growth_rules / favorite_capacity）
@@ -255,18 +228,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         if settings.XXLJOB_ENABLED:
             logger.info("从 Worker 跳过 XXL-Job 启动（由主 Worker 负责）")
     app.state.xxljob_runner = xxljob_runner
-
-    # 启动 GPU 指标采集器（仅在主 Worker 启动，避免重复采集）
-    gpu_collector = None
-    if is_main_worker:
-        from app.infrastructure.metrics import collect_gpu_metrics
-
-        gpu_collector = await collect_gpu_metrics(
-            collect_interval=settings.PROMETHEUS_GPU_COLLECT_INTERVAL
-        )
-    else:
-        logger.info("从 Worker 跳过 GPU 指标采集器启动（由主 Worker 负责）")
-    app.state.gpu_collector = gpu_collector
 
     # 启动 MCP Server 健康巡检（仅主 Worker，避免多实例重复探测同一 Server）
     if is_main_worker:
@@ -351,15 +312,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
 
     await close_mq()
 
-    # 6. 停止 GPU 指标采集器（仅在主 Worker 中启动了才需停止）
-    from app.infrastructure.metrics import GPUMetricsCollector
-
-    gpu_collector: GPUMetricsCollector | None = getattr(app.state, "gpu_collector", None)
-    if gpu_collector:
-        await gpu_collector.stop()
-        logger.info("GPU 指标采集器已停止")
-
-    # 6.1 停止 MCP Server 健康巡检
+    # 6. 停止 MCP Server 健康巡检
     from app.service.ai_mcp.mcp_health_checker import mcp_health_checker
 
     if getattr(app.state, "mcp_health_checker", None) is not None:
@@ -388,10 +341,8 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     await close_db()
     logger.info("数据库连接已关闭")
 
-    # 10. 回收本地 LLM 子进程（对话与 embedding 推理同进程；TTS 为库内推理无子进程）
-    from app.infrastructure.llm.local.local_llm_manager import shutdown as shutdown_local_llm
-
-    shutdown_local_llm()
+    # 推理服务（dehaze-llm / voice / modal）由 scripts/run.py 独立管理生命周期，
+    # 业务进程退出不回收：reload / 重启不影响模型服务可用性
 
     logger.info("=" * 50)
     logger.info("👋 服务已优雅关闭")

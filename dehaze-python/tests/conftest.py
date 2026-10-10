@@ -9,7 +9,9 @@ pytest 配置和共享 fixtures
 - schema/种子数据由 `config/sql/`（schema+data）全量脚本重建，与开发库构建方式
   完全同源（Alembic 迁移链从未在任何库执行过、不完整且在 MySQL 8.4 上存在坏
   迁移，不能用作基线；待其基线化改造后再评估切换）
-- session 级 DROP + CREATE + 导入脚本 = 每次运行全量重置
+- session 级按 `config/sql` 脚本指纹判断：指纹一致复用现有库，变更才 DROP + CREATE
+  + 全量导入（指纹存于库内 `_test_schema_meta`，与 dehaze-go 同源）。多进程/多
+  worker 并行时不会重复重建、更不会把正在跑测试的进程的表删掉
 - 测试级数据隔离用外部事务 + SAVEPOINT 回滚：被测代码内部 commit 只释放
   SAVEPOINT，测试结束整体 ROLLBACK，种子数据零污染
 
@@ -18,6 +20,7 @@ Mongo 桩见 mongo_db fixture（mongomock-motor）；
 router 级测试客户端由各测试文件自建（ai_client 等）。
 """
 
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -32,9 +35,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ["APP_ENV"] = "testing"
 # TestingSettings 的类默认值会被根目录 .env 覆盖（dotenv 优先级高于类默认值），
 # 此处显式重设以强制测试库名与 Redis 兜底端口（6390 无人监听）
-# 并行隔离：设 PYTEST_MYSQL_DATABASE 可用独立库（如 dehaze_test_imageinput）
-# 与其他 squad 的 dehaze_test 运行并行，互不干扰（同实例同凭证）
-os.environ["MYSQL_DATABASE"] = os.environ.get("PYTEST_MYSQL_DATABASE", "dehaze_test")
+# 并行隔离：DEHAZE_TEST_DB 可指定独立库（如 dehaze_test_py），与 java/go 两端的测试
+# 及各 SDK 测试同时跑互不干扰（同实例同凭证，各方独立建库）
+os.environ["MYSQL_DATABASE"] = os.environ.get("DEHAZE_TEST_DB", "dehaze_test")
+# xdist 并行隔离：每个 worker 从基础库名派生独立库（{base}_gwN）。多 worker 共库时
+# 并发 UPDATE 同一批种子行会触发 1213 死锁（服务端回滚整个事务后 ROLLBACK TO
+# SAVEPOINT 报 1305），高并发下必现；库名含 worker 后缀后 GET_LOCK 重建锁与指纹
+# 复用均按 worker 隔离，互不阻塞。串行（无 xdist）保持基础库名
+if xdist_worker := os.environ.get("PYTEST_XDIST_WORKER"):
+    os.environ["MYSQL_DATABASE"] = f"{os.environ['MYSQL_DATABASE']}_{xdist_worker}"
 os.environ["REDIS_PORT"] = "6390"
 
 import fakeredis
@@ -110,12 +119,40 @@ def _exec_sql_file(conn, sql_path: Path) -> None:
             cur.execute(stmt)
 
 
+def _sql_fingerprint() -> str:
+    """config/sql 全部 sys_*.sql 的指纹（文件名 + 内容），与 dehaze-go 的
+    `_test_schema_meta` 机制同源。"""
+    digest = hashlib.sha256()
+    for sql_dir in (_SQL_SCHEMA_DIR, _SQL_DATA_DIR):
+        for sql_file in sorted(sql_dir.glob("sys_*.sql")):
+            digest.update(sql_file.name.encode())
+            digest.update(sql_file.read_bytes())
+    return digest.hexdigest()
+
+
+def _schema_is_current(conn, fingerprint: str) -> bool:
+    """库存在、meta 表存在且指纹一致 ⇒ 复用现有库，无需重建。"""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = '_test_schema_meta'",
+            (settings.MYSQL_DATABASE,),
+        )
+        meta_row = cur.fetchone()
+        if meta_row is None or meta_row[0] == 0:
+            return False
+        cur.execute(
+            f"SELECT schema_hash FROM `{settings.MYSQL_DATABASE}`._test_schema_meta WHERE id = 1"
+        )
+        stored_row = cur.fetchone()
+    return stored_row is not None and stored_row[0] == fingerprint
+
+
 @pytest.fixture(scope="session")
 def _mysql_schema() -> None:
-    """session 级全量重建测试库（与开发库同源：config/sql schema+data 脚本）。
+    """session 级确保测试库与 config/sql 一致：指纹一致则复用，变更才全量重建。
 
-    DROP + CREATE DATABASE dehaze_test → 导入全部 schema 与 data 脚本，
-    即"每次运行全量重置"；MySQL 不可达或脚本失败 → 直接 fail（fail-fast）。
+    MySQL 不可达或脚本失败 → 直接 fail（fail-fast）。
     """
     import pymysql
 
@@ -137,13 +174,14 @@ def _mysql_schema() -> None:
             f"凭证见根目录 .env 的 MYSQL_HOST/MYSQL_PASSWORD）"
         )
 
+    rebuild_lock = f"{settings.MYSQL_DATABASE}_rebuild"
     try:
-        # 并发保护：多 pytest 进程同时重建同一测试库会 DROP/CREATE/导入竞态
+        # 并发保护：多 pytest 进程/worker 同时重建同一测试库会 DROP/CREATE/导入竞态
         # （偶发 Duplicate entry 主键冲突 / 表缺失）。用 MySQL 会话级 GET_LOCK 串行化
         # 重建（同一连接上获取与释放，autocommit 下锁立即生效、不随 DDL 释放）；
-        # 锁名按库名区分，独立库（PYTEST_MYSQL_DATABASE）重建互不阻塞。
+        # 锁名按库名区分，独立库（DEHAZE_TEST_DB）重建互不阻塞。
         with conn.cursor() as cur:
-            cur.execute("SELECT GET_LOCK(%s, 300)", (f"{settings.MYSQL_DATABASE}_rebuild",))
+            cur.execute("SELECT GET_LOCK(%s, 300)", (rebuild_lock,))
             # SELECT GET_LOCK 恒返回单行；显式断言收窄 None，避免对可选行取下标
             lock_row = cur.fetchone()
             assert lock_row is not None, "GET_LOCK 未返回结果"
@@ -152,6 +190,9 @@ def _mysql_schema() -> None:
                     f"获取测试库重建锁超时（其他 pytest 进程正在重建 {settings.MYSQL_DATABASE}）"
                 )
         try:
+            fingerprint = _sql_fingerprint()
+            if _schema_is_current(conn, fingerprint):
+                return
             with conn.cursor() as cur:
                 cur.execute(f"DROP DATABASE IF EXISTS `{settings.MYSQL_DATABASE}`")
                 cur.execute(
@@ -162,9 +203,20 @@ def _mysql_schema() -> None:
             for sql_dir in (_SQL_SCHEMA_DIR, _SQL_DATA_DIR):
                 for sql_file in sorted(sql_dir.glob("sys_*.sql")):
                     _exec_sql_file(conn, sql_file)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS _test_schema_meta "
+                    "(id INT NOT NULL PRIMARY KEY, schema_hash VARCHAR(64) NOT NULL) "
+                    "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+                )
+                cur.execute(
+                    "INSERT INTO _test_schema_meta (id, schema_hash) VALUES (1, %s) "
+                    "ON DUPLICATE KEY UPDATE schema_hash = %s",
+                    (fingerprint, fingerprint),
+                )
         finally:
             with conn.cursor() as cur:
-                cur.execute("SELECT RELEASE_LOCK(%s)", (f"{settings.MYSQL_DATABASE}_rebuild",))
+                cur.execute("SELECT RELEASE_LOCK(%s)", (rebuild_lock,))
     except Exception as e:
         pytest.fail(f"测试库 `{settings.MYSQL_DATABASE}` 重建失败：{e}")
     finally:
@@ -189,7 +241,12 @@ async def db(_mysql_schema, monkeypatch: pytest.MonkeyPatch):
     - 外部事务 + SAVEPOINT（SQLAlchemy 2.0 标准测试事务模式）：被测代码内
       `async with get_db_session()` 的 commit 只释放 SAVEPOINT，不真正落库
     - monkeypatch async_session_factory：get_db_session 产出的 session 与本
-      fixture 同源（同一连接、同一事务），fixture 预置的数据对被测代码可见
+      fixture 同源（同一连接、同一事务），fixture 预置的数据对被测代码可见；
+      同时扫描已导入的 app./tests. 模块替换其顶层直接引用（顶层
+      `from app.database import async_session_factory` 持有独立引用，仅 patch
+      中心入口影响不到它们，如 prediction_service / wpxnet_interceptor），
+      否则被测代码会另开真实连接、看不到 fixture 预置数据且跨用例复用连接池
+      触发 "Future attached to a different loop"
     """
     engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
     connection = await engine.connect()
@@ -199,7 +256,13 @@ async def db(_mysql_schema, monkeypatch: pytest.MonkeyPatch):
         expire_on_commit=False,
         join_transaction_mode="create_savepoint",
     )
+    original_factory = database_module.async_session_factory
     monkeypatch.setattr(database_module, "async_session_factory", factory)
+    for module in tuple(sys.modules.values()):
+        if not getattr(module, "__name__", "").startswith(("app.", "tests.")):
+            continue
+        if getattr(module, "async_session_factory", None) is original_factory:
+            monkeypatch.setattr(module, "async_session_factory", factory)
     async with factory() as session:
         yield session
         # 用例结束前等待在途后台落盘（观测埋点 create_task 后台写库）：必须在本会话

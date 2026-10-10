@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import CAPTCHA_KEY_PREFIX
 from app.core.exceptions import BusinessException
 from app.service import auth_service as m
 from app.service.auth_service import auth_service
@@ -42,22 +42,22 @@ class TestVerifyCaptchaStatus:
         assert expired is True
 
     async def test_wrong_code_not_expired(self):
-        redis = await fake_redis({f"{settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{CAPTCHA_KEY_PREFIX}k1": "abcd"})
         ok, expired = await auth_service.verify_captcha_status(redis, "k1", "wrong")
         assert ok is False
         assert expired is False
 
     async def test_match_returns_ok(self):
-        redis = await fake_redis({f"{settings.CAPTCHA_KEY_PREFIX}k1": "AbCd"})
+        redis = await fake_redis({f"{CAPTCHA_KEY_PREFIX}k1": "AbCd"})
         ok, expired = await auth_service.verify_captcha_status(redis, "k1", "abcd")
         assert ok is True
         assert expired is False
-        assert await redis.get(f"{settings.CAPTCHA_KEY_PREFIX}k1") is None
+        assert await redis.get(f"{CAPTCHA_KEY_PREFIX}k1") is None
 
 
 class TestLoginCaptchaErrorCode:
     async def test_wrong_captcha_returns_a0214(self, monkeypatch):
-        redis = await fake_redis({f"{settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_auth_success(monkeypatch)
         with pytest.raises(BusinessException) as exc:
             await auth_service._authenticate(_DB, redis, "admin", "pw", "ip", "k1", "WRONG")
@@ -71,7 +71,7 @@ class TestLoginCaptchaErrorCode:
         assert exc.value.code == ResultCode.VERIFY_CODE_TIMEOUT
 
     async def test_captcha_failure_counts_toward_lockout(self, monkeypatch):
-        redis = await fake_redis({f"{settings.CAPTCHA_KEY_PREFIX}k1": "abcd"})
+        redis = await fake_redis({f"{CAPTCHA_KEY_PREFIX}k1": "abcd"})
         _patch_auth_success(monkeypatch)
         fail_key = m.LOGIN_FAIL_PREFIX + "admin"
         for _ in range(3):

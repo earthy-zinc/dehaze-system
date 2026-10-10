@@ -35,15 +35,15 @@ public class HistoryForm {
     @Size(max = 500, message = "结果缩略图URL长度不能超过500")
     private String resultThumbnailUrl;
 
-    @Schema(description = "算法ID")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
 
-    @Schema(description = "算法名称")
-    @Size(max = 100, message = "算法名称长度不能超过100")
-    private String algorithmName;
+    @Schema(description = "模型名称")
+    @Size(max = 100, message = "模型名称长度不能超过100")
+    private String modelName;
 
-    @Schema(description = "算法参数（JSON）")
-    private String algorithmParams;
+    @Schema(description = "模型参数（JSON）")
+    private String modelParams;
 
     @Schema(description = "处理耗时（毫秒）")
     @Min(value = 0, message = "处理耗时不能为负数")

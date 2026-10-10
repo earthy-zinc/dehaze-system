@@ -10,18 +10,11 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.service.importexport.model.ExportDataProvider;
 import com.pei.dehaze.service.importexport.model.ExportFieldConfig;
 import com.pei.dehaze.service.importexport.model.ImportFieldConfig;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.CSVRecord;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.InputStreamReader;
 import java.io.PushbackInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,6 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.springframework.stereotype.Component;
 
 /**
  * 导入导出文件生成器
@@ -56,9 +55,8 @@ public class ImportExportFileGenerator {
                     break;
                 }
                 hasData = true;
-                List<List<Object>> data = batch.stream()
-                        .map(row -> alignRow(row, fields))
-                        .collect(Collectors.toList());
+                List<List<Object>> data =
+                        batch.stream().map(row -> alignRow(row, fields)).collect(Collectors.toList());
                 writer.write(data, sheet);
                 pageNum++;
             }
@@ -71,11 +69,12 @@ public class ImportExportFileGenerator {
     /**
      * 流式写入 CSV
      */
-    public void writeCsv(OutputStream os, List<ExportFieldConfig> fields, ExportDataProvider dataProvider) throws IOException {
-        os.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+    public void writeCsv(OutputStream os, List<ExportFieldConfig> fields, ExportDataProvider dataProvider)
+            throws IOException {
+        os.write(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
         String[] headers = fields.stream().map(ExportFieldConfig::getLabel).toArray(String[]::new);
         try (OutputStreamWriter osw = new OutputStreamWriter(os, StandardCharsets.UTF_8);
-             CSVPrinter printer = new CSVPrinter(osw, CSVFormat.DEFAULT.withHeader(headers))) {
+                CSVPrinter printer = new CSVPrinter(osw, CSVFormat.DEFAULT.withHeader(headers))) {
             int pageNum = 1;
             while (true) {
                 List<List<Object>> batch = dataProvider.fetchBatch(pageNum, 1000);
@@ -93,8 +92,8 @@ public class ImportExportFileGenerator {
     /**
      * 生成导入模板 Excel（含表头和示例数据）
      */
-    public void writeTemplateExcel(OutputStream os, List<ImportFieldConfig> fields,
-                                   List<Map<String, Object>> sampleData) {
+    public void writeTemplateExcel(
+            OutputStream os, List<ImportFieldConfig> fields, List<Map<String, Object>> sampleData) {
         List<List<String>> head = fields.stream()
                 .map(f -> {
                     List<String> h = new ArrayList<>(2);
@@ -124,12 +123,13 @@ public class ImportExportFileGenerator {
     /**
      * 生成导入模板 CSV
      */
-    public void writeTemplateCsv(OutputStream os, List<ImportFieldConfig> fields,
-                                 List<Map<String, Object>> sampleData) throws IOException {
-        os.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+    public void writeTemplateCsv(OutputStream os, List<ImportFieldConfig> fields, List<Map<String, Object>> sampleData)
+            throws IOException {
+        os.write(new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
         String[] headers = fields.stream().map(ImportFieldConfig::getLabel).toArray(String[]::new);
         try (OutputStreamWriter osw = new OutputStreamWriter(os, StandardCharsets.UTF_8);
-             CSVPrinter printer = new CSVPrinter(osw, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
+                CSVPrinter printer = new CSVPrinter(
+                        osw, CSVFormat.DEFAULT.builder().setHeader(headers).build())) {
             if (sampleData != null) {
                 for (Map<String, Object> row : sampleData) {
                     List<Object> record = new ArrayList<>(fields.size());
@@ -157,33 +157,35 @@ public class ImportExportFileGenerator {
 
         try {
             EasyExcel.read(is, new ReadListener<Map<Integer, String>>() {
-                private final Map<Integer, String> headers = new LinkedHashMap<>();
-                private int rowNum = 0;
+                        private final Map<Integer, String> headers = new LinkedHashMap<>();
+                        private int rowNum = 0;
 
-                @Override
-                public void invokeHead(Map<Integer, com.alibaba.excel.metadata.data.ReadCellData<?>> cellDataMap,
-                                       AnalysisContext context) {
-                    cellDataMap.forEach((k, v) -> headers.put(k, v.getStringValue()));
-                }
-
-                @Override
-                public void invoke(Map<Integer, String> data, AnalysisContext context) {
-                    rowNum++;
-                    Map<String, Object> row = new LinkedHashMap<>();
-                    for (Map.Entry<Integer, String> entry : headers.entrySet()) {
-                        String label = entry.getValue();
-                        ImportFieldConfig fc = labelToField.get(label);
-                        if (fc != null && data.containsKey(entry.getKey())) {
-                            row.put(fc.getField(), data.get(entry.getKey()));
+                        @Override
+                        public void invokeHead(
+                                Map<Integer, com.alibaba.excel.metadata.data.ReadCellData<?>> cellDataMap,
+                                AnalysisContext context) {
+                            cellDataMap.forEach((k, v) -> headers.put(k, v.getStringValue()));
                         }
-                    }
-                    rowConsumer.consume(rowNum, row);
-                }
 
-                @Override
-                public void doAfterAllAnalysed(AnalysisContext context) {
-                }
-            }).sheet().doRead();
+                        @Override
+                        public void invoke(Map<Integer, String> data, AnalysisContext context) {
+                            rowNum++;
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            for (Map.Entry<Integer, String> entry : headers.entrySet()) {
+                                String label = entry.getValue();
+                                ImportFieldConfig fc = labelToField.get(label);
+                                if (fc != null && data.containsKey(entry.getKey())) {
+                                    row.put(fc.getField(), data.get(entry.getKey()));
+                                }
+                            }
+                            rowConsumer.consume(rowNum, row);
+                        }
+
+                        @Override
+                        public void doAfterAllAnalysed(AnalysisContext context) {}
+                    })
+                    .sheet()
+                    .doRead();
         } catch (Exception e) {
             log.error("Excel 解析失败", e);
             throw new BusinessException(ResultCode.IMPORT_FILE_PARSE_ERROR, "Excel 文件解析失败: " + e.getMessage());
@@ -213,9 +215,7 @@ public class ImportExportFileGenerator {
         }
 
         try (InputStreamReader reader = new InputStreamReader(pis, StandardCharsets.UTF_8);
-             CSVParser parser = CSVFormat.DEFAULT.builder()
-                     .build()
-                     .parse(reader)) {
+                CSVParser parser = CSVFormat.DEFAULT.builder().build().parse(reader)) {
 
             // commons-csv 1.10 中 setHeader((String[]) null) 不会自动从首行读取 header
             // 直接遍历首行作为 header，后续记录作为数据
@@ -230,8 +230,7 @@ public class ImportExportFileGenerator {
             Set<String> csvHeaders = headerMap.keySet();
             for (String required : requiredLabels) {
                 if (!csvHeaders.contains(required)) {
-                    throw new BusinessException(ResultCode.IMPORT_TEMPLATE_MISMATCH,
-                            "CSV 缺少必填表头: " + required);
+                    throw new BusinessException(ResultCode.IMPORT_TEMPLATE_MISMATCH, "CSV 缺少必填表头: " + required);
                 }
             }
 
@@ -255,15 +254,15 @@ public class ImportExportFileGenerator {
     /**
      * 从输入流解析文件（自动识别 Excel/CSV）
      */
-    public void parse(InputStream is, String fileName, List<ImportFieldConfig> fields, RowConsumer rowConsumer) throws IOException {
+    public void parse(InputStream is, String fileName, List<ImportFieldConfig> fields, RowConsumer rowConsumer)
+            throws IOException {
         String lower = fileName == null ? "" : fileName.toLowerCase();
         if (lower.endsWith(".csv")) {
             parseCsv(is, fields, rowConsumer);
         } else if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
             parseExcel(is, fields, rowConsumer);
         } else {
-            throw new BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH,
-                    "不支持的文件类型: " + fileName);
+            throw new BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "不支持的文件类型: " + fileName);
         }
     }
 

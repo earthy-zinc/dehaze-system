@@ -46,8 +46,11 @@ public class AlgorithmProperties {
     /** 熔断后半开状态等待时间（毫秒） */
     private long circuitBreakerHalfOpenDelay = 30000;
 
-    /** 预测端点路径 */
-    private String predictPath = "/api/v1/prediction";
+    /** 图像任务提交端点路径 */
+    private String predictPath = "/api/v1/images/edits";
+
+    /** 图像任务查询/取消端点路径前缀 */
+    private String imageTasksPath = "/api/v1/images/tasks";
 
     /** 评估端点路径 */
     private String evaluatePath = "/api/v1/evaluation";

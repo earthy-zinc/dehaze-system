@@ -24,5 +24,4 @@ public class AiFeedbackCreateForm {
     @Size(max = 2000, message = "反馈内容长度不能超过2000")
     @Schema(description = "反馈内容")
     private String comment;
-
 }

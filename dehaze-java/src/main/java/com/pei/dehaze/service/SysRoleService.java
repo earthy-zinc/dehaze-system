@@ -1,6 +1,5 @@
 package com.pei.dehaze.service;
 
-
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.common.model.Option;
@@ -8,7 +7,6 @@ import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.form.RoleForm;
 import com.pei.dehaze.model.query.RolePageQuery;
 import com.pei.dehaze.model.vo.RolePageVO;
-
 import java.util.List;
 import java.util.Set;
 
@@ -27,7 +25,6 @@ public interface SysRoleService extends IService<SysRole> {
      * @return
      */
     Page<RolePageVO> getRolePage(RolePageQuery queryParams);
-
 
     /**
      * 角色下拉列表
@@ -68,7 +65,6 @@ public interface SysRoleService extends IService<SysRole> {
      */
     boolean deleteRoles(String ids);
 
-
     /**
      * 获取角色的菜单ID集合
      *
@@ -76,7 +72,6 @@ public interface SysRoleService extends IService<SysRole> {
      * @return 菜单ID集合(包括按钮权限ID)
      */
     List<Long> getRoleMenuIds(Long roleId);
-
 
     /**
      * 修改角色的资源权限
@@ -94,6 +89,4 @@ public interface SysRoleService extends IService<SysRole> {
      * @return
      */
     Integer getMaximumDataScope(Set<String> roles);
-
-
 }

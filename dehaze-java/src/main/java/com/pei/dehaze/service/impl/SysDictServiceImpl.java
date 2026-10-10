@@ -20,14 +20,13 @@ import com.pei.dehaze.model.form.DictForm;
 import com.pei.dehaze.model.query.DictPageQuery;
 import com.pei.dehaze.model.vo.DictPageVO;
 import com.pei.dehaze.service.SysDictService;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 数据字典项业务实现类。
@@ -54,21 +53,22 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
      * 校验同 type_code 下 value 唯一性（仅活跃行；唯一键含 deleted，软删行不占键位）。
      */
     private void validateValueUnique(String typeCode, String value, Long excludeId) {
-        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, typeCode)
-                .eq(SysDict::getValue, value)
-                .ne(excludeId != null, SysDict::getId, excludeId));
+        long count = getBaseMapper()
+                .selectCount(new LambdaQueryWrapper<SysDict>()
+                        .eq(SysDict::getTypeCode, typeCode)
+                        .eq(SysDict::getValue, value)
+                        .ne(excludeId != null, SysDict::getId, excludeId));
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS,
-                    "字典类型【" + typeCode + "】下值【" + value + "】已存在");
+            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型【" + typeCode + "】下值【" + value + "】已存在");
         }
     }
 
     private void validateNameUnique(String typeCode, String name, Long excludeId) {
-        long count = getBaseMapper().selectCount(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, typeCode)
-                .eq(SysDict::getName, name)
-                .ne(excludeId != null, SysDict::getId, excludeId));
+        long count = getBaseMapper()
+                .selectCount(new LambdaQueryWrapper<SysDict>()
+                        .eq(SysDict::getTypeCode, typeCode)
+                        .eq(SysDict::getName, name)
+                        .ne(excludeId != null, SysDict::getId, excludeId));
         if (count > 0) {
             throw new BusinessException(ResultCode.DATA_EXISTS, "该类型下字典名称已存在");
         }
@@ -99,12 +99,18 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
                 new LambdaQueryWrapper<SysDict>()
                         .like(CharSequenceUtil.isNotBlank(keywords), SysDict::getName, keywords)
                         .eq(SysDict::getTypeCode, typeCode)
-                        .select(SysDict::getId, SysDict::getName, SysDict::getValue,
-                                SysDict::getTypeCode, SysDict::getDefaulted, SysDict::getSort,
-                                SysDict::getStatus, SysDict::getRemark, SysDict::getCreateTime)
+                        .select(
+                                SysDict::getId,
+                                SysDict::getName,
+                                SysDict::getValue,
+                                SysDict::getTypeCode,
+                                SysDict::getDefaulted,
+                                SysDict::getSort,
+                                SysDict::getStatus,
+                                SysDict::getRemark,
+                                SysDict::getCreateTime)
                         .orderByAsc(SysDict::getSort)
-                        .orderByDesc(SysDict::getCreateTime)
-        );
+                        .orderByDesc(SysDict::getCreateTime));
 
         // 实体转换
         return dictConverter.entity2Page(dictItemPage);
@@ -129,8 +135,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
                         SysDict::getStatus,
                         SysDict::getSort,
                         SysDict::getDefaulted,
-                        SysDict::getRemark
-                ));
+                        SysDict::getRemark));
         if (entity == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
@@ -150,8 +155,8 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         String typeCode = dictForm.getTypeCode();
 
         // 类型存在性检查
-        long typeCount = dictTypeMapper.selectCount(new LambdaQueryWrapper<SysDictType>()
-                .eq(SysDictType::getCode, typeCode));
+        long typeCount =
+                dictTypeMapper.selectCount(new LambdaQueryWrapper<SysDictType>().eq(SysDictType::getCode, typeCode));
         if (typeCount == 0) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
@@ -200,7 +205,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
 
         // 实体对象转换 form->entity
         SysDict entity = dictConverter.form2Entity(dictForm);
-        entity.setId(id);  // 设置ID，确保更新正确执行
+        entity.setId(id); // 设置ID，确保更新正确执行
         boolean result = this.updateById(entity);
 
         // 清除缓存
@@ -223,16 +228,14 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         List<Long> ids = IdUtils.parseIdList(idsStr);
 
         // 校验字典数据项是否存在
-        long existCount = this.count(new LambdaQueryWrapper<SysDict>()
-                .in(SysDict::getId, ids));
+        long existCount = this.count(new LambdaQueryWrapper<SysDict>().in(SysDict::getId, ids));
         if (existCount == 0) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
         }
 
         // 查出受影响的 typeCode（用于缓存清理）
-        List<SysDict> dicts = this.list(new LambdaQueryWrapper<SysDict>()
-                .in(SysDict::getId, ids)
-                .select(SysDict::getTypeCode));
+        List<SysDict> dicts = this.list(
+                new LambdaQueryWrapper<SysDict>().in(SysDict::getId, ids).select(SysDict::getTypeCode));
 
         // 删除字典数据项
         boolean result = this.removeByIds(ids);
@@ -263,8 +266,8 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         if (cached != null) {
             try {
                 @SuppressWarnings("unchecked")
-                List<Option<String>> cachedOptions =
-                        (List<Option<String>>) (List<?>) JSONUtil.parseArray(cached).toList(Option.class);
+                List<Option<String>> cachedOptions = (List<Option<String>>)
+                        (List<?>) JSONUtil.parseArray(cached).toList(Option.class);
                 return cachedOptions;
             } catch (Exception e) {
                 log.warn("字典缓存[{}]解析失败，删除后回源: {}", cacheKey, e.getMessage());
@@ -289,8 +292,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
                 .orderByDesc(SysDict::getCreateTime));
 
         // 转换下拉数据
-        List<Option<String>> options = CollUtil.emptyIfNull(dictList)
-                .stream()
+        List<Option<String>> options = CollUtil.emptyIfNull(dictList).stream()
                 .map(dictItem -> new Option<>(dictItem.getValue(), dictItem.getName()))
                 .toList();
 
@@ -313,8 +315,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         if (CollUtil.isEmpty(typeCodes)) {
             return true;
         }
-        boolean result = this.remove(new LambdaQueryWrapper<SysDict>()
-                .in(SysDict::getTypeCode, typeCodes));
+        boolean result = this.remove(new LambdaQueryWrapper<SysDict>().in(SysDict::getTypeCode, typeCodes));
         for (String typeCode : typeCodes) {
             if (CharSequenceUtil.isNotBlank(typeCode)) {
                 stringRedisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
@@ -351,8 +352,19 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
             return defaultValue;
         }
     }
+
+    @Override
+    public String getStringValue(String typeCode, String key, String defaultValue) {
+        List<Option<String>> options = listDictOptions(typeCode);
+        if (CollUtil.isEmpty(options)) {
+            log.warn("字典类型[{}]无有效字典项，回退默认值{}", typeCode, defaultValue);
+            return defaultValue;
+        }
+        return options.stream()
+                .filter(o -> key.equals(o.getLabel()))
+                .map(Option::getValue)
+                .filter(CharSequenceUtil::isNotBlank)
+                .findFirst()
+                .orElse(defaultValue);
+    }
 }
-
-
-
-

@@ -19,13 +19,12 @@ import com.pei.dehaze.model.form.PromotionPackageForm;
 import com.pei.dehaze.model.query.PromotionPageQuery;
 import com.pei.dehaze.model.vo.PromotionVO;
 import com.pei.dehaze.service.PromotionService;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -94,8 +93,8 @@ public class PromotionServiceImpl extends ServiceImpl<SysPromotionMapper, SysPro
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "促销活动不存在");
         }
         this.removeById(id);
-        promotionPackageMapper.delete(new LambdaQueryWrapper<SysPromotionPackage>()
-                .eq(SysPromotionPackage::getPromotionId, id));
+        promotionPackageMapper.delete(
+                new LambdaQueryWrapper<SysPromotionPackage>().eq(SysPromotionPackage::getPromotionId, id));
     }
 
     @Override
@@ -108,25 +107,28 @@ public class PromotionServiceImpl extends ServiceImpl<SysPromotionMapper, SysPro
         // 折扣方式/折扣值取自活动规则，与价格计算口径一致
         Map<String, Object> rules = parseRules(promotion.getActivityRules());
         String ruleType = rules != null ? (String) rules.get("discount_type") : null;
-        String discountType = "percent".equals(ruleType) || "fixed".equals(ruleType) || "full_reduction".equals(ruleType)
-                ? ruleType
-                : ("full_reduction".equals(promotion.getType()) ? "full_reduction" : "percent");
+        String discountType =
+                "percent".equals(ruleType) || "fixed".equals(ruleType) || "full_reduction".equals(ruleType)
+                        ? ruleType
+                        : ("full_reduction".equals(promotion.getType()) ? "full_reduction" : "percent");
         long ruleValue = 0;
         if (rules != null && rules.get("discount_value") != null) {
             ruleValue = Long.parseLong(String.valueOf(rules.get("discount_value")));
         }
         final String type = discountType;
         final long discountValue = ruleValue;
-        List<SysPromotionPackage> packages = form.getPackageIds().stream().map(packageId -> {
-            SysPromotionPackage pp = new SysPromotionPackage();
-            pp.setPromotionId(id);
-            pp.setPackageId(packageId);
-            pp.setDiscountType(type);
-            pp.setDiscountValue(discountValue);
-            return pp;
-        }).toList();
-        promotionPackageMapper.delete(new LambdaQueryWrapper<SysPromotionPackage>()
-                .eq(SysPromotionPackage::getPromotionId, id));
+        List<SysPromotionPackage> packages = form.getPackageIds().stream()
+                .map(packageId -> {
+                    SysPromotionPackage pp = new SysPromotionPackage();
+                    pp.setPromotionId(id);
+                    pp.setPackageId(packageId);
+                    pp.setDiscountType(type);
+                    pp.setDiscountValue(discountValue);
+                    return pp;
+                })
+                .toList();
+        promotionPackageMapper.delete(
+                new LambdaQueryWrapper<SysPromotionPackage>().eq(SysPromotionPackage::getPromotionId, id));
         packages.forEach(promotionPackageMapper::insert);
     }
 

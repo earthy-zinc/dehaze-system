@@ -1,13 +1,11 @@
-
 package com.pei.dehaze.common.util;
 
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.lang.reflect.Field;
+import org.springframework.format.annotation.DateTimeFormat;
 
 /**
  * 日期工具类
@@ -51,7 +49,9 @@ public class DateUtils {
         Object fieldValue = ReflectUtil.getFieldValue(obj, fieldName);
         if (fieldValue != null) {
             // 得到原始的日期格式
-            String pattern = field.isAnnotationPresent(DateTimeFormat.class) ? field.getAnnotation(DateTimeFormat.class).pattern() : "yyyy-MM-dd";
+            String pattern = field.isAnnotationPresent(DateTimeFormat.class)
+                    ? field.getAnnotation(DateTimeFormat.class).pattern()
+                    : "yyyy-MM-dd";
             // 转换为日期对象
             DateTime dateTime = DateUtil.parse(StrUtil.toString(fieldValue), pattern);
             // 转换为目标数据库日期格式

@@ -20,5 +20,4 @@ public class AiAgentCopyForm {
     @Size(max = 64, message = "Agent编码长度不能超过64")
     @Schema(description = "新Agent唯一编码")
     private String agentCode;
-
 }

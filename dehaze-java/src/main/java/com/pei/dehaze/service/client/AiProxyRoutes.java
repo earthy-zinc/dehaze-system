@@ -1,10 +1,9 @@
 package com.pei.dehaze.service.client;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.util.AntPathMatcher;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.util.AntPathMatcher;
 
 /**
  * 转发白名单（python 唯一实现的端点：AI 域 B 类——强依赖 deepagents / LLM / 向量检索，
@@ -36,8 +35,7 @@ public final class AiProxyRoutes {
      * @param authExempt 是否豁免 java 侧鉴权：第三方协议端点的认证头形态（OpenAI Bearer / Claude x-api-key）
      *                   java 过滤器不识别，须放行到 python 由 API Key 中间件终审
      */
-    public record Route(String method, String pattern, Kind kind, boolean authExempt) {
-    }
+    public record Route(String method, String pattern, Kind kind, boolean authExempt) {}
 
     private static final AntPathMatcher MATCHER = new AntPathMatcher();
 
@@ -59,7 +57,8 @@ public final class AiProxyRoutes {
             json(POST, "/api/v1/ai/agents/{agentId}/test"),
             multipart(POST, "/api/v1/ai/skills/upload"),
             json(POST, "/api/v1/ai/skills/{skillId}/test"),
-            json(POST, "/api/v1/ai/models/{modelId}/test"),
+            // model_id 含 `/`，以 query 参数 modelId 传递，路径无参数
+            json(POST, "/api/v1/ai/models/test"),
             json(POST, "/api/v1/ai/providers/{providerId}/test-connection"),
             // 供应商熔断状态由 python 进程内维护，解除熔断属于运行时操作而非配置 CRUD
             json(POST, "/api/v1/ai/providers/{providerId}/circuit/close"),
@@ -99,10 +98,12 @@ public final class AiProxyRoutes {
             json(POST, "/api/v1/kb/{kbId}/retrieve/test"),
             json(POST, "/api/v1/kb/{kbId}/retrieve/test-sets/{testSetId}/run"),
 
-            // ==================== 语音域（ASR/TTS 引擎仅在 python 进程内） ====================
+            // ==================== 语音域 · 用户端（ASR/TTS 引擎仅在 python 进程内） ====================
             // FunASR / Piper 为 python 进程内懒加载的本地引擎（模型随 python 分发），
-            // java 无等价实现；权限（voice:hotword:edit / voice:service:monitor / voice:engine:manage）
-            // 与 TTS 缓存音频的归属校验同样只在 python，故整域转发
+            // java 无等价实现；权限（voice:hotword:edit / voice:service:monitor）
+            // 与 TTS 缓存音频的归属校验同样只在 python，故整域转发。
+            // 引擎注册表管理端（/voice/providers、/voice/providers/{id}/keys、/voice/models）已在阶段 2
+            // 随语音引擎体系移除而退役——供应商/模型统一走 sys_ai_provider / sys_ai_model，不再转发。
             json(POST, "/api/v1/voice/asr/stream-session"),
             json(GET, "/api/v1/voice/asr/result/{sessionId}"),
             // 离线识别为 multipart 直传音频文件，不能交由 Spring 解析（见 AiProxyMultipartResolver）
@@ -118,21 +119,6 @@ public final class AiProxyRoutes {
             json(POST, "/api/v1/voice/hotwords/global"),
             json(DELETE, "/api/v1/voice/hotwords/global/{hotwordId}"),
             json(GET, "/api/v1/voice/service/status"),
-            json(GET, "/api/v1/voice/providers"),
-            json(GET, "/api/v1/voice/providers/enabled"),
-            json(POST, "/api/v1/voice/providers"),
-            json(PUT, "/api/v1/voice/providers/{providerId}"),
-            json(DELETE, "/api/v1/voice/providers/{providerId}"),
-            // 连通性测试要真实访问引擎（云端引擎走外网、local 引擎走进程内实例）
-            json(POST, "/api/v1/voice/providers/{providerId}/test-connection"),
-            json(GET, "/api/v1/voice/providers/{providerId}/keys"),
-            json(POST, "/api/v1/voice/providers/{providerId}/keys"),
-            json(PUT, "/api/v1/voice/providers/{providerId}/keys/{keyId}"),
-            json(DELETE, "/api/v1/voice/providers/{providerId}/keys/{keyId}"),
-            json(GET, "/api/v1/voice/models"),
-            json(POST, "/api/v1/voice/models"),
-            json(PUT, "/api/v1/voice/models/{modelId}"),
-            json(DELETE, "/api/v1/voice/models/{modelId}"),
 
             // ==================== A2A 协议（message/stream 为 SSE） ====================
             // 挂载路径下的 Agent Card 由 java 原生实现（AiA2aController 按已发布版本动态生成），
@@ -145,13 +131,12 @@ public final class AiProxyRoutes {
             authExempt(json(GET, "/api/v1/models")),
             authExempt(sse(POST, "/api/v1/messages")),
             authExempt(sse(POST, "/a2a")),
-            authExempt(json(GET, "/.well-known/agent.json"))
-    );
+            authExempt(json(GET, "/.well-known/agent.json")));
 
-    private static final List<Route> AUTH_EXEMPT_ROUTES = ROUTES.stream().filter(Route::authExempt).toList();
+    private static final List<Route> AUTH_EXEMPT_ROUTES =
+            ROUTES.stream().filter(Route::authExempt).toList();
 
-    private AiProxyRoutes() {
-    }
+    private AiProxyRoutes() {}
 
     private static Route sse(String method, String pattern) {
         return new Route(method, pattern, Kind.SSE, false);

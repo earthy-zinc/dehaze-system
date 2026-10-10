@@ -1,13 +1,27 @@
 package com.pei.dehaze.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.pei.dehaze.mapper.AiInsightMapper;
 import com.pei.dehaze.model.read.DowngradeRead;
 import com.pei.dehaze.model.read.ModelUsageRead;
 import com.pei.dehaze.model.read.ProviderRead;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,19 +31,6 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 /**
  * AI 运营统计服务单测：供应商健康快照读缓存 / 缺失时窗口聚合回填（三态判定）、模型用量别名回填、降级与 Key 故障。
@@ -46,12 +47,16 @@ class AiUsageStatsServiceTest {
 
     @Mock
     private AiInsightMapper insightMapper;
+
     @Mock
     private StringRedisTemplate stringRedisTemplate;
+
     @Mock
     private ValueOperations<String, String> valueOperations;
+
     @Mock
     private HashOperations<String, Object, Object> hashOperations;
+
     @Mock
     private ListOperations<String, String> listOperations;
 
@@ -85,12 +90,15 @@ class AiUsageStatsServiceTest {
     }
 
     private void stubWindow(long total, long failed, long limit) {
-        when(stringRedisTemplate.opsForValue().get("ai:provider:" + PROVIDER_ID + ":health")).thenReturn(null);
-        when(stringRedisTemplate.opsForValue().get("ai:provider:health:thresholds")).thenReturn(null);
+        when(stringRedisTemplate.opsForValue().get("ai:provider:" + PROVIDER_ID + ":health"))
+                .thenReturn(null);
+        when(stringRedisTemplate.opsForValue().get("ai:provider:health:thresholds"))
+                .thenReturn(null);
         when(hashOperations.multiGet(anyString(), anyList())).thenReturn(window(total, failed, limit));
         when(listOperations.range(anyString(), eq(0L), eq(-1L))).thenReturn(List.of("10", "20", "30"));
         when(stringRedisTemplate.hasKey(anyString())).thenReturn(false);
-        when(stringRedisTemplate.opsForValue().get("ai:provider:" + PROVIDER_ID + ":health_enabled")).thenReturn(null);
+        when(stringRedisTemplate.opsForValue().get("ai:provider:" + PROVIDER_ID + ":health_enabled"))
+                .thenReturn(null);
     }
 
     @Test
@@ -142,6 +150,30 @@ class AiUsageStatsServiceTest {
         assertThat(health.getRate429()).isEqualTo(0.07);
         assertThat(health.getP95LatencyMs()).isEqualTo(20);
         verifySnapshotBackfilled();
+    }
+
+    @Test
+    @DisplayName("供应商健康：窗口无调用时比率与 P95 为 null（不落成 100%/0ms）")
+    void providerHealthKeepsNullMetricsWithoutCalls() {
+        when(insightMapper.listProviders()).thenReturn(List.of(provider()));
+        // 延迟列表不按窗口裁剪：窗口无调用时残留的 10/20/30ms 样本不算当前 P95
+        stubWindow(0, 0, 0);
+
+        var health = service.getUsageStats(null, null).getProviderHealth().get(0);
+
+        assertThat(health.getCallCount()).isZero();
+        assertThat(health.getSuccessRate()).isNull();
+        assertThat(health.getRate429()).isNull();
+        assertThat(health.getP95LatencyMs()).isNull();
+
+        // 回填快照必须带显式 null 键：严格按契约取值的端（python）读到缺键会当成字段缺失
+        ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations)
+                .set(eq("ai:provider:" + PROVIDER_ID + ":health"), json.capture(), any(java.time.Duration.class));
+        assertThat(json.getValue())
+                .contains("\"success_rate\":null")
+                .contains("\"limit_rate\":null")
+                .contains("\"p95_latency_ms\":null");
     }
 
     @Test
@@ -207,7 +239,7 @@ class AiUsageStatsServiceTest {
     }
 
     private void verifySnapshotBackfilled() {
-        org.mockito.Mockito.verify(valueOperations).set(
-                eq("ai:provider:" + PROVIDER_ID + ":health"), anyString(), any(java.time.Duration.class));
+        org.mockito.Mockito.verify(valueOperations)
+                .set(eq("ai:provider:" + PROVIDER_ID + ":health"), anyString(), any(java.time.Duration.class));
     }
 }

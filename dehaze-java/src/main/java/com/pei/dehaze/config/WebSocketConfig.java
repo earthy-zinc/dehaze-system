@@ -4,6 +4,8 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
+import java.net.URI;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
@@ -23,9 +25,6 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-
-import java.net.URI;
-import java.util.Map;
 
 /**
  * WebSocket 配置
@@ -49,8 +48,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         String[] allowedOrigins = corsConfig.getAllowedOrigins() != null
                 ? corsConfig.getAllowedOrigins().toArray(new String[0])
                 : new String[0];
-        registry
-                .addEndpoint("/ws")
+        registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(allowedOrigins)
                 .addInterceptors(new SessionHandshakeInterceptor())
                 .withSockJS();
@@ -100,15 +98,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private class SessionHandshakeInterceptor implements HandshakeInterceptor {
 
         @Override
-        public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                       WebSocketHandler wsHandler, Map<String, Object> attributes) {
+        public boolean beforeHandshake(
+                ServerHttpRequest request,
+                ServerHttpResponse response,
+                WebSocketHandler wsHandler,
+                Map<String, Object> attributes) {
             String sessionId = extractSessionId(request);
             if (CharSequenceUtil.isBlank(sessionId)) {
                 log.warn("WebSocket 握手被拒绝：缺少 sessionId");
                 return false;
             }
-            String sessionJson = stringRedisTemplate.opsForValue()
-                    .get(SecurityConstants.SESSION_PREFIX + sessionId);
+            String sessionJson = stringRedisTemplate.opsForValue().get(SecurityConstants.SESSION_PREFIX + sessionId);
             if (CharSequenceUtil.isBlank(sessionJson)) {
                 log.warn("WebSocket 握手被拒绝：session 不存在或已过期");
                 return false;
@@ -129,9 +129,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         }
 
         @Override
-        public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                                   WebSocketHandler wsHandler, Exception exception) {
-        }
+        public void afterHandshake(
+                ServerHttpRequest request,
+                ServerHttpResponse response,
+                WebSocketHandler wsHandler,
+                Exception exception) {}
 
         private String extractSessionId(ServerHttpRequest request) {
             URI uri = request.getURI();

@@ -68,7 +68,7 @@ var (
 	DATA_EXISTS          = &ResultCode{"A0501", "数据已存在"}
 	DATA_STATE_NOT_ALLOW = &ResultCode{"A0502", "数据状态不允许"}
 	OPERATION_NOT_ALLOW  = &ResultCode{"A0503", "操作不允许"}
-	DATA_BIND_EXISTS     = &ResultCode{"A0504", "存在关联数据，无法删除"}
+	DATA_REFERENCED     = &ResultCode{"A0504", "存在关联数据，无法删除"}
 	// 用户模块受保护资源（超级管理员）错误码，与 Python/Java 端对齐
 	ROOT_USER_PROTECTED = &ResultCode{"A0505", "超级管理员不可删除"}
 
@@ -129,13 +129,16 @@ var (
 	TEMPLATE_DISABLED              = &ResultCode{"A0558", "模板已禁用"}
 	MESSAGE_ALREADY_READ           = &ResultCode{"A0559", "消息已读"}
 
+	// AI 对话模块业务错误码 A06xx
+	AI_MODEL_NOT_AVAILABLE = &ResultCode{"A0601", "模型不可用或已禁用"}
+
 	// AI 计费模块业务错误码 A068x
 	AI_REFUND_ALREADY_EXISTS = &ResultCode{"A0680", "退款申请已存在"}
 	REFUND_AUDIT_FAILED      = &ResultCode{"A0681", "退款审核失败"}
 
 	// A07xx: 文件上传与导入导出
 	USER_UPLOAD_FILE_ERROR          = &ResultCode{"A0700", "用户上传文件异常"}
-	USER_UPLOAD_FILE_TYPE_NOT_MATCH = &ResultCode{"A0701", "用户上传文件类型不匹配"}
+	USER_UPLOAD_FILE_TYPE_NOT_MATCH = &ResultCode{"A0701", "文件格式不支持"}
 	USER_UPLOAD_FILE_SIZE_EXCEEDS   = &ResultCode{"A0702", "用户上传文件太大"}
 	IMPORT_FILE_EMPTY               = &ResultCode{"A0703", "上传文件为空或无数据行"}
 	IMPORT_FILE_PARSE_ERROR         = &ResultCode{"A0704", "文件解析失败"}
@@ -235,7 +238,7 @@ var allResultCodes = map[string]*ResultCode{
 	"A0501": DATA_EXISTS,
 	"A0502": DATA_STATE_NOT_ALLOW,
 	"A0503": OPERATION_NOT_ALLOW,
-	"A0504": DATA_BIND_EXISTS,
+	"A0504": DATA_REFERENCED,
 	"A0505": ROOT_USER_PROTECTED,
 	// 会员模块 A051x
 	"A0510": MEMBER_NOT_FOUND,
@@ -289,6 +292,8 @@ var allResultCodes = map[string]*ResultCode{
 	"A0557": NOTIFICATION_SETTING_NOT_FOUND,
 	"A0558": TEMPLATE_DISABLED,
 	"A0559": MESSAGE_ALREADY_READ,
+	// AI 对话模块 A06xx
+	"A0601": AI_MODEL_NOT_AVAILABLE,
 	// AI 计费模块 A068x
 	"A0680": AI_REFUND_ALREADY_EXISTS,
 	"A0681": REFUND_AUDIT_FAILED,

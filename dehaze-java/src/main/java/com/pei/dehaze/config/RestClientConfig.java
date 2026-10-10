@@ -1,6 +1,8 @@
 package com.pei.dehaze.config;
 
 import com.pei.dehaze.config.property.AlgorithmProperties;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -15,9 +17,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
-
-import java.net.http.HttpClient;
-import java.time.Duration;
 
 /**
  * HTTP 客户端配置 —— 用于调用 Python 算法服务

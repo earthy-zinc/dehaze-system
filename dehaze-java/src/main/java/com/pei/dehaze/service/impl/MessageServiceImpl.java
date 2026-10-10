@@ -21,18 +21,17 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.MessageService;
 import com.pei.dehaze.service.MessageTemplateService;
 import com.pei.dehaze.service.notify.MessagePushDispatcher;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -45,8 +44,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             "business", "业务通知",
             "member", "会员通知",
             "alert", "告警通知",
-            "critical_alert", "严重告警"
-    );
+            "critical_alert", "严重告警");
     private static final Pattern VAR_PATTERN = Pattern.compile("\\{(\\w+)}");
     private static final String UNREAD_KEY_PREFIX = "msg:unread:";
     private static final DateTimeFormatter WS_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -151,8 +149,9 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         data.put("type", message.getType());
         data.put("title", message.getTitle());
         data.put("priority", message.getPriority());
-        data.put("createTime", message.getCreateTime() != null
-                ? message.getCreateTime().format(WS_TIME_FORMATTER) : null);
+        data.put(
+                "createTime",
+                message.getCreateTime() != null ? message.getCreateTime().format(WS_TIME_FORMATTER) : null);
         Map<String, Object> event = new HashMap<>();
         event.put("event", "new_message");
         event.put("data", data);
@@ -202,12 +201,14 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     public Page<MessageVO> getPage(MessageQuery query) {
         Long userId = SecurityUtils.getUserId();
         Page<SysMessage> page = new Page<>(query.getPageNum(), query.getPageSize());
-        this.page(page, new LambdaQueryWrapper<SysMessage>()
-                .eq(SysMessage::getRecipientId, userId)
-                .eq(query.getType() != null, SysMessage::getType, query.getType())
-                .eq(query.getReadStatus() != null, SysMessage::getReadStatus, query.getReadStatus())
-                .orderByAsc(SysMessage::getReadStatus)
-                .orderByDesc(SysMessage::getCreateTime));
+        this.page(
+                page,
+                new LambdaQueryWrapper<SysMessage>()
+                        .eq(SysMessage::getRecipientId, userId)
+                        .eq(query.getType() != null, SysMessage::getType, query.getType())
+                        .eq(query.getReadStatus() != null, SysMessage::getReadStatus, query.getReadStatus())
+                        .orderByAsc(SysMessage::getReadStatus)
+                        .orderByDesc(SysMessage::getCreateTime));
 
         Page<MessageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(this::toMessageVO).toList());
@@ -226,8 +227,9 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             count = this.count(new LambdaQueryWrapper<SysMessage>()
                     .eq(SysMessage::getRecipientId, userId)
                     .eq(SysMessage::getReadStatus, 0));
-            stringRedisTemplate.opsForValue().set(cacheKey, String.valueOf(count),
-                    count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(cacheKey, String.valueOf(count), count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
         }
         UnreadCountVO vo = new UnreadCountVO();
         vo.setCount(count);
@@ -238,9 +240,8 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Transactional(rollbackFor = Exception.class)
     public MessageDetailVO getDetail(Long id) {
         Long userId = SecurityUtils.getUserId();
-        SysMessage message = this.getOne(new LambdaQueryWrapper<SysMessage>()
-                .eq(SysMessage::getId, id)
-                .eq(SysMessage::getRecipientId, userId));
+        SysMessage message = this.getOne(
+                new LambdaQueryWrapper<SysMessage>().eq(SysMessage::getId, id).eq(SysMessage::getRecipientId, userId));
         if (message == null) {
             throw new BusinessException(ResultCode.MESSAGE_NOT_FOUND);
         }
@@ -255,12 +256,15 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
     @Transactional(rollbackFor = Exception.class)
     public void markRead(Long id) {
         Long userId = SecurityUtils.getUserId();
-        int affected = this.getBaseMapper().update(null, new LambdaUpdateWrapper<SysMessage>()
-                .eq(SysMessage::getId, id)
-                .eq(SysMessage::getRecipientId, userId)
-                .eq(SysMessage::getReadStatus, 0)
-                .set(SysMessage::getReadStatus, 1)
-                .set(SysMessage::getReadTime, LocalDateTime.now()));
+        int affected = this.getBaseMapper()
+                .update(
+                        null,
+                        new LambdaUpdateWrapper<SysMessage>()
+                                .eq(SysMessage::getId, id)
+                                .eq(SysMessage::getRecipientId, userId)
+                                .eq(SysMessage::getReadStatus, 0)
+                                .set(SysMessage::getReadStatus, 1)
+                                .set(SysMessage::getReadTime, LocalDateTime.now()));
         if (affected > 0) {
             invalidateUnreadCache(userId);
         }
@@ -321,13 +325,15 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
         String keyword = query.getKeyword();
         String pattern = "%" + escapeLike(keyword) + "%";
         Page<SysMessage> page = new Page<>(query.getPageNum(), query.getPageSize());
-        this.page(page, new LambdaQueryWrapper<SysMessage>()
-                .eq(SysMessage::getRecipientId, userId)
-                .and(w -> w.apply("title LIKE {0} ESCAPE '\\\\'", pattern)
-                        .or()
-                        .apply("content LIKE {0} ESCAPE '\\\\'", pattern))
-                .orderByAsc(SysMessage::getReadStatus)
-                .orderByDesc(SysMessage::getCreateTime));
+        this.page(
+                page,
+                new LambdaQueryWrapper<SysMessage>()
+                        .eq(SysMessage::getRecipientId, userId)
+                        .and(w -> w.apply("title LIKE {0} ESCAPE '\\\\'", pattern)
+                                .or()
+                                .apply("content LIKE {0} ESCAPE '\\\\'", pattern))
+                        .orderByAsc(SysMessage::getReadStatus)
+                        .orderByDesc(SysMessage::getCreateTime));
 
         Page<MessageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(this::toMessageVO).toList());
@@ -379,8 +385,7 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
 
     @Override
     public void refreshUnreadCountCache() {
-        List<SysUser> users = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
-                .eq(SysUser::getStatus, 1));
+        List<SysUser> users = userMapper.selectList(new LambdaQueryWrapper<SysUser>().eq(SysUser::getStatus, 1));
         if (users.isEmpty()) {
             log.debug("未读数缓存刷新: 无活跃用户");
             return;
@@ -391,8 +396,12 @@ public class MessageServiceImpl extends ServiceImpl<SysMessageMapper, SysMessage
             long count = this.count(new LambdaQueryWrapper<SysMessage>()
                     .eq(SysMessage::getRecipientId, userId)
                     .eq(SysMessage::getReadStatus, 0));
-            stringRedisTemplate.opsForValue().set(UNREAD_KEY_PREFIX + userId, String.valueOf(count),
-                    count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
+            stringRedisTemplate
+                    .opsForValue()
+                    .set(
+                            UNREAD_KEY_PREFIX + userId,
+                            String.valueOf(count),
+                            count == 0 ? Duration.ofMinutes(5) : Duration.ofHours(1));
             refreshed++;
         }
         log.debug("未读数缓存刷新完成: 共刷新{}个用户", refreshed);

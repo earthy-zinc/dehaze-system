@@ -14,6 +14,7 @@ from app.infrastructure.llm.common import (
     PROTOCOL_ANTHROPIC,
     LlmStreamChunk,
 )
+from app.infrastructure.llm.tool_dialect import NATIVE_OPENAI
 
 
 class ChatModelClient(Protocol):
@@ -31,8 +32,14 @@ class ChatModelClient(Protocol):
         tool_choice: str | None,
         temperature: float = 0.7,
         user_identity: tuple[str, str] | None = None,
+        tool_dialect: str = NATIVE_OPENAI,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
-        """构建协议原生请求并解析 SSE，产出统一 LlmStreamChunk 流"""
+        """构建协议原生请求并解析 SSE，产出统一 LlmStreamChunk 流。
+
+        tool_dialect 声明该模型的工具调用方言（见 tool_dialect 模块）：原生方言经
+        ``tools`` 字段传递；文本方言的工具清单已由编排层渲染进 messages，此处仅据
+        其选择响应侧解析器。
+        """
         ...
 
 

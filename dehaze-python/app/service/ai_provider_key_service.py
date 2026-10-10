@@ -46,8 +46,9 @@ class AiProviderKeyService:
     ) -> ProviderKeyResult:
         await _get_provider_or_raise(db, provider_id)
         key_hash = hash_key(form.key)
-        if await ai_provider_key_repository.get_by_hash(db, key_hash):
-            raise BusinessException(ResultCode.DATA_EXISTS, "该 API Key 已存在")
+        # 查重按供应商维度：同一密钥允许在不同供应商登记（唯一键 (provider_id, key_hash)）
+        if await ai_provider_key_repository.get_by_provider_and_hash(db, provider_id, key_hash):
+            raise BusinessException(ResultCode.DATA_EXISTS, "该供应商下该 API Key 已存在")
         key = SysAiProviderKey(
             provider_id=provider_id,
             name=form.name,

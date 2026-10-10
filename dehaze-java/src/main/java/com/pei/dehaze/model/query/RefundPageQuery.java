@@ -2,10 +2,9 @@ package com.pei.dehaze.model.query;
 
 import com.pei.dehaze.common.base.BasePageQuery;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.time.LocalDateTime;
 
 @Data
 @EqualsAndHashCode(callSuper = true)

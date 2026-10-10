@@ -2,7 +2,7 @@
 通用导入策略
 
 处理所有 *_import 类型的任务（user_import/role_import/dept_import/menu_import/
-dict_import/algorithm_import）。策略本身只做调度，具体导入逻辑由对应的
+dict_import）。策略本身只做调度，具体导入逻辑由对应的
 ImportHandler 实现。
 """
 

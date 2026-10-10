@@ -16,7 +16,9 @@ class SysRating(BaseModel, SoftDeleteMixin):
     )
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="评价用户ID")
     pred_log_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="关联处理日志ID")
-    algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="算法ID")
+    model_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="图像模型标识（统一模型规范 slug）"
+    )
     rating: Mapped[int] = mapped_column(mysql_types.TINYINT, nullable=False, comment="评分(1-5星)")
     comment: Mapped[str | None] = mapped_column(String(500), nullable=True, comment="评价文字")
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True, comment="评价标签（JSON数组）")

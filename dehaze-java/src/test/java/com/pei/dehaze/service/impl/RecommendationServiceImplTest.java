@@ -1,12 +1,16 @@
 package com.pei.dehaze.service.impl;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
 import cn.hutool.json.JSONObject;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.mapper.SysAiModelMapper;
 import com.pei.dehaze.mapper.SysRecommendationRuleMapper;
 import com.pei.dehaze.model.form.AnalyzeForm;
 import com.pei.dehaze.model.vo.ImageFeatureAnalysisVO;
-import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,10 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
 
 /**
  * RecommendationServiceImpl 单元测试
@@ -31,10 +31,13 @@ class RecommendationServiceImplTest {
 
     @Mock
     private SysRecommendationRuleMapper ruleMapper;
+
     @Mock
     private com.pei.dehaze.mapper.SysPredLogMapper predLogMapper;
+
     @Mock
-    private SysAlgorithmService sysAlgorithmService;
+    private SysAiModelMapper aiModelMapper;
+
     @Mock
     private PythonAlgorithmClient pythonAlgorithmClient;
 
@@ -42,7 +45,7 @@ class RecommendationServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new RecommendationServiceImpl(ruleMapper, predLogMapper, sysAlgorithmService, pythonAlgorithmClient);
+        service = new RecommendationServiceImpl(ruleMapper, predLogMapper, aiModelMapper, pythonAlgorithmClient);
     }
 
     private JSONObject pythonFeatureData() {
@@ -68,8 +71,7 @@ class RecommendationServiceImplTest {
     void analyze_realFeatureResponse_returnsMappedVO() {
         AnalyzeForm form = new AnalyzeForm();
         form.setImageUrl("http://example.com/image.jpg");
-        when(pythonAlgorithmClient.analyzeImage("http://example.com/image.jpg"))
-                .thenReturn(pythonFeatureData());
+        when(pythonAlgorithmClient.analyzeImage("http://example.com/image.jpg")).thenReturn(pythonFeatureData());
 
         ImageFeatureAnalysisVO vo = service.analyze(form);
 
@@ -127,7 +129,6 @@ class RecommendationServiceImplTest {
         AnalyzeForm form = new AnalyzeForm();
         form.setImageUrl("http://example.com/file.pdf");
 
-        assertThatThrownBy(() -> service.analyze(form))
-                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(() -> service.analyze(form)).isInstanceOf(BusinessException.class);
     }
 }

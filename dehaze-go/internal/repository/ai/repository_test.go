@@ -62,7 +62,7 @@ func TestModelRepositoryLifecycle(t *testing.T) {
 		DisplayName: "含%百分号", MaxContextTokens: 4096, MaxOutputTokens: 4096, SupportsStreaming: 1, Status: 1,
 	}
 	require.NoError(t, modelRepo.Create(ctx, percentModel))
-	pageModels, total, err := modelRepo.PaginateModels(ctx, 1, 10, "%", "")
+	pageModels, total, err := modelRepo.PaginateModels(ctx, 1, 10, "%", "", nil)
 	require.NoError(t, err)
 	require.EqualValues(t, 1, total, "keyword '%' 应只命中含字面量 % 的行")
 	require.Len(t, pageModels, 1)
@@ -151,10 +151,15 @@ func TestProviderKeyRepository(t *testing.T) {
 	}
 	require.NoError(t, keyRepo.Create(ctx, key))
 
-	found, err := keyRepo.GetByHash(ctx, hash)
+	found, err := keyRepo.GetByProviderAndHash(ctx, provider.ID, hash)
 	require.NoError(t, err)
 	require.NotNil(t, found)
 	require.Equal(t, key.ID, found.ID)
+
+	// 同一 hash 在别的 provider 下不应被查到（查重按 provider 维度）
+	other, err := keyRepo.GetByProviderAndHash(ctx, provider.ID+1000, hash)
+	require.NoError(t, err)
+	require.Nil(t, other)
 
 	enabled, err := keyRepo.CountEnabledByProvider(ctx, provider.ID)
 	require.NoError(t, err)

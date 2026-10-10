@@ -4,10 +4,9 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.pei.dehaze.common.base.BaseEntity;
+import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
-import java.time.LocalDateTime;
 
 /**
  * AI 模型配置（表 sys_ai_model）。
@@ -27,8 +26,15 @@ public class SysAiModel extends BaseEntity {
     /** 模型标识（业务键，如 gpt-4o），与 providerId 联合唯一 */
     private String modelId;
 
-    /** chat/embedding/rerank，创建后不可改 */
+    /** 全模态模型类型（chat/embedding/rerank/image_gen/image_edit/video_gen/asr/tts/music_gen/3d_gen），创建后不可改 */
     private String modelType;
+
+    /**
+     * 任务归类标签（JSON 数组，按 TEXT 原样承载，服务层序列化/反序列化）。
+     *
+     * <p>图像模型 ["dehaze"]/["super_resolution"]，asr ["stream"]/["offline"]，embedding ["text"]/["image"]。
+     */
+    private String taskTags;
 
     /** embedding 向量维度，仅 embedding 类型有值，创建后不可改 */
     private Long dimension;

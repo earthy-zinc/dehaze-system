@@ -12,13 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * 用户控制器
@@ -36,9 +35,7 @@ public class SysUserController {
 
     @Operation(summary = "用户分页列表")
     @GetMapping("/page")
-    public PageResult<UserPageVO> listPagedUsers(
-            @Valid @ParameterObject UserPageQuery queryParams
-    ) {
+    public PageResult<UserPageVO> listPagedUsers(@Valid @ParameterObject UserPageQuery queryParams) {
         IPage<UserPageVO> result = userService.listPagedUsers(queryParams);
         return PageResult.success(result);
     }
@@ -47,18 +44,14 @@ public class SysUserController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:user:add')")
     @PreventDuplicateSubmit
-    public Result<Void> saveUser(
-            @RequestBody @Valid UserForm userForm
-    ) {
+    public Result<Void> saveUser(@RequestBody @Valid UserForm userForm) {
         boolean result = userService.saveUser(userForm);
         return Result.judge(result);
     }
 
     @Operation(summary = "用户表单数据")
     @GetMapping("/{userId}/form")
-    public Result<UserForm> getUserForm(
-            @Parameter(description = "用户ID") @PathVariable Long userId
-    ) {
+    public Result<UserForm> getUserForm(@Parameter(description = "用户ID") @PathVariable Long userId) {
         UserForm formData = userService.getUserFormData(userId);
         return Result.success(formData);
     }
@@ -67,8 +60,7 @@ public class SysUserController {
     @PutMapping(value = "/{userId}")
     @PreAuthorize("@ss.hasPerm('sys:user:edit')")
     public Result<Void> updateUser(
-            @Parameter(description = "用户ID") @PathVariable Long userId,
-            @RequestBody @Validated UserForm userForm) {
+            @Parameter(description = "用户ID") @PathVariable Long userId, @RequestBody @Validated UserForm userForm) {
         boolean result = userService.updateUser(userId, userForm);
         return Result.judge(result);
     }
@@ -76,9 +68,7 @@ public class SysUserController {
     @Operation(summary = "删除用户")
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:user:delete')")
-    public Result<Void> deleteUsers(
-            @Parameter(description = "用户ID，多个以英文逗号(,)分割") @PathVariable String ids
-    ) {
+    public Result<Void> deleteUsers(@Parameter(description = "用户ID，多个以英文逗号(,)分割") @PathVariable String ids) {
         boolean result = userService.deleteUsers(ids);
         return Result.judge(result);
     }
@@ -87,9 +77,7 @@ public class SysUserController {
     @PatchMapping(value = "/{userId}/password")
     @PreAuthorize("@ss.hasPerm('sys:user:password:reset')")
     public Result<Void> updatePassword(
-            @Parameter(description = "用户ID") @PathVariable Long userId,
-            @RequestBody Map<String, String> body
-    ) {
+            @Parameter(description = "用户ID") @PathVariable Long userId, @RequestBody Map<String, String> body) {
         String password = body.get("password");
         boolean result = userService.updatePassword(userId, password);
         return Result.judge(result);
@@ -100,8 +88,7 @@ public class SysUserController {
     @PreAuthorize("@ss.hasPerm('sys:user:status')")
     public Result<Void> updateUserStatus(
             @Parameter(description = "用户ID") @PathVariable Long userId,
-            @Parameter(description = "用户状态(1:启用;0:禁用)") @RequestParam Integer status
-    ) {
+            @Parameter(description = "用户状态(1:启用;0:禁用)") @RequestParam Integer status) {
         boolean result = userService.updateUserStatus(userId, status);
         return Result.judge(result);
     }

@@ -24,9 +24,49 @@ public class BenefitForm {
     @Min(value = 0, message = "月度去雾次数配额不能为负数")
     private Integer monthlyDehazeQuota;
 
+    @Schema(description = "月度去雨次数配额")
+    @Min(value = 0, message = "月度去雨次数配额不能为负数")
+    private Integer monthlyDerainQuota;
+
+    @Schema(description = "月度去雪次数配额")
+    @Min(value = 0, message = "月度去雪次数配额不能为负数")
+    private Integer monthlyDesnowQuota;
+
+    @Schema(description = "月度低光增强次数配额")
+    @Min(value = 0, message = "月度低光增强次数配额不能为负数")
+    private Integer monthlyLowlightQuota;
+
+    @Schema(description = "月度超分辨率次数配额")
+    @Min(value = 0, message = "月度超分辨率次数配额不能为负数")
+    private Integer monthlySuperResolutionQuota;
+
+    @Schema(description = "月度去噪次数配额")
+    @Min(value = 0, message = "月度去噪次数配额不能为负数")
+    private Integer monthlyDenoiseQuota;
+
+    @Schema(description = "月度图像修复次数配额")
+    @Min(value = 0, message = "月度图像修复次数配额不能为负数")
+    private Integer monthlyInpaintQuota;
+
     @Schema(description = "月度评估次数配额")
     @Min(value = 0, message = "月度评估次数配额不能为负数")
     private Integer monthlyEvaluateQuota;
+
+    @Schema(description = "AI对话日限额（积分/天，每日0点重置）")
+    @Min(value = 0, message = "AI对话日限额不能为负数")
+    private Long aiCreditsDaily;
+
+    @Schema(description = "AI对话月限额（积分/月，每月1日重置）")
+    @Min(value = 0, message = "AI对话月限额不能为负数")
+    private Long aiCreditsMonthly;
+
+    @Schema(description = "多模态视觉读取日限额（次/天，每日0点重置）")
+    @Min(value = 0, message = "多模态视觉读取日限额不能为负数")
+    private Integer multimodalLimit;
+
+    @Schema(description = "VIP按月赠送积分（0表示该等级不赠送）")
+    @Min(value = 0, message = "VIP按月赠送积分不能为负数")
+    private Long vipGiftCredits;
 
     @Schema(description = "历史记录保留条数")
     @Min(value = 0, message = "历史记录保留条数不能为负数")

@@ -174,7 +174,7 @@ func (s *McpServerService) DeleteServer(ctx context.Context, serverID, operatorI
 		return common.WrapBizError(common.DATABASE_ERROR, "统计 Agent 关联失败", err)
 	}
 	if refs > 0 {
-		return common.NewBizError(common.DATA_BIND_EXISTS,
+		return common.NewBizError(common.DATA_REFERENCED,
 			fmt.Sprintf("MCP Server [%s] 已被 %d 个 Agent 关联（命名空间），请先解绑再删除", server.Name, refs))
 	}
 	if err := s.repo.SoftDeleteServer(ctx, server.ID, operatorID); err != nil {

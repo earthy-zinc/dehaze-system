@@ -6,12 +6,11 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
-import com.pei.dehaze.common.handler.LongListTypeHandler;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
+import com.pei.dehaze.common.handler.StringListTypeHandler;
 import java.io.Serial;
 import java.util.List;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
@@ -25,8 +24,8 @@ public class SysRecommendationRule extends BaseEntity {
 
     private String sceneType;
 
-    @TableField(typeHandler = LongListTypeHandler.class)
-    private List<Long> algorithmIds;
+    @TableField(typeHandler = StringListTypeHandler.class)
+    private List<String> modelIds;
 
     private Integer weight;
 

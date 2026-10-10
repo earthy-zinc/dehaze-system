@@ -8,19 +8,18 @@ import com.pei.dehaze.common.util.AppPaths;
 import com.pei.dehaze.common.util.PathSecurityUtil;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 /**
  * @author earthy-zinc
@@ -102,7 +101,6 @@ public class LocalFileService implements FileService {
             throw new BusinessException("无法保存文件: " + e.getMessage(), e);
         }
     }
-
 
     /**
      * 删除文件

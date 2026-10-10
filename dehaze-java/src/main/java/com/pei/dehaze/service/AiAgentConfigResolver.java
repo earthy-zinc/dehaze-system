@@ -3,12 +3,11 @@ package com.pei.dehaze.service;
 import com.pei.dehaze.mapper.AiInsightMapper;
 import com.pei.dehaze.model.read.DictItemRead;
 import com.pei.dehaze.model.vo.AiAgentConfigDefaultsVO;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * Agent 配置三级合并解析器（系统默认 ← Agent 配置 ← 会话级覆盖）。
@@ -98,8 +97,8 @@ public class AiAgentConfigResolver {
 
     private Map<String, Object> mergeGuardrails(Map<String, Object> defaults, Object override) {
         Map<String, Object> result = new LinkedHashMap<>();
-        defaults.forEach((key, value) -> result.put(key, value instanceof Map
-                ? new LinkedHashMap<>((Map<String, Object>) value) : value));
+        defaults.forEach((key, value) ->
+                result.put(key, value instanceof Map ? new LinkedHashMap<>((Map<String, Object>) value) : value));
         if (!(override instanceof Map)) {
             return result;
         }

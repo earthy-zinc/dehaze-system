@@ -3,12 +3,6 @@ package com.pei.dehaze.service.impl.file;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileDTO;
 import com.pei.dehaze.service.FileService;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -16,6 +10,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
 
 /**
  * nginx-static 存储后端。
@@ -35,9 +34,8 @@ public class NginxStaticFileService implements FileService {
 
     private String baseUrl;
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    private final HttpClient httpClient =
+            HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
     @Override
     public String getStorageType() {
@@ -75,7 +73,8 @@ public class NginxStaticFileService implements FileService {
                             .build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() != 200) {
-                throw new BusinessException("nginx-static 下载失败: " + response.statusCode() + ", objectName=" + objectName);
+                throw new BusinessException(
+                        "nginx-static 下载失败: " + response.statusCode() + ", objectName=" + objectName);
             }
             return response.body();
         } catch (IOException | InterruptedException e) {

@@ -21,21 +21,25 @@ _PRECISION_KEYWORDS = ("报告", "审查", "优化", "确保符合")
 
 _EVAL_PROMPT = (
     "请评估用户消息的任务复杂度，只返回一个等级："
-    "L0(简单问答，无需工具)、L1(单步决策，可能需要工具)、"
+    "L0(闲聊或通用常识问答，无需任何工具)、"
+    "L1(单步任务，需要检索知识库/项目文档/网络或调用工具才能回答)、"
     "L2(多步骤批量任务)、L3(高精度需迭代优化的任务)。"
 )
 
 
 def _rule_based_eval(content: str) -> str | None:
-    """规则预判复杂度，无法判定返回 None"""
+    """规则预判复杂度，无法判定返回 None（交由 LLM 兜底评估）。
+
+    不做"消息短即 L0"的预判：短问题同样可能需要检索知识库或调用工具，
+    误判为 L0 会走无工具的 direct 直连路径，令工具（如 knowledge_base_search）
+    不可用——由 LLM 评估区分"闲聊/常识"与"需检索/工具"。
+    """
     if any(k in content for k in _PRECISION_KEYWORDS):
         return "L3"
     if any(k in content for k in _BATCH_KEYWORDS):
         return "L2"
     if any(k in content for k in _ACTION_KEYWORDS):
         return "L1"
-    if len(content) < 50:
-        return "L0"
     return None
 
 
@@ -47,7 +51,11 @@ def _get_last_content(messages: list[dict]) -> str:
 
 
 async def _llm_eval(state: AgentState) -> tuple[str, dict]:
-    """LLM 兜底评估复杂度，失败时保守返回 L0。返回 (等级, usage)"""
+    """LLM 兜底评估复杂度，失败时保守返回 L1。返回 (等级, usage)
+
+    失败降级为 L1（ReAct，装载可用工具）而非 L0：评估失败时无法判断是否需要工具，
+    选无工具的 direct 会让知识库检索等能力静默不可用；L1 保留工具访问、可自纠。
+    """
     usage: dict = {}
     try:
         last_content = _get_last_content(state.get("messages") or [])
@@ -71,9 +79,10 @@ async def _llm_eval(state: AgentState) -> tuple[str, dict]:
                 return level, usage
         logger.warning("LLM 复杂度评估返回无法识别的等级: %r", content)
     except Exception:
-        # 降级为 L0（直连范式），但必须留下可排查的日志
-        logger.warning("LLM 复杂度评估失败，降级为 L0", exc_info=True)
-    return "L0", usage
+        # 降级为 L1（ReAct，工具可用），并留下可排查的日志
+        logger.warning("LLM 复杂度评估失败，降级为 L1", exc_info=True)
+        return "L1", usage
+    return "L1", usage
 
 
 async def evaluate_complexity(state: AgentState) -> dict:

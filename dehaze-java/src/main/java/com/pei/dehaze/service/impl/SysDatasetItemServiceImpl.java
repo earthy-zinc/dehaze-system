@@ -1,10 +1,10 @@
 package com.pei.dehaze.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.result.ResultCode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.ImageClassificationUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.model.entity.SysDatasetItem;
@@ -15,16 +15,15 @@ import com.pei.dehaze.model.vo.*;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 数据项服务实现
@@ -95,9 +94,7 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
         // 更新场景类型需要更新所有关联的图片
         if (sceneType != null) {
             List<SysItemFile> itemFiles = sysItemFileService.list(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .eq(SysItemFile::getItemId, datasetItemId)
-            );
+                    new LambdaQueryWrapper<SysItemFile>().eq(SysItemFile::getItemId, datasetItemId));
             for (SysItemFile itemFile : itemFiles) {
                 itemFile.setSceneType(sceneType);
             }
@@ -136,27 +133,24 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
                 query.getMinSize(),
                 query.getMaxSize(),
                 query.getSortBy(),
-                query.getSortOrder()
-        );
+                query.getSortOrder());
 
         // 批量查询图片信息，避免N+1问题
         if (!results.isEmpty()) {
             List<Long> itemIds = results.stream().map(DatasetItemVO::getId).toList();
 
             // 批量获取所有数据项的图片
-            List<SysItemFile> allItemFiles = sysItemFileService.list(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .in(SysItemFile::getItemId, itemIds)
-                            .orderByAsc(SysItemFile::getItemId)
-                            .orderByAsc(SysItemFile::getType)
-            );
+            List<SysItemFile> allItemFiles = sysItemFileService.list(new LambdaQueryWrapper<SysItemFile>()
+                    .in(SysItemFile::getItemId, itemIds)
+                    .orderByAsc(SysItemFile::getItemId)
+                    .orderByAsc(SysItemFile::getType));
 
             // 批量预加载所有文件信息（源文件 + 缩略图），避免转换VO时N+1查询
             Map<Long, SysFile> fileMap = sysItemFileService.buildFileMap(allItemFiles);
 
             // 按itemId分组
-            Map<Long, List<SysItemFile>> itemFilesMap = allItemFiles.stream()
-                    .collect(Collectors.groupingBy(SysItemFile::getItemId));
+            Map<Long, List<SysItemFile>> itemFilesMap =
+                    allItemFiles.stream().collect(Collectors.groupingBy(SysItemFile::getItemId));
 
             // 填充每个DatasetItemVO的图片信息
             for (DatasetItemVO itemVO : results) {
@@ -181,11 +175,8 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
         log.debug("填充数据项图片信息: itemId={}, 查询到图片数量={}", itemVO.getId(), itemFiles.size());
 
         // 使用统一的图片分类工具类，通过预加载的fileMap避免N+1查询
-        ImageClassificationUtils.ClassificationResult result =
-                ImageClassificationUtils.classifyItemFiles(
-                        itemFiles,
-                        itemFile -> sysItemFileService.convertToImageUrlVO(itemFile, fileMap)
-                );
+        ImageClassificationUtils.ClassificationResult result = ImageClassificationUtils.classifyItemFiles(
+                itemFiles, itemFile -> sysItemFileService.convertToImageUrlVO(itemFile, fileMap));
 
         itemVO.setImageCount(itemFiles.size());
         itemVO.setClearImage(result.getClearImage());
@@ -205,8 +196,7 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
         List<ImageUrlVO> imageUrlVOs = sysItemFileService.getImageUrlVOs(id);
 
         // 使用统一的图片分类工具类
-        ImageClassificationUtils.ClassificationResult result =
-                ImageClassificationUtils.classifyImages(imageUrlVOs);
+        ImageClassificationUtils.ClassificationResult result = ImageClassificationUtils.classifyImages(imageUrlVOs);
 
         // 组装返回结果
         DatasetItemVO detail = new DatasetItemVO();

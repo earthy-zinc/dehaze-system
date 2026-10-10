@@ -8,7 +8,7 @@ import (
 )
 
 type IPresetRepository interface {
-	FindPage(ctx context.Context, algorithmID int64, userID int64, isSystem *bool, page, pageSize int) ([]model.SysPreset, int64, error)
+	FindPage(ctx context.Context, modelID string, userID int64, isSystem *bool, page, pageSize int) ([]model.SysPreset, int64, error)
 	FindByID(ctx context.Context, id int64) (*model.SysPreset, error)
 	Create(ctx context.Context, preset *model.SysPreset) error
 	Update(ctx context.Context, id int64, updates map[string]interface{}) error
@@ -23,7 +23,7 @@ func NewPresetRepository(db *gorm.DB) IPresetRepository {
 	return &presetRepository{db: db}
 }
 
-func (r *presetRepository) FindPage(ctx context.Context, algorithmID int64, userID int64, isSystem *bool, page, pageSize int) ([]model.SysPreset, int64, error) {
+func (r *presetRepository) FindPage(ctx context.Context, modelID string, userID int64, isSystem *bool, page, pageSize int) ([]model.SysPreset, int64, error) {
 	query := r.db.WithContext(ctx).Model(&model.SysPreset{})
 
 	if isSystem != nil && *isSystem {
@@ -37,8 +37,8 @@ func (r *presetRepository) FindPage(ctx context.Context, algorithmID int64, user
 		query = query.Where("type = ? OR (type = ? AND user_id = ?)", "system", "custom", userID)
 	}
 
-	if algorithmID > 0 {
-		query = query.Where("algorithm_id = ?", algorithmID)
+	if modelID != "" {
+		query = query.Where("model_id = ?", modelID)
 	}
 
 	var total int64

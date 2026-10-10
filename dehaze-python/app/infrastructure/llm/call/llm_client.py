@@ -19,7 +19,6 @@ Prompt Caching：anthropic 协议按 prompt_cache_prefix_len 对稳定前缀
 （system + 工具定义）注入 cache_control；openai_compat 自动缓存无需干预。
 """
 
-import asyncio
 import logging
 import time
 from collections.abc import AsyncGenerator, Callable
@@ -33,9 +32,9 @@ from app.core.exceptions import BusinessException
 from app.core.result import _get_trace_id
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.crypto.aes_cipher import decrypt
+from app.infrastructure.llm import tool_dialect as tool_dialect_module
 from app.infrastructure.llm.client.model_client import create_chat_client
 from app.infrastructure.llm.common import LlmStreamChunk, _map_httpx_error, build_user_identity
-from app.infrastructure.llm.local.local_llm_manager import ensure_running
 from app.infrastructure.provider.model_registry import model_registry
 from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.infrastructure.provider.provider_key_selector import provider_key_selector
@@ -45,6 +44,19 @@ from app.repository.ai_provider_repository import ai_provider_repository
 from app.service.ai.service.trace_collector import begin_llm_call, error_type_of, wire_record
 
 logger = logging.getLogger(__name__)
+
+
+def _with_tool_prompt(messages: list[dict], prompt: str) -> list[dict]:
+    """把文本化工具清单插入 leading system 消息之后（稳定前缀在前，利于 Prompt Caching）。
+
+    不改写原列表，返回新列表；无 system 消息时插到最前。
+    """
+    insert_at = 0
+    for index, message in enumerate(messages):
+        if message.get("role") != "system":
+            break
+        insert_at = index + 1
+    return [*messages[:insert_at], {"role": "system", "content": prompt}, *messages[insert_at:]]
 
 
 class _RouteFailed(Exception):
@@ -111,6 +123,7 @@ class LlmClient:
         on_route_result: Callable[[dict], None] | None,
         user_id: int | None,
         call=None,
+        tool_dialect: str = tool_dialect_module.NATIVE_OPENAI,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """在一个候选路由内按 Key 优先级组逐 Key 尝试；全部 Key 失败抛 _RouteFailed。
 
@@ -158,6 +171,7 @@ class LlmClient:
                     tool_choice,
                     temperature,
                     user_identity,
+                    tool_dialect=tool_dialect,
                 )
                 async for chunk in stream:
                     first_chunk = False
@@ -188,25 +202,17 @@ class LlmClient:
                         latency_ms=latency_ms,
                     )
                     call.observe_wire_error(error_code, detail)
-                is_local = provider.provider_code == "local"
-                if not is_local:
+                # 供应商健康：失败参与熔断判定（health_check_enabled=0 的供应商由
+                # provider_health_service 内部跳过，不在此按供应商身份特判）
+                await provider_health_service.record_call(
+                    redis, provider.id, False, error_code, latency_ms
+                )
+                # 仅在存在其它候选 Key 时冷却：单 Key 供应商（如内置服务密钥）冷却后无备用
+                # 可切，冷期内的全部请求会因"无可用 API Key"失败，而这类错误多为瞬时
+                if len(keys) > 1:
                     await provider_key_selector.mark_call_failed(redis, key_id, error_code)
-                    await provider_health_service.record_call(
-                        redis, provider.id, False, error_code, latency_ms
-                    )
-                elif not first_chunk:
-                    # 本地流中断：已下发部分内容，无法重放 → 直接抛出（不冷却占位 Key）
-                    logger.error("本地 provider 流式响应中断: %s", detail)
-                    raise BusinessException(
-                        ResultCode.AI_LLM_CALL_FAILED, f"流式响应中断: {detail}"
-                    ) from exc
-                else:
-                    # 内置本地 provider：就绪状态由 ensure_running 自管理，传输错误多为瞬时
-                    # （模型加载/并发推理），且占位 Key 无鉴权语义；冷却它会让冷却期内的
-                    # 所有本地推理请求因"无可用 API Key"失败。故本地不进入 Key 冷却，仅记录。
-                    logger.warning("本地 provider 调用失败(%s): %s", error_code, detail)
-                if not first_chunk and not is_local:
-                    # 非本地流中断：已下发部分内容，无法重放 → 直接抛出，不切 Key / 不降级
+                if not first_chunk:
+                    # 流已下发部分内容，无法重放 → 直接抛出，不切 Key / 不降级
                     logger.error("供应商 %s Key %s 流式响应中断: %s", provider.id, key_id, detail)
                     raise BusinessException(
                         ResultCode.AI_LLM_CALL_FAILED, f"流式响应中断: {detail}"
@@ -283,24 +289,41 @@ class LlmClient:
                 model = await ai_model_repository.get_by_id(db, route["model_pk"])
                 if not provider or provider.status != 1 or not model:
                     continue
-                # 内置本地 provider：确保子进程服务就绪（含模型自动下载，可能较慢，
-                # 线程化避免阻塞事件循环）
-                if provider.provider_code == "local":
-                    await asyncio.to_thread(ensure_running)
+                # 工具调用方言按候选路由解析（同一 model_id 在不同供应商的协议/解析能力不同）：
+                # 原生方言经 tools 字段传递；文本方言不发 tools、改把工具清单渲染进 system
+                # （零冗余：schema 只出现一次）；none 不注入任何工具
+                route_dialect = tool_dialect_module.resolve_tool_dialect(
+                    provider.protocol_type,
+                    model.model_id,
+                    model.model_type,
+                    model.supports_tool_call,
+                )
+                route_tools = tools
+                route_messages = messages
+                if route_dialect in tool_dialect_module.PROMPT_DIALECTS:
+                    route_tools = None
+                    tool_prompt = tool_dialect_module.render_tool_prompt(tools, route_dialect)
+                    if tool_prompt:
+                        route_messages = _with_tool_prompt(messages, tool_prompt)
+                elif tools is not None and route_dialect not in (
+                    tool_dialect_module.NATIVE_TOOLS_DIALECTS
+                ):
+                    route_tools = None
                 try:
                     async for chunk in self._stream_with_key_retry(
                         db,
                         provider,
                         model,
-                        messages,
+                        route_messages,
                         system_prompt,
                         temperature,
                         max_tokens,
-                        tools,
+                        route_tools,
                         tool_choice,
                         on_route_result,
                         user_id,
                         call,
+                        tool_dialect=route_dialect,
                     ):
                         if call:
                             call.observe_chunk(chunk)

@@ -11,18 +11,17 @@ import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
 import com.pei.dehaze.service.SysMenuService;
-import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * 菜单控制器
@@ -62,9 +61,7 @@ public class SysMenuController {
 
     @Operation(summary = "菜单表单数据")
     @GetMapping("/{id}/form")
-    public Result<MenuForm> getMenuForm(
-            @Parameter(description =  "菜单ID") @PathVariable Long id
-    ) {
+    public Result<MenuForm> getMenuForm(@Parameter(description = "菜单ID") @PathVariable Long id) {
         MenuForm menu = menuService.getMenuForm(id);
         return Result.success(menu);
     }
@@ -82,9 +79,7 @@ public class SysMenuController {
     @PutMapping(value = "/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
     public Result<Void> updateMenu(
-            @Parameter(description = "菜单ID") @PathVariable Long id,
-            @Valid @RequestBody MenuForm menuForm
-    ) {
+            @Parameter(description = "菜单ID") @PathVariable Long id, @Valid @RequestBody MenuForm menuForm) {
         menuForm.setId(id);
         boolean result = menuService.saveMenu(menuForm);
         return Result.judge(result);
@@ -93,9 +88,7 @@ public class SysMenuController {
     @Operation(summary = "删除菜单")
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:menu:delete')")
-    public Result<Void> deleteMenu(
-            @Parameter(description ="菜单ID，多个以英文(,)分割") @PathVariable("ids") String ids
-    ) {
+    public Result<Void> deleteMenu(@Parameter(description = "菜单ID，多个以英文(,)分割") @PathVariable("ids") String ids) {
         List<Long> idList;
         try {
             idList = Arrays.stream(ids.split(","))
@@ -113,13 +106,8 @@ public class SysMenuController {
     @PatchMapping("/{menuId}")
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
     public Result<Void> updateMenuVisible(
-            @Parameter(description =  "菜单ID") @PathVariable Long menuId,
-            @Valid @RequestBody MenuVisibleBody body
-    ) {
+            @Parameter(description = "菜单ID") @PathVariable Long menuId, @Valid @RequestBody MenuVisibleBody body) {
         boolean result = menuService.updateMenuVisible(menuId, body.getVisible());
         return Result.judge(result);
     }
-
-
 }
-

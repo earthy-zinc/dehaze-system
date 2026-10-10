@@ -24,7 +24,7 @@ type SysKnowledgeBase struct {
 	DocumentCount     int     `gorm:"column:document_count;type:int;not null;default:0;comment:文档数(冗余统计)" json:"documentCount"`
 	ChunkCount        int     `gorm:"column:chunk_count;type:int;not null;default:0;comment:分块总数(冗余统计)" json:"chunkCount"`
 	TotalTokens       int64   `gorm:"column:total_tokens;type:bigint;not null;default:0;comment:编码Token总数" json:"totalTokens"`
-	Status            int8    `gorm:"column:status;type:tinyint;not null;default:1;comment:状态(1:启用;2:处理中;0:禁用)" json:"status"`
+	Status            int8    `gorm:"column:status;type:tinyint;not null;comment:状态(1:启用;2:处理中;0:禁用)" json:"status"`
 	Deleted           int64   `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
 }
 
@@ -45,7 +45,7 @@ type SysKnowledgeDocument struct {
 	RawContent       *string `gorm:"column:raw_content;type:longtext;comment:原始富文本" json:"rawContent"`
 	ChunkCount       int     `gorm:"column:chunk_count;type:int;not null;default:0;comment:分块数(冗余统计)" json:"chunkCount"`
 	TotalTokens      int64   `gorm:"column:total_tokens;type:bigint;not null;default:0;comment:编码Token总数" json:"totalTokens"`
-	ProcessingStatus string  `gorm:"column:processing_status;type:varchar(16);not null;default:pending;comment:处理状态" json:"processingStatus"`
+	ProcessingStatus string  `gorm:"column:processing_status;type:varchar(16);not null;comment:处理状态" json:"processingStatus"`
 	Error            *string `gorm:"column:error;type:text;comment:失败原因" json:"error"`
 	Deleted          int64   `gorm:"column:deleted;type:bigint;not null;default:0;comment:逻辑删除标识" json:"deleted"`
 }

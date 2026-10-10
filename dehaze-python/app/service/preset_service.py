@@ -21,19 +21,19 @@ TYPE_CUSTOM = "custom"
 _SYSTEM_PRESET_SEEDS = [
     {
         "name": "默认去雾",
-        "algorithm_id": 13,
+        "model_id": "aecrnet",
         "params": {"gamma": 1.0, "strength": "medium"},
         "is_default": 1,
     },
     {
         "name": "轻度去雾",
-        "algorithm_id": 13,
+        "model_id": "aecrnet",
         "params": {"gamma": 0.8, "strength": "light"},
         "is_default": 0,
     },
     {
         "name": "深度去雾",
-        "algorithm_id": 13,
+        "model_id": "aecrnet",
         "params": {"gamma": 1.5, "strength": "strong"},
         "is_default": 0,
     },
@@ -45,7 +45,7 @@ def _to_vo(entity: SysPreset) -> PresetVO:
         id=entity.id,
         name=entity.name,
         type=entity.type,
-        algorithmId=entity.algorithm_id,
+        modelId=entity.model_id,
         params=entity.params,
         userId=entity.user_id,
         isDefault=entity.is_default,
@@ -70,7 +70,7 @@ class PresetService:
                     preset = SysPreset(
                         name=seed["name"],
                         type=TYPE_SYSTEM,
-                        algorithm_id=seed["algorithm_id"],
+                        model_id=seed["model_id"],
                         params=seed["params"],
                         user_id=None,
                         is_default=seed["is_default"],
@@ -86,7 +86,7 @@ class PresetService:
         self,
         db: AsyncSession,
         user_id: int,
-        algorithm_id: int | None = None,
+        model_id: str | None = None,
         is_system: bool | None = None,
         page: int = 1,
         size: int = 10,
@@ -94,7 +94,7 @@ class PresetService:
         presets, total = await self.repo.list_presets(
             db,
             user_id,
-            algorithm_id,
+            model_id,
             is_system=is_system,
             page=page,
             size=size,
@@ -106,7 +106,7 @@ class PresetService:
         preset = SysPreset(
             name=form.name,
             type=TYPE_CUSTOM,
-            algorithm_id=form.algorithmId,
+            model_id=form.modelId,
             params=form.params,
             user_id=user_id,
             is_default=form.isDefault or 0,
@@ -130,7 +130,7 @@ class PresetService:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "不能操作他人的预设")
 
         preset.name = form.name
-        preset.algorithm_id = form.algorithmId
+        preset.model_id = form.modelId
         preset.params = form.params
         if form.isDefault is not None:
             preset.is_default = form.isDefault

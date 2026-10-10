@@ -1,8 +1,7 @@
 package com.pei.dehaze.service.importexport.model;
 
-import lombok.Data;
-
 import java.util.Map;
+import lombok.Data;
 
 /**
  * 导入选项

@@ -5,5 +5,4 @@ import com.pei.dehaze.model.entity.SysBalanceLog;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SysBalanceLogMapper extends BaseMapper<SysBalanceLog> {
-}
+public interface SysBalanceLogMapper extends BaseMapper<SysBalanceLog> {}

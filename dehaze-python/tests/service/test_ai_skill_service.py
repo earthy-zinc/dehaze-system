@@ -695,17 +695,22 @@ def _patch_inference(monkeypatch, captured):
     monkeypatch.setattr("app.service.ai.strategies.agent_config_resolver.resolve", _fake_resolve)
 
 
-async def test_test_skill_runs_real_inference(repo, monkeypatch):
+@pytest.mark.requires_db
+async def test_test_skill_runs_real_inference(db, repo, monkeypatch):
+    from app.service.ai.service.model_defaults import resolve_default_chat_model
+
     repo.skills = {1: _skill(1, "图片去雾", instruction="# 步骤", status=1)}
     captured = {}
     _patch_inference(monkeypatch, captured)
 
-    result = await _svc(repo).test_skill(repo, _REDIS, 1, SkillTestForm(inputData={"img": "x.jpg"}))
+    # db 走真实测试库：默认模型取自 sys_dict（Skill 试运行无 Agent 级/会话级模型覆盖）
+    result = await _svc(repo).test_skill(db, _REDIS, 1, SkillTestForm(inputData={"img": "x.jpg"}))
 
     assert result["skillId"] == 1
     assert result["skillName"] == "图片去雾"
     assert result["output"] == "去雾完成"
     assert result["usage"] == {"total_tokens": 42}
+    assert captured["snapshot"]["model_id"] == await resolve_default_chat_model(db)
     # Skill 指令作为 system_prompt 进入推理链路（不再是回显预览）
     assert captured["snapshot"]["system_prompt"] == "# 步骤"
     assert captured["state"]["system_prompt"] == "# 步骤"

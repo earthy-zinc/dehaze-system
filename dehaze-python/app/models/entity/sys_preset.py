@@ -21,7 +21,9 @@ class SysPreset(BaseModel):
         default="custom",
         comment="预设类型(system:系统预设;custom:用户自定义)",
     )
-    algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="关联算法ID")
+    model_id: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="关联图像模型标识（统一模型规范 slug）"
+    )
     params: Mapped[dict | None] = mapped_column(JSON, nullable=True, comment="参数键值对(JSON)")
     user_id: Mapped[int | None] = mapped_column(
         BigInteger, nullable=True, comment="所属用户ID(系统预设为空)"

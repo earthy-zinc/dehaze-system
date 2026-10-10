@@ -30,6 +30,9 @@ class ProviderCreate(OrmResult):
     health_check_enabled: int = Field(
         default=1, description="健康检查开关(1:开启,参与熔断判定;0:关闭)"
     )
+    request_timeout_seconds: int | None = Field(
+        default=None, ge=1, description="请求超时(秒;NULL=调用方默认:chat 120/embedding 30)"
+    )
     user_identity_forward: UserIdentityForwardConfig | None = Field(
         default=None, description="用户身份透传配置"
     )
@@ -69,6 +72,9 @@ class ProviderResult(OrmResult):
     sort_order: int = Field(description="排序序号")
     health_check_enabled: int = Field(
         default=1, description="健康检查开关(1:开启,参与熔断判定;0:关闭)"
+    )
+    request_timeout_seconds: int | None = Field(
+        default=None, description="请求超时(秒;NULL=调用方默认)"
     )
     user_identity_forward: UserIdentityForwardConfig | None = Field(
         default=None, description="用户身份透传配置"
@@ -149,9 +155,11 @@ class ProviderHealthStatResult(OrmResult):
     provider_name: str = Field(description="供应商显示名称")
     health: str = Field(description="健康状态(healthy/suspicious/open)")
     call_count: int = Field(description="调用次数")
-    success_rate: float = Field(description="成功率(0-1)")
-    rate429: float = Field(description="429限流率(0-1)")
-    p95_latency_ms: int = Field(default=0, description="延迟P95(毫秒)")
+    success_rate: float | None = Field(default=None, description="成功率(0-1)，近24h无调用为 null")
+    rate429: float | None = Field(default=None, description="429限流率(0-1)，近24h无调用为 null")
+    p95_latency_ms: int | None = Field(
+        default=None, description="延迟P95(毫秒)，近24h无调用为 null"
+    )
     circuit_open: bool = Field(description="是否熔断")
 
 

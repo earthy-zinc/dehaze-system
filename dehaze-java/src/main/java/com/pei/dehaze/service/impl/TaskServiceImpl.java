@@ -18,19 +18,11 @@ import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
 import com.pei.dehaze.model.query.TaskQuery;
 import com.pei.dehaze.model.vo.TaskVO;
-import com.pei.dehaze.service.TaskService;
-import com.pei.dehaze.service.TaskExecutor;
-import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.TaskExecutor;
+import com.pei.dehaze.service.TaskService;
+import com.pei.dehaze.service.impl.file.StorageServiceFactory;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,6 +30,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * 任务服务实现
@@ -75,8 +74,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
                     .eq(SysTask::getIdempotencyKey, idempotencyKey)
                     .eq(SysTask::getCreateBy, currentUserId));
             if (existingTask != null) {
-                log.debug("幂等键命中，返回已有任务: taskId={}, idempotencyKey={}",
-                        existingTask.getTaskId(), idempotencyKey);
+                log.debug("幂等键命中，返回已有任务: taskId={}, idempotencyKey={}", existingTask.getTaskId(), idempotencyKey);
                 return convertToTaskVO(existingTask);
             }
         }
@@ -106,8 +104,9 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         // 缓存幂等键映射
         if (StrUtil.isNotBlank(idempotencyKey)) {
             String idempotencyRedisKey = TaskConstants.IDEMPOTENCY_KEY_PREFIX + idempotencyKey;
-            redisTemplate.opsForValue().set(idempotencyRedisKey, taskId,
-                    TaskConstants.IDEMPOTENCY_KEY_EXPIRE_SECONDS, TimeUnit.SECONDS);
+            redisTemplate
+                    .opsForValue()
+                    .set(idempotencyRedisKey, taskId, TaskConstants.IDEMPOTENCY_KEY_EXPIRE_SECONDS, TimeUnit.SECONDS);
         }
 
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
@@ -215,7 +214,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         if (sysTask.getStatus() != null
                 && (sysTask.getStatus() == TaskConstants.STATUS_COMPLETED
-                || sysTask.getStatus() == TaskConstants.STATUS_FAILED)) {
+                        || sysTask.getStatus() == TaskConstants.STATUS_FAILED)) {
             throw new BusinessException("任务已完成或失败，无法取消: status=" + sysTask.getStatus());
         }
 
@@ -335,8 +334,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("用户未登录");
         }
 
-        LambdaQueryWrapper<SysTask> wrapper = new LambdaQueryWrapper<SysTask>()
-                .eq(SysTask::getCreateBy, currentUserId);
+        LambdaQueryWrapper<SysTask> wrapper = new LambdaQueryWrapper<SysTask>().eq(SysTask::getCreateBy, currentUserId);
 
         if (StrUtil.isNotBlank(query.getTaskType())) {
             List<String> types = Arrays.stream(query.getTaskType().split(","))
@@ -436,18 +434,20 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
     private List<String> resolveTypesByCategory(String category) {
         if (TaskConstants.CATEGORY_IMPORT.equalsIgnoreCase(category)) {
             return List.of(
-                    TaskConstants.TYPE_USER_IMPORT, TaskConstants.TYPE_ROLE_IMPORT,
-                    TaskConstants.TYPE_DEPT_IMPORT, TaskConstants.TYPE_MENU_IMPORT,
-                    TaskConstants.TYPE_DICT_IMPORT, TaskConstants.TYPE_ALGORITHM_IMPORT
-            );
+                    TaskConstants.TYPE_USER_IMPORT,
+                    TaskConstants.TYPE_ROLE_IMPORT,
+                    TaskConstants.TYPE_DEPT_IMPORT,
+                    TaskConstants.TYPE_MENU_IMPORT,
+                    TaskConstants.TYPE_DICT_IMPORT);
         }
         if (TaskConstants.CATEGORY_EXPORT.equalsIgnoreCase(category)) {
             return List.of(
                     TaskConstants.TYPE_DATASET_EXPORT,
-                    TaskConstants.TYPE_USER_EXPORT, TaskConstants.TYPE_ROLE_EXPORT,
-                    TaskConstants.TYPE_DEPT_EXPORT, TaskConstants.TYPE_MENU_EXPORT,
-                    TaskConstants.TYPE_DICT_EXPORT, TaskConstants.TYPE_ALGORITHM_EXPORT
-            );
+                    TaskConstants.TYPE_USER_EXPORT,
+                    TaskConstants.TYPE_ROLE_EXPORT,
+                    TaskConstants.TYPE_DEPT_EXPORT,
+                    TaskConstants.TYPE_MENU_EXPORT,
+                    TaskConstants.TYPE_DICT_EXPORT);
         }
         return null;
     }
@@ -476,8 +476,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             return cachedTask;
         }
 
-        return this.getOne(new LambdaQueryWrapper<SysTask>()
-                .eq(SysTask::getTaskId, taskId));
+        return this.getOne(new LambdaQueryWrapper<SysTask>().eq(SysTask::getTaskId, taskId));
     }
 
     private TaskVO convertToTaskVO(SysTask sysTask) {
@@ -528,9 +527,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             return JSONUtil.toBean(jsonResult, String.class);
         } catch (Exception e) {
             // Hutool toBean 对纯 JSON 字符串值可能不支持，fallback 手动去掉首尾 JSON 引号
-            if (jsonResult.length() >= 2
-                    && jsonResult.startsWith("\"")
-                    && jsonResult.endsWith("\"")) {
+            if (jsonResult.length() >= 2 && jsonResult.startsWith("\"") && jsonResult.endsWith("\"")) {
                 return jsonResult.substring(1, jsonResult.length() - 1);
             }
             return jsonResult;

@@ -1,12 +1,14 @@
 """语音交互 ASR 服务：流式/离线识别编排
 
 对齐《后端实现.md》§3 与 API 契约：
-- 流式：创建会话（并发校验/计费预校验/热词注册）→ WebSocket 上行 PCM 下行增量 JSON
-- 离线：multipart 直传 WAV/PCM → FunASR 识别 → 返回文本（音频处理完即弃不落盘）
+- 流式：创建会话（并发校验/计费预校验）→ WebSocket 上行 PCM 下行增量 JSON
+- 离线：multipart 直传 WAV/PCM → 引擎识别 → 返回文本（音频处理完即弃不落盘）
 - 会话状态存 Redis（voice:asr:{sessionId}），结束保留 30 分钟用于结果查询；
   并发计数用有序集合 voice:asr:sessions（按时间戳剪枝后 ZCARD）
 - 计费：创建时 ensure_balance 预校验（按 10 秒起步），结束/识别完成时 charge_asr 按秒实扣
 
+识别经 Provider 转发到外置引擎服务（dehaze-service/dehaze-voice）：推理参数（ModelScope
+model_id）与热词随请求/会话下发，编排侧保留并发、计费、会话态与超时控制。
 本模块用 get_db_session 手动管理事务（WebSocket/离线场景无请求级事务）。
 """
 
@@ -28,9 +30,13 @@ from app.core.exceptions import BusinessException
 from app.database import get_db_session
 from app.dependencies.auth import SESSION_PREFIX
 from app.dependencies.redis import get_redis_client
-from app.infrastructure.voice.provider.registry import voice_engine_registry
+from app.infrastructure.llm.client.audio_dispatch import AudioStreamSession, get_audio_client
+from app.infrastructure.llm.client.openai_audio_client import EngineStreamClosed
+from app.repository.ai_model_repository import ai_model_repository
+from app.repository.ai_provider_repository import ai_provider_repository
 from app.service.voice.hotword_service import hotword_service
 from app.service.voice.voice_billing_service import voice_billing_service
+from app.service.voice.voice_model_route import VoiceRoute, resolve_voice_model
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +75,9 @@ class AsrService:
         self,
         hotword_service=hotword_service,
         voice_billing_service=voice_billing_service,
-        engine_registry=voice_engine_registry,
     ):
         self.hotword_service = hotword_service
         self.voice_billing_service = voice_billing_service
-        self.engine_registry = engine_registry
 
     # ==================== 会话状态与并发（Redis） ====================
 
@@ -109,15 +113,21 @@ class AsrService:
     async def create_stream_session(
         self, redis: Redis, db: AsyncSession, user_id: int, model: str | None
     ) -> str:
-        """创建流式 ASR 会话：并发校验、计费预校验、注册热词，返回 sessionId
+        """创建流式 ASR 会话：并发校验、计费预校验，返回 sessionId
 
-        连接 FunASR 延迟到 WebSocket 建立时（stream-session 仅创建会话元数据），
-        wsUrl 由路由层基于请求地址构建。
+        连接引擎延迟到 WebSocket 建立时（stream-session 仅创建会话元数据），
+        wsUrl 由路由层基于请求地址构建；热词在 WS 建连时随会话下发给引擎。
         """
         await self._check_concurrency(redis)
+        # 统一模型路由（asr 平台默认模型），会话元数据记录 model_id/provider_id 供引擎建连与计费
+        route = await resolve_voice_model(db, "asr")
         # 计费预校验（预估按 10 秒起步），不足直接拒绝
         await self.voice_billing_service.ensure_balance(
-            db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
+            db,
+            user_id,
+            await self.voice_billing_service.estimate_asr_credits(
+                db, route.model_id, route.provider.id, _ESTIMATE_SECONDS
+            ),
         )
 
         session_id = uuid.uuid4().hex
@@ -130,6 +140,8 @@ class AsrService:
                 "status": "processing",
                 "text": "",
                 "model": model or "",
+                "model_id": route.model_id,
+                "provider_id": route.provider.id,
                 "create_time": now,
             },
         )
@@ -138,20 +150,21 @@ class AsrService:
         # 清理历史遗留的并发计数（避免上一步 ZADD 后集合膨胀）
         await redis.zremrangebyscore(_CONCURRENT_KEY, 0, now - _SESSION_TTL)
 
-        # 注册热词（合并全局+用户级），失败仅告警不阻断会话创建
-        provider = await self.engine_registry.get_asr_provider()
-        await self._register_hotwords(db, user_id, provider)
-
         return session_id
 
-    async def _register_hotwords(self, db: AsyncSession, user_id: int, provider) -> None:
-        """合并全局+用户级热词注册到 ASR Provider；调用失败仅告警。"""
+    async def _effective_hotwords(self, user_id: int, db: AsyncSession | None = None) -> list[str]:
+        """生效热词（全局+用户级）：随请求/会话下发给引擎
+
+        WS 场景无请求级事务（db 为空时自建会话）；获取失败仅告警，不阻断识别。
+        """
         try:
-            words = await self.hotword_service.get_effective_words(db, user_id)
-            if words:
-                await provider.register_hotwords(words)
-        except Exception as e:  # 热词注册失败不阻断会话
-            logger.warning("注册热词失败(不影响会话) user_id=%s error=%s", user_id, e)
+            if db is not None:
+                return await self.hotword_service.get_effective_words(db, user_id)
+            async with get_db_session() as session:
+                return await self.hotword_service.get_effective_words(session, user_id)
+        except Exception as e:
+            logger.warning("获取热词失败(不影响会话) user_id=%s error=%s", user_id, e)
+            return []
 
     # ==================== 查询结果 ====================
 
@@ -175,22 +188,31 @@ class AsrService:
     ) -> dict[str, str]:
         """离线识别完整音频（multipart 直传），处理完即弃不落盘，完成时按秒实扣。"""
         self._validate_audio(audio)
+        # 统一模型路由（asr 平台默认模型）
+        route = await resolve_voice_model(db, "asr")
         # 计费预校验（预估按 10 秒起步）
         await self.voice_billing_service.ensure_balance(
-            db, user_id, math.ceil(_ESTIMATE_SECONDS * settings.VOICE_ASR_CREDITS_PER_SECOND)
+            db,
+            user_id,
+            await self.voice_billing_service.estimate_asr_credits(
+                db, route.model_id, route.provider.id, _ESTIMATE_SECONDS
+            ),
         )
-        # 注册热词（离线识别也应用领域热词），失败仅告警
-        provider = await self.engine_registry.get_asr_provider()
-        await self._register_hotwords(db, user_id, provider)
+        # 热词（全局+用户级）随请求下发给引擎，失败仅告警
+        hotwords = await self._effective_hotwords(user_id, db)
 
         try:
-            text = await provider.recognize_offline(audio)
+            text = await get_audio_client(route.provider.protocol_type).transcribe(
+                route.provider, route.model_id, audio, hotwords
+            )
+        except BusinessException:
+            raise
         except Exception as e:
             raise BusinessException(ResultCode.BUSINESS_ERROR, f"离线识别失败: {e}") from e
 
         # 按音频时长（秒）实扣，音频字节数折算为秒向上取整
         audio_seconds = math.ceil(len(audio) / _BYTES_PER_SECOND)
-        await self._charge(db, user_id, audio_seconds)
+        await self._charge(db, user_id, audio_seconds, route)
 
         session_id = uuid.uuid4().hex
         await self._save_session(
@@ -256,18 +278,23 @@ class AsrService:
 
         user_id = int(session["user_id"])
 
-        # 经注册表获取 ASR Provider 并建立流式会话，失败则标记会话 failed 并关闭前端
+        # 从会话元数据恢复统一模型路由（model_id/provider_id 由创建会话时解析落 Redis），
+        # 经语音协议适配器（按供应商 protocol_type 分派）建立引擎侧流式会话
+        # （热词与幂等键随会话下发），失败则标记会话 failed 并关闭前端
         try:
-            provider = await self.engine_registry.get_asr_provider()
-            funasr = await provider.recognize_stream()
+            route = await self._restore_route(session)
+            hotwords = await self._effective_hotwords(user_id)
+            engine = await get_audio_client(route.provider.protocol_type).open_stream(
+                route.provider, route.model_id, hotwords, session_id
+            )
         except Exception as e:
-            logger.error("连接 ASR 失败 session=%s error=%s", session_id, e)
+            logger.error("连接 ASR 引擎失败 session=%s error=%s", session_id, e)
             await self._fail_session(redis, session_id)
             await self._reject(websocket, "识别服务不可用，请稍后重试")
             return
 
         try:
-            await self._run_stream(websocket, redis, session_id, user_id, funasr)
+            await self._run_stream(websocket, redis, session_id, user_id, engine, route)
         except WebSocketDisconnect:
             logger.info("客户端断开流式 ASR 会话 session=%s", session_id)
         except asyncio.CancelledError:
@@ -306,27 +333,36 @@ class AsrService:
         redis: Redis,
         session_id: str,
         user_id: int,
-        funasr,
+        engine: AudioStreamSession,
+        route: VoiceRoute,
     ) -> None:
-        """执行双向流式代理，返回后由调用方完成计费与状态落库。
+        """执行两跳双向流式代理，结束后写入会话终态。
 
-        客户端断开/达最大时长/空闲超时/收到 EOS 均走正常结束路径：
-        按已接收音频时长计费并将会话置为 completed（断开时保留已识别的部分文本）。
+        客户端断开/达最大时长/空闲超时/收到 EOS 均走正常结束路径：向引擎发 EOS 求得最终
+        文本，按已接收音频时长计费并将会话置为 completed（断开时保留已识别的部分文本）。
+        引擎侧断开同样按收尾处理（不再发 EOS），不使会话失败。
+
+        引擎错误帧，或建连后未产出任何识别结果即断开，说明识别未起效（如模型加载失败）：
+        向前端以 4001 关闭并把会话置 failed，对齐拆分前「建连即校验可用」的语义。
         """
         await websocket.accept()
 
-        # 下行：FunASR 增量文本 → 前端；收到最终结果后结束
+        # 下行：引擎增量文本 → 前端；收到最终结果后结束
         downlink_done = asyncio.Event()
         final_holder: dict[str, str] = {}
+        # 是否收到过引擎识别结果（增量或最终）：空结果帧同样算识别已起效（静音录音）
+        produced_result = False
 
         async def pump_downlink():
+            nonlocal produced_result
             try:
-                async for raw in funasr.recv_messages():
+                async for raw in engine.recv_messages():
                     try:
                         msg = json.loads(raw)
                     except json.JSONDecodeError:
-                        logger.warning("FunASR 返回非 JSON: %s session=%s", raw[:100], session_id)
+                        logger.warning("引擎返回非 JSON: %s session=%s", raw[:100], session_id)
                         continue
+                    produced_result = True
                     text = msg.get("text", "")
                     is_final = bool(msg.get("is_final", msg.get("isFinal", False)))
                     try:
@@ -340,9 +376,10 @@ class AsrService:
                 downlink_done.set()
 
         downlink_task = asyncio.create_task(pump_downlink())
+        downlink_error: BaseException | None = None
         total_bytes = 0
         try:
-            # 上行：前端音频/结束信号 → FunASR，并受空闲/时长/单块上限约束
+            # 上行：前端音频/结束信号 → 引擎，并受空闲/时长/单块上限约束
             while True:
                 try:
                     data = await asyncio.wait_for(
@@ -350,9 +387,14 @@ class AsrService:
                     )
                 except TimeoutError:
                     logger.info("流式 ASR 空闲超时关闭 session=%s", session_id)
+                    await engine.send_eos()
                     break
-                except WebSocketDisconnect:
+
+                # receive() 以 websocket.disconnect 消息返回断连（不抛 WebSocketDisconnect），
+                # 必须立即结束上行循环，否则再次 receive() 抛 RuntimeError 会把正常断开误判为失败
+                if data["type"] == "websocket.disconnect":
                     logger.info("客户端断开流式 ASR 会话 session=%s", session_id)
+                    await engine.send_eos()
                     break
 
                 if "bytes" in data and data["bytes"] is not None:
@@ -361,33 +403,70 @@ class AsrService:
                         logger.warning("音频块超限拒绝 session=%s", session_id)
                         continue
                     total_bytes += len(chunk)
-                    await funasr.send_audio(chunk)
-                    # 累计音频达最大时长：发送 EOS 结束，FunASR 输出最终结果
+                    try:
+                        await engine.send_audio(chunk)
+                    except EngineStreamClosed as exc:
+                        logger.warning("引擎侧断开按收尾处理 session=%s error=%s", session_id, exc)
+                        break
+                    # 累计音频达最大时长：发送 EOS 结束，引擎输出最终结果
                     if total_bytes >= _BYTES_PER_SECOND * settings.VOICE_ASR_MAX_DURATION:
                         logger.info("流式 ASR 达最大时长自动结束 session=%s", session_id)
-                        await funasr.send_eos()
+                        await engine.send_eos()
                         break
                 elif data.get("text"):
                     if data["text"].strip() == "EOS":
-                        await funasr.send_eos()
+                        await engine.send_eos()
                         break
         finally:
-            # 等待下行把最终结果推送完（或超时取消），并取回下行任务异常避免告警
+            # 等待下行把最终结果推送完（或超时取消），并取回下行任务异常作为引擎失败信号
             try:
                 await asyncio.wait_for(downlink_done.wait(), timeout=10)
             except TimeoutError:
                 downlink_task.cancel()
             if downlink_task.done() and not downlink_task.cancelled():
-                exc = downlink_task.exception()
-                if exc:
-                    logger.warning("FunASR 下行异常 session=%s error=%s", session_id, exc)
+                downlink_error = downlink_task.exception()
+            await engine.aclose()
 
-        final_text = final_holder.get("text", "")
         audio_seconds = math.ceil(total_bytes / _BYTES_PER_SECOND)
-        await self._complete_session(redis, session_id, user_id, final_text, audio_seconds)
+        if downlink_error is not None or not produced_result:
+            logger.error("ASR 引擎未产出识别结果 session=%s error=%s", session_id, downlink_error)
+            await self._fail_session(redis, session_id)
+            try:
+                await websocket.close(code=4001)
+            except Exception as e:  # 前端已断开时关闭失败不影响收尾
+                logger.warning("关闭前端 WebSocket 失败 session=%s: %s", session_id, e)
+            # 计费不变式：仍按已收字节实扣（引擎未起效时通常为 0 秒，不产生费用）
+            if audio_seconds > 0:
+                await self._charge(None, user_id, audio_seconds, route)
+            return
+        await self._complete_session(
+            redis, session_id, user_id, final_holder.get("text", ""), audio_seconds, route
+        )
+
+    async def _restore_route(self, session: dict[str, Any]) -> VoiceRoute:
+        """从会话元数据恢复统一模型路由（创建会话时已解析；此处仅按 id 复查存在性，
+        供应商连接信息随 provider 行读取——测试经 monkeypatch 模块级 get_db_session 拦截）"""
+        model_id = session.get("model_id")
+        provider_id = session.get("provider_id")
+        if not model_id or not provider_id:
+            raise BusinessException(
+                ResultCode.BUSINESS_ERROR, "ASR 会话缺少统一模型路由信息，请重新发起会话"
+            )
+        async with get_db_session() as db:
+            model = await ai_model_repository.get_by_model_id(db, model_id)
+            provider = await ai_provider_repository.get_by_id(db, int(provider_id))
+        if model is None or provider is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "ASR 会话模型已不存在")
+        return VoiceRoute(model=model, provider=provider)
 
     async def _complete_session(
-        self, redis: Redis, session_id: str, user_id: int, text: str, audio_seconds: int
+        self,
+        redis: Redis,
+        session_id: str,
+        user_id: int,
+        text: str,
+        audio_seconds: int,
+        route: VoiceRoute,
     ) -> None:
         """会话正常结束：落库状态（completed）+ 按秒实扣。"""
         session = await self._load_session(redis, session_id) or {}
@@ -395,7 +474,7 @@ class AsrService:
         session["text"] = text
         await self._save_session(redis, session_id, session)
         if audio_seconds > 0:
-            await self._charge(None, user_id, audio_seconds)
+            await self._charge(None, user_id, audio_seconds, route)
 
     async def _fail_session(self, redis: Redis, session_id: str) -> None:
         """会话失败：更新状态为 failed。"""
@@ -403,14 +482,20 @@ class AsrService:
         session["status"] = "failed"
         await self._save_session(redis, session_id, session)
 
-    async def _charge(self, db: AsyncSession | None, user_id: int, audio_seconds: int) -> None:
+    async def _charge(
+        self, db: AsyncSession | None, user_id: int, audio_seconds: int, route: VoiceRoute
+    ) -> None:
         """按音频时长实扣（WebSocket 场景 db=None 用 get_db_session 手动事务）。"""
         try:
             if db is None:
                 async with get_db_session() as s:
-                    await self.voice_billing_service.charge_asr(s, user_id, audio_seconds)
+                    await self.voice_billing_service.charge_asr(
+                        s, user_id, route.model_id, route.provider.id, audio_seconds
+                    )
             else:
-                await self.voice_billing_service.charge_asr(db, user_id, audio_seconds)
+                await self.voice_billing_service.charge_asr(
+                    db, user_id, route.model_id, route.provider.id, audio_seconds
+                )
         except Exception as e:
             logger.error("ASR 计费失败 user_id=%s seconds=%s error=%s", user_id, audio_seconds, e)
 

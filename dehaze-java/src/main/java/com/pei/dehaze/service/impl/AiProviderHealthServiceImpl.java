@@ -7,19 +7,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.mapper.SysDictMapper;
 import com.pei.dehaze.model.entity.SysDict;
 import com.pei.dehaze.service.AiProviderHealthService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * 供应商健康与熔断实现：状态存 Redis（跨端共享），阈值取自 sys_dict（ai_provider_health）。
@@ -82,8 +80,7 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
         }
         // 冷却已过、恢复周期内：抢占探测租约放行单个请求（未抢到继续阻断）
         int cooldown = intOf(loadThresholds().get("circuit_cooldown"), 60);
-        Boolean acquired = redis.opsForValue()
-                .setIfAbsent(probeKey(providerId), "1", cooldown, TimeUnit.SECONDS);
+        Boolean acquired = redis.opsForValue().setIfAbsent(probeKey(providerId), "1", cooldown, TimeUnit.SECONDS);
         return Boolean.TRUE.equals(acquired) ? "half_open" : "open";
     }
 
@@ -129,14 +126,15 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
             status = "healthy";
         }
 
+        // 窗口内无调用（total=0）时比率与延迟都没有样本：写 null，与 python get_health_snapshot 同口径
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("status", status);
         snapshot.put("circuit_open", circuitOpen);
         snapshot.put("total_calls_24h", total);
-        snapshot.put("success_rate", total > 0 ? round4((double) (total - failed) / total) : 1.0);
-        snapshot.put("error_rate", total > 0 ? round4((double) failed / total) : 0.0);
-        snapshot.put("limit_rate", total > 0 ? round4((double) limit / total) : 0.0);
-        snapshot.put("p95_latency_ms", p95);
+        snapshot.put("success_rate", total > 0 ? round4((double) (total - failed) / total) : null);
+        snapshot.put("error_rate", total > 0 ? round4((double) failed / total) : null);
+        snapshot.put("limit_rate", total > 0 ? round4((double) limit / total) : null);
+        snapshot.put("p95_latency_ms", total > 0 ? p95 : null);
         writeJson(snapshotKey(providerId), snapshot, 60L);
         return snapshot;
     }
@@ -161,11 +159,8 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
 
     @Override
     public void closeCircuit(Long providerId) {
-        redis.delete(List.of(
-                circuitKey(providerId),
-                recoveryKey(providerId),
-                probeKey(providerId),
-                streakKey(providerId)));
+        redis.delete(
+                List.of(circuitKey(providerId), recoveryKey(providerId), probeKey(providerId), streakKey(providerId)));
         redis.delete(snapshotKey(providerId));
     }
 
@@ -192,7 +187,7 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
             failed += longOf(valueAt(raw, i * 3 + 1));
             limit += longOf(valueAt(raw, i * 3 + 2));
         }
-        return withLimit ? new long[]{total, failed, limit} : new long[]{total, failed, 0};
+        return withLimit ? new long[] {total, failed, limit} : new long[] {total, failed, 0};
     }
 
     private static Object valueAt(List<Object> raw, int index) {
@@ -202,7 +197,6 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
     /**
      * 阈值：进程内 60s → Redis 300s → sys_dict 回源，缺省键回落种子默认值。
      */
-
     private Map<String, Object> loadThresholds() {
         long now = System.currentTimeMillis();
         if (now < thresholdsExpireAt) {
@@ -266,8 +260,7 @@ public class AiProviderHealthServiceImpl implements AiProviderHealthService {
             return null;
         }
         try {
-            return objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {
-            });
+            return objectMapper.readValue(raw, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             log.warn("供应商健康缓存[{}]解析失败，删除后回源: {}", key, e.getMessage());
             redis.delete(key);

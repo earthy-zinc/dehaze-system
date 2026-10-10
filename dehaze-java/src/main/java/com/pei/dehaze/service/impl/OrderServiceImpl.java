@@ -49,6 +49,17 @@ import com.pei.dehaze.service.MemberService;
 import com.pei.dehaze.service.OrderService;
 import com.pei.dehaze.service.PackageService;
 import com.pei.dehaze.service.payment.PaymentChannelService;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
@@ -56,19 +67,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -78,17 +76,18 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     private static final int ORDER_TIMEOUT_MINUTES = 30;
     private static final int MAX_RENEW_FAIL_COUNT = 3;
     private static final DateTimeFormatter ORDER_NO_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private static final java.util.Set<String> PAY_METHODS = java.util.Set.of("wechat", "alipay", "balance", "combined");
+    private static final java.util.Set<String> PAY_METHODS =
+            java.util.Set.of("wechat", "alipay", "balance", "combined");
 
-    private static final Map<Integer, String> ORDER_STATUS_MAP = Map.of(
-            1, "pending", 2, "paid", 3, "completed", 4, "cancelled", 5, "refunding", 6, "refunded");
-    private static final Map<String, Integer> ORDER_STATUS_REVERSE_MAP = Map.of(
-            "pending", 1, "paid", 2, "completed", 3, "cancelled", 4, "refunding", 5, "refunded", 6);
-    private static final Map<Integer, String> REFUND_STATUS_MAP = Map.of(
-            1, "refunding", 2, "refunded", 3, "refund_failed");
+    private static final Map<Integer, String> ORDER_STATUS_MAP =
+            Map.of(1, "pending", 2, "paid", 3, "completed", 4, "cancelled", 5, "refunding", 6, "refunded");
+    private static final Map<String, Integer> ORDER_STATUS_REVERSE_MAP =
+            Map.of("pending", 1, "paid", 2, "completed", 3, "cancelled", 4, "refunding", 5, "refunded", 6);
+    private static final Map<Integer, String> REFUND_STATUS_MAP =
+            Map.of(1, "refunding", 2, "refunded", 3, "refund_failed");
     /** 售后原因类型（对齐 python refund_service.VALID_REASON_TYPES） */
-    private static final List<String> VALID_REASON_TYPES = Arrays.asList(
-            "after_sale", "force_majeure", "merchant", "other");
+    private static final List<String> VALID_REASON_TYPES =
+            Arrays.asList("after_sale", "force_majeure", "merchant", "other");
 
     private final SysPackageMapper packageMapper;
     private final SysUserMapper userMapper;
@@ -108,7 +107,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "order", action = "create", targetType = "order", targetIdSpel = "#result.orderNo", afterSpel = "#form")
+    @AuditLog(
+            module = "order",
+            action = "create",
+            targetType = "order",
+            targetIdSpel = "#result.orderNo",
+            afterSpel = "#form")
     public PayResult create(OrderCreateForm form) {
         Long userId = SecurityUtils.getUserId();
         if (!PAY_METHODS.contains(form.getPayMethod())) {
@@ -257,7 +261,11 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             }
             long expectedFen = order.getPayableAmount() != null ? order.getPayableAmount() : 0L;
             if (verifyResult.amountFen() > 0 && verifyResult.amountFen() != expectedFen) {
-                log.error("支付回调金额不一致: orderNo={}, expected={}, actual={}", orderNo, expectedFen, verifyResult.amountFen());
+                log.error(
+                        "支付回调金额不一致: orderNo={}, expected={}, actual={}",
+                        orderNo,
+                        expectedFen,
+                        verifyResult.amountFen());
                 return false;
             }
             completePayment(order, channelType);
@@ -271,7 +279,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "order", action = "cancel", targetType = "order", targetIdSpel = "#orderNo", afterSpel = "{reason:#reason}")
+    @AuditLog(
+            module = "order",
+            action = "cancel",
+            targetType = "order",
+            targetIdSpel = "#orderNo",
+            afterSpel = "{reason:#reason}")
     public void cancel(String orderNo, String reason) {
         SysOrder order = getOrderByNo(orderNo);
         if (!order.getUserId().equals(SecurityUtils.getUserId())) {
@@ -299,7 +312,10 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         Page<SysOrder> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysOrder> wrapper = new LambdaQueryWrapper<SysOrder>()
                 .eq(SysOrder::getUserId, userId)
-                .eq(CharSequenceUtil.isNotBlank(query.getStatus()), SysOrder::getStatus, orderStatusToInt(query.getStatus()))
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getStatus()),
+                        SysOrder::getStatus,
+                        orderStatusToInt(query.getStatus()))
                 .orderByDesc(SysOrder::getId);
         this.page(page, wrapper);
         Page<MyOrderVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
@@ -359,8 +375,14 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         Page<SysOrder> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysOrder> wrapper = new LambdaQueryWrapper<SysOrder>()
                 .eq(CharSequenceUtil.isNotBlank(query.getOrderNo()), SysOrder::getOrderNo, query.getOrderNo())
-                .eq(CharSequenceUtil.isNotBlank(query.getStatus()), SysOrder::getStatus, orderStatusToInt(query.getStatus()))
-                .eq(CharSequenceUtil.isNotBlank(query.getPackageType()), SysOrder::getPackageType, query.getPackageType())
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getStatus()),
+                        SysOrder::getStatus,
+                        orderStatusToInt(query.getStatus()))
+                .eq(
+                        CharSequenceUtil.isNotBlank(query.getPackageType()),
+                        SysOrder::getPackageType,
+                        query.getPackageType())
                 .eq(CharSequenceUtil.isNotBlank(query.getPayMethod()), SysOrder::getPayMethod, query.getPayMethod())
                 .ge(query.getAmountMin() != null, SysOrder::getPayableAmount, query.getAmountMin())
                 .le(query.getAmountMax() != null, SysOrder::getPayableAmount, query.getAmountMax())
@@ -369,10 +391,14 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 .orderByDesc(SysOrder::getId);
 
         if (CharSequenceUtil.isNotBlank(query.getKeywords())) {
-            List<Long> userIds = userMapper.selectList(new LambdaQueryWrapper<SysUser>()
+            List<Long> userIds = userMapper
+                    .selectList(new LambdaQueryWrapper<SysUser>()
                             .and(w -> w.like(SysUser::getUsername, query.getKeywords())
-                                    .or().like(SysUser::getNickname, query.getKeywords())))
-                    .stream().map(SysUser::getId).toList();
+                                    .or()
+                                    .like(SysUser::getNickname, query.getKeywords())))
+                    .stream()
+                    .map(SysUser::getId)
+                    .toList();
             if (userIds.isEmpty()) {
                 Page<OrderPageVO> empty = new Page<>(page.getCurrent(), page.getSize(), 0);
                 empty.setRecords(Collections.emptyList());
@@ -387,13 +413,17 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         if (records.isEmpty()) {
             userMap = Collections.emptyMap();
         } else {
-            userMap = userMapper.selectBatchIds(records.stream()
-                            .map(SysOrder::getUserId).distinct().toList())
-                    .stream().collect(Collectors.toMap(SysUser::getId, u -> u));
+            userMap = userMapper
+                    .selectBatchIds(
+                            records.stream().map(SysOrder::getUserId).distinct().toList())
+                    .stream()
+                    .collect(Collectors.toMap(SysUser::getId, u -> u));
         }
 
         Page<OrderPageVO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
-        result.setRecords(records.stream().map(o -> toOrderPageVO(o, userMap.get(o.getUserId()))).toList());
+        result.setRecords(records.stream()
+                .map(o -> toOrderPageVO(o, userMap.get(o.getUserId())))
+                .toList());
         return result;
     }
 
@@ -403,7 +433,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         stats.setTotalOrders(baseMapper.countTotalOrders(startTime, endTime));
         stats.setTotalRevenue(baseMapper.sumRevenue(startTime, endTime));
         stats.setTotalRefund(refundRecordMapper.sumRefundAmount(startTime, endTime));
-        stats.setRefundRate(stats.getTotalRevenue() > 0 ? (double) stats.getTotalRefund() / stats.getTotalRevenue() : 0.0);
+        stats.setRefundRate(
+                stats.getTotalRevenue() > 0 ? (double) stats.getTotalRefund() / stats.getTotalRevenue() : 0.0);
 
         Map<String, Long> statusDist = new LinkedHashMap<>();
         for (String s : Arrays.asList("pending", "paid", "completed", "cancelled", "refunding", "refunded")) {
@@ -457,7 +488,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "order", action = "refund_apply", targetType = "order", targetIdSpel = "#orderNo", afterSpel = "#form")
+    @AuditLog(
+            module = "order",
+            action = "refund_apply",
+            targetType = "order",
+            targetIdSpel = "#orderNo",
+            afterSpel = "#form")
     public void applyRefund(String orderNo, RefundApplyForm form) {
         SysOrder order = getOrderByNo(orderNo);
         if (!order.getUserId().equals(SecurityUtils.getUserId())) {
@@ -486,8 +522,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 refundAmount = 0L;
             } else {
                 LocalDateTime paidTime = order.getPaidTime() != null ? order.getPaidTime() : order.getCreateTime();
-                long used = Math.max(1, (long) Math.ceil(
-                        java.time.Duration.between(paidTime, LocalDateTime.now()).toSeconds() / 86400.0));
+                long used = Math.max(1, (long) Math.ceil(java.time.Duration.between(paidTime, LocalDateTime.now())
+                                .toSeconds()
+                        / 86400.0));
                 long remainingDays = periodDays - used;
                 usedDays = (int) used;
                 refundAmount = remainingDays > 0 ? paidAmount * remainingDays / periodDays : 0L;
@@ -517,8 +554,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     @Override
     public Page<RefundRecordVO> listRefunds(RefundPageQuery query) {
         Integer statusInt = refundStatusToInt(query.getStatus());
-        long total = refundRecordMapper.countRefundPage(statusInt, query.getApplyTimeStart(),
-                query.getApplyTimeEnd(), query.getOrderNo(), query.getKeywords());
+        long total = refundRecordMapper.countRefundPage(
+                statusInt, query.getApplyTimeStart(), query.getApplyTimeEnd(), query.getOrderNo(), query.getKeywords());
 
         Page<RefundRecordVO> result = new Page<>(query.getPageNum(), query.getPageSize(), total);
         if (total == 0) {
@@ -528,9 +565,14 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
         int offset = (int) Math.min((query.getPageNum() - 1) * query.getPageSize(), total);
         int limit = (int) Math.min(query.getPageSize(), total - offset);
-        List<Map<String, Object>> rows = refundRecordMapper.selectRefundPageWithLimit(statusInt,
-                query.getApplyTimeStart(), query.getApplyTimeEnd(), query.getOrderNo(), query.getKeywords(),
-                offset, limit);
+        List<Map<String, Object>> rows = refundRecordMapper.selectRefundPageWithLimit(
+                statusInt,
+                query.getApplyTimeStart(),
+                query.getApplyTimeEnd(),
+                query.getOrderNo(),
+                query.getKeywords(),
+                offset,
+                limit);
 
         List<RefundRecordVO> records = new ArrayList<>(rows.size());
         for (Map<String, Object> row : rows) {
@@ -568,7 +610,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "order", action = "refund_approve", targetType = "order", targetIdSpel = "#refundId", afterSpel = "#form")
+    @AuditLog(
+            module = "order",
+            action = "refund_approve",
+            targetType = "order",
+            targetIdSpel = "#refundId",
+            afterSpel = "#form")
     public void approveRefund(Long refundId, RefundAuditForm form) {
         SysRefundRecord refund = refundRecordMapper.selectById(refundId);
         if (refund == null) {
@@ -589,8 +636,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                 PaymentChannelService channel = getPaymentChannel(order.getPayMethod());
                 long totalFen = order.getPaidAmount() != null ? order.getPaidAmount() : 0L;
                 long refundFen = refund.getRefundAmount() != null ? refund.getRefundAmount() : 0L;
-                refundOk = channel.refund(order.getOrderNo(), refund.getRefundNo(),
-                        totalFen, refundFen, refund.getReason());
+                refundOk = channel.refund(
+                        order.getOrderNo(), refund.getRefundNo(), totalFen, refundFen, refund.getReason());
             } catch (Exception e) {
                 log.error("渠道退款失败: orderNo={}, refundNo={}", order.getOrderNo(), refund.getRefundNo(), e);
                 refundOk = false;
@@ -616,7 +663,12 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @AuditLog(module = "order", action = "refund_reject", targetType = "order", targetIdSpel = "#refundId", afterSpel = "#form")
+    @AuditLog(
+            module = "order",
+            action = "refund_reject",
+            targetType = "order",
+            targetIdSpel = "#refundId",
+            afterSpel = "#form")
     public void rejectRefund(Long refundId, RefundAuditForm form) {
         SysRefundRecord refund = refundRecordMapper.selectById(refundId);
         if (refund == null) {
@@ -786,8 +838,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
                     PaymentChannelService channel = getPaymentChannel(order.getPayMethod());
                     long totalFen = order.getPaidAmount() != null ? order.getPaidAmount() : 0L;
                     long refundFen = refund.getRefundAmount() != null ? refund.getRefundAmount() : 0L;
-                    refundOk = channel.refund(order.getOrderNo(), refund.getRefundNo(),
-                            totalFen, refundFen, refund.getReason());
+                    refundOk = channel.refund(
+                            order.getOrderNo(), refund.getRefundNo(), totalFen, refundFen, refund.getReason());
                 } catch (Exception e) {
                     log.error("渠道退款重试失败: orderNo={}, refundNo={}", order.getOrderNo(), refund.getRefundNo(), e);
                     refundOk = false;
@@ -828,8 +880,8 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
 
         if (!"balance".equals(renewal.getPayMethod())) {
             PaymentChannelService channel = getPaymentChannel(renewal.getPayMethod());
-            boolean deductOk = channel.autoDeduct(renewal.getId() + "-" + System.currentTimeMillis(),
-                    payableAmount, "自动续费-" + pkg.getName(), null);
+            boolean deductOk = channel.autoDeduct(
+                    renewal.getId() + "-" + System.currentTimeMillis(), payableAmount, "自动续费-" + pkg.getName(), null);
             if (!deductOk) {
                 throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "自动续费扣款失败");
             }
@@ -905,15 +957,18 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     }
 
     private int resolveRestoreStatus(SysOrder order) {
-        return order.getPackageExpireTime() != null && order.getPackageExpireTime().isAfter(LocalDateTime.now())
-                ? 2 : 3;
+        return order.getPackageExpireTime() != null
+                        && order.getPackageExpireTime().isAfter(LocalDateTime.now())
+                ? 2
+                : 3;
     }
 
     private SysPaymentRecord createPaymentRecord(SysOrder order, String channel, int status) {
         SysPaymentRecord record = new SysPaymentRecord();
         record.setOrderId(order.getId());
         record.setUserId(order.getUserId());
-        record.setPaymentNo("PAY" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(1000, 9999));
+        record.setPaymentNo(
+                "PAY" + System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(1000, 9999));
         record.setChannel(channel);
         record.setAmount(order.getPayableAmount());
         record.setStatus(status);
@@ -935,8 +990,7 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
     }
 
     private LocalDateTime activateMemberByPackage(Long userId, SysPackage pkg, LocalDateTime now) {
-        SysMember member = memberService.getOne(new LambdaQueryWrapper<SysMember>()
-                .eq(SysMember::getUserId, userId));
+        SysMember member = memberService.getOne(new LambdaQueryWrapper<SysMember>().eq(SysMember::getUserId, userId));
         if (member == null) {
             throw new BusinessException(ResultCode.MEMBER_NOT_FOUND);
         }
@@ -950,21 +1004,21 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         LambdaUpdateWrapper<SysMember> wrapper = new LambdaUpdateWrapper<SysMember>()
                 .eq(SysMember::getUserId, userId)
                 .set(SysMember::getLevelCode, pkg.getLevelCode())
-                .set(SysMember::getLevelSource, "package")
+                .set(SysMember::getLevelSource, "purchase")
                 .set(SysMember::getExpireTime, expireTime)
                 .set(SysMember::getStatus, 1)
-                .set(SysMember::getTotalConsumption,
+                .set(
+                        SysMember::getTotalConsumption,
                         (member.getTotalConsumption() != null ? member.getTotalConsumption() : 0L)
                                 + (pkg.getSalePrice() != null ? pkg.getSalePrice() : 0L));
         if (benefit != null) {
-            wrapper.set(SysMember::getMonthlyDehazeQuota, benefit.getMonthlyDehazeQuota());
-            wrapper.set(SysMember::getMonthlyEvaluateQuota, benefit.getMonthlyEvaluateQuota());
+            memberBenefitService.appendQuotaSnapshot(wrapper, member, benefit);
         }
         if (member.getBecomeMemberTime() == null) {
             wrapper.set(SysMember::getBecomeMemberTime, now);
         }
         memberService.update(wrapper);
-        invalidateMemberCache(userId);
+        memberBenefitService.invalidateMemberQuotaCache(userId);
         return expireTime;
     }
 
@@ -998,15 +1052,16 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
             userCoupon.setUsedTime(LocalDateTime.now());
             userCoupon.setUsedOrderId(orderId);
             userCouponMapper.updateById(userCoupon);
-            couponMapper.update(null, new LambdaUpdateWrapper<SysCoupon>()
-                    .eq(SysCoupon::getId, userCoupon.getCouponId())
-                    .setSql("used_qty = used_qty + 1"));
+            couponMapper.update(
+                    null,
+                    new LambdaUpdateWrapper<SysCoupon>()
+                            .eq(SysCoupon::getId, userCoupon.getCouponId())
+                            .setSql("used_qty = used_qty + 1"));
         }
     }
 
     private SysOrder getOrderByNo(String orderNo) {
-        SysOrder order = this.getOne(new LambdaQueryWrapper<SysOrder>()
-                .eq(SysOrder::getOrderNo, orderNo));
+        SysOrder order = this.getOne(new LambdaQueryWrapper<SysOrder>().eq(SysOrder::getOrderNo, orderNo));
         if (order == null) {
             throw new BusinessException(ResultCode.ORDER_NOT_FOUND);
         }
@@ -1017,14 +1072,9 @@ public class OrderServiceImpl extends ServiceImpl<SysOrderMapper, SysOrder> impl
         stringRedisTemplate.delete("order:detail:" + orderNo);
     }
 
-    private void invalidateMemberCache(Long userId) {
-        stringRedisTemplate.delete("member:level:" + userId);
-        stringRedisTemplate.delete("member:quota:" + userId + ":dehaze");
-        stringRedisTemplate.delete("member:quota:" + userId + ":evaluate");
-    }
-
     private String generateOrderNo() {
-        return "DH" + LocalDateTime.now().format(ORDER_NO_FORMAT) + ThreadLocalRandom.current().nextInt(100000, 999999);
+        return "DH" + LocalDateTime.now().format(ORDER_NO_FORMAT)
+                + ThreadLocalRandom.current().nextInt(100000, 999999);
     }
 
     private Integer orderStatusToInt(String status) {

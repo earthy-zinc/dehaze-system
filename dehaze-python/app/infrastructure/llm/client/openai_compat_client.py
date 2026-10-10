@@ -2,15 +2,46 @@
 
 import json
 import logging
+import re
 from collections.abc import AsyncGenerator, Iterator
 
 from app.infrastructure.llm.common import LlmStreamChunk, build_auth_headers
+from app.infrastructure.llm.tool_dialect import (
+    DSML,
+    NATIVE_OPENAI,
+    TEXT_JSON,
+)
 from app.service.ai.service.trace_collector import record_wire_request, record_wire_response
 
 logger = logging.getLogger(__name__)
 
 _THINK_OPEN = "<think>"
 _THINK_CLOSE = "</think>"
+
+# DeepSeek 文本化工具调用（DSML）：模型未按 OpenAI function calling 协议返回，
+# 而是把工具调用以带全角竖线控制符的纯文本塞进 content。必须兜底解析成工具调用，
+# 否则原文被当正文透出且不产生 tool_call，图直接收尾（会话"卡住"后结束）。
+_DSML_MARK = "<｜DSML｜"
+_DSML_END = "</｜DSML｜tool_calls>"
+
+# 文本化工具调用（text_json 方言）：不支持 function calling 的模型按提示词约定的
+# 纯文本协议输出调用，客户端解析为 tool_call 事件；正常正文不含该标记，不误判。
+_TEXT_OPEN = "<tool_call>"
+_TEXT_CLOSE = "</tool_call>"
+_DSML_INVOKE_RE = re.compile(
+    r'<｜DSML｜invoke\s+name="([^"]+)"\s*>(.*?)</｜DSML｜invoke>', re.DOTALL
+)
+_DSML_PARAM_RE = re.compile(
+    r'<｜DSML｜parameter\s+name="([^"]+)"[^>]*>(.*?)</｜DSML｜parameter>', re.DOTALL
+)
+
+
+def _partial_suffix_len(buf: str, tag: str) -> int:
+    """buffer 尾部与标签前缀的最长重合长度（不完整标签需保留待下一块）"""
+    for k in range(min(len(buf), len(tag) - 1), 0, -1):
+        if buf.endswith(tag[:k]):
+            return k
+    return 0
 
 
 class _ThinkSplitter:
@@ -32,10 +63,7 @@ class _ThinkSplitter:
     @staticmethod
     def _partial_suffix_len(buf: str, tag: str) -> int:
         """buffer 尾部与标签前缀的最长重合长度（不完整标签需保留待下一块）"""
-        for k in range(min(len(buf), len(tag) - 1), 0, -1):
-            if buf.endswith(tag[:k]):
-                return k
-        return 0
+        return _partial_suffix_len(buf, tag)
 
     def feed(self, text: str) -> Iterator[tuple[str, str]]:
         self._buf += text
@@ -74,6 +102,158 @@ class _ThinkSplitter:
             yield ("text", seg)
 
 
+class _DsmlToolCallSplitter:
+    """跨块识别并解析 content 中的 DeepSeek DSML 文本化工具调用。
+
+    部分 OpenAI 兼容模型（如 deepseek 经部分供应商）未按 function calling 协议返回，
+    而是把工具调用以 `<｜DSML｜>invoke ...` 纯文本写进 content。本类把这类文本解析为
+    等价的 tool_call 事件，避免原文透出且图直接收尾（会话"卡住"后结束）。解析失败或
+    流结束仍不完整时按原文降级为正文，保证内容不丢失、不中断会话；正常正文不含控制符，
+    不会误判。
+
+    feed 产出三元组 (kind, value, extra)：
+    - ("text", 正文片段, "")                  → 直接作为正文下发
+    - ("tool_call", 工具名, JSON 参数文本)    → 作为一次完整工具调用下发
+    """
+
+    def __init__(self) -> None:
+        self._buf = ""
+        self._in_dsml = False
+
+    def feed(self, text: str) -> Iterator[tuple[str, str, str]]:
+        self._buf += text
+        while True:
+            if not self._in_dsml:
+                idx = self._buf.find(_DSML_MARK)
+                if idx < 0:
+                    # 无控制符：下发正文（保留可能与控制符前缀重合的尾部待下一块）
+                    cut = len(self._buf) - _partial_suffix_len(self._buf, _DSML_MARK)
+                    if cut <= 0:
+                        return
+                    seg, self._buf = self._buf[:cut], self._buf[cut:]
+                    yield ("text", seg, "")
+                    return
+                if idx > 0:
+                    seg, self._buf = self._buf[:idx], self._buf[idx:]
+                    yield ("text", seg, "")
+                    continue
+                self._in_dsml = True
+                continue
+            # 已进入 DSML 块：等整块闭合后一次性解析（工具执行本就在本轮结束后进行）
+            end = self._buf.find(_DSML_END)
+            if end < 0:
+                return
+            block, self._buf = self._buf[: end + len(_DSML_END)], self._buf[end + len(_DSML_END) :]
+            for name, args in self._parse(block):
+                yield ("tool_call", name, args)
+            self._in_dsml = False
+
+    def flush(self) -> Iterator[tuple[str, str, str]]:
+        """流结束时输出缓冲残留：能解析出工具调用则下发，否则按原文降级为正文。"""
+        if not self._buf:
+            return
+        block, self._buf, self._in_dsml = self._buf, "", False
+        calls = self._parse(block)
+        if calls:
+            for name, args in calls:
+                yield ("tool_call", name, args)
+            return
+        yield ("text", block, "")
+
+    @staticmethod
+    def _parse(block: str) -> list[tuple[str, str]]:
+        calls: list[tuple[str, str]] = []
+        for invoke in _DSML_INVOKE_RE.finditer(block):
+            name = invoke.group(1).strip()
+            arguments = {
+                param.group(1).strip(): param.group(2)
+                for param in _DSML_PARAM_RE.finditer(invoke.group(2))
+            }
+            calls.append((name, json.dumps(arguments, ensure_ascii=False)))
+        return calls
+
+
+class _TextToolCallSplitter:
+    """跨块识别并解析提示词约定的文本化工具调用（text_json 方言）。
+
+    协议：``<tool_call>{"name":"工具名","arguments":{...}}</tool_call>``，可连续多块。
+    解析失败或流结束未闭合时按原文降级为正文，保证内容不丢失、不中断会话。
+
+    feed 产出三元组 (kind, value, extra)，与 ``_DsmlToolCallSplitter`` 同契约。
+    """
+
+    def __init__(self) -> None:
+        self._buf = ""
+        self._in_call = False
+
+    def feed(self, text: str) -> Iterator[tuple[str, str, str]]:
+        self._buf += text
+        while True:
+            if not self._in_call:
+                idx = self._buf.find(_TEXT_OPEN)
+                if idx < 0:
+                    cut = len(self._buf) - _partial_suffix_len(self._buf, _TEXT_OPEN)
+                    if cut <= 0:
+                        return
+                    seg, self._buf = self._buf[:cut], self._buf[cut:]
+                    yield ("text", seg, "")
+                    return
+                if idx > 0:
+                    seg, self._buf = self._buf[:idx], self._buf[idx:]
+                    yield ("text", seg, "")
+                    continue
+                self._in_call = True
+                continue
+            end = self._buf.find(_TEXT_CLOSE)
+            if end < 0:
+                return
+            block = self._buf[: end + len(_TEXT_CLOSE)]
+            self._buf = self._buf[end + len(_TEXT_CLOSE) :]
+            call = self._parse_call(block)
+            if call is None:
+                yield ("text", block, "")
+            else:
+                yield ("tool_call", call[0], call[1])
+            self._in_call = False
+
+    def flush(self) -> Iterator[tuple[str, str, str]]:
+        """流结束时输出缓冲残留：能解析出工具调用则下发，否则按原文降级为正文。"""
+        if not self._buf:
+            return
+        block, self._buf, self._in_call = self._buf, "", False
+        call = self._parse_call(block)
+        if call is None:
+            yield ("text", block, "")
+        else:
+            yield ("tool_call", call[0], call[1])
+
+    @staticmethod
+    def _parse_call(block: str) -> tuple[str, str] | None:
+        start = block.find(_TEXT_OPEN)
+        end = block.rfind(_TEXT_CLOSE)
+        if start < 0 or end < 0 or end < start:
+            return None
+        try:
+            payload = json.loads(block[start + len(_TEXT_OPEN) : end].strip())
+        except ValueError:
+            return None
+        if not isinstance(payload, dict) or not payload.get("name"):
+            return None
+        arguments = payload.get("arguments")
+        if not isinstance(arguments, dict):
+            arguments = {}
+        return str(payload["name"]).strip(), json.dumps(arguments, ensure_ascii=False)
+
+
+# 方言 → 文本工具调用解析器：native_openai 亦以 DSML 兜底（无法探知服务方是否
+# 配置了工具解析器，配置缺失时模型会直接吐 DSML 文本）；none/未登记方言不解析。
+_TOOL_DIALECT_SPLITTERS = {
+    NATIVE_OPENAI: _DsmlToolCallSplitter,
+    DSML: _DsmlToolCallSplitter,
+    TEXT_JSON: _TextToolCallSplitter,
+}
+
+
 class OpenAiCompatClient:
     """OpenAI 兼容协议实现（兼容 /chat/completions 的流式接口）"""
 
@@ -105,10 +285,13 @@ class OpenAiCompatClient:
         tool_choice: str | None,
         temperature: float = 0.7,
         user_identity: tuple[str, str] | None = None,
+        tool_dialect: str = NATIVE_OPENAI,
     ) -> AsyncGenerator[LlmStreamChunk, None]:
         """构建 OpenAI 兼容请求并解析 SSE 流，按 tool_call 索引聚合 function calling。
 
-        OpenAI 兼容协议对稳定前缀自动缓存，无需主动干预。
+        同时兜底处理两类非标准输出：content 内嵌 `<think>` 思考块（_ThinkSplitter）
+        与文本化工具调用（按 tool_dialect 选解析器，见 tool_dialect 模块）。OpenAI
+        兼容协议对稳定前缀自动缓存，无需主动干预。
         """
         payload = {
             "model": model.model_id,
@@ -140,6 +323,29 @@ class OpenAiCompatClient:
         record_wire_request(payload)
         pending_tool_calls: dict[int, dict] = {}  # index -> {id, name, arguments}
         think_splitter = _ThinkSplitter()
+        # 按方言选文本化工具调用解析器（未登记方言不解析）
+        splitter_cls = _TOOL_DIALECT_SPLITTERS.get(tool_dialect)
+        tool_splitter = splitter_cls() if splitter_cls else None
+        tool_seq = 0
+
+        def _tool_chunks(out_kind: str, first: str, second: str) -> list[LlmStreamChunk]:
+            """把文本化解析结果转为标准流式块（正文 / 完整工具调用三连）。"""
+            nonlocal tool_seq
+            if out_kind == "text":
+                return [LlmStreamChunk(type="text_delta", content=first)]
+            tool_seq += 1
+            call_id = f"toolcall_{tool_seq}"
+            return [
+                LlmStreamChunk(type="tool_call_start", tool_call_id=call_id, tool_call_name=first),
+                LlmStreamChunk(type="tool_call_delta", content=second, tool_call_id=call_id),
+                LlmStreamChunk(
+                    type="tool_call_complete",
+                    content=second,
+                    tool_call_id=call_id,
+                    tool_call_name=first,
+                ),
+            ]
+
         # 流式聚合为等价非流式结构所需字段（响应原文取 provider 下发值）
         wire_id: str | None = None
         wire_model: str | None = None
@@ -180,10 +386,15 @@ class OpenAiCompatClient:
                 if delta.get("content"):
                     raw_content_parts.append(delta["content"])
                     for kind, seg in think_splitter.feed(delta["content"]):
-                        yield LlmStreamChunk(
-                            type="thinking_delta" if kind == "thinking" else "text_delta",
-                            content=seg,
-                        )
+                        if kind == "thinking":
+                            yield LlmStreamChunk(type="thinking_delta", content=seg)
+                            continue
+                        if tool_splitter is None:
+                            yield LlmStreamChunk(type="text_delta", content=seg)
+                            continue
+                        for outcome in tool_splitter.feed(seg):
+                            for chunk_out in _tool_chunks(*outcome):
+                                yield chunk_out
                 # 推理模型思考流：openai_compat 推理模型（如 deepseek-r1）
                 # 经 reasoning_content 增量下发
                 if delta.get("reasoning_content"):
@@ -205,14 +416,17 @@ class OpenAiCompatClient:
                         )
                     tc = pending_tool_calls[index]
                     fn = tool_call.get("function") or {}
-                    if fn.get("id") and not tc["id"]:
-                        tc["id"] = fn["id"]
                     if fn.get("name") and not tc["name"]:
                         tc["name"] = fn["name"]
                     arguments = fn.get("arguments")
                     if arguments:
                         tc["arguments"] += arguments
-                        yield LlmStreamChunk(type="tool_call_delta", content=arguments)
+                        # 必须带 tool_call_id：上层按 id 匹配暂存缓冲区，缺失会静默丢弃参数分片
+                        yield LlmStreamChunk(
+                            type="tool_call_delta",
+                            content=arguments,
+                            tool_call_id=tc["id"],
+                        )
                 if chunk.get("usage"):
                     usage_raw = chunk["usage"]
                     yield LlmStreamChunk(type="done", usage=chunk["usage"])
@@ -243,10 +457,19 @@ class OpenAiCompatClient:
             )
             # 流式结束：输出切分器滞留的尾部内容，再对每个未完成的 tool_call 发 complete
             for kind, seg in think_splitter.flush():
-                yield LlmStreamChunk(
-                    type="thinking_delta" if kind == "thinking" else "text_delta",
-                    content=seg,
-                )
+                if kind == "thinking":
+                    yield LlmStreamChunk(type="thinking_delta", content=seg)
+                    continue
+                if tool_splitter is None:
+                    yield LlmStreamChunk(type="text_delta", content=seg)
+                    continue
+                for outcome in tool_splitter.feed(seg):
+                    for chunk_out in _tool_chunks(*outcome):
+                        yield chunk_out
+            if tool_splitter is not None:
+                for outcome in tool_splitter.flush():
+                    for chunk_out in _tool_chunks(*outcome):
+                        yield chunk_out
             for index in sorted(pending_tool_calls):
                 tc = pending_tool_calls[index]
                 yield LlmStreamChunk(

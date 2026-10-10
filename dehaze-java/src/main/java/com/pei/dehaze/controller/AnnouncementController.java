@@ -9,6 +9,7 @@ import com.pei.dehaze.model.vo.AnnouncementDetailVO;
 import com.pei.dehaze.model.vo.AnnouncementSendResultVO;
 import com.pei.dehaze.model.vo.AnnouncementVO;
 import com.pei.dehaze.model.vo.IdVO;
+import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
 import com.pei.dehaze.service.AnnouncementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,6 +38,7 @@ public class AnnouncementController {
     @Operation(summary = "创建公告")
     @PostMapping
     @PreAuthorize("@ss.hasPerm('notify:announcement:add')")
+    @PreventDuplicateSubmit
     public Result<IdVO> create(@Valid @RequestBody AnnouncementForm form) {
         Long id = announcementService.create(form);
         return Result.success(new IdVO(id));
@@ -51,8 +53,8 @@ public class AnnouncementController {
     @Operation(summary = "编辑公告（仅草稿/待发送）")
     @PutMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('notify:announcement:edit')")
-    public Result<Void> update(@Parameter(description = "公告ID") @PathVariable Long id,
-                               @RequestBody AnnouncementForm form) {
+    public Result<Void> update(
+            @Parameter(description = "公告ID") @PathVariable Long id, @RequestBody AnnouncementForm form) {
         announcementService.update(id, form);
         return Result.success();
     }

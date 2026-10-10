@@ -1,11 +1,21 @@
 package com.pei.dehaze.service.impl;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.converter.RoleConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.service.SysRoleMenuService;
 import com.pei.dehaze.service.SysUserRoleService;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,17 +27,6 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 /**
  * 角色状态变更权限传播测试：禁用角色踢出关联在线用户，启用不踢
  */
@@ -38,14 +37,19 @@ class SysRoleServiceImplStatusKickTest {
 
     @Mock
     private SysRoleMenuService roleMenuService;
+
     @Mock
     private SysUserRoleService userRoleService;
+
     @Mock
     private SysMenuMapper menuMapper;
+
     @Mock
     private RoleConverter roleConverter;
+
     @Mock
     private StringRedisTemplate stringRedisTemplate;
+
     @Mock
     private ValueOperations<String, String> valueOperations;
 

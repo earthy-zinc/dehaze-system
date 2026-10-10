@@ -3,11 +3,10 @@ package com.pei.dehaze.model.vo;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.List;
 import lombok.Data;
 
-import java.util.List;
-
-@Schema(description ="菜单视图对象")
+@Schema(description = "菜单视图对象")
 @Data
 public class MenuVO {
 
@@ -20,7 +19,7 @@ public class MenuVO {
     @Schema(description = "菜单名称")
     private String name;
 
-    @Schema(description="菜单类型")
+    @Schema(description = "菜单类型")
     private MenuTypeEnum type;
 
     @Schema(description = "路由路径")
@@ -41,7 +40,7 @@ public class MenuVO {
     @Schema(description = "跳转路径")
     private String redirect;
 
-    @Schema(description="按钮权限标识")
+    @Schema(description = "按钮权限标识")
     private String perm;
 
     @Schema(description = "系统预置标识(1:预置;0:普通)")
@@ -50,5 +49,4 @@ public class MenuVO {
     @Schema(description = "子菜单")
     @JsonInclude(value = JsonInclude.Include.NON_NULL)
     private List<MenuVO> children;
-
 }

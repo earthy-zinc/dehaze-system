@@ -64,24 +64,76 @@ class TestEventMapping:
         await converter.finish()
         assert emitter.events[-1] == ("content_block.stop", {"index": 0})
 
-    async def test_content_block_start_not_for_tool_delta(self, conv):
+    async def test_tool_use_block_start_emitted(self, conv):
+        """工具调用首见即推送 content_block.start(type=tool_use)，index 从 2 起（0/1 已占用）"""
         converter, emitter = conv
         chunk = AIMessageChunk(content="")
         chunk.tool_call_chunks = [
             {"name": "search", "args": '{"query":', "id": "c1", "index": 0},
         ]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        assert not [e for e in emitter.events if e[0] == "content_block.start"]
+        starts = [e for e in emitter.events if e[0] == "content_block.start"]
+        assert starts == [
+            ("content_block.start", {"index": 2, "type": "tool_use", "id": "c1", "name": "search"})
+        ]
 
-    async def test_tool_call_delta(self, conv):
+    async def test_tool_call_delta_uses_tool_block_index(self, conv):
+        """工具参数增量使用工具块自身 index（不再与文本块共用 0）"""
         converter, emitter = conv
         chunk = AIMessageChunk(content="")
         chunk.tool_call_chunks = [
             {"name": "search", "args": '{"query":', "id": "c1", "index": 0},
         ]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        assert emitter.events[0][0] == "content_block.delta"
-        assert emitter.events[0][1]["delta"]["type"] == "input_json_delta"
+        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
+        assert delta[1]["index"] == 2
+        assert delta[1]["delta"]["type"] == "input_json_delta"
+
+    async def test_parallel_tool_calls_distinct_indices(self, conv):
+        """并行工具调用各占唯一 index，首见顺序自增"""
+        converter, emitter = conv
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [
+            {"name": "a", "args": "{}", "id": "c1", "index": 0},
+            {"name": "b", "args": "{}", "id": "c2", "index": 1},
+        ]
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        starts = [e[1] for e in emitter.events if e[0] == "content_block.start"]
+        assert starts == [
+            {"index": 2, "type": "tool_use", "id": "c1", "name": "a"},
+            {"index": 3, "type": "tool_use", "id": "c2", "name": "b"},
+        ]
+
+    async def test_tool_block_stop_on_tool_message(self, conv):
+        """工具返回时关闭对应工具内容块（content_block.stop 用该块 index）"""
+        converter, emitter = conv
+        chunk = AIMessageChunk(
+            content="", tool_call_chunks=[{"name": "search", "args": "{}", "id": "c1", "index": 0}]
+        )
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": [],
+                "data": {
+                    "tool_node": {
+                        "messages": [ToolMessage(content="ok", tool_call_id="c1", name="search")]
+                    }
+                },
+            }
+        )
+        stops = [e for e in emitter.events if e[0] == "content_block.stop"]
+        assert stops == [("content_block.stop", {"index": 2})]
+
+    async def test_finish_closes_open_tool_block(self, conv):
+        """中断/异常致工具块未收尾时，finish 兜底补发 content_block.stop"""
+        converter, emitter = conv
+        chunk = AIMessageChunk(
+            content="", tool_call_chunks=[{"name": "search", "args": "{", "id": "c1", "index": 0}]
+        )
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        await converter.finish()
+        assert ("content_block.stop", {"index": 2}) in emitter.events
 
     async def test_thought_on_tool_message(self, conv):
         converter, emitter = conv
@@ -150,7 +202,7 @@ class TestInterrupt:
                         Interrupt(
                             value={
                                 "type": "confirm",
-                                "data": {"artifactId": 1, "recommendation": {"algorithmName": "A"}},
+                                "data": {"artifactId": 1, "recommendation": {"modelName": "A"}},
                             }
                         )
                     ]
@@ -161,7 +213,7 @@ class TestInterrupt:
             "interrupt",
             {
                 "type": "confirm",
-                "data": {"artifactId": 1, "recommendation": {"algorithmName": "A"}},
+                "data": {"artifactId": 1, "recommendation": {"modelName": "A"}},
             },
         )
 

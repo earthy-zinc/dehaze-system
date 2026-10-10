@@ -9,12 +9,15 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
+from app.infrastructure.llm.tool_dialect import is_prompt_tool_family
 from app.infrastructure.provider.provider_health_service import provider_health_service
 from app.models.entity.sys_ai_model import SysAiModel
 from app.models.schema.ai_conversation import AiModelResult
 from app.models.schema.common import PageResult
 from app.repository.ai_model_repository import ai_model_repository
+from app.repository.favorite_repository import favorite_repository
 from app.repository.member_repository import member_repository
+from app.service.ai.service.model_defaults import resolve_platform_default_model_id
 from app.service.message_service import message_service
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,13 @@ async def _clear_model_cache(redis: Redis) -> None:
     await CacheService(redis).delete(MODEL_LIST_CACHE_KEY)
 
 
+def _split_tags(raw: str | None) -> list[str]:
+    """把逗号分隔的 taskTags 查询参数拆成标签列表（去空白与空项）；语义与 Go/Java 一致"""
+    if not raw:
+        return []
+    return [tag.strip() for tag in raw.split(",") if tag.strip()]
+
+
 async def _provider_health_snapshot(redis, provider_id: int) -> dict:
     """读取单个供应商健康快照（P95 延迟等），契约来自 provider_health_service。
 
@@ -80,6 +90,22 @@ def _speed_tier_of(snapshot: dict) -> str:
     if p95_ms < settings.AI_SPEED_TIER_MEDIUM_P95_MS:
         return "medium"
     return "slow"
+
+
+async def _mark_platform_defaults(db: AsyncSession, items: list[AiModelResult]) -> None:
+    """为启用模型列表回填"是否平台默认"标记（is_default）。
+
+    平台默认按 `model_type` 分键（`sys_dict: ai_model.default_model[.{model_type}]`），
+    同一 `model_id` 配多供应商时该模型的各行都会为 True——标记语义是"该模型是否为
+    其类型的平台默认模型"。按出现到的类型读字典（最多与模型类型数同阶，且字典值读取
+    有缓存），**不固化进共享缓存快照**：标记随字典值变化，不叠加列表缓存 TTL 的滞后。
+    """
+    default_ids = {
+        model_type: await resolve_platform_default_model_id(db, model_type)
+        for model_type in {item.model_type for item in items}
+    }
+    for item in items:
+        item.is_default = default_ids.get(item.model_type) == item.model_id
 
 
 async def _resolve_fallback(
@@ -157,9 +183,10 @@ class AiModelService:
         size: int,
         keyword: str | None = None,
         model_type: str | None = None,
+        task_tags: str | None = None,
     ) -> PageResult[AiModelResult]:
         models, total = await self.ai_model_repository.paginate_models(
-            db, page, size, keyword, model_type
+            db, page, size, keyword, model_type, _split_tags(task_tags)
         )
         # 近 24h 实调统计（chat 按 llm_call 成功率、embedding/rerank 按计费流水次数）
         from app.service.ai.service.model_test_service import get_usage_stats_24h
@@ -182,6 +209,7 @@ class AiModelService:
         redis: Redis,
         user_id: int,
         model_type: str | None = None,
+        task_tags: str | None = None,
     ) -> list[AiModelResult]:
         cache = CacheService(redis)
         cached = await cache.get_json(MODEL_LIST_CACHE_KEY)
@@ -212,6 +240,10 @@ class AiModelService:
         ]
         if model_type:
             items = [m for m in items if m.model_type == model_type]
+        tags = set(_split_tags(task_tags))
+        if tags:
+            items = [m for m in items if tags & set(m.task_tags or [])]
+        await _mark_platform_defaults(db, items)
         return items
 
     async def validate_model_caps(
@@ -223,13 +255,17 @@ class AiModelService:
         """发送消息前校验模型能力，不满足抛 A0601。
 
         多模态：消息含图片/文件附件必须 supports_multimodal=1；
-        工具调用：本次推理需工具调用必须 supports_tool_call=1。
+        工具调用：原生 function calling（supports_tool_call=1）或命中文本工具协议家族
+        （不支持原生时由编排层把工具清单注入提示词，见 tool_dialect）均可放行；
+        两者皆无则该模型确实无法使用工具，拒绝。
         """
         if has_attachments and not model.supports_multimodal:
             raise BusinessException(
                 ResultCode.AI_MODEL_NOT_AVAILABLE, "当前模型不支持图片/文件多模态输入"
             )
-        if need_tools and not model.supports_tool_call:
+        if need_tools and not (
+            model.supports_tool_call or is_prompt_tool_family(model.model_id, model.model_type)
+        ):
             raise BusinessException(ResultCode.AI_MODEL_NOT_AVAILABLE, "当前模型不支持工具调用")
 
     async def create_model(self, db: AsyncSession, redis: Redis, form) -> AiModelResult:
@@ -248,6 +284,7 @@ class AiModelService:
             provider_id=form.provider_id,
             model_id=form.model_id,
             model_type=form.model_type,
+            task_tags=form.task_tags,
             dimension=dimension,
             display_name=form.display_name,
             max_context_tokens=form.max_context_tokens,
@@ -304,17 +341,19 @@ class AiModelService:
         active = await self.ai_model_repository.count_active_conversations(db, model_id)
         if active > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 "存在活跃会话正在使用该模型，请先禁用（status=0）",
             )
         # 被其他启用模型作为降级目标引用时不可删除，避免其降级链静默断裂
         fallback_refs = await self.ai_model_repository.count_fallback_targets(db, model.id)
         if fallback_refs > 0:
             raise BusinessException(
-                ResultCode.DATA_BIND_EXISTS,
+                ResultCode.DATA_REFERENCED,
                 "存在启用模型的降级链引用该模型，请先调整其 fallback_model_id",
             )
         await self.ai_model_repository.soft_delete_by_ids(db, [model.id])
+        # 收藏失效联动：模型删除后其收藏标记 isInvalid（与数据集删除路径同口径）
+        await favorite_repository.mark_invalid(db, "model", [model.id])
         await _clear_model_cache(redis)
 
 

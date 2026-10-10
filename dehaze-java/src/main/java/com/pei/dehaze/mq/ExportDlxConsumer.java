@@ -7,6 +7,10 @@ import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.rabbitmq.client.Channel;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -14,11 +18,6 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 导出任务死信队列消费者
@@ -61,8 +60,7 @@ public class ExportDlxConsumer extends RabbitMQConsumer {
 
         // 仅在非终态时更新
         if (TaskConstants.TERMINAL_STATUSES.contains(sysTask.getStatus())) {
-            log.debug("[DLQ] 任务已为终态，跳过: dbTaskId={}, taskId={}, status={}",
-                    dbTaskId, taskId, sysTask.getStatus());
+            log.debug("[DLQ] 任务已为终态，跳过: dbTaskId={}, taskId={}, status={}", dbTaskId, taskId, sysTask.getStatus());
             return;
         }
 

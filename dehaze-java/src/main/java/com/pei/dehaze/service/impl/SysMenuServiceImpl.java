@@ -18,22 +18,17 @@ import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
 import com.pei.dehaze.mapper.SysRoleMapper;
-import com.pei.dehaze.model.read.RouteRead;
 import com.pei.dehaze.model.entity.SysMenu;
 import com.pei.dehaze.model.entity.SysRole;
 import com.pei.dehaze.model.entity.SysRoleMenu;
 import com.pei.dehaze.model.form.MenuForm;
 import com.pei.dehaze.model.query.MenuQuery;
+import com.pei.dehaze.model.read.RouteRead;
 import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
 import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysMenuService;
 import com.pei.dehaze.service.SysRoleMenuService;
-import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +38,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
 
 /**
  * 菜单业务实现类
@@ -68,7 +67,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
     private static final Duration MENU_CACHE_TTL = Duration.ofHours(1);
 
-
     /**
      * 菜单列表
      *
@@ -80,18 +78,20 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         // 避免对 null/非法 type 调用转换（曾因此对不带 type 的请求全量 NPE 500）
         MenuTypeEnum typeEnum = IBaseEnum.getEnumByValue(queryParams.getType(), MenuTypeEnum.class);
         List<SysMenu> menus = this.list(new LambdaQueryWrapper<SysMenu>()
-                .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()), SysMenu::getName, queryParams.getKeywords())
+                .like(
+                        CharSequenceUtil.isNotBlank(queryParams.getKeywords()),
+                        SysMenu::getName,
+                        queryParams.getKeywords())
                 .like(CharSequenceUtil.isNotBlank(queryParams.getPerm()), SysMenu::getPerm, queryParams.getPerm())
                 .like(CharSequenceUtil.isNotBlank(queryParams.getPath()), SysMenu::getPath, queryParams.getPath())
                 .eq(typeEnum != null, SysMenu::getType, typeEnum)
                 .eq(queryParams.getVisible() != null, SysMenu::getVisible, queryParams.getVisible())
-                .orderByAsc(SysMenu::getSort)
-        );
+                .orderByAsc(SysMenu::getSort));
         List<Long> rootIds = TreeDataUtils.findRootIds(menus, SysMenu::getId, SysMenu::getParentId);
 
         // 构建 parentId -> children Map，避免递归内 O(n) 过滤
-        Map<Long, List<SysMenu>> parentToChildrenMap = menus.stream()
-                .collect(Collectors.groupingBy(SysMenu::getParentId));
+        Map<Long, List<SysMenu>> parentToChildrenMap =
+                menus.stream().collect(Collectors.groupingBy(SysMenu::getParentId));
 
         // 递归函数来构建菜单树
         return rootIds.stream()
@@ -160,8 +160,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         }
 
         // T-MM-016：权限标识全局唯一（含软删行）
-        if (StringUtils.isNotBlank(perm)
-                && this.baseMapper.countByPermIncludeDeleted(perm, menuForm.getId()) > 0) {
+        if (StringUtils.isNotBlank(perm) && this.baseMapper.countByPermIncludeDeleted(perm, menuForm.getId()) > 0) {
             throw new BusinessException(ResultCode.DATA_EXISTS, "权限标识已存在");
         }
 
@@ -176,12 +175,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "权限标识不能为空");
         }
 
-        if (menuType == MenuTypeEnum.CATALOG) {  // 如果是目录
+        if (menuType == MenuTypeEnum.CATALOG) { // 如果是目录
             if (parentId == 0 && !path.startsWith("/")) {
                 menuForm.setPath("/" + path); // 一级目录需以 / 开头
             }
             menuForm.setComponent("Layout");
-        } else if (menuType == MenuTypeEnum.EXTLINK) {   // 如果是外链
+        } else if (menuType == MenuTypeEnum.EXTLINK) { // 如果是外链
 
             menuForm.setComponent(null);
         }
@@ -196,8 +195,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             if (isNew) {
                 // 新增菜单默认分配给超级管理员（ROOT）与系统管理员（ADMIN），其他角色需手动分配
                 for (String roleCode : List.of(SystemConstants.ROOT_ROLE_CODE, SystemConstants.ADMIN_ROLE_CODE)) {
-                    SysRole role = roleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
-                            .eq(SysRole::getCode, roleCode));
+                    SysRole role =
+                            roleMapper.selectOne(new LambdaQueryWrapper<SysRole>().eq(SysRole::getCode, roleCode));
                     if (role != null) {
                         roleMenuService.save(new SysRoleMenu(role.getId(), entity.getId()));
                     }
@@ -218,11 +217,10 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (cached != null) {
             return (List<Option<Long>>) (List<?>) JSONUtil.parseArray(cached).toList(Option.class);
         }
-        List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>()
-                .orderByAsc(SysMenu::getSort));
+        List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>().orderByAsc(SysMenu::getSort));
         // 构建 parentId -> children Map，避免 O(n²) 递归
-        Map<Long, List<SysMenu>> parentToChildrenMap = menuList.stream()
-                .collect(Collectors.groupingBy(SysMenu::getParentId));
+        Map<Long, List<SysMenu>> parentToChildrenMap =
+                menuList.stream().collect(Collectors.groupingBy(SysMenu::getParentId));
         List<Option<Long>> options = buildMenuOptions(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
         stringRedisTemplate.opsForValue().set(MENU_OPTIONS_KEY, JSONUtil.toJsonStr(options), MENU_CACHE_TTL);
         return options;
@@ -265,8 +263,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             return JSONUtil.parseArray(cached).toList(RouteVO.class);
         }
         List<RouteRead> menuList = this.baseMapper.listRoutes();
-        Map<Long, List<RouteRead>> parentToChildrenMap = menuList.stream()
-                .collect(Collectors.groupingBy(RouteRead::getParentId));
+        Map<Long, List<RouteRead>> parentToChildrenMap =
+                menuList.stream().collect(Collectors.groupingBy(RouteRead::getParentId));
         List<RouteVO> routes = buildRoutes(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
         stringRedisTemplate.opsForValue().set(MENU_ROUTES_KEY, JSONUtil.toJsonStr(routes), MENU_CACHE_TTL);
         return routes;
@@ -318,7 +316,8 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      */
     private RouteVO toRouteVo(RouteRead routeRead) {
         RouteVO routeVO = new RouteVO();
-        String routeName = StringUtils.capitalize(CharSequenceUtil.toCamelCase(routeRead.getPath(), '-'));  // 路由 name 需要驼峰，首字母大写
+        String routeName =
+                StringUtils.capitalize(CharSequenceUtil.toCamelCase(routeRead.getPath(), '-')); // 路由 name 需要驼峰，首字母大写
         routeVO.setName(routeName); // 根据name路由跳转 this.$router.push({name:xxx})
         routeVO.setPath(routeRead.getPath()); // 根据path路由跳转 this.$router.push({path:xxx})
         routeVO.setRedirect(routeRead.getRedirect());
@@ -328,17 +327,21 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         meta.setTitle(routeRead.getName());
         meta.setIcon(routeRead.getIcon());
         // 角色编码去重排序（对齐 python sorted(role_codes)，保证 meta.roles 顺序稳定可断言）
-        meta.setRoles(routeRead.getRoles() == null ? Collections.emptyList()
-                : routeRead.getRoles().stream().filter(Objects::nonNull).distinct().sorted().toList());
+        meta.setRoles(
+                routeRead.getRoles() == null
+                        ? Collections.emptyList()
+                        : routeRead.getRoles().stream()
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .sorted()
+                                .toList());
         meta.setHidden(StatusEnum.DISABLE.getValue().equals(routeRead.getVisible()));
         // 【菜单】是否开启页面缓存
-        if (MenuTypeEnum.MENU.equals(routeRead.getType())
-                && ObjectUtil.equals(routeRead.getKeepAlive(), 1)) {
+        if (MenuTypeEnum.MENU.equals(routeRead.getType()) && ObjectUtil.equals(routeRead.getKeepAlive(), 1)) {
             meta.setKeepAlive(true);
         }
         // 【目录】只有一个子路由是否始终显示
-        if (MenuTypeEnum.CATALOG.equals(routeRead.getType())
-                && ObjectUtil.equals(routeRead.getAlwaysShow(), 1)) {
+        if (MenuTypeEnum.CATALOG.equals(routeRead.getType()) && ObjectUtil.equals(routeRead.getAlwaysShow(), 1)) {
             meta.setAlwaysShow(true);
         }
 
@@ -363,7 +366,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         return parent.getTreePath() + "," + parent.getId();
     }
 
-
     /**
      * 修改菜单显示状态
      *
@@ -380,8 +382,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         boolean result = this.update(new LambdaUpdateWrapper<SysMenu>()
                 .eq(SysMenu::getId, menuId)
                 .set(SysMenu::getVisible, visible)
-                .set(SysMenu::getUpdateBy, currentUserId)
-        );
+                .set(SysMenu::getUpdateBy, currentUserId));
         if (result) {
             evictMenuCache();
         }
@@ -436,29 +437,26 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
         // 一次性查询所有待删除菜单ID（传入ID + 子孙），合并去重
         // 条件：id IN (ids) OR tree_path LIKE '%,id,%'（对每个 id 做 OR）
-        LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<SysMenu>()
-                .in(SysMenu::getId, distinctIds);
+        LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<SysMenu>().in(SysMenu::getId, distinctIds);
         for (Long id : distinctIds) {
             wrapper.or().apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", id);
         }
-        List<Long> menuIds = this.list(wrapper).stream()
-                .map(SysMenu::getId).distinct().toList();
+        List<Long> menuIds =
+                this.list(wrapper).stream().map(SysMenu::getId).distinct().toList();
 
         if (menuIds.isEmpty()) {
             return true;
         }
 
         // 预置菜单保护：级联命中范围内存在预置菜单时整批拒绝，不做部分删除
-        long presetCount = this.count(new LambdaQueryWrapper<SysMenu>()
-                .in(SysMenu::getId, menuIds)
-                .eq(SysMenu::getIsPreset, 1));
+        long presetCount = this.count(
+                new LambdaQueryWrapper<SysMenu>().in(SysMenu::getId, menuIds).eq(SysMenu::getIsPreset, 1));
         if (presetCount > 0) {
             throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "系统预置菜单不可删除");
         }
 
         // 删除角色-菜单关联
-        roleMenuService.remove(new LambdaQueryWrapper<SysRoleMenu>()
-                .in(SysRoleMenu::getMenuId, menuIds));
+        roleMenuService.remove(new LambdaQueryWrapper<SysRoleMenu>().in(SysRoleMenu::getMenuId, menuIds));
 
         // 删除菜单
         boolean result = this.removeByIds(menuIds);
@@ -507,5 +505,4 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         }
         return menu.getTreePath().split(",").length;
     }
-
 }

@@ -14,6 +14,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.slf4j.MDC;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
@@ -23,11 +27,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * 统一认证过滤器：根据请求凭证类型二选一。
@@ -48,10 +47,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-        @NonNull HttpServletRequest request,
-        @NonNull HttpServletResponse response, 
-        @NonNull FilterChain chain
-    )
+            @NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws ServletException, IOException {
 
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -68,8 +64,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void authenticateWithApiKey(
-            String apiKey, HttpServletResponse response, FilterChain chain,
-            HttpServletRequest request)
+            String apiKey, HttpServletResponse response, FilterChain chain, HttpServletRequest request)
             throws ServletException, IOException {
         Authentication authentication = apiKeyService.authenticateByKey(apiKey);
         if (authentication == null) {
@@ -94,8 +89,7 @@ public class AuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    private void authenticateWithSession(
-            HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    private void authenticateWithSession(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
 
         String sessionId = extractSessionId(request);
@@ -137,8 +131,8 @@ public class AuthenticationFilter extends OncePerRequestFilter {
         try {
             Long ttl = redisTemplate.getExpire(SecurityConstants.SESSION_PREFIX + sessionId, TimeUnit.SECONDS);
             if (ttl != null && ttl > 0 && ttl < SecurityConstants.RENEW_THRESHOLD) {
-                redisTemplate.expire(SecurityConstants.SESSION_PREFIX + sessionId,
-                        SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
+                redisTemplate.expire(
+                        SecurityConstants.SESSION_PREFIX + sessionId, SecurityConstants.SESSION_TTL, TimeUnit.SECONDS);
             }
 
             chain.doFilter(request, response);

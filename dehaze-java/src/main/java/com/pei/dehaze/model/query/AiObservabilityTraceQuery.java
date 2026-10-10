@@ -2,8 +2,8 @@ package com.pei.dehaze.model.query;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /** 过程链检索/导出查询参数（空 time 串表示不过滤） */

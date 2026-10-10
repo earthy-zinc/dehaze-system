@@ -11,7 +11,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	repomocks "github.com/earthyzinc/dehaze-go/internal/repository/mocks"
-	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
 	datasetservice "github.com/earthyzinc/dehaze-go/internal/service/dataset"
 	favoriteservice "github.com/earthyzinc/dehaze-go/internal/service/favorite"
 	msgservice "github.com/earthyzinc/dehaze-go/internal/service/message"
@@ -111,7 +110,7 @@ func TestPaginationSweepRejectsOutOfRangeBounds(t *testing.T) {
 		{"package.GetPage(py package.py:46-47,默认10)", "/probe", "/probe", NewPackageApi(nil, nil).GetPage},
 		{"package.GetCouponPage(py package.py:130-131,默认10)", "/probe", "/probe", NewPackageApi(nil, nil).GetCouponPage},
 		{"preset.ListPresets(py preset.py:26-27,默认10)", "/probe", "/probe", NewSysPresetApi(nil).ListPresets},
-		{"prediction.ListPredictionLogs(py prediction.py:178-179,默认10)", "/probe", "/probe", NewSysPredictionApi(nil, nil).ListPredictionLogs},
+		{"prediction.ListImageTasks(py images.py:183-184,默认10)", "/probe", "/probe", NewSysPredictionApi(nil, nil).ListImageTasks},
 		{"promotion.GetPage(py promotion.py:25-26,默认10)", "/probe", "/probe", NewPromotionApi(nil).GetPage},
 		{"role.GetRolePage(py role.py:34-36 RolePageQuery:BasePageQuery,默认10)", "/probe", "/probe", NewSysRoleApi(nil).GetRolePage},
 		{"task.GetTaskPage(py task.py:66-67,默认10)", "/probe", "/probe", NewSysTaskApi(nil).GetTaskPage},
@@ -245,50 +244,6 @@ func TestPaginationSweepDefaultsMatchPythonRouter(t *testing.T) {
 	}
 }
 
-// recordingAlgorithmService 记录统计报表收到的 days。
-type recordingAlgorithmService struct {
-	algoservice.IAlgorithmService
-	days   int
-	called bool
-}
-
-func (s *recordingAlgorithmService) GetMonitorStatsReport(_ context.Context, _ int64, days int) ([]map[string]interface{}, error) {
-	s.days, s.called = days, true
-	return nil, nil
-}
-
-// TestMonitorStatsReportDaysMatchesPython 与 python `algorithm.py:209 days: int = Query(default=7, ge=1)` 同口径：
-// 非整数/非正值 400+A0400（此前静默回退 7——days=0 会在 go 出报表、在 python 报参数错误），不传默认 7，合法值透传。
-func TestMonitorStatsReportDaysMatchesPython(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	for _, suffix := range []string{"days=0", "days=-1", "days=abc"} {
-		t.Run("deny "+suffix, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			pageProbeEngine("/probe/:id", NewAlgorithmApi(nil, nil, nil).GetMonitorStatsReport).ServeHTTP(rec,
-				httptest.NewRequest(http.MethodGet, "/probe/1?"+suffix, nil))
-			assert.Contains(t, rec.Body.String(), common.PARAM_ERROR.Code)
-		})
-	}
-
-	cases := []struct {
-		query string
-		want  int
-	}{
-		{"", 7},
-		{"days=30", 30},
-		{"days=1", 1},
-	}
-	for _, tc := range cases {
-		t.Run("accept days="+tc.query, func(t *testing.T) {
-			stub := &recordingAlgorithmService{}
-			pageProbeEngine("/probe/:id", NewAlgorithmApi(stub, nil, nil).GetMonitorStatsReport).ServeHTTP(
-				httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/probe/1?"+tc.query, nil))
-			require.True(t, stub.called, "合法 days 应进入 service")
-			assert.Equal(t, tc.want, stub.days)
-		})
-	}
-}
-
 // TestPaginationSweepStructBoundEndpoints 结构体绑定型端点的分页口径回归。
 //
 // 这类端点走 `c.ShouldBindQuery(&bo.XxxQuery)`（内嵌 bo.AiPageQuery）。修复前它们由 service 侧
@@ -329,7 +284,8 @@ func TestPaginationSweepStructBoundEndpoints(t *testing.T) {
 // 字面量（`parsePaginationNamed(c, "page", "size", 20)`）保证，用例只能断言"未传时放行进入 service"。
 func TestModelPricePaginationUsesPageSizeNames(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	assertPageBounds(t, "/probe/:id", "/probe/1", NewAiModelApi(nil).ListModelPrices,
+	// modelId 为必填 query 参数（含 `/` 的厂商模型名不能作路径段）；分页参数名为 page/size。
+	assertPageBounds(t, "/probe", "/probe?modelId=m-a", NewAiModelApi(nil).ListModelPrices,
 		[]string{"size=-1", "size=0", "size=101", "page=0", "page=-1", "page=abc", "size=abc"},
 		[]string{"", "page=2&size=50", "size=100"},
 	)
@@ -337,8 +293,8 @@ func TestModelPricePaginationUsesPageSizeNames(t *testing.T) {
 	// pageNum/pageSize 对该端点是无关参数（python 同样忽略）→ 不参与校验，不应因此报错。
 	t.Run("pageNum/pageSize 属无关参数", func(t *testing.T) {
 		require.Panics(t, func() {
-			pageProbeEngine("/probe/:id", NewAiModelApi(nil).ListModelPrices).ServeHTTP(
-				httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/probe/1?pageNum=0&pageSize=500", nil))
+			pageProbeEngine("/probe", NewAiModelApi(nil).ListModelPrices).ServeHTTP(
+				httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/probe?modelId=m-a&pageNum=0&pageSize=500", nil))
 		}, "无关参数不应触发校验失败，应正常进入 service")
 	})
 }
@@ -380,21 +336,6 @@ func TestDatasetPaginationDefaultsMatchPython(t *testing.T) {
 			httptest.NewRequest(http.MethodGet, "/probe", nil))
 		assert.NotContains(t, rec.Body.String(), common.PARAM_ERROR.Code)
 	})
-}
-
-// TestAlgorithmTreeIgnoresPaginationParams python `GET /algorithms` 只声明 keywords（无分页参数），
-// 未知查询参数静默忽略。go 若把分页字段留在查询对象上参与绑定，`pageNum=abc` 会因绑定失败报 A0400，
-// 而 python 正常返回树（客户端可触发的分叉）；故这些参数必须一律不影响请求成败。
-func TestAlgorithmTreeIgnoresPaginationParams(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	for _, q := range []string{"pageNum=abc", "pageSize=abc", "pageNum=0&pageSize=0", "pageSize=101", "pageNum=-1"} {
-		t.Run("ignore "+q, func(t *testing.T) {
-			require.Panics(t, func() {
-				pageProbeEngine("/probe", NewAlgorithmApi(nil, nil, nil).GetList).ServeHTTP(
-					httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/probe?"+q, nil))
-			}, "python 未声明的分页参数应被静默忽略并进入 service，而不是报 A0400")
-		})
-	}
 }
 
 // TestMessageListCursorPaginationBounds 会话消息列表已改为 before/limit 游标分页

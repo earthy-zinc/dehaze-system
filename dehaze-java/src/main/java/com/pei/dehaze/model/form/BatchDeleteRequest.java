@@ -2,9 +2,8 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
-import lombok.Data;
-
 import java.util.List;
+import lombok.Data;
 
 /**
  * 批量删除请求

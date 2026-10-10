@@ -8,14 +8,12 @@ import com.pei.dehaze.common.enums.LogStatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
-import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.EvaluationForm;
 import com.pei.dehaze.model.query.EvalLogQuery;
 import com.pei.dehaze.model.vo.EvalLogVO;
 import com.pei.dehaze.model.vo.EvaluationResultVO;
-import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysEvalLogService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.impl.file.StorageServiceFactory;
@@ -23,34 +21,22 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEvalLog> implements SysEvalLogService {
 
-    private final SysAlgorithmService algorithmService;
     private final SysFileService sysFileService;
     private final StorageServiceFactory storageServiceFactory;
     private final EvalLogAsyncTask asyncTask;
 
     @Override
     public EvaluationResultVO evaluate(EvaluationForm form) {
-        SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
-        if (algorithm == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
-        }
-
         String predUrl = form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred");
         String gtUrl = form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt");
 
         SysEvalLog evalLog = new SysEvalLog();
-        evalLog.setAlgorithmId(form.getAlgorithmId());
+        evalLog.setModelId(form.getModelId());
         if (form.getPredFileId() != null) {
             evalLog.setPredFileId(form.getPredFileId());
         }
@@ -63,7 +49,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         evalLog.setTaskType("evaluation");
         this.save(evalLog);
 
-        asyncTask.execute(evalLog.getId(), form.getAlgorithmId(), predUrl, gtUrl);
+        asyncTask.execute(evalLog.getId(), form.getModelId(), predUrl, gtUrl);
 
         EvaluationResultVO vo = new EvaluationResultVO();
         vo.setLogId(evalLog.getId());
@@ -76,27 +62,18 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         Page<SysEvalLog> page = new Page<>(query.getPageNum(), query.getPageSize());
         LambdaQueryWrapper<SysEvalLog> wrapper = new LambdaQueryWrapper<SysEvalLog>()
                 .eq(SysEvalLog::getCreateBy, userId)
-                .eq(query.getAlgorithmId() != null, SysEvalLog::getAlgorithmId, query.getAlgorithmId())
+                .eq(query.getModelId() != null, SysEvalLog::getModelId, query.getModelId())
                 .orderByDesc(SysEvalLog::getCreateTime);
 
         Page<SysEvalLog> result = this.page(page, wrapper);
         Page<EvalLogVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
-
-        Set<Long> algorithmIds = result.getRecords().stream()
-                .map(SysEvalLog::getAlgorithmId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, String> algorithmNameMap = algorithmIds.isEmpty()
-                ? Collections.emptyMap()
-                : algorithmService.listByIds(algorithmIds).stream()
-                        .collect(Collectors.toMap(SysAlgorithm::getId, SysAlgorithm::getName, (a, b) -> a));
-
-        voPage.setRecords(result.getRecords().stream().map(log -> {
-            EvalLogVO vo = new EvalLogVO();
-            BeanUtil.copyProperties(log, vo);
-            vo.setAlgorithmName(algorithmNameMap.getOrDefault(log.getAlgorithmId(), "未知算法"));
-            return vo;
-        }).toList());
+        voPage.setRecords(result.getRecords().stream()
+                .map(log -> {
+                    EvalLogVO vo = new EvalLogVO();
+                    BeanUtil.copyProperties(log, vo);
+                    return vo;
+                })
+                .toList());
         return voPage;
     }
 

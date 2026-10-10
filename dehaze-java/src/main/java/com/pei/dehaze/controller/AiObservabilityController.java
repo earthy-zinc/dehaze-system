@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.query.AiObservabilityCostsQuery;
-import com.pei.dehaze.model.query.AiObservabilityTraceQuery;
 import com.pei.dehaze.model.query.AiObservabilityTimelineQuery;
+import com.pei.dehaze.model.query.AiObservabilityTraceQuery;
 import com.pei.dehaze.model.query.AiObservabilityTrendsQuery;
 import com.pei.dehaze.model.vo.AiObservabilityCostsVO;
 import com.pei.dehaze.model.vo.AiObservabilitySummaryVO;
@@ -18,6 +18,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpHeaders;
@@ -28,9 +30,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 /**
  * AI 可观测性（F-M08-013）：异常总览、过程链检索/详情/导出、会话审计时间线、资源消耗与性能趋势。
@@ -92,12 +91,12 @@ public class AiObservabilityController {
     @Operation(summary = "会话时间线导出(JSON全量含raw报文)")
     @GetMapping("/observability/conversations/{conversationId}/timeline/export")
     @PreAuthorize("@ss.hasPerm('ai:conversation:audit')")
-    public ResponseEntity<byte[]> exportTimeline(
-            @Parameter(description = "会话ID") @PathVariable Long conversationId) {
+    public ResponseEntity<byte[]> exportTimeline(@Parameter(description = "会话ID") @PathVariable Long conversationId) {
         byte[] payload = observabilityService.exportTimelineJson(conversationId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"conversation_" + conversationId + "_timeline.json\"")
                 .body(payload);
     }

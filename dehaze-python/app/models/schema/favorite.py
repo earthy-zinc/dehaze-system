@@ -10,5 +10,5 @@ from pydantic import BaseModel, Field
 
 
 class FavoriteCreateForm(BaseModel):
-    targetType: str = Field(..., description="收藏对象类型(algorithm/result/dataset/image/preset)")
+    targetType: str = Field(..., description="收藏对象类型(model/result/dataset/image/preset)")
     targetId: int = Field(..., description="收藏对象ID")

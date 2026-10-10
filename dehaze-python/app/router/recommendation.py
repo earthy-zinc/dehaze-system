@@ -32,14 +32,14 @@ async def analyze(
     return success(data.model_dump())
 
 
-@router.get("/algorithms", summary="获取算法推荐")
-async def get_algorithms(
+@router.get("/models", summary="获取模型推荐")
+async def get_models(
     analysisId: int | None = Query(default=None),
     imageMd5: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    data = await recommendation_service.get_algorithms(db, user.id, analysisId, imageMd5)
+    data = await recommendation_service.get_models(db, user.id, analysisId, imageMd5)
     return success([item.model_dump() for item in data])
 
 

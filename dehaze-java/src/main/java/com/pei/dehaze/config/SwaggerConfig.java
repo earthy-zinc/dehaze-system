@@ -35,23 +35,18 @@ public class SwaggerConfig {
         String appVersion = environment.getProperty("project.version", "1.0.0");
 
         return new OpenAPI()
-                .info(new Info()
-                        .title("系统接口文档")
-                        .version(appVersion)
-                )
+                .info(new Info().title("系统接口文档").version(appVersion))
                 // 配置全局鉴权参数-Authorize
                 .components(new Components()
-                        .addSecuritySchemes(HttpHeaders.AUTHORIZATION,
+                        .addSecuritySchemes(
+                                HttpHeaders.AUTHORIZATION,
                                 new SecurityScheme()
                                         .name(HttpHeaders.AUTHORIZATION)
                                         .type(SecurityScheme.Type.APIKEY)
                                         .in(SecurityScheme.In.HEADER)
                                         .scheme("Bearer")
-                                        .bearerFormat("JWT")
-                        )
-                );
+                                        .bearerFormat("JWT")));
     }
-
 
     /**
      * 全局自定义扩展
@@ -71,12 +66,10 @@ public class SwaggerConfig {
                     }
                     // 接口添加鉴权参数
                     pathItem.readOperations()
-                            .forEach(operation ->
-                                    operation.addSecurityItem(new SecurityRequirement().addList(HttpHeaders.AUTHORIZATION))
-                            );
+                            .forEach(operation -> operation.addSecurityItem(
+                                    new SecurityRequirement().addList(HttpHeaders.AUTHORIZATION)));
                 });
             }
         };
     }
-
 }

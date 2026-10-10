@@ -147,6 +147,22 @@ async def set_health_check_enabled(redis: Redis, provider_id: int, enabled: bool
     await redis.set(HEALTH_ENABLED_PREFIX.format(provider_id), 1 if enabled else 0)
 
 
+async def warmup_provider_health_cache(redis: Redis) -> None:
+    """启动预热：把 DB（权威源）的 health_check_enabled 同步进 Redis 缓存。
+
+    缓存缺省语义为"开启"（get_health_check_enabled 读不到键即视为参与熔断），
+    若 DB 配 0 而缓存缺失（Redis 清空、迁移直改 DB 等场景），运行行为会与配置漂移；
+    启动同步一次消除该窗口。
+    """
+    from app.database import get_db_session
+    from app.repository.ai_provider_repository import ai_provider_repository
+
+    async with get_db_session() as db:
+        providers = await ai_provider_repository.list_all_active(db)
+    for provider in providers:
+        await set_health_check_enabled(redis, provider.id, provider.health_check_enabled == 1)
+
+
 async def clear_provider_health(redis: Redis, provider_id: int) -> None:
     """删除供应商健康相关 Key（删除供应商时清理，避免残留）。"""
     await redis.delete(
@@ -278,6 +294,9 @@ class ProviderHealthService:
 
         优先读缓存（60s），miss 时按滑动窗口聚合并回填——模型列表/看板逐供应商
         调用，避免每次全量 lrange 聚合。
+
+        近 24h 窗口无调用时 success_rate / error_rate / limit_rate / p95_latency_ms
+        为 None（无样本），只有 total_calls_24h=0 与状态位是确定值。
         """
         cache = CacheService(redis)
         cached = await cache.get_json(_SNAPSHOT_KEY.format(provider_id))
@@ -290,7 +309,8 @@ class ProviderHealthService:
         )
         raw_latency = await redis.lrange(_LATENCY_KEY.format(provider_id), 0, -1)  # type: ignore
         latency = [int(x) for x in raw_latency]
-        p95 = _p95(latency)
+        # 延迟列表不按窗口裁剪：窗口内无调用时列表里的样本都已过期，不能当作当前 P95
+        p95 = _p95(latency) if total else None
         circuit_open = bool(await redis.get(_CIRCUIT_KEY.format(provider_id)))
 
         if not await get_health_check_enabled(redis, provider_id):
@@ -308,13 +328,15 @@ class ProviderHealthService:
         else:
             status = "healthy"
 
+        # 窗口内无调用时比率与延迟都没有样本：一律给 None（前端显示「—」），
+        # 不用 1.0/0 这类伪值把「无数据」渲染成「100% 成功、0ms」
         snapshot = {
             "status": status,
             "circuit_open": circuit_open,
             "total_calls_24h": total,
-            "success_rate": round((total - failed) / total, 4) if total else 1.0,
-            "error_rate": round(failed / total, 4) if total else 0.0,
-            "limit_rate": round(limit / total, 4) if total else 0.0,
+            "success_rate": round((total - failed) / total, 4) if total else None,
+            "error_rate": round(failed / total, 4) if total else None,
+            "limit_rate": round(limit / total, 4) if total else None,
             "p95_latency_ms": p95,
         }
         await CacheService(redis).set_json(_SNAPSHOT_KEY.format(provider_id), snapshot, 60)

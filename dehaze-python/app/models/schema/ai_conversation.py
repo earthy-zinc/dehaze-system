@@ -10,15 +10,37 @@ from pydantic import BaseModel, Field
 
 from app.models.schema.common import BasePageQuery, OrmResult
 
-AiModelType = Literal["chat", "embedding", "rerank"]
+AiModelType = Literal[
+    "chat",
+    "embedding",
+    "rerank",
+    "image_gen",
+    "image_edit",
+    "video_gen",
+    "asr",
+    "tts",
+    "music_gen",
+    "3d_gen",
+]
+
+# 模型类型白名单的语义描述（管理端表单/列表展示）
+_MODEL_TYPE_DESC = (
+    "模型类型(chat:对话;embedding:向量;rerank:重排;image_gen:文生图;"
+    "image_edit:图像编辑;video_gen:视频生成;asr:语音识别;tts:语音合成;"
+    "music_gen:音乐生成;3d_gen:3D生成)"
+)
+_MODEL_TYPE_DESC_UPDATE = "模型类型(创建后不可改;仅展示用途)"
+_TASK_TAGS_DESC = (
+    '任务归类标签(如图像模型["dehaze"/"super_resolution"];asr:["stream"/"offline"];'
+    'embedding:["text"/"image"])'
+)
 
 
 class AiModelCreate(OrmResult):
     provider_id: int = Field(..., description="关联供应商ID")
     model_id: str = Field(..., min_length=1, max_length=64, description="模型标识")
-    model_type: AiModelType = Field(
-        default="chat", description="模型类型(chat:对话;embedding:向量;rerank:重排)"
-    )
+    model_type: AiModelType = Field(default="chat", description=_MODEL_TYPE_DESC)
+    task_tags: list[str] | None = Field(default=None, description=_TASK_TAGS_DESC)
     dimension: int | None = Field(
         default=None, gt=0, description="embedding向量维度(model_type=embedding时必填)"
     )
@@ -45,9 +67,8 @@ class AiModelCreate(OrmResult):
 
 class AiModelUpdate(OrmResult):
     provider_id: int | None = Field(default=None, description="关联供应商ID")
-    model_type: AiModelType | None = Field(
-        default=None, description="模型类型(创建后不可改;仅展示用途)"
-    )
+    model_type: AiModelType | None = Field(default=None, description=_MODEL_TYPE_DESC_UPDATE)
+    task_tags: list[str] | None = Field(default=None, description=_TASK_TAGS_DESC)
     dimension: int | None = Field(
         default=None, gt=0, description="embedding向量维度(创建后不可改;仅展示用途)"
     )
@@ -78,7 +99,8 @@ class AiModelResult(OrmResult):
     id: int = Field(description="主键")
     provider_id: int = Field(description="关联供应商ID")
     model_id: str = Field(description="模型标识")
-    model_type: AiModelType = Field(description="模型类型(chat:对话;embedding:向量;rerank:重排)")
+    model_type: AiModelType = Field(description=_MODEL_TYPE_DESC)
+    task_tags: list[str] | None = Field(default=None, description=_TASK_TAGS_DESC)
     dimension: int | None = Field(default=None, description="embedding向量维度")
     display_name: str = Field(description="显示名称")
     max_context_tokens: int = Field(description="最大上下文Token数")
@@ -116,6 +138,11 @@ class AiModelResult(OrmResult):
     is_fallback_target: bool | None = Field(
         default=None, description="是否作为其他启用模型的降级目标"
     )
+    is_default: bool | None = Field(
+        default=None,
+        description="是否其模型类型的平台默认模型(字典 ai_model.default_model[.{model_type}])；"
+        "仅 /ai/models/enabled 计算并返回，管理端分页列表不返回",
+    )
     create_time: datetime | None = Field(default=None, description="创建时间")
 
 
@@ -124,7 +151,12 @@ class AiModelPageQuery(BasePageQuery):
     model_type: AiModelType | None = Field(
         default=None,
         validation_alias="modelType",
-        description="按模型类型筛选(chat/embedding/rerank)",
+        description="按模型类型筛选(见模型类型白名单)",
+    )
+    task_tags: str | None = Field(
+        default=None,
+        validation_alias="taskTags",
+        description="任务标签筛选(逗号分隔,含任一即命中;无标签模型不命中)",
     )
 
 
@@ -235,12 +267,12 @@ class ConversationExportQuery(BaseModel):
 
 
 class MessageSend(BaseModel):
-    content: str = Field(..., min_length=1, max_length=4000, description="消息内容")
+    content: str = Field(..., min_length=1, description="消息内容(上限按模型上下文预算)")
     model: str | None = Field(default=None, max_length=64, description="使用的模型标识")
 
 
 class MessageEdit(BaseModel):
-    content: str = Field(..., min_length=1, max_length=4000, description="编辑后的消息内容")
+    content: str = Field(..., min_length=1, description="编辑后的消息内容(上限按模型上下文预算)")
 
 
 class MessageResume(BaseModel):
@@ -248,7 +280,7 @@ class MessageResume(BaseModel):
         default=None, description="是否确认（confirm 中断必填：True 接受推荐；False 拒绝）"
     )
     params: dict[str, Any] | None = Field(
-        default=None, description="确认参数（如 algorithmId 表示选择了备选算法）"
+        default=None, description="确认参数（如 modelId 表示选择了备选图像模型）"
     )
     plan_edit: dict[str, Any] | None = Field(
         default=None,

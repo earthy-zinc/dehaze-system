@@ -40,8 +40,7 @@ public class RabbitMQPublisher {
         String routingKey = resolveRoutingKey(queueName);
         String exchange = properties.getExchange().getName();
 
-        Message message = MessageBuilder
-                .withBody(payload.getBytes())
+        Message message = MessageBuilder.withBody(payload.getBytes())
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
                 .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
                 .build();
@@ -52,8 +51,7 @@ public class RabbitMQPublisher {
         }
 
         rabbitTemplate.send(exchange, routingKey, message);
-        log.debug("RabbitMQ 消息已发布: exchange={}, routingKey={}, traceId={}",
-                exchange, routingKey, traceId);
+        log.debug("RabbitMQ 消息已发布: exchange={}, routingKey={}, traceId={}", exchange, routingKey, traceId);
     }
 
     /**

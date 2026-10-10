@@ -1,6 +1,8 @@
 package com.pei.dehaze.common.interceptor;
 
 import jakarta.annotation.PostConstruct;
+import java.sql.Statement;
+import java.util.Properties;
 import net.logstash.logback.argument.StructuredArguments;
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -14,9 +16,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.sql.Statement;
-import java.util.Properties;
-
 /**
  * SQL 审计日志拦截器。
  *
@@ -25,9 +24,18 @@ import java.util.Properties;
  * 请求上下文字段由 Logback 的 MDC 自动注入。SQL 以占位符形式记录，不含参数值，避免泄露敏感数据。
  */
 @Intercepts({
-        @Signature(type = StatementHandler.class, method = "query", args = {Statement.class, ResultHandler.class}),
-        @Signature(type = StatementHandler.class, method = "update", args = {Statement.class}),
-        @Signature(type = StatementHandler.class, method = "batch", args = {Statement.class})
+    @Signature(
+            type = StatementHandler.class,
+            method = "query",
+            args = {Statement.class, ResultHandler.class}),
+    @Signature(
+            type = StatementHandler.class,
+            method = "update",
+            args = {Statement.class}),
+    @Signature(
+            type = StatementHandler.class,
+            method = "batch",
+            args = {Statement.class})
 })
 @Component
 public class SqlLogInterceptor implements Interceptor {
@@ -42,8 +50,7 @@ public class SqlLogInterceptor implements Interceptor {
 
     @PostConstruct
     public void init() {
-        ch.qos.logback.classic.Logger sqlLogger =
-                (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("sql");
+        ch.qos.logback.classic.Logger sqlLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("sql");
         sqlLogger.setLevel(ch.qos.logback.classic.Level.toLevel(level, ch.qos.logback.classic.Level.INFO));
     }
 
@@ -59,13 +66,15 @@ public class SqlLogInterceptor implements Interceptor {
             String sql = boundSql.getSql();
             int rows = extractRows(invocation);
             if (durationMs >= slowThresholdMs) {
-                log.warn("SLOW_SQL",
+                log.warn(
+                        "SLOW_SQL",
                         StructuredArguments.keyValue("sql", sql),
                         StructuredArguments.keyValue("duration_ms", durationMs),
                         StructuredArguments.keyValue("rows", rows),
                         StructuredArguments.keyValue("threshold_ms", slowThresholdMs));
             } else if (log.isInfoEnabled()) {
-                log.info("SQL",
+                log.info(
+                        "SQL",
                         StructuredArguments.keyValue("sql", sql),
                         StructuredArguments.keyValue("duration_ms", durationMs),
                         StructuredArguments.keyValue("rows", rows));
@@ -90,6 +99,5 @@ public class SqlLogInterceptor implements Interceptor {
     }
 
     @Override
-    public void setProperties(Properties properties) {
-    }
+    public void setProperties(Properties properties) {}
 }

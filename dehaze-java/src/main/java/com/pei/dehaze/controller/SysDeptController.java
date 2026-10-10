@@ -12,13 +12,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * 部门控制器
@@ -32,11 +31,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysDeptController {
     private final SysDeptService deptService;
+
     @Operation(summary = "获取部门列表")
     @GetMapping
-    public Result<List<DeptVO>> listDepartments(
-            @Valid @ParameterObject DeptQuery queryParams
-    ) {
+    public Result<List<DeptVO>> listDepartments(@Valid @ParameterObject DeptQuery queryParams) {
         List<DeptVO> list = deptService.listDepartments(queryParams);
         return Result.success(list);
     }
@@ -50,9 +48,7 @@ public class SysDeptController {
 
     @Operation(summary = "获取部门表单数据")
     @GetMapping("/{deptId}/form")
-    public Result<DeptForm> getDeptForm(
-            @Parameter(description ="部门ID") @PathVariable Long deptId
-    ) {
+    public Result<DeptForm> getDeptForm(@Parameter(description = "部门ID") @PathVariable Long deptId) {
         DeptForm deptForm = deptService.getDeptForm(deptId);
         return Result.success(deptForm);
     }
@@ -61,9 +57,7 @@ public class SysDeptController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:dept:add')")
     @PreventDuplicateSubmit
-    public Result<Long> saveDept(
-            @Valid @RequestBody DeptForm formData
-    ) {
+    public Result<Long> saveDept(@Valid @RequestBody DeptForm formData) {
         Long id = deptService.saveDept(formData);
         return Result.success(id);
     }
@@ -71,10 +65,7 @@ public class SysDeptController {
     @Operation(summary = "修改部门")
     @PutMapping(value = "/{deptId}")
     @PreAuthorize("@ss.hasPerm('sys:dept:edit')")
-    public Result<Long> updateDept(
-            @PathVariable Long deptId,
-            @Valid @RequestBody DeptForm formData
-    ) {
+    public Result<Long> updateDept(@PathVariable Long deptId, @Valid @RequestBody DeptForm formData) {
         deptId = deptService.updateDept(deptId, formData);
         return Result.success(deptId);
     }
@@ -83,8 +74,7 @@ public class SysDeptController {
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:dept:delete')")
     public Result<Void> deleteDepartments(
-            @Parameter(description ="部门ID，多个以英文逗号(,)分割") @PathVariable("ids") String ids
-    ) {
+            @Parameter(description = "部门ID，多个以英文逗号(,)分割") @PathVariable("ids") String ids) {
         List<Long> idList = Arrays.stream(ids.split(","))
                 .map(String::trim)
                 .map(Long::valueOf)
@@ -100,5 +90,4 @@ public class SysDeptController {
         boolean result = deptService.deleteByIds(request.getIds());
         return Result.judge(result);
     }
-
 }

@@ -9,7 +9,7 @@ import org.apache.ibatis.annotations.Update;
 @Mapper
 public interface SysBalanceMapper extends BaseMapper<SysBalance> {
 
-    @Update("UPDATE sys_balance SET balance = balance - #{amount} " +
-            "WHERE user_id = #{userId} AND balance >= #{amount} AND deleted = 0")
+    @Update("UPDATE sys_balance SET balance = balance - #{amount} "
+            + "WHERE user_id = #{userId} AND balance >= #{amount} AND deleted = 0")
     int deductBalance(@Param("userId") Long userId, @Param("amount") long amount);
 }

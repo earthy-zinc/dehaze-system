@@ -36,16 +36,13 @@ func (r *BalanceAccountRepository) GetOrCreate(ctx context.Context, userID int64
 	return &account, err
 }
 
-// AdjustBalance 乐观锁 CAS 调整余额（delta 可负），balance + delta < 0 时失败。
-// 返回 false 表示版本冲突或余额不足，调用方重试或拒绝。
-func (r *BalanceAccountRepository) AdjustBalance(ctx context.Context, userID int64, delta int64, expectedVersion int) (bool, error) {
+// AdjustBalance 相对值调整余额（delta 可负），balance + delta < 0 时失败。
+// 返回 false 表示未命中账户或余额不足（相对值表达式单行原子求值，无 version 乐观锁）。
+func (r *BalanceAccountRepository) AdjustBalance(ctx context.Context, userID int64, delta int64) (bool, error) {
 	res := r.db.WithContext(ctx).
 		Model(&model.SysBalance{}).
-		Where("user_id = ? AND version = ? AND balance + ? >= 0", userID, expectedVersion, delta).
-		Updates(map[string]interface{}{
-			"balance": gorm.Expr("balance + ?", delta),
-			"version": gorm.Expr("version + 1"),
-		})
+		Where("user_id = ? AND balance + ? >= 0", userID, delta).
+		Update("balance", gorm.Expr("balance + ?", delta))
 	return res.RowsAffected > 0, res.Error
 }
 

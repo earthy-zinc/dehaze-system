@@ -1,7 +1,7 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
@@ -14,9 +14,9 @@ import lombok.Data;
 @Data
 public class EvaluationForm {
 
-    @Schema(description = "算法ID")
-    @NotNull(message = "算法ID不能为空")
-    private Long algorithmId;
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    @NotBlank(message = "图像模型标识不能为空")
+    private String modelId;
 
     @Schema(description = "预测结果文件ID")
     private Long predFileId;

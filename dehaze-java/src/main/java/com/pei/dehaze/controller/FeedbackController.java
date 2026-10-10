@@ -26,14 +26,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Tag(name = "14.反馈评价")
 @RestController
@@ -54,8 +53,8 @@ public class FeedbackController {
 
     @Operation(summary = "用户端：修改评分")
     @PutMapping("/ratings/{id}")
-    public Result<Void> updateRating(@Parameter(description = "评价ID") @PathVariable Long id,
-                                     @Valid @RequestBody RatingCreateForm form) {
+    public Result<Void> updateRating(
+            @Parameter(description = "评价ID") @PathVariable Long id, @Valid @RequestBody RatingCreateForm form) {
         ratingService.updateRating(id, form);
         return Result.success();
     }
@@ -96,8 +95,8 @@ public class FeedbackController {
     @Operation(summary = "后台：回复评价")
     @PostMapping("/ratings/{id}/reply")
     @PreAuthorize("@ss.hasPerm('feedback:rating:reply')")
-    public Result<Void> replyRating(@Parameter(description = "评价ID") @PathVariable Long id,
-                                    @Valid @RequestBody RatingReplyForm form) {
+    public Result<Void> replyRating(
+            @Parameter(description = "评价ID") @PathVariable Long id, @Valid @RequestBody RatingReplyForm form) {
         ratingService.replyRating(id, form.getContent());
         return Result.success();
     }
@@ -105,8 +104,14 @@ public class FeedbackController {
     @Operation(summary = "后台：评价统计")
     @GetMapping("/ratings/stats")
     public Result<RatingStatsVO> getRatingStats(
-            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime startTime,
+            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime endTime) {
         return Result.success(ratingService.getRatingStats(startTime, endTime));
     }
 
@@ -135,8 +140,8 @@ public class FeedbackController {
 
     @Operation(summary = "用户端：补充说明")
     @PostMapping("/{id}/supplement")
-    public Result<Void> supplementFeedback(@Parameter(description = "反馈ID") @PathVariable Long id,
-                                          @Valid @RequestBody FeedbackSupplementForm form) {
+    public Result<Void> supplementFeedback(
+            @Parameter(description = "反馈ID") @PathVariable Long id, @Valid @RequestBody FeedbackSupplementForm form) {
         feedbackService.supplementFeedback(id, form);
         return Result.success();
     }
@@ -153,8 +158,8 @@ public class FeedbackController {
     @Operation(summary = "后台：分配处理人")
     @PutMapping("/{id}/assign")
     @PreAuthorize("@ss.hasPerm('feedback:assign')")
-    public Result<Void> assignFeedback(@Parameter(description = "反馈ID") @PathVariable Long id,
-                                       @Valid @RequestBody FeedbackAssignForm form) {
+    public Result<Void> assignFeedback(
+            @Parameter(description = "反馈ID") @PathVariable Long id, @Valid @RequestBody FeedbackAssignForm form) {
         feedbackService.assignFeedback(id, form);
         return Result.success();
     }
@@ -162,8 +167,8 @@ public class FeedbackController {
     @Operation(summary = "后台：回复反馈")
     @PostMapping("/{id}/reply")
     @PreAuthorize("@ss.hasPerm('feedback:reply')")
-    public Result<Void> replyFeedback(@Parameter(description = "反馈ID") @PathVariable Long id,
-                                      @Valid @RequestBody FeedbackReplyForm form) {
+    public Result<Void> replyFeedback(
+            @Parameter(description = "反馈ID") @PathVariable Long id, @Valid @RequestBody FeedbackReplyForm form) {
         feedbackService.replyFeedback(id, form);
         return Result.success();
     }
@@ -171,8 +176,8 @@ public class FeedbackController {
     @Operation(summary = "后台：关闭反馈")
     @PutMapping("/{id}/close")
     @PreAuthorize("@ss.hasPerm('feedback:close')")
-    public Result<Void> closeFeedback(@Parameter(description = "反馈ID") @PathVariable Long id,
-                                     @Valid @RequestBody FeedbackCloseForm form) {
+    public Result<Void> closeFeedback(
+            @Parameter(description = "反馈ID") @PathVariable Long id, @Valid @RequestBody FeedbackCloseForm form) {
         feedbackService.closeFeedback(id, form);
         return Result.success();
     }
@@ -180,8 +185,8 @@ public class FeedbackController {
     @Operation(summary = "后台：设置反馈标签")
     @PutMapping("/{id}/tags")
     @PreAuthorize("@ss.hasPerm('feedback:edit')")
-    public Result<Void> updateFeedbackTags(@Parameter(description = "反馈ID") @PathVariable Long id,
-                                          @RequestBody List<String> tags) {
+    public Result<Void> updateFeedbackTags(
+            @Parameter(description = "反馈ID") @PathVariable Long id, @RequestBody List<String> tags) {
         feedbackService.updateTags(id, tags);
         return Result.success();
     }
@@ -189,8 +194,14 @@ public class FeedbackController {
     @Operation(summary = "后台：反馈统计")
     @GetMapping("/stats")
     public Result<FeedbackStatsVO> getFeedbackStats(
-            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime startTime,
-            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime) {
+            @Parameter(description = "开始时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime startTime,
+            @Parameter(description = "结束时间(yyyy-MM-dd HH:mm:ss)")
+                    @RequestParam(required = false)
+                    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                    LocalDateTime endTime) {
         return Result.success(feedbackService.getFeedbackStats(startTime, endTime));
     }
 }

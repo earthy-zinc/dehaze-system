@@ -14,7 +14,7 @@ type RecommendationRepository interface {
 	CountTotal(ctx context.Context, startTime, endTime string) (int64, error)
 	CountUseful(ctx context.Context, startTime, endTime string) (int64, error)
 	CountFeedbackTotal(ctx context.Context, startTime, endTime string) (int64, error)
-	CountAdoptedAlgorithmDistinct(ctx context.Context, startTime, endTime string) (int64, error)
+	CountAdoptedModelDistinct(ctx context.Context, startTime, endTime string) (int64, error)
 	// CountRecommended 统计带推荐来源（sys_pred_log.recommended_by 非空）的预测记录数
 	CountRecommended(ctx context.Context, startTime, endTime string) (int64, error)
 	// FindDailyTotal 按日统计推荐总数

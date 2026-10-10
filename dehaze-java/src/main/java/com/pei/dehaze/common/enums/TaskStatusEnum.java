@@ -3,13 +3,11 @@ package com.pei.dehaze.common.enums;
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 import com.pei.dehaze.common.base.IBaseEnum;
-import lombok.Getter;
-
 import java.util.Set;
+import lombok.Getter;
 
 @Getter
 public enum TaskStatusEnum implements IBaseEnum<Integer> {
-
     PENDING(1, "待处理"),
     PROCESSING(2, "处理中"),
     COMPLETED(3, "已完成"),

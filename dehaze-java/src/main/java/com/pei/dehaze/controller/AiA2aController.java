@@ -4,13 +4,12 @@ import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.service.AiA2aService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-
-import java.util.Map;
 
 /**
  * A2A 协议 Agent Card（挂载路径发现端点）。

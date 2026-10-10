@@ -15,6 +15,7 @@ import com.pei.dehaze.service.AiSkillService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
@@ -31,8 +32,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @Tag(name = "Skills 管理")
 @RestController
@@ -63,14 +62,10 @@ public class AiSkillController {
 
     @Operation(summary = "读取 SKILL 资源文件")
     @GetMapping("/{skillId}/file")
-    public ResponseEntity<byte[]> getSkillFile(@PathVariable Long skillId,
-                                               @RequestParam String path) {
+    public ResponseEntity<byte[]> getSkillFile(@PathVariable Long skillId, @RequestParam String path) {
         byte[] content = aiSkillService.getSkillFile(skillId, path);
-        MediaType mediaType = MediaTypeFactory.getMediaType(path)
-                .orElse(MediaType.APPLICATION_OCTET_STREAM);
-        return ResponseEntity.ok()
-                .contentType(mediaType)
-                .body(content);
+        MediaType mediaType = MediaTypeFactory.getMediaType(path).orElse(MediaType.APPLICATION_OCTET_STREAM);
+        return ResponseEntity.ok().contentType(mediaType).body(content);
     }
 
     @Operation(summary = "创建 Skill")
@@ -83,8 +78,7 @@ public class AiSkillController {
     @Operation(summary = "更新 Skill")
     @PutMapping("/{skillId}")
     @PreAuthorize("@ss.hasPerm('ai:skill:manage')")
-    public Result<SkillVO> updateSkill(@PathVariable Long skillId,
-                                       @RequestBody @Valid SkillUpdateForm form) {
+    public Result<SkillVO> updateSkill(@PathVariable Long skillId, @RequestBody @Valid SkillUpdateForm form) {
         return Result.success(aiSkillService.updateSkill(skillId, form));
     }
 
@@ -98,8 +92,7 @@ public class AiSkillController {
     @Operation(summary = "启停 Skill")
     @PatchMapping("/{skillId}/status")
     @PreAuthorize("@ss.hasPerm('ai:skill:manage')")
-    public Result<SkillVO> setSkillStatus(@PathVariable Long skillId,
-                                          @RequestBody @Valid SkillStatusForm form) {
+    public Result<SkillVO> setSkillStatus(@PathVariable Long skillId, @RequestBody @Valid SkillStatusForm form) {
         return Result.success(aiSkillService.setStatus(skillId, form.getStatus() == 1));
     }
 

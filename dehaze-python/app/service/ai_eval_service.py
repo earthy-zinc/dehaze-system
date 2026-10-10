@@ -175,7 +175,7 @@ class EvalService:
             dataset_id=dataset_id,
             task_goal=form.task_goal,
             allowed_input=form.allowed_input,
-            tools=form.tools,
+            tools=[tool.model_dump() for tool in form.tools] if form.tools else None,
             expected_process=form.expected_process,
             expected_result=form.expected_result,
             forbidden_behavior=form.forbidden_behavior,

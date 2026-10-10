@@ -2,7 +2,7 @@
 通用导出策略
 
 处理所有 *_export 类型的任务（user_export/role_export/dept_export/menu_export/
-dict_export/algorithm_export/dataset_export）。策略本身只做调度，具体导出逻辑
+dict_export/dataset_export）。策略本身只做调度，具体导出逻辑
 由对应的 ExportHandler 实现。
 """
 
