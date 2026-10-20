@@ -1,4 +1,4 @@
-"""dehaze-mcp-gateway 单元测试：不依赖真实后端/网关进程。
+"""clarity-mcp-gateway 单元测试：不依赖真实后端/网关进程。
 
 运行方式（网关目录下）：
     uv run --with pytest pytest tests -q

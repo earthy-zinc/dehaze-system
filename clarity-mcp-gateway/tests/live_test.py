@@ -1,8 +1,8 @@
-"""MCP 网关 live 集成验证：dehaze-python venv（mcp 1.24 客户端）连真实网关（同版本 server）。
+"""MCP 网关 live 集成验证：clarity-python venv（mcp 1.24 客户端）连真实网关（同版本 server）。
 
 前置：java(8989) + mcp(8082) 已启动（网关需 MCP_GATEWAY_KEY 已配置）。
 运行（仓库根目录）：
-    dehaze-python/.venv/bin/python dehaze-mcp-gateway/tests/live_test.py
+    clarity-python/.venv/bin/python clarity-mcp-gateway/tests/live_test.py
 """
 import asyncio
 import json
@@ -149,10 +149,10 @@ async def main():
             avg_ms = (time.perf_counter() - t0) / 20 * 1000
             check("性能：lookup 平均延迟 < 200ms", avg_ms < 200, f"{avg_ms:.1f}ms/次")
 
-    # 10. dehaze-python 生产客户端路径（McpGatewayClient）联通：会话装配含 initialize 前置
+    # 10. clarity-python 生产客户端路径（McpGatewayClient）联通：会话装配含 initialize 前置
     os.environ.setdefault("MCP_GATEWAY_URL", GW_URL)
     os.environ.setdefault("MCP_GATEWAY_KEY", key)
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "dehaze-python"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "clarity-python"))
     from app.infrastructure.clients.mcp_gateway_client import mcp_gateway_client
 
     tools = await mcp_gateway_client.list_tools()

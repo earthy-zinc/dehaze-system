@@ -1,7 +1,7 @@
 {
   "extends": "../pyright.base.json",
   "include": ["server.py", "tests"],
-  "extraPaths": [".", "../dehaze-python"],
+  "extraPaths": [".", "../clarity-python"],
   "venvPath": "..",
-  "venv": "dehaze-python/.venv"
+  "venv": "clarity-python/.venv"
 }
