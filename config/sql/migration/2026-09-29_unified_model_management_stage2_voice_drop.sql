@@ -1,8 +1,8 @@
 -- ============================================================
 -- 2026-09-29 统一 AI 模型管理改造 · 阶段2（语音旧表 DROP）
--- 权威设计：dehaze-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
+-- 权威设计：clarity-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
 -- 执行方式：mysql --default-character-set=utf8mb4 <本文件>（需 mysql CLI，过程体依赖 DELIMITER）
--- 执行目标：dehaze_dev（dehaze_test 由 conftest 按 schema+data 全量重建，不跑本文件）
+-- 执行目标：clarity_dev（clarity_test 由 conftest 按 schema+data 全量重建，不跑本文件）
 -- ------------------------------------------------------------
 -- 前置（全部满足才允许 DROP，设计 §6.1 不可回退点保护）：
 --   1. python 语音链路已切统一路由并验证（阶段 2 代码合入）；

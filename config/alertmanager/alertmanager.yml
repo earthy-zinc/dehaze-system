@@ -1,5 +1,5 @@
 # AlertManager 通知配置
-# 阈值规则见 config/prometheus/rules/dehaze-alerts.yml
+# 阈值规则见 config/prometheus/rules/clarity-alerts.yml
 #
 # 部署前请将下方 SMTP 占位配置替换为真实值（勿将真实密码提交到 Git）：
 #   smtp.example.com:465        → 邮件服务器地址

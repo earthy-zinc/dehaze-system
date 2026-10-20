@@ -147,11 +147,18 @@ export async function check(config) {
     for (const commandName of ['Xvfb', 'x11vnc', 'websockify']) {
       const found = findInPath(commandName, config.shimDir);
       if (found === null) {
-        const hint = '未安装：apt install xvfb x11vnc novnc websockify';
+        const hint = '未安装：跑 deps 命令自动安装';
         report(false, commandName, hint, false);
       } else {
         report(true, commandName, '已安装', false);
       }
+    }
+
+    if (findInPath('ibus-daemon', config.shimDir) === null) {
+      const hint = '未安装（noVNC 只能敲英文）：跑 deps 命令自动安装';
+      report(false, 'ibus（中文输入）', hint, true);
+    } else {
+      report(true, 'ibus（中文输入）', '已安装', true);
     }
   }
 
@@ -218,6 +225,8 @@ export async function status(config) {
   if (config.remoteDesktop) {
     const processes = [
       ['Xvfb', 'xvfb'],
+      ['ibus', 'ibus'],
+      ['dbus', 'dbus'],
       ['x11vnc', 'x11vnc'],
       ['websockify', 'websockify'],
     ];

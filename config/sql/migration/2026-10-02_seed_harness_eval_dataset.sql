@@ -12,7 +12,7 @@
 --   未满足时种子不会生效——本文件末尾的校验 SELECT 会打印 default_agent_exists=0 供识别。
 -- 评测集类型为 dev（开发集）：作为起步用例，不参与发布门禁；确认稳定后再由管理员升级为 regression。
 --   期望工具/参数/结果为起步口径，需结合实际执行轨迹迭代调优（判分为确定性规则式，见
---   dehaze-doc/docs/03-模块设计/核心模块/AI对话/Agent评测/后端实现.md §2.4）。
+--   clarity-doc/docs/03-模块设计/核心模块/AI对话/Agent评测/后端实现.md §2.4）。
 -- 幂等：评测集按唯一键口径 (agent_id, dataset_type='dev', deleted=0) 守卫——已存在 dev 集则
 --   复用（可能是管理员另建的），不新建；样本按 (dataset_id, task_goal) 守卫，重复执行不新增。
 -- 执行方式（不随 schema+data 自动导入）：

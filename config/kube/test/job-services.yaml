@@ -1,8 +1,8 @@
-# 三推理服务全量单测回归（第 2 批）：dehaze-llm / dehaze-voice / dehaze-modal
+# 三推理服务全量单测回归（第 2 批）：clarity-llm / clarity-voice / clarity-modal
 #
 #   kubectl apply -f config/kube/test/job-services.yaml -n p-cloud-dev-test-perm-resource-5aesj19quwkg
-#   kubectl logs -n $NS job/dehaze-test-regression-llm      # / -voice / -modal
-#   kubectl delete job dehaze-test-regression-llm dehaze-test-regression-voice dehaze-test-regression-modal -n $NS
+#   kubectl logs -n $NS job/clarity-test-regression-llm      # / -voice / -modal
+#   kubectl delete job clarity-test-regression-llm clarity-test-regression-voice clarity-test-regression-modal -n $NS
 #
 # 前置（镜像构建与两个 Secret）见 job-smoke.yaml 头部注释。
 # **不得与 job-regression.yaml 同时 apply**：组织配额 32C/32G 按 limits 累加，
@@ -12,14 +12,14 @@
 #   conftest 以桩替换推理引擎（llama_cpp / piper / ASR），权重目录被 monkeypatch 到 tmp_path；
 #   modal 的 test_inference_runs_weightless_algorithm 会真实执行 algorithm.DCP（纯 numpy/opencv）。
 # 服务读仓库根 .env（app/config.py 以 pyproject.toml 向上探测服务根、取 parents[1] 作仓库根），
-# 容器内即 /app/.env，故与三端一样用 dehaze-test-env Secret 挂载。
+# 容器内即 /app/.env，故与三端一样用 clarity-test-env Secret 挂载。
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-regression-llm
+  name: clarity-test-regression-llm
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: regression
 spec:
   backoffLimit: 0
@@ -28,7 +28,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: regression
         backend: llm
     spec:
@@ -38,12 +38,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: llm
-          image: csighub.tencentyun.com/earthywu/dehaze-system:llm-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:llm-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-llm
+          workingDir: /app/clarity-service/clarity-llm
           resources:
             requests: {cpu: "500m", memory: 1Gi}
             limits: {cpu: "2", memory: 4Gi}
@@ -69,10 +69,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-regression-voice
+  name: clarity-test-regression-voice
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: regression
 spec:
   backoffLimit: 0
@@ -81,7 +81,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: regression
         backend: voice
     spec:
@@ -91,12 +91,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: voice
-          image: csighub.tencentyun.com/earthywu/dehaze-system:voice-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:voice-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-voice
+          workingDir: /app/clarity-service/clarity-voice
           resources:
             requests: {cpu: "500m", memory: 2Gi}
             limits: {cpu: "4", memory: 8Gi}
@@ -122,10 +122,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-regression-modal
+  name: clarity-test-regression-modal
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: regression
 spec:
   backoffLimit: 0
@@ -134,7 +134,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: regression
         backend: modal
     spec:
@@ -144,12 +144,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: modal
-          image: csighub.tencentyun.com/earthywu/dehaze-system:modal-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:modal-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-modal
+          workingDir: /app/clarity-service/clarity-modal
           resources:
             requests: {cpu: "500m", memory: 2Gi}
             limits: {cpu: "4", memory: 8Gi}

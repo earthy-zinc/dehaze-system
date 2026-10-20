@@ -1,7 +1,7 @@
-"""生成 dehaze-sdk-js 集成测试所需的占位图片资源。
+"""生成 clarity-sdk-js 集成测试所需的占位图片资源。
 
 包含两类输出：
-1. dehaze-sdk-js/test/resources/  本地上传用占位图片
+1. clarity-sdk-js/test/resources/  本地上传用占位图片
 2. datasets/  模拟数据集图片，经根目录 datasets 符号链接/挂载由 nginx-dataset
    容器提供 http://{host}:19000/datasets/... 访问，供预测/评测接口按 URL 下载
 
@@ -21,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESOURCES_DIR = os.path.join(ROOT_DIR, "dehaze-sdk-js", "test", "resources")
+RESOURCES_DIR = os.path.join(ROOT_DIR, "clarity-sdk-js", "test", "resources")
 DATASETS_DIR = os.path.join(ROOT_DIR, "datasets")
 
 # (相对路径, 随机种子, 是否加雾)

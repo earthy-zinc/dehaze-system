@@ -1,7 +1,7 @@
 -- ============================================================
 -- 2026-09-29 统一 AI 模型管理改造 · 阶段1（数据层）
--- 权威设计：dehaze-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
--- 执行目标：dehaze_dev（dehaze_test 由 conftest/rebuild_mysql 按 schema+data 全量重建，不跑本文件）
+-- 权威设计：clarity-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
+-- 执行目标：clarity_dev（clarity_test 由 conftest/rebuild_mysql 按 schema+data 全量重建，不跑本文件）
 -- ------------------------------------------------------------
 -- 边界（纯增量）：
 --   * 不 DROP 任何表、不删任何 schema 文件、不动菜单/权限种子、暂不删 voice_billing 字典键；
@@ -22,7 +22,7 @@ SET NAMES utf8mb4;
 -- ---------- ① 四表列扩展（加列：MySQL 8.0 无 ADD COLUMN IF NOT EXISTS，用 information_schema 守卫） ----------
 
 SET @sql := (SELECT IF(COUNT(*) = 0,
-    'ALTER TABLE `sys_ai_model` ADD COLUMN `task_tags` json NULL DEFAULT NULL COMMENT ''任务归类标签(JSON数组;图像模型["dehaze"]/["super_resolution"]…;asr模型["stream"]/["offline"];embedding模型["text"]/["image"])'' AFTER `model_type`',
+    'ALTER TABLE `sys_ai_model` ADD COLUMN `task_tags` json NULL DEFAULT NULL COMMENT ''任务归类标签(JSON数组;图像模型["clarity"]/["super_resolution"]…;asr模型["stream"]/["offline"];embedding模型["text"]/["image"])'' AFTER `model_type`',
     'SELECT 1')
     FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sys_ai_model' AND COLUMN_NAME = 'task_tags');
@@ -96,7 +96,7 @@ WHERE vk.status = 1
 
 -- ---------- ④ sys_voice_model 3 行迁入 sys_ai_model ----------
 -- model_type：asr/tts；task_tags：asr 由 model_type 列（stream/offline）映射，tts 无 tag；
--- extra_request_params 不迁（onnx 路径/下载地址等运行时工件由 dehaze-voice /v1/models 按 model_id 服务端解析，不落模型行）。
+-- extra_request_params 不迁（onnx 路径/下载地址等运行时工件由 clarity-voice /v1/models 按 model_id 服务端解析，不落模型行）。
 INSERT INTO `sys_ai_model` (`provider_id`,`model_id`,`model_type`,`task_tags`,`display_name`,`status`,`vip_level`,`deleted`,`create_by`,`update_by`,`create_time`,`update_time`)
 SELECT lv.id, vm.model_id, vm.engine_type,
        CASE WHEN vm.engine_type = 'asr' THEN JSON_ARRAY(vm.model_type) ELSE NULL END,
@@ -145,7 +145,7 @@ FROM (
                CASE WHEN COUNT(*) OVER (PARTITION BY s.base) > 1
                     THEN CONCAT(s.base, '-', s.sfx) ELSE s.base END AS model_id,
                CASE s.type
-                   WHEN '图像去雾' THEN JSON_ARRAY('dehaze')
+                   WHEN '图像去雾' THEN JSON_ARRAY('clarity')
                    WHEN '图像去雨' THEN JSON_ARRAY('derain')
                    WHEN '图像去噪' THEN JSON_ARRAY('denoise')
                    WHEN '图像去模糊' THEN JSON_ARRAY('deblur')

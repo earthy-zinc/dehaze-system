@@ -5,7 +5,7 @@
 -- 设计思路:
 -- 会员月度配额历史表，每月一条记录，用于追溯历史月份配额使用情况。
 -- 与 sys_member 当月配额字段配合：sys_member 存当月实时数据，此表按月归档。
--- 归档 8 类任务配额（dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate），
+-- 归档 8 类任务配额（clarity/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate），
 --   与 sys_member 当月配额字段、sys_member_benefit 权益配置列对齐。
 -- (user_id, quota_month) 唯一索引保证每月一条。
 -- 定时任务每月1日执行：先将上月数据写入此表，再重置 sys_member 的当月配额字段。

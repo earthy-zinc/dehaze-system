@@ -4,8 +4,8 @@
 为磁盘上已存在的数据集文件批量创建 DB 记录（sys_dataset_item / sys_file / sys_item_file），
 源文件由 nginx 静态服务直服，登记为 nginx-static 存储后端，不上传 MinIO。
 
-依赖：pymysql、Pillow（dehaze-python/.venv 已安装）。
-运行：dehaze-python/.venv/bin/python scripts/init_dataset.py --help
+依赖：pymysql、Pillow（clarity-python/.venv 已安装）。
+运行：clarity-python/.venv/bin/python scripts/init_dataset.py --help
 
 配对规则（对齐需求规格 2.8.3）：按文件名前导数字分组，同组 clear/hazy/trans 归为一个数据项。
 haze_level 自动解析规则：

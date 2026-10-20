@@ -8,10 +8,10 @@
 --       （手工重置命令、重建脚本、文档示例）误命中而删库；docker-compose 以单文件方式
 --       挂载进 MySQL 初始化目录，保证首启仍会执行。
 -- 设计思路:
--- xxl_job 库独立于业务库 dehaze，由 xxl-job-admin 容器独立访问。
--- 预置 3 个执行器分组（dehaze-java/python/go）和项目中实际存在的定时任务，
+-- xxl_job 库独立于业务库 clarity，由 xxl-job-admin 容器独立访问。
+-- 预置 3 个执行器分组（clarity-java/python/go）和项目中实际存在的定时任务，
 -- 任务初始即为运行状态（trigger_status=1），admin 启动后按 CRON 自动调度。
--- admin 控制台账号 admin/Dehaze2026（与项目其他服务密码一致）。
+-- admin 控制台账号 admin/Clarity2026（与项目其他服务密码一致）。
 -- ------------------------------------------------------------
 
 DROP DATABASE IF EXISTS `xxl_job`;
@@ -154,31 +154,31 @@ CREATE TABLE `xxl_job_user`
 -- ------------------------------------------------------------
 
 -- 执行器分组：每个环境 3 个后端各一个（分组名由各端配置的 XXLJOB_ENV_SUFFIX 决定）
--- 无后缀留给生产，dev/pre 由执行器名携带 -dev / -pre 后缀自动注册，见 dehaze-doc《多环境部署实践》§3
+-- 无后缀留给生产，dev/pre 由执行器名携带 -dev / -pre 后缀自动注册，见 clarity-doc《多环境部署实践》§3
 -- title 列 varchar(12)，中英文按字符计，故环境后缀写进标题时须精简
 INSERT INTO `xxl_job_group`(`id`, `app_name`, `title`, `address_type`, `address_list`, `update_time`)
-VALUES (1, 'xxl-job-executor-dehaze-java', 'Java后端执行器', 0, NULL, now()),
-       (2, 'xxl-job-executor-dehaze-python', 'Python后端执行器', 0, NULL, now()),
-       (3, 'xxl-job-executor-dehaze-go', 'Go后端执行器', 0, NULL, now()),
-       (4, 'xxl-job-executor-dehaze-java-dev', 'Java后端-dev', 0, NULL, now()),
-       (5, 'xxl-job-executor-dehaze-python-dev', 'Python后端-dev', 0, NULL, now()),
-       (6, 'xxl-job-executor-dehaze-go-dev', 'Go后端-dev', 0, NULL, now()),
-       (7, 'xxl-job-executor-dehaze-java-pre', 'Java后端-pre', 0, NULL, now()),
-       (8, 'xxl-job-executor-dehaze-python-pre', 'Python后端-pre', 0, NULL, now()),
-       (9, 'xxl-job-executor-dehaze-go-pre', 'Go后端-pre', 0, NULL, now());
+VALUES (1, 'xxl-job-executor-clarity-java', 'Java后端执行器', 0, NULL, now()),
+       (2, 'xxl-job-executor-clarity-python', 'Python后端执行器', 0, NULL, now()),
+       (3, 'xxl-job-executor-clarity-go', 'Go后端执行器', 0, NULL, now()),
+       (4, 'xxl-job-executor-clarity-java-dev', 'Java后端-dev', 0, NULL, now()),
+       (5, 'xxl-job-executor-clarity-python-dev', 'Python后端-dev', 0, NULL, now()),
+       (6, 'xxl-job-executor-clarity-go-dev', 'Go后端-dev', 0, NULL, now()),
+       (7, 'xxl-job-executor-clarity-java-pre', 'Java后端-pre', 0, NULL, now()),
+       (8, 'xxl-job-executor-clarity-python-pre', 'Python后端-pre', 0, NULL, now()),
+       (9, 'xxl-job-executor-clarity-go-pre', 'Go后端-pre', 0, NULL, now());
 
 -- 调度锁
 INSERT INTO `xxl_job_lock` (`lock_name`)
 VALUES ('schedule_lock');
 
--- 控制台用户：admin / Dehaze2026（SHA-256）
+-- 控制台用户：admin / Clarity2026（SHA-256）
 INSERT INTO `xxl_job_user`(`id`, `username`, `password`, `role`, `permission`)
 VALUES (1, 'admin', '8c91a1a8e7ef50a8b8349e1d78332a04421ec0d163d0f0fd5c7d2b475ca890c1', 1, NULL);
 
 -- ------------------------------------------------------------
 -- 定时任务：与三端执行器注册的 handler 一一对应，初始即为运行状态
 -- schedule_type=CRON, glue_type=BEAN, executor_route_strategy=FIRST, 阻塞策略=SERIAL_EXECUTION
--- 三端同名任务 CRON 完全一致，取值依据 dehaze-doc 各模块「后端实现.md」的定时任务表
+-- 三端同名任务 CRON 完全一致，取值依据 clarity-doc 各模块「后端实现.md」的定时任务表
 -- 数量：Java 15（含 processDelayedPush）/ Go 14 / Python 30（含 16 个 Python 专属任务）
 -- ------------------------------------------------------------
 
@@ -190,46 +190,46 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
                            `child_jobid`, `trigger_status`)
 VALUES
     -- 任务清理-过期任务物理删除
-    (1, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (1, '任务清理-过期任务物理删除', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (1, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (1, '任务清理-僵死任务标记失败', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
-    (1, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (1, '预测评估日志-僵尸任务恢复', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
-    (1, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
+    (1, '订单-超时未支付自动取消', now(), now(), 'clarity', '', 'CRON', '0 */5 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (1, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (1, '订单-套餐到期自动完成', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-自动续费扣款
-    (1, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (1, '订单-自动续费扣款', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-退款失败重试
-    (1, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (1, '订单-退款失败重试', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (1, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (1, '优惠券-用户优惠券过期处理', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-过期降级
-    (1, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (1, '会员-过期降级', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-到期预警提醒
-    (1, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+    (1, '会员-到期预警提醒', now(), now(), 'clarity', '', 'CRON', '0 0 9 * * ?',
      'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
-    (1, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (1, '公告-定时发送', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
-    (1, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (1, '消息-过期消息清理', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-未读数缓存刷新
-    (1, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (1, '消息-未读数缓存刷新', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-免打扰延迟推送补发（Java 专属）
-    (1, '消息-免打扰延迟推送补发', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (1, '消息-免打扰延迟推送补发', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'processDelayedPush', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 -- === Python 执行器（job_group=2）任务 ===
@@ -240,91 +240,91 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
                            `child_jobid`, `trigger_status`)
 VALUES
     -- 任务清理-过期任务物理删除
-    (2, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (2, '任务清理-过期任务物理删除', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (2, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (2, '任务清理-僵死任务标记失败', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
-    (2, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (2, '预测评估日志-僵尸任务恢复', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
-    (2, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
+    (2, '订单-超时未支付自动取消', now(), now(), 'clarity', '', 'CRON', '0 */5 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (2, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (2, '订单-套餐到期自动完成', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-自动续费扣款
-    (2, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (2, '订单-自动续费扣款', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-退款失败重试
-    (2, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (2, '订单-退款失败重试', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-渠道对账（Python 专属）
-    (2, '订单-渠道对账', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (2, '订单-渠道对账', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'reconciliation', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (2, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (2, '优惠券-用户优惠券过期处理', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-过期降级
-    (2, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (2, '会员-过期降级', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-到期预警提醒
-    (2, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+    (2, '会员-到期预警提醒', now(), now(), 'clarity', '', 'CRON', '0 0 9 * * ?',
      'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
-    (2, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (2, '公告-定时发送', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
-    (2, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (2, '消息-过期消息清理', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-未读数缓存刷新
-    (2, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (2, '消息-未读数缓存刷新', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 文件清理-孤儿文件清理（Python 专属，算法端产生孤儿文件）
-    (2, '文件清理-孤儿文件清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (2, '文件清理-孤儿文件清理', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupOrphanFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 文件清理-临时文件清理（Python 专属，算法端产生临时文件）
-    (2, '文件清理-临时文件清理', now(), now(), 'dehaze', '', 'CRON', '0 0 */6 * * ?',
+    (2, '文件清理-临时文件清理', now(), now(), 'clarity', '', 'CRON', '0 0 */6 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupTempFiles', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 模型健康检查（Python 专属，GPU/DB/Redis健康监控）
-    (2, '模型健康检查', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (2, '模型健康检查', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'modelHealthCheck', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI记忆-遗忘（Python 专属）
-    (2, 'AI记忆-遗忘', now(), now(), 'dehaze', '', 'CRON', '0 0 3 * * ?',
+    (2, 'AI记忆-遗忘', now(), now(), 'clarity', '', 'CRON', '0 0 3 * * ?',
      'DO_NOTHING', 'FIRST', 'aiMemoryForget', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI记忆-反思（Python 专属）
-    (2, 'AI记忆-反思', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (2, 'AI记忆-反思', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'aiMemoryReflection', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI记忆-合并（Python 专属）
-    (2, 'AI记忆-合并', now(), now(), 'dehaze', '', 'CRON', '0 0 5 * * ?',
+    (2, 'AI记忆-合并', now(), now(), 'clarity', '', 'CRON', '0 0 5 * * ?',
      'DO_NOTHING', 'FIRST', 'aiMemoryMerge', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI记忆-已删除记忆清除（Python 专属）
-    (2, 'AI记忆-已删除记忆清除', now(), now(), 'dehaze', '', 'CRON', '0 0 6 * * ?',
+    (2, 'AI记忆-已删除记忆清除', now(), now(), 'clarity', '', 'CRON', '0 0 6 * * ?',
      'DO_NOTHING', 'FIRST', 'purgeDeletedMemories', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 对话-不活跃会话归档（Python 专属）
-    (2, '对话-不活跃会话归档', now(), now(), 'dehaze', '', 'CRON', '0 0 0 * * ?',
+    (2, '对话-不活跃会话归档', now(), now(), 'clarity', '', 'CRON', '0 0 0 * * ?',
      'DO_NOTHING', 'FIRST', 'archiveInactiveConversations', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 对话-已删除会话清除（Python 专属）
-    (2, '对话-已删除会话清除', now(), now(), 'dehaze', '', 'CRON', '0 30 1 * * ?',
+    (2, '对话-已删除会话清除', now(), now(), 'clarity', '', 'CRON', '0 30 1 * * ?',
      'DO_NOTHING', 'FIRST', 'purgeDeletedConversations', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 模型渠道-last_used落库（Python 专属）
-    (2, '模型渠道-last_used落库', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (2, '模型渠道-last_used落库', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'flushProviderKeyLastUsed', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 账单-月度账单生成（Python 专属）
-    (2, '账单-月度账单生成', now(), now(), 'dehaze', '', 'CRON', '0 30 0 1 * ?',
+    (2, '账单-月度账单生成', now(), now(), 'clarity', '', 'CRON', '0 30 0 1 * ?',
      'DO_NOTHING', 'FIRST', 'generateMonthlyBill', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI智能调度-触发（Python 专属）
-    (2, 'AI智能调度-触发', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (2, 'AI智能调度-触发', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'aiScheduleTrigger', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- AI智能调度-过期运行清理（Python 专属）
-    (2, 'AI智能调度-过期运行清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (2, 'AI智能调度-过期运行清理', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'aiScheduleRunCleanup', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员礼包-过期清理（三端统一任务名 clearVipGiftExpire）
-    (2, '会员礼包-过期清理', now(), now(), 'dehaze', '', 'CRON', '0 59 23 L * ?',
+    (2, '会员礼包-过期清理', now(), now(), 'clarity', '', 'CRON', '0 59 23 L * ?',
      'DO_NOTHING', 'FIRST', 'clearVipGiftExpire', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员礼包-每月赠送发放（三端统一任务名 grantVipMonthlyGift）
-    (2, '会员礼包-每月赠送发放', now(), now(), 'dehaze', '', 'CRON', '0 0 0 1 * ?',
+    (2, '会员礼包-每月赠送发放', now(), now(), 'clarity', '', 'CRON', '0 0 0 1 * ?',
      'DO_NOTHING', 'FIRST', 'grantVipMonthlyGift', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 -- === Go 执行器（job_group=3）任务 ===
@@ -335,43 +335,43 @@ INSERT INTO `xxl_job_info`(`job_group`, `job_desc`, `add_time`, `update_time`, `
                            `child_jobid`, `trigger_status`)
 VALUES
     -- 任务清理-过期任务物理删除
-    (3, '任务清理-过期任务物理删除', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (3, '任务清理-过期任务物理删除', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 任务清理-僵死任务标记失败
-    (3, '任务清理-僵死任务标记失败', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (3, '任务清理-僵死任务标记失败', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckTasks', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 预测评估日志-僵尸任务恢复
-    (3, '预测评估日志-僵尸任务恢复', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (3, '预测评估日志-僵尸任务恢复', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupStuckPredEvalLogs', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-超时未支付自动取消
-    (3, '订单-超时未支付自动取消', now(), now(), 'dehaze', '', 'CRON', '0 */5 * * * ?',
+    (3, '订单-超时未支付自动取消', now(), now(), 'clarity', '', 'CRON', '0 */5 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-套餐到期自动完成
-    (3, '订单-套餐到期自动完成', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (3, '订单-套餐到期自动完成', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'completeExpiredOrders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-自动续费扣款
-    (3, '订单-自动续费扣款', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (3, '订单-自动续费扣款', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'autoRenew', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 订单-退款失败重试
-    (3, '订单-退款失败重试', now(), now(), 'dehaze', '', 'CRON', '0 */30 * * * ?',
+    (3, '订单-退款失败重试', now(), now(), 'clarity', '', 'CRON', '0 */30 * * * ?',
      'DO_NOTHING', 'FIRST', 'retryFailedRefunds', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 优惠券-用户优惠券过期处理
-    (3, '优惠券-用户优惠券过期处理', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (3, '优惠券-用户优惠券过期处理', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'expireUserCoupons', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-过期降级
-    (3, '会员-过期降级', now(), now(), 'dehaze', '', 'CRON', '0 0 2 * * ?',
+    (3, '会员-过期降级', now(), now(), 'clarity', '', 'CRON', '0 0 2 * * ?',
      'DO_NOTHING', 'FIRST', 'processExpiredMembers', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 会员-到期预警提醒
-    (3, '会员-到期预警提醒', now(), now(), 'dehaze', '', 'CRON', '0 0 9 * * ?',
+    (3, '会员-到期预警提醒', now(), now(), 'clarity', '', 'CRON', '0 0 9 * * ?',
      'DO_NOTHING', 'FIRST', 'sendExpireReminders', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 公告-定时发送
-    (3, '公告-定时发送', now(), now(), 'dehaze', '', 'CRON', '0 * * * * ?',
+    (3, '公告-定时发送', now(), now(), 'clarity', '', 'CRON', '0 * * * * ?',
      'DO_NOTHING', 'FIRST', 'sendScheduledAnnouncements', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-过期消息清理
-    (3, '消息-过期消息清理', now(), now(), 'dehaze', '', 'CRON', '0 0 4 * * ?',
+    (3, '消息-过期消息清理', now(), now(), 'clarity', '', 'CRON', '0 0 4 * * ?',
      'DO_NOTHING', 'FIRST', 'cleanupExpiredMessages', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1),
     -- 消息-未读数缓存刷新
-    (3, '消息-未读数缓存刷新', now(), now(), 'dehaze', '', 'CRON', '0 0 * * * ?',
+    (3, '消息-未读数缓存刷新', now(), now(), 'clarity', '', 'CRON', '0 0 * * * ?',
      'DO_NOTHING', 'FIRST', 'refreshUnreadCountCache', '', 'SERIAL_EXECUTION', 0, 0, 'BEAN', '', '', NULL, '', 1);
 
 COMMIT;

@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveConfig, writeState, writeToolConfigs } from './lib/config.mjs';
 import { LOG_TAIL_LINES } from './lib/defaults.mjs';
+import { installServerDependencies } from './lib/deps.mjs';
 import { check, status, view } from './lib/diagnose.mjs';
 import { start, stop } from './lib/instance.mjs';
 import { installShims, uninstallShims } from './lib/shim.mjs';
@@ -89,6 +90,13 @@ async function main() {
 
   if (command === 'uninstall') {
     uninstallShims(config);
+    return;
+  }
+
+  if (command === 'deps') {
+    if (!installServerDependencies()) {
+      process.exit(1);
+    }
     return;
   }
 

@@ -8,7 +8,7 @@
 -- growth_value 记录成长值，expire_time 为套餐到期时间（NULL 表示由成长值维持等级）。
 -- 累计消费 total_consumption 用于运营分析，按支付金额累计（单位：分）。
 -- status 字段控制会员冻结状态（1:正常;0:冻结），冻结时权益暂停但不影响等级。
--- 当月配额字段（monthly_{taskType}_quota/used，覆盖 8 类任务：dehaze/derain/desnow/lowlight/
+-- 当月配额字段（monthly_{taskType}_quota/used，覆盖 8 类任务：clarity/derain/desnow/lowlight/
 --   super_resolution/denoise/inpaint/evaluate）由定时任务每月1日重置，避免单独建配额表；
 --   与 sys_member_benefit 权益配置 8 类配额列对齐（任务类型为封闭枚举，宽表读性能最优）。
 -- ------------------------------------------------------------

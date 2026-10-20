@@ -6,7 +6,7 @@
 -- 会员等级权益配置表，定义四个等级（普通/VIP1/VIP2/SVIP）的默认权益。
 -- level_code 唯一索引保证每个等级一条配置。
 -- growth_min/growth_max 定义成长值区间，用于自动升降级判断。
--- 权益项覆盖 8 类任务月度配额（dehaze/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）、
+-- 权益项覆盖 8 类任务月度配额（clarity/derain/desnow/lowlight/super_resolution/denoise/inpaint/evaluate）、
 -- AI 对话积分配额（日/月）、多模态视觉读取频次、同时在线设备数上限、处理优先级、功能解锁开关。
 -- 功能解锁项使用 tinyint(0/1) 而非布尔，与系统其他表风格一致。
 -- 套餐购买时从此表读取等级权益，套餐可自定义覆盖（见 sys_package.benefit_overrides）。

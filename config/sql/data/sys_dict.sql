@@ -42,7 +42,7 @@ values (1, 'gender', '男', '1', 1, 1, 0, null, '2019-05-05 13:07:52', '2022-06-
        -- 全模态平台默认模型（统一模型管理 §2.2 默认模型解析链；按 model_type 增键，须为已启用模型）
        -- 注：default_model.image_edit 为阶段1「只播种」占位——image_edit 模型行由阶段1 迁移从 sys_algorithm
        --   迁入（config/sql/migration/2026-09-29_*.sql），不进本静态种子，故全新环境（测试库）该键暂无对应模型，
-       --   消费方在阶段 2/3 接入（届时技术事实源收敛为 dehaze-modal /v1/models 的规范 slug）。
+       --   消费方在阶段 2/3 接入（届时技术事实源收敛为 clarity-modal /v1/models 的规范 slug）。
        (41, 'ai_model', 'default_model.asr', 'sensevoice', 2, 1, 1, '平台默认语音识别模型(须为已启用模型)', NOW(), NOW()),
        (42, 'ai_model', 'default_model.tts', 'huayan', 3, 1, 1, '平台默认语音合成模型(须为已启用模型)', NOW(), NOW()),
        (43, 'ai_model', 'default_model.image_edit', 'aecrnet', 4, 1, 1, '平台默认图像编辑模型(须为已启用模型;aecrnet=AECR-Net,由阶段1迁移迁入)', NOW(), NOW());

@@ -16,7 +16,7 @@
 --   执行后需失效缓存（默认模型与模型/供应商清单）：ai:model:list、ai:provider:list、ai:rate:{model_id}，
 --   以及**字典值缓存 `dict:value:ai_model:*`**（get_dict_value 带 1h 缓存；本文件用原生 SQL 改字典、
 --   绕过服务失效路径，不清该前缀会出现"库里已切、服务仍解析旧默认模型"——2026-10-02 实测）。
---     （标准入口：dehaze-test/scripts/rebuild_mysql.py --skip-mysql）
+--     （标准入口：clarity-test/scripts/rebuild_mysql.py --skip-mysql）
 -- ============================================================
 SET NAMES utf8mb4;
 

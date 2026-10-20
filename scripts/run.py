@@ -18,7 +18,7 @@ SELF = Path(__file__).resolve()
 IS_WIN = sys.platform == "win32"
 # CREATE_NO_WINDOW 仅 Windows 有（typeshed 按平台条件声明），跨平台直接取属性会触发静态检查告警；非 Windows 下为 0 即默认行为
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-_SERVICE_ROOT = ROOT / "dehaze-service"
+_SERVICE_ROOT = ROOT / "clarity-service"
 MVN = "mvn.cmd" if IS_WIN else "mvn"
 
 
@@ -29,18 +29,18 @@ def _venv_py(*parts: str) -> str:
 
 
 SERVICES: dict[str, tuple[Path, list[str], int]] = {
-    "go":     (ROOT / "dehaze-go",     ["go", "run", "./cmd/main.go"], 8990),
-    "python": (ROOT / "dehaze-python", [_venv_py("dehaze-python"), "-m", "app.main"], 8991),
-    "java":   (ROOT / "dehaze-java",   [MVN, "spring-boot:run", "-DskipTests"], 8989),
+    "go":     (ROOT / "clarity-go",     ["go", "run", "./cmd/main.go"], 8990),
+    "python": (ROOT / "clarity-python", [_venv_py("clarity-python"), "-m", "app.main"], 8991),
+    "java":   (ROOT / "clarity-java",   [MVN, "spring-boot:run", "-DskipTests"], 8989),
     # uv 走系统证书库：办公网/企业代理会替换 TLS 证书链，uv 内置根证书校验不过（UnknownIssuer）
-    "mcp":    (ROOT / "dehaze-mcp-gateway", ["uv", "run", "--native-tls", "python", "server.py"], 8082),
-    # 外置推理服务（dehaze-service/*，内网专用，各自独立 venv）
-    "llm":    (_SERVICE_ROOT / "dehaze-llm",   [_venv_py("dehaze-service", "dehaze-llm"), "-m", "app.main"], 8992),
-    "voice":  (_SERVICE_ROOT / "dehaze-voice", [_venv_py("dehaze-service", "dehaze-voice"), "-m", "app.main"], 8993),
-    "modal":  (_SERVICE_ROOT / "dehaze-modal", [_venv_py("dehaze-service", "dehaze-modal"), "-m", "app.main"], 8994),
+    "mcp":    (ROOT / "clarity-mcp-gateway", ["uv", "run", "--native-tls", "python", "server.py"], 8082),
+    # 外置推理服务（clarity-service/*，内网专用，各自独立 venv）
+    "llm":    (_SERVICE_ROOT / "clarity-llm",   [_venv_py("clarity-service", "clarity-llm"), "-m", "app.main"], 8992),
+    "voice":  (_SERVICE_ROOT / "clarity-voice", [_venv_py("clarity-service", "clarity-voice"), "-m", "app.main"], 8993),
+    "modal":  (_SERVICE_ROOT / "clarity-modal", [_venv_py("clarity-service", "clarity-modal"), "-m", "app.main"], 8994),
 }
 
-# 需要存活守护的服务：uvicorn 的 reload（dehaze-python 在 dev 下 `reload=settings.DEBUG`）会经
+# 需要存活守护的服务：uvicorn 的 reload（clarity-python 在 dev 下 `reload=settings.DEBUG`）会经
 # pdeathsig 连带杀掉本地 LLM 子进程（8992），表现是推理服务**静默消失**——上游只看到超时/失败。
 # 由守护进程持有 llm 进程后，其父进程不再是 reloader；万一仍被杀，也由守护按 console 日志记录
 # 原因后重拉。守护只服务该集合内的服务，不改变其它服务的生命周期语义。
@@ -50,7 +50,7 @@ GUARD_RESTART_DELAY = 3.0
 # 内部子命令：由 start() 拉起服务守护，不在 USAGE 中暴露、不建议手工调用
 GUARD_COMMAND = "_guard"
 
-USAGE = """DehazeSystem 后端服务管理
+USAGE = """Clarity Vision 后端服务管理
 
 用法:
     run.py run|start|stop|restart <svc[,svc]|all>
@@ -177,7 +177,7 @@ def _spawn(
 
 
 def _skip_unprovisioned(svc: str, cmd: list[str]) -> None:
-    """未 provision（dehaze-service/* 首次需在该目录 uv sync）视为可缺省：打印提示后跳过，不报错。
+    """未 provision（clarity-service/* 首次需在该目录 uv sync）视为可缺省：打印提示后跳过，不报错。
 
     --native-tls 同 SERVICES 中 uv 命令的理由：企业代理替换证书链时需走系统证书库。"""
     print(f"[{svc}] skip：未 provision（未找到 {cmd[0]}），如需本地/GPU 部署请先在该目录 uv sync --native-tls")
@@ -221,7 +221,7 @@ def guard(svc: str) -> None:
             try:
                 child = _spawn(svc, cmd, cwd, log, new_session=False)
             except FileNotFoundError:
-                # 未 provision（dehaze-service/* 首次需在该目录 uv sync）：同 start 的 skip 口径
+                # 未 provision（clarity-service/* 首次需在该目录 uv sync）：同 start 的 skip 口径
                 print(
                     f"[{svc}] {_now()} 守护退出：未找到 {cmd[0]}（服务未 provision）",
                     file=log,
@@ -261,7 +261,7 @@ def start(svc: str):
             return
         cmd = ["java", "-jar", str(jar)]
 
-    # 未 provision（dehaze-service/* 首次需在该目录 uv sync 生成 venv）视为可缺省：跳过而非报错，
+    # 未 provision（clarity-service/* 首次需在该目录 uv sync 生成 venv）视为可缺省：跳过而非报错，
     # 不中断其余服务。llm/voice 已退出默认链路、按需手动启动（验证 local / 极简协议调用时用）；modal 仍是去雾核心。
     if not cwd.is_dir():
         print(f"[{svc}] skip：服务未 provision（目录缺失 {cwd}），如需本地/GPU 部署请先在该目录 uv sync")
@@ -280,7 +280,7 @@ def start(svc: str):
     try:
         proc = _spawn(svc, _launch_argv(svc, cmd), cwd, log, new_session=True)
     except FileNotFoundError:
-        # 解释器缺失（dehaze-service 各服务首次需在该目录同步依赖），同属未 provision：跳过。
+        # 解释器缺失（clarity-service 各服务首次需在该目录同步依赖），同属未 provision：跳过。
         log.close()
         _skip_unprovisioned(svc, cmd)
         return

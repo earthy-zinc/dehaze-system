@@ -1,9 +1,23 @@
 // 实例生命周期：工作站只起 Chrome；服务器另起 Xvfb、x11vnc、websockify
 // （人工可经 noVNC 接管）
 import { spawn } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+import { HOME } from './config.mjs';
+import {
+  IBUS_ENGINE,
+  IME_CHROME_ENVIRONMENT,
+  IME_READY_POLL_MS,
+  IME_READY_TIMEOUT_MS,
   LOOPBACK,
   NOVNC_DEFAULT_DIR,
   NOVNC_PATCHED_DIR_NAME,
@@ -139,7 +153,12 @@ export async function startChrome(config) {
   mkdirSync(config.userDir, { recursive: true });
   let extraEnvironment;
   if (config.remoteDesktop) {
-    extraEnvironment = { DISPLAY: config.display };
+    // 让 Chrome 走 ibus：GTK_IM_MODULE 等 + 会话总线地址（ibus-daemon 挂在同一条总线上）
+    extraEnvironment = {
+      DISPLAY: config.display,
+      DBUS_SESSION_BUS_ADDRESS: dbusAddress(config),
+      ...IME_CHROME_ENVIRONMENT,
+    };
   }
   const pid = spawnDetached(chromePath, chromeArgs(config), config, 'chrome', extraEnvironment);
 
@@ -167,6 +186,104 @@ function startXvfb(config) {
   const args = xvfbArgs(config);
   const startedPid = spawnDetached('Xvfb', args, config, 'xvfb');
   console.log(`已启动 Xvfb ${config.display}（pid ${startedPid}）`);
+}
+
+// ── 中文输入法（仅服务器模式）──
+// 输入法走一条独立的 dbus 会话总线：地址固定成运行时目录下的 socket，Chrome 与 ibus 共用同一条。
+// ibus-daemon 不带 --daemonize，作为前台子进程常驻，pid 可被本工具管理（--replace 自愈重复拉起）。
+function dbusAddress(config) {
+  return `unix:path=${join(config.runtimeDir, 'dbus', `bus-${config.cdpPort}`)}`;
+}
+
+function startDbus(config) {
+  const pid = readPid(config, 'dbus');
+  if (isProcessAlive(pid)) {
+    console.log(`dbus 会话总线已在运行（pid ${pid}）`);
+    return;
+  }
+  const directory = join(config.runtimeDir, 'dbus');
+  mkdirSync(directory, { recursive: true });
+  rmSync(join(directory, `bus-${config.cdpPort}`), { force: true });
+  const startedPid = spawnDetached(
+    'dbus-daemon',
+    ['--session', '--nofork', '--nopidfile', `--address=${dbusAddress(config)}`],
+    config,
+    'dbus',
+  );
+  console.log(`已启动 dbus 会话总线（pid ${startedPid}）`);
+}
+
+// ibus 相关命令共用的环境：同一条会话总线 + 目标 X display
+function ibusEnvironment(config) {
+  return {
+    ...process.env,
+    DISPLAY: config.display,
+    DBUS_SESSION_BUS_ADDRESS: dbusAddress(config),
+  };
+}
+
+function startIbus(config) {
+  const pid = readPid(config, 'ibus');
+  if (isProcessAlive(pid)) {
+    console.log(`ibus 已在运行（pid ${pid}）`);
+    return;
+  }
+  // ⚠️ 必须 --daemonize：部分 ibus 版本（如实测的 1.5.28）前台方式会被会话回收，daemonize 才常驻。
+  // daemonize 后 daemon 与启动进程脱钩，pid 不取 spawn 结果，稍后从 ibus 地址文件回填（见 recordIbusPid）。
+  runCommand('ibus-daemon', ['--daemonize', '--replace', '--xim'], { env: ibusEnvironment(config) });
+  console.log(`已启动 ibus（引擎 ${IBUS_ENGINE}）`);
+}
+
+// daemonize 后从 ibus 自写的地址文件取真实 pid 记账（客户端也靠这个文件发现 ibus）
+function recordIbusPid(config) {
+  const directory = join(HOME, '.config', 'ibus', 'bus');
+  const suffix = `-unix-${config.display.replace(':', '')}`;
+  let entries;
+  try {
+    entries = readdirSync(directory);
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    if (!name.endsWith(suffix)) {
+      continue;
+    }
+    const matched = /IBUS_DAEMON_PID=(\d+)/.exec(readFileSync(join(directory, name), 'utf8'));
+    if (matched !== null) {
+      writePid(config, 'ibus', Number(matched[1]));
+      return;
+    }
+  }
+}
+
+// 切到拼音引擎。⚠️ libpinyin 会以退出码 1 返回（引擎实际已生效），故不看退出码、只当触发切换
+function setIbusEngine(config) {
+  runCommand('ibus', ['engine', IBUS_ENGINE], { env: ibusEnvironment(config) });
+}
+
+function currentIbusEngine(config) {
+  const result = runCommand('ibus', ['engine'], { env: ibusEnvironment(config) });
+  if (result.status !== 0 || typeof result.stdout !== 'string') {
+    return null;
+  }
+  return result.stdout.trim();
+}
+
+// Xvfb 之后按 dbus → ibus → 拼音引擎 拉起；失败只告警，不阻断实例启动
+async function startIme(config) {
+  startDbus(config);
+  startIbus(config);
+  const attempts = Math.ceil(IME_READY_TIMEOUT_MS / IME_READY_POLL_MS);
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    setIbusEngine(config);
+    await sleep(IME_READY_POLL_MS);
+    if (currentIbusEngine(config) === IBUS_ENGINE) {
+      recordIbusPid(config);
+      console.log(`输入法就绪：${IBUS_ENGINE}（noVNC 里直接拼音输入；客户端请保持英文输入法）`);
+      return;
+    }
+  }
+  console.log(`⚠️ ibus 引擎切换超时，noVNC 里可手动执行：ibus engine ${IBUS_ENGINE}`);
 }
 
 function startX11vnc(config) {
@@ -254,6 +371,7 @@ async function stopSignProxy(config) {
 export async function start(config) {
   if (config.remoteDesktop) {
     startXvfb(config);
+    await startIme(config);
   }
   if (config.signProxyCredentialed) {
     startSignProxy(config);
@@ -356,6 +474,8 @@ export async function stop(config) {
   await stopSignProxy(config);
   await stopChrome(config);
   if (config.remoteDesktop) {
+    await stopProcess(config, 'ibus', 'ibus');
+    await stopProcess(config, 'dbus', 'dbus');
     await stopProcess(config, 'xvfb', 'Xvfb');
   }
 }

@@ -1,13 +1,13 @@
 # Filebeat 三端日志采集配置
 # 挂载约定（见 docker-compose.yml filebeat 服务）：
-#   /logs/java    → dehaze-java/logs
-#   /logs/python  → dehaze-python/logs
-#   /logs/go      → dehaze-go/logs
+#   /logs/java    → clarity-java/logs
+#   /logs/python  → clarity-python/logs
+#   /logs/go      → clarity-go/logs
 # 目录结构为 logs/{yyyy-MM-dd}/{级别}.log，三端均为 JSON 结构化日志
 
 filebeat.inputs:
   - type: filestream
-    id: dehaze-java
+    id: clarity-java
     enabled: true
     paths:
       - /logs/java/*/*.log
@@ -20,7 +20,7 @@ filebeat.inputs:
     fields_under_root: true
 
   - type: filestream
-    id: dehaze-python
+    id: clarity-python
     enabled: true
     paths:
       - /logs/python/*/*.log
@@ -33,7 +33,7 @@ filebeat.inputs:
     fields_under_root: true
 
   - type: filestream
-    id: dehaze-go
+    id: clarity-go
     enabled: true
     paths:
       - /logs/go/*/*.log
@@ -45,9 +45,9 @@ filebeat.inputs:
       service: go
     fields_under_root: true
 
-  # 外置推理服务（dehaze-service/*）：fields.service 与日志实现约定的服务名一致
+  # 外置推理服务（clarity-service/*）：fields.service 与日志实现约定的服务名一致
   - type: filestream
-    id: dehaze-llm
+    id: clarity-llm
     enabled: true
     paths:
       - /logs/llm/*/*.log
@@ -60,7 +60,7 @@ filebeat.inputs:
     fields_under_root: true
 
   - type: filestream
-    id: dehaze-voice
+    id: clarity-voice
     enabled: true
     paths:
       - /logs/voice/*/*.log
@@ -73,7 +73,7 @@ filebeat.inputs:
     fields_under_root: true
 
   - type: filestream
-    id: dehaze-modal
+    id: clarity-modal
     enabled: true
     paths:
       - /logs/modal/*/*.log
@@ -89,7 +89,7 @@ filebeat.inputs:
     id: dehaze-client
     enabled: true
     paths:
-      - /logs/java/*/client.log    # 挂载 dehaze-java/logs，前端日志由后端接收 API 落盘
+      - /logs/java/*/client.log    # 挂载 clarity-java/logs，前端日志由后端接收 API 落盘
     parsers:
       - ndjson:
           keys_under_root: true

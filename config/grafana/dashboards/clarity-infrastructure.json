@@ -344,7 +344,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["dehaze", "infrastructure"],
+  "tags": ["clarity", "infrastructure"],
   "templating": {
     "list": []
   },

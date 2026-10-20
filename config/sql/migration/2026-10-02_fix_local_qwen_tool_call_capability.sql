@@ -3,8 +3,8 @@
 -- 模块: 核心模块-AI对话（模型管理 / 能力扩展）
 -- ============================================================
 -- 【OPT-IN：默认不执行，须人工执行】
---   问题：本地推理服务 dehaze-llm 的 openai_compat 路由**不解析工具协议**（仅保证接口
---   形状兼容不报错，见 dehaze-service/dehaze-llm/app/routers/openai_compat.py），
+--   问题：本地推理服务 clarity-llm 的 openai_compat 路由**不解析工具协议**（仅保证接口
+--   形状兼容不报错，见 clarity-service/clarity-llm/app/routers/openai_compat.py），
 --   故 qwen3-0.6b 无法产出原生 tool_calls；而 sys_ai_model 却把它标成
 --   supports_tool_call=1（属于错误能力位），导致发送消息时按"支持工具"放行，
 --   推理到工具阶段却永远不产生工具调用。

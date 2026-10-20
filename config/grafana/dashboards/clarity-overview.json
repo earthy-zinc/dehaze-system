@@ -44,7 +44,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"dehaze-java\"}[1m])) by (method)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"clarity-java\"}[1m])) by (method)",
           "legendFormat": "{{method}}",
           "refId": "A"
         }
@@ -87,7 +87,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"dehaze-go\"}[1m])) by (method)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"clarity-go\"}[1m])) by (method)",
           "legendFormat": "{{method}}",
           "refId": "A"
         }
@@ -130,7 +130,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_request_duration_seconds_count{job=\"dehaze-python\"}[1m])) by (method)",
+          "expr": "sum(rate(http_request_duration_seconds_count{job=\"clarity-python\"}[1m])) by (method)",
           "legendFormat": "{{method}}",
           "refId": "A"
         }
@@ -173,7 +173,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"dehaze-java\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"clarity-java\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "A"
         }
@@ -216,7 +216,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"dehaze-go\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"clarity-go\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "A"
         }
@@ -259,7 +259,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"dehaze-python\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"clarity-python\"}[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "A"
         }
@@ -302,7 +302,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(dehaze_prediction_total{status=\"success\"})",
+          "expr": "sum(clarity_prediction_total{status=\"success\"})",
           "refId": "A"
         }
       ],
@@ -345,7 +345,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(dehaze_prediction_total{status=\"failure\"})",
+          "expr": "sum(clarity_prediction_total{status=\"failure\"})",
           "refId": "A"
         }
       ],
@@ -530,7 +530,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"dehaze-java\", status=~\"5..\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"dehaze-java\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"clarity-java\", status=~\"5..\"}[1m])) / sum(rate(http_server_requests_seconds_count{job=\"clarity-java\"}[1m]))",
           "legendFormat": "5xx error rate",
           "refId": "A"
         }
@@ -573,7 +573,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "jvm_memory_used_bytes{job=\"dehaze-java\"}",
+          "expr": "jvm_memory_used_bytes{job=\"clarity-java\"}",
           "legendFormat": "{{area}} - {{id}}",
           "refId": "A"
         }
@@ -616,7 +616,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_goroutines{job=\"dehaze-go\"}",
+          "expr": "go_goroutines{job=\"clarity-go\"}",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
@@ -643,7 +643,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["dehaze", "overview"],
+  "tags": ["clarity", "overview"],
   "templating": {
     "list": []
   },
@@ -654,7 +654,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "三端服务概览",
-  "uid": "dehaze-overview",
+  "uid": "clarity-overview",
   "version": 1,
   "weekStart": ""
 }

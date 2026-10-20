@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: 'Dehaze Dashboards'
+  - name: 'Clarity Dashboards'
     orgId: 1
-    folder: 'Dehaze'
+    folder: 'Clarity'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30

@@ -1,9 +1,9 @@
-# Dehaze 告警规则
-# 阈值定义见 dehaze-doc/docs/02-系统架构/06-部署架构.md 7.2 关键告警指标
+# Clarity 告警规则
+# 阈值定义见 clarity-doc/docs/02-系统架构/06-部署架构.md 7.2 关键告警指标
 # 通知通道配置见 config/alertmanager/alertmanager.yml
 
 groups:
-  - name: dehaze-system
+  - name: clarity-vision
     rules:
       - alert: HighCpuUsage
         expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
@@ -45,14 +45,14 @@ groups:
           description: "指标采集目标 {{ $labels.job }}（{{ $labels.instance }}）已宕机超过 1 分钟"
 
       - alert: JavaHigh5xxErrorRate
-        expr: sum(rate(http_server_requests_seconds_count{job="dehaze-java", status=~"5.."}[2m])) / sum(rate(http_server_requests_seconds_count{job="dehaze-java"}[2m])) > 0.05
+        expr: sum(rate(http_server_requests_seconds_count{job="clarity-java", status=~"5.."}[2m])) / sum(rate(http_server_requests_seconds_count{job="clarity-java"}[2m])) > 0.05
         for: 2m
         labels:
           severity: critical
           service: java
         annotations:
           summary: "Java 后端 5xx 错误率过高"
-          description: "dehaze-java 5xx 错误率已持续 2 分钟超过 5%（当前 {{ $value | humanizePercentage }}）"
+          description: "clarity-java 5xx 错误率已持续 2 分钟超过 5%（当前 {{ $value | humanizePercentage }}）"
 
       - alert: HighP99Latency
         expr: |
@@ -65,7 +65,7 @@ groups:
           summary: "接口 P99 延迟过高"
           description: "某后端服务 P99 延迟已持续 5 分钟超过 5s（当前 {{ $value | printf \"%.2f\" }}s）"
 
-  - name: dehaze-infrastructure
+  - name: clarity-infrastructure
     rules:
       - alert: MysqlHighConnections
         expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8

@@ -1,8 +1,8 @@
 -- ============================================================
 -- 2026-09-29 统一 AI 模型管理改造 · 阶段3（图像链路模型化 + 算法两表 DROP）
--- 权威设计：dehaze-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
+-- 权威设计：clarity-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
 -- 执行方式：mysql --default-character-set=utf8mb4 <本文件>（过程体依赖 DELIMITER）
--- 执行目标：dehaze_dev（dehaze_test 由 conftest 按 schema+data 全量重建，不跑本文件）
+-- 执行目标：clarity_dev（clarity_test 由 conftest 按 schema+data 全量重建，不跑本文件）
 -- ------------------------------------------------------------
 -- 前置（全部满足才允许执行到 DROP 段）：
 --   1. python / java / go 三端图像链路已切模型化并验证（阶段 3 代码合入）；

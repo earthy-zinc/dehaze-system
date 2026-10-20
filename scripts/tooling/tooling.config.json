@@ -1,5 +1,5 @@
 {
-  "_comment": "dehaze 开发环境统一管理配置。setup-toolchain.ps1(Windows) 与 setup-toolchain-linux.sh(WSL/Linux) 共用。install 段通用可反复跑；legacy 段仅迁移旧环境用，全新机器留空。",
+  "_comment": "clarity 开发环境统一管理配置。setup-toolchain.ps1(Windows) 与 setup-toolchain-linux.sh(WSL/Linux) 共用。install 段通用可反复跑；legacy 段仅迁移旧环境用，全新机器留空。",
 
   "runtimes": {
     "node": "24",
@@ -11,7 +11,27 @@
     "default": "3.13"
   },
 
+  "globalNpmPackages": {
+    "_comment": "全局 npm 包只装在这个 node 版本下（各平台共用），避免每个 node 版本重复安装。",
+    "nodeVersion": "24",
+    "packages": [
+      "@tencent-ai/codebuddy-code",
+      "@tencent/panshi-api-doc-mcp",
+      "@tencent/panshi-dim-mcp",
+      "@playwright/cli",
+      "agent-browser",
+      "chrome-devtools-mcp",
+      "pm2",
+      "pnpm",
+      "whistle",
+      "tsx",
+      "yarn"
+    ]
+  },
+
   "mirrors": {
+    "overrideExisting": false,
+    "_overrideComment": "false = 不覆盖机器已有的 GOPROXY/GOSUMDB、npm registry、pip index-url（内网机器必须为 false，否则会顶掉内网源）。true 时才写入下面这些公网镜像。",
     "scoopRepo": "https://gitee.com/scoop-installer/scoop",
     "bucketBase": "https://gitee.com/scoop-installer",
     "proxyBucket": "https://gitee.com/wlzwme/scoop-proxy-cn",
@@ -47,38 +67,33 @@
     "dnfPackages": [
       "gcc", "gcc-c++", "make", "curl", "wget", "git", "unzip", "jq", "aria2",
       "ripgrep", "fd-find", "bat", "fzf", "tree", "htop", "ca-certificates"
-    ]
+    ],
+    "_extraComment": "额外运行时版本，只 mise install 不改变 .runtimes 里的全局默认版本。Linux x64 下 node 14 有官方预编译包，无需架构覆盖。",
+    "extraVersions": {
+      "node": ["14.17.0", "20"],
+      "java": ["temurin-17"]
+    }
   },
 
   "macos": {
     "_comment": "brew 安装 mise；Java 全部交给 mise 管理，不复用 brew 已装的 openjdk。",
     "extraVersions": {
       "_comment": "多项目需要的额外运行时版本，只 mise install 不改变 .runtimes 里的全局默认版本。",
-      "node": ["14", "20"],
-      "java": ["temurin-17"]
-    },
-    "globalNpmPackages": {
-      "_comment": "全局 npm 包只装在这个 node 版本下，避免每个版本重复安装。",
-      "nodeVersion": "24",
-      "packages": [
-        "@tencent-ai/codebuddy-code",
-        "@tencent/panshi-api-doc-mcp",
-        "@tencent/panshi-dim-mcp",
-        "@playwright/cli",
-        "agent-browser",
-        "chrome-devtools-mcp",
-        "pm2",
-        "pnpm",
-        "whistle",
-        "tsx",
-        "yarn"
-      ]
+      "node": ["20"],
+      "nodeArchX64": ["14.17.0"],
+      "java": ["temurin-17"],
+      "_nodeArchX64Comment": "node 14 等旧版本官方没有 darwin-arm64 预编译包，源码编译会因新版 Xcode SDK 失败；改用 MISE_ARCH=x64 下载 Intel 版，经 Rosetta 运行，装好后可直接 mise exec node@14 使用。"
     },
     "legacy": {
       "_comment": "迁移前旧装清理，cleanup 步使用。",
       "brewRemove": ["openjdk@17", "openjdk@21", "openjdk@25"],
       "manualDirs": ["/usr/local/go"],
       "sudoDirs": ["/usr/local/go"],
+      "sudoSymlinks": [
+        "/Library/Java/JavaVirtualMachines/openjdk-17.jdk",
+        "/Library/Java/JavaVirtualMachines/openjdk-21.jdk",
+        "/Library/Java/JavaVirtualMachines/openjdk-25.jdk"
+      ],
       "shellStripPatterns": [
         "NVM_DIR", "nvm.sh", "bash_completion.*nvm",
         "GOENV_ROOT", "goenv init",
@@ -140,10 +155,25 @@
       ]
     },
     "linux": {
-      "_comment": "勿在此移除 openjdk/default-jre：CUDA 的 cuda-visual-tools 依赖 JRE，会级联卸载整条 CUDA 工具链（已踩过）。",
+      "_comment": "勿在此移除 openjdk/default-jre：CUDA 的 cuda-visual-tools 依赖 JRE，会级联卸载整条 CUDA 工具链（已踩过）。路径取三台远程机（earthy-dev/pre/pm，均为 root）旧装的并集，不存在的项自动跳过。`~/` 开头会展开成 $HOME。",
       "aptRemove": ["nodejs", "npm"],
-      "manualDirs": ["/usr/local/go", "/home/earthyzinc/.nvm"],
-      "shellStripPatterns": ["/usr/local/go/bin", "NVM_DIR", "nvm.sh"]
+      "manualFiles": ["~/.local/bin/go"],
+      "manualDirs": [
+        "/usr/local/go",
+        "~/.nvm",
+        "/usr/local/lib/.nvm",
+        "~/.goenv",
+        "/usr/local/java/jdk17",
+        "/usr/local/java/jdk21",
+        "/usr/local/java/jdk25",
+        "/usr/local/java/jdk-17.0.9+9",
+        "/usr/local/java/jdk-21.0.12.1+1",
+        "/usr/local/java/jdk-25.0.4.1+1"
+      ],
+      "shellStripPatterns": [
+        "/usr/local/go/bin", "NVM_DIR", "nvm.sh", "GOENV_ROOT", "goenv init",
+        "JAVA_HOME=/usr/local/java"
+      ]
     }
   }
 }

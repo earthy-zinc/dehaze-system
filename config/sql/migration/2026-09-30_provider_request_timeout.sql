@@ -1,11 +1,11 @@
 -- ============================================================
 -- 2026-09-30 sys_ai_provider 新增 request_timeout_seconds（请求超时能力字段）
--- 权威设计：dehaze-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
+-- 权威设计：clarity-doc/docs/03-模块设计/基础模块/AI模型管理/后端实现.md
 -- 背景：embedding 调用原先按 provider_code=='local' 特判 300s 超时；改造后由供应商行
 --       显式配置（NULL=调用方默认：chat 120s / embedding 30s）。本地 CPU 推理慢，
 --       存量内置供应商 local 置 300s，与旧行为等价。
 -- 执行方式：mysql --default-character-set=utf8mb4 <本文件>
--- 执行目标：dehaze_dev（dehaze_test 由 conftest 按 schema+data 全量重建，不跑本文件）
+-- 执行目标：clarity_dev（clarity_test 由 conftest 按 schema+data 全量重建，不跑本文件）
 -- 幂等：列已存在时跳过 ADD（information_schema 判定）；UPDATE 仅在 NULL 时补齐
 -- 回滚：ALTER TABLE sys_ai_provider DROP COLUMN request_timeout_seconds;
 -- ============================================================

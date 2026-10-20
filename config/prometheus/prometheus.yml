@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
-# 告警规则（阈值见 dehaze-doc 06-部署架构.md 7.2）
+# 告警规则（阈值见 clarity-doc 06-部署架构.md 7.2）
 rule_files:
   - /etc/prometheus/rules/*.yml
 
@@ -19,7 +19,7 @@ alerting:
 
 scrape_configs:
   # Java 后端 (Spring Boot Actuator)
-  - job_name: 'dehaze-java'
+  - job_name: 'clarity-java'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets: [ 'host.docker.internal:8989' ]
@@ -27,7 +27,7 @@ scrape_configs:
           service: 'java'
 
   # Python 后端 (FastAPI)
-  - job_name: 'dehaze-python'
+  - job_name: 'clarity-python'
     metrics_path: '/metrics'
     static_configs:
       - targets: [ 'host.docker.internal:8991' ]
@@ -35,14 +35,14 @@ scrape_configs:
           service: 'python'
 
   # Go 后端
-  - job_name: 'dehaze-go'
+  - job_name: 'clarity-go'
     metrics_path: '/metrics'
     static_configs:
       - targets: [ 'host.docker.internal:8990' ]
         labels:
           service: 'go'
 
-  # 外置推理服务（dehaze-service/*，内网专用）：/metrics 需 Authorization: Bearer，
+  # 外置推理服务（clarity-service/*，内网专用）：/metrics 需 Authorization: Bearer，
   # 凭证由 prometheus 容器启动时从 __INTERNAL_SERVICE_KEY__ 占位符替换为 ${INTERNAL_SERVICE_KEY}
   #
   # llm/voice 已退出默认链路（日常由第三方托管模型承接：方舟/硅基流动 chat·embedding·rerank、
@@ -50,7 +50,7 @@ scrape_configs:
   # 未启动的环境（如 pre）会持续报 target down 告警，但**不影响三端后端与 modal**；
   # 如需消除该告警，在对应环境的 compose 侧摘除本 job 即可。
   # modal（8994）仍是无替代的去雾核心算法服务，必须保留。
-  - job_name: 'dehaze-llm'
+  - job_name: 'clarity-llm'
     metrics_path: '/metrics'
     authorization:
       credentials: __INTERNAL_SERVICE_KEY__
@@ -59,7 +59,7 @@ scrape_configs:
         labels:
           service: 'llm'
 
-  - job_name: 'dehaze-voice'
+  - job_name: 'clarity-voice'
     metrics_path: '/metrics'
     authorization:
       credentials: __INTERNAL_SERVICE_KEY__
@@ -69,7 +69,7 @@ scrape_configs:
           service: 'voice'
 
   # modal：去雾核心算法服务，必须保留（不随第三方模型切换下线）
-  - job_name: 'dehaze-modal'
+  - job_name: 'clarity-modal'
     metrics_path: '/metrics'
     authorization:
       credentials: __INTERNAL_SERVICE_KEY__

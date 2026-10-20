@@ -5,8 +5,8 @@
 -- 正式供应商清单（固定 id，与 sys_ai_model.sql 的 provider_id 引用一一对应）：
 --   id=1   openai      OpenAI         https://api.openai.com/v1
 --   id=77  local       内置本地模型    http://127.0.0.1:8992/v1（内置本地 LLM 子进程服务）
---   id=78  local-voice 内置语音引擎    http://127.0.0.1:8993/v1（dehaze-voice，openai_audio）
---   id=79  local-modal 内置图像引擎    http://127.0.0.1:8994/v1（dehaze-modal，openai_image）
+--   id=78  local-voice 内置语音引擎    http://127.0.0.1:8993/v1（clarity-voice，openai_audio）
+--   id=79  local-modal 内置图像引擎    http://127.0.0.1:8994/v1（clarity-modal，openai_image）
 --   id=177 deepseek    DeepSeek       https://api.deepseek.com
 --   id=180 volc-ark    火山方舟       https://ark.cn-beijing.volces.com/api/v3（openai_compat）
 --   id=181 volc-voice  火山豆包语音   https://openspeech.bytedance.com（volc_realtime，asr/tts 共用）

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dehaze 开发环境统一管理（WSL / Linux，含 TencentOS/CentOS/Rocky 等 RHEL 系）：
+# clarity 开发环境统一管理（WSL / Linux，含 TencentOS/CentOS/Rocky 等 RHEL 系）：
 # apt 或 dnf/yum(系统/CLI) + mise(语言运行时) + uv(Python)
 #
 # 幂等、分阶段、可回滚。安装与清理严格分离：
@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$SCRIPT_DIR/tooling.config.json"
-ENV_FILE="$HOME/.config/dehaze-tooling.sh"
+ENV_FILE="$HOME/.config/clarity-tooling.sh"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_ROOT="$SCRIPT_DIR/backup/linux-$STAMP"
 
@@ -127,7 +127,7 @@ save_backup() {
     apt_source="$(cfg '.linux.aptSourceFile')"
     [ -f "$apt_source" ] && cp "$apt_source" "$BACKUP_ROOT/apt-sources.bak"
     [ -f "$HOME/.bashrc" ] && cp "$HOME/.bashrc" "$BACKUP_ROOT/bashrc.bak"
-    [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$BACKUP_ROOT/dehaze-tooling.sh.bak"
+    [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$BACKUP_ROOT/clarity-tooling.sh.bak"
     { for t in node npm pnpm go java python3 mise uv; do
         printf '%-8s %s\n' "$t" "$(command -v "$t" 2>/dev/null || echo '(none)')"
     done; } > "$BACKUP_ROOT/tools-snapshot.txt"
@@ -142,7 +142,7 @@ restore() {
     local apt_source; apt_source="$(cfg '.linux.aptSourceFile')"
     [ -f "$src/apt-sources.bak" ] && run $SUDO cp "$src/apt-sources.bak" "$apt_source"
     [ -f "$src/bashrc.bak" ] && run cp "$src/bashrc.bak" "$HOME/.bashrc"
-    [ -f "$src/dehaze-tooling.sh.bak" ] && run cp "$src/dehaze-tooling.sh.bak" "$ENV_FILE"
+    [ -f "$src/clarity-tooling.sh.bak" ] && run cp "$src/clarity-tooling.sh.bak" "$ENV_FILE"
     ok '还原完成（重开终端生效）'
 }
 
@@ -196,18 +196,30 @@ EOF
 }
 
 install_system_packages() {
-    local -a pkgs
+    local -a pkgs=()
+    local install_cmd=""
     case "$PKG_MGR" in
         apt)
             mapfile -t pkgs < <(cfg '.linux.aptPackages')
+            install_cmd="apt-get install"
             run $SUDO apt-get update
-            run $SUDO apt-get install -y "${pkgs[@]}"
             ;;
         dnf|yum)
             mapfile -t pkgs < <(cfg '.linux.dnfPackages')
-            run $SUDO "$PKG_MGR" install -y "${pkgs[@]}"
+            # strict=0：个别包名在该发行版不存在时跳过，而不是让整批安装失败
+            install_cmd="$PKG_MGR install --setopt=strict=0"
             ;;
     esac
+    [ "${#pkgs[@]}" -gt 0 ] || return 0
+    # 开发机通常已装齐；个别包名在 RHEL 系不存在时不应中断整个安装流程
+    if [ "$DRY_RUN" = "1" ]; then
+        log WHAT "$install_cmd -y ${pkgs[*]}"
+        return
+    fi
+    log STEP "$install_cmd -y ${pkgs[*]}"
+    if ! $SUDO $install_cmd -y "${pkgs[@]}"; then
+        warn '系统包安装未全部成功，跳过继续（通常是该发行版缺少个别包名）'
+    fi
 }
 
 install_mise() {
@@ -218,29 +230,36 @@ install_mise() {
 }
 
 write_env_file() {
-    local node_mirror go_proxy go_sumdb pip_index
+    local node_mirror override
     node_mirror="$(cfg '.mirrors.miseNodeMirror')"
-    go_proxy="$(cfg '.mirrors.goProxy')"
-    go_sumdb="$(cfg '.mirrors.goSumDb')"
-    pip_index="$(cfg '.mirrors.pipIndex')"
+    override="$(cfg '.mirrors.overrideExisting')"
 
     if [ "$DRY_RUN" = "1" ]; then
-        log WHAT "写入 ${ENV_FILE}（镜像 + mise 激活 + PATH）并在 ~/.bashrc 引用"
+        log WHAT "写入 ${ENV_FILE}（mise 节点镜像 + mise 激活 + PATH）并在 ~/.bashrc 引用"
         return
     fi
     mkdir -p "$(dirname "$ENV_FILE")"
-    cat > "$ENV_FILE" <<EOF
-# dehaze tooling env —— 由 scripts/tooling/setup-toolchain-linux.sh 生成，删除本文件即还原
+    {
+        cat <<EOF
+# clarity tooling env —— 由 scripts/tooling/setup-toolchain-linux.sh 生成，删除本文件即还原
 export MISE_NODE_MIRROR="$node_mirror"
-export GOPROXY="$go_proxy"
-export GOSUMDB="$go_sumdb"
-export UV_INDEX_URL="$pip_index"
-export PIP_INDEX_URL="$pip_index"
-export PATH="\$HOME/.local/bin:\$PATH"
-eval "\$(\$HOME/.local/bin/mise activate bash)"
 EOF
+        # 仅在显式开启时才写入公网 GOPROXY/GOSUMDB/pip 镜像，避免顶掉内网源
+        if [ "$override" = "true" ]; then
+            cat <<EOF
+export GOPROXY="$(cfg '.mirrors.goProxy')"
+export GOSUMDB="$(cfg '.mirrors.goSumDb')"
+export UV_INDEX_URL="$(cfg '.mirrors.pipIndex')"
+export PIP_INDEX_URL="$(cfg '.mirrors.pipIndex')"
+EOF
+        fi
+        cat <<'EOF'
+export PATH="$HOME/.local/bin:$PATH"
+eval "$($HOME/.local/bin/mise activate bash)"
+EOF
+    } > "$ENV_FILE"
 
-    local marker='# dehaze tooling env'
+    local marker='# clarity tooling env'
     if ! grep -qF "$marker" "$HOME/.bashrc" 2>/dev/null; then
         printf '\n%s\n[ -f "%s" ] && . "%s"\n' "$marker" "$ENV_FILE" "$ENV_FILE" >> "$HOME/.bashrc"
     fi
@@ -248,6 +267,10 @@ EOF
 }
 
 configure_ecosystem_mirrors() {
+    if [ "$(cfg '.mirrors.overrideExisting')" != "true" ]; then
+        info '跳过 npm/pip 镜像写入（mirrors.overrideExisting=false，保留机器已有源）'
+        return 0
+    fi
     local npm pip_index
     npm="$(cfg '.mirrors.npmRegistry')"
     pip_index="$(cfg '.mirrors.pipIndex')"
@@ -271,6 +294,35 @@ install_runtimes() {
     run mise use -g "node@$(cfg '.runtimes.node')"
     run mise use -g "go@$(cfg '.runtimes.go')"
     run mise use -g "java@$(cfg '.runtimes.java')"
+
+    # 额外安装的 node/java 版本（只 install，不改变上面的全局默认版本）
+    local v
+    while IFS= read -r v; do
+        [ -n "$v" ] || continue
+        run mise install "node@$v"
+    done < <(cfg '.linux.extraVersions.node')
+    while IFS= read -r v; do
+        [ -n "$v" ] || continue
+        run mise install "java@$v"
+    done < <(cfg '.linux.extraVersions.java')
+}
+
+install_global_npm_packages() {
+    export PATH="$HOME/.local/bin:$PATH"
+    local node_ver
+    node_ver="$(cfg '.globalNpmPackages.nodeVersion')"
+    [ -n "$node_ver" ] || return 0
+
+    local -a pkgs=()
+    local p
+    while IFS= read -r p; do
+        [ -n "$p" ] || continue
+        pkgs+=("$p")
+    done < <(cfg '.globalNpmPackages.packages')
+    [ "${#pkgs[@]}" -gt 0 ] || return 0
+
+    run mise exec "node@$node_ver" -- npm install -g "${pkgs[@]}"
+    ok "已为 node@$node_ver 安装全局 npm 包：${pkgs[*]}"
 }
 
 install_python() {
@@ -297,16 +349,26 @@ invoke_install() {
     write_env_file
     configure_ecosystem_mirrors
     install_runtimes
+    install_global_npm_packages
     install_python
     ok '安装阶段完成。请执行 source ~/.bashrc 或重开终端使配置生效。'
 }
 
 # ---------------------------------------------------------------- 清理
+# 把配置里的 `~/xxx` 展开成 $HOME/xxx（JSON 里无法直接写 shell 变量）
+expand_home() {
+    case "$1" in
+        '~/'*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+        *)     printf '%s' "$1" ;;
+    esac
+}
+
 cleanup_legacy() {
     info '=== 清理阶段（机器特定，删除迁移前旧装）==='
-    local -a remove=() installed=() manual_dirs=() strip_patterns=()
+    local -a remove=() installed=() manual_dirs=() manual_files=() strip_patterns=()
     mapfile -t remove < <(cfg '.legacy.linux.aptRemove')
     mapfile -t manual_dirs < <(cfg '.legacy.linux.manualDirs')
+    mapfile -t manual_files < <(cfg '.legacy.linux.manualFiles')
     mapfile -t strip_patterns < <(cfg '.legacy.linux.shellStripPatterns')
 
     # 只卸载真正已安装的包，避免某个包不存在时 apt 报错中断脚本。
@@ -324,9 +386,22 @@ cleanup_legacy() {
         warn "包管理器为 $PKG_MGR，跳过 legacy.linux.aptRemove（${remove[*]} 需手工处理）"
     fi
 
-    # 删除手装目录（如 /usr/local/go、~/.nvm）
+    # 删除手装单文件（如 ~/.local/bin/go 这种独立二进制）
+    for f in "${manual_files[@]}"; do
+        [ -n "$f" ] || continue
+        f="$(expand_home "$f")"
+        [ -f "$f" ] || continue
+        if [ -w "$f" ]; then
+            run rm -f "$f"
+        else
+            run $SUDO rm -f "$f"
+        fi
+    done
+
+    # 删除手装目录（如 /usr/local/go、~/.nvm、~/.goenv、/usr/local/java/jdk*）
     for d in "${manual_dirs[@]}"; do
         [ -n "$d" ] || continue
+        d="$(expand_home "$d")"
         [ -d "$d" ] || continue
         if [ -w "$(dirname "$d")" ]; then
             run rm -rf "$d"

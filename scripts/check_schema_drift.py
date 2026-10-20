@@ -17,7 +17,7 @@
 `config/sql/schema/*.sql` 或 `config/sql/migration/*.sql` 处理。
 
 用法：
-    dehaze-python/.venv/bin/python scripts/check_schema_drift.py
+    clarity-python/.venv/bin/python scripts/check_schema_drift.py
 
 连接参数读仓库根 `.env` 的 `MYSQL_*`（环境变量优先，与仓库既有约定一致）。
 退出码：0 = 无漂移；1 = 存在漂移（打印差异清单）；2 = 环境/用法错误（缺 .env、缺 pymysql、连不上）。
@@ -117,8 +117,8 @@ def fetch_db_columns(settings: dict[str, str]) -> dict[str, set[str]]:
         import pymysql  # 延迟导入：缺依赖时给出明确指引而非 ImportError 堆栈
     except ImportError as exc:
         raise CheckError(
-            "缺少 pymysql：请用 dehaze-python 的虚拟环境运行，"
-            "如 `dehaze-python/.venv/bin/python scripts/check_schema_drift.py`"
+            "缺少 pymysql：请用 clarity-python 的虚拟环境运行，"
+            "如 `clarity-python/.venv/bin/python scripts/check_schema_drift.py`"
         ) from exc
 
     database = settings["MYSQL_DATABASE"]

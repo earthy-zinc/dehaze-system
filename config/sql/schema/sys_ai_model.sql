@@ -10,7 +10,7 @@
 --   video_gen(视频生成)/asr(语音识别)/tts(语音合成)/music_gen(音乐生成)/3d_gen(3D生成)；
 --   consumers 按类型选择模型（对话选 chat、知识库选 embedding/rerank、去雾页选 image_edit）。
 -- task_tags 为任务归类标签（JSON 数组），承接任务类型路由与厂商 function 枚举语义：
---   图像模型 ["dehaze"]/["super_resolution"]…（原 sys_algorithm.task_type）；
+--   图像模型 ["clarity"]/["super_resolution"]…（原 sys_algorithm.task_type）；
 --   asr 模型 ["stream"]/["offline"]（原 sys_voice_model.model_type）；embedding 模型 ["text"]/["image"]。
 --   产品侧（去雾页选模型、ASR 通道选择）按 model_type + task_tags 过滤。
 -- dimension 为 embedding 向量维度（model_type=embedding 时必填，知识库 ES 索引映射依赖，创建后不可修改）。
@@ -36,7 +36,7 @@ CREATE TABLE `sys_ai_model`
     `provider_id`          bigint                                                          NOT NULL COMMENT '关联供应商ID(关联sys_ai_provider.id)',
     `model_id`             varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL COMMENT '模型标识(如gpt-4o;claude-3-5-sonnet;deepseek-chat)',
     `model_type`           varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci   NOT NULL DEFAULT 'chat' COMMENT '模型类型(chat:对话;embedding:向量;rerank:重排;image_gen:文生图;image_edit:图像编辑;video_gen:视频生成;asr:语音识别;tts:语音合成;music_gen:音乐生成;3d_gen:3D生成)',
-    `task_tags`            json                                                            NULL DEFAULT NULL COMMENT '任务归类标签(JSON数组;图像模型["dehaze"]/["super_resolution"]…;asr模型["stream"]/["offline"];embedding模型["text"]/["image"])',
+    `task_tags`            json                                                            NULL DEFAULT NULL COMMENT '任务归类标签(JSON数组;图像模型["clarity"]/["super_resolution"]…;asr模型["stream"]/["offline"];embedding模型["text"]/["image"])',
     `dimension`            bigint                                                          NULL DEFAULT NULL COMMENT 'embedding向量维度(model_type=embedding时必填;创建后不可改)',
     `display_name`         varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci  NOT NULL COMMENT '显示名称',
     `max_context_tokens`   int                                                             NOT NULL DEFAULT 4096 COMMENT '最大上下文Token数',

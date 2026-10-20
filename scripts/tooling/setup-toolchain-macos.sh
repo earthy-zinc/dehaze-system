@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# dehaze 开发环境统一管理（macOS）：brew(mise) + mise(语言运行时) + uv(Python)
+# clarity 开发环境统一管理（macOS）：brew(mise) + mise(语言运行时) + uv(Python)
 #
 # 幂等、分阶段、可回滚。安装与清理严格分离：
 #   install —— 通用，任何机器（含全新机器）可反复运行，只装不删。
@@ -13,7 +13,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG="$SCRIPT_DIR/tooling.config.json"
-ENV_FILE="$HOME/.config/dehaze-tooling.zsh"
+ENV_FILE="$HOME/.config/clarity-tooling.zsh"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_ROOT="$SCRIPT_DIR/backup/macos-$STAMP"
 
@@ -103,7 +103,7 @@ save_backup() {
     mkdir -p "$BACKUP_ROOT"
     [ -f "$HOME/.zshrc" ] && cp "$HOME/.zshrc" "$BACKUP_ROOT/zshrc.bak"
     [ -f "$HOME/.zprofile" ] && cp "$HOME/.zprofile" "$BACKUP_ROOT/zprofile.bak"
-    [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$BACKUP_ROOT/dehaze-tooling.zsh.bak"
+    [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$BACKUP_ROOT/clarity-tooling.zsh.bak"
     { for t in node npm pnpm go java python3 mise uv; do
         printf '%-8s %s\n' "$t" "$(command -v "$t" 2>/dev/null || echo '(none)')"
     done; } > "$BACKUP_ROOT/tools-snapshot.txt"
@@ -117,7 +117,7 @@ restore() {
     info "从 $src 还原"
     [ -f "$src/zshrc.bak" ] && run cp "$src/zshrc.bak" "$HOME/.zshrc"
     [ -f "$src/zprofile.bak" ] && run cp "$src/zprofile.bak" "$HOME/.zprofile"
-    [ -f "$src/dehaze-tooling.zsh.bak" ] && run cp "$src/dehaze-tooling.zsh.bak" "$ENV_FILE"
+    [ -f "$src/clarity-tooling.zsh.bak" ] && run cp "$src/clarity-tooling.zsh.bak" "$ENV_FILE"
     ok '还原完成（重开终端生效）'
 }
 
@@ -130,28 +130,33 @@ install_mise() {
 }
 
 write_env_file() {
-    local node_mirror go_proxy go_sumdb pip_index
+    local node_mirror override
     node_mirror="$(cfg '.mirrors.miseNodeMirror')"
-    go_proxy="$(cfg '.mirrors.goProxy')"
-    go_sumdb="$(cfg '.mirrors.goSumDb')"
-    pip_index="$(cfg '.mirrors.pipIndex')"
+    override="$(cfg '.mirrors.overrideExisting')"
 
     if [ "$DRY_RUN" = "1" ]; then
-        log WHAT "写入 ${ENV_FILE}（镜像 + mise 激活）并在 ~/.zshrc 引用"
+        log WHAT "写入 ${ENV_FILE}（mise 节点镜像 + mise 激活）并在 ~/.zshrc 引用"
         return
     fi
     mkdir -p "$(dirname "$ENV_FILE")"
-    cat > "$ENV_FILE" <<EOF
-# dehaze tooling env —— 由 scripts/tooling/setup-toolchain-macos.sh 生成，删除本文件即还原
+    {
+        cat <<EOF
+# clarity tooling env —— 由 scripts/tooling/setup-toolchain-macos.sh 生成，删除本文件即还原
 export MISE_NODE_MIRROR="$node_mirror"
-export GOPROXY="$go_proxy"
-export GOSUMDB="$go_sumdb"
-export UV_INDEX_URL="$pip_index"
-export PIP_INDEX_URL="$pip_index"
-eval "\$(mise activate zsh)"
 EOF
+        # 仅在显式开启时才写入公网 GOPROXY/GOSUMDB/pip 镜像，避免顶掉内网源
+        if [ "$override" = "true" ]; then
+            cat <<EOF
+export GOPROXY="$(cfg '.mirrors.goProxy')"
+export GOSUMDB="$(cfg '.mirrors.goSumDb')"
+export UV_INDEX_URL="$(cfg '.mirrors.pipIndex')"
+export PIP_INDEX_URL="$(cfg '.mirrors.pipIndex')"
+EOF
+        fi
+        echo 'eval "$(mise activate zsh)"'
+    } > "$ENV_FILE"
 
-    local marker='# dehaze tooling env'
+    local marker='# clarity tooling env'
     if ! grep -qF "$marker" "$HOME/.zshrc" 2>/dev/null; then
         printf '\n%s\n[ -f "%s" ] && . "%s"\n' "$marker" "$ENV_FILE" "$ENV_FILE" >> "$HOME/.zshrc"
     fi
@@ -159,6 +164,10 @@ EOF
 }
 
 configure_ecosystem_mirrors() {
+    if [ "$(cfg '.mirrors.overrideExisting')" != "true" ]; then
+        info '跳过 npm/pip 镜像写入（mirrors.overrideExisting=false，保留机器已有源）'
+        return 0
+    fi
     local npm pip_index
     npm="$(cfg '.mirrors.npmRegistry')"
     pip_index="$(cfg '.mirrors.pipIndex')"
@@ -188,6 +197,12 @@ install_runtimes() {
         [ -n "$v" ] || continue
         run mise install "node@$v"
     done < <(cfg '.macos.extraVersions.node')
+    # 旧版 node（如 14）官方无 darwin-arm64 预编译包，源码编译会因新版 Xcode SDK 失败；
+    # 改用 MISE_ARCH=x64 下载 Intel 版，经 Rosetta 运行。装好后无需再带 MISE_ARCH 即可 mise exec。
+    while IFS= read -r v; do
+        [ -n "$v" ] || continue
+        run env MISE_ARCH=x64 mise install "node@$v"
+    done < <(cfg '.macos.extraVersions.nodeArchX64')
     while IFS= read -r v; do
         [ -n "$v" ] || continue
         run mise install "java@$v"
@@ -196,7 +211,7 @@ install_runtimes() {
 
 install_global_npm_packages() {
     local node_ver
-    node_ver="$(cfg '.macos.globalNpmPackages.nodeVersion')"
+    node_ver="$(cfg '.globalNpmPackages.nodeVersion')"
     [ -n "$node_ver" ] || return 0
 
     local -a pkgs=()
@@ -204,7 +219,7 @@ install_global_npm_packages() {
     while IFS= read -r p; do
         [ -n "$p" ] || continue
         pkgs+=("$p")
-    done < <(cfg '.macos.globalNpmPackages.packages')
+    done < <(cfg '.globalNpmPackages.packages')
     [ "${#pkgs[@]}" -gt 0 ] || return 0
 
     run mise exec "node@$node_ver" -- npm install -g "${pkgs[@]}"
@@ -242,11 +257,12 @@ invoke_install() {
 cleanup_legacy() {
     info '=== 清理阶段（机器特定，删除迁移前旧装）==='
     # 系统自带 /bin/bash 是 3.2（无 mapfile），用 while read 循环兼容读取
-    local -a brew_remove=() manual_dirs=() sudo_dirs=() strip_patterns=()
+    local -a brew_remove=() manual_dirs=() sudo_dirs=() sudo_symlinks=() strip_patterns=()
     local line
     while IFS= read -r line; do brew_remove+=("$line"); done < <(cfg '.macos.legacy.brewRemove')
     while IFS= read -r line; do manual_dirs+=("$line"); done < <(cfg '.macos.legacy.manualDirs')
     while IFS= read -r line; do sudo_dirs+=("$line"); done < <(cfg '.macos.legacy.sudoDirs')
+    while IFS= read -r line; do sudo_symlinks+=("$line"); done < <(cfg '.macos.legacy.sudoSymlinks')
     while IFS= read -r line; do strip_patterns+=("$line"); done < <(cfg '.macos.legacy.shellStripPatterns')
 
     # 卸载旧 brew openjdk（Java 已交给 mise 全权管理）
@@ -268,6 +284,13 @@ cleanup_legacy() {
         else
             run rm -rf "$d"
         fi
+    done
+
+    # 移除指向已卸载 brew openjdk 的 /Library/Java/JavaVirtualMachines 悬空软链（root 属主，需 sudo）
+    for d in "${sudo_symlinks[@]}"; do
+        [ -n "$d" ] || continue
+        [ -e "$d" ] || [ -L "$d" ] || continue
+        run sudo rm -rf "$d"
     done
 
     # 移除 ~/.zshrc 与 ~/.zprofile 中残留的旧 nvm / goenv / JAVA_HOME 初始化行

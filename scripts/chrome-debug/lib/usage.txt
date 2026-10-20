@@ -11,6 +11,7 @@
   check          环境检测（Node / Chrome / 三工具 / 实例 / 绑定 / shim / PATH 优先级）
   install        写三工具 CDP 配置 + 安装 shim（不碰实例）
   uninstall      移除 shim 与 shell rc 中的 PATH 行
+  deps           安装服务器模式所需的系统依赖（Xvfb / x11vnc / websockify / dbus / ibus+libpinyin）
   start          拉起实例（幂等，已在运行则不动）
   stop           停止实例（有 pid 记录时结束进程，否则经 CDP Browser.close）
   restart        停止后重新拉起
@@ -46,10 +47,11 @@
 运行时产物（~/.chrome-debug/）
   config.json     工具状态：端口、profile、shim 目录
   profile/        Chrome 用户数据（登录态 / Cookie 持久保留）
-  logs/           chrome-<端口>.log、xvfb-<端口>.log、x11vnc-<端口>.log、websockify-<端口>.log、gateway-sign-<端口>.log
+  logs/           chrome-<端口>.log、xvfb-<端口>.log、ibus-<端口>.log、dbus-<端口>.log、x11vnc-<端口>.log、websockify-<端口>.log、gateway-sign-<端口>.log
   pids/           进程 PID，文件名带端口
   screenshots/    冒烟截图
   novnc/          自建的补丁版 noVNC（install/setup 时自动下载并打补丁，见下）
+  dbus/           输入法用的 dbus 会话总线 socket（仅服务器模式）
   .vncpasswd      VNC 密码文件（仅设置 VNC_PASSWORD 时）
   .env            签名代理凭证（可选，环境变量优先；勿提交到仓库）
 
@@ -74,26 +76,29 @@
   forcem（[sg-]forcem-[dev|test].testsite.woa.com，国内/国际 × dev/test）—— **配了 IOA_TOKEN 才启用**
     PAC 额外纳入这四个主机；用 IOA_TOKEN 签名并附上 x-tai-identity。
     与 panshi/imeta 不同：该站 **443 可达、80 会 302 到 https**，故代理侧上游固定走 https。
-    浏览器需用 http 打开（https 无法在不做 MITM 的前提下注入头），可用 noVNC 目录下的 go.html 降级。
+    浏览器需用 http 打开（https 无法在不做 MITM 的前提下注入头）。
 
   另外，DevCloud 不可达、会拖住页面加载的装饰性外链（如 rhrc.woa.com 的 HR 头像）会被纳入 PAC 并由
   代理立即快速失败，避免标签页一直转圈；要真正加载它们需申请 iGate 放通，再从 FAIL_FAST_HOSTS 移除。
 
-补丁版 noVNC（剪贴板）
+补丁版 noVNC（剪贴板 / Mac 快捷键）
   发行版 noVNC 的剪贴板是「面板式手动同步」，且传统通道只按 ISO 8859-1 处理（中文变 '?'/乱码）；
-  上游至今（1.7.0）不改。install / setup 会自动下载固定版本 noVNC 到 ~/.chrome-debug/novnc 并打四处补丁：
+  上游至今（1.7.0）不改。install / setup 会自动下载固定版本 noVNC 到 ~/.chrome-debug/novnc 并打补丁：
     - 发送/接收都改用 UTF-8（实测 x11vnc 原样透传字节）
     - 主机→远端自动同步（监听 paste 事件）、远端→主机自动写入本机剪贴板
+    - Mac 客户端把 Cmd 当 Ctrl（按 UA 自动判定，?cmdasctrl=0/1 可覆盖）：
+      远端的 Linux Chrome 只有 Ctrl 快捷键方案，而 noVNC 默认把 Cmd 映射成 Alt，
+      导致 Cmd+C/T/W/L 落空、Cmd+←/→ 反被当成 Chrome 后退/前进
   websockify 会自动优先使用该目录（可用 NOVNC_WEB 覆盖）；未装成功只告警、回落发行版 noVNC。
   注：本机浏览器访问 noVNC 需走 https 或 localhost，远端→主机自动写入才可用（Clipboard API 限制）。
 
-降级跳板页（https → http）
-  DevCloud 上 panshi/imeta 只放通 80，从聊天/文档里粘来的 https 链接打不开，而浏览器没有
-  「自动把 https 降级」的开关（只能靠扩展或 MITM，均不采用）。作为替代，安装时会在 noVNC 目录
-  放一个 go.html：
-    http://localhost:6080/go.html        # 与 noVNC 同一端口，已有隧道即可用，无需再开隧道
-  把 https 链接粘进去、回车，它会换成 http 打开（只对 panshi.woa.com / imeta.woa.com 生效，
-  带 query 的完整链接原样保留）。它不做协议转换、不碰 TLS/证书。
+中文输入法（仅服务器模式，noVNC 里直接键入）
+  Xvfb 是纯 X server，本身不带输入法框架；不装 IME 时 noVNC 只能敲英文，中文只能靠上面的剪贴板粘贴。
+  服务器模式 start 会随实例拉起一条 dbus 会话总线 + ibus-daemon 并把引擎切到 libpinyin，Chrome 经
+  GTK_IM_MODULE=ibus 走它 —— noVNC 里直接敲拼音、数字键选词上屏；stop 时一并停掉（进程名 ibus / dbus）。
+  ⚠️ 客户端浏览器请保持在英文输入法：中文由服务端 IME 组词，客户端若开着拼音，按键会先被本机吞掉、传不过去。
+  安装：跑 deps 命令自动装齐（按 dnf / apt / pacman 映射包名；未装则跳过输入法，实例照常启动，check 会提示）。
+  手动切换引擎：DISPLAY=:99 ibus engine <引擎名>（ibus list-engine 看全部；libpinyin 引擎内 Shift 可切中英）。
 
 示例
   node scripts/chrome-debug/index.mjs check

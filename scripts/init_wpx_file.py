@@ -13,8 +13,8 @@
 
 前置条件：先执行 init_dataset.py，确保原始数据集图已写入 sys_file。
 
-依赖：pymysql（dehaze-python/.venv 已安装）。
-运行：dehaze-python/.venv/bin/python scripts/init_wpx_file.py --help
+依赖：pymysql（clarity-python/.venv 已安装）。
+运行：clarity-python/.venv/bin/python scripts/init_wpx_file.py --help
 
 存储约定：sys_file 写 object_name + storage='nginx-static'，URL 永不落库。
 WPX 图在 datasets/WPX/... 下，object_name 含 datasets/ 资源前缀。

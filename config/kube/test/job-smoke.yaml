@@ -5,24 +5,24 @@
 #   .codebuddy/skills/dehaze-project-knowledge/references/06-服务器与联调环境.md）
 #   SHA=$(git rev-parse --short HEAD)
 #   # 重依赖基础镜像：tag = uv.lock 指纹，未变则跳过（指纹算法见各 Dockerfile.base 头部）
-#   docker build -f dehaze-service/dehaze-modal/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:modal-base-08dc5a158a40 .
-#   docker build -f dehaze-service/dehaze-voice/Dockerfile.base -t csighub.tencentyun.com/earthywu/dehaze-system:voice-base-3d01ce25e049 .
-#   docker build -f dehaze-python/Dockerfile                --target test -t csighub.tencentyun.com/earthywu/dehaze-system:py-test-$SHA    .
-#   docker build -f dehaze-service/dehaze-llm/Dockerfile    --target test -t csighub.tencentyun.com/earthywu/dehaze-system:llm-test-$SHA   .
-#   docker build -f dehaze-service/dehaze-voice/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/dehaze-system:voice-test-$SHA .
-#   docker build -f dehaze-service/dehaze-modal/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/dehaze-system:modal-test-$SHA .
+#   docker build -f clarity-service/clarity-modal/Dockerfile.base -t csighub.tencentyun.com/earthywu/clarity-vision:modal-base-08dc5a158a40 .
+#   docker build -f clarity-service/clarity-voice/Dockerfile.base -t csighub.tencentyun.com/earthywu/clarity-vision:voice-base-3d01ce25e049 .
+#   docker build -f clarity-python/Dockerfile                --target test -t csighub.tencentyun.com/earthywu/clarity-vision:py-test-$SHA    .
+#   docker build -f clarity-service/clarity-llm/Dockerfile    --target test -t csighub.tencentyun.com/earthywu/clarity-vision:llm-test-$SHA   .
+#   docker build -f clarity-service/clarity-voice/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/clarity-vision:voice-test-$SHA .
+#   docker build -f clarity-service/clarity-modal/Dockerfile  --target test -t csighub.tencentyun.com/earthywu/clarity-vision:modal-test-$SHA .
 #   docker push 上述所有 tag
 #
 # 前置二：两个 Secret（不入版本库）
 #   NS=p-cloud-dev-test-perm-resource-5aesj19quwkg
 #   kubectl create secret docker-registry csighub-registry -n $NS --docker-server=csighub.tencentyun.com \
 #     --docker-username=earthywu --docker-password=<见 06-服务器与联调环境.md>
-#   sed 's/127\.0\.0\.1/21.6.51.87/g' .env > /tmp/dehaze-test.env      # Pod 里 127.0.0.1 是 Pod 自己，指向中间件宿主
-#   kubectl create secret generic dehaze-test-env -n $NS --from-file=.env=/tmp/dehaze-test.env
+#   sed 's/127\.0\.0\.1/21.6.51.87/g' .env > /tmp/clarity-test.env      # Pod 里 127.0.0.1 是 Pod 自己，指向中间件宿主
+#   kubectl create secret generic clarity-test-env -n $NS --from-file=.env=/tmp/clarity-test.env
 #
 # 运行与读日志：
 #   kubectl apply -f config/kube/test/job-smoke.yaml -n $NS
-#   kubectl logs -n $NS job/dehaze-test-smoke-python     # / -llm / -voice / -modal
+#   kubectl logs -n $NS job/clarity-test-smoke-python     # / -llm / -voice / -modal
 #
 # 为什么每端一个 Job（不是一个 Pod 多容器）：多容器 Pod 里只要有一个镜像还在拉，kubelet 就不发布
 # 任何容器状态，`kubectl logs` 会报 "waiting to start: ContainerCreating"，日志都读不到；
@@ -33,10 +33,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-smoke-python
+  name: clarity-test-smoke-python
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: smoke
 spec:
   backoffLimit: 0
@@ -45,7 +45,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: smoke
         backend: python
     spec:
@@ -55,15 +55,15 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: python
-          image: csighub.tencentyun.com/earthywu/dehaze-system:py-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:py-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-python
+          workingDir: /app/clarity-python
           env:
-            - name: DEHAZE_TEST_DB
-              value: dehaze_test_py
+            - name: CLARITY_TEST_DB
+              value: clarity_test_py
           resources:
             requests: {cpu: "500m", memory: 2Gi}
             limits: {cpu: "4", memory: 8Gi}
@@ -84,10 +84,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-smoke-llm
+  name: clarity-test-smoke-llm
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: smoke
 spec:
   backoffLimit: 0
@@ -96,7 +96,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: smoke
         backend: llm
     spec:
@@ -106,12 +106,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: llm
-          image: csighub.tencentyun.com/earthywu/dehaze-system:llm-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:llm-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-llm
+          workingDir: /app/clarity-service/clarity-llm
           resources:
             requests: {cpu: "500m", memory: 1Gi}
             limits: {cpu: "2", memory: 4Gi}
@@ -132,10 +132,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-smoke-voice
+  name: clarity-test-smoke-voice
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: smoke
 spec:
   backoffLimit: 0
@@ -144,7 +144,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: smoke
         backend: voice
     spec:
@@ -154,12 +154,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: voice
-          image: csighub.tencentyun.com/earthywu/dehaze-system:voice-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:voice-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-voice
+          workingDir: /app/clarity-service/clarity-voice
           resources:
             requests: {cpu: "500m", memory: 2Gi}
             limits: {cpu: "4", memory: 8Gi}
@@ -180,10 +180,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dehaze-test-smoke-modal
+  name: clarity-test-smoke-modal
   namespace: p-cloud-dev-test-perm-resource-5aesj19quwkg
   labels:
-    app: dehaze-test
+    app: clarity-test
     phase: smoke
 spec:
   backoffLimit: 0
@@ -192,7 +192,7 @@ spec:
   template:
     metadata:
       labels:
-        app: dehaze-test
+        app: clarity-test
         phase: smoke
         backend: modal
     spec:
@@ -202,12 +202,12 @@ spec:
       volumes:
         - name: env-file
           secret:
-            secretName: dehaze-test-env
+            secretName: clarity-test-env
       containers:
         - name: modal
-          image: csighub.tencentyun.com/earthywu/dehaze-system:modal-test-fe62ad390
+          image: csighub.tencentyun.com/earthywu/clarity-vision:modal-test-fe62ad390
           imagePullPolicy: Always
-          workingDir: /app/dehaze-service/dehaze-modal
+          workingDir: /app/clarity-service/clarity-modal
           resources:
             requests: {cpu: "500m", memory: 2Gi}
             limits: {cpu: "4", memory: 8Gi}

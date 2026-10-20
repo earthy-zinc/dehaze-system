@@ -5,13 +5,13 @@
 「构建成功但单测成片挂」或「镜像莫名多出数十 GB」，且要到 Pod 里才暴露。
 本脚本把三条铁律变成机器拦截。
 
-铁律与判据（口径来源：dehaze-doc/docs/02-系统架构/05-测试架构.md、06-部署架构.md）：
+铁律与判据（口径来源：clarity-doc/docs/02-系统架构/05-测试架构.md、06-部署架构.md）：
 
 1. `uv sync` 必须带 `--no-cache`；测试阶段（`FROM ... AS test`）的 `uv sync`，若该项目
    `pyproject.toml` 把测试依赖声明在 `[project.optional-dependencies].test`，还须带 `--extra test`。
    - 缺 `--no-cache`：已下载的轮子留在 `/root/.cache/uv` 永久占住镜像层（实测 10.2G → 19.7G），
      后一层再 `rm` 也不缩小。
-   - 缺 `--extra test`：dehaze-python 的 respx/mongomock/freezegun/pytest-mock 在该 extra 里，
+   - 缺 `--extra test`：clarity-python 的 respx/mongomock/freezegun/pytest-mock 在该 extra 里，
      缺它 6 个测试文件收集失败。测试依赖若落在 `[dependency-groups].dev`
      （uv 默认安装，推理服务即此形态）则**不需要**该参数 —— 故本项按项目实际声明判定，
      不做一刀切。
@@ -20,11 +20,11 @@
    `config/sql`，该阶段必须有一条 COPY 的源指向仓库根 `config`（`COPY . .` 这类整体拷贝也算）。
 3. Dockerfile 禁用 heredoc（`<<EOF` / `<<-'EOF'`）。不带 `\\` 续行的 heredoc 体会被 Dockerfile
    解析吃掉（`settings.xml` 被写成空文件），改用 `printf '%s\\n'` 续行
-   （见 dehaze-java/Dockerfile）。
+   （见 clarity-java/Dockerfile）。
 
 用法：
     python scripts/check_dockerfiles.py                 # 扫描仓库内全部 Dockerfile / Dockerfile.*
-    python scripts/check_dockerfiles.py dehaze-go/Dockerfile   # 只查指定文件
+    python scripts/check_dockerfiles.py clarity-go/Dockerfile   # 只查指定文件
 
 退出码：0 = 全部通过；1 = 存在违规（逐条打印 `文件:行` + 修法）；2 = 用法/环境错误。
 只读：仅读取仓库内文本文件。
@@ -280,7 +280,7 @@ def check_dockerfile(path: Path) -> tuple[list[Violation], list[str]]:
                     f"检测到 heredoc `{heredoc.group(0)}`：不带 `\\` 续行的 heredoc 体会被 "
                     "Dockerfile 解析吃掉，写入的文件会变成空文件",
                     "改用 `printf '%s\\n'` 逐行写入"
-                    "（见 dehaze-java/Dockerfile 的 settings.xml 写法）",
+                    "（见 clarity-java/Dockerfile 的 settings.xml 写法）",
                 )
             )
 

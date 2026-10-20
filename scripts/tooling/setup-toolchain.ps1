@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    dehaze 开发环境统一管理（Windows）：Scoop(系统级 CLI) + mise(语言运行时) + uv(Python)。
+    clarity 开发环境统一管理（Windows）：Scoop(系统级 CLI) + mise(语言运行时) + uv(Python)。
 
 .DESCRIPTION
     幂等、分阶段、可回滚。安装与清理严格分离：
@@ -203,7 +203,7 @@ function Install-Scoop {
     if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
         $scoopCmd = Join-Path $env:USERPROFILE 'scoop\shims\scoop.cmd'
         Invoke-Action '安装 Scoop（走 gitee 镜像，管理员模式）' {
-            $installer = Join-Path $env:TEMP 'dehaze-scoop-install.ps1'
+            $installer = Join-Path $env:TEMP 'clarity-scoop-install.ps1'
             $env:SCOOP_REPO = $Config.mirrors.scoopRepo
             # 安装器默认禁止管理员运行；本会话已提权且为同一用户，显式 -RunAsAdmin 放行
             foreach ($url in @("$($Config.mirrors.scoopRepo)/raw/master/bin/install.ps1", 'https://get.scoop.sh')) {

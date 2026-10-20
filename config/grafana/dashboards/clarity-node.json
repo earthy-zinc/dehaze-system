@@ -366,7 +366,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["dehaze", "node"],
+  "tags": ["clarity", "node"],
   "templating": {
     "list": []
   },
@@ -377,7 +377,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "宿主机监控",
-  "uid": "dehaze-node",
+  "uid": "clarity-node",
   "version": 1,
   "weekStart": ""
 }

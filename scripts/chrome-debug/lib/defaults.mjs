@@ -30,6 +30,8 @@ export const SMOKE_PAGE_TIMEOUT_MS = 10000; // 冒烟：等待页面 readyState=
 export const SMOKE_POLL_MS = 200;
 export const SMOKE_SCREENSHOT_MIN_BYTES = 1000; // 小于此值视为截图失败
 export const VNC_READ_TIMEOUT_MS = 8000; // vnc-check 单次读字节
+export const IME_READY_TIMEOUT_MS = 6000; // 拉起后等待 ibus 可用并切到拼音引擎
+export const IME_READY_POLL_MS = 300;
 
 // ── 运行时目录与外部资源 ──
 export const RUNTIME_DIR_NAME = '.chrome-debug';
@@ -103,10 +105,31 @@ export function chromeArgs(config) {
 
 // ── 服务器远程桌面参数 ──
 const XVFB_FIXED_ARGS = ['-nolisten', 'tcp'];
-// -noxdamage 是性能取舍：不依赖 X damage 扩展，更兼容；去掉会更高 CPU 但更及时
-export const X11VNC_FIXED_ARGS = ['-shared', '-forever', '-noxdamage', '-quiet'];
+// DAMAGE 变化检测（不加 -noxdamage）：x11vnc 只编码真正变化的区域，替代整屏轮询比对。
+// 整屏轮询既白烧 CPU 又让更新滞后（VNC 画面卡顿的根因）；Xvfb 不支持时 x11vnc 自动回退轮询。
+// 注意：本机源的 x11vnc 构建不支持 -quality / -compresslevel（Tight 压缩被裁剪），不要加。
+// -noprimary/-nosetprimary：切断 X11 PRIMARY（选中缓冲）双向同步，只保留 CLIPBOARD（显式 Ctrl+C/V）。
+// X11 有两套独立剪贴板：PRIMARY 鼠标选中即变，CLIPBOARD 才是显式复制。x11vnc 默认两套都同步给
+// VNC 客户端 → VNC 内一选中文字，选中内容就会被推到客户端、再由补丁自动写进本机剪贴板，
+// 把刚复制的内容悄悄顶掉；右键粘贴取的是远端 CLIPBOARD，与本机剪贴板对不上即"贴的不是刚复制的"。
+// 远端 Chrome 不使用中键粘贴，切断 PRIMARY 无副作用。
+export const X11VNC_FIXED_ARGS = ['-shared', '-forever', '-quiet', '-noprimary', '-nosetprimary'];
 
 export function xvfbArgs(config) {
   const screen = `${config.screen.width}x${config.screen.height}x${config.screen.depth}`;
   return [config.display, '-screen', '0', screen, ...XVFB_FIXED_ARGS];
 }
+
+// ── 服务器中文输入法（ibus + libpinyin）──
+// Xvfb 是纯 X server，不带任何输入法框架；没有 IME 时 noVNC 只能敲英文，中文只能靠剪贴板粘贴。
+// 服务器模式下随实例拉起 dbus 会话总线 + ibus-daemon（见 lib/instance.mjs），并给 Chrome 注入
+// 下面这些变量，即可在 noVNC 里直接拼音输入、数字键选词。
+// ⚠️ 客户端浏览器要保持在英文输入法：中文由服务端 IME 组词，客户端若开着拼音会先被本机吞掉按键。
+export const IBUS_ENGINE = 'libpinyin';
+export const IME_CHROME_ENVIRONMENT = {
+  GTK_IM_MODULE: 'ibus',
+  XMODIFIERS: '@im=ibus',
+  QT_IM_MODULE: 'ibus',
+  CLUTTER_IM_MODULE: 'ibus',
+  INPUT_METHOD: 'ibus',
+};

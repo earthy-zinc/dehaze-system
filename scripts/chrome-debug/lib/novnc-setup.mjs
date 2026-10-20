@@ -8,14 +8,14 @@
 // 由 install / setup 自动调用：下载固定版本的 noVNC 到 ~/.chrome-debug/novnc 并打补丁；
 // 已装且版本一致则跳过；拿不到源码时只告警不中断（回落到发行版 noVNC，CLI 仍可用）。
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { NOVNC_PATCHED_DIR_NAME } from './defaults.mjs';
 
 // 补丁按此版本的源码片段精确匹配；升级 noVNC 时需同步更新下面的 hunk
 export const NOVNC_VERSION = '1.7.0';
 // 安装产物的修订号：改动「装什么/怎么装」（补丁、index.html、裁剪清单）时递增，触发重装
-const PATCH_REVISION = 'chrome-debug.6';
+const PATCH_REVISION = 'chrome-debug.9';
 const SOURCE_URL = `https://github.com/novnc/noVNC/archive/refs/tags/v${NOVNC_VERSION}.tar.gz`;
 const MARKER_FILE = '.chrome-debug-patched';
 
@@ -29,75 +29,6 @@ const INDEX_HTML = `<!DOCTYPE html>
   </head>
   <body>
     <a href="vnc.html">noVNC</a>
-  </body>
-</html>
-`;
-
-// 降级跳板页：DevCloud 上 panshi/imeta 只放通 80，从别处粘来的 https 链接打不开。
-// 这页把粘进来的 https 换成 http 再跳转（不是协议转换、不碰 TLS）。
-// 放在 noVNC 目录是因为 6080 是唯一已经隧道好的 HTTP 源，不必再给用户多开一条隧道。
-const DOWNGRADE_PAGE = 'go.html';
-const DOWNGRADE_HTML = `<!DOCTYPE html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>降级跳板（https → http）</title>
-    <style>
-      body { font: 15px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; margin: 40px auto; max-width: 720px; padding: 0 16px; color: #222; }
-      h1 { font-size: 20px; }
-      input { width: 100%; box-sizing: border-box; font-size: 15px; padding: 10px; border: 1px solid #bbb; border-radius: 6px; }
-      button { margin-top: 10px; padding: 8px 18px; font-size: 15px; border: 1px solid #3b7ddd; background: #3b7ddd; color: #fff; border-radius: 6px; cursor: pointer; }
-      code { background: #f2f2f2; padding: 1px 5px; border-radius: 4px; }
-      #msg { color: #c0392b; min-height: 1.6em; }
-      .hint { color: #666; font-size: 13px; }
-    </style>
-  </head>
-  <body>
-    <h1>降级跳板（https → http）</h1>
-    <p>
-      DevCloud 上 <code>dev/test.panshi.woa.com</code>、<code>imeta.woa.com</code> 与
-      <code>[sg-]forcem-[dev|test].testsite.woa.com</code> 只放通了 80，
-      https 链接打不开。把 https 链接粘到下面，会用 http 打开。
-    </p>
-    <input id="u" placeholder="粘贴 https://dev.panshi.woa.com/... 后回车" autofocus />
-    <button id="go">用 http 打开</button>
-    <p id="msg"></p>
-    <p class="hint">只对 panshi.woa.com / imeta.woa.com / forcem 各测试站生效；带 ?a=1&amp;b=2 的完整链接会原样保留。</p>
-    <script>
-      (function () {
-        var ALLOW = [
-          'panshi.woa.com',
-          'imeta.woa.com',
-          'forcem-dev.testsite.woa.com',
-          'forcem-test.testsite.woa.com',
-          'sg-forcem-dev.testsite.woa.com',
-          'sg-forcem-test.testsite.woa.com',
-        ];
-        var input = document.getElementById('u');
-        var msg = document.getElementById('msg');
-        function resolve(raw) {
-          var text = (raw || '').trim();
-          if (!text) { return { err: '请先粘贴一个链接' }; }
-          if (!/^https?:\\/\\//i.test(text)) { text = 'http://' + text; }
-          var url;
-          try { url = new URL(text); } catch (e) { return { err: '这不是一个合法的链接' }; }
-          var host = url.hostname;
-          var allowed = ALLOW.some(function (h) { return host === h || host.slice(-(h.length + 1)) === '.' + h; });
-          if (!allowed) { return { err: host + ' 不在降级名单（仅 panshi / imeta / forcem 各站）' }; }
-          url.protocol = 'http:';
-          return { url: url.toString() };
-        }
-        function go() {
-          var r = resolve(input.value);
-          msg.textContent = r.err || '';
-          if (r.url) { location.href = r.url; }
-        }
-        document.getElementById('go').addEventListener('click', go);
-        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { go(); } });
-        input.focus();
-      })();
-    </script>
   </body>
 </html>
 `;
@@ -242,6 +173,44 @@ const HUNKS = [
             navigator.clipboard.writeText(e.detail.text).catch(() => {});
         }`,
   },
+  {
+    file: 'core/input/keyboard.js',
+    name: 'Mac 客户端把 Cmd 当 Ctrl（UA 判定 + ?cmdasctrl 覆盖）',
+    from: `export default class Keyboard {`,
+    to: `// 补丁(chrome-debug)：Mac 客户端把 Cmd 当 Ctrl。
+// Linux 版 Chrome 只有 Ctrl 快捷键方案，而 noVNC 默认把 Cmd(Super) 映射成 Alt：
+// 于是 Cmd+C/T/W/L 全部落空，Cmd+←/→ 还会被 Chrome 当成 Alt+←/→（后退/前进），与 Mac 习惯冲突。
+// 按 UA 自动判定（Mac 开启），URL 参数 ?cmdasctrl=0/1 可显式覆盖（仅对 Mac/iOS 客户端有意义）。
+const CMD_AS_CTRL = (() => {
+    const override = new URLSearchParams(window.location.search).get('cmdasctrl');
+    if (override === '0') { return false; }
+    if (override === '1') { return true; }
+    return browser.isMac();
+})();
+
+export default class Keyboard {`,
+  },
+  {
+    file: 'core/input/keyboard.js',
+    name: 'mac 分支里 Cmd(Super) → Ctrl',
+    from: `        if (browser.isMac() || browser.isIOS()) {
+            switch (keysym) {
+                case KeyTable.XK_Super_L:
+                    keysym = KeyTable.XK_Alt_L;
+                    break;
+                case KeyTable.XK_Super_R:
+                    keysym = KeyTable.XK_Super_L;
+                    break;`,
+    to: `        if (browser.isMac() || browser.isIOS()) {
+            switch (keysym) {
+                // 补丁(chrome-debug)：Cmd(Super) → Ctrl（CMD_AS_CTRL 默认在 Mac 上开启）
+                case KeyTable.XK_Super_L:
+                    keysym = CMD_AS_CTRL ? KeyTable.XK_Control_L : KeyTable.XK_Alt_L;
+                    break;
+                case KeyTable.XK_Super_R:
+                    keysym = CMD_AS_CTRL ? KeyTable.XK_Control_L : KeyTable.XK_Super_L;
+                    break;`,
+  },
 ];
 
 function applyPatches(directory) {
@@ -305,11 +274,22 @@ export async function ensurePatchedNovnc(config) {
       rmSync(join(extracted, rel), { recursive: true, force: true });
     }
     writeFileSync(join(extracted, 'index.html'), INDEX_HTML);
-    writeFileSync(join(extracted, DOWNGRADE_PAGE), DOWNGRADE_HTML);
     writeFileSync(join(extracted, MARKER_FILE), `${NOVNC_VERSION}+${PATCH_REVISION}\n`);
 
-    rmSync(target, { recursive: true, force: true });
-    renameSync(extracted, target);
+    // 就地替换，保留 target 目录本身的 inode（不整目录删掉重建）。
+    // websockify 启动时会 chdir 进 web 根，若把整个目录换掉，运行中的 websockify 的 cwd 会指向
+    // 已删除目录——表现为「端口在监听但所有 HTTP 请求失败」。保留 inode 即可避免；staging 与 target
+    // 同父目录（同文件系统），逐项 rename 是原子的。
+    if (existsSync(target)) {
+      for (const entry of readdirSync(target)) {
+        rmSync(join(target, entry), { recursive: true, force: true });
+      }
+    } else {
+      mkdirSync(target, { recursive: true });
+    }
+    for (const entry of readdirSync(extracted)) {
+      renameSync(join(extracted, entry), join(target, entry));
+    }
     rmSync(staging, { recursive: true, force: true });
     console.log(`补丁版 noVNC 安装完成：${target}（应用 ${applied} 处补丁）`);
     return true;

@@ -39,7 +39,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(dehaze_prediction_total[5m])) by (job, status)",
+          "expr": "sum(rate(clarity_prediction_total[5m])) by (job, status)",
           "legendFormat": "{{job}} / {{status}}",
           "refId": "A"
         }
@@ -62,7 +62,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(rate(dehaze_prediction_total{status=\"success\"}[5m])) / sum(rate(dehaze_prediction_total[5m]))",
+          "expr": "sum(rate(clarity_prediction_total{status=\"success\"}[5m])) / sum(rate(clarity_prediction_total[5m]))",
           "refId": "A"
         }
       ],
@@ -100,7 +100,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "histogram_quantile(0.95, sum(rate(dehaze_prediction_duration_seconds_bucket[5m])) by (le, job))",
+          "expr": "histogram_quantile(0.95, sum(rate(clarity_prediction_duration_seconds_bucket[5m])) by (le, job))",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -397,13 +397,13 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["dehaze", "business"],
+  "tags": ["clarity", "business"],
   "templating": { "list": [] },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Dehaze 业务监控",
-  "uid": "dehaze-business",
+  "title": "Clarity 业务监控",
+  "uid": "clarity-business",
   "version": 1,
   "weekStart": ""
 }
