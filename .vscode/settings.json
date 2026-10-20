@@ -9,9 +9,9 @@
   // 同步失败，故每台机器都需显式配置。取值理由：
   //   java.jdt.ls.java.home —— 语言服务器自身运行 JDK，要求 >= 21；它同时
   //     是 Gradle daemon 的默认 JDK，故必须取本仓库最旧的 Gradle 也支持的
-  //     版本（dehaze-android 8.7 / dehaze_flutter 8.12 / dehaze-react-native
+  //     版本（clarity-android 8.7 / clarity_flutter 8.12 / clarity-react-native
   //     8.14.3）→ 21。java.import.gradle.java.home 因此不必单独配置。
-  //   java.configuration.runtimes —— dehaze-java 字节码目标是 17（pom.xml 的
+  //   java.configuration.runtimes —— clarity-java 字节码目标是 17（pom.xml 的
   //     maven.compiler.release=17），需注册 JavaSE-17 供其解析 JRE 容器；
   //     默认运行时取主项目的 17。参考取值：
   //       Windows：C:\Program Files\Java\jdk-21* / jdk-17
@@ -29,7 +29,7 @@
   "java.search.scope": "main",
   "java.server.launchMode": "Standard",
 
-  // dehaze_flutter/android 与 dehaze-react-native/android 都是 Gradle 工程
+  // clarity_flutter/android 与 clarity-react-native/android 都是 Gradle 工程
   // （前者 Kotlin DSL，后者 Groovy DSL）而非 Java 工程，导入只会失败并产生
   // 噪音，这里排除；默认 4 项必须一并带上，因为该设置是整体替换默认值而非追加。
   // Gradle 根项目按"目录"识别，故目录本身与目录内容必须分别排除：只写尾部
@@ -41,10 +41,10 @@
     "**/.metadata/**",
     "**/archetype-resources/**",
     "**/META-INF/maven/**",
-    "**/dehaze_flutter/android",
-    "**/dehaze_flutter/android/**",
-    "**/dehaze-react-native/android",
-    "**/dehaze-react-native/android/**"
+    "**/clarity_flutter/android",
+    "**/clarity_flutter/android/**",
+    "**/clarity-react-native/android",
+    "**/clarity-react-native/android/**"
   ],
 
   // ============================================================
@@ -66,7 +66,7 @@
     "**/__pycache__/**": true,
     "**/.dart_tool/**": true,
     "**/oh_modules/**": true,
-    "**/dehaze-react-native/node_modules/**": true
+    "**/clarity-react-native/node_modules/**": true
   },
   "search.exclude": {
     "**/node_modules": true,
@@ -179,8 +179,8 @@
   // UnoCSS（前端项目使用 UnoCSS 而非 Tailwind）
   // ============================================================
   "unocss.root": [
-    "dehaze-front-react",
-    "dehaze-front-vue"
+    "clarity-front-react",
+    "clarity-front-vue"
   ],
 
   // ============================================================
@@ -190,15 +190,15 @@
 
   // ============================================================
   // Python
-  // 项目统一用 Ruff（见 dehaze-python/pyproject.toml 的 [tool.ruff]），
+  // 项目统一用 Ruff（见 clarity-python/pyproject.toml 的 [tool.ruff]），
   // isort 扩展自带语言服务器会与 ruff 的 isort 规则重复报错，故关闭。
   // 类型检查配置分两层：共享判定标准（typeCheckingMode / pythonPlatform）单点定义在
   // 仓库根 pyright.base.json；检查范围与 venv 由各 Python 子项目自己的 pyrightconfig.json
-  // 描述（dehaze-python、dehaze-mcp-gateway、dehaze-service/dehaze-{llm,voice,modal}）。
+  // 描述（clarity-python、clarity-mcp-gateway、clarity-service/dehaze-{llm,voice,modal}）。
   // 以仓库为单根打开工作区时生效的仍是仓库根 pyrightconfig.json（extends pyright.base.json，
   // 用 executionEnvironments 区分各子项目的导入搜索根与 app 包归属）——pyright 不会自动拾取
   // 子目录配置，故子项目配置只在单独打开该项目、或 CLI 逐项目执行
-  // （dehaze-python/scripts/check.sh）时生效。
+  // （clarity-python/scripts/check.sh）时生效。
   // 这些文件存在时 pyright 会整体忽略本文件的 python.analysis.*（IDE 与 CLI 同源），
   // 所以 typeCheckingMode / exclude / extraPaths 不再在此保留副本，改配置请改上述文件。
   // 下面几项在 pyright 配置里没有对应键，保持在工作区：isort.serverEnabled 属 isort 扩展；
@@ -210,10 +210,10 @@
   "python.analysis.autoImportCompletions": true,
   "python.analysis.languageServerMode": "full",
 
-  // 测试发现必须以 dehaze-python 为工作目录：否则 pytest 在仓库根执行，
-  // 会去收集 dehaze-algorithm/notebook/*.py（缺 basicsr/torchsummary 直接报错），
-  // 并执行 dehaze-mcp-gateway/tests/live_test.py（该文件顶层即跑实时用例）。
-  "python.testing.cwd": "${workspaceFolder}/dehaze-python",
+  // 测试发现必须以 clarity-python 为工作目录：否则 pytest 在仓库根执行，
+  // 会去收集 clarity-algorithm/notebook/*.py（缺 basicsr/torchsummary 直接报错），
+  // 并执行 clarity-mcp-gateway/tests/live_test.py（该文件顶层即跑实时用例）。
+  "python.testing.cwd": "${workspaceFolder}/clarity-python",
 
   // 不要在此处关闭或调整类型检查：口径由仓库根 pyright.base.json 单点决定，
   // 且存在 pyrightconfig.json 时 pyright 会忽略 VS Code 的 python.analysis.*，

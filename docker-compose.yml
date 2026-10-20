@@ -12,14 +12,14 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=dehaze
+      - MYSQL_DATABASE=clarity
       - TZ=Asia/Shanghai
     volumes:
       - mysql-data:/var/lib/mysql
       - mysql-logs:/var/log/mysql
       - ./config/mysql:/etc/mysql/conf.d:ro
-      # 不能加 :ro——下面 xxl_job.sql 是以单文件形式挂进本目录，父目录只读时 Docker Desktop(Windows)
-      # 无法在其内创建挂载点（runc: read-only file system），容器起不来。
+      # 不能加 :ro —— Docker 28 需在该目录内创建嵌套文件挂载点（下方 xxl_job.sql），
+      # 只读 bind 会导致 "read-only file system" 而无法启动容器
       - ./config/sql/schema:/docker-entrypoint-initdb.d
       # xxl-job 调度中心独立库的引导脚本（自带 DROP/CREATE DATABASE xxl_job），与业务库 schema 分目录存放：
       # 放在 config/sql/schema/ 里会被 `schema/*.sql` 通配（手工重置、脚本、文档命令）误命中而删库。
@@ -180,8 +180,8 @@ services:
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
       - xpack.security.transport.ssl.enabled=false
-      # 放开通配删除：dehaze-test/scripts/reset_env.py 按 ES 索引前缀（dev_* / pre_*）整体删除，
-      # ES8 默认 destructive_requires_name=true 会以 400 illegal_argument_exception 拒绝通配删除。
+      # 放开通配删除：clarity-test/scripts/reset_env.py 按 ES_INDEX_PREFIX 通配删除索引，
+      # ES8 默认 destructive_requires_name=true 会以 400 illegal_argument_exception 拒绝
       - action.destructive_requires_name=false
       - TZ=Asia/Shanghai
     ulimits:
@@ -229,7 +229,7 @@ services:
       # Beats 输入端口（Filebeat 日志采集）
       - "5044:5044"
     environment:
-      # 供 pipeline 引用（dehaze.conf 中 ${ELASTIC_USER} / ${ELASTIC_PASSWORD}）
+      # 供 pipeline 引用（clarity.conf 中 ${ELASTIC_USER} / ${ELASTIC_PASSWORD}）
       # 用 logstash_system 系统账号（elastic 超级用户不推荐）
       # 首次部署需执行：bash scripts/init-security.sh 设置系统用户密码
       ELASTIC_USER: logstash_system
@@ -261,13 +261,13 @@ services:
       - "mount --bind /usr/share/filebeat/proc-stat /proc/stat 2>/dev/null || true; exec /usr/bin/tini -- /usr/local/bin/docker-entrypoint filebeat -e --strict.perms=false"
     volumes:
       - ./config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./dehaze-java/logs:/logs/java:ro
-      - ./dehaze-python/logs:/logs/python:ro
-      - ./dehaze-go/logs:/logs/go:ro
-      # 外置推理服务日志（dehaze-service/*，目录不存在时 compose 会以 root 创建）
-      - ./dehaze-service/dehaze-llm/logs:/logs/llm:ro
-      - ./dehaze-service/dehaze-voice/logs:/logs/voice:ro
-      - ./dehaze-service/dehaze-modal/logs:/logs/modal:ro
+      - ./clarity-java/logs:/logs/java:ro
+      - ./clarity-python/logs:/logs/python:ro
+      - ./clarity-go/logs:/logs/go:ro
+      # 外置推理服务日志（clarity-service/*，目录不存在时 compose 会以 root 创建）
+      - ./clarity-service/clarity-llm/logs:/logs/llm:ro
+      - ./clarity-service/clarity-voice/logs:/logs/voice:ro
+      - ./clarity-service/clarity-modal/logs:/logs/modal:ro
       - filebeat-data:/usr/share/filebeat/data
       - ./config/filebeat/proc-stat:/usr/share/filebeat/proc-stat:ro
     depends_on:

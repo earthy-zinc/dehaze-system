@@ -1,10 +1,10 @@
 packages:
-  - dehaze-doc
-  - dehaze-sdk-js
-  - dehaze-uniapp
-  - dehaze-taro
-  - dehaze-front-vue
-  - dehaze-front-react
+  - clarity-doc
+  - clarity-sdk-js
+  - clarity-uniapp
+  - clarity-taro
+  - clarity-front-vue
+  - clarity-front-react
 
 allowBuilds:
   '@parcel/watcher': true
@@ -30,5 +30,9 @@ overrides:
   '@types/react': ^19.2.3
   '@types/react-dom': ^19.2.3
 
+peerDependencyRules:
+  allowedVersions:
+    '@dcloudio/vite-plugin-uni>vite': 5.4.21
+
 patchedDependencies:
-  '@tarojs/vite-runner@4.2.1': dehaze-taro/patches/@tarojs__vite-runner@4.2.1.patch
+  '@tarojs/vite-runner@4.2.1': clarity-taro/patches/@tarojs__vite-runner@4.2.1.patch

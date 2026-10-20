@@ -1,5 +1,5 @@
 # =============================================================================
-# Dehaze System - 修正版统一 GitIgnore 规则
+# Clarity Vision - 修正版统一 GitIgnore 规则
 # 注意：根据项目实际目录结构调整路径匹配
 # =============================================================================
 **/.vitepress/cache
@@ -40,7 +40,7 @@ Thumbs.db
 *.swo
 
 # =============================================================================
-# Java 项目 (dehaze-java, dehaze-android)
+# Java 项目 (clarity-java, clarity-android)
 # =============================================================================
 # Java 编译输出（所有层级）
 **/target/
@@ -92,7 +92,7 @@ replay_pid*
 local.properties
 
 # =============================================================================
-# Python 项目 (dehaze-python, dehaze-algorithm)
+# Python 项目 (clarity-python, clarity-algorithm)
 # =============================================================================
 # Python 字节编译（所有层级）
 **/__pycache__/
@@ -167,7 +167,7 @@ instance/
 .webassets-cache
 
 # 算法项目特定（所有层级）
-dehaze-algorithm/cache/
+clarity-algorithm/cache/
 **/trained_model/
 **/deploy/
 **/pretrained_models/
@@ -189,7 +189,7 @@ dehaze-algorithm/cache/
 tmp*/
 
 # =============================================================================
-# Node.js 项目 (dehaze-front-vue, dehaze-front-react, dehaze-react-native)
+# Node.js 项目 (clarity-front-vue, clarity-front-react, clarity-react-native)
 # =============================================================================
 # Node.js 依赖（所有层级）
 **/node_modules/
@@ -259,7 +259,7 @@ pids
 test_result/
 
 # =============================================================================
-# Go 项目 (dehaze-go)
+# Go 项目 (clarity-go)
 # =============================================================================
 # Go 可执行文件
 *.exe
@@ -283,11 +283,11 @@ go.work
 # vendor/
 
 # Go 项目特定（所有层级）
-/dehaze-go/data/
+/clarity-go/data/
 __debug*
 
 # =============================================================================
-# Android 开发 (dehaze-android, Flutter Android部分)
+# Android 开发 (clarity-android, Flutter Android部分)
 # =============================================================================
 # Android 构建输出（所有层级）
 **/build/
@@ -313,7 +313,7 @@ local.properties
 obj/
 
 # =============================================================================
-# Flutter 开发 (dehaze_flutter)
+# Flutter 开发 (clarity_flutter)
 # =============================================================================
 # Flutter/Dart 全局
 **/.dart_tool/
@@ -348,7 +348,7 @@ app.*.map.json
 **/windows/flutter/ephemeral/
 
 # =============================================================================
-# React Native 开发 (dehaze-react-native)
+# React Native 开发 (clarity-react-native)
 # =============================================================================
 # Metro
 .metro-health-check*
@@ -382,7 +382,7 @@ DerivedData
 # =============================================================================
 # 其他模块特定规则
 # =============================================================================
-# LaTeX 论文 (dehaze-paper)
+# LaTeX 论文 (clarity-paper)
 *.aux
 *.lof
 *.lot
@@ -429,13 +429,13 @@ storybook-static/
 # =============================================================================
 # Flutter / RN 第三方插件符号链接自动生成物
 # =============================================================================
-dehaze_flutter/windows/flutter/ephemeral/
-dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
+clarity_flutter/windows/flutter/ephemeral/
+clarity_flutter/ios/Runner/Assets.xcassets/*/README.md
 
 # =============================================================================
 # 重要！需要保留的文件（排除忽略）
 # =============================================================================
-!dehaze_flutter/lib
+!clarity_flutter/lib
 !scripts/chrome-debug/lib
 .idea/
 .vscode/.chrome
@@ -457,11 +457,11 @@ dehaze_flutter/ios/Runner/Assets.xcassets/*/README.md
 # 2. 根目录直接存在的文件夹直接用 文件夹名/ 忽略
 # 3. 文件名（无路径前缀）在所有层级都生效
 # 4. 环境配置文件已忽略，生产环境请使用环境变量
-dehaze-sdk-js/test/resources
+clarity-sdk-js/test/resources
 
 **/.torch_extensions
 
-dehaze-sdk-js/.session-cache.json
+clarity-sdk-js/.session-cache.json
 
 # 项目根目录数据
 /datasets
@@ -471,8 +471,8 @@ dehaze-sdk-js/.session-cache.json
 docker-compose-dev.yml
 .codebuddy/teams/
 .codebuddy/.state/
-dehaze-test/kb_eval/reports/
-dehaze-python/upload
+clarity-test/kb_eval/reports/
+clarity-python/upload
 
 # Agent 设计评审/浏览器调试产物（过程文件，不入库）
 design-review/
@@ -489,12 +489,8 @@ acceptance-*.png
 # =============================================================================
 config/sql/data/zz_private_*.sql
 
+# -----------------------------------------------------------------------------
+# scripts/tooling/backup/：setup-toolchain-*.sh 生成的机器本地备份（含个人 .zshrc/.bashrc，
+# 可能含内网凭据），只应留在本机，不入库。
 # =============================================================================
-# 本机运行时产物
-# =============================================================================
-# 环境脚本（setup-toolchain*）每次执行生成的备份快照，仅本机可见
 scripts/tooling/backup/
-
-# Docker Desktop 在可写目录旁挂载单文件时生成的 0 字节挂载点锚文件
-# （见 docker-compose.yml mysql 段：xxl_job.sql 以单文件挂进 docker-entrypoint-initdb.d）
-config/sql/schema/xxl_job.sql

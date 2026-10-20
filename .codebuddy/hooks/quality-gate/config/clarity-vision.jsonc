@@ -1,0 +1,73 @@
+// quality-gate 配置 · 自动生成的草案（quality-gate init 或首次会话生成）
+//
+// 这是草案，不是定稿：按工作区里认得的工程标记（go.mod / pyproject.toml /
+// requirements.txt / package.json / pom.xml …）推出来的一个起点，命令模板未必
+// 在你的环境里一次就对（装没装 go、python3、本地 eslint 都要你自己确认）。
+//
+// 怎么改：
+//   · 改 run 里的命令与参数即可；files / trigger 是"这一步管哪些文件"的选择器。
+//   · 不需要的步骤整条删掉；只想登记、暂不检查的工程，把它的步骤删空即可。
+//   · 想彻底关掉自动生成：把本文件内容改成 {"folders": []}（空数组 = 明确表态
+//     "这个工作区不要检查"），之后会话开始不会再为你生成新草案。
+//
+// 本文件不会被自动生成覆盖：只要配置目录里有 .jsonc，自动生成就不动它；
+// 手动重跑 init --write 也要加 --force 才覆盖。
+{
+  "folders": [
+    { "path": "clarity-algorithm",
+      "check": [
+        { "name": "py-compile", "run": ["python3", "-m", "compileall", "-q", "."], "scope": "repo", "trigger": ["**/*.py"], "parser": "generic" }
+      ]
+    },
+    { "path": "clarity-android" },
+    { "path": "clarity-doc" },
+    { "path": "clarity-front-react",
+      "check": [
+        { "name": "eslint", "run": ["node_modules/.bin/eslint", "--format", "json", "{{files}}"], "files": ["src/**/*.{ts,tsx,vue,js,jsx}"], "parser": "eslint-json" }
+      ]
+    },
+    { "path": "clarity-front-vue",
+      "check": [
+        { "name": "eslint", "run": ["node_modules/.bin/eslint", "--format", "json", "{{files}}"], "files": ["src/**/*.{ts,tsx,vue,js,jsx}"], "parser": "eslint-json" }
+      ]
+    },
+    { "path": "clarity-go",
+      "check": [
+        { "name": "go-vet", "run": ["go", "vet", "./..."], "scope": "repo", "trigger": ["**/*.go"], "parser": "go-vet" }
+      ]
+    },
+    { "path": "clarity-java" },
+    { "path": "clarity-mcp-gateway",
+      "check": [
+        { "name": "py-compile", "run": ["python3", "-m", "compileall", "-q", "."], "scope": "repo", "trigger": ["**/*.py"], "parser": "generic" }
+      ]
+    },
+    { "path": "clarity-python",
+      "check": [
+        { "name": "py-compile", "run": ["python3", "-m", "compileall", "-q", "."], "scope": "repo", "trigger": ["**/*.py"], "parser": "generic" }
+      ]
+    },
+    { "path": "clarity-react-native" },
+    { "path": "clarity-sdk-js",
+      "check": [
+        { "name": "eslint", "run": ["node_modules/.bin/eslint", "--format", "json", "{{files}}"], "files": ["src/**/*.{ts,tsx,vue,js,jsx}"], "parser": "eslint-json" }
+      ]
+    },
+    { "path": "clarity-taro",
+      "check": [
+        { "name": "eslint", "run": ["node_modules/.bin/eslint", "--format", "json", "{{files}}"], "files": ["src/**/*.{ts,tsx,vue,js,jsx}"], "parser": "eslint-json" }
+      ]
+    },
+    { "path": "clarity-test",
+      "check": [
+        { "name": "py-compile", "run": ["python3", "-m", "compileall", "-q", "."], "scope": "repo", "trigger": ["**/*.py"], "parser": "generic" }
+      ]
+    },
+    { "path": "clarity-uniapp",
+      "check": [
+        { "name": "eslint", "run": ["node_modules/.bin/eslint", "--format", "json", "{{files}}"], "files": ["src/**/*.{ts,tsx,vue,js,jsx}"], "parser": "eslint-json" }
+      ]
+    },
+    { "path": "clarity_flutter" }
+  ]
+}

@@ -1,6 +1,6 @@
 # http://editorconfig.org
 # 仓库级统一约定，跨编辑器生效（VS Code 需 editorconfig.editorconfig 扩展）。
-# 注意：dehaze-front-vue / dehaze-taro 目录下另有 root = true 的子配置，
+# 注意：clarity-front-vue / clarity-taro 目录下另有 root = true 的子配置，
 # 按 EditorConfig 规范，子配置会截断继承，本文件对这两个目录不生效。
 root = true
 

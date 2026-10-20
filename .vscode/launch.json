@@ -8,7 +8,7 @@
       "name": "dehaze-flutter-edge",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "edge",
       "presentation": {
         "hidden": false,
@@ -20,7 +20,7 @@
       "name": "dehaze-flutter-chrome",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "chrome",
       "presentation": {
         "hidden": false,
@@ -32,7 +32,7 @@
       "name": "dehaze-flutter-windows",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "windows",
       "presentation": {
         "hidden": false,
@@ -44,7 +44,7 @@
       "name": "dehaze-flutter-macos",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "macos",
       "presentation": {
         "hidden": false,
@@ -56,7 +56,7 @@
       "name": "dehaze-flutter-ios",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "ios",
       "preLaunchTask": "flutter-ios-simulator-check",
       "postDebugTask": "flutter-ios-simulator-stop",
@@ -70,7 +70,7 @@
       "name": "dehaze-flutter-android",
       "type": "dart",
       "request": "launch",
-      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "program": "${workspaceFolder}/clarity_flutter/lib/main.dart",
       "deviceId": "android",
       "preLaunchTask": "flutter-android-emulator-check",
       "postDebugTask": "flutter-android-emulator-stop",
@@ -109,9 +109,9 @@
       }
     },
     {
-      "name": "dehaze-doc",
+      "name": "clarity-doc",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-doc",
+      "cwd": "${workspaceFolder}/clarity-doc",
       "runtimeArgs": ["run", "docs:dev"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -124,9 +124,9 @@
       }
     },
     {
-      "name": "dehaze-front-vue",
+      "name": "clarity-front-vue",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-front-vue",
+      "cwd": "${workspaceFolder}/clarity-front-vue",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -139,9 +139,9 @@
       }
     },
     {
-      "name": "dehaze-front-react",
+      "name": "clarity-front-react",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-front-react",
+      "cwd": "${workspaceFolder}/clarity-front-react",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -154,9 +154,9 @@
       }
     },
     {
-      "name": "dehaze-front-desktop",
+      "name": "clarity-front-desktop",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-front-react/desktop",
+      "cwd": "${workspaceFolder}/clarity-front-react/desktop",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "yarn",
       "runtimeVersion": "20",
@@ -169,9 +169,9 @@
       }
     },
     {
-      "name": "dehaze-react-native-dev-server",
+      "name": "clarity-react-native-dev-server",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "cwd": "${workspaceFolder}/clarity-react-native",
       "runtimeArgs": ["start"],
       "runtimeExecutable": "yarn",
       "runtimeVersion": "20",
@@ -184,9 +184,9 @@
       }
     },
     {
-      "name": "dehaze-react-native-android",
+      "name": "clarity-react-native-android",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "cwd": "${workspaceFolder}/clarity-react-native",
       "runtimeArgs": ["android"],
       "runtimeExecutable": "yarn",
       "runtimeVersion": "20",
@@ -199,9 +199,9 @@
       }
     },
     {
-      "name": "dehaze-react-native-ios",
+      "name": "clarity-react-native-ios",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "cwd": "${workspaceFolder}/clarity-react-native",
       "runtimeArgs": ["ios"],
       "runtimeExecutable": "yarn",
       "runtimeVersion": "20",
@@ -216,9 +216,9 @@
       }
     },
     {
-      "name": "dehaze-taro-h5",
+      "name": "clarity-taro-h5",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-taro",
+      "cwd": "${workspaceFolder}/clarity-taro",
       "runtimeArgs": ["run", "dev:h5"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -231,9 +231,9 @@
       }
     },
     {
-      "name": "dehaze-taro-weapp",
+      "name": "clarity-taro-weapp",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-taro",
+      "cwd": "${workspaceFolder}/clarity-taro",
       "runtimeArgs": ["run", "dev:weapp"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -246,9 +246,9 @@
       }
     },
     {
-      "name": "dehaze-uniapp-h5",
+      "name": "clarity-uniapp-h5",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-uniapp",
+      "cwd": "${workspaceFolder}/clarity-uniapp",
       "runtimeArgs": ["run", "dev:h5"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -261,9 +261,9 @@
       }
     },
     {
-      "name": "dehaze-uniapp-weixin",
+      "name": "clarity-uniapp-weixin",
       "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-uniapp",
+      "cwd": "${workspaceFolder}/clarity-uniapp",
       "runtimeArgs": ["run", "dev:mp-weixin"],
       "runtimeExecutable": "pnpm",
       "runtimeVersion": "20",
@@ -276,11 +276,11 @@
       }
     },
     {
-      "name": "dehaze-java",
+      "name": "clarity-java",
       "type": "java",
       "request": "launch",
-      "mainClass": "com.pei.dehaze.SystemApplication",
-      "projectName": "com.pei-dehaze-java",
+      "mainClass": "com.pei.clarity.SystemApplication",
+      "projectName": "com.pei-clarity-java",
       "presentation": {
         "hidden": false,
         "group": "后端服务",
@@ -288,16 +288,16 @@
       }
     },
     {
-      "name": "dehaze-python",
+      "name": "clarity-python",
       "type": "debugpy",
       "request": "launch",
       "module": "app.main",
-      "cwd": "${workspaceFolder}/dehaze-python",
+      "cwd": "${workspaceFolder}/clarity-python",
       "windows": {
-        "python": "${workspaceFolder}/dehaze-python/.venv/Scripts/python.exe"
+        "python": "${workspaceFolder}/clarity-python/.venv/Scripts/python.exe"
       },
       "linux": {
-        "python": "${workspaceFolder}/dehaze-python/.venv/bin/python"
+        "python": "${workspaceFolder}/clarity-python/.venv/bin/python"
       },
       "presentation": {
         "hidden": false,
@@ -306,12 +306,12 @@
       }
     },
     {
-      "name": "dehaze-go",
+      "name": "clarity-go",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "cwd": "${workspaceFolder}/dehaze-go",
-      "program": "${workspaceFolder}/dehaze-go/cmd/server/main.go",
+      "cwd": "${workspaceFolder}/clarity-go",
+      "program": "${workspaceFolder}/clarity-go/cmd/server/main.go",
       "presentation": {
         "hidden": false,
         "group": "后端服务",
@@ -345,10 +345,10 @@
   ],
   "compounds": [
     {
-      "name": "dehaze-react-native-android-start",
+      "name": "clarity-react-native-android-start",
       "configurations": [
-        "dehaze-react-native-dev-server",
-        "dehaze-react-native-android"
+        "clarity-react-native-dev-server",
+        "clarity-react-native-android"
       ],
       "stopAll": true,
       "preLaunchTask": "flutter-android-emulator-check",
@@ -360,10 +360,10 @@
       }
     },
     {
-      "name": "dehaze-react-native-ios-start",
+      "name": "clarity-react-native-ios-start",
       "configurations": [
-        "dehaze-react-native-dev-server",
-        "dehaze-react-native-ios"
+        "clarity-react-native-dev-server",
+        "clarity-react-native-ios"
       ],
       "stopAll": true,
       "preLaunchTask": "flutter-ios-simulator-check",
@@ -375,11 +375,11 @@
       }
     },
     {
-      "name": "dehaze-react-native-all",
+      "name": "clarity-react-native-all",
       "configurations": [
-        "dehaze-react-native-dev-server",
-        "dehaze-react-native-android",
-        "dehaze-react-native-ios"
+        "clarity-react-native-dev-server",
+        "clarity-react-native-android",
+        "clarity-react-native-ios"
       ],
       "stopAll": true,
       "preLaunchTask": "start-all-simulators",

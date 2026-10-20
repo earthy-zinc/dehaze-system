@@ -1,0 +1,15 @@
+// quality-gate 的全局策略：只有引擎级开关，工具链不在这里。
+//
+// 各仓跑什么命令写在同目录的 clarity-vision.jsonc 里（folders 条目）。
+// 本仓是多仓同处一棵树的布局，所以只用一个配置文件，folders.path 指向各子仓。
+{
+  "policy": {
+    "maxFindings": 20,
+    "reportsPerChain": 2,
+    // 准则注入默认就开着，不必写；要关才写 "guide": { "enabled": false }。
+    // 台账用来回答"这套东西有没有用"，打开才开始记。
+    "ledger": {
+      "enabled": true
+    }
+  }
+}

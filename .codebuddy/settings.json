@@ -5,47 +5,15 @@
     "gopls-lsp@codebuddy-plugins-official": true,
     "pyright-lsp@codebuddy-plugins-official": true,
     "typescript-lsp@codebuddy-plugins-official": true,
-    "jdtls-lsp@codebuddy-plugins-official": true
+    "jdtls-lsp@codebuddy-plugins-official": true,
+    "quality-gate@earthywu-market": true
   },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit|write_to_file|replace_in_file",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CODEBUDDY_PROJECT_DIR:-$CLAUDE_PROJECT_DIR}/.codebuddy/hooks/track-changes.mjs\" >/dev/null 2>&1 || true",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node \"${CODEBUDDY_PROJECT_DIR:-$CLAUDE_PROJECT_DIR}/.codebuddy/hooks/verify-write.mjs\"",
-            "timeout": 30
-          }
-        ]
+  "extraKnownMarketplaces": {
+    "earthywu-market": {
+      "source": {
+        "source": "git",
+        "url": "git@git.woa.com:earthywu/quality-gate.git"
       }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CODEBUDDY_PROJECT_DIR:-$CLAUDE_PROJECT_DIR}/.codebuddy/hooks/verify-on-stop.mjs\"",
-            "timeout": 240
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CODEBUDDY_PROJECT_DIR:-$CLAUDE_PROJECT_DIR}/.codebuddy/hooks/cleanup-state.mjs\" >/dev/null 2>&1 || true",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
+    }
   }
 }

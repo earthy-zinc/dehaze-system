@@ -1,68 +1,68 @@
 {
   "extends": "./pyright.base.json",
-  "venvPath": "dehaze-python",
+  "venvPath": "clarity-python",
   "venv": ".venv",
   "include": [
-    "dehaze-python/app",
-    "dehaze-python/tests",
-    "dehaze-mcp-gateway",
+    "clarity-python/app",
+    "clarity-python/tests",
+    "clarity-mcp-gateway",
   ],
   "ignore": [
-    "dehaze-python/logs",
-    "dehaze-service/dehaze-modal/algorithm",
-    "dehaze-service/dehaze-llm/app",
-    "dehaze-service/dehaze-llm/tests",
-    "dehaze-service/dehaze-voice/app",
-    "dehaze-service/dehaze-voice/tests",
-    "dehaze-service/dehaze-modal/app",
-    "dehaze-service/dehaze-modal/tests"
+    "clarity-python/logs",
+    "clarity-service/clarity-modal/algorithm",
+    "clarity-service/clarity-llm/app",
+    "clarity-service/clarity-llm/tests",
+    "clarity-service/clarity-voice/app",
+    "clarity-service/clarity-voice/tests",
+    "clarity-service/clarity-modal/app",
+    "clarity-service/clarity-modal/tests"
   ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
     "**/.*",
     "**/.venv",
-    "**/dehaze-algorithm",
-    "**/dehaze-go",
-    "**/dehaze-java",
-    "**/dehaze-android",
-    "**/dehaze_flutter",
-    "**/dehaze-react-native",
-    "**/dehaze-taro",
-    "**/dehaze-uniapp",
-    "**/dehaze-front-vue",
-    "**/dehaze-front-react",
-    "**/dehaze-sdk-js",
+    "**/clarity-algorithm",
+    "**/clarity-go",
+    "**/clarity-java",
+    "**/clarity-android",
+    "**/clarity_flutter",
+    "**/clarity-react-native",
+    "**/clarity-taro",
+    "**/clarity-uniapp",
+    "**/clarity-front-vue",
+    "**/clarity-front-react",
+    "**/clarity-sdk-js",
     "**/scripts",
     "**/config"
   ],
   "extraPaths": [
-    "dehaze-python"
+    "clarity-python"
   ],
   "executionEnvironments": [
     {
-      "root": "dehaze-mcp-gateway/tests",
+      "root": "clarity-mcp-gateway/tests",
       "extraPaths": [
-        "dehaze-python",
-        "dehaze-mcp-gateway"
+        "clarity-python",
+        "clarity-mcp-gateway"
       ]
     },
     {
-      "root": "dehaze-service/dehaze-llm",
+      "root": "clarity-service/clarity-llm",
       "extraPaths": [
-        "dehaze-service/dehaze-llm"
+        "clarity-service/clarity-llm"
       ]
     },
     {
-      "root": "dehaze-service/dehaze-voice",
+      "root": "clarity-service/clarity-voice",
       "extraPaths": [
-        "dehaze-service/dehaze-voice"
+        "clarity-service/clarity-voice"
       ]
     },
     {
-      "root": "dehaze-service/dehaze-modal",
+      "root": "clarity-service/clarity-modal",
       "extraPaths": [
-        "dehaze-service/dehaze-modal"
+        "clarity-service/clarity-modal"
       ]
     }
   ]

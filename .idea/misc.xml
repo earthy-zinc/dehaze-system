@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="Python 3.10 (DehazeSystem)" />
+    <option name="sdkName" value="Python 3.10 (Clarity Vision)" />
   </component>
   <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="FrameworkDetectionExcludesConfiguration">
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-async-storage/async-storage/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-clipboard/clipboard/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-community/datetimepicker/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-community/slider/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/lottie-react-native/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-geolocation-service/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-gesture-handler/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-image-picker/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-linear-gradient/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-pager-view/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-reanimated/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-safe-area-context/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-screens/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-sqlite-storage/platforms/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-svg/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vector-icons/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vision-camera/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-webview/android" />
-    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-worklets/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-async-storage/async-storage/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-clipboard/clipboard/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-community/datetimepicker/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-community/slider/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/lottie-react-native/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-geolocation-service/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-gesture-handler/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-image-picker/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-linear-gradient/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-pager-view/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-reanimated/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-safe-area-context/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-screens/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-sqlite-storage/platforms/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-svg/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-vector-icons/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-vision-camera/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-webview/android" />
+    <file type="web" url="file://$PROJECT_DIR$/clarity-react-native/node_modules/react-native-worklets/android" />
   </component>
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/dehaze-java/pom.xml" />
-        <option value="$PROJECT_DIR$/dehaze-java-cloud/pom.xml" />
-        <option value="$PROJECT_DIR$/dehaze-java-cloud-plus/pom.xml" />
+        <option value="$PROJECT_DIR$/clarity-java/pom.xml" />
+        <option value="$PROJECT_DIR$/clarity-java-cloud/pom.xml" />
+        <option value="$PROJECT_DIR$/clarity-java-cloud-plus/pom.xml" />
       </list>
     </option>
   </component>

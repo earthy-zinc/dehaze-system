@@ -5,12 +5,12 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
-        <option name="externalProjectPath" value="$PROJECT_DIR$/dehaze-android" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/clarity-android" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/dehaze-android" />
-            <option value="$PROJECT_DIR$/dehaze-android/app" />
-            <option value="$PROJECT_DIR$/dehaze-android/sdk" />
+            <option value="$PROJECT_DIR$/clarity-android" />
+            <option value="$PROJECT_DIR$/clarity-android/app" />
+            <option value="$PROJECT_DIR$/clarity-android/sdk" />
           </set>
         </option>
       </GradleProjectSettings>
@@ -18,47 +18,47 @@
         <compositeConfiguration>
           <compositeBuild compositeDefinitionSource="SCRIPT">
             <builds>
-              <build path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" name="gradle-plugin-root">
+              <build path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin" name="gradle-plugin-root">
                 <projects>
-                  <project path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" />
-                  <project path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/react-native-gradle-plugin" />
-                  <project path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/settings-plugin" />
-                  <project path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared" />
-                  <project path="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared-testutil" />
+                  <project path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin" />
+                  <project path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/react-native-gradle-plugin" />
+                  <project path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/settings-plugin" />
+                  <project path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/shared" />
+                  <project path="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/shared-testutil" />
                 </projects>
               </build>
             </builds>
           </compositeBuild>
         </compositeConfiguration>
-        <option name="externalProjectPath" value="$PROJECT_DIR$/dehaze-react-native/android" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/clarity-react-native/android" />
         <option name="gradleJvm" value="17" />
         <option name="modules">
           <set>
-            <option value="$PROJECT_DIR$/dehaze-react-native/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/android/app" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-async-storage/async-storage/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-clipboard/clipboard/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-community/datetimepicker/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-community/slider/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/react-native-gradle-plugin" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/settings-plugin" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared-testutil" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/lottie-react-native/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-geolocation-service/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-gesture-handler/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-image-picker/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-linear-gradient/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-pager-view/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-reanimated/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-safe-area-context/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-screens/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-svg/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vector-icons/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vision-camera/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-webview/android" />
-            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-worklets/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/android/app" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-async-storage/async-storage/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-clipboard/clipboard/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-community/datetimepicker/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native-community/slider/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/react-native-gradle-plugin" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/settings-plugin" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/shared" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/@react-native/gradle-plugin/shared-testutil" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/lottie-react-native/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-geolocation-service/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-gesture-handler/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-image-picker/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-linear-gradient/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-pager-view/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-reanimated/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-safe-area-context/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-screens/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-svg/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-vector-icons/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-vision-camera/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-webview/android" />
+            <option value="$PROJECT_DIR$/clarity-react-native/node_modules/react-native-worklets/android" />
           </set>
         </option>
       </GradleProjectSettings>
