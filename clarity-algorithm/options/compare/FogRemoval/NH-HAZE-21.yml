@@ -1,0 +1,109 @@
+# general settings
+# 由于
+name: FogRemoval-NH-HAZE-21
+model_type: FogRemovalModel
+num_gpu: 1 # set num_gpu: 0 for cpu mode
+gpu_id: 0
+manual_seed: 0
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: NH-HAZE-21-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: datasets/NH-HAZE-21.h5
+    shuffle: true
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: &bsz 1
+    num_worker_per_gpu: *bsz
+    dataset_enlarge_ratio: 1
+
+    prefetch_mode: cpu
+    num_prefetch_queue: *bsz
+
+  val:
+    name: NH-HAZE-21-val
+    type: NtireH5Dataset
+    mode: val
+    data_path: datasets/NH-HAZE-21-val.h5
+    shuffle: true
+
+  test:
+    name: NH-HAZE-21-test
+    type: NtireDataset
+    mode: test
+    haze_path: NH-HAZE-2021/hazy
+    clear_path: NH-HAZE-2021/clean
+    shuffle: true
+
+# network structures
+network_g:
+  type: ResnetGenerator
+
+
+
+# path
+path:
+  pretrain_network_g: pretrained_models/compare/fog_removal/fog-removal.pth
+  pretrain_network_d: ~
+  strict_load: false
+  # resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 4e-5
+    weight_decay: !!float 1e-8
+  optim_d:
+    type: Adam
+    lr: !!float 1e-4
+
+  total_iter: 100000
+
+  scheduler_g:
+    t_initial: 10000
+    lr_min: !!float 2.5e-6
+  scheduler_d:
+    milestones: [5000, 7000, 8000]
+    gamma: 0.5
+
+# validation settings·
+val:
+  val_freq: !!float 1000
+  save_img: true
+  suffix: NH-HAZE-21
+
+  key_metric: psnr
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: psnr
+      crop_border: 4
+      test_y_channel: true
+    ssim:
+      type: ssim
+      crop_border: 4
+      test_y_channel: true
+    lpips:
+      type: lpips
+      better: lower
+    niqe:
+      type: niqe
+      better: lower
+    brisque:
+      type: brisque
+      better: lower
+    nima:
+      type: nima
+      better: higher
+
+# logging settings
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 2e3
+  save_latest_freq: !!float 1e3
+  show_tf_imgs_freq: !!float 2e3
+  use_tb_logger: true

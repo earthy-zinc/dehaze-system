@@ -1,0 +1,149 @@
+# general settings
+name: NH-HAZE-20-3-chapter
+model_type: ITBNewModel
+num_gpu: 1 # set num_gpu: 0 for cpu mode
+gpu_id: 0
+manual_seed: 0
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: NH-HAZE-20-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: datasets/NH-HAZE-20.h5
+    shuffle: true
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: &bsz 1
+    num_worker_per_gpu: *bsz
+    dataset_enlarge_ratio: 1
+
+    prefetch_mode: cpu
+    num_prefetch_queue: *bsz
+
+  val:
+    name: NH-HAZE-20-val
+    type: NtireDataset
+    mode: val
+    haze_path: NH-HAZE-2020/hazy
+    clear_path: NH-HAZE-2020/clean
+
+  test:
+    name: NH-HAZE-20-test
+    type: NtireH5Dataset
+    mode: test
+    data_path: datasets/NH-HAZE-20-test.h5
+    shuffle: false
+
+# network structures
+network_g:
+  type: FusionRefine
+  opt:
+    LQ_stage: true
+    additional_encoder: PyramidDiNAT
+  frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
+
+network_d:
+  type: UNetDiscriminatorSN
+  num_in_ch: 512
+
+hq_options:
+  type: RIDCPNew
+  LQ_stage: False
+  additional_encoder: None
+  additional_enhancer: False
+
+# path
+path:
+  pretrain_network_hq: pretrained_models/pretrained_HQPs_ITB.pth
+  pretrain_network_g: experiments/NH-HAZE-20/models/net_g_64000.pth
+  pretrain_network_d: ~
+  strict_load: false
+  # resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+  optim_d:
+    type: Adam
+    lr: !!float 4e-4
+    weight_decay: 0
+    betas: [0.9, 0.99]
+
+  scheduler:
+    type: MultiStepLR
+    milestones: [5000, 10000, 15000, 20000, 250000, 300000, 350000]
+    gamma: 1
+
+  total_iter: 150000
+  warmup_iter: -1  # no warm up
+
+  # losses
+  pixel_opt:
+    type: L1Loss
+    loss_weight: 1.0
+    reduction: mean
+
+  perceptual_opt:
+    type: LPIPSLoss
+    loss_weight: !!float 1.0
+    device: cuda:0
+
+  gan_opt:
+    type: GANLoss
+    gan_type: hinge
+    real_label_val: 1.0
+    fake_label_val: 0.0
+    loss_weight: 0.2
+
+  codebook_opt:
+    loss_weight: 1.0
+
+  semantic_opt:
+    loss_weight: 0.1
+
+
+  net_d_iters: !!float 1000
+  net_d_init_iters: !!float 0
+
+# validation settings·
+val:
+  val_freq: !!float 1000
+  save_img: true
+  suffix: NH-HAZE-20
+  key_metric: psnr
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: psnr
+      crop_border: 4
+      test_y_channel: true
+    ssim:
+      type: ssim
+      crop_border: 4
+      test_y_channel: true
+    lpips:
+      type: lpips
+      better: lower
+    niqe:
+      type: niqe
+      better: lower
+    brisque:
+      type: brisque
+      better: lower
+    nima:
+      type: nima
+      better: higher
+
+# logging settings
+logger:
+  print_freq: 100
+  save_checkpoint_freq: !!float 2e3
+  save_latest_freq: !!float 1e3
+  show_tf_imgs_freq: !!float 2e3
+  use_tb_logger: true
