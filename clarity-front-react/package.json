@@ -1,0 +1,176 @@
+{
+  "name": "clarity-front-react",
+  "type": "module",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.18.0",
+  "main": "out/main/index.js",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "postinstall": "electron-builder install-app-deps",
+    "dev": "vite serve",
+    "preview": "vite preview --mode test",
+    "dev:electron": "electron-vite dev",
+    "build": "tsc && vite build",
+    "build:test": "NODE_ENV=production vite build --mode test",
+    "build:electron:win": "electron-vite build && electron-builder build --win --x64",
+    "build:electron:linux": "electron-vite build && electron-builder build --linux --x64",
+    "test:unit": "vitest run --open=false --project unit",
+    "test:unit:ui": "vitest watch --coverage --ui --project unit",
+    "test:coverage": "vitest run --open=false --coverage --project unit",
+    "test:storybook": "vitest run --project storybook",
+    "test:e2e": "pnpm --filter clarity-sdk-js build && pnpm build:test && playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
+    "lint:eslint": "eslint --fix ./src ./mock",
+    "lint:prettier": "prettier --write \"**/*.{js,cjs,json,jsx,ts,tsx,css,less,scss,vue,html,md}\"",
+    "lint:stylelint": "stylelint \"**/*.{css,less,scss}\" --fix",
+    "lint:lint-staged": "lint-staged",
+    "prepare": "husky",
+    "commit": "git-cz",
+    "storybook": "storybook dev -p 3020 --host 0.0.0.0 --no-open",
+    "build-storybook": "storybook build"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-git"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{cjs,json}": [
+      "prettier --write"
+    ],
+    "*.{less,scss,css}": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.md": [
+      "prettier --write"
+    ]
+  },
+  "build": {
+    "appId": "com.pei.clarity-front-desktop-react",
+    "productName": "澄莹",
+    "icon": "public/favicon.ico",
+    "files": [
+      "out/**/*"
+    ],
+    "directories": {
+      "output": "target"
+    },
+    "nsis": {
+      "oneClick": false,
+      "uninstallDisplayName": "卸载",
+      "allowToChangeInstallationDirectory": true
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    }
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "@reduxjs/toolkit": "^2.11.2",
+    "@types/nprogress": "^0.2.3",
+    "@types/qrcode": "^1.5.6",
+    "ahooks": "^3.9.6",
+    "animate.css": "^4.1.1",
+    "antd": "^5.29.3",
+    "axios": "^1.18.1",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.21",
+    "clarity-sdk-js": "workspace:*",
+    "echarts": "^6.1.0",
+    "lodash": "^4.17.21",
+    "nprogress": "^0.2.0",
+    "prop-types": "^15.8.1",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.11.0",
+    "react-viewer": "^3.2.2",
+    "redux": "^5.0.1",
+    "redux-persist": "^6.0.0",
+    "redux-thunk": "^3.1.0"
+  },
+  "devDependencies": {
+    "@chromatic-com/storybook": "4.1.2",
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.57.0",
+    "@storybook/addon-a11y": "10.0.0",
+    "@storybook/addon-docs": "10.0.0",
+    "@storybook/addon-vitest": "10.0.0",
+    "@storybook/react-vite": "10.0.0",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/lodash": "^4.17.21",
+    "@types/node": "^24.10.4",
+    "@types/prop-types": "^15.7.15",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.51.0",
+    "@typescript-eslint/parser": "^8.51.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/browser-playwright": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
+    "commitizen": "^4.3.1",
+    "cz-git": "^1.12.0",
+    "dotenv": "^17.4.2",
+    "electron": "^38.7.2",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-vite": "^2.1.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "eslint-plugin-storybook": "10.0.0",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "ioredis": "^5.11.1",
+    "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
+    "msw": "^2.12.7",
+    "msw-storybook-addon": "^2.0.6",
+    "playwright": "^1.57.0",
+    "postcss": "^8.5.6",
+    "postcss-html": "^1.8.0",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.7.4",
+    "sass": "^1.97.1",
+    "storybook": "10.0.0",
+    "stylelint": "^16.26.1",
+    "stylelint-config-recess-order": "^7.4.0",
+    "stylelint-config-recommended-scss": "^16.0.2",
+    "stylelint-config-standard": "^39.0.1",
+    "stylelint-order": "^7.0.1",
+    "stylelint-prettier": "^5.0.3",
+    "terser": "^5.44.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.51.0",
+    "unocss": "^66.5.11",
+    "vite": "7.3.7",
+    "vite-plugin-mock-dev-server": "^2.0.7",
+    "vite-plugin-svgr": "^4.5.0",
+    "vitest": "^4.0.16",
+    "vitest-canvas-mock": "^0.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "mock"
+    ]
+  }
+}
