@@ -1,0 +1,125 @@
+[project]
+name = "clarity-modal"
+version = "1.0.0"
+description = "dehaze 图像推理执行器服务：算法推理 / 图像质量指标 / 权重缓存 / GPU 指标"
+requires-python = ">=3.11, <4.0"
+dependencies = [
+    # Web 框架
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.9",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0",
+    # 日志（NDJSON）与监控（GPU 采集 + /metrics 暴露）
+    "python-json-logger>=4.0.0",
+    "prometheus-client>=0.21.0",
+    "nvidia-ml-py>=11.5.0",
+    # 权重下载
+    "httpx>=0.28.1",
+    # 图像
+    "pillow>=12.0.0",
+    "numpy>=1.26.0",
+    "opencv-python>=4.10.0",
+    # 深度学习（CUDA 版通过 [tool.uv.sources] 指向 PyTorch 官方源）
+    "torch>=2.9.0",
+    "torchvision>=0.24.0",
+    "timm>=1.0.0",
+    "einops>=0.8.0",
+    "thop>=0.1.1",
+    "yacs>=0.1.8",
+    "ema-pytorch>=0.1.0",
+    # 图像质量指标（PSNR/SSIM/LPIPS/NIQE/NIMA/BRISQUE）
+    "pyiqa>=0.1.0",
+    # ImgRestorationSde lr_scheduler 延迟导入
+    "matplotlib>=3.8.0",
+    # CUDA 算子 JIT 编译依赖（RIDCP/WPXNet/CFENViTDehazing 的 DCN 模块）
+    "setuptools>=80.0.0",
+    "ninja>=1.11.0",
+    # WPXNet Neighborhood Attention（仅 Linux 有预编译 wheel，Windows 需 WSL2）
+    "natten==0.21.5+torch290cu128; sys_platform == 'linux'",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=1.3.0",
+    "httpx>=0.28.1",
+    "respx>=0.22.0",
+    "ruff>=0.15.22",
+]
+
+[tool.uv]
+index-url = "https://mirrors.aliyun.com/pypi/simple/"
+find-links = ["https://whl.natten.org/"]
+
+# cu128 源提供 torch 2.9.x wheel；与 clarity-python 保持同一版本族，避免算法权重反序列化差异
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "algorithm",  # 论文复现代码，保持与官方仓库结构一致，不格式化
+    "logs",
+    ".venv",
+]
+
+# 与 clarity-python 保持同一规则集（四端 Python 项目统一 lint 口径）
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes（未使用导入/变量等）
+    "I",    # isort 导入排序
+    "B",    # bugbear 常见 bug 模式
+    "UP",   # pyupgrade 语法现代化
+    "RET",  # return 语句卫生（消除多余 else 分支、return 后死代码）
+    "ISC",  # 隐式字符串拼接检测
+    "PT",   # pytest 最佳实践
+    "FLY",  # join/format 旧写法 → f-string
+    "SIM",  # 常见可简化写法
+    "C4",   # comprehensions 推导式现代化
+    "RUF",  # ruff 自有规则（含无效 noqa 校验）
+    "N",    # PEP 8 命名规范
+    "EM",   # 异常消息规范
+    "PERF", # 性能反模式
+    "PTH",  # os.path → pathlib 现代路径写法
+]
+ignore = [
+    "B008",   # FastAPI File()/Form()/Depends() 用作默认参数是官方惯用写法
+    "RUF001", # 中文字符串中的全角标点，误报
+    "RUF002", # 中文 docstring 中的全角标点，误报
+    "RUF003", # 中文注释中的全角标点，误报
+    "RUF012", # 可变类属性按设计即字段默认值，不应标 ClassVar
+    "EM101",  # 异常消息内联字面量即可，不必强制模块级常量
+    "EM102",  # 同上，f-string 异常消息可 grep
+    "N803",   # 请求字段沿用编排侧 / 跨端契约的 camelCase 命名
+    "N815",   # 同上，响应模型字段
+    "N818",   # 异常类名沿用跨端统一约定（ModalError 无 Error 后缀）
+    "N999",   # 目录名 clarity-modal 含连字符导致的模块名推断误报
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "algorithm", "conftest"]
+
+[tool.ruff.lint.per-file-ignores]
+# config.py 用全大写 @property 模拟配置常量（MODEL_BASE_URL），属命名惯例
+"app/config.py" = ["N802"]
