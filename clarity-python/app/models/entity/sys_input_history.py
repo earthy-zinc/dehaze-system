@@ -1,0 +1,41 @@
+"""
+图像输入历史记录实体
+对齐 clarity-java SysInputHistory.java + BaseEntity
+对齐 config/sql/schema.sql 中 sys_input_history 表定义
+"""
+
+from sqlalchemy import BigInteger, Integer, String, Text
+from sqlalchemy.dialects import mysql as mysql_types
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import BaseModel
+
+
+class SysInputHistory(BaseModel):
+    """图像输入历史记录表 (对齐 Java SysInputHistory)"""
+
+    __tablename__ = "sys_input_history"
+    __table_args__ = {"comment": "图像输入历史记录表"}
+
+    id: Mapped[int] = mapped_column(
+        BigInteger, primary_key=True, autoincrement=True, comment="主键"
+    )
+    user_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment="用户ID")
+    original_image_url: Mapped[str | None] = mapped_column(String(500), comment="原始图片URL")
+    original_thumbnail_url: Mapped[str | None] = mapped_column(String(500), comment="原始缩略图URL")
+    result_image_url: Mapped[str | None] = mapped_column(String(500), comment="处理结果图片URL")
+    result_thumbnail_url: Mapped[str | None] = mapped_column(String(500), comment="结果缩略图URL")
+    model_id: Mapped[str | None] = mapped_column(
+        String(64), comment="图像模型标识（统一模型规范 slug）"
+    )
+    model_name: Mapped[str | None] = mapped_column(String(100), comment="模型名称（冗余）")
+    model_params: Mapped[str | None] = mapped_column(Text, comment="模型参数（JSON）")
+    processing_time: Mapped[int | None] = mapped_column(Integer, comment="处理耗时（毫秒）")
+    status: Mapped[int | None] = mapped_column(
+        mysql_types.TINYINT,
+        default=3,
+        comment="处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新",
+    )
+    input_source: Mapped[str | None] = mapped_column(
+        String(20), comment="图片来源（upload/camera/sample）"
+    )

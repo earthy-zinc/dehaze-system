@@ -1,0 +1,357 @@
+"""
+pytest 配置和共享 fixtures
+
+基于 FastAPI + pytest-asyncio 的测试框架。
+
+数据库策略（2026-08-23 决策，替代原 SQLite 内存库方案）：
+真实 MySQL 测试库 `clarity_test`（与开发同实例同版本，零方言漂移——SQLite 方案
+因 DECIMAL 精度/外键/锁语义漂移被否决，见 README §5.1）：
+- schema/种子数据由 `config/sql/`（schema+data）全量脚本重建，与开发库构建方式
+  完全同源（Alembic 迁移链从未在任何库执行过、不完整且在 MySQL 8.4 上存在坏
+  迁移，不能用作基线；待其基线化改造后再评估切换）
+- session 级按 `config/sql` 脚本指纹判断：指纹一致复用现有库，变更才 DROP + CREATE
+  + 全量导入（指纹存于库内 `_test_schema_meta`，与 clarity-go 同源）。多进程/多
+  worker 并行时不会重复重建、更不会把正在跑测试的进程的表删掉
+- 测试级数据隔离用外部事务 + SAVEPOINT 回滚：被测代码内部 commit 只释放
+  SAVEPOINT，测试结束整体 ROLLBACK，种子数据零污染
+
+Redis 桩见 tests/stubs.py（fakeredis，真实协议实现）；
+Mongo 桩见 mongo_db fixture（mongomock-motor）；
+router 级测试客户端由各测试文件自建（ai_client 等）。
+"""
+
+import hashlib
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+# 确保项目根目录在 Python 路径中
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# 设置测试环境变量（必须在 import app 之前：pydantic-settings 首次 import 时读取并缓存为单例）
+# 注意：不覆盖 MYSQL_PASSWORD——db fixture 需连接真实 MySQL，凭证来自根目录 .env
+os.environ["APP_ENV"] = "testing"
+# TestingSettings 的类默认值会被根目录 .env 覆盖（dotenv 优先级高于类默认值），
+# 此处显式重设以强制测试库名与 Redis 兜底端口（6390 无人监听）
+# 并行隔离：CLARITY_TEST_DB 可指定独立库（如 clarity_test_py），与 java/go 两端的测试
+# 及各 SDK 测试同时跑互不干扰（同实例同凭证，各方独立建库）
+os.environ["MYSQL_DATABASE"] = os.environ.get("CLARITY_TEST_DB", "clarity_test")
+# xdist 并行隔离：每个 worker 从基础库名派生独立库（{base}_gwN）。多 worker 共库时
+# 并发 UPDATE 同一批种子行会触发 1213 死锁（服务端回滚整个事务后 ROLLBACK TO
+# SAVEPOINT 报 1305），高并发下必现；库名含 worker 后缀后 GET_LOCK 重建锁与指纹
+# 复用均按 worker 隔离，互不阻塞。串行（无 xdist）保持基础库名
+if xdist_worker := os.environ.get("PYTEST_XDIST_WORKER"):
+    os.environ["MYSQL_DATABASE"] = f"{os.environ['MYSQL_DATABASE']}_{xdist_worker}"
+os.environ["REDIS_PORT"] = "6390"
+
+import fakeredis
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
+
+import app.database as database_module
+import app.dependencies.redis as redis_module
+from app.config import PROJECT_ROOT, settings
+from app.lifecycle import _register_soft_delete_filter
+from app.main import app as fastapi_app
+
+# 测试环境与运行时行为对齐：router 测试经 httpx ASGITransport 不触发 lifespan，
+# 服务层测试也不启动应用，全局逻辑删除过滤器须在此显式注册（幂等）
+_register_soft_delete_filter()
+
+# config/sql 位于仓库根（clarity-python 的上级目录）
+_SQL_SCHEMA_DIR = PROJECT_ROOT / "config" / "sql" / "schema"
+_SQL_DATA_DIR = PROJECT_ROOT / "config" / "sql" / "data"
+
+
+def _split_statements(content: str) -> list[str]:
+    """按 ; 分割 SQL 语句，跳过单引号字符串与反引号标识符内的分号。
+
+    （schema 脚本的 COMMENT 字符串含分号，如 sys_ai_agent 的 agent_code 注释，
+    朴素按 ; 分割会截断语句。）
+    """
+    statements: list[str] = []
+    buf: list[str] = []
+    in_string = False
+    in_backtick = False
+    i = 0
+    while i < len(content):
+        ch = content[i]
+        if in_string:
+            buf.append(ch)
+            if ch == "\\" and i + 1 < len(content):
+                buf.append(content[i + 1])
+                i += 1
+            elif ch == "'":
+                if i + 1 < len(content) and content[i + 1] == "'":
+                    buf.append("'")
+                    i += 1
+                else:
+                    in_string = False
+        elif in_backtick:
+            buf.append(ch)
+            if ch == "`":
+                in_backtick = False
+        elif ch == "'":
+            in_string = True
+            buf.append(ch)
+        elif ch == "`":
+            in_backtick = True
+            buf.append(ch)
+        elif ch == ";":
+            statements.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    statements.append("".join(buf))
+    return [s.strip() for s in statements if s.strip()]
+
+
+def _exec_sql_file(conn, sql_path: Path) -> None:
+    """执行单个 SQL 脚本（跳过 -- 行注释；语句分割见 _split_statements）。"""
+    content = sql_path.read_text(encoding="utf-8")
+    lines = [line for line in content.splitlines() if not line.strip().startswith("--")]
+    statements = _split_statements("\n".join(lines))
+    with conn.cursor() as cur:
+        for stmt in statements:
+            cur.execute(stmt)
+
+
+def _sql_fingerprint() -> str:
+    """config/sql 全部 sys_*.sql 的指纹（文件名 + 内容），与 clarity-go 的
+    `_test_schema_meta` 机制同源。"""
+    digest = hashlib.sha256()
+    for sql_dir in (_SQL_SCHEMA_DIR, _SQL_DATA_DIR):
+        for sql_file in sorted(sql_dir.glob("sys_*.sql")):
+            digest.update(sql_file.name.encode())
+            digest.update(sql_file.read_bytes())
+    return digest.hexdigest()
+
+
+def _schema_is_current(conn, fingerprint: str) -> bool:
+    """库存在、meta 表存在且指纹一致 ⇒ 复用现有库，无需重建。"""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.TABLES "
+            "WHERE TABLE_SCHEMA = %s AND TABLE_NAME = '_test_schema_meta'",
+            (settings.MYSQL_DATABASE,),
+        )
+        meta_row = cur.fetchone()
+        if meta_row is None or meta_row[0] == 0:
+            return False
+        cur.execute(
+            f"SELECT schema_hash FROM `{settings.MYSQL_DATABASE}`._test_schema_meta WHERE id = 1"
+        )
+        stored_row = cur.fetchone()
+    return stored_row is not None and stored_row[0] == fingerprint
+
+
+@pytest.fixture(scope="session")
+def _mysql_schema() -> None:
+    """session 级确保测试库与 config/sql 一致：指纹一致则复用，变更才全量重建。
+
+    MySQL 不可达或脚本失败 → 直接 fail（fail-fast）。
+    """
+    import pymysql
+
+    try:
+        conn = pymysql.connect(
+            host=settings.MYSQL_HOST,
+            port=settings.MYSQL_PORT,
+            user=settings.MYSQL_USERNAME,
+            password=settings.MYSQL_PASSWORD,
+            autocommit=True,
+            charset="utf8mb4",
+            connect_timeout=5,
+        )
+    except Exception as e:
+        pytest.fail(
+            f"MySQL 不可达（{settings.MYSQL_USERNAME}@{settings.MYSQL_HOST}:"
+            f"{settings.MYSQL_PORT}）：{e}\n"
+            f"测试需连接真实 MySQL 测试库 `{settings.MYSQL_DATABASE}`（与开发同实例，"
+            f"凭证见根目录 .env 的 MYSQL_HOST/MYSQL_PASSWORD）"
+        )
+
+    rebuild_lock = f"{settings.MYSQL_DATABASE}_rebuild"
+    try:
+        # 并发保护：多 pytest 进程/worker 同时重建同一测试库会 DROP/CREATE/导入竞态
+        # （偶发 Duplicate entry 主键冲突 / 表缺失）。用 MySQL 会话级 GET_LOCK 串行化
+        # 重建（同一连接上获取与释放，autocommit 下锁立即生效、不随 DDL 释放）；
+        # 锁名按库名区分，独立库（CLARITY_TEST_DB）重建互不阻塞。
+        with conn.cursor() as cur:
+            cur.execute("SELECT GET_LOCK(%s, 300)", (rebuild_lock,))
+            # SELECT GET_LOCK 恒返回单行；显式断言收窄 None，避免对可选行取下标
+            lock_row = cur.fetchone()
+            assert lock_row is not None, "GET_LOCK 未返回结果"
+            if lock_row[0] != 1:
+                pytest.fail(
+                    f"获取测试库重建锁超时（其他 pytest 进程正在重建 {settings.MYSQL_DATABASE}）"
+                )
+        try:
+            fingerprint = _sql_fingerprint()
+            if _schema_is_current(conn, fingerprint):
+                return
+            with conn.cursor() as cur:
+                cur.execute(f"DROP DATABASE IF EXISTS `{settings.MYSQL_DATABASE}`")
+                cur.execute(
+                    f"CREATE DATABASE `{settings.MYSQL_DATABASE}` CHARACTER SET utf8mb4 "
+                    "COLLATE utf8mb4_0900_ai_ci"
+                )
+            conn.select_db(settings.MYSQL_DATABASE)
+            for sql_dir in (_SQL_SCHEMA_DIR, _SQL_DATA_DIR):
+                for sql_file in sorted(sql_dir.glob("sys_*.sql")):
+                    _exec_sql_file(conn, sql_file)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "CREATE TABLE IF NOT EXISTS _test_schema_meta "
+                    "(id INT NOT NULL PRIMARY KEY, schema_hash VARCHAR(64) NOT NULL) "
+                    "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+                )
+                cur.execute(
+                    "INSERT INTO _test_schema_meta (id, schema_hash) VALUES (1, %s) "
+                    "ON DUPLICATE KEY UPDATE schema_hash = %s",
+                    (fingerprint, fingerprint),
+                )
+        finally:
+            with conn.cursor() as cur:
+                cur.execute("SELECT RELEASE_LOCK(%s)", (rebuild_lock,))
+    except Exception as e:
+        pytest.fail(f"测试库 `{settings.MYSQL_DATABASE}` 重建失败：{e}")
+    finally:
+        conn.close()
+
+
+async def _drain_background_writes() -> None:
+    """等待后台落盘任务（trace/llm_call 观测埋点）完成，避免其晚于连接回收执行。
+
+    串行等待：多个后台写共享本 fixture 的同一连接，并发 savepoint 会互相破坏。
+    """
+    from app.service.ai.service import trace_collector
+
+    if trace_collector._pending_tasks:
+        await trace_collector.drain()
+
+
+@pytest.fixture
+async def db(_mysql_schema, monkeypatch: pytest.MonkeyPatch):
+    """真实 MySQL 会话（每测试独立事务，结束整体回滚，种子数据零污染）。
+
+    - 外部事务 + SAVEPOINT（SQLAlchemy 2.0 标准测试事务模式）：被测代码内
+      `async with get_db_session()` 的 commit 只释放 SAVEPOINT，不真正落库
+    - monkeypatch async_session_factory：get_db_session 产出的 session 与本
+      fixture 同源（同一连接、同一事务），fixture 预置的数据对被测代码可见；
+      同时扫描已导入的 app./tests. 模块替换其顶层直接引用（顶层
+      `from app.database import async_session_factory` 持有独立引用，仅 patch
+      中心入口影响不到它们，如 prediction_service / wpxnet_interceptor），
+      否则被测代码会另开真实连接、看不到 fixture 预置数据且跨用例复用连接池
+      触发 "Future attached to a different loop"
+    """
+    engine = create_async_engine(settings.DATABASE_URL, poolclass=NullPool)
+    connection = await engine.connect()
+    transaction = await connection.begin()
+    factory = async_sessionmaker(
+        bind=connection,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
+    )
+    original_factory = database_module.async_session_factory
+    monkeypatch.setattr(database_module, "async_session_factory", factory)
+    for module in tuple(sys.modules.values()):
+        if not getattr(module, "__name__", "").startswith(("app.", "tests.")):
+            continue
+        if getattr(module, "async_session_factory", None) is original_factory:
+            monkeypatch.setattr(module, "async_session_factory", factory)
+    async with factory() as session:
+        yield session
+        # 用例结束前等待在途后台落盘（观测埋点 create_task 后台写库）：必须在本会话
+        # 关闭前完成，否则任务会拿着已回收的连接执行，报 aiomysql
+        # "readexactly() called while another coroutine is already waiting"
+        await _drain_background_writes()
+    await transaction.rollback()
+    await connection.close()
+    await engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def mongo_db(monkeypatch: pytest.MonkeyPatch):
+    """mongomock-motor 内存 Mongo（motor 异步兼容层），autouse 全局接管 Mongo。
+
+    patch 方式与 mock_redis 一致：patch 中心入口 `app.dependencies.mongo` 的
+    get_mongo_client，并动态扫描 sys.modules 覆盖 `from app.dependencies.mongo
+    import get_mongo_client` 的直接引用（如 app/router/health.py）。
+
+    必须 autouse：真实 motor 客户端是进程级单例，其 io loop 在**首次使用**时由
+    `asyncio.get_event_loop()` 绑定并永久缓存（motor/core.py get_io_loop）；pytest-asyncio
+    每个用例新建事件循环，任何测试只要真实触达 Mongo 一次，后续用例复用该单例就会
+    拿到已关闭的 loop（RuntimeError: Event loop is closed）。同时避免测试数据写进
+    开发库的 login_log / ai_api_call_log。
+    """
+    import mongomock_motor
+
+    import app.dependencies.mongo as mongo_module
+
+    client = mongomock_motor.AsyncMongoMockClient()
+    original_client = mongo_module.get_mongo_client
+
+    def _override():
+        return client
+
+    monkeypatch.setattr(mongo_module, "get_mongo_client", _override)
+    # 只扫本仓库模块：全量扫描 sys.modules 会命中带模块级 __getattr__ 的第三方库
+    # （触发真实导入），6443 个模块约 65ms/次，本用例只关心 app./tests. 的直接引用
+    for module in tuple(sys.modules.values()):
+        if not getattr(module, "__name__", "").startswith(("app.", "tests.")):
+            continue
+        if getattr(module, "get_mongo_client", None) is original_client:
+            monkeypatch.setattr(module, "get_mongo_client", _override)
+    return client[settings.MONGODB_DATABASE]
+
+
+@pytest.fixture(autouse=True)
+def mock_redis(monkeypatch: pytest.MonkeyPatch) -> fakeredis.FakeAsyncRedis:
+    """fakeredis 客户端（真实协议实现），autouse 全局接管 Redis。
+
+    测试环境一律不触达真实 Redis，三层防线：
+    1. 本 fixture（autouse 自动生效）：patch 中心入口 `app.dependencies.redis`
+       的 get_redis_client/get_redis（覆盖函数内延迟导入的调用方），并动态扫描
+       sys.modules 替换所有顶层直接持有这两个函数引用的模块——顶层
+       `from app.dependencies.redis import get_redis_client` 持有独立引用，
+       仅 patch 中心入口影响不到它们，动态扫描可覆盖后续新增模块。
+    2. 需要操作 Redis 数据的测试显式请求本 fixture（fixture 缓存同一实例），
+       或自行 `_bind_fake_redis` 绑定独立实例。
+    3. `TestingSettings.REDIS_PORT=6390` 指向无人监听端口兜底（防函数别名导入
+       等前两层覆盖不到的路径）。勿改用端口 0：redis-py 会把 0 当默认 6379，
+       实测会直接连上真实 Redis。
+    """
+    redis = fakeredis.FakeAsyncRedis(decode_responses=True)
+
+    # 共享 L1 是进程级单例，跨用例残留会把上一个用例的缓存值泄露给本用例的
+    # 全新 fakeredis（读命中 L1 时不会写 redis，导致按 redis 断言缓存写入的
+    # 用例误判）。每个用例开始前清空 L1，使其与本用例的 redis 状态一致。
+    from app.infrastructure.cache.cache import _get_shared_l1
+
+    shared_l1 = _get_shared_l1()
+    if shared_l1 is not None:
+        shared_l1.clear()
+
+    async def _override():
+        return redis
+
+    original_client = redis_module.get_redis_client
+    original_get = redis_module.get_redis
+    monkeypatch.setattr(redis_module, "get_redis_client", _override)
+    monkeypatch.setattr(redis_module, "get_redis", _override)
+    for module in tuple(sys.modules.values()):
+        if getattr(module, "get_redis_client", None) is original_client:
+            monkeypatch.setattr(module, "get_redis_client", _override)
+        if getattr(module, "get_redis", None) is original_get:
+            monkeypatch.setattr(module, "get_redis", _override)
+    return redis
+
+
+@pytest.fixture
+def app():
+    """FastAPI 应用实例"""
+    return fastapi_app
