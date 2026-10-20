@@ -1,0 +1,46 @@
+# 角色管理模块 API 接口
+
+## 文档概述
+
+- **基础路径**：`/api/v1/roles`
+
+## 接口清单
+
+| 路径                             | 方法     | 功能描述                                                                     | 权限标识          | 关联功能点 |
+| -------------------------------- | -------- | ---------------------------------------------------------------------------- | ----------------- | ---------- |
+| `/api/v1/roles/page`             | GET      | 角色分页列表                                                                 | -                 | F-RM-001   |
+| `/api/v1/roles/options`          | GET      | 角色下拉选项                                                                 | -                 | F-RM-001   |
+| `/api/v1/roles`                  | POST     | 新增角色                                                                     | `sys:role:add`    | F-RM-002   |
+| `/api/v1/roles/{roleId}/form`    | GET      | 获取角色表单数据                                                             | -                 | F-RM-003   |
+| `/api/v1/roles/{id}`             | PUT      | 修改角色                                                                     | `sys:role:edit`   | F-RM-003   |
+| `/api/v1/roles/{ids}`            | DELETE   | 删除角色；ids 为必填非空路径参数                                             | `sys:role:delete` | F-RM-004   |
+| `/api/v1/roles/{roleId}/status`  | PATCH    | 修改角色状态                                                                 | `sys:role:edit`   | F-RM-005   |
+| `/api/v1/roles/{roleId}/menuIds` | GET      | 获取角色菜单 ID 集合                                                         | -                 | F-RM-006   |
+| `/api/v1/roles/{roleId}/menus`   | PATCH    | 分配菜单权限                                                                 | `sys:role:edit`   | F-RM-006   |
+| `/api/v1/role/_export`           | GET/POST | 角色导出（GET 简单筛选同步导出，POST 复杂条件；超阈值走异步任务返回 taskId） | `sys:role:export` | F-RM-008   |
+| `/api/v1/role/_import`           | POST     | 角色导入（上传 Excel/CSV，同步导入返回结果，超阈值走异步任务）               | `sys:role:import` | F-RM-008   |
+| `/api/v1/role/template`          | GET      | 下载角色导入模板（Excel/CSV，动态生成）                                      | `sys:role:import` | F-RM-008   |
+
+## 权限标识汇总
+
+| 权限标识          | 说明                                 |
+| ----------------- | ------------------------------------ |
+| `sys:role:add`    | 新增角色                             |
+| `sys:role:edit`   | 编辑角色（含修改状态、分配菜单权限） |
+| `sys:role:delete` | 删除角色                             |
+| `sys:role:import` | 角色导入、模板下载                  |
+| `sys:role:export` | 角色导出                             |
+
+接口清单中 `-` 表示登录用户可访问（角色分页列表、下拉选项、表单数据、菜单 ID 集合）。
+
+## 业务错误码
+
+| 错误码  | 说明                      | 触发场景                             |
+| ------- | ------------------------- | ------------------------------------ |
+| `A0400` | 数据权限不能为空          | 新增角色时未选择 dataScope           |
+| `A0401` | 角色不存在                | 编辑、删除时角色不存在               |
+| `A0401` | 菜单不存在                | 分配菜单时 menuIds 含不存在的菜单 ID |
+| `A0501` | 角色编码已存在            | 创建时角色编码重复                   |
+| `A0501` | 角色名称已存在            | 创建时角色名称重复                   |
+| `A0503` | 内置角色不可删除、不可禁用 | 删除或修改 ROOT/ADMIN 内置角色状态   |
+| `A0500` | 角色已关联用户，无法删除  | 删除时角色已关联用户                 |

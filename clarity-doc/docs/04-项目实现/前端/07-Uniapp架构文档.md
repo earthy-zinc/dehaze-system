@@ -1,0 +1,382 @@
+# Uniapp 多端 (clarity-uniapp)
+
+基于 uni-app (Vue 3 + Vite) 构建的多端图像去雾应用，一份代码可编译到 H5、微信小程序、支付宝小程序、百度小程序、抖音小程序及 App（Android/iOS）。
+
+## 架构图
+
+```mermaid
+flowchart TB
+    subgraph Platform["多端编译目标"]
+        H5["H5"]
+        WeApp["微信小程序"]
+        AliApp["支付宝小程序"]
+        OtherMP["其他小程序平台"]
+    end
+
+    subgraph UniApp["uni-app 框架层"]
+        PagesJSON["pages.json 页面路由/tabBar/easycom"]
+        Manifest["manifest.json 多端配置"]
+        Vite["vite.config.ts Vite 构建"]
+    end
+
+    subgraph View["视图层"]
+        Pages["pages/ 业务页面"]
+        Layout["layout/ PageLayout/AppNavbar/ImmersiveLayout"]
+        AuthComp["auth/ AuthShell/AuthInput/AuthCaptcha"]
+        BizComp["business/ FeatureCard/SpecCard"]
+        CommonComp["common/ CompareEmptyState/PageHeaderCard/ProcessStep/SectionHeader"]
+    end
+
+    subgraph Logic["逻辑层"]
+        Store["store/ Pinia 状态管理"]
+        Router["routers/guard.ts 路由守卫"]
+        ApiLayer["api/ SDK 适配器与常量"]
+        Utils["utils/ 错误处理/格式化"]
+    end
+
+    subgraph SDK["SDK 层"]
+        DehazeSDK["clarity-sdk-js (workspace:*)"]
+        UniAdapter["uni-adapter.ts uni.request 适配"]
+        SDKSetup["sdk-setup.ts SDK 初始化"]
+    end
+
+    subgraph Backend["后端"]
+        REST["RESTful API"]
+    end
+
+    UniApp --> H5
+    UniApp --> WeApp
+    UniApp --> AliApp
+    UniApp --> OtherMP
+    Pages --> Layout
+    Pages --> Store
+    Pages --> AuthComp
+    Pages --> BizComp
+    Pages --> CommonComp
+    Store --> DehazeSDK
+    Router --> Pages
+    DehazeSDK --> UniAdapter
+    UniAdapter --> REST
+```
+
+## 项目结构
+
+- `vite.config.ts` - Vite 构建配置
+- `tsconfig.json` - TypeScript 配置
+- `eslint.config.mjs` - ESLint 配置
+- `package.json`
+- `index.html` - H5 入口 HTML
+- `src/`
+  - `main.ts` - 应用入口（createSSRApp + Pinia + SDK 初始化）
+  - `App.vue` - 根组件
+  - `pages.json` - 页面路由、tabBar、easycom（单一路由来源）
+  - `manifest.json` - 多端打包配置
+  - `uni.scss` - uni-app 全局 SCSS 变量入口
+  - `api/` - SDK 适配层
+    - `sdk-setup.ts` - SDK 初始化（token/request adapter/baseURL）
+    - `uni-adapter.ts` - uni.request → SDK request adapter
+    - `constants.ts` - API 常量（SESSION_INVALID_EVENT 等）
+    - `session.ts` - 会话失效统一处理（redirectToLogin，供 axios 拦截器与上传链路共用）
+    - `file.ts` - 文件上传封装（接入会话失效处理）
+  - `components/` - 通用组件
+    - `auth/` - AuthShell / AuthInput / AuthCaptcha
+    - `business/` - FeatureCard / SpecCard
+    - `common/` - CompareEmptyState / PageHeaderCard / ProcessStep / SectionHeader / FabButton / Popup
+  - `layout/` - 布局组件
+    - `index.vue` - PageLayout（L1/L2/L3 层级路由布局）
+    - `Navbar.vue` - AppNavbar 导航栏（L1/L2 差异化）
+    - `ImmersiveLayout.vue` - L3 沉浸页骨架
+  - `pages/` - 业务页面（按视角拆分）
+    - `home/` - 首页（L1 Tab：品牌 Hero + 快捷入口 + 数据统计 + 特色能力）
+    - `tools/` - 工具（L1 Tab：页内搜索 + 快捷入口横滑 + 功能网格）
+    - `dehaze/` - 去雾（L1 Tab：步骤流引导 上传→模型→参数→处理→对比）
+    - `messages/` - 消息（L1 Tab：消息列表 + 分类 + 未读角标 + 设置入口）
+    - `profile/` - 我的（L1 Tab：用户卡 + VIP 横幅 + 数据统计 + 四组入口）
+    - `login/` - 登录（L0 认证页，AuthShell/AuthInput/AuthCaptcha）
+    - `register/` - 注册（L0 认证页）
+    - `image-input/` - 图像输入（上传、拍照、样例、历史 4 Tab）
+    - `processing/` - 去雾处理（实时进度，AiImageAPI.submitImageTask/getImageTask）
+    - `dataset/` - 数据集浏览（个人视角：公开、共享浏览 + 图片网格）
+    - `task-history/` - 处理历史（个人视角，TaskAPI.getPage）
+    - `file-manage/` - 文件管理
+    - `batch/` - 批量处理（批量上传 ≤20 张 + 进度 + 结果对比）
+    - `metrics-manage/` - 指标管理（评估指标历史查询、筛选、对比）
+    - `notify/` - 消息设置（NotificationSettingAPI）
+    - `side-by-side/` - 并排对比（L3 沉浸页）
+    - `overlay/` - 叠加对比（L3 沉浸页）
+    - `metrics/` - 指标对比（L3 沉浸页）
+    - `magnifier/` - 放大镜对比（L3 沉浸页）
+    - `filter/` - 滤镜对比（L3 沉浸页）
+    - `personal/` - 个人侧页面（我的会员、套餐、订单、文件、积分、设置等）
+    - `system/` - 管理模块（用户、角色、字典、菜单、部门、AI模型、数据集、任务、会员、套餐、订单、反馈、消息、推荐）
+    - `dashboard/` - 管理入口工作台
+  - `routers/` - 路由守卫
+    - `guard.ts` - 登录拦截 + 白名单 + 路由常量
+  - `composables/` - 组合式函数
+    - `usePagedList.ts` - 分页列表逻辑（list/keyword/hasMore/fetchList/loadMore）
+  - `store/` - Pinia 状态管理
+    - `auth.ts` - 认证 store（登录、注册、登出、hasPerm、hasRole）
+    - `processing.ts` - 处理 store（任务状态 + runImageTask 去雾主链路 action）
+  - `styles/` - 全局样式
+    - `variables.scss` - 设计令牌（颜色、间距、圆角、字号、阴影、安全区域）
+    - `mixins.scss` - SCSS mixin（safe-area-bottom）
+    - `common.scss` - 通用 class（loading-spinner/empty-tip/tag/btn-sm/form-row/list-row 等）
+  - `utils/` - 工具函数
+    - `error.ts` - 错误处理
+    - `format.ts` - 格式化
+  - `types/` - TypeScript 类型定义
+- `dist/` - 构建产物
+
+## 页面层级与布局体系
+
+页面按《移动端界面设计规范》分为四个层级，每级对应不同的导航形态：
+
+| 层级 | 导航形态                                  | 典型页面                                           | 布局组件                 |
+| ---- | ----------------------------------------- | -------------------------------------------------- | ------------------------ |
+| L0   | 无导航栏，无 TabBar                       | 登录、注册                                         | 页面自身                 |
+| L1   | 顶部标题栏 + 底部 TabBar                  | 首页、工具、去雾、消息、我的                       | PageLayout（level="L1"） |
+| L2   | 顶部导航栏（返回+标题+操作区），无 TabBar | 图像输入、图像模型选择、处理、个人侧页面、管理页面 | PageLayout（level="L2"） |
+| L3   | 深色沉浸导航栏 + 底部工具栏，全屏内容     | 并排对比、叠加对比、放大镜、滤镜、指标对比         | ImmersiveLayout          |
+
+所有页面统一设置 `navigationStyle: "custom"`，由项目自定义导航栏组件接管顶部区域，不依赖系统原生导航栏。
+
+### PageLayout
+
+通用页面布局组件（`src/layout/index.vue`），根据 `level` 属性决定导航形态：
+
+- **L1**：渲染 AppNavbar（品牌标题栏），内容区预留原生 TabBar 底部安全高度
+- **L2**：渲染 AppNavbar（返回按钮 + 居中标题 + `#navbar-actions` 右侧操作区），内容区全高
+- **L3**：不渲染 AppNavbar，由 ImmersiveLayout 接管
+
+透传 `isHome` / `showSearch` / `title` props 到 AppNavbar，实现差异化品牌展示。
+
+### AppNavbar
+
+顶部导航栏组件（`src/layout/Navbar.vue`），通过 `level` 和 `isHome` 属性差异化渲染：
+
+- **L1 首页**：品牌渐变 logo（photo-fill 图标）+ 应用标题 + 右侧搜索按钮（`showSearch` 控制）
+- **L1 非首页**：仅 Tab 标题（居左），无品牌 logo
+- **L2**：左侧返回按钮 + 居中页面标题 + 右侧 `#actions` 插槽（自定义操作区）
+- 状态栏高度自适应：通过 `uni.getSystemInfoSync().statusBarHeight` 动态获取并设置占位高度
+- 返回逻辑：有页面历史时 `uni.navigateBack`，无历史时回首页 Tab
+
+### ImmersiveLayout
+
+L3 沉浸页统一骨架（`src/layout/ImmersiveLayout.vue`），提供三区域插槽：
+
+- **顶部**：深色半透明渐变导航栏（返回按钮 + 居中标题 + `#actions` 插槽），黑色背景
+- **底部**：深色工具栏（`#toolbar` 插槽，仅当有内容时渲染）
+- **内容区**：全屏沉浸，无全局导航，黑色背景
+
+不预设业务逻辑，5 个对比页（side-by-side / overlay / magnifier / filter / metrics）统一使用此骨架。
+
+### 路由导航方式
+
+| 场景        | 方法               | 说明                               |
+| ----------- | ------------------ | ---------------------------------- |
+| Tab 间切换  | `uni.switchTab`    | L1 五个 Tab 页互相跳转             |
+| L2 页面跳转 | `uni.navigateTo`   | 压栈式跳转，保留返回路径           |
+| 页面返回    | `uni.navigateBack` | 出栈返回上一页                     |
+| 登录重定向  | `uni.reLaunch`     | 路由守卫拦截时清空页面栈并跳转登录 |
+
+### rpx 单位规范
+
+全局样式采用 rpx 单位（750 设计稿基准），`src/styles/variables.scss` 中所有间距、圆角、字号、阴影变量全部使用 rpx。仅 `@media` 断点和 1px 边框保留 px，禁止 px/rpx 混用。
+
+## 完整页面清单
+
+### L0 认证页
+
+| 页面路径             | 功能                                             |
+| -------------------- | ------------------------------------------------ |
+| pages/login/index    | 登录（AuthShell + AuthInput + AuthCaptcha 组件） |
+| pages/register/index | 注册                                             |
+
+### L1 Tab 根页面（底部 TabBar）
+
+| Tab  | 页面路径             | 功能要点                                                                         |
+| ---- | -------------------- | -------------------------------------------------------------------------------- |
+| 首页 | pages/home/index     | 品牌 Hero + 快捷入口 + 数据统计 + 特色能力（融合设计稿保留 8 区块）              |
+| 工具 | pages/tools/index    | 页内搜索 + 快捷入口横滑 + 功能网格 ≤3 列，接入真实跳转                           |
+| 去雾 | pages/dehaze/index   | 步骤流 5 步：上传 → 模型 → 参数 → 处理 → 对比入口                                |
+| 消息 | pages/messages/index | 消息列表 + 分类筛选（全部、系统、处理、活动）+ 未读角标 + 设置入口                  |
+| 我的 | pages/profile/index  | 用户卡 + VIP 横幅 + 数据统计 + 四组入口（个人数据、商业服务、其他、管理入口）+ 退出 |
+
+### L2 工具/业务页面
+
+| 页面路径                    | 功能                                                | 对接 API                                |
+| --------------------------- | --------------------------------------------------- | --------------------------------------- |
+| pages/image-input/index     | 图像输入：上传、拍照、样例、历史 4 Tab              | —                                       |
+| pages/processing/index      | 去雾处理，实时进度                                  | AiImageAPI.submitImageTask/getImageTask |
+| pages/dataset/index         | 数据集浏览：公开、共享浏览 + 图片网格                | —                                       |
+| pages/batch/index           | 批量处理：批量上传 ≤20 张 + 逐张处理进度 + 结果对比 | store.runImageTask（循环单次）          |
+| pages/metrics-manage/index  | 指标管理：评估指标历史查询、筛选、对比              | ModelAPI.getEvalMetrics / getEvalLogs   |
+| pages/task-history/index    | 处理历史（个人视角）                                | TaskAPI.getPage                         |
+| pages/file-manage/index     | 文件管理                                            | —                                       |
+| pages/notify/index          | 消息设置：通知开关、免打扰时段                      | NotificationSettingAPI.get / update     |
+| pages/messages/detail/index | 消息详情（L2）                                      | —                                       |
+
+### L2 个人侧页面（pages/personal/）
+
+归入"我的"页面底部个人数据、商业服务、其他入口组：
+
+| 页面路径                       | 功能                                  | 对接 API                |
+| ------------------------------ | ------------------------------------- | ----------------------- |
+| pages/personal/files/index     | 我的文件                              | —                       |
+| pages/personal/orders/index    | 我的订单                              | OrderAPI.listMy         |
+| pages/personal/credits/index   | 积分余额                              | AiBillingAPI.getBalance |
+| pages/personal/member/index    | 我的会员                              | MemberAPI.getProfile    |
+| pages/personal/package/index   | 我的套餐                              | PackageAPI.listOnSale   |
+| pages/personal/feedback/index  | 反馈评价（双 Tab：我的反馈、我的评价） | —                       |
+| pages/personal/favorites/index | 我的收藏                              | FavoriteAPI.getPage     |
+| pages/personal/settings/index  | 系统设置                              | —                       |
+| pages/personal/help/index      | 帮助中心（FAQ）                       | —                       |
+| pages/personal/about/index     | 关于我们                              | —                       |
+
+### L3 沉浸对比页
+
+均使用 ImmersiveLayout 骨架：
+
+| 页面路径                 | 功能         |
+| ------------------------ | ------------ |
+| pages/side-by-side/index | 并排对比     |
+| pages/overlay/index      | 叠加对比     |
+| pages/metrics/index      | 指标对比模式 |
+| pages/magnifier/index    | 放大镜对比   |
+| pages/filter/index       | 滤镜对比     |
+
+### 管理模块（pages/system/）
+
+归入"我的"页面底部管理入口组，受权限过滤（无 `sys:module:*` 权限的用户整组不显示）。
+
+**管理入口工作台**：
+
+| 页面路径              | 功能                     |
+| --------------------- | ------------------------ |
+| pages/dashboard/index | 工作台（管理入口组顶部） |
+
+**管理子模块**：
+
+| 页面路径                                      | 功能                               | 权限码               |
+| --------------------------------------------- | ---------------------------------- | -------------------- |
+| pages/system/user/index + detail              | 用户管理                           | sys:user:*           |
+| pages/system/role/index + detail + permission | 角色管理                           | sys:role:*           |
+| pages/system/dict/index + items               | 字典管理                           | sys:dict:*           |
+| pages/system/menu/index                       | 菜单管理                           | sys:menu:*           |
+| pages/system/dept/index                       | 部门管理                           | sys:dept:*           |
+| pages/system/ai-model/index                   | AI 模型管理（全模态）              | ai:model:manage      |
+| pages/system/dataset/index                    | 数据集管理（CRUD）                 | sys:dataset:*        |
+| pages/system/task/index                       | 任务管理（全用户视角）             | sys:task:*           |
+| pages/system/member/index + detail            | 会员管理                           | sys:member:*         |
+| pages/system/package/index                    | 套餐管理（CRUD/上下架）            | sys:package:*        |
+| pages/system/order/index + detail             | 订单管理（后台列表、退款审核、统计） | sys:order:*          |
+| pages/system/feedback/index + detail          | 反馈评价管理                       | sys:feedback:*       |
+| pages/system/message/index                    | 消息管理（公告、模板、群发）       | sys:notify:*         |
+| pages/system/recommend/index                  | 推荐管理（规则编辑）               | sys:recommendation:* |
+
+## 视角拆分
+
+以下模块从"个人+管理混用"严格拆分为两套独立页面，杜绝条件渲染混用：
+
+| 业务域   | 个人视角页面                                                                                                                                    | 管理视角页面                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 图像模型 | 内联于 `store/processing.ts` 与 `pages/home` 的 `ModelSection` / `ModelRecommendSection`（数据源 `AiModelAPI.listEnabledModels('image_edit')`） | 模型管理为管理端能力（`clarity-front-vue` 的 `views/ai-models`）；uniapp 属图像用户端，不提供管理端页面 |
+| 数据集   | pages/dataset（公开、共享浏览）                                                                                                                  | pages/system/dataset（CRUD）                                                                           |
+| 会员     | pages/personal/member（我的会员）                                                                                                               | pages/system/member（会员管理）                                                                        |
+| 套餐     | pages/personal/package（我的套餐）                                                                                                              | pages/system/package（套餐管理）                                                                       |
+| 反馈     | pages/personal/feedback（反馈评价）                                                                                                             | pages/system/feedback（反馈评价管理）                                                                  |
+| 推荐     | —（无个人视角）                                                                                                                                 | pages/system/recommend（推荐管理）                                                                     |
+| 任务     | pages/task-history（个人处理历史）                                                                                                              | pages/system/task（全用户管理）                                                                        |
+| 订单     | pages/personal/orders（我的订单）                                                                                                               | pages/system/order（订单管理）                                                                         |
+| 消息     | pages/messages（消息列表）+ pages/notify（消息设置）                                                                                            | pages/system/message（消息管理）                                                                       |
+
+## 权限模型
+
+管理模块采用 Pinia auth store 的 `hasPerm` / `hasRole` 方法实现权限判断。权限标识格式为 `sys:模块:操作`，各模块对应权限码如下：
+
+| 权限码                                                        | 模块         |
+| ------------------------------------------------------------- | ------------ |
+| sys:user:add/edit/delete                                      | 用户管理     |
+| sys:role:add/edit/delete                                      | 角色管理     |
+| sys:dict:type:add/edit/delete + sys:dict:data:add/edit/delete | 字典管理     |
+| sys:menu:add/edit/delete                                      | 菜单管理     |
+| sys:dept:add/edit/delete                                      | 部门管理     |
+| ai:model:manage + ai:provider:manage                          | AI模型管理   |
+| sys:recommendation:rule:edit                                  | 推荐管理     |
+| sys:dataset:*                                                 | 数据集管理   |
+| sys:task:*                                                    | 任务管理     |
+| sys:member:*                                                  | 会员管理     |
+| sys:package:*                                                 | 套餐管理     |
+| sys:order:*                                                   | 订单管理     |
+| sys:feedback:*                                                | 反馈评价管理 |
+| sys:notify:*                                                  | 消息管理     |
+
+权限判断基于 `AuthAPI.getCurrentUser()` 返回的 `perms` 数组，通过 `authStore.hasPerm('sys:user:add')` 进行操作级判断（computed + v-if）。无 `sys:module:*` 权限的用户，管理入口组整组不显示。新增、编辑、删除按钮绑定对应权限码；后端未定义权限码的模块由后端兜底，前端不臆造权限码。
+
+### 路由守卫
+
+`src/routers/guard.ts` 通过 `uni.addInterceptor` 拦截 `navigateTo` / `redirectTo` / `reLaunch` / `switchTab` 四种跳转方法，实现未登录拦截：
+
+- **白名单**：`pages/login/index`、`pages/register/index`、`pages/home/index` 无需登录即可访问
+- **拦截逻辑**：非白名单页面且无有效 session 时，自动 `reLaunch` 到登录页
+- **初始检查**：应用首启时调用 `checkInitialAuth()` 显式检查当前页是否需要登录（首页不经拦截器触发）
+
+## 设计稿还原策略
+
+对齐《移动端界面设计规范》与 clarity-mobile 设计稿，各页面采用差异化还原策略：
+
+| 页面                | 策略     | 说明                                                                 |
+| ------------------- | -------- | -------------------------------------------------------------------- |
+| 首页（home）        | 融合策略 | 保留现有 8 区块丰富度，仅做品牌显示优化与跳转修正，不照搬设计稿      |
+| 工具、去雾、消息、我的 | 重构策略 | 按设计稿（tools-v2/dehaze-flow/messages/profile.html）重构布局与交互 |
+| 登录/注册           | 视觉对齐 | AuthShell 组件视觉对齐设计稿                                         |
+
+全局约束：
+
+- 复用 `variables.scss` 令牌（`$color-*` / `$spacing-*` / `$radius-*` / `$font-*` / `$shadow-*`），不引入设计稿 `--dehaze-*` token
+- 排除设计稿元信息（交互说明、占位文本、注释框）
+
+## 防迷失设计
+
+- **主入口唯一**：首页、工具快捷区仅作引用跳转，不重复实现功能
+- **管理功能不裸露**：管理入口统一归入"我的"页面底部管理入口组，受权限过滤
+- **主链路 ≤2 步**：工具选图、选模型通过"开始去雾、使用该模型"直接带入去雾处理流程
+- **带入衔接**：工具页与图像模型浏览页通过明确的操作按钮将用户带入去雾处理流程
+- **返回路径完整**：所有 L2 页面通过 AppNavbar 返回按钮返回，所有 L3 页面通过 ImmersiveLayout 内置返回按钮返回
+
+## 核心能力主线
+
+- 认证与会话：登录、注册、权限校验，Pinia auth store 维护会话态，请求自动注入会话头，失效统一重登（axios 拦截器与上传链路共用 `session.ts` 的 `redirectToLogin`）
+- 去雾主链路：图像输入 → 图像模型选择 → 参数配置 → 实时处理 → 效果对比，处理逻辑（积分校验 + 提交任务 + 递增重试 + 取消 + 耗时计时）收敛至 `useProcessingStore.submitImageTask` action，dehaze/processing/batch 三页复用同一 action
+- 效果对比套件：并排、叠加、放大镜、滤镜、指标评估 5 种模式，统一复用 ImmersiveLayout 骨架
+- 批量与指标：批量处理（≤20 张）+ 评估指标历史查询、筛选、对比
+- 商业化：会员、套餐、订单、积分（个人视角）+ 后台管理（管理视角）
+- 系统管理：14 个子模块（用户、角色、菜单、字典、部门、AI模型、数据集、任务、会员、套餐、订单、反馈、消息、推荐），按对应权限码过滤
+
+## 关键技术决策
+
+| 决策      | 选择                                                                                             | 理由                                                                                                                                                                                                                                           |
+| --------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 跨端框架  | uni-app (Vue 3) + Vite                                                                           | 一份代码编译 H5 / 微信 / 支付宝 / 百度 / 抖音小程序及 App（Android/iOS）                                                                                                                                                                       |
+| UI 框架   | Vue 3 `<script setup>` SFC + TypeScript                                                          | Composition API 类型安全，代码组织清晰                                                                                                                                                                                                         |
+| UI 组件库 | 自建业务组件 + 原生组件 + SvgIcon（vite-plugin-svg-icons）                                       | 全部使用 uni 原生组件（input/switch/button/picker/image 等）+ 自建组件（Popup/FabButton 等）；图标走本地 svg sprite                                                                                                                            |
+| 状态管理  | Pinia                                                                                            | Vue 3 官方推荐，模块化 store，支持 SSR                                                                                                                                                                                                         |
+| 公共抽象  | usePagedList composable + FabButton/Popup 组件 + common.scss 通用 class + safe-area-bottom mixin | 消除分页样板、弹窗、FAB、加载指示器、空状态等重复逻辑，杜绝代码重复                                                                                                                                                                                |
+| 样式方案  | SCSS + variables.scss 全局令牌 + common.scss 通用 class                                          | 统一的颜色、间距、圆角、字号、阴影变量，保证视觉一致性；通用 class 全局复用                                                                                                                                                                        |
+| 样式单位  | rpx（750 设计稿基准）                                                                            | uni-app 原生响应式单位，多端自适应                                                                                                                                                                                                             |
+| 布局体系  | PageLayout（L0-L3）+ ImmersiveLayout（L3）                                                       | 按层级差异化导航，沉浸页统一骨架，避免页面重复实现导航逻辑                                                                                                                                                                                     |
+| 路由配置  | pages.json 单一来源                                                                              | uni-app 标准路由配置，集中管理页面路径/tabBar/easycom                                                                                                                                                                                          |
+| 权限控制  | Pinia auth store（hasPerm/hasRole）                                                              | 页面级和操作级权限判断，管理入口组整体过滤                                                                                                                                                                                                     |
+| 视角拆分  | 个人/管理严格分离为独立页面                                                                      | 避免条件渲染混乱，职责清晰，代码可维护                                                                                                                                                                                                         |
+| 网络层    | clarity-sdk-js + uni-adapter                                                                      | 通过 uni.request 适配器接入 SDK；请求拦截器注入 `X-Session-Id`，会话失效错误码（A0230/A0231/A0301）统一触发 reLaunch 重登并防重入；上传链路（uni.uploadFile 不走 axios）同样接入 `session.ts` 的 `redirectToLogin`，session 从 auth store 读取 |
+| 路由守卫  | uni.addInterceptor 拦截 + 白名单                                                                 | 轻量级未登录拦截，无需引入额外路由库                                                                                                                                                                                                           |
+| 组件导入  | easycom 自动导入                                                                                 | `autoscan` 自动扫描 + `^App(.*)` 映射至 `@/components/layout/App$1.vue`，布局组件按需自动导入                                                                                                                                                  |
+| 日志采集  | clarity-sdk-js Logger                                                                             | trace_id 透传、采样限流、崩溃补报；契约与各端实现见 [08-SDK架构文档.md](./08-SDK架构文档.md)                                                                                                                                                   |
+
+## 多端适配
+
+- 移动端竖屏优化，适配手机和平板
+- H5、微信小程序、支付宝小程序、百度小程序、抖音小程序、App（Android/iOS）多端编译
+- 通过 `pages.json` 和 `manifest.json` 配置各端差异
+- 5 个 L1 Tab：首页、工具、去雾、消息、我的（通过原生 tabBar 实现）
+- 状态栏高度通过 `uni.getSystemInfoSync().statusBarHeight` 动态适配各端差异

@@ -1,0 +1,58 @@
+# 会员管理模块 - API接口
+
+## 文档概述
+
+基础路径：`/api/v1/members`
+
+## 接口清单
+
+### 用户端接口
+
+| 路径                               | 方法 | 功能描述                                                                               | 权限标识 | 关联功能点 |
+| ---------------------------------- | ---- | -------------------------------------------------------------------------------------- | -------- | ---------- |
+| `/api/v1/members/profile`          | GET  | 当前用户会员基础信息（等级、等级来源、成长值、到期时间、状态、进度）                   | -        | F-MM-012   |
+| `/api/v1/members/benefit-summary`  | GET  | 权益概览：按服务类目合并展示（图像处理 / 评估剩余次数、AI 积分余额与额度），含类目明细 | -        | F-MM-012   |
+| `/api/v1/members/trial-status`     | GET  | 试用引导状态：体验券激活状态与到期时间、AI 试用积分余额、新用户专享可用性              | -        | F-MM-015   |
+| `/api/v1/members/growth-logs`      | GET  | 成长值变动明细                                                                         | -        | F-MM-013   |
+| `/api/v1/members/sign-in`          | POST | 每日签到                                                                               | -        | F-MM-014   |
+| `/api/v1/members/sign-in/calendar` | GET  | 签到日历                                                                               | -        | F-MM-014   |
+
+### 后台管理接口
+
+| 路径                                           | 方法 | 功能描述                                                     | 权限标识            | 关联功能点 |
+| ---------------------------------------------- | ---- | ------------------------------------------------------------ | ------------------- | ---------- |
+| `/api/v1/members/page`                         | GET  | 会员分页列表                                                 | member:list         | F-MM-006   |
+| `/api/v1/members/{userId}`                     | GET  | 会员详情（默认仅本人可见；持 member:list 可查任意会员）      | 本人或 member:list  | F-MM-007   |
+| `/api/v1/members/{userId}/growth-logs`         | GET  | 目标会员成长值流水（管理端详情页签）                         | member:list         | F-MM-007   |
+| `/api/v1/members/{userId}/consumption-records` | GET  | 目标会员消费记录（管理端详情页签，返回订单列表 VO）          | member:list         | F-MM-007   |
+| `/api/v1/members/{userId}/benefit-usage`       | GET  | 目标会员权益使用明细（管理端详情页签，与用户端权益概览同构） | member:list         | F-MM-007   |
+| `/api/v1/members/{userId}/operation-logs`      | GET  | 目标会员操作日志（管理端详情页签，Mongo 审计日志）           | member:list         | F-MM-007   |
+| `/api/v1/members/{userId}/level`               | PUT  | 等级调整                                                     | member:level:edit   | F-MM-008   |
+| `/api/v1/members/{userId}/growth`              | PUT  | 成长值调整                                                   | member:growth:edit  | F-MM-009   |
+| `/api/v1/members/{userId}/status`              | PUT  | 冻结、解冻                                                    | member:status:edit  | F-MM-010   |
+| `/api/v1/members/benefits`                     | GET  | 权益配置列表                                                 | -                   | F-MM-011   |
+| `/api/v1/members/benefits/{level}`             | PUT  | 修改权益配置                                                 | member:benefit:edit | F-MM-011   |
+
+## 权限标识汇总
+
+| 权限标识            | 说明         |
+| ------------------- | ------------ |
+| member:list         | 会员分页列表 |
+| member:level:edit   | 等级调整     |
+| member:growth:edit  | 成长值调整   |
+| member:status:edit  | 冻结、解冻    |
+| member:benefit:edit | 权益配置     |
+
+权益配置接口返回全部限额字段，含 `ai_credits_daily`（AI 日限额）、`ai_credits_monthly`（AI 月限额）、`multimodal_limit`（多模态视觉读取日限额）、`max_devices`（同时在线设备数上限，认证模块登录时读取，管理员固定 10 台不受此配置约束）、`vip_gift_credits`（VIP 按月赠送积分）。
+
+未标注权限标识的接口为登录态访问。
+
+## 业务错误码
+
+| 错误码 | 说明         | 触发场景                     |
+| ------ | ------------ | ---------------------------- |
+| A0510  | 会员不存在   | 查询、操作时会员记录不存在    |
+| A0511  | 会员已冻结   | 冻结状态会员尝试使用付费功能 |
+| A0512  | 今日已签到   | 重复签到                     |
+| A0513  | 成长值不足   | 扣减成长值时余额不足         |
+| A0514  | 权益配置无效 | 权益配置缺少必填项或数值非法 |
