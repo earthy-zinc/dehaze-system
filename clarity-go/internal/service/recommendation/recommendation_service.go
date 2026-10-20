@@ -1,0 +1,573 @@
+package recommendation
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/bo"
+	"github.com/earthyzinc/clarity-go/internal/model/vo"
+	airepo "github.com/earthyzinc/clarity-go/internal/repository/ai"
+	recrepo "github.com/earthyzinc/clarity-go/internal/repository/recommendation"
+	"github.com/earthyzinc/clarity-go/pkg/algorithm"
+	"github.com/earthyzinc/clarity-go/pkg/common"
+)
+
+var (
+	validSceneTypes = []string{"urban", "landscape", "building", "night", "backlight", "indoor"}
+	imageExtensions = []string{".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif"}
+	topN            = 3
+
+	reasonTemplates = map[string]string{
+		"urban":     "处理速度快，对城市雾霾效果出色",
+		"landscape": "在自然场景下表现稳定，色彩还原度高",
+		"building":  "深度模型，对建筑场景处理能力强",
+		"night":     "低光照增强组合，避免过度暗化",
+		"backlight": "HDR预处理提升暗部细节",
+		"indoor":    "室内场景适配，细节保留好",
+	}
+)
+
+type RecommendationService struct {
+	recRepo   recrepo.RecommendationRepository
+	ruleRepo  recrepo.RuleRepository
+	modelRepo *airepo.ModelRepository
+	ruleCache []model.SysRecommendationRule
+	mu        sync.RWMutex
+}
+
+func NewRecommendationService(
+	recRepo recrepo.RecommendationRepository,
+	ruleRepo recrepo.RuleRepository,
+	modelRepo *airepo.ModelRepository,
+) *RecommendationService {
+	return &RecommendationService{
+		recRepo:   recRepo,
+		ruleRepo:  ruleRepo,
+		modelRepo: modelRepo,
+	}
+}
+
+// Analyze 提取图像特征。
+//
+// 特征由本端确定性算法产出（`algorithm.AnalyzeImage` 逐位对齐 python recommendation_service.analyze），
+// 不再委托 python `/recommendations/analyze`：该端点要求用户 token，内部调用必然 A0230。
+func (s *RecommendationService) Analyze(ctx context.Context, form *bo.AnalyzeForm) (*vo.ImageFeatureAnalysisVO, error) {
+	// python `_resolve_and_validate_image_url` 对 imageId>0 抛 RESOURCE_NOT_FOUND(A0401)
+	if form.ImageID != nil && *form.ImageID > 0 {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "imageId方式暂不支持，请使用imageUrl")
+	}
+	imageURL := form.ImageURL
+	if err := s.validateImageFormat(imageURL); err != nil {
+		return nil, err
+	}
+
+	resp := algorithm.AnalyzeImage(imageURL)
+
+	return &vo.ImageFeatureAnalysisVO{
+		ImageMd5:        resp.ImageMd5,
+		HazeLevel:       resp.HazeLevel,
+		HazeConfidence:  resp.HazeConfidence,
+		SceneType:       resp.SceneType,
+		SceneConfidence: resp.SceneConfidence,
+		Lighting:        resp.Lighting,
+		Complexity:      resp.Complexity,
+		ColorDistribution: vo.ColorDistribution{
+			Temperature: resp.ColorDistribution.Temperature,
+			Saturation:  resp.ColorDistribution.Saturation,
+		},
+		Resolution: resp.Resolution,
+		NoiseLevel: resp.NoiseLevel,
+	}, nil
+}
+
+func (s *RecommendationService) GetModelRecommendations(ctx context.Context, userID int64, analysisID *int64, imageMd5 string) ([]vo.RecommendedModelVO, error) {
+	rules := s.getEnabledRules(ctx)
+	if len(rules) == 0 {
+		return []vo.RecommendedModelVO{}, nil
+	}
+
+	// 确定场景类型：优先从 analysisId 查，其次 imageMd5，默认 urban
+	sceneType := "urban"
+	if analysisID != nil && *analysisID > 0 {
+		rec, err := s.recRepo.FindByID(ctx, *analysisID)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询推荐记录失败", err)
+		}
+		if rec != nil && rec.AnalysisResult != nil {
+			var ar map[string]any
+			if json.Unmarshal([]byte(*rec.AnalysisResult), &ar) == nil {
+				if st, ok := ar["sceneType"].(string); ok && containsString(validSceneTypes, st) {
+					sceneType = st
+				}
+			}
+		}
+	}
+	if sceneType == "urban" && imageMd5 != "" {
+		rec, err := s.recRepo.FindLatestByImageMd5(ctx, imageMd5)
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询推荐记录失败", err)
+		}
+		if rec != nil && rec.AnalysisResult != nil {
+			var ar map[string]any
+			if json.Unmarshal([]byte(*rec.AnalysisResult), &ar) == nil {
+				if st, ok := ar["sceneType"].(string); ok && containsString(validSceneTypes, st) {
+					sceneType = st
+				}
+			}
+		}
+	}
+
+	// 规则匹配：按 sceneType 匹配
+	matchedRules := s.matchRulesByScene(rules, sceneType)
+	if len(matchedRules) == 0 {
+		// 无匹配规则时仍写入 sys_recommendation 记录，确保 feedback 能关联
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
+		}
+		return []vo.RecommendedModelVO{}, nil
+	}
+
+	// 获取启用图像模型作为候选池
+	enabledModels, err := s.modelRepo.ListEnabled(ctx, "image_edit")
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询图像模型列表失败", err)
+	}
+	if len(enabledModels) == 0 {
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
+		}
+		return []vo.RecommendedModelVO{}, nil
+	}
+
+	// 收集候选模型标识
+	candidateIDs := make(map[string]bool)
+	for _, r := range matchedRules {
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err == nil {
+			for _, id := range ids {
+				candidateIDs[id] = true
+			}
+		}
+	}
+
+	// 筛选启用模型中的候选
+	var candidates []model.SysAiModel
+	for _, m := range enabledModels {
+		if candidateIDs[m.ModelID] {
+			candidates = append(candidates, m)
+		}
+	}
+	if len(candidates) == 0 {
+		if _, err := s.createRecommendation(ctx, userID, imageMd5, "[]"); err != nil {
+			return nil, err
+		}
+		return []vo.RecommendedModelVO{}, nil
+	}
+
+	// 计算得分并排序
+	result := make([]vo.RecommendedModelVO, 0, len(candidates))
+	for _, m := range candidates {
+		matchScore := s.computeMatchScore(m.ModelID, matchedRules)
+		result = append(result, vo.RecommendedModelVO{
+			ModelID:           m.ModelID,
+			ModelName:         m.DisplayName,
+			MatchScore:        matchScore,
+			Reason:            s.buildReason(sceneType, m.DisplayName),
+			EffectDescription: fmt.Sprintf("该模型在%s场景下表现稳定", sceneType),
+		})
+	}
+
+	// 主排序 matchScore 降序，次排序 modelId 升序，保证跨端排序一致
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].MatchScore != result[j].MatchScore {
+			return result[i].MatchScore > result[j].MatchScore
+		}
+		return result[i].ModelID < result[j].ModelID
+	})
+
+	if len(result) > topN {
+		result = result[:topN]
+	}
+
+	// 写入 sys_recommendation 记录，确保 feedback 能找到记录
+	topModels := make([]map[string]interface{}, 0, len(result))
+	for _, item := range result {
+		topModels = append(topModels, map[string]interface{}{
+			"modelId":    item.ModelID,
+			"modelName":  item.ModelName,
+			"matchScore": item.MatchScore,
+		})
+	}
+	topModelJSON, _ := json.Marshal(topModels)
+
+	rec, err := s.createRecommendation(ctx, userID, imageMd5, string(topModelJSON))
+	if err != nil {
+		return nil, err
+	}
+
+	// 回填 recommendationId 到 VO
+	for i := range result {
+		result[i].RecommendationId = rec.ID
+	}
+
+	return result, nil
+}
+
+// createRecommendation 写入一条推荐记录（TopModels 为 JSON 数组字符串），返回记录实体。
+func (s *RecommendationService) createRecommendation(ctx context.Context, userID int64, imageMd5, topModelsJSON string) (*model.SysRecommendation, error) {
+	rec := &model.SysRecommendation{
+		UserID:     userID,
+		ImageMd5:   imageMd5,
+		TargetType: "model",
+		TopModels:  topModelsJSON,
+		Feedback:   0,
+	}
+	if err := s.recRepo.Create(ctx, rec); err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "创建推荐记录失败", err)
+	}
+	return rec, nil
+}
+
+func (s *RecommendationService) SubmitFeedback(ctx context.Context, userID int64, form *bo.FeedbackForm) (int64, error) {
+	rec, err := s.recRepo.FindByID(ctx, form.RecommendationID)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询推荐记录失败", err)
+	}
+	// 仅允许反馈本人产生的推荐记录；他人/不存在记录统一 404，不泄露存在性
+	if rec == nil || rec.UserID != userID {
+		return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "推荐记录不存在")
+	}
+
+	feedback := int8(2)
+	if form.Useful {
+		feedback = 1
+	}
+	if err := s.recRepo.Update(ctx, rec.ID, map[string]interface{}{"feedback": feedback}); err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "更新反馈失败", err)
+	}
+	return rec.ID, nil
+}
+
+func (s *RecommendationService) GetRules(ctx context.Context) ([]vo.RecommendationRuleVO, error) {
+	rules, err := s.ruleRepo.FindAll(ctx)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询规则列表失败", err)
+	}
+	result := make([]vo.RecommendationRuleVO, 0, len(rules))
+	for _, r := range rules {
+		result = append(result, s.toRuleVO(&r))
+	}
+	return result, nil
+}
+
+func (s *RecommendationService) UpdateRule(ctx context.Context, id int64, form *bo.RuleForm) (int64, error) {
+	if form.Weight == nil || *form.Weight < 0 || *form.Weight > 100 {
+		return 0, common.NewBizError(common.PARAM_ERROR, "规则权重必须在0-100之间")
+	}
+	if !containsString(validSceneTypes, form.SceneType) {
+		return 0, common.NewBizError(common.PARAM_ERROR,
+			"场景类型不合法，仅支持："+strings.Join(validSceneTypes, "/"))
+	}
+	if len(form.ModelIds) == 0 {
+		return 0, common.NewBizError(common.PARAM_ERROR, "候选模型标识列表不能为空")
+	}
+
+	if id != 0 {
+		existing, err := s.ruleRepo.FindByID(ctx, id)
+		if err != nil {
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
+		}
+		if existing == nil {
+			return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "规则不存在")
+		}
+	}
+
+	rules, err := s.ruleRepo.FindAll(ctx)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
+	}
+	target := make(map[string]struct{}, len(form.ModelIds))
+	for _, v := range form.ModelIds {
+		target[v] = struct{}{}
+	}
+	for _, r := range rules {
+		if r.ID == id || r.SceneType != form.SceneType || r.Enabled != 1 {
+			continue
+		}
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err != nil || len(ids) != len(target) {
+			continue
+		}
+		dup := true
+		for _, v := range ids {
+			if _, ok := target[v]; !ok {
+				dup = false
+				break
+			}
+		}
+		if dup {
+			return 0, common.NewBizError(common.DATA_EXISTS, "同场景下已存在相同模型组合的规则")
+		}
+	}
+
+	if id == 0 {
+		// 新增
+		modelIDsJSON, _ := json.Marshal(form.ModelIds)
+		enabled := int8(1)
+		if form.Enabled != nil && !*form.Enabled {
+			enabled = 0
+		}
+		rule := &model.SysRecommendationRule{
+			RuleName:  form.RuleName,
+			SceneType: form.SceneType,
+			ModelIds:  string(modelIDsJSON),
+			Weight:    *form.Weight,
+			Enabled:   enabled,
+		}
+		if err := s.ruleRepo.Create(ctx, rule); err != nil {
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "创建规则失败", err)
+		}
+		s.refreshRuleCache(ctx)
+		return rule.ID, nil
+	}
+
+	// 更新
+	rule, err := s.ruleRepo.FindByID(ctx, id)
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询规则失败", err)
+	}
+	if rule == nil {
+		return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "规则不存在")
+	}
+
+	modelIDsJSON, _ := json.Marshal(form.ModelIds)
+	updates := map[string]interface{}{
+		"rule_name":  form.RuleName,
+		"scene_type": form.SceneType,
+		"model_ids":  string(modelIDsJSON),
+		"weight":     *form.Weight,
+	}
+	if form.Enabled != nil {
+		if *form.Enabled {
+			updates["enabled"] = int8(1)
+		} else {
+			updates["enabled"] = int8(0)
+		}
+	}
+	if err := s.ruleRepo.Update(ctx, id, updates); err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "更新规则失败", err)
+	}
+	s.refreshRuleCache(ctx)
+	return id, nil
+}
+
+func (s *RecommendationService) GetReport(ctx context.Context, startDate, endDate string) (*vo.RecommendationReportVO, error) {
+	startTime, endTime, err := s.parseDateRange(startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	total, err := s.recRepo.CountTotal(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计推荐总数失败", err)
+	}
+	usefulCount, err := s.recRepo.CountUseful(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计有用反馈失败", err)
+	}
+	feedbackTotal, err := s.recRepo.CountFeedbackTotal(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计反馈总数失败", err)
+	}
+	adoptedDistinct, err := s.recRepo.CountAdoptedModelDistinct(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计采纳模型数失败", err)
+	}
+	// 采纳数：带推荐来源（recommended_by）的预测记录数
+	adoptedPredCount, err := s.recRepo.CountRecommended(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计推荐采纳数失败", err)
+	}
+
+	// 获取启用图像模型总数
+	enabledModels, err := s.modelRepo.ListEnabled(ctx, "image_edit")
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计启用图像模型失败", err)
+	}
+	publishedCount := int64(len(enabledModels))
+
+	report := &vo.RecommendationReportVO{
+		TotalRecommendations: total,
+		ColdStartSuccessRate: 0.0,
+	}
+	// 采纳率口径：带推荐来源的预测记录数 / 推荐总数（用户从推荐入口真正发起去雾处理的比例）
+	if total > 0 {
+		report.AdoptionRate = float64(adoptedPredCount) / float64(total)
+	}
+	// 满意度：有用反馈占比（有用即满意）
+	if feedbackTotal > 0 {
+		report.SatisfactionRate = float64(usefulCount) / float64(feedbackTotal)
+	}
+	if publishedCount > 0 {
+		report.CoverageRate = float64(adoptedDistinct) / float64(publishedCount)
+	}
+
+	// 趋势按日聚合：当日采纳预测数 / 当日推荐总数
+	dailyAdoptedRows, err := s.recRepo.FindDailyRecommended(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询每日采纳数失败", err)
+	}
+	dailyTotalRows, err := s.recRepo.FindDailyTotal(ctx, startTime, endTime)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询每日趋势失败", err)
+	}
+	adoptedMap := make(map[string]int64, len(dailyAdoptedRows))
+	for _, row := range dailyAdoptedRows {
+		adoptedMap[row.Date] = row.Count
+	}
+	trend := make([]vo.TrendItem, 0, len(dailyTotalRows))
+	for _, row := range dailyTotalRows {
+		rate := 0.0
+		if row.Count > 0 {
+			rate = float64(adoptedMap[row.Date]) / float64(row.Count)
+		}
+		trend = append(trend, vo.TrendItem{
+			Date:         row.Date,
+			AdoptionRate: rate,
+		})
+	}
+	report.Trend = trend
+
+	return report, nil
+}
+
+// ==================== 内部方法 ====================
+
+func (s *RecommendationService) validateImageFormat(imageURL string) error {
+	if imageURL == "" {
+		return common.NewBizError(common.PARAM_ERROR, "imageId和imageUrl至少提供一个")
+	}
+	lower := strings.ToLower(imageURL)
+	if idx := strings.Index(lower, "?"); idx > 0 {
+		lower = lower[:idx]
+	}
+	for _, ext := range imageExtensions {
+		if strings.HasSuffix(lower, ext) {
+			return nil
+		}
+	}
+	return common.NewBizError(common.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "不支持的文件类型，仅支持图片格式")
+}
+
+func (s *RecommendationService) getEnabledRules(ctx context.Context) []model.SysRecommendationRule {
+	s.mu.RLock()
+	if len(s.ruleCache) > 0 {
+		rules := s.ruleCache
+		s.mu.RUnlock()
+		return rules
+	}
+	s.mu.RUnlock()
+	return s.refreshRuleCache(ctx)
+}
+
+func (s *RecommendationService) refreshRuleCache(ctx context.Context) []model.SysRecommendationRule {
+	rules, err := s.ruleRepo.FindEnabled(ctx)
+	if err != nil || len(rules) == 0 {
+		return nil
+	}
+	s.mu.Lock()
+	s.ruleCache = rules
+	s.mu.Unlock()
+	return rules
+}
+
+func (s *RecommendationService) matchRulesByScene(rules []model.SysRecommendationRule, sceneType string) []model.SysRecommendationRule {
+	var matched []model.SysRecommendationRule
+	for _, r := range rules {
+		if r.SceneType == sceneType {
+			matched = append(matched, r)
+		}
+	}
+	sort.Slice(matched, func(i, j int) bool {
+		return matched[i].Weight > matched[j].Weight
+	})
+	return matched
+}
+
+func (s *RecommendationService) computeMatchScore(modelID string, matchedRules []model.SysRecommendationRule) int {
+	maxWeight := 0
+	for _, r := range matchedRules {
+		var ids []string
+		if err := json.Unmarshal([]byte(r.ModelIds), &ids); err != nil {
+			continue
+		}
+		for _, id := range ids {
+			if id == modelID && r.Weight > maxWeight {
+				maxWeight = r.Weight
+			}
+		}
+	}
+	if maxWeight > 100 {
+		maxWeight = 100
+	}
+	return maxWeight
+}
+
+func (s *RecommendationService) buildReason(sceneType, modelName string) string {
+	reason := reasonTemplates[sceneType]
+	if reason == "" {
+		reason = "综合表现优秀"
+	}
+	return modelName + "：" + reason
+}
+
+func (s *RecommendationService) toRuleVO(entity *model.SysRecommendationRule) vo.RecommendationRuleVO {
+	var ids []string
+	json.Unmarshal([]byte(entity.ModelIds), &ids)
+	if ids == nil {
+		ids = []string{}
+	}
+	return vo.RecommendationRuleVO{
+		ID:        entity.ID,
+		RuleName:  entity.RuleName,
+		SceneType: entity.SceneType,
+		ModelIds:  ids,
+		Weight:    entity.Weight,
+		Enabled:   entity.Enabled == 1,
+	}
+}
+
+// parseDateRange 校验 yyyy-MM-dd 格式并转换为查询用时间边界
+func (s *RecommendationService) parseDateRange(startDate, endDate string) (string, string, error) {
+	const layout = "2006-01-02"
+	startTime := ""
+	endTime := ""
+	if startDate != "" {
+		if _, err := time.Parse(layout, startDate); err != nil {
+			return "", "", common.NewBizError(common.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd")
+		}
+		startTime = startDate + " 00:00:00"
+	}
+	if endDate != "" {
+		if _, err := time.Parse(layout, endDate); err != nil {
+			return "", "", common.NewBizError(common.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd")
+		}
+		endTime = endDate + " 23:59:59"
+	}
+	return startTime, endTime, nil
+}
+
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}

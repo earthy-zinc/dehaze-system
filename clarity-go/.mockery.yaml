@@ -1,0 +1,150 @@
+with-expecter: true
+dir: internal/repository/mocks
+outpkg: mocks
+packages:
+  github.com/earthyzinc/clarity-go/internal/repository/api_key:
+    interfaces:
+      IApiKeyRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/dataset:
+    interfaces:
+      IDatasetRepository: {}
+      IDatasetItemRepository: {}
+      IDatasetStatsRepository: {}
+      IDatasetItemFileRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/dept:
+    interfaces:
+      IDeptRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/dict:
+    interfaces:
+      IDictTypeRepository: {}
+      IDictRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/eval_log:
+    interfaces:
+      IEvalLogRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/favorite:
+    interfaces:
+      IFavoriteRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/feedback:
+    interfaces:
+      IRatingRepository: {}
+      IFeedbackRepository: {}
+      IFeedbackReplyRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/file:
+    interfaces:
+      IFileRepository: {}
+      IItemFileRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/input_history:
+    interfaces:
+      IInputHistoryRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/member:
+    interfaces:
+      IMemberRepository: {}
+      IMemberBenefitRepository: {}
+      IMemberGrowthLogRepository: {}
+      IMemberSignInRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/menu:
+    interfaces:
+      IMenuRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/message:
+    interfaces:
+      IMessageRepository: {}
+      IMessageTemplateRepository: {}
+      INotificationSettingRepository: {}
+      IAnnouncementRepository: {}
+      IUserLookupRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/order:
+    interfaces:
+      IOrderRepository: {}
+      IPaymentRecordRepository: {}
+      IRefundRecordRepository: {}
+      IAutoRenewRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/pkgsale:
+    interfaces:
+      IPackageRepository: {}
+      ICouponRepository: {}
+      IUserCouponRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/pred_log:
+    interfaces:
+      IPredLogRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/preset:
+    interfaces:
+      IPresetRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/recommendation:
+    interfaces:
+      RecommendationRepository: {}
+      RuleRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/role:
+    interfaces:
+      IRoleRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/task:
+    interfaces:
+      ITaskRepository: {}
+  github.com/earthyzinc/clarity-go/internal/repository/user:
+    interfaces:
+      IUserRepository: {}
+
+  # ==================== Service 层接口 ====================
+  github.com/earthyzinc/clarity-go/internal/service/import_export:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      TaskService: {}
+  github.com/earthyzinc/clarity-go/internal/service/member:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IMemberService: {}
+  github.com/earthyzinc/clarity-go/internal/service/auth:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IAuthService: {}
+  github.com/earthyzinc/clarity-go/internal/service/user:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IUserService: {}
+  github.com/earthyzinc/clarity-go/internal/service/dept:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IDeptService: {}
+  github.com/earthyzinc/clarity-go/internal/service/dict:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IDictTypeService: {}
+      IDictService: {}
+  github.com/earthyzinc/clarity-go/internal/service/menu:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IMenuService: {}
+  github.com/earthyzinc/clarity-go/internal/service/role:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      IRoleService: {}
+  github.com/earthyzinc/clarity-go/internal/service/task:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      ITaskService: {}
+      AsyncTaskExecutor: {}
+
+  # ==================== 基础设施层接口 ====================
+  github.com/earthyzinc/clarity-go/pkg/cache/types:
+    config:
+      dir: internal/service/mocks
+      outpkg: mocks
+    interfaces:
+      ICache: {}

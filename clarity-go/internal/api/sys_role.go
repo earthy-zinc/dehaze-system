@@ -1,0 +1,318 @@
+package api
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/earthyzinc/clarity-go/internal/model/bo"
+	"github.com/earthyzinc/clarity-go/internal/model/query"
+	roleservice "github.com/earthyzinc/clarity-go/internal/service/role"
+	"github.com/earthyzinc/clarity-go/pkg/common"
+	"github.com/earthyzinc/clarity-go/pkg/security"
+	"github.com/gin-gonic/gin"
+)
+
+type SysRoleApi struct {
+	roleService roleservice.IRoleService
+}
+
+func NewSysRoleApi(roleService roleservice.IRoleService) *SysRoleApi {
+	return &SysRoleApi{
+		roleService: roleService,
+	}
+}
+
+// GetRolePage 角色分页列表
+// @Summary 角色分页列表
+// @Description 获取角色分页列表
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param keywords query string false "关键字(角色名称/角色编码)"
+// @Param pageNum query int false "页码"
+// @Param pageSize query int false "每页条数"
+// @Success 200 {object} common.Response{data=common.PageResult}
+// @Router /api/v1/roles/page [get]
+func (api *SysRoleApi) GetRolePage(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 解析查询参数
+	var queryParams query.RolePageQuery
+	queryParams.Keywords = c.Query("keywords")
+	pageNum, pageSize, ok := parsePagination(c)
+	if !ok {
+		return
+	}
+	queryParams.PageNum, queryParams.PageSize = pageNum, pageSize
+
+	// 调用服务获取分页数据
+	result, err := api.roleService.GetPage(ctx, &queryParams)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(result, "查询成功", c)
+}
+
+// ListRoleOptions 角色下拉列表
+// @Summary 角色下拉列表
+// @Description 获取角色下拉列表
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Success 200 {object} common.Response{data=[]vo.Option}
+// @Router /api/v1/roles/options [get]
+func (api *SysRoleApi) ListRoleOptions(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 非超级管理员不显示超级管理员角色
+	isRoot := security.IsRoot(c)
+
+	// 调用服务获取角色下拉列表
+	options, err := api.roleService.GetOptions(ctx, isRoot)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(options, common.SUCCESS.Msg, c)
+}
+
+// AddRole 新增角色
+// @Summary 新增角色
+// @Description 新增角色
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param roleForm body bo.RoleFormBO true "角色表单对象"
+// @Success 200 {object} common.Response
+// @Router /api/v1/roles [post]
+func (api *SysRoleApi) AddRole(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 绑定请求参数
+	var roleFormBO bo.RoleFormBO
+	if err := c.ShouldBindJSON(&roleFormBO); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 调用服务保存角色
+	err := api.roleService.Create(ctx, &roleFormBO)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("新增角色成功", c)
+}
+
+// GetRoleForm 角色表单数据
+// @Summary 角色表单数据
+// @Description 获取角色表单数据
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param roleId path int true "角色ID"
+// @Success 200 {object} common.Response{data=bo.RoleFormBO}
+// @Router /api/v1/roles/{roleId}/form [get]
+func (api *SysRoleApi) GetRoleForm(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取路径参数
+	roleIdStr := c.Param("roleId")
+	roleId, err := strconv.ParseInt(roleIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
+		return
+	}
+
+	// 调用服务获取角色表单数据
+	roleFormBO, err := api.roleService.GetFormData(ctx, roleId)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(roleFormBO, "查询成功", c)
+}
+
+// UpdateRole 修改角色
+// @Summary 修改角色
+// @Description 修改角色
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param id path int true "角色ID"
+// @Param roleForm body bo.RoleFormBO true "角色表单对象"
+// @Success 200 {object} common.Response
+// @Router /api/v1/roles/{id} [put]
+func (api *SysRoleApi) UpdateRole(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取路径参数
+	idStr := c.Param("roleId")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
+		return
+	}
+
+	// 绑定请求参数
+	var roleFormBO bo.RoleFormBO
+	if err := c.ShouldBindJSON(&roleFormBO); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 调用服务保存角色
+	err = api.roleService.Update(ctx, id, &roleFormBO)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("修改角色成功", c)
+}
+
+// DeleteRoles 删除角色
+// @Summary 删除角色
+// @Description 删除角色
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param ids path string true "删除角色，多个以英文逗号(,)拼接"
+// @Success 200 {object} common.Response
+// @Router /api/v1/roles/{ids} [delete]
+func (api *SysRoleApi) DeleteRoles(c *gin.Context) {
+	ctx := c.Request.Context()
+	ids, err := parseIDsFromCSV(c.Param("ids"))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if err := api.roleService.Delete(ctx, ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithMessage("删除角色成功", c)
+}
+
+// UpdateRoleStatus 修改角色状态
+// @Summary 修改角色状态
+// @Description 修改角色状态
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param roleId path int true "角色ID"
+// @Param status query int true "状态(1:启用;0:禁用)"
+// @Success 200 {object} common.Response
+// @Router /api/v1/roles/{roleId}/status [patch]
+func (api *SysRoleApi) UpdateRoleStatus(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取路径参数
+	roleIdStr := c.Param("roleId")
+	roleId, err := strconv.ParseInt(roleIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
+		return
+	}
+
+	// 获取查询参数
+	statusStr := c.Query("status")
+	status, err := strconv.Atoi(statusStr)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "状态参数格式不正确"))
+		return
+	}
+
+	// 调用服务更新角色状态
+	err = api.roleService.UpdateStatus(ctx, roleId, int8(status))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("修改角色状态成功", c)
+}
+
+// GetRoleMenuIds 获取角色的菜单ID集合
+// @Summary 获取角色的菜单ID集合
+// @Description 获取角色的菜单ID集合
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param roleId path int true "角色ID"
+// @Success 200 {object} common.Response{data=[]int64}
+// @Router /api/v1/roles/{roleId}/menuIds [get]
+func (api *SysRoleApi) GetRoleMenuIds(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取路径参数
+	roleIdStr := c.Param("roleId")
+	roleId, err := strconv.ParseInt(roleIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
+		return
+	}
+
+	// 调用服务获取角色菜单ID集合
+	menuIds, err := api.roleService.GetMenuIDs(ctx, roleId)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(menuIds, "查询成功", c)
+}
+
+// AssignMenusToRole 分配菜单(包括按钮权限)给角色
+// @Summary 分配菜单(包括按钮权限)给角色
+// @Description 分配菜单(包括按钮权限)给角色
+// @Tags 角色接口
+// @Accept application/json
+// @Produce application/json
+// @Param roleId path int true "角色ID"
+// @Param menuIds body []int64 true "菜单ID列表"
+// @Success 200 {object} common.Response
+// @Router /api/v1/roles/{roleId}/menus [put]
+func (api *SysRoleApi) AssignMenusToRole(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取路径参数
+	roleIdStr := c.Param("roleId")
+	roleId, err := strconv.ParseInt(roleIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
+		return
+	}
+
+	// 绑定请求参数
+	var menuIds []int64
+	if err := c.ShouldBindJSON(&menuIds); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 操作者权限上下文（权限提升校验用）：ROOT 忽略权限判断
+	operatorIsRoot := security.IsRoot(c)
+	operatorPerms := make([]string, 0)
+	if claims := security.GetUserInfo(c); claims != nil {
+		for _, authority := range claims.Authorities {
+			if !strings.HasPrefix(authority, "ROLE_") {
+				operatorPerms = append(operatorPerms, authority)
+			}
+		}
+	}
+
+	// 调用服务分配菜单给角色
+	err = api.roleService.AssignMenus(ctx, roleId, menuIds, operatorPerms, operatorIsRoot)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("分配菜单给角色成功", c)
+}

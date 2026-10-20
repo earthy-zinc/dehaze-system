@@ -1,0 +1,47 @@
+package config
+
+import (
+	"sync"
+
+	"github.com/earthyzinc/clarity-go/pkg/config/options"
+)
+
+type AppConfig struct {
+	JWT       options.JWT       `mapstructure:"jwt" json:"jwt" yaml:"jwt"`
+	Zap       options.Zap       `mapstructure:"zap" json:"zap" yaml:"zap"`
+	Cache     options.Cache     `mapstructure:"cache" json:"cache" yaml:"cache"`
+	System    options.System    `mapstructure:"system" json:"system" yaml:"system"`
+	Captcha   options.Captcha   `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
+	DB        options.DB        `mapstructure:"db" json:"db" yaml:"db"`
+	Mongo     options.Mongo     `mapstructure:"mongo" json:"mongo" yaml:"mongo"`
+	ES        options.ES        `mapstructure:"es" json:"es" yaml:"es"`
+	File      options.File      `mapstructure:"file" json:"file" yaml:"file"`
+	Algorithm options.Algorithm `mapstructure:"algorithm" json:"algorithm" yaml:"algorithm"`
+	AI        options.AI        `mapstructure:"ai" json:"ai" yaml:"ai"`
+	RabbitMQ  options.RabbitMQ  `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
+	Kafka     options.Kafka     `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
+	Cors      options.CORS      `mapstructure:"cors" json:"cors" yaml:"cors"`
+	Session   options.Session   `mapstructure:"session" json:"session" yaml:"session"`
+	XxlJob    options.XxlJob    `mapstructure:"xxljob" json:"xxljob" yaml:"xxljob"`
+	Payment   options.Payment   `mapstructure:"payment" json:"payment" yaml:"payment"`
+}
+
+var (
+	Config     *AppConfig
+	configLock sync.RWMutex
+)
+
+func GetConfig() *AppConfig {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	if Config == nil {
+		panic("global config not loaded, call config.Viper() first")
+	}
+	return Config
+}
+
+func setConfig(cfg *AppConfig) {
+	configLock.Lock()
+	defer configLock.Unlock()
+	Config = cfg
+}

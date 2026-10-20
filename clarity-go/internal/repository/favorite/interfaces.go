@@ -1,0 +1,35 @@
+package favorite
+
+import (
+	"context"
+
+	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/query"
+)
+
+// FavoriteWithTarget 收藏记录+目标对象名称/缩略图联合结果
+type FavoriteWithTarget struct {
+	model.SysFavorite
+	ModelName   string `gorm:"column:model_name" json:"modelName"`
+	DatasetName string `gorm:"column:dataset_name" json:"datasetName"`
+	DatasetImg  string `gorm:"column:dataset_img" json:"datasetImg"`
+}
+
+// IFavoriteRepository 收藏数据访问接口
+type IFavoriteRepository interface {
+	Create(ctx context.Context, f *model.SysFavorite) error
+	FindByUserAndTarget(ctx context.Context, userID int64, targetType string, targetID int64) (*model.SysFavorite, error)
+	Upsert(ctx context.Context, f *model.SysFavorite) error
+	FindPage(ctx context.Context, userID int64, q *query.FavoritePageQuery) ([]FavoriteWithTarget, int64, error)
+	CountByUserID(ctx context.Context, userID int64) (int64, error)
+	CountGroupByType(ctx context.Context, userID int64, targetType string) ([]CountByTypeRow, error)
+	DeleteByIDs(ctx context.Context, userID int64, ids []int64) error
+	UpdateByID(ctx context.Context, id int64, updates map[string]any) error
+	MarkInvalid(ctx context.Context, targetType string, targetIDs []int64) error
+}
+
+// CountByTypeRow 按类型计数行
+type CountByTypeRow struct {
+	TargetType string `gorm:"column:target_type" json:"targetType"`
+	Count      int64  `gorm:"column:count" json:"count"`
+}
