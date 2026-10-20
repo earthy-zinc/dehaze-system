@@ -1,0 +1,92 @@
+package com.pei.clarity.service;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.pei.clarity.model.dto.UserAuthInfo;
+import com.pei.clarity.model.entity.SysUser;
+import com.pei.clarity.model.form.UserForm;
+import com.pei.clarity.model.query.UserPageQuery;
+import com.pei.clarity.model.vo.UserInfoVO;
+import com.pei.clarity.model.vo.UserPageVO;
+
+/**
+ * 用户业务接口
+ *
+ * @author earthyzinc
+ * @since 2022/1/14
+ */
+public interface SysUserService extends IService<SysUser> {
+
+    /**
+     * 用户分页列表
+     *
+     * @return
+     */
+    IPage<UserPageVO> listPagedUsers(UserPageQuery queryParams);
+
+    /**
+     * 获取用户表单数据
+     *
+     * @param userId
+     * @return
+     */
+    UserForm getUserFormData(Long userId);
+
+    /**
+     * 新增用户
+     *
+     * @param userForm 用户表单对象
+     * @return
+     */
+    boolean saveUser(UserForm userForm);
+
+    /**
+     * 修改用户
+     *
+     * @param userId   用户ID
+     * @param userForm 用户表单对象
+     * @return
+     */
+    boolean updateUser(Long userId, UserForm userForm);
+
+    /**
+     * 删除用户
+     *
+     * @param idsStr 用户ID，多个以英文逗号(,)分割
+     * @return
+     */
+    boolean deleteUsers(String idsStr);
+
+    /**
+     * 修改用户密码
+     *
+     * @param userId   用户ID
+     * @param password 用户密码
+     * @return
+     */
+    boolean updatePassword(Long userId, String password);
+
+    /**
+     * 修改用户状态（含超级管理员禁用保护与自禁保护）
+     *
+     * @param userId 用户ID
+     * @param status 用户状态(1:启用;0:禁用)
+     * @return
+     */
+    boolean updateUserStatus(Long userId, Integer status);
+
+    /**
+     * 根据用户名获取认证信息
+     *
+     * @param username 用户名
+     * @return {@link UserAuthInfo}
+     */
+    UserAuthInfo getUserAuthInfo(String username);
+
+    /**
+     * 获取登录用户信息
+     *
+     * @return
+     */
+    UserInfoVO getCurrentUserInfo();
+}

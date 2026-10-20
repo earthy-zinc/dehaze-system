@@ -1,0 +1,41 @@
+package com.pei.clarity.model.query;
+
+import com.pei.clarity.common.base.BasePageQuery;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import org.springframework.format.annotation.DateTimeFormat;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
+@Schema(description = "评价后台分页查询参数")
+public class RatingPageQuery extends BasePageQuery {
+
+    @Schema(description = "用户名/昵称关键字")
+    private String keywords;
+
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
+
+    @Schema(description = "评分下限")
+    private Integer ratingMin;
+
+    @Schema(description = "评分上限")
+    private Integer ratingMax;
+
+    @Schema(description = "是否有文字")
+    private Boolean hasComment;
+
+    @Schema(description = "标签筛选")
+    private List<String> tags;
+
+    @Schema(description = "起始时间")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startTime;
+
+    @Schema(description = "结束时间")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime endTime;
+}

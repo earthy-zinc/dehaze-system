@@ -1,0 +1,44 @@
+package com.pei.clarity.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.clarity.common.base.BaseEntity;
+import java.io.Serial;
+import java.time.LocalDateTime;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Data
+@EqualsAndHashCode(callSuper = false)
+@TableName("sys_payment_record")
+public class SysPaymentRecord extends BaseEntity {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private Long orderId;
+
+    private Long userId;
+
+    private String paymentNo;
+
+    private String channel;
+
+    private Long amount;
+
+    private Integer status;
+
+    private LocalDateTime callbackTime;
+
+    private String callbackContent;
+
+    private String errorMessage;
+
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+}

@@ -1,0 +1,82 @@
+package com.pei.clarity.service;
+
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.pei.clarity.common.model.Option;
+import com.pei.clarity.model.entity.SysMenu;
+import com.pei.clarity.model.form.MenuForm;
+import com.pei.clarity.model.query.MenuQuery;
+import com.pei.clarity.model.vo.MenuVO;
+import com.pei.clarity.model.vo.RouteVO;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * 菜单业务接口
+ *
+ * @author earthyzinc
+ * @since 2020/11/06
+ */
+public interface SysMenuService extends IService<SysMenu> {
+
+    /**
+     * 获取菜单表格列表
+     *
+     * @return
+     */
+    List<MenuVO> listMenus(MenuQuery queryParams);
+
+    /**
+     * 获取菜单下拉列表
+     *
+     * @return
+     */
+    List<Option<Long>> listMenuOptions();
+
+    /**
+     * 新增菜单
+     *
+     * @param menu
+     * @return
+     */
+    boolean saveMenu(MenuForm menu);
+
+    /**
+     * 获取路由列表
+     *
+     * @return
+     */
+    List<RouteVO> listRoutes();
+
+    /**
+     * 修改菜单显示状态
+     *
+     * @param menuId 菜单ID
+     * @param visible 是否显示(1->显示；2->隐藏)
+     * @return
+     */
+    boolean updateMenuVisible(Long menuId, Integer visible);
+
+    /**
+     * 获取角色权限集合
+     *
+     * @param roles
+     * @return
+     */
+    Set<String> listRolePerms(Set<String> roles);
+
+    /**
+     * 获取菜单表单数据
+     *
+     * @param id 菜单ID
+     * @return
+     */
+    MenuForm getMenuForm(Long id);
+
+    /**
+     * 批量删除菜单（级联删除子孙菜单，并清理角色-菜单关联）
+     *
+     * @param ids 菜单ID集合
+     * @return 是否删除成功
+     */
+    boolean deleteMenu(List<Long> ids);
+}

@@ -1,0 +1,34 @@
+package com.pei.clarity.model.vo;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.LocalDateTime;
+import java.util.Map;
+import lombok.Data;
+
+/**
+ * 评测趋势行
+ *
+ * @author clarity
+ */
+@Data
+public class AiEvalTrendVO {
+
+    private Long runId;
+
+    private Long agentId;
+
+    private String agentName;
+
+    private String triggerType;
+
+    private Integer status;
+
+    private Double totalScore;
+
+    private Map<String, Object> dimensions;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+}

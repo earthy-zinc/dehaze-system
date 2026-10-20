@@ -1,0 +1,367 @@
+package com.pei.clarity.common.exception;
+
+import cn.hutool.core.text.CharSequenceUtil;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.pei.clarity.common.result.Result;
+import com.pei.clarity.common.result.ResultCode;
+import jakarta.servlet.ServletException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.sql.SQLSyntaxErrorException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.jdbc.BadSqlGrammarException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+
+/**
+ * 全局系统异常处理器
+ * <p>
+ * 调整异常处理的HTTP状态码，丰富异常处理类型
+ *
+ * @author Gadfly
+ * @since 2020-02-25 13:54
+ **/
+@RestControllerAdvice
+@Slf4j
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BindException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(BindException e) {
+        String msg = e.getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.PARAM_ERROR, msg);
+    }
+
+    /**
+     * RequestParam参数的校验
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(ConstraintViolationException e) {
+        String msg = e.getConstraintViolations().stream()
+                .map(ConstraintViolation::getMessage)
+                .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.PARAM_ERROR, msg);
+    }
+
+    /**
+     * RequestBody参数的校验
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(MethodArgumentNotValidException e) {
+        String msg = e.getBindingResult().getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining("；"));
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.warn("参数校验失败: {}", msg);
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.PARAM_ERROR, msg);
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    @ResponseStatus(org.springframework.http.HttpStatus.NOT_FOUND)
+    public <T> Result<T> processNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        MDC.put("code", ResultCode.RESOURCE_NOT_FOUND.getCode());
+        MDC.put("status", "404");
+        log.warn("静态资源不存在: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public <T> Result<T> processException(NoHandlerFoundException e) {
+        MDC.put("code", ResultCode.RESOURCE_NOT_FOUND.getCode());
+        MDC.put("status", "404");
+        log.error("HTTP 异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(MissingServletRequestParameterException e) {
+        MDC.put("code", ResultCode.PARAM_IS_NULL.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.PARAM_IS_NULL);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(MethodArgumentTypeMismatchException e) {
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: 类型错误");
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.PARAM_ERROR, "类型错误");
+    }
+
+    @ExceptionHandler(ServletException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(ServletException e) {
+        MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("HTTP 异常: {}", e.getMessage(), e);
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleIllegalArgumentException(IllegalArgumentException e) {
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(JsonProcessingException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleJsonProcessingException(JsonProcessingException e) {
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(HttpMessageNotReadableException e) {
+        String errorMessage = "请求体不可为空";
+        Throwable cause = e.getCause();
+        if (cause != null) {
+            errorMessage = convertMessage(cause);
+        }
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", errorMessage);
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(errorMessage);
+    }
+
+    @ExceptionHandler(TypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> processException(TypeMismatchException e) {
+        MDC.put("code", ResultCode.PARAM_ERROR.getCode());
+        MDC.put("status", "400");
+        log.error("参数校验失败: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(BadSqlGrammarException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public <T> Result<T> handleBadSqlGrammarException(BadSqlGrammarException e) {
+        String errorMsg = e.getMessage();
+        if (CharSequenceUtil.isNotBlank(errorMsg) && errorMsg.contains("denied to user")) {
+            MDC.put("code", ResultCode.FORBIDDEN_OPERATION.getCode());
+            MDC.put("status", "500");
+            log.error("数据库异常: {}", e.getMessage(), e);
+            MDC.remove("code");
+            MDC.remove("status");
+            return Result.failed(ResultCode.FORBIDDEN_OPERATION);
+        }
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(SQLSyntaxErrorException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public <T> Result<T> processSQLSyntaxErrorException(SQLSyntaxErrorException e) {
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleBizException(BusinessException e) {
+        String code =
+                e.getResultCode() != null ? e.getResultCode().getCode() : ResultCode.SYSTEM_EXECUTION_ERROR.getCode();
+        MDC.put("code", code);
+        MDC.put("status", "400");
+        log.warn("业务异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        if (e.getResultCode() != null) {
+            return Result.failed(e.getResultCode(), e.getMessage());
+        }
+        return Result.failed(e.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
+        MDC.put("code", ResultCode.FILE_TOO_LARGE.getCode());
+        MDC.put("status", "400");
+        log.warn("上传文件超过大小限制: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.FILE_TOO_LARGE, "文件大小超过限制");
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public Result<Void> handleRateLimitException(RateLimitException ex) {
+        MDC.put("code", ResultCode.RATE_LIMIT.getCode());
+        MDC.put("status", "429");
+        log.warn("业务异常: {}", ex.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.RATE_LIMIT, ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleDuplicateKeyException(DuplicateKeyException e) {
+        MDC.put("code", ResultCode.DATA_EXISTS.getCode());
+        MDC.put("status", "400");
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+        if (e instanceof DuplicateKeyException) {
+            MDC.put("code", ResultCode.DATA_EXISTS.getCode());
+            MDC.put("status", "400");
+            log.error("数据库异常: {}", e.getMessage());
+            MDC.remove("code");
+            MDC.remove("status");
+            return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
+        }
+        MDC.put("code", ResultCode.DATABASE_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("数据库异常: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
+        return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR, "数据完整性约束违反: " + e.getMessage());
+    }
+
+    /**
+     * 越权访问（授权失败）：403 + A0301 信封。
+     *
+     * <p>口径对齐 clarity-python 的 HTTPException 处理器（403 映射为 ACCESS_UNAUTHORIZED），
+     * 与过滤器链拒绝（{@code MyAccessDeniedHandler}）保持同一状态码与信封，
+     * 使控制层内主动抛出的越权异常（如会话审计视角越权）在跨端表现一致。
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public <T> Result<T> handleAccessDeniedException(AccessDeniedException e) {
+        MDC.put("code", ResultCode.ACCESS_UNAUTHORIZED.getCode());
+        MDC.put("status", "403");
+        log.warn("越权访问: {}", e.getMessage());
+        MDC.remove("code");
+        MDC.remove("status");
+        return Result.failed(ResultCode.ACCESS_UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public <T> Result<T> handleException(Exception e) throws Exception {
+        // 认证异常继续抛出，交给 Security 的 AuthenticationEntryPoint（AccessDeniedException 已由专用处理器返回 403 信封）
+        if (e instanceof AuthenticationException) {
+            throw e;
+        }
+        MDC.put("code", ResultCode.SYSTEM_EXECUTION_ERROR.getCode());
+        MDC.put("status", "500");
+        MDC.put("exc_info", stackTraceToString(e));
+        log.error("未处理异常: {}", e);
+        MDC.remove("code");
+        MDC.remove("status");
+        MDC.remove("exc_info");
+        return Result.failed(e.getLocalizedMessage());
+    }
+
+    private static String stackTraceToString(Throwable e) {
+        StringWriter sw = new StringWriter();
+        e.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
+    }
+
+    /**
+     * 传参类型错误时，用于消息转换
+     *
+     * @param throwable 异常
+     * @return 错误信息
+     */
+    private String convertMessage(Throwable throwable) {
+        String error = throwable.toString();
+        String regulation = "\\[\"(.*?)\"]+";
+        Pattern pattern = Pattern.compile(regulation);
+        Matcher matcher = pattern.matcher(error);
+        String group = "";
+        if (matcher.find()) {
+            String matchString = matcher.group();
+            matchString = matchString.replace("[", "").replace("]", "");
+            matchString = "%s字段类型错误".formatted(matchString.replace("\"", ""));
+            group += matchString;
+        }
+        return group;
+    }
+}

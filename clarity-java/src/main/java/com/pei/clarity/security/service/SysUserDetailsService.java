@@ -1,0 +1,50 @@
+package com.pei.clarity.security.service;
+
+import com.pei.clarity.common.exception.BusinessException;
+import com.pei.clarity.model.dto.UserAuthInfo;
+import com.pei.clarity.security.model.SysUserDetails;
+import com.pei.clarity.service.SysUserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+/**
+ * 系统用户认证
+ *
+ * @author earthyzinc
+ */
+@Service
+@RequiredArgsConstructor
+public class SysUserDetailsService implements UserDetailsService {
+
+    private final SysUserService sysUserService;
+
+    /**
+     * 加载用户认证信息。
+     * <p>
+     * 缓存由 {@link SysUserService#getUserAuthInfo(String)} 上的 @Cacheable 提供，
+     * 缓存对象为 {@link UserAuthInfo}（纯 POJO，仅含 Long/String/Integer/Set&lt;String&gt; 字段，Jackson 友好）。
+     * <p>
+     * 不直接缓存 {@link SysUserDetails} 的原因：其 authorities 字段为 {@code Set<SimpleGrantedAuthority>}，
+     * SimpleGrantedAuthority 是 Spring Security 的 final 类，无默认构造器、无 @JsonCreator，
+     * Jackson 无法反序列化；缓存 SysUserDetails 会导致读取时反序列化失败被误判为"密码错误"，
+     * 连锁触发账号锁定。SysUserDetails 改为在缓存命中后于内存中由 UserAuthInfo 构造。
+     */
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        UserAuthInfo userAuthInfo;
+        try {
+            userAuthInfo = sysUserService.getUserAuthInfo(username);
+        } catch (BusinessException e) {
+            // 用户不存在时 getUserAuthInfo 抛业务异常，转成 UsernameNotFoundException
+            // 使 DaoAuthenticationProvider 按凭证错误（A0210）处理，而非包装成"认证服务不可用"
+            throw new UsernameNotFoundException("用户不存在: " + username, e);
+        }
+        if (userAuthInfo == null) {
+            throw new UsernameNotFoundException("用户不存在: " + username);
+        }
+        return new SysUserDetails(userAuthInfo);
+    }
+}

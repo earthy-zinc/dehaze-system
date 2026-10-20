@@ -1,0 +1,63 @@
+package com.pei.clarity.model.form;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import java.util.List;
+import lombok.Data;
+
+/**
+ * 用户表单对象
+ *
+ * @author earthyzinc
+ * @since 2022/4/12 11:04
+ */
+@Schema(description = "用户表单对象")
+@Data
+public class UserForm {
+
+    @Schema(description = "用户ID")
+    private Long id;
+
+    @Schema(description = "用户名")
+    @NotBlank(message = "用户名不能为空")
+    @Size(max = 64, message = "用户名长度不能超过64")
+    private String username;
+
+    @Schema(description = "昵称")
+    @NotBlank(message = "昵称不能为空")
+    @Size(max = 64, message = "昵称长度不能超过64")
+    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "昵称不能包含特殊字符")
+    private String nickname;
+
+    @Schema(description = "手机号码")
+    @Pattern(regexp = "^$|^1(3\\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\\d|9[0-35-9])\\d{8}$", message = "手机号码格式不正确")
+    private String mobile;
+
+    @Schema(description = "性别")
+    private Integer gender;
+
+    @Schema(description = "用户头像")
+    private String avatar;
+
+    @Schema(description = "邮箱")
+    @Pattern(regexp = "^$|^[A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,}$", message = "邮箱格式不正确")
+    private String email;
+
+    @Schema(description = "用户状态(1:正常;0:禁用)")
+    private Integer status;
+
+    @Schema(description = "部门ID")
+    @NotNull(message = "部门ID不能为空")
+    private Long deptId;
+
+    @Schema(description = "用户类型(personal:个人;enterprise:企业)")
+    private String userType;
+
+    @Schema(description = "角色ID集合")
+    @NotEmpty(message = "用户角色不能为空")
+    private List<Long> roleIds;
+}

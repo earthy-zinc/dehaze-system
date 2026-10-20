@@ -1,0 +1,54 @@
+package com.pei.clarity.model.vo;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import lombok.Data;
+
+/**
+ * 历史记录视图对象
+ *
+ * @author earthyzinc
+ * @since 2024-06-12
+ */
+@Schema(description = "历史记录视图对象")
+@Data
+public class InputHistoryVO {
+
+    @Schema(description = "记录ID")
+    private Long id;
+
+    @Schema(description = "原始图片URL")
+    private String originalImageUrl;
+
+    @Schema(description = "原始缩略图URL")
+    private String originalThumbnailUrl;
+
+    @Schema(description = "处理结果图片URL")
+    private String resultImageUrl;
+
+    @Schema(description = "结果缩略图URL")
+    private String resultThumbnailUrl;
+
+    @Schema(description = "图像模型标识（统一模型规范 slug）")
+    private String modelId;
+
+    @Schema(description = "模型名称")
+    private String modelName;
+
+    @Schema(description = "模型参数")
+    private String modelParams;
+
+    @Schema(description = "处理耗时（毫秒）")
+    private Integer processingTime;
+
+    @Schema(description = "处理状态（1=成功，2=失败，3=处理中），创建时确定，不随处理进度更新")
+    private Integer status;
+
+    @Schema(description = "图片来源")
+    private String inputSource;
+
+    @Schema(description = "创建时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+}

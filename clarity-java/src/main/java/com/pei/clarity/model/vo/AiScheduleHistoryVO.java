@@ -1,0 +1,42 @@
+package com.pei.clarity.model.vo;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import lombok.Data;
+
+/**
+ * 定时任务执行历史项
+ *
+ * @author clarity
+ */
+@Data
+public class AiScheduleHistoryVO {
+
+    private Long id;
+
+    private Long scheduleId;
+
+    private Integer status;
+
+    private String skipReason;
+
+    private BigDecimal credits;
+
+    private Integer durationMs;
+
+    private String errorMsg;
+
+    private Long conversationId;
+
+    private String requestId;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime windowStart;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+}

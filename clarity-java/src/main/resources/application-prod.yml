@@ -1,0 +1,269 @@
+server:
+  # 生产由前置代理转发到 80；pre 复用本 profile 时用 JAVA_SERVER_PORT=8989 覆盖
+  # （不叫 SERVER_PORT：Python 端有同名配置项，会被误伤）
+  port: ${JAVA_SERVER_PORT:80}
+
+# CORS 跨域配置 (生产环境通过环境变量 CORS_ALLOWED_ORIGINS 配置，逗号分隔)
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:8081}
+
+spring:
+  # prod 形态下关闭 devtools 热重启：pre 复用 prod profile，共享机上任何 maven 构建改写
+  # target/classes 都会触发热重启，重启上下文丢失 run.py 注入的 .env 导致启动失败（见《06-部署架构》§6.2）
+  devtools:
+    restart:
+      enabled: false
+  jackson:
+    ## 默认序列化时间格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    ## 默认序列化时区
+    time-zone: GMT+8
+    ## 空字段不下发（python 用 NonNullJSONResponse 全局剔除、go 用 omitempty，三端必须一致）
+    default-property-inclusion: non_null
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+  data:
+    redis:
+      database: ${REDIS_DATABASE}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 10s
+      lettuce:
+        pool:
+          # 连接池最大连接数 默认8 ，负数表示没有限制
+          max-active: 8
+          # 连接池最大阻塞等待时间（使用负值表示没有限制） 默认-1
+          max-wait: -1
+          # 连接池中的最大空闲连接 默认8
+          max-idle: 8
+          # 连接池中的最小空闲连接 默认0
+          min-idle: 0
+    mongodb:
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin
+  cache:
+    enabled: true
+    # 缓存类型 redis、none(不使用缓存)
+    type: redis
+    # 缓存时间(单位：ms)
+    redis:
+      time-to-live: 3600000
+      # 缓存null值，防止缓存穿透
+      cache-null-values: true
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 105MB
+
+mybatis-plus:
+  global-config:
+    db-config:
+      # 主键ID类型
+      id-type: none
+      # 逻辑删除字段名称
+      logic-delete-field: deleted
+      # 逻辑删除-删除值（原样拼接进SQL；id=删除时写入行id，保证唯一键含deleted后软删行不占键位）
+      logic-delete-value: id
+      # 逻辑删除-未删除值
+      logic-not-delete-value: 0
+  configuration:
+    # 驼峰下划线转换
+    map-underscore-to-camel-case: true
+
+
+# SQL 审计日志（结构化 JSON 输出至 info.log）
+# 生产环境仅记录慢查询与 SQL 错误，避免全量 SQL 冲刷日志
+clarity:
+  sql-log:
+    level: WARN
+    slow-threshold-ms: 500
+
+# 安全配置
+security:
+  jwt:
+    key: ${JWT_SECRET_KEY}
+    ttl: 7200
+    refresh-ttl: 604800
+  session:
+    cookie:
+      # 生产环境 HTTPS，启用 Secure 防止 Cookie 在明文传输中泄露（pre 覆盖为 false：pre 走 HTTP）
+      secure: ${SESSION_COOKIE_SECURE:true}
+      # 生产环境无代理前缀，Path=/api 限制 Cookie 仅在 API 路径携带
+      # （pre 覆盖为 /：pre 与 dev 一样经前端 Vite 代理前缀 /java-api 访问）
+      path: ${SESSION_COOKIE_PATH:/api}
+
+# 系统配置
+system:
+  # 多点登录控制：生产环境启用踢旧 Session，防止账号共享
+  use-multi-point: true
+  # 新用户默认密码（由根 .env 的 DEFAULT_PASSWORD 注入，与 Go/Python 端保持一致）
+  default-password: ${DEFAULT_PASSWORD}
+
+
+# 监控配置 (生产环境仅暴露必要端点)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  endpoint:
+    health:
+      show-details: WHEN_AUTHORIZED
+
+# 文件上传配置
+file:
+  # 上传类型 (minio OSS / local 本地存储 / nginx-static 外部 nginx 静态托管)
+  type: minio
+  # 上传文件基于url
+  baseUrl: http://127.0.0.1:8989/api/v1/files/download
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths；未配置时落到 <仓库根>/data/upload）
+  local:
+    uploadPath: ${UPLOAD_DIR:./data/upload}
+  # MinIO 对象存储服务
+  minio:
+    # 服务Endpoint
+    endpoint: http://${MINIO_HOST}:${MINIO_PORT}
+    # 访问凭据
+    access-key: ${MINIO_ACCESS_KEY}
+    # 凭据密钥
+    secret-key: ${MINIO_SECRET_KEY}
+    # 存储桶名称
+    bucket-name: ${MINIO_BUCKET}
+  # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
+  nginx-static:
+    # nginx 对外访问 baseUrl（必须带 scheme + host，端口对齐 python 的 NGINX_STATIC_PORT）
+    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}
+
+# springdoc 配置：api-docs 必须保留——内部 MCP 能力网关（clarity-mcp-gateway）启动时读取
+# /v3/api-docs 解析全部后端 API，关闭即导致网关三个元工具全体不可用（pre 复用本 profile，
+# 同理受影响）。前置代理需对该路径只放行回环访问；Swagger UI 生产仍禁用。
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+
+# Python 算法服务配置（预测/评估调用与 AI 域 B 类端点转发共用同一服务地址）
+algorithm:
+  python:
+    # 服务基础地址（与 go 侧 ai.serviceUrl 一致：python 与 java 同机部署）
+    baseUrl: http://127.0.0.1:8991
+    # 连接超时（毫秒）
+    connect-timeout: 5000
+    # 读取超时（毫秒）—— 预测/评估与转发类请求可较长时间
+    read-timeout: 120000
+    # AI 转发（B 类端点）SSE 流空闲超时（毫秒）—— 推理长期无输出时才判定上游卡死
+    ai-proxy-stream-idle-timeout: 300000
+    # 最大重试次数
+    max-retry: 3
+    # 重试初始退避（毫秒），指数增长
+    retry-backoff: 1000
+    # 熔断失败率阈值（%）
+    circuit-breaker-failure-rate: 50
+    # 熔断最小调用次数
+    circuit-breaker-min-calls: 10
+    # 熔断后半开等待（毫秒）
+    circuit-breaker-half-open-delay: 30000
+    # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致；由根 .env 注入）
+    api-key: ${M2M_API_KEY}
+  # 模型权重文件存储配置（复用 nginx-dataset 静态服务 /models 路径）
+  model:
+    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/models
+    connect-timeout: 5000
+    read-timeout: 10000
+
+# knife4j (生产环境禁用)
+knife4j:
+  enable: false
+
+# xxl-job 定时任务配置
+xxl:
+  job:
+    # 定时任务开关
+    enabled: true
+    admin:
+      # 多个地址使用,分割
+      addresses: http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin
+    accessToken: ${XXLJOB_ACCESS_TOKEN}
+    executor:
+      appname: xxl-job-executor-${spring.application.name}${XXLJOB_ENV_SUFFIX}
+      address:
+      ip: ${XXLJOB_EXECUTOR_IP:}
+      port: 9999
+      # 相对服务根（<仓库根>/clarity-java），由 run.py 保证 cwd，日志位置与 filebeat 挂载一致
+      logpath: logs/xxl-job
+      logretentiondays: 30
+      timeout: 10
+
+# 验证码配置
+captcha:
+  # 验证码类型 circle-圆圈干扰验证码|gif-Gif验证码|line-干扰线验证码|shear-扭曲干扰验证码
+  type: circle
+  # 验证码宽度
+  width: 120
+  # 验证码高度
+  height: 40
+  # 验证码干扰元素个数
+  interfere-count: 2
+  # 文本透明度(0.0-1.0)
+  text-alpha: 0.8
+  # 验证码字符配置
+  code:
+    # 验证码字符类型 math-算术|random-随机字符
+    type: math
+    # 验证码字符长度，type=算术时，表示运算位数(1:个位数运算 2:十位数运算)；type=随机字符时，表示字符个数
+    length: 1
+  # 验证码字体
+  font:
+    # 字体名称 Dialog|DialogInput|Monospaced|Serif|SansSerif
+    name: SansSerif
+    # 字体样式 0-普通|1-粗体|2-斜体
+    weight: 1
+    # 字体大小
+    size: 20
+  # 验证码有效期(秒)
+  expire-seconds: 120
+
+# RabbitMQ 配置 (异步任务分发)
+rabbitmq:
+  # 是否启用 RabbitMQ
+  enabled: ${RABBITMQ_ENABLED:true}
+  # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
+  url: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}
+  # 交换机配置
+  exchange:
+    # 任务交换机名称 (与 Go 端保持一致)
+    name: clarity.tasks
+    # 路由键前缀
+    routing-key-prefix: "task."
+
+# 支付渠道配置（默认关闭，启用时调用真实 SDK）
+payment:
+  wechat:
+    enabled: ${WECHAT_PAY_ENABLED:false}
+    appId: ${WECHAT_PAY_APP_ID:}
+    mchId: ${WECHAT_PAY_MCH_ID:}
+    apiKey: ${WECHAT_PAY_API_KEY:}
+    privateKey: ${WECHAT_PAY_PRIVATE_KEY:}
+    publicKey: ${WECHAT_PAY_PUBLIC_KEY:}
+    notifyUrl: ${WECHAT_PAY_NOTIFY_URL:}
+    refundNotifyUrl: ${WECHAT_PAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${WECHAT_PAY_BASE_URL:https://api.mch.weixin.qq.com}
+  alipay:
+    enabled: ${ALIPAY_ENABLED:false}
+    appId: ${ALIPAY_APP_ID:}
+    mchId: ${ALIPAY_MCH_ID:}
+    apiKey: ${ALIPAY_API_KEY:}
+    privateKey: ${ALIPAY_PRIVATE_KEY:}
+    publicKey: ${ALIPAY_PUBLIC_KEY:}
+    notifyUrl: ${ALIPAY_NOTIFY_URL:}
+    refundNotifyUrl: ${ALIPAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${ALIPAY_BASE_URL:https://openapi.alipay.com}

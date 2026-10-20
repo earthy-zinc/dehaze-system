@@ -1,0 +1,90 @@
+package com.pei.clarity.service.impl;
+
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.clarity.common.enums.LogStatusEnum;
+import com.pei.clarity.common.exception.BusinessException;
+import com.pei.clarity.common.result.ResultCode;
+import com.pei.clarity.mapper.SysEvalLogMapper;
+import com.pei.clarity.model.entity.SysEvalLog;
+import com.pei.clarity.model.entity.SysFile;
+import com.pei.clarity.model.form.EvaluationForm;
+import com.pei.clarity.model.query.EvalLogQuery;
+import com.pei.clarity.model.vo.EvalLogVO;
+import com.pei.clarity.model.vo.EvaluationResultVO;
+import com.pei.clarity.service.SysEvalLogService;
+import com.pei.clarity.service.SysFileService;
+import com.pei.clarity.service.impl.file.StorageServiceFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEvalLog> implements SysEvalLogService {
+
+    private final SysFileService sysFileService;
+    private final StorageServiceFactory storageServiceFactory;
+    private final EvalLogAsyncTask asyncTask;
+
+    @Override
+    public EvaluationResultVO evaluate(EvaluationForm form) {
+        String predUrl = form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred");
+        String gtUrl = form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt");
+
+        SysEvalLog evalLog = new SysEvalLog();
+        evalLog.setModelId(form.getModelId());
+        if (form.getPredFileId() != null) {
+            evalLog.setPredFileId(form.getPredFileId());
+        }
+        if (form.getGtFileId() != null) {
+            evalLog.setGtFileId(form.getGtFileId());
+        }
+        evalLog.setPredUrl(predUrl);
+        evalLog.setGtUrl(gtUrl);
+        evalLog.setStatus(LogStatusEnum.PROCESSING);
+        evalLog.setTaskType("evaluation");
+        this.save(evalLog);
+
+        asyncTask.execute(evalLog.getId(), form.getModelId(), predUrl, gtUrl);
+
+        EvaluationResultVO vo = new EvaluationResultVO();
+        vo.setLogId(evalLog.getId());
+        vo.setStatus(LogStatusEnum.PROCESSING);
+        return vo;
+    }
+
+    @Override
+    public Page<EvalLogVO> getEvalLogPage(EvalLogQuery query, Long userId) {
+        Page<SysEvalLog> page = new Page<>(query.getPageNum(), query.getPageSize());
+        LambdaQueryWrapper<SysEvalLog> wrapper = new LambdaQueryWrapper<SysEvalLog>()
+                .eq(SysEvalLog::getCreateBy, userId)
+                .eq(query.getModelId() != null, SysEvalLog::getModelId, query.getModelId())
+                .orderByDesc(SysEvalLog::getCreateTime);
+
+        Page<SysEvalLog> result = this.page(page, wrapper);
+        Page<EvalLogVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+        voPage.setRecords(result.getRecords().stream()
+                .map(log -> {
+                    EvalLogVO vo = new EvalLogVO();
+                    BeanUtil.copyProperties(log, vo);
+                    return vo;
+                })
+                .toList());
+        return voPage;
+    }
+
+    private String resolveFileUrl(Long fileId, String type) {
+        if (fileId != null) {
+            SysFile sysFile = sysFileService.getById(fileId);
+            if (sysFile != null && sysFile.getObjectName() != null && sysFile.getStorage() != null) {
+                return storageServiceFactory.get(sysFile.getStorage()).getUrl(sysFile.getObjectName());
+            }
+            log.warn("文件不存在或 objectName/storage 为空: fileId={}", fileId);
+        }
+        throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
+    }
+}

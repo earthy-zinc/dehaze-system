@@ -1,0 +1,46 @@
+package com.pei.clarity.model.vo;
+
+import java.util.List;
+import java.util.Map;
+import lombok.Data;
+
+/**
+ * 复核详情响应（样本定义 + 实际输出 + 四维得分说明）
+ *
+ * @author clarity
+ */
+@Data
+public class AiEvalReviewDetailVO {
+
+    private Long runId;
+
+    private Long agentId;
+
+    private String agentName;
+
+    private Long sampleId;
+
+    private String taskGoal;
+
+    private String allowedInput;
+
+    private String expectedResult;
+
+    private String expectedProcess;
+
+    private String forbiddenBehavior;
+
+    private List<Map<String, Object>> tools;
+
+    private String riskLevel;
+
+    private Boolean judgePassed;
+
+    private String actualOutput;
+
+    private String error;
+
+    private Map<String, Object> scores;
+
+    private Map<String, Object> notes;
+}

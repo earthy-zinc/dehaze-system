@@ -1,0 +1,441 @@
+package com.pei.clarity.service.impl;
+
+import cn.hutool.json.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.clarity.common.constant.SystemConstants;
+import com.pei.clarity.common.exception.BusinessException;
+import com.pei.clarity.common.result.ResultCode;
+import com.pei.clarity.mapper.SysAiModelMapper;
+import com.pei.clarity.mapper.SysPredLogMapper;
+import com.pei.clarity.mapper.SysRecommendationMapper;
+import com.pei.clarity.mapper.SysRecommendationRuleMapper;
+import com.pei.clarity.model.entity.SysAiModel;
+import com.pei.clarity.model.entity.SysPredLog;
+import com.pei.clarity.model.entity.SysRecommendation;
+import com.pei.clarity.model.entity.SysRecommendationRule;
+import com.pei.clarity.model.form.AnalyzeForm;
+import com.pei.clarity.model.form.RecommendationFeedbackForm;
+import com.pei.clarity.model.form.RecommendationRuleForm;
+import com.pei.clarity.model.vo.IdVO;
+import com.pei.clarity.model.vo.ImageFeatureAnalysisVO;
+import com.pei.clarity.model.vo.RecommendationReportVO;
+import com.pei.clarity.model.vo.RecommendationRuleVO;
+import com.pei.clarity.model.vo.RecommendedModelVO;
+import com.pei.clarity.security.util.SecurityUtils;
+import com.pei.clarity.service.RecommendationService;
+import com.pei.clarity.service.client.PythonAlgorithmClient;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RecommendationServiceImpl extends ServiceImpl<SysRecommendationMapper, SysRecommendation>
+        implements RecommendationService {
+
+    private static final String IMAGE_MODEL_TYPE = "image_edit";
+    private static final List<String> VALID_SCENE_TYPES =
+            List.of("urban", "landscape", "building", "night", "backlight", "indoor");
+    private static final List<String> IMAGE_EXTENSIONS =
+            List.of(".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif");
+    private static final int TOP_N = 3;
+
+    private final SysRecommendationRuleMapper ruleMapper;
+    private final SysPredLogMapper predLogMapper;
+    private final SysAiModelMapper aiModelMapper;
+    private final PythonAlgorithmClient pythonAlgorithmClient;
+
+    /**
+     * 规则内存缓存，写时复制保证线程安全
+     */
+    private final CopyOnWriteArrayList<SysRecommendationRule> ruleCache = new CopyOnWriteArrayList<>();
+
+    @Override
+    public ImageFeatureAnalysisVO analyze(AnalyzeForm form) {
+        String imageUrl = resolveImageUrl(form);
+        validateImageFormat(imageUrl);
+
+        // 调用 Python 图像特征分析服务提取真实特征
+        // Python 服务不可用时由 PythonAlgorithmClient 抛出 BusinessException，不降级为伪特征，避免误导用户
+        JSONObject data = pythonAlgorithmClient.analyzeImage(imageUrl);
+        return toFeatureVO(data);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<RecommendedModelVO> getModelRecommendations(Long analysisId, String imageMd5) {
+        // 仅取已启用的图像模型作为推荐候选池（对齐 python list_enabled(model_type=image_edit)）
+        List<SysAiModel> published = listEnabledImageModels();
+
+        // 加载启用的规则
+        List<SysRecommendationRule> rules = getEnabledRules();
+
+        // 确定场景类型：优先从 analysisId 查历史记录，否则按 imageMd5 查，都没有则默认 urban
+        String sceneType = "urban";
+        if (analysisId != null && analysisId > 0) {
+            SysRecommendation rec = this.getById(analysisId);
+            if (rec != null && rec.getAnalysisResult() != null) {
+                Object st = rec.getAnalysisResult().get("sceneType");
+                if (st instanceof String s && VALID_SCENE_TYPES.contains(s)) {
+                    sceneType = s;
+                }
+            }
+        }
+        if (imageMd5 != null && !imageMd5.isBlank() && "urban".equals(sceneType)) {
+            SysRecommendation rec = this.getOne(new LambdaQueryWrapper<SysRecommendation>()
+                    .eq(SysRecommendation::getImageMd5, imageMd5)
+                    .orderByDesc(SysRecommendation::getId)
+                    .last("LIMIT 1"));
+            if (rec != null && rec.getAnalysisResult() != null) {
+                Object st = rec.getAnalysisResult().get("sceneType");
+                if (st instanceof String s && VALID_SCENE_TYPES.contains(s)) {
+                    sceneType = s;
+                }
+            }
+        }
+
+        List<RecommendedModelVO> result = Collections.emptyList();
+
+        // 仅在候选模型和规则都就绪时才做匹配
+        if (!published.isEmpty() && !rules.isEmpty()) {
+            final String matchedScene = sceneType;
+            List<SysRecommendationRule> matchedRules = rules.stream()
+                    .filter(r -> r.getSceneType() != null && r.getSceneType().equals(matchedScene))
+                    .sorted(Comparator.comparingInt(SysRecommendationRule::getWeight)
+                            .reversed())
+                    .toList();
+
+            if (!matchedRules.isEmpty()) {
+                Set<String> candidateIds = matchedRules.stream()
+                        .flatMap(r ->
+                                r.getModelIds() != null ? r.getModelIds().stream() : java.util.stream.Stream.empty())
+                        .collect(Collectors.toSet());
+
+                List<SysAiModel> candidates = published.stream()
+                        .filter(m -> candidateIds.contains(m.getModelId()))
+                        .toList();
+
+                if (!candidates.isEmpty()) {
+                    result = candidates.stream()
+                            .map(model -> {
+                                RecommendedModelVO vo = new RecommendedModelVO();
+                                vo.setModelId(model.getModelId());
+                                vo.setModelName(model.getDisplayName());
+                                vo.setMatchScore(computeMatchScore(model.getModelId(), matchedRules));
+                                vo.setReason(buildReason(matchedScene, model.getDisplayName()));
+                                vo.setEffectDescription("该模型在" + matchedScene + "场景下表现稳定");
+                                return vo;
+                            })
+                            .sorted(Comparator.comparingInt(RecommendedModelVO::getMatchScore)
+                                    .reversed()
+                                    .thenComparing(RecommendedModelVO::getModelId))
+                            .limit(TOP_N)
+                            .toList();
+                }
+            }
+        }
+
+        // 无论有无结果，都写入 sys_recommendation 记录，确保 feedback 能找到记录
+        List<Map<String, Object>> topModels = result.stream()
+                .map(vo -> {
+                    Map<String, Object> item = new java.util.HashMap<>();
+                    item.put("modelId", vo.getModelId());
+                    item.put("modelName", vo.getModelName());
+                    item.put("matchScore", vo.getMatchScore());
+                    return item;
+                })
+                .toList();
+
+        SysRecommendation rec = new SysRecommendation();
+        rec.setUserId(currentUserId());
+        rec.setImageMd5(imageMd5);
+        rec.setTargetType("model");
+        rec.setTopModels(topModels);
+        rec.setFeedback(0);
+        this.save(rec);
+
+        // 回填 recommendationId 到 VO
+        final Long recommendationId = rec.getId();
+        result.forEach(vo -> vo.setRecommendationId(recommendationId));
+
+        return result;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public IdVO submitFeedback(RecommendationFeedbackForm form) {
+        SysRecommendation rec = this.getById(form.getRecommendationId());
+        // 仅允许反馈本人产生的推荐记录；他人/不存在记录统一 404，不泄露存在性
+        if (rec == null || !rec.getUserId().equals(currentUserId())) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+        rec.setFeedback(form.getUseful() ? 1 : 2);
+        this.updateById(rec);
+        return new IdVO(rec.getId());
+    }
+
+    @Override
+    public List<RecommendationRuleVO> getRules() {
+        List<SysRecommendationRule> rules = ruleMapper.selectList(
+                new LambdaQueryWrapper<SysRecommendationRule>().orderByAsc(SysRecommendationRule::getWeight));
+        return rules.stream().map(this::toRuleVO).toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long updateRule(Long id, RecommendationRuleForm form) {
+        validateRuleForm(form);
+
+        if (id != null && id != 0 && ruleMapper.selectById(id) == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+
+        List<SysRecommendationRule> existing = ruleMapper.selectList(new LambdaQueryWrapper<SysRecommendationRule>()
+                .ne(id != null && id != 0, SysRecommendationRule::getId, id));
+        Set<String> target = new HashSet<>(form.getModelIds());
+        for (SysRecommendationRule r : existing) {
+            if ((r.getEnabled() == null || r.getEnabled() != 1)
+                    || Objects.equals(r.getSceneType(), form.getSceneType()) == false
+                    || r.getModelIds() == null
+                    || new HashSet<>(r.getModelIds()).equals(target) == false) {
+                continue;
+            }
+            throw new BusinessException(ResultCode.DATA_EXISTS);
+        }
+
+        if (id == null || id == 0) {
+            // 新增
+            SysRecommendationRule rule = new SysRecommendationRule();
+            rule.setRuleName(form.getRuleName());
+            rule.setSceneType(form.getSceneType());
+            rule.setModelIds(form.getModelIds());
+            rule.setWeight(form.getWeight());
+            rule.setEnabled(form.getEnabled() != null && form.getEnabled() ? 1 : 0);
+            ruleMapper.insert(rule);
+            refreshRuleCache();
+            return rule.getId() != null ? rule.getId() : 0L;
+        }
+
+        // 更新
+        SysRecommendationRule rule = ruleMapper.selectById(id);
+        if (rule == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+        rule.setRuleName(form.getRuleName());
+        rule.setSceneType(form.getSceneType());
+        rule.setModelIds(form.getModelIds());
+        rule.setWeight(form.getWeight());
+        rule.setEnabled(form.getEnabled() != null && form.getEnabled() ? 1 : 0);
+        ruleMapper.updateById(rule);
+        refreshRuleCache();
+        return rule.getId() != null ? rule.getId() : id;
+    }
+
+    @Override
+    public RecommendationReportVO getReport(String startDate, String endDate) {
+        LocalDateTime start = parseDate(startDate, true);
+        LocalDateTime end = parseDate(endDate, false);
+
+        long total = this.baseMapper.countTotal(start, end);
+        long usefulCount = this.baseMapper.countUseful(start, end);
+        long feedbackTotal = this.baseMapper.countFeedbackTotal(start, end);
+        long adoptedDistinct = this.baseMapper.countAdoptedModelDistinct(start, end);
+
+        // 采纳数：带推荐来源（recommended_by）的预测记录数
+        LambdaQueryWrapper<SysPredLog> adoptedWrapper =
+                new LambdaQueryWrapper<SysPredLog>().isNotNull(SysPredLog::getRecommendedBy);
+        if (start != null) {
+            adoptedWrapper.ge(SysPredLog::getCreateTime, start);
+        }
+        if (end != null) {
+            adoptedWrapper.le(SysPredLog::getCreateTime, end);
+        }
+        long adoptedPredCount = predLogMapper.selectCount(adoptedWrapper);
+
+        // 已启用图像模型总数（覆盖率分母）
+        long publishedCount = listEnabledImageModels().size();
+
+        RecommendationReportVO vo = new RecommendationReportVO();
+        vo.setTotalRecommendations(total);
+        // 采纳率口径：带推荐来源的预测记录数 / 推荐总数（用户从推荐入口真正发起去雾处理的比例）
+        vo.setAdoptionRate(total > 0 ? (double) adoptedPredCount / total : 0.0);
+        // 满意度：有用反馈占比（有用即满意）
+        vo.setSatisfactionRate(feedbackTotal > 0 ? (double) usefulCount / feedbackTotal : 0.0);
+        vo.setCoverageRate(publishedCount > 0 ? (double) adoptedDistinct / publishedCount : 0.0);
+        // 冷启动成功率：简化计算
+        vo.setColdStartSuccessRate(0.0);
+
+        // 趋势按日聚合：当日采纳预测数 / 当日推荐总数
+        Map<String, Long> dailyAdopted = new java.util.HashMap<>();
+        for (Map<String, Object> row : predLogMapper.selectDailyRecommended(start, end)) {
+            Object dateObj = row.get("date");
+            Object cntObj = row.get("cnt");
+            if (dateObj != null && cntObj != null) {
+                dailyAdopted.put(dateObj.toString(), ((Number) cntObj).longValue());
+            }
+        }
+        List<Map<String, Object>> dailyTotals = this.baseMapper.selectDailyTotal(start, end);
+        List<RecommendationReportVO.TrendItem> trend = new ArrayList<>();
+        for (Map<String, Object> row : dailyTotals) {
+            RecommendationReportVO.TrendItem item = new RecommendationReportVO.TrendItem();
+            Object dateObj = row.get("date");
+            item.setDate(dateObj != null ? dateObj.toString() : "");
+            long dayTotal = row.get("total") != null ? ((Number) row.get("total")).longValue() : 0;
+            long dayAdopted = dailyAdopted.getOrDefault(item.getDate(), 0L);
+            item.setAdoptionRate(dayTotal > 0 ? (double) dayAdopted / dayTotal : 0.0);
+            trend.add(item);
+        }
+        vo.setTrend(trend);
+
+        return vo;
+    }
+
+    // ==================== 内部方法 ====================
+
+    private List<SysAiModel> listEnabledImageModels() {
+        return aiModelMapper.selectList(new LambdaQueryWrapper<SysAiModel>()
+                .eq(SysAiModel::getStatus, 1)
+                .eq(SysAiModel::getModelType, IMAGE_MODEL_TYPE));
+    }
+
+    private void validateRuleForm(RecommendationRuleForm form) {
+        if (form.getWeight() == null || form.getWeight() < 0 || form.getWeight() > 100) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "规则权重必须在0-100之间");
+        }
+        if (form.getSceneType() == null || !VALID_SCENE_TYPES.contains(form.getSceneType())) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "场景类型不合法，仅支持：" + String.join("/", VALID_SCENE_TYPES));
+        }
+        if (form.getModelIds() == null || form.getModelIds().isEmpty()) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "候选模型标识列表不能为空");
+        }
+    }
+
+    private Long currentUserId() {
+        Long userId = SecurityUtils.getUserId();
+        return userId != null ? userId : SystemConstants.SYSTEM_USER_ID;
+    }
+
+    private String resolveImageUrl(AnalyzeForm form) {
+        if (form.getImageId() != null && form.getImageId() > 0) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "imageId方式暂不支持，请使用imageUrl");
+        }
+        if (form.getImageUrl() != null && !form.getImageUrl().isBlank()) {
+            return form.getImageUrl();
+        }
+        throw new BusinessException(ResultCode.PARAM_ERROR, "imageId和imageUrl至少提供一个");
+    }
+
+    private void validateImageFormat(String imageUrl) {
+        String lower = imageUrl.toLowerCase();
+        // 去掉 query string
+        int qIdx = lower.indexOf('?');
+        if (qIdx > 0) {
+            lower = lower.substring(0, qIdx);
+        }
+        boolean valid = IMAGE_EXTENSIONS.stream().anyMatch(lower::endsWith);
+        if (!valid) {
+            throw new BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH);
+        }
+    }
+
+    /**
+     * 将 Python 图像特征分析响应映射为 VO
+     */
+    private ImageFeatureAnalysisVO toFeatureVO(JSONObject data) {
+        ImageFeatureAnalysisVO vo = new ImageFeatureAnalysisVO();
+        vo.setImageMd5(data.getStr("imageMd5"));
+        vo.setHazeLevel(data.getStr("hazeLevel"));
+        vo.setHazeConfidence(data.getDouble("hazeConfidence"));
+        vo.setSceneType(data.getStr("sceneType"));
+        vo.setSceneConfidence(data.getDouble("sceneConfidence"));
+        vo.setLighting(data.getStr("lighting"));
+        vo.setComplexity(data.getDouble("complexity"));
+        JSONObject cd = data.getJSONObject("colorDistribution");
+        if (cd != null) {
+            ImageFeatureAnalysisVO.ColorDistribution colorDistribution = new ImageFeatureAnalysisVO.ColorDistribution();
+            colorDistribution.setTemperature(cd.getDouble("temperature"));
+            colorDistribution.setSaturation(cd.getDouble("saturation"));
+            vo.setColorDistribution(colorDistribution);
+        }
+        vo.setResolution(data.getStr("resolution"));
+        vo.setNoiseLevel(data.getStr("noiseLevel"));
+        return vo;
+    }
+
+    private List<SysRecommendationRule> getEnabledRules() {
+        if (!ruleCache.isEmpty()) {
+            return ruleCache;
+        }
+        return refreshRuleCache();
+    }
+
+    private List<SysRecommendationRule> refreshRuleCache() {
+        List<SysRecommendationRule> rules = ruleMapper.selectList(
+                new LambdaQueryWrapper<SysRecommendationRule>().eq(SysRecommendationRule::getEnabled, 1));
+        ruleCache.clear();
+        ruleCache.addAll(rules);
+        return rules;
+    }
+
+    private int computeMatchScore(String modelId, List<SysRecommendationRule> matchedRules) {
+        // 取该模型在匹配规则中的最高权重作为匹配度
+        int maxWeight = matchedRules.stream()
+                .filter(r -> r.getModelIds() != null && r.getModelIds().contains(modelId))
+                .mapToInt(SysRecommendationRule::getWeight)
+                .max()
+                .orElse(0);
+        // 归一化到 0-100
+        return Math.min(100, maxWeight);
+    }
+
+    private String buildReason(String sceneType, String modelName) {
+        Map<String, String> reasonTemplates = Map.of(
+                "urban", "处理速度快，对城市雾霾效果出色",
+                "landscape", "在自然场景下表现稳定，色彩还原度高",
+                "building", "深度模型，对建筑场景处理能力强",
+                "night", "低光照增强组合，避免过度暗化",
+                "backlight", "HDR预处理提升暗部细节",
+                "indoor", "室内场景适配，细节保留好");
+        String reason = reasonTemplates.getOrDefault(sceneType, "综合表现优秀");
+        return modelName + "：" + reason;
+    }
+
+    private RecommendationRuleVO toRuleVO(SysRecommendationRule entity) {
+        RecommendationRuleVO vo = new RecommendationRuleVO();
+        vo.setId(entity.getId());
+        vo.setRuleName(entity.getRuleName());
+        vo.setSceneType(entity.getSceneType());
+        vo.setModelIds(entity.getModelIds());
+        vo.setWeight(entity.getWeight());
+        vo.setEnabled(entity.getEnabled() != null && entity.getEnabled() == 1);
+        return vo;
+    }
+
+    private LocalDateTime parseDate(String dateStr, boolean startOfDay) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+        try {
+            LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+            return startOfDay ? date.atStartOfDay() : date.atTime(23, 59, 59);
+        } catch (Exception e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "日期格式不正确，应为 yyyy-MM-dd");
+        }
+    }
+}

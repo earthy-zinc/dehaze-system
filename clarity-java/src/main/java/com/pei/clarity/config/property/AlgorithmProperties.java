@@ -1,0 +1,63 @@
+package com.pei.clarity.config.property;
+
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+/**
+ * Python 算法服务配置属性
+ *
+ * @author earthyzinc
+ * @since 2024-06-12
+ */
+@Data
+@Component
+@ConfigurationProperties(prefix = "algorithm.python")
+public class AlgorithmProperties {
+
+    /** Python 算法服务基础 URL（如 http://127.0.0.1:8991） */
+    private String baseUrl = "http://127.0.0.1:8991";
+
+    /** 连接超时（毫秒） */
+    private int connectTimeout = 5000;
+
+    /** 读取超时（毫秒），预测/评估可较长时间 */
+    private int readTimeout = 120000;
+
+    /**
+     * AI 转发（B 类端点）SSE 流的空闲超时（毫秒）
+     * <p>
+     * 推理过程可能长时间无输出，该值仅在上游数据完全停滞时触发，用于回收被卡死的转发线程。
+     */
+    private long aiProxyStreamIdleTimeout = 300000;
+
+    /** 最大重试次数 */
+    private int maxRetry = 3;
+
+    /** 重试初始退避时间（毫秒） */
+    private long retryBackoff = 1000;
+
+    /** 熔断器失败率阈值（百分比，0-100） */
+    private int circuitBreakerFailureRate = 50;
+
+    /** 熔断器最小调用次数后才开始统计 */
+    private int circuitBreakerMinCalls = 10;
+
+    /** 熔断后半开状态等待时间（毫秒） */
+    private long circuitBreakerHalfOpenDelay = 30000;
+
+    /** 图像任务提交端点路径 */
+    private String predictPath = "/api/v1/images/edits";
+
+    /** 图像任务查询/取消端点路径前缀 */
+    private String imageTasksPath = "/api/v1/images/tasks";
+
+    /** 评估端点路径 */
+    private String evaluatePath = "/api/v1/evaluation";
+
+    /** 图像特征分析端点路径（供推荐模块调用） */
+    private String analyzePath = "/api/v1/recommendations/analyze";
+
+    /** 服务间调用 API Key（M2M 认证） */
+    private String apiKey;
+}

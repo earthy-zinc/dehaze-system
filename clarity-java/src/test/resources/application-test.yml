@@ -1,0 +1,155 @@
+spring:
+  devtools:
+    restart:
+      enabled: false
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 测试库名由 CLARITY_TEST_DB 指定：设成独立库（如 clarity_test_java）即可与 python/go
+    # 两端的测试并行运行，各方独立建库、独立重建、互不阻塞；不设则用基线库 clarity_test。
+    # createDatabaseIfNotExist：首次连接自动创建（MySQL 8 默认 utf8mb4/utf8mb4_0900_ai_ci），
+    # 之后由 sql.init 全量重建 schema/种子数据（脚本 DROP TABLE IF EXISTS，幂等）
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${CLARITY_TEST_DB:clarity_test}?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true&createDatabaseIfNotExist=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    druid:
+      # 初始连接数（建议保持与最小空闲一致）
+      initial-size: 5
+      # 最小空闲连接（防止突发流量导致连接创建延迟）
+      min-idle: 5
+      # 最大活跃连接数（根据DB配置max_connections调整）
+      max-active: 50
+      # 获取连接最大等待时间（毫秒，避免线程长时间阻塞）
+      max-wait: 5000
+      # 空闲连接检查周期（60秒扫描一次空闲连接）
+      time-between-eviction-runs-millis: 60000
+      # 连接最小空闲时间（300秒后回收空闲连接）
+      min-evictable-idle-time-millis: 300000
+      # 验证查询语句（保持与数据库类型匹配）
+      validation-query: SELECT 1
+      # 空闲时验证连接有效性（推荐开启）
+      test-while-idle: true
+      # 获取连接时不验证（避免性能损耗）
+      test-on-borrow: false
+      # 归还连接时不验证（同上）
+      test-on-return: false
+      # 启用统计监控和防火墙（防御SQL注入）
+      filters: stat,wall
+  sql:
+    init:
+      mode: always
+      # 仅加载 sys_*.sql：xxl_job.sql 是调度中心库引导脚本（DROP DATABASE xxl_job + USE），
+      # 混入会切走初始化连接的当前库并误删共享实例上的 xxl_job 库（与 Python conftest 的 sys_*.sql 对齐）
+      schema-locations: classpath:db/schema/sys_*.sql
+      data-locations: classpath:db/data/*.sql
+      encoding: UTF-8
+  data:
+    redis:
+      # 逻辑库 15 与开发后端的 db 0 隔离，测试写入的缓存键不污染开发环境；
+      # 并行跑多套 java 测试时用 CLARITY_TEST_REDIS_DB 各分配一个库
+      database: ${CLARITY_TEST_REDIS_DB:15}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 10s
+      lettuce:
+        pool:
+          # 连接池最大连接数 默认8 ，负数表示没有限制
+          max-active: 8
+          # 连接池最大阻塞等待时间（使用负值表示没有限制） 默认-1
+          max-wait: -1
+          # 连接池中的最大空闲连接 默认8
+          max-idle: 8
+          # 连接池中的最小空闲连接 默认0
+          min-idle: 0
+    mongodb:
+      # 独立测试库，与开发后端的 clarity 库隔离；库名跟随 CLARITY_TEST_DB
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${CLARITY_TEST_DB:clarity_test}?authSource=admin
+  cache:
+    type: none
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+file:
+  type: local
+  init: false
+  # 上传文件基于url
+  baseUrl: http://127.0.0.1:8989/api/v1/files/download
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths）
+  local:
+    uploadPath: ${UPLOAD_DIR:./data/upload}
+  minio:
+    enabled: false
+
+security:
+  jwt:
+    key: TestSecretKey0123456789012345678901234567890123456789
+    ttl: 60
+
+system:
+  use-multi-point: false
+  # 新用户默认密码（由根 .env 的 DEFAULT_PASSWORD 注入，与开发/生产 profile 保持一致）
+  default-password: ${DEFAULT_PASSWORD}
+
+# 测试不触达 MQ 与调度中心：条件装配开关显式关闭（缺省亦为关闭，显式声明表明意图）。
+# 严禁在测试 profile 开启 rabbitmq.enabled——监听容器会真实消费共享开发实例的队列
+rabbitmq:
+  enabled: false
+xxl:
+  job:
+    enabled: false
+kafka:
+  enabled: false
+
+coupon:
+  receive-rate-limit: 10000
+  receive-rate-window: 60
+
+
+mybatis-plus:
+  global-config:
+    db-config:
+      # 主键ID类型
+      id-type: none
+      # 逻辑删除字段名称
+      logic-delete-field: deleted
+      # 逻辑删除-删除值（原样拼接进SQL；id=删除时写入行id，保证唯一键含deleted后软删行不占键位）
+      logic-delete-value: id
+      # 逻辑删除-未删除值
+      logic-not-delete-value: 0
+  configuration:
+    # 驼峰下划线转换
+    map-underscore-to-camel-case: true    
+    # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+springdoc:
+  api-docs:
+    enabled: false
+knife4j:
+  enable: false
+
+captcha:
+  # 验证码类型 circle-圆圈干扰验证码|gif-Gif验证码|line-干扰线验证码|shear-扭曲干扰验证码
+  type: circle
+  # 验证码宽度
+  width: 120
+  # 验证码高度
+  height: 40
+  # 验证码干扰元素个数
+  interfere-count: 2
+  # 文本透明度(0.0-1.0)
+  text-alpha: 0.8
+  # 验证码字体
+  font:
+    # 字体名称 Dialog|DialogInput|Monospaced|Serif|SansSerif
+    name: SansSerif
+    # 字体样式 0-普通|1-粗体|2-斜体
+    weight: 1
+    # 字体大小
+    size: 24
+  code:
+    type: random
+    length: 4
+    expire-seconds: 30

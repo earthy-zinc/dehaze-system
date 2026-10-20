@@ -1,0 +1,54 @@
+package com.pei.clarity.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.clarity.common.base.BaseEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+/**
+ * 角色表
+ */
+@TableName(value = "sys_role")
+@Data
+@EqualsAndHashCode(callSuper = false)
+public class SysRole extends BaseEntity {
+    /**
+     *
+     */
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    /**
+     * 角色名称
+     */
+    private String name;
+
+    /**
+     * 角色编码
+     */
+    private String code;
+
+    /**
+     * 显示顺序
+     */
+    private Integer sort;
+
+    /**
+     * 角色状态(1-正常；0-停用)
+     */
+    private Integer status;
+
+    /**
+     * 逻辑删除标识(0:未删除;非0:已删除,值为删除时的行id)
+     */
+    @TableLogic(value = "0", delval = "id")
+    private Long deleted;
+
+    /**
+     * 数据权限
+     */
+    private Integer dataScope;
+}

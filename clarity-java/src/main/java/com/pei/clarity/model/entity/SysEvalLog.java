@@ -1,0 +1,40 @@
+package com.pei.clarity.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.pei.clarity.common.base.BaseEntity;
+import com.pei.clarity.common.enums.LogStatusEnum;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Data
+@EqualsAndHashCode(callSuper = false)
+public class SysEvalLog extends BaseEntity {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private String modelId;
+
+    private Long predFileId;
+
+    private String predMd5;
+
+    private String predUrl;
+
+    private Long gtFileId;
+
+    private String gtMd5;
+
+    private String gtUrl;
+
+    private Integer time;
+
+    private LogStatusEnum status;
+
+    private String taskType;
+
+    private String errorMessage;
+
+    private String result;
+}

@@ -1,0 +1,600 @@
+package com.pei.clarity.service.impl;
+
+import cn.hutool.core.text.CharSequenceUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.clarity.common.constant.SystemConstants;
+import com.pei.clarity.common.exception.BusinessException;
+import com.pei.clarity.common.model.Option;
+import com.pei.clarity.common.result.ResultCode;
+import com.pei.clarity.common.util.TreeDataUtils;
+import com.pei.clarity.converter.DatasetConverter;
+import com.pei.clarity.mapper.SysDatasetMapper;
+import com.pei.clarity.model.dto.DatasetStatistics;
+import com.pei.clarity.model.entity.SysDataset;
+import com.pei.clarity.model.entity.SysItemFile;
+import com.pei.clarity.model.form.DatasetAddForm;
+import com.pei.clarity.model.form.DatasetUpdateForm;
+import com.pei.clarity.model.query.DatasetQuery;
+import com.pei.clarity.model.vo.DatasetVO;
+import com.pei.clarity.service.SysDatasetItemService;
+import com.pei.clarity.service.SysDatasetService;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysDataset> implements SysDatasetService {
+
+    private final DatasetConverter datasetConverter;
+
+    @Lazy
+    private final SysDatasetItemService sysDatasetItemService;
+
+    /**
+     * 自注入代理，解决 @Cacheable 方法自调用绕过 AOP 代理的问题
+     */
+    @Lazy
+    private final SysDatasetService self;
+
+    @Override
+    @Cacheable(value = "dataset:all", key = "'all'")
+    public List<SysDataset> getAllDatasets() {
+        return this.list(new LambdaQueryWrapper<SysDataset>().orderByAsc(SysDataset::getId));
+    }
+
+    @Override
+    @Cacheable(value = "dataset:statsMap", key = "'all'")
+    public Map<Long, DatasetStatistics> getAllDatasetStats() {
+        long startTime = System.currentTimeMillis();
+        log.debug("开始计算所有数据集统计信息...");
+
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        if (allDatasets.isEmpty()) {
+            return new HashMap<>();
+        }
+
+        Map<Long, DatasetStatistics> statsMap = new HashMap<>();
+        for (SysDataset ds : allDatasets) {
+            statsMap.put(ds.getId(), createEmptyStats());
+        }
+
+        List<Long> leafIds = findLeafDatasetIds(allDatasets);
+        if (leafIds.isEmpty()) {
+            log.debug("没有叶子数据集，返回空统计");
+            return statsMap;
+        }
+
+        log.debug("发现 {} 个叶子数据集，开始批量查询统计信息", leafIds.size());
+
+        applyItemCounts(statsMap, this.baseMapper.countItemsPerDataset(leafIds));
+        applyDatasetStats(statsMap, this.baseMapper.countDatasetStatsBatch(leafIds));
+        applyDistributionBatch(
+                statsMap,
+                this.baseMapper.countSceneDistributionBatch(leafIds),
+                "scene_type",
+                DatasetStatistics::getSceneDistribution);
+        applyDistributionBatch(
+                statsMap,
+                this.baseMapper.countHazeDistributionBatch(leafIds),
+                "haze_level",
+                DatasetStatistics::getHazeDistribution);
+        applyDistributionBatch(
+                statsMap,
+                this.baseMapper.countFormatDistributionBatch(leafIds),
+                "file_type",
+                DatasetStatistics::getFormatDistribution);
+
+        rollupToParents(allDatasets, leafIds, statsMap);
+
+        long costMs = System.currentTimeMillis() - startTime;
+        log.debug("所有数据集统计信息计算完成，耗时 {} ms，叶子节点 {} 个", costMs, leafIds.size());
+        return statsMap;
+    }
+
+    private List<Long> findLeafDatasetIds(List<SysDataset> allDatasets) {
+        Set<Long> parentIds = allDatasets.stream()
+                .filter(d -> d.getParentId() != null && !d.getParentId().equals(SystemConstants.ROOT_NODE_ID))
+                .map(SysDataset::getParentId)
+                .collect(Collectors.toSet());
+        return allDatasets.stream()
+                .map(SysDataset::getId)
+                .filter(id -> !parentIds.contains(id))
+                .toList();
+    }
+
+    private void applyItemCounts(Map<Long, DatasetStatistics> statsMap, List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats != null) {
+                stats.setItemCount(toLong(row.get("cnt")));
+            }
+        }
+    }
+
+    private void applyDatasetStats(Map<Long, DatasetStatistics> statsMap, List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats == null) {
+                continue;
+            }
+            stats.setFileCount(toLong(row.get("image_count")));
+            stats.setTotalSize(toLong(row.get("total_size")));
+            stats.setAnnotatedCount(toLong(row.get("annotated_count")));
+            stats.setUnannotatedCount(toLong(row.get("unannotated_count")));
+        }
+    }
+
+    private void applyDistributionBatch(
+            Map<Long, DatasetStatistics> statsMap,
+            List<Map<String, Object>> rows,
+            String keyField,
+            Function<DatasetStatistics, Map<String, Long>> distGetter) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats == null) {
+                continue;
+            }
+            String key = String.valueOf(row.get(keyField));
+            distGetter.apply(stats).merge(key, toLong(row.get("cnt")), Long::sum);
+        }
+    }
+
+    private void rollupToParents(
+            List<SysDataset> allDatasets, List<Long> leafIds, Map<Long, DatasetStatistics> statsMap) {
+        Map<Long, List<Long>> parentToChildrenMap = new HashMap<>();
+        for (SysDataset ds : allDatasets) {
+            if (ds.getParentId() != null && !ds.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
+                parentToChildrenMap
+                        .computeIfAbsent(ds.getParentId(), k -> new ArrayList<>())
+                        .add(ds.getId());
+            }
+        }
+
+        // 构造 id -> dataset 映射，避免循环内 O(n) 线性查找
+        Map<Long, SysDataset> idToDataset = allDatasets.stream().collect(Collectors.toMap(SysDataset::getId, d -> d));
+
+        Queue<Long> queue = new LinkedList<>(leafIds);
+        Set<Long> processed = new HashSet<>(leafIds);
+
+        while (!queue.isEmpty()) {
+            Long currentId = queue.poll();
+            SysDataset current = idToDataset.get(currentId);
+            if (current == null
+                    || current.getParentId() == null
+                    || current.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
+                continue;
+            }
+            Long parentId = current.getParentId();
+            DatasetStatistics parentStats = statsMap.get(parentId);
+            DatasetStatistics childStats = statsMap.get(currentId);
+            if (parentStats != null && childStats != null) {
+                mergeStats(parentStats, childStats);
+            }
+
+            List<Long> siblings = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+            boolean allSiblingsProcessed = siblings.stream().allMatch(processed::contains);
+            if (allSiblingsProcessed && processed.add(parentId)) {
+                queue.offer(parentId);
+            }
+        }
+    }
+
+    private Long toLong(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
+    }
+
+    private DatasetStatistics createEmptyStats() {
+        DatasetStatistics stats = new DatasetStatistics();
+        stats.setItemCount(0L);
+        stats.setFileCount(0L);
+        stats.setTotalSize(0L);
+        stats.setAnnotatedCount(0L);
+        stats.setUnannotatedCount(0L);
+        stats.setSceneDistribution(new HashMap<>());
+        stats.setHazeDistribution(new HashMap<>());
+        stats.setFormatDistribution(new HashMap<>());
+        return stats;
+    }
+
+    private void mergeStats(DatasetStatistics parent, DatasetStatistics child) {
+        parent.setItemCount(parent.getItemCount() + child.getItemCount());
+        parent.setFileCount(parent.getFileCount() + child.getFileCount());
+        parent.setTotalSize(parent.getTotalSize() + child.getTotalSize());
+        parent.setAnnotatedCount(parent.getAnnotatedCount() + child.getAnnotatedCount());
+        parent.setUnannotatedCount(parent.getUnannotatedCount() + child.getUnannotatedCount());
+        child.getSceneDistribution()
+                .forEach((k, v) -> parent.getSceneDistribution().merge(k, v, Long::sum));
+        child.getHazeDistribution()
+                .forEach((k, v) -> parent.getHazeDistribution().merge(k, v, Long::sum));
+        child.getFormatDistribution()
+                .forEach((k, v) -> parent.getFormatDistribution().merge(k, v, Long::sum));
+    }
+
+    @CacheEvict(
+            value = {
+                "dataset:all",
+                "dataset:options",
+                "dataset:page",
+                "dataset:children",
+                "dataset:detail",
+                "dataset:stats",
+                "dataset:statsMap"
+            },
+            allEntries = true)
+    public void evictAllDatasetsCache() {
+        log.debug("清除所有数据集缓存");
+    }
+
+    @CacheEvict(
+            value = {"dataset:all", "dataset:options", "dataset:page", "dataset:children", "dataset:detail"},
+            allEntries = true)
+    public void evictDatasetMetadataCache() {
+        log.debug("清除数据集元数据缓存（保留统计缓存）");
+    }
+
+    @Override
+    public IPage<DatasetVO> listPagedDatasets(DatasetQuery queryParams) {
+        int pageNum = queryParams.getPageNum();
+        int pageSize = queryParams.getPageSize();
+        String keyword = queryParams.getKeyword();
+        String type = queryParams.getType();
+        Integer status = queryParams.getStatus();
+
+        LambdaQueryWrapper<SysDataset> wrapper = new LambdaQueryWrapper<SysDataset>()
+                .eq(SysDataset::getParentId, SystemConstants.ROOT_NODE_ID)
+                .like(CharSequenceUtil.isNotBlank(keyword), SysDataset::getName, keyword)
+                .eq(CharSequenceUtil.isNotBlank(type), SysDataset::getType, type)
+                .eq(status != null, SysDataset::getStatus, status)
+                .orderByAsc(SysDataset::getId);
+
+        Page<SysDataset> page = this.page(new Page<>(pageNum, pageSize), wrapper);
+
+        List<SysDataset> rootDatasets = page.getRecords();
+        if (rootDatasets.isEmpty()) {
+            return new Page<DatasetVO>(pageNum, pageSize, page.getTotal()).setRecords(Collections.emptyList());
+        }
+
+        List<Long> rootIds = rootDatasets.stream().map(SysDataset::getId).toList();
+
+        List<SysDataset> children = this.list(new LambdaQueryWrapper<SysDataset>()
+                .in(SysDataset::getParentId, rootIds)
+                .orderByAsc(SysDataset::getId));
+
+        Set<Long> parentIds = children.stream().map(SysDataset::getParentId).collect(Collectors.toSet());
+
+        Map<Long, List<SysDataset>> directChildrenMap =
+                children.stream().collect(Collectors.groupingBy(SysDataset::getParentId));
+
+        List<Long> childIds = children.stream().map(SysDataset::getId).toList();
+        List<SysDataset> grandChildren = childIds.isEmpty()
+                ? Collections.emptyList()
+                : this.list(new LambdaQueryWrapper<SysDataset>()
+                        .in(SysDataset::getParentId, childIds)
+                        .select(SysDataset::getParentId));
+        Set<Long> grandParentIds =
+                grandChildren.stream().map(SysDataset::getParentId).collect(Collectors.toSet());
+
+        Map<Long, Boolean> hasChildrenMap = new HashMap<>();
+        for (Long rootId : rootIds) {
+            hasChildrenMap.put(
+                    rootId,
+                    directChildrenMap.containsKey(rootId)
+                            && !directChildrenMap.get(rootId).isEmpty());
+        }
+        for (SysDataset child : children) {
+            hasChildrenMap.put(child.getId(), grandParentIds.contains(child.getId()));
+        }
+
+        Map<Long, DatasetStatistics> statsMap = self.getAllDatasetStats();
+
+        List<DatasetVO> records = rootDatasets.stream()
+                .map(entity -> {
+                    DatasetStatistics stats = statsMap.get(entity.getId());
+                    DatasetVO vo = datasetConverter.entity2Vo(entity, stats);
+                    vo.setHasChildren(hasChildrenMap.getOrDefault(entity.getId(), false));
+                    vo.setTotal(stats != null ? stats.getFileCount() : 0L);
+                    List<DatasetVO> childVOs =
+                            directChildrenMap.getOrDefault(entity.getId(), Collections.emptyList()).stream()
+                                    .map(child -> {
+                                        DatasetStatistics childStats = statsMap.get(child.getId());
+                                        DatasetVO childVo = datasetConverter.entity2Vo(child, childStats);
+                                        childVo.setHasChildren(hasChildrenMap.getOrDefault(child.getId(), false));
+                                        childVo.setTotal(childStats != null ? childStats.getFileCount() : 0L);
+                                        return childVo;
+                                    })
+                                    .toList();
+                    vo.setChildren(childVOs);
+                    return vo;
+                })
+                .toList();
+
+        Page<DatasetVO> resultPage = new Page<>(pageNum, pageSize, page.getTotal());
+        resultPage.setRecords(records);
+        return resultPage;
+    }
+
+    @Override
+    public List<DatasetVO> listChildren(Long parentId) {
+        if (parentId == null || parentId <= 0) {
+            return Collections.emptyList();
+        }
+
+        List<SysDataset> children = this.list(new LambdaQueryWrapper<SysDataset>()
+                .eq(SysDataset::getParentId, parentId)
+                .orderByAsc(SysDataset::getId));
+
+        if (children.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> childIds = children.stream().map(SysDataset::getId).toList();
+
+        List<SysDataset> grandChildren = this.list(new LambdaQueryWrapper<SysDataset>()
+                .in(SysDataset::getParentId, childIds)
+                .select(SysDataset::getParentId));
+        Set<Long> hasChildIds =
+                grandChildren.stream().map(SysDataset::getParentId).collect(Collectors.toSet());
+
+        Map<Long, DatasetStatistics> statsMap = self.getAllDatasetStats();
+
+        return children.stream()
+                .map(entity -> {
+                    DatasetStatistics stats = statsMap.get(entity.getId());
+                    DatasetVO vo = datasetConverter.entity2Vo(entity, stats);
+                    vo.setHasChildren(hasChildIds.contains(entity.getId()));
+                    vo.setTotal(stats != null ? stats.getFileCount() : 0L);
+                    vo.setChildren(Collections.emptyList());
+                    return vo;
+                })
+                .toList();
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> getEvaluationOptions(String taskType) {
+        return baseMapper.selectEvaluationOptions(taskType);
+    }
+
+    public DatasetVO addDataset(DatasetAddForm dataset) {
+        Long parentId = dataset.getParentId() != null ? dataset.getParentId() : SystemConstants.ROOT_NODE_ID;
+        boolean exists = this.count(new LambdaQueryWrapper<SysDataset>()
+                        .eq(SysDataset::getName, dataset.getName())
+                        .eq(SysDataset::getParentId, parentId))
+                > 0;
+        if (exists) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "同父节点下已存在相同名称的数据集");
+        }
+
+        SysDataset sysDataset = datasetConverter.form2Entity(dataset);
+        if (this.save(sysDataset)) {
+            self.evictAllDatasetsCache();
+            return datasetConverter.entity2Vo(sysDataset, createEmptyStats());
+        } else {
+            throw new BusinessException("新增数据集失败");
+        }
+    }
+
+    @Override
+    public DatasetVO updateDataset(Long id, DatasetUpdateForm form) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("数据集ID无效");
+        }
+
+        SysDataset currentDataset = this.getById(id);
+        if (currentDataset == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+        }
+
+        if (form.getName() != null && !form.getName().equals(currentDataset.getName())) {
+            boolean exists = this.count(new LambdaQueryWrapper<SysDataset>()
+                            .eq(SysDataset::getName, form.getName())
+                            .eq(SysDataset::getParentId, currentDataset.getParentId())
+                            .ne(SysDataset::getId, id))
+                    > 0;
+            if (exists) {
+                throw new BusinessException(ResultCode.DATA_EXISTS, "同父节点下已存在相同名称的数据集");
+            }
+        }
+
+        SysDataset sysDataset = datasetConverter.updateForm2Entity(form);
+        sysDataset.setId(id);
+
+        if (this.updateById(sysDataset)) {
+            self.evictDatasetMetadataCache();
+            DatasetStatistics stats = self.getAllDatasetStats().get(id);
+            return datasetConverter.entity2Vo(sysDataset, stats);
+        } else {
+            throw new BusinessException("更新数据集失败");
+        }
+    }
+
+    @Override
+    @Cacheable(value = "dataset:options", key = "'all'")
+    public List<Option<Long>> getOptions() {
+        List<SysDataset> datasets = self.getAllDatasets();
+        return buildDatasetOptions(SystemConstants.ROOT_NODE_ID, datasets);
+    }
+
+    @Override
+    public List<Long> getLeafDatasetIds() {
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        return TreeDataUtils.findAllLeafIds(allDatasets, SysDataset::getId, SysDataset::getParentId);
+    }
+
+    @Override
+    public List<Long> getLeafDatasetId(Long id) {
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        return TreeDataUtils.findLeafIdsUnder(allDatasets, id, SysDataset::getId, SysDataset::getParentId);
+    }
+
+    @Override
+    public List<Long> getDatasetAndDescendantIds(Long datasetId) {
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        return TreeDataUtils.findDescendantIds(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId);
+    }
+
+    @Override
+    public SysDataset getRootDataset(Long id) {
+        List<SysDataset> datasets = new ArrayList<>();
+        SysDataset cur = this.getById(id);
+        if (cur == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+        }
+
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        Map<Long, SysDataset> idToNodeMap = allDatasets.stream().collect(Collectors.toMap(SysDataset::getId, d -> d));
+
+        dfsWithCache(cur, datasets, idToNodeMap);
+
+        if (!datasets.isEmpty()) {
+            SysDataset root = datasets.get(datasets.size() - 1);
+            StringBuilder fullName = new StringBuilder(root.getName());
+            StringBuilder fullDescription = new StringBuilder(root.getDescription());
+            for (int i = datasets.size() - 2; i >= 0; i--) {
+                SysDataset dataset = datasets.get(i);
+                fullName.append("/").append(dataset.getName());
+                fullDescription.append("\n").append(dataset.getDescription());
+            }
+            root.setName(fullName.toString());
+            root.setDescription(fullDescription.toString());
+            return root;
+        }
+        return null;
+    }
+
+    @Override
+    public SysDataset getSysDatasetById(Long id) {
+        List<SysDataset> datasets = new ArrayList<>();
+        SysDataset cur = this.getById(id);
+        if (cur == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+        }
+
+        List<SysDataset> allDatasets = self.getAllDatasets();
+        Map<Long, SysDataset> idToNodeMap = allDatasets.stream().collect(Collectors.toMap(SysDataset::getId, d -> d));
+
+        dfsWithCache(cur, datasets, idToNodeMap);
+
+        if (!datasets.isEmpty()) {
+            StringBuilder fullName = new StringBuilder();
+            StringBuilder fullDescription = new StringBuilder();
+            for (int i = datasets.size() - 1; i >= 0; i--) {
+                fullName.append(datasets.get(i).getName()).append("/");
+                fullDescription.append(datasets.get(i).getDescription()).append("\n");
+            }
+            if (fullName.length() > 1) {
+                fullName.setLength(fullName.length() - 1);
+            }
+            cur.setName(fullName.toString());
+            cur.setDescription(fullDescription.toString());
+        }
+        return cur;
+    }
+
+    private void dfsWithCache(SysDataset cur, List<SysDataset> datasets, Map<Long, SysDataset> idToNodeMap) {
+        datasets.add(cur);
+        if (cur.getParentId() == null) {
+            throw new BusinessException("数据集结构出现问题");
+        }
+        if (!cur.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
+            SysDataset parent = idToNodeMap.get(cur.getParentId());
+            if (parent == null) {
+                throw new BusinessException("数据集结构出现问题：无法找到父节点，parentId=" + cur.getParentId());
+            }
+            dfsWithCache(parent, datasets, idToNodeMap);
+        }
+    }
+
+    private List<Option<Long>> buildDatasetOptions(Long rootNodeId, List<SysDataset> datasets) {
+        Map<Long, List<SysDataset>> parentToChildrenMap =
+                datasets.stream().collect(Collectors.groupingBy(SysDataset::getParentId));
+        return buildOptionsFromMap(rootNodeId, parentToChildrenMap);
+    }
+
+    private List<Option<Long>> buildOptionsFromMap(Long parentId, Map<Long, List<SysDataset>> parentToChildrenMap) {
+        List<Option<Long>> options = new ArrayList<>();
+        List<SysDataset> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (SysDataset dataset : children) {
+            Option<Long> option = new Option<>(dataset.getId(), dataset.getName());
+            List<Option<Long>> subDatasets = buildOptionsFromMap(dataset.getId(), parentToChildrenMap);
+            if (subDatasets != null && !subDatasets.isEmpty()) {
+                option.setChildren(subDatasets);
+            }
+            options.add(option);
+        }
+        return options;
+    }
+
+    @Override
+    public DatasetVO getDatasetById(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException("数据集ID无效");
+        }
+
+        SysDataset dataset = this.getById(id);
+        if (dataset == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+        }
+
+        DatasetStatistics stats = self.getAllDatasetStats().get(id);
+        return datasetConverter.entity2Vo(dataset, stats);
+    }
+
+    @Override
+    public DatasetStatistics calculateStatistics(Long datasetId) {
+        return self.getAllDatasetStats().getOrDefault(datasetId, createEmptyStats());
+    }
+
+    @Override
+    public void incrementUsageCount(Long id) {
+        this.baseMapper.incrementUsageCount(id);
+    }
+
+    @Override
+    public List<SysItemFile> getDatasetImages(Long datasetId, boolean recursive) {
+        if (recursive) {
+            List<Long> datasetIds = this.getLeafDatasetId(datasetId);
+            return baseMapper.getDatasetImages(datasetIds);
+        } else {
+            return baseMapper.getDatasetImages(List.of(datasetId));
+        }
+    }
+
+    @Override
+    public String getDatasetNameByItemId(Long itemId) {
+        if (itemId == null || itemId <= 0) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "数据项ID无效");
+        }
+
+        var datasetItem = sysDatasetItemService.getById(itemId);
+        if (datasetItem == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在，itemId: " + itemId);
+        }
+
+        SysDataset dataset = this.getById(datasetItem.getDatasetId());
+        if (dataset == null) {
+            throw new BusinessException(
+                    ResultCode.RESOURCE_NOT_FOUND, "数据项关联的数据集不存在，datasetId: " + datasetItem.getDatasetId());
+        }
+
+        return dataset.getName();
+    }
+}

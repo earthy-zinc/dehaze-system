@@ -1,0 +1,374 @@
+server:
+  port: 8989
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 50
+    max-connections: 10000
+    accept-count: 200
+    connection-timeout: 20000
+    max-keep-alive-requests: 100
+spring:
+  devtools:
+    restart:
+      enabled: true
+  jackson:
+    ## 默认序列化时间格式
+    date-format: yyyy-MM-dd HH:mm:ss
+    ## 默认序列化时区
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+    ## JSR-310 日期时间模块配置
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    druid:
+      # 初始连接数（建议保持与最小空闲一致）
+      initial-size: 5
+      # 最小空闲连接（防止突发流量导致连接创建延迟）
+      min-idle: 5
+      # 最大活跃连接数（根据DB配置max_connections调整）
+      max-active: 50
+      # 获取连接最大等待时间（毫秒，避免线程长时间阻塞）
+      max-wait: 5000
+      # 空闲连接检查周期（60秒扫描一次空闲连接）
+      time-between-eviction-runs-millis: 60000
+      # 连接最小空闲时间（300秒后回收空闲连接）
+      min-evictable-idle-time-millis: 300000
+      # 验证查询语句（保持与数据库类型匹配）
+      validation-query: SELECT 1
+      # 空闲时验证连接有效性（推荐开启）
+      test-while-idle: true
+      # 获取连接时不验证（避免性能损耗）
+      test-on-borrow: false
+      # 归还连接时不验证（同上）
+      test-on-return: false
+      # 启用统计监控和防火墙（防御SQL注入）
+      filters: stat,wall
+      filter:
+        stat:
+          # 慢 SQL 记录：超过 1s 的 SQL 输出到日志（WARN 级别）
+          log-slow-sql: true
+          slow-sql-millis: 1000
+  data:
+    redis:
+      database: ${REDIS_DATABASE}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 10s
+      lettuce:
+        pool:
+          # 连接池最大连接数（默认8，压测时易成瓶颈，调大到32）
+          max-active: 32
+          # 连接池最大阻塞等待时间（使用负值表示没有限制） 默认-1
+          max-wait: -1
+          # 连接池中的最大空闲连接 默认8
+          max-idle: 16
+          # 连接池中的最小空闲连接 默认0
+          min-idle: 4
+    mongodb:
+      uri: mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_HOST}:${MONGODB_PORT}/${MONGODB_DATABASE}?authSource=admin
+  cache:
+    enabled: true
+    # 缓存类型 redis、none(不使用缓存)
+    type: redis
+    # 缓存时间(单位：ms)
+    redis:
+      time-to-live: 3600000
+      # 缓存null值，防止缓存穿透
+      cache-null-values: true
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 105MB
+
+mybatis-plus:
+  global-config:
+    db-config:
+      # 主键ID类型
+      id-type: auto
+      # 逻辑删除字段名称
+      logic-delete-field: deleted
+      # 逻辑删除-删除值（原样拼接进SQL；id=删除时写入行id，保证唯一键含deleted后软删行不占键位）
+      logic-delete-value: id
+      # 逻辑删除-未删除值
+      logic-not-delete-value: 0
+  configuration:
+    # 驼峰下划线转换
+    map-underscore-to-camel-case: true
+    # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 配置枚举处理器，使MyBatis-Plus能够正确处理枚举类型
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+
+# SQL 审计日志（结构化 JSON 输出至 info.log）
+clarity:
+  sql-log:
+    # INFO：记录全部 SQL；WARN：仅记录慢查询与 SQL 错误
+    level: INFO
+    # 慢查询阈值（毫秒）
+    slow-threshold-ms: 500
+
+# 安全配置
+security:
+  jwt:
+    key: ${JWT_SECRET_KEY}
+    ttl: 7200
+    refresh-ttl: 604800
+  session:
+    cookie:
+      # 开发环境使用 HTTP，Secure 必须为 false 否则浏览器会丢弃 Cookie
+      secure: false
+      # 开发环境 Vite 代理前缀为 /java-api，Path=/api 无法匹配，需用 /
+      path: /
+
+# 系统配置
+system:
+  # 多点登录控制：false 允许多设备同时登录，true 新登录踢旧 Session
+  use-multi-point: false
+  # 新用户默认密码（由根 .env 的 DEFAULT_PASSWORD 注入，与 Go/Python 端保持一致）
+  default-password: ${DEFAULT_PASSWORD}
+
+# 优惠券配置
+coupon:
+  receive-rate-limit: 10000
+  receive-rate-window: 60
+
+# 监控配置 (开发环境适度开放，禁止暴露 heapdump/env/configprops 等高危端点)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    enable:
+      prometheus: true
+  endpoint:
+    health:
+      show-details: WHEN_AUTHORIZED
+
+file:
+  # 上传类型 (minio OSS / local 本地存储 / nginx-static 外部 nginx 静态托管)
+  type: minio
+  # 文件访问 baseUrl（用户主动上传的文件走 MinIO + Java 下载接口）
+  baseUrl: http://127.0.0.1:8989/api/v1/files/download
+  # 本地存储（相对路径以仓库根为基准解析，见 AppPaths；未配置时落到 <仓库根>/data/upload）
+  local:
+    uploadPath: ${UPLOAD_DIR:./data/upload}
+  # MinIO 对象存储服务
+  minio:
+    # 服务Endpoint
+    endpoint: http://${MINIO_HOST}:${MINIO_PORT}
+    # 访问凭据
+    access-key: ${MINIO_ACCESS_KEY}
+    # 凭据密钥
+    secret-key: ${MINIO_SECRET_KEY}
+    # 存储桶名称
+    bucket-name: ${MINIO_BUCKET}
+  # nginx-static 后端（文件由外部 nginx 静态托管，Java 仅登记与拼 URL，不参与上传/下载 IO）
+  nginx-static:
+    # nginx 对外访问 baseUrl（必须带 scheme + host，端口对齐 python 的 NGINX_STATIC_PORT）
+    baseUrl: http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}
+
+# springdoc配置： https://springdoc.org/properties.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: alpha
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.pei.clarity.controller
+  default-flat-param-object: true
+
+# knife4j的增强配置，不需要增强可以不配 https://doc.xiaominfo.com/docs/quick-start
+knife4j:
+  enable: true
+  # 开启生产环境屏蔽模式 (即使开发环境也建议开启基本保护)
+  production: false
+  setting:
+    language: zh_cn
+
+# xxl-job 定时任务配置
+xxl:
+  job:
+    # 定时任务开关
+    enabled: true
+    admin:
+      # 多个地址使用,分割
+      addresses: http://${XXLJOB_HOST}:${XXLJOB_PORT}/xxl-job-admin
+    accessToken: ${XXLJOB_ACCESS_TOKEN}
+    executor:
+      appname: xxl-job-executor-${spring.application.name}${XXLJOB_ENV_SUFFIX}
+      address:
+      # 由 scripts/run.py 按部署拓扑注入：admin 跑在 Docker 时注入 host.docker.internal
+      # （后端在宿主，注册地址须是容器可回调的域名；留空则 xxl-tool 在 WSL 镜像网络下探测返回 null）
+      ip: ${XXLJOB_EXECUTOR_IP:}
+      port: 9999
+      # 相对服务根（<仓库根>/clarity-java），由 run.py 保证 cwd，日志位置与 filebeat 挂载一致
+      logpath: logs/xxl-job
+      logretentiondays: 30
+      timeout: 10
+
+# Python 算法服务配置
+algorithm:
+  python:
+    # 服务基础地址（开发环境指向本地 clarity-python 服务，端口与 clarity-python 启动端口一致）
+    baseUrl: http://127.0.0.1:8991
+    # 连接超时（毫秒）
+    connect-timeout: 5000
+    # 读取超时（毫秒）—— 预测/评估可耗时较长
+    read-timeout: 120000
+    # AI 转发（B 类端点）SSE 流空闲超时（毫秒）—— 推理长期无输出时才判定上游卡死
+    ai-proxy-stream-idle-timeout: 300000
+    # 最大重试次数
+    max-retry: 3
+    # 重试初始退避（毫秒），指数增长
+    retry-backoff: 1000
+    # 熔断失败率阈值（%）
+    circuit-breaker-failure-rate: 50
+    # 熔断最小调用次数
+    circuit-breaker-min-calls: 10
+    # 熔断后半开等待（毫秒）
+    circuit-breaker-half-open-delay: 30000
+    # 服务间调用 API Key（M2M 认证，需与 DB 中 admin 用户的 API Key 一致；由根 .env 注入）
+    api-key: ${M2M_API_KEY}
+
+# 验证码配置
+captcha:
+  # 验证码类型 circle-圆圈干扰验证码|gif-Gif验证码|line-干扰线验证码|shear-扭曲干扰验证码
+  type: circle
+  # 验证码宽度
+  width: 120
+  # 验证码高度
+  height: 40
+  # 验证码干扰元素个数
+  interfere-count: 2
+  # 文本透明度(0.0-1.0)
+  text-alpha: 0.8
+  # 验证码字符配置
+  code:
+    type: random
+    length: 4
+  # 验证码字体
+  font:
+    name: SansSerif
+    weight: 1
+    size: 24
+  # 验证码有效期(秒)
+  expire-seconds: 120
+
+# RabbitMQ 配置 (异步任务分发)
+rabbitmq:
+  # 是否启用 RabbitMQ
+  enabled: true
+  # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
+  url: amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/${RABBITMQ_VHOST}
+  # 交换机配置
+  exchange:
+    # 任务交换机名称 (与 Go 端保持一致)
+    name: clarity.tasks
+    # 路由键前缀
+    routing-key-prefix: "task."
+  # 重连配置
+  reconnect:
+    # 初始重连间隔 (毫秒)
+    initial-interval: 1000
+    # 最大重连间隔 (毫秒)
+    max-interval: 30000
+    # 重连乘数
+    multiplier: 2.0
+
+# CORS 跨域配置 (开发环境白名单)
+cors:
+  allowed-origins:
+    # 前端开发服务器（Vite/Metro/Taro）
+    - http://localhost:5173   # clarity-front-react (Vite)
+    - http://localhost:5174   # clarity-front-vue (Vite)
+    - http://localhost:5175   # clarity-taro (H5)
+    - http://localhost:5176   # clarity-uniapp (H5)
+    - http://localhost:5177   # clarity_flutter (Web)
+    - http://localhost:5183   # clarity-front-react (Electron)
+    - http://localhost:5184   # clarity-front-vue (Electron)
+    - http://localhost:8081    # clarity-react-native (Metro)
+    - http://127.0.0.1:5173
+    - http://127.0.0.1:5174
+    - http://127.0.0.1:5175
+    - http://127.0.0.1:5176
+    - http://127.0.0.1:5177
+    - http://127.0.0.1:5183
+    - http://127.0.0.1:5184
+    - http://127.0.0.1:8081
+
+# Kafka 配置 (日志收集与流处理)
+kafka:
+  # 是否启用 Kafka
+  enabled: false
+  # Kafka Broker 地址 (多个用逗号分隔)
+  bootstrap-servers: localhost:9092
+  # 生产者配置
+  producer:
+    # 消息确认模式 (all, 1, 0)
+    acks: all
+    # 重试次数
+    retries: 3
+    # 批量发送大小 (字节)
+    batch-size: 16384
+    # 批量发送延迟 (毫秒)
+    linger-ms: 5
+    # 缓冲区大小 (字节)
+    buffer-memory: 33554432
+  # 消费者配置
+  consumer:
+    # 消费者组 ID
+    group-id: clarity-java
+    # 自动提交偏移量
+    enable-auto-commit: false
+    # 消费起始位置 (earliest, latest)
+    auto-offset-reset: earliest
+    # 单次拉取最大记录数
+    max-poll-records: 100
+    # 拉取超时时间 (毫秒)
+    poll-timeout-ms: 1000
+  # 日志管道配置
+  log-pipeline:
+    # 日志 Topic 名称 (与 Go 端保持一致)
+    topic: clarity.logs
+    # 是否启用日志管道
+    enabled: false
+
+
+
+# 支付渠道配置（默认关闭，启用时调用真实 SDK）
+payment:
+  wechat:
+    enabled: false
+    appId: ${WECHAT_PAY_APP_ID:}
+    mchId: ${WECHAT_PAY_MCH_ID:}
+    apiKey: ${WECHAT_PAY_API_KEY:}
+    privateKey: ${WECHAT_PAY_PRIVATE_KEY:}
+    publicKey: ${WECHAT_PAY_PUBLIC_KEY:}
+    notifyUrl: ${WECHAT_PAY_NOTIFY_URL:}
+    refundNotifyUrl: ${WECHAT_PAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${WECHAT_PAY_BASE_URL:https://api.mch.weixin.qq.com}
+  alipay:
+    enabled: false
+    appId: ${ALIPAY_APP_ID:}
+    mchId: ${ALIPAY_MCH_ID:}
+    apiKey: ${ALIPAY_API_KEY:}
+    privateKey: ${ALIPAY_PRIVATE_KEY:}
+    publicKey: ${ALIPAY_PUBLIC_KEY:}
+    notifyUrl: ${ALIPAY_NOTIFY_URL:}
+    refundNotifyUrl: ${ALIPAY_REFUND_NOTIFY_URL:}
+    baseUrl: ${ALIPAY_BASE_URL:https://openapi.alipay.com}

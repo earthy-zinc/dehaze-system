@@ -1,0 +1,22 @@
+package com.pei.clarity.model.dto;
+
+import java.io.File;
+import lombok.Data;
+
+@Data
+public class FileDTO {
+    // 文件输入流
+    private File file;
+    // 文件名
+    private String name;
+    // 文件对象名
+    private String objectName;
+    // 文件扩展名
+    private String extension;
+    // 文件MD5值
+    private String md5;
+    // 存储后端标识（minio / local / nginx-static）
+    private String storage;
+    // 文件大小
+    private Long size;
+}

@@ -1,0 +1,44 @@
+package com.pei.clarity.model.entity;
+
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.clarity.common.base.BaseEntity;
+import java.io.Serial;
+import java.util.Map;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+/**
+ * AI 中间产物（只追加，无逻辑删除）
+ *
+ * @author clarity
+ */
+@Data
+@EqualsAndHashCode(callSuper = false)
+@TableName(value = "sys_ai_artifact", autoResultMap = true)
+public class SysAiArtifact extends BaseEntity {
+
+    @TableId(type = IdType.AUTO)
+    private Long id;
+
+    private Long conversationId;
+
+    private Long messageId;
+
+    private String type;
+
+    private String refType;
+
+    private Long refId;
+
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> summary;
+
+    private Integer isInvalid;
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+}

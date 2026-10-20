@@ -1,0 +1,40 @@
+package com.pei.clarity.service;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.pei.clarity.model.entity.SysFeedback;
+import com.pei.clarity.model.form.FeedbackAssignForm;
+import com.pei.clarity.model.form.FeedbackCloseForm;
+import com.pei.clarity.model.form.FeedbackCreateForm;
+import com.pei.clarity.model.form.FeedbackReplyForm;
+import com.pei.clarity.model.form.FeedbackSupplementForm;
+import com.pei.clarity.model.query.FeedbackPageQuery;
+import com.pei.clarity.model.vo.FeedbackDetailVO;
+import com.pei.clarity.model.vo.FeedbackPageVO;
+import com.pei.clarity.model.vo.FeedbackStatsVO;
+import com.pei.clarity.model.vo.IdVO;
+import java.time.LocalDateTime;
+import java.util.List;
+
+public interface FeedbackService extends IService<SysFeedback> {
+
+    IdVO createFeedback(FeedbackCreateForm form);
+
+    Page<FeedbackPageVO> listMyFeedback(int pageNum, int pageSize);
+
+    FeedbackDetailVO getFeedbackDetail(Long id);
+
+    void supplementFeedback(Long id, FeedbackSupplementForm form);
+
+    Page<FeedbackPageVO> listPagedFeedback(FeedbackPageQuery query);
+
+    void assignFeedback(Long id, FeedbackAssignForm form);
+
+    void replyFeedback(Long id, FeedbackReplyForm form);
+
+    void closeFeedback(Long id, FeedbackCloseForm form);
+
+    void updateTags(Long id, List<String> tags);
+
+    FeedbackStatsVO getFeedbackStats(LocalDateTime startTime, LocalDateTime endTime);
+}
