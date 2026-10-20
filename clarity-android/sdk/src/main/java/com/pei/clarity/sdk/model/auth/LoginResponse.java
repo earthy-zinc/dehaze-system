@@ -1,0 +1,16 @@
+package com.pei.clarity.sdk.model.auth;
+
+import lombok.Data;
+
+@Data
+public class LoginResponse {
+    private String sessionId;
+    private LoginUser user;
+
+    @Data
+    public static class LoginUser {
+        private long id;
+        private String username;
+        private String nickname;
+    }
+}

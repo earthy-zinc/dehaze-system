@@ -1,0 +1,204 @@
+{
+  "success": true,
+  "outcome": "passed",
+  "repairable": true,
+  "terminalViolations": [],
+  "terminalBlockingSummary": null,
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.22.00.00.00",
+    "version_source": "skill-release-manifest.json",
+    "runtime_skill_dir": null,
+    "recorded_at": null,
+    "expected_version": "2026.07.22.00.00.00",
+    "status": "matched",
+    "read_status": "loaded"
+  },
+  "operatingMode": "free-explore",
+  "renderBlockingErrorCount": 0,
+  "softWarningCount": 20,
+  "renderBlockingErrors": [],
+  "errorSignatures": [],
+  "softWarnings": [
+    "[mobile-bottom-overlay] pages/index.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/dehaze.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-[56px] left-0 right-0 z-40 px-4 py-3 bg-[var(--dehaze-background)]/95 backdrop-blur-sm border-t border-[var(--dehaze-border)]\"",
+    "[mobile-bottom-overlay] pages/messages.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/profile.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/compare.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"absolute bottom-4 left-4 text-sm font-medium text-white/90 drop-shadow\"",
+    "[mobile-bottom-overlay] pages/tools-dark.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-aurora.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-sunset.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/dehaze-flow.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-v2.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/history.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/favorites.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/batch-flow.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-navigation-consistency] 6 mobile page(s) do not expose a 3+ item data-nav-key nav cluster while sibling pages do. This is acceptable for detail/reward/modal pages only when planned explicitly.",
+    "[html-quality] colors_and_type.css: ordinary/static shadow tokens must keep every shadow alpha <= 0.05; deeper shadows are allowed only for floating-layer tokens such as modal/popover/dropdown/drawer/overlay (--dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08), --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12), --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12), --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14), --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16)).",
+    "[html-quality] login-optimized.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] login.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] register-optimized.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] register.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference."
+  ],
+  "repairPlanHints": [
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
+        "login-optimized.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    },
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
+        "login.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    },
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
+        "register-optimized.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    },
+    {
+      "errorClass": "hardcoded-color-in-body",
+      "owner": "sub-agent",
+      "repairScope": "targeted-token-replace",
+      "strategy": "targeted_token_replace_once",
+      "affectedFiles": [
+        "register.html"
+      ],
+      "repairReportPath": null,
+      "repairAlreadyAttempted": false,
+      "allowSourceRead": "no-full-html-read",
+      "maxValidationRuns": 2
+    }
+  ],
+  "repairActionTable": [],
+  "errorCount": 0,
+  "warningCount": 20,
+  "errors": [],
+  "warnings": [
+    "[mobile-bottom-overlay] pages/index.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/dehaze.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-[56px] left-0 right-0 z-40 px-4 py-3 bg-[var(--dehaze-background)]/95 backdrop-blur-sm border-t border-[var(--dehaze-border)]\"",
+    "[mobile-bottom-overlay] pages/messages.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/profile.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/compare.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"absolute bottom-4 left-4 text-sm font-medium text-white/90 drop-shadow\"",
+    "[mobile-bottom-overlay] pages/tools-dark.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-aurora.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-sunset.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-[var(--dehaze-card)] border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/dehaze-flow.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/tools-v2.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/history.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/favorites.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-bottom-overlay] pages/batch-flow.html: bottom fixed/absolute CTA or navigation found. Ensure it has safe-area spacing and does not cover content. Evidence: class=\"fixed bottom-0 left-0 right-0 h-[56px] bg-white border-t border-[var(--dehaze-border)] z-50\"",
+    "[mobile-navigation-consistency] 6 mobile page(s) do not expose a 3+ item data-nav-key nav cluster while sibling pages do. This is acceptable for detail/reward/modal pages only when planned explicitly.",
+    "[html-quality] colors_and_type.css: ordinary/static shadow tokens must keep every shadow alpha <= 0.05; deeper shadows are allowed only for floating-layer tokens such as modal/popover/dropdown/drawer/overlay (--dehaze-shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08), --dehaze-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.12), --dehaze-shadow-3: 0 8px 24px rgba(0, 0, 0, 0.12), --dehaze-shadow-4: 0 12px 24px rgba(0, 0, 0, 0.14), --dehaze-shadow-5: 0 16px 32px rgba(0, 0, 0, 0.16)).",
+    "[html-quality] login-optimized.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] login.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] register-optimized.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference.",
+    "[html-quality] register.html: hardcoded colors are forbidden outside <style id=\"theme-vars\">. Use brand CSS variables from the token reference."
+  ],
+  "validationRunDisciplineStatus": {
+    "declared": true,
+    "restoreMode": false,
+    "maxFullValidationRuns": 2,
+    "validationHistoryCount": 0,
+    "repairLedgerCount": 0,
+    "softWarningsTriggerRepair": false,
+    "terminalState": null,
+    "nextAction": null,
+    "violations": [],
+    "success": true
+  },
+  "terminalState": null,
+  "nextCheck": {
+    "type": "finish-readiness",
+    "command": "node \"c:\\Users\\earthyzinc\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\Clarity Vision\\clarity-mobile\" --check=all",
+    "fullValidationAllowed": false,
+    "reason": "workspace validation passed; run complete finish readiness before final delivery"
+  },
+  "repairBatch": [],
+  "repairContextPacket": {
+    "schema_version": "1.0",
+    "purpose": "small-context repair packet; read this before full validation-report.json",
+    "success": true,
+    "terminalState": null,
+    "skillProvenance": {
+      "name": "solo-design",
+      "version": "2026.07.22.00.00.00",
+      "version_source": "skill-release-manifest.json",
+      "runtime_skill_dir": null,
+      "recorded_at": null,
+      "expected_version": "2026.07.22.00.00.00",
+      "status": "matched",
+      "read_status": "loaded"
+    },
+    "renderBlockingErrorCount": 0,
+    "softWarningCount": 20,
+    "renderBlockingErrors": [],
+    "repairActionTable": [],
+    "nextCheck": {
+      "type": "finish-readiness",
+      "command": "node \"c:\\Users\\earthyzinc\\.trae-cn\\builtin\\design\\default\\skills\\solo-design\\shared-runtime\\deterministic-tooling\\validate-finish-readiness.mjs\" \"e:\\Clarity Vision\\clarity-mobile\" --check=all",
+      "fullValidationAllowed": false,
+      "reason": "workspace validation passed; run complete finish readiness before final delivery"
+    },
+    "forbidden": [
+      "do not read validator source",
+      "do not rerun full validation when nextCheck.fullValidationAllowed=false",
+      "do not start preview/browser unless user explicitly asks",
+      "do not hand-edit repair ledger fields"
+    ]
+  },
+  "projectFileHashes": {
+    "clarity-mobile.design": "1f9eb2d0ce4097e370347b9dcb337f9bcbd03cb83489475bd15b1fd721b548d9",
+    "colors_and_type.css": "18deb9a647004dbe4842cf54179528394fb229769ad8099b0819587db641d27f",
+    "runtime-orchestration-summary.json": "7c2632e36351cb8cc64fa6650ad050afae728251f2ba9fe486ddf1fe3f3bf5e0",
+    "pages/batch-flow.html": "9184040e7f58d4c28f259050e4fec7731929b8300790174e7a7c8bc14184045d",
+    "pages/compare-full.html": "5e03ee66b2f8264fd2a7a3f516b49447c3f181be8a8ad16a67bd5e08ea16783e",
+    "pages/compare.html": "4e3c5264734c7ac22ecb0d1145354f0d495910f1aa6451ff0b03d100c0392d28",
+    "pages/dehaze-flow.html": "bdf68ca12e2ce94938df6d770dda93f3f9e9a532a0f45e8e900df1f2ae0398fb",
+    "pages/dehaze.html": "495d789f9340de9b13002f871d27f7194afadbd73edad7125ee2518eb6efa210",
+    "pages/favorites.html": "e56584ec8b3c64a3e416301ac38f738bef89d27efc4d1a0689bead19a1b16074",
+    "pages/history.html": "46dd767761b0e4a6d9d50340302256034c19b172fd8af475c01b163ff0750612",
+    "pages/index.html": "6a8e8fa69427991eba50b35a2ff12fa98f093c65761dbf5e8e4f5d167004ed8f",
+    "pages/login-optimized.html": "f40704b891c064472136bd6a473004ce6291feab2d80a5276959fc3878db68de",
+    "pages/login.html": "f40704b891c064472136bd6a473004ce6291feab2d80a5276959fc3878db68de",
+    "pages/messages.html": "92af0e0b18e519e39a866998df620bc130b862f57ba07431d4a60c1efe9e2e31",
+    "pages/profile.html": "d8ec25a2ea5fdf7b112dfec106d7c606cd8b150d150ba6215e24f65e8c69ecd8",
+    "pages/register-optimized.html": "41b437c06c9aceb632945d0404bb5731fe5fd2e3f0ff656873e63b751d9299fd",
+    "pages/register.html": "41b437c06c9aceb632945d0404bb5731fe5fd2e3f0ff656873e63b751d9299fd",
+    "pages/tools-aurora.html": "8c56ed433d753ba93fb97855c865c3c84bf454c46dd4e4a97dbccc74b3f19d90",
+    "pages/tools-dark.html": "85274a547a3cca187191bd2bf625d2466719b21a1ffd864185ea93b8ef413730",
+    "pages/tools-sunset.html": "87e1167504ad9277d3fe4e4f291a70f12bd98d0980746943c5160fc751887af1",
+    "pages/tools-v2.html": "5a72a97c9285d46807ebbe74aa3c5e68c2e8907b83ea4127349707dfe9f3a125",
+    "pages/tools.html": "8e6ea06dda157d088ae28286b78dee5b24147d96960f8f5c6e365fd145bb5a90"
+  },
+  "designDir": "e:\\Clarity Vision\\clarity-mobile",
+  "expectedPages": null,
+  "requireInteractions": null,
+  "checkedAt": "2026-08-04T10:30:03.927Z"
+}

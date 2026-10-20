@@ -1,0 +1,11 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "clarity-sdk-js": ["../clarity-sdk-js/dist/index.d.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "index.js"],
+  "exclude": ["**/node_modules", "**/Pods"]
+}

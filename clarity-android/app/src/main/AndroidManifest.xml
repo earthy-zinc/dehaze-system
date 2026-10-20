@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 网络权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 相机权限 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 存储权限 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <application
+        android:name=".DehazeApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Clarity"
+        tools:targetApi="31">
+        <!-- 主Activity作为启动Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Clarity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        
+        <!-- 对比Activity -->
+        <activity
+            android:name=".ui.compare.CompareActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 评估Activity -->
+        <activity
+            android:name=".ui.evaluation.EvaluationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 展示Activity -->
+        <activity
+            android:name=".ui.presentation.PresentationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 部门管理 Activity -->
+        <activity
+            android:name=".ui.system.DeptListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 角色管理 Activity -->
+        <activity
+            android:name=".ui.system.RoleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 用户管理 Activity -->
+        <activity
+            android:name=".ui.system.UserListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 文件管理 Activity -->
+        <activity
+            android:name=".ui.file.FileListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 菜单管理 Activity -->
+        <activity
+            android:name=".ui.system.MenuListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 字典类型管理 Activity -->
+        <activity
+            android:name=".ui.system.DictTypeListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 字典数据管理 Activity -->
+        <activity
+            android:name=".ui.system.DictItemListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 任务管理 Activity -->
+        <activity
+            android:name=".ui.task.TaskListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 图像输入历史 Activity -->
+        <activity
+            android:name=".ui.input.InputHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 批量处理 Activity（L2） -->
+        <activity
+            android:name=".ui.batch.BatchActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 指标管理 Activity（L2） -->
+        <activity
+            android:name=".ui.metrics_manage.MetricsManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 消息详情 Activity (L2) -->
+        <activity
+            android:name=".ui.messages.detail.MessagesDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- ========== 管理模块 Activity（sys:* 权限控制） ========== -->
+
+        <!-- 数据集管理 Activity -->
+        <activity
+            android:name=".ui.system.DatasetManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 任务管理 Activity（管理侧全用户任务） -->
+        <activity
+            android:name=".ui.system.TaskManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 会员管理 Activity -->
+        <activity
+            android:name=".ui.system.MemberManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 套餐管理 Activity -->
+        <activity
+            android:name=".ui.system.PackageManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 订单管理 Activity -->
+        <activity
+            android:name=".ui.system.OrderManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 反馈评价管理 Activity -->
+        <activity
+            android:name=".ui.system.FeedbackManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 消息管理 Activity -->
+        <activity
+            android:name=".ui.system.MessageManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- 推荐管理 Activity -->
+        <activity
+            android:name=".ui.system.RecommendManageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- ===== 个人中心 L2 页面 ===== -->
+        <activity
+            android:name=".ui.personal.FilesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.OrdersActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.CreditsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.MemberActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.PackageActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.FeedbackActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.FavoritesActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.HelpActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <activity
+            android:name=".ui.personal.AboutActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+
+        <!-- ===== 消息设置 L2 页面 ===== -->
+        <activity
+            android:name=".ui.notify.NotifyActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Clarity" />
+    </application>
+
+</manifest>

@@ -1,0 +1,514 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../models/package_model.dart';
+import '../providers/auth_provider.dart';
+import '../layout/main_layout.dart';
+import '../pages/comparison/filter.dart';
+import '../pages/comparison/magnifier.dart';
+import '../pages/comparison/metrics.dart';
+import '../pages/comparison/model_info.dart';
+import '../pages/comparison/overlay.dart';
+import '../pages/comparison/side_by_side.dart';
+import '../pages/batch/index.dart';
+import '../pages/dataset/index.dart';
+import '../pages/home/index.dart';
+import '../pages/image_input/index.dart';
+import '../pages/login/index.dart';
+import '../pages/metrics_manage/index.dart';
+import '../pages/messages/index.dart';
+import '../pages/messages/detail/index.dart';
+import '../pages/notify/notify_page.dart';
+import '../pages/personal/about_page.dart';
+import '../pages/personal/favorites_page.dart';
+import '../pages/personal/feedback_page.dart';
+import '../pages/personal/files_page.dart';
+import '../pages/personal/help_page.dart';
+import '../pages/personal/member_page.dart';
+import '../pages/personal/order_create_page.dart';
+import '../pages/personal/orders_page.dart';
+import '../pages/personal/package_detail_page.dart';
+import '../pages/personal/package_page.dart';
+import '../pages/personal/credits_page.dart';
+import '../pages/personal/settings_page.dart';
+import '../pages/processing/index.dart';
+import '../pages/profile/index.dart';
+import '../pages/register/index.dart';
+import '../pages/task_history/index.dart';
+import '../pages/tools/index.dart';
+import '../pages/dashboard/index.dart';
+import '../pages/system/user_page.dart';
+import '../pages/system/role_page.dart';
+import '../pages/system/menu_page.dart';
+import '../pages/system/dept_page.dart';
+import '../pages/system/dict_page.dart';
+import '../pages/system/dataset_manage_page.dart';
+import '../pages/system/task_manage_page.dart';
+import '../pages/system/member_manage_page.dart';
+import '../pages/system/package_manage_page.dart';
+import '../pages/system/order_manage_page.dart';
+import '../pages/system/feedback_manage_page.dart';
+import '../pages/system/message_manage_page.dart';
+import '../pages/system/recommend_manage_page.dart';
+
+/// 应用路由配置
+class AppRouterConfig {
+  const AppRouterConfig._();
+
+  // ==================== 路由路径常量 ====================
+
+  // 认证
+  static const String login = '/login';
+  static const String register = '/register';
+
+  // Tab 根路径
+  static const String home = '/home';
+  static const String tools = '/tools';
+  static const String clarity = '/dehaze';
+  static const String messages = '/messages';
+  static const String profile = '/profile';
+
+  // L2 子页面（完整路径，用于 context.go()）
+  static const String imageInput = '/tools/image-input';
+  static const String batch = '/tools/batch';
+  static const String dataset = '/tools/dataset';
+  static const String processing = '/dehaze/processing';
+  static const String taskHistory = '/profile/task-history';
+  static const String metricsManage = '/tools/metrics-manage';
+
+  // Profile L2 子页面
+  static const String files = '/profile/files';
+  static const String orders = '/profile/orders';
+  static const String credits = '/profile/credits';
+  static const String member = '/profile/member';
+  static const String package = '/profile/package';
+  // 购买流程：详情完整路径需拼接套餐 id（如 '/profile/package/1'）
+  static const String packageDetail = '/profile/package/:id';
+  static const String orderCreate = '/profile/order/create';
+  static const String feedback = '/profile/feedback';
+  static const String favorites = '/profile/favorites';
+  static const String settings = '/profile/settings';
+  static const String help = '/profile/help';
+  static const String about = '/profile/about';
+  static const String notify = '/profile/notify';
+
+  // L3 沉浸页（ShellRoute 外）
+  static const String sideBySide = '/compare/side-by-side';
+  static const String overlay = '/compare/overlay';
+  static const String magnifier = '/compare/magnifier';
+  static const String filter = '/compare/filter';
+  static const String compareMetrics = '/compare/metrics';
+  static const String modelInfo = '/model-info';
+
+  /// 登录态白名单
+  static const List<String> publicRoutes = [login, register, home];
+
+  /// 管理页路由 → 所需权限的**模块前缀**映射（用于 redirect 统一权限拦截）
+  ///
+  /// 值为模块前缀（如 `sys:user`、`order`）；命中该模块任一具体权限即可进入。
+  /// 任务管理不进此表：任务域后端无接口级权限校验，仅需登录态。
+  static const Map<String, String> adminRouteModulePerms = {
+    '/profile/admin/user-manage': 'sys:user',
+    '/profile/admin/role-manage': 'sys:role',
+    '/profile/admin/menu-manage': 'sys:menu',
+    '/profile/admin/dept-manage': 'sys:dept',
+    '/profile/admin/dict-manage': 'sys:dict',
+    '/profile/admin/dataset-manage': 'sys:dataset',
+    '/profile/admin/member-manage': 'member',
+    '/profile/admin/package-manage': 'package',
+    '/profile/admin/order-manage': 'order',
+    '/profile/admin/feedback-manage': 'feedback',
+    '/profile/admin/message-manage': 'notify',
+    '/profile/admin/recommend-manage': 'sys:recommendation',
+  };
+}
+
+/// GoRouter Provider
+///
+/// 只创建一次实例，登录态变化通过 [refreshListenable] 触发 redirect 重跑；
+/// 若改为 watch authProvider 重建 router，则每次登录态变化都会让 router 回到
+/// initialLocation（首页），导致直接访问的深链在认证恢复后被丢弃。
+final goRouterProvider = Provider<GoRouter>((ref) {
+  final authNotifier = ValueNotifier<AuthState>(ref.read(authProvider));
+  ref.listen<AuthState>(authProvider, (_, next) => authNotifier.value = next);
+  ref.onDispose(authNotifier.dispose);
+
+  return GoRouter(
+    initialLocation: AppRouterConfig.home,
+    debugLogDiagnostics: true,
+    refreshListenable: authNotifier,
+    routes: [
+      // ==================== L0 认证页（ShellRoute 外） ====================
+      GoRoute(
+        path: AppRouterConfig.login,
+        name: 'login',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.register,
+        name: 'register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+
+      // ==================== L3 沉浸页（ShellRoute 外） ====================
+      GoRoute(
+        path: AppRouterConfig.sideBySide,
+        name: 'side-by-side',
+        builder: (context, state) => const SideBySidePage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.overlay,
+        name: 'overlay',
+        builder: (context, state) => const OverlayPage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.magnifier,
+        name: 'magnifier',
+        builder: (context, state) => const MagnifierPage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.filter,
+        name: 'filter',
+        builder: (context, state) => const FilterPage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.compareMetrics,
+        name: 'compare-metrics',
+        builder: (context, state) => const MetricsPage(),
+      ),
+      GoRoute(
+        path: AppRouterConfig.modelInfo,
+        name: 'model-info',
+        builder: (context, state) => const ModelInfoPage(),
+      ),
+
+      // ==================== StatefulShellRoute (5 Tab) ====================
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainLayout(navigationShell: navigationShell),
+        branches: [
+          // Branch 0: 首页
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRouterConfig.home,
+                name: 'home',
+                builder: (context, state) => const HomePage(),
+              ),
+            ],
+          ),
+          // Branch 1: 工具
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRouterConfig.tools,
+                name: 'tools',
+                builder: (context, state) => const ToolsPage(),
+                routes: [
+                  GoRoute(
+                    path: 'image-input',
+                    name: 'image-input',
+                    builder: (context, state) => const ImageInputPage(),
+                  ),
+                  GoRoute(
+                    path: 'batch',
+                    name: 'batch',
+                    builder: (context, state) => const BatchPage(),
+                  ),
+                  GoRoute(
+                    path: 'dataset',
+                    name: 'dataset',
+                    builder: (context, state) => const DatasetPage(),
+                    routes: [
+                      GoRoute(
+                        path: ':id',
+                        name: 'dataset-detail',
+                        builder: (context, state) {
+                          final id = state.pathParameters['id'];
+                          return DatasetPage(
+                            initialDatasetId: int.tryParse(id ?? ''),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  GoRoute(
+                    path: 'metrics-manage',
+                    name: 'metrics-manage',
+                    builder: (context, state) => const MetricsManagePage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Branch 2: 去雾
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRouterConfig.clarity,
+                name: 'dehaze',
+                builder: (context, state) => const ProcessingPage(),
+                routes: [
+                  GoRoute(
+                    path: 'processing',
+                    name: 'dehaze-processing',
+                    builder: (context, state) => const ProcessingPage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Branch 3: 消息
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRouterConfig.messages,
+                name: 'messages',
+                builder: (context, state) => const MessagesPage(),
+                routes: [
+                  GoRoute(
+                    path: ':id',
+                    name: 'message-detail',
+                    builder: (context, state) {
+                      final id =
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+                      return MessageDetailPage(messageId: id);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Branch 4: 我的
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRouterConfig.profile,
+                name: 'profile',
+                builder: (context, state) => const ProfilePage(),
+                routes: [
+                  GoRoute(
+                    path: 'task-history',
+                    name: 'task-history',
+                    builder: (context, state) => const TaskHistoryPage(),
+                  ),
+                  GoRoute(
+                    path: 'files',
+                    name: 'files',
+                    builder: (context, state) => const FilesPage(),
+                  ),
+                  GoRoute(
+                    path: 'orders',
+                    name: 'orders',
+                    builder: (context, state) => const OrdersPage(),
+                  ),
+                  GoRoute(
+                    path: 'credits',
+                    name: 'credits',
+                    builder: (context, state) => const CreditsPage(),
+                  ),
+                  GoRoute(
+                    path: 'member',
+                    name: 'member',
+                    builder: (context, state) => const MemberPage(),
+                  ),
+                  GoRoute(
+                    path: 'package',
+                    name: 'package',
+                    builder: (context, state) => const PackagePage(),
+                  ),
+                  GoRoute(
+                    path: 'package/:id',
+                    name: 'package-detail',
+                    builder: (context, state) {
+                      final id =
+                          int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+                      return PackageDetailPage(packageId: id);
+                    },
+                  ),
+                  GoRoute(
+                    path: 'order/create',
+                    name: 'order-create',
+                    // 直接访问下单页缺少套餐上下文时兜底跳回套餐列表
+                    redirect: (context, state) => state.extra is PackageDetailVO
+                        ? null
+                        : AppRouterConfig.package,
+                    builder: (context, state) => OrderCreatePage(
+                      package: state.extra as PackageDetailVO,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'feedback',
+                    name: 'feedback',
+                    builder: (context, state) => const FeedbackPage(),
+                  ),
+                  GoRoute(
+                    path: 'favorites',
+                    name: 'favorites',
+                    builder: (context, state) => const FavoritesPage(),
+                  ),
+                  GoRoute(
+                    path: 'settings',
+                    name: 'settings',
+                    builder: (context, state) => const SettingsPage(),
+                  ),
+                  GoRoute(
+                    path: 'help',
+                    name: 'help',
+                    builder: (context, state) => const HelpPage(),
+                  ),
+                  GoRoute(
+                    path: 'about',
+                    name: 'about',
+                    builder: (context, state) => const AboutPage(),
+                  ),
+                  GoRoute(
+                    path: 'notify',
+                    name: 'notify',
+                    builder: (context, state) => const NotifyPage(),
+                  ),
+                  // ==================== 管理模块 (L2, /profile/...) ====================
+                  GoRoute(
+                    path: 'dashboard',
+                    name: 'dashboard',
+                    builder: (context, state) => const DashboardPage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/user-manage',
+                    name: 'user-manage',
+                    builder: (context, state) => const UserManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/role-manage',
+                    name: 'role-manage',
+                    builder: (context, state) => const RoleManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/menu-manage',
+                    name: 'menu-manage',
+                    builder: (context, state) => const MenuManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/dept-manage',
+                    name: 'dept-manage',
+                    builder: (context, state) => const DeptManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/dict-manage',
+                    name: 'dict-manage',
+                    builder: (context, state) => const DictManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/dataset-manage',
+                    name: 'dataset-manage',
+                    builder: (context, state) => const DatasetManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/task-manage',
+                    name: 'task-manage',
+                    builder: (context, state) => const TaskManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/member-manage',
+                    name: 'member-manage',
+                    builder: (context, state) => const MemberManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/package-manage',
+                    name: 'package-manage',
+                    builder: (context, state) => const PackageManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/order-manage',
+                    name: 'order-manage',
+                    builder: (context, state) => const OrderManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/feedback-manage',
+                    name: 'feedback-manage',
+                    builder: (context, state) => const FeedbackManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/message-manage',
+                    name: 'message-manage',
+                    builder: (context, state) => const MessageManagePage(),
+                  ),
+                  GoRoute(
+                    path: 'admin/recommend-manage',
+                    name: 'recommend-manage',
+                    builder: (context, state) => const RecommendManagePage(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    ],
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text('页面未找到', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 8),
+            Text(
+              '路径: ${state.uri}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.go(AppRouterConfig.home),
+              icon: const Icon(Icons.home),
+              label: const Text('返回首页'),
+            ),
+          ],
+        ),
+      ),
+    ),
+    redirect: (context, state) {
+      final authState = authNotifier.value;
+      // 冷启动时登录态尚在恢复（initial / loading）：先放行，等恢复完成再判定，
+      // 否则直接访问受保护路由（深链）会被误判为未登录而弹回首页。
+      if (authState.status == AuthStatus.initial ||
+          authState.status == AuthStatus.loading) {
+        return null;
+      }
+
+      final isLoggedIn = authState.isAuthenticated;
+      final isGoingToAuthPage =
+          state.matchedLocation == AppRouterConfig.login ||
+          state.matchedLocation == AppRouterConfig.register;
+      final isPublicRoute = AppRouterConfig.publicRoutes.contains(
+        state.matchedLocation,
+      );
+
+      if (!isLoggedIn && !isPublicRoute && !isGoingToAuthPage) {
+        return AppRouterConfig.login;
+      }
+
+      if (isLoggedIn && isGoingToAuthPage) {
+        return AppRouterConfig.home;
+      }
+
+      // 权限守卫：对管理页统一做模块级权限拦截，无权限重定向到首页
+      if (isLoggedIn) {
+        final requiredModule =
+            AppRouterConfig.adminRouteModulePerms[state.matchedLocation];
+        if (requiredModule != null &&
+            !authState.hasModulePerm(requiredModule)) {
+          return AppRouterConfig.home;
+        }
+      }
+
+      return null;
+    },
+  );
+});

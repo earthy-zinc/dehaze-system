@@ -1,0 +1,56 @@
+package com.pei.clarity.sdk.api;
+
+import com.pei.clarity.sdk.ApiCallback;
+import com.pei.clarity.sdk.DehazeSDK;
+import com.pei.clarity.sdk.model.Result;
+import com.pei.clarity.sdk.model.recommendation.AnalyzeForm;
+import com.pei.clarity.sdk.model.recommendation.ImageFeatureAnalysisVO;
+import com.pei.clarity.sdk.model.recommendation.RecommendationFeedback;
+import com.pei.clarity.sdk.model.recommendation.RecommendationReport;
+import com.pei.clarity.sdk.model.recommendation.RecommendationRule;
+import com.pei.clarity.sdk.model.recommendation.RecommendedModelVO;
+
+import java.util.List;
+
+import retrofit2.Call;
+
+/**
+ * 推荐管理API接口封装
+ * 对齐后端路由：/api/v1/recommendations
+ */
+public class RecommendationAPI {
+
+    private RecommendationAPI() {
+    }
+
+    public static void analyze(AnalyzeForm form, ApiCallback<ImageFeatureAnalysisVO> callback) {
+        Call<Result<ImageFeatureAnalysisVO>> call = DehazeSDK.getInstance().getRecommendationApiService().analyze(form);
+        call.enqueue(callback);
+    }
+
+    public static void getModelRecommendations(Long analysisId, String imageMd5, ApiCallback<List<RecommendedModelVO>> callback) {
+        Call<Result<List<RecommendedModelVO>>> call = DehazeSDK.getInstance()
+                .getRecommendationApiService().getModelRecommendations(analysisId, imageMd5);
+        call.enqueue(callback);
+    }
+
+    public static void submitFeedback(RecommendationFeedback feedback, ApiCallback<Object> callback) {
+        Call<Result<Object>> call = DehazeSDK.getInstance().getRecommendationApiService().submitFeedback(feedback);
+        call.enqueue(callback);
+    }
+
+    public static void getRules(ApiCallback<List<RecommendationRule>> callback) {
+        Call<Result<List<RecommendationRule>>> call = DehazeSDK.getInstance().getRecommendationApiService().getRules();
+        call.enqueue(callback);
+    }
+
+    public static void updateRule(long id, RecommendationRule rule, ApiCallback<Object> callback) {
+        Call<Result<Object>> call = DehazeSDK.getInstance().getRecommendationApiService().updateRule(id, rule);
+        call.enqueue(callback);
+    }
+
+    public static void getReport(String startDate, String endDate, ApiCallback<RecommendationReport> callback) {
+        Call<Result<RecommendationReport>> call = DehazeSDK.getInstance().getRecommendationApiService().getReport(startDate, endDate);
+        call.enqueue(callback);
+    }
+}

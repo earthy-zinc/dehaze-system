@@ -1,0 +1,50 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    // Retrofit for networking
+    api libs.retrofit
+    api libs.converter.gson
+    
+    // OkHttp for logging
+    api libs.logging.interceptor
+    
+    // Lombok for reducing boilerplate code
+    compileOnly libs.lombok
+    annotationProcessor libs.lombok
+    
+    // JUnit for testing
+    testImplementation libs.junit
+    testImplementation libs.mockito.core
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.pei.clarity'
+            artifactId = 'sdk-android'
+            version = '1.0.0'
+            
+            afterEvaluate {
+                from components.java
+            }
+        }
+    }
+}
+
+// 添加测试配置
+test {
+    useJUnit()
+    
+    // 启用测试日志
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}

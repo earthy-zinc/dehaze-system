@@ -1,0 +1,18 @@
+package com.pei.clarity.sdk.model.order;
+
+import com.pei.clarity.sdk.model.PageQuery;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class OrderQuery extends PageQuery {
+    private String orderNo;
+    private String keywords;
+    private String status;
+    private String payMethod;
+    private Long amountMin;
+    private Long amountMax;
+    private String paidTimeStart;
+    private String paidTimeEnd;
+}

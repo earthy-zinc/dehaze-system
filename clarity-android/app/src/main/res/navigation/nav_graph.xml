@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginFragment">
+
+    <!-- ===== L0 认证页 ===== -->
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.pei.clarity.ui.login.LoginFragment"
+        android:label="登录"
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_login_to_dashboard"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_login_to_register"
+            app:destination="@id/registerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.pei.clarity.ui.register.RegisterFragment"
+        android:label="注册"
+        tools:layout="@layout/fragment_register">
+        <action
+            android:id="@+id/action_register_to_login"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/registerFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <!-- ===== L1 Tab 根页面（底部 TabBar 常驻） ===== -->
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.pei.clarity.ui.home.HomeFragment"
+        android:label="首页"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/toolsFragment"
+        android:name="com.pei.clarity.ui.tools.ToolsFragment"
+        android:label="工具"
+        tools:layout="@layout/fragment_tools" />
+
+    <fragment
+        android:id="@+id/dehazeFragment"
+        android:name="com.pei.clarity.ui.dehaze.DehazeFragment"
+        android:label="去雾"
+        tools:layout="@layout/fragment_dehaze" />
+
+    <fragment
+        android:id="@+id/messagesFragment"
+        android:name="com.pei.clarity.ui.messages.MessagesFragment"
+        android:label="消息"
+        tools:layout="@layout/fragment_messages" />
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.pei.clarity.ui.profile.ProfileFragment"
+        android:label="我的"
+        tools:layout="@layout/fragment_profile" />
+
+    <!-- ===== L2 二级功能页（归 Profile 管理入口 / 工具浏览） ===== -->
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.pei.clarity.ui.dashboard.DashboardFragment"
+        android:label="仪表盘"
+        tools:layout="@layout/activity_dashboard" />
+
+    <fragment
+        android:id="@+id/datasetFragment"
+        android:name="com.pei.clarity.ui.dataset.DatasetFragment"
+        android:label="数据集"
+        tools:layout="@layout/fragment_dataset">
+        <action
+            android:id="@+id/action_datasetFragment_to_datasetDetailFragment"
+            app:destination="@id/datasetDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/datasetDetailFragment"
+        android:name="com.pei.clarity.ui.dataset.DatasetDetailFragment"
+        android:label="数据集详情"
+        tools:layout="@layout/fragment_dataset_detail" />
+
+    <fragment
+        android:id="@+id/systemManagementFragment"
+        android:name="com.pei.clarity.ui.system.SystemManagementFragment"
+        android:label="系统管理"
+        tools:layout="@layout/fragment_system_management" />
+
+    <!-- ===== L3 沉浸页 Activity（全局可达） ===== -->
+    <activity
+        android:id="@+id/compareActivity"
+        android:name="com.pei.clarity.ui.compare.CompareActivity"
+        android:label="图像对比"
+        tools:layout="@layout/activity_compare" />
+
+    <action
+        android:id="@+id/action_global_compareActivity"
+        app:destination="@id/compareActivity" />
+
+    <activity
+        android:id="@+id/evaluationActivity"
+        android:name="com.pei.clarity.ui.evaluation.EvaluationActivity"
+        android:label="图像评估"
+        tools:layout="@layout/activity_evaluation" />
+
+    <action
+        android:id="@+id/action_global_evaluationActivity"
+        app:destination="@id/evaluationActivity" />
+
+    <activity
+        android:id="@+id/presentationActivity"
+        android:name="com.pei.clarity.ui.presentation.PresentationActivity"
+        android:label="图像展示"
+        tools:layout="@layout/activity_presentation" />
+
+    <action
+        android:id="@+id/action_global_presentationActivity"
+        app:destination="@id/presentationActivity" />
+
+    <activity
+        android:id="@+id/inputHistoryActivity"
+        android:name="com.pei.clarity.ui.input.InputHistoryActivity"
+        android:label="图像输入历史"
+        tools:layout="@layout/activity_input_history" />
+
+    <action
+        android:id="@+id/action_global_inputHistoryActivity"
+        app:destination="@id/inputHistoryActivity" />
+
+    <!-- ===== 预留：个人中心子页面（personal/*）Activity destination ===== -->
+    <!-- dev-personal 将在此注册：会员中心、处理历史、我的收藏、我的文件、我的数据集、订单/套餐/额度等 -->
+
+    <!-- ===== 预留：系统管理子页面（system/*）Activity destination ===== -->
+    <!-- dev-admin 将在此注册：用户/角色/菜单/部门/字典/任务管理等 -->
+
+</navigation>
