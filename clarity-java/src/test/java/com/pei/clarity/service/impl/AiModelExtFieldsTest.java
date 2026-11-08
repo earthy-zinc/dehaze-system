@@ -207,7 +207,7 @@ class AiModelExtFieldsTest {
         AbstractWrapper<?, ?, ?> wrapper = (AbstractWrapper<?, ?, ?>) wrappers.get(0);
         // apply 的 SQL 与参数在 getSqlSegment() 惰性求值时才会写入 paramNameValuePairs，故先取 segment
         assertThat(wrapper.getSqlSegment()).contains("JSON_OVERLAPS(task_tags");
-        assertThat(wrapper.getParamNameValuePairs().values()).contains("[\"dehaze\",\"stream\"]");
+        assertThat(wrapper.getParamNameValuePairs().values()).contains("[\"clarity\",\"stream\"]");
     }
 
     @Test

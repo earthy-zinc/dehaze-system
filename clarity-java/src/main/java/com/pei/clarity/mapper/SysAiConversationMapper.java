@@ -76,6 +76,25 @@ public interface SysAiConversationMapper extends BaseMapper<SysAiConversation> {
     int updateCurrentBranch(@Param("convId") Long convId, @Param("messageId") Long messageId);
 
     /**
+     * 会话行加锁读取（{@code SELECT ... FOR UPDATE}）：消息删除的 children 检查、软删与指针回退
+     * 需在会话级串行，避免与并发 send 推进指针交错。只取本流程用到的列。
+     */
+    @Select("SELECT id, user_id, current_branch_message_id FROM sys_ai_conversation "
+            + "WHERE id = #{convId} AND user_id = #{userId} AND deleted = 0 FOR UPDATE")
+    SysAiConversation selectByIdForUpdate(@Param("convId") Long convId, @Param("userId") Long userId);
+
+    /**
+     * 条件回写分支指针：仅当库内指针仍等于 {@code expectedMessageId} 时才更新，
+     * 避免覆盖并发 send/switchBranch 已推进的新指针（返回 0 表示指针已被他人改写）。
+     */
+    @Update("UPDATE sys_ai_conversation SET current_branch_message_id = #{newMessageId} "
+            + "WHERE id = #{convId} AND current_branch_message_id = #{expectedMessageId}")
+    int compareAndSetCurrentBranch(
+            @Param("convId") Long convId,
+            @Param("expectedMessageId") Long expectedMessageId,
+            @Param("newMessageId") Long newMessageId);
+
+    /**
      * 存在该 Agent 编码的会话数（删除 Agent 前的引用校验）
      */
     @Select("SELECT COUNT(*) FROM sys_ai_conversation WHERE agent_code = #{agentCode} AND deleted = 0")

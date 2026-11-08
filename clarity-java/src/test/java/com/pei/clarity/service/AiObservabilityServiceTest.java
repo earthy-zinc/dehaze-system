@@ -25,6 +25,7 @@ import com.pei.clarity.mapper.SysAiConversationMapper;
 import com.pei.clarity.mapper.SysAiLlmCallMapper;
 import com.pei.clarity.mapper.SysAiMessageMapper;
 import com.pei.clarity.mapper.SysAiTraceMapper;
+import com.pei.clarity.model.dto.ai.AiContract;
 import com.pei.clarity.model.entity.SysAiAgentThought;
 import com.pei.clarity.model.entity.SysAiBilling;
 import com.pei.clarity.model.entity.SysAiConversation;
@@ -534,8 +535,8 @@ class AiObservabilityServiceTest {
         message.setId(id);
         message.setConversationId(5L);
         message.setRole(role);
-        message.setContent(role + "-content");
-        message.setStatus(2);
+        message.setStatus("completed");
+        message.setBlocks(List.of(new AiContract.Block("b-" + id, "text", 0L, role + "-content", null, null)));
         message.setParentMessageId(parentId);
         message.setCreateTime(createTime);
         return message;

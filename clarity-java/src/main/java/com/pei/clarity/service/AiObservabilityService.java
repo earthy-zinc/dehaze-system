@@ -16,6 +16,7 @@ import com.pei.clarity.mapper.SysAiConversationMapper;
 import com.pei.clarity.mapper.SysAiLlmCallMapper;
 import com.pei.clarity.mapper.SysAiMessageMapper;
 import com.pei.clarity.mapper.SysAiTraceMapper;
+import com.pei.clarity.model.dto.ai.AiContract;
 import com.pei.clarity.model.entity.SysAiAgentThought;
 import com.pei.clarity.model.entity.SysAiArtifact;
 import com.pei.clarity.model.entity.SysAiBilling;
@@ -53,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -721,7 +723,7 @@ public class AiObservabilityService {
             item.setConversationId(message.getConversationId());
             item.setParentMessageId(message.getParentMessageId());
             item.setRole(message.getRole());
-            item.setContent(message.getContent());
+            item.setContent(textOf(message));
             item.setStatus(message.getStatus());
             item.setModel(message.getModel());
             item.setInputTokens(message.getInputTokens());
@@ -821,13 +823,25 @@ public class AiObservabilityService {
         AiObservabilityTimelineVO.Message vo = new AiObservabilityTimelineVO.Message();
         vo.setId(message.getId());
         vo.setRole(message.getRole());
-        vo.setContent(message.getContent());
+        vo.setContent(textOf(message));
         vo.setStatus(message.getStatus());
         vo.setModel(message.getModel());
         vo.setInputTokens(message.getInputTokens());
         vo.setOutputTokens(message.getOutputTokens());
         vo.setCreateTime(message.getCreateTime());
         return vo;
+    }
+
+    /** 审计展示正文由 text 块派生（thinking/tool_use 块不进正文） */
+    private static String textOf(SysAiMessage message) {
+        if (message.getBlocks() == null) {
+            return "";
+        }
+        return message.getBlocks().stream()
+                .filter(block -> "text".equals(block.kind()))
+                .map(AiContract.Block::text)
+                .filter(text -> text != null && !text.isEmpty())
+                .collect(Collectors.joining("\n\n"));
     }
 
     private AiObservabilityTraceDetailVO.Billing toBillingVO(SysAiBilling billing) {

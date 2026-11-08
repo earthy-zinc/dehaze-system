@@ -134,7 +134,7 @@ public class AiArtifactService {
         vo.setRefType(artifact.getRefType());
         vo.setRefId(artifact.getRefId());
         vo.setSummary(artifact.getSummary());
-        vo.setIsInvalid(artifact.getIsInvalid());
+        vo.setIsInvalid(artifact.getIsInvalid() != null && artifact.getIsInvalid() != 0);
         vo.setCreateTime(artifact.getCreateTime());
         return vo;
     }

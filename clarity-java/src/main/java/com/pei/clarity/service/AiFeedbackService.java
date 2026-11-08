@@ -123,6 +123,19 @@ public class AiFeedbackService {
         return toVO(feedback, feedback.getTags() == null ? List.of() : feedback.getTags());
     }
 
+    /**
+     * 当前用户在会话下的全部反馈（一次查询、不分页），供进入会话时批量回填。
+     *
+     * <p>归属校验与单条反馈一致：会话须属于当前用户，否则 A0401；只返回本人数据，
+     * 不暴露其他用户的反馈。
+     */
+    public List<AiFeedbackVO> listByConversation(Long conversationId, Long userId) {
+        conversationService.getOwned(conversationId, userId);
+        return feedbackMapper.listByUserAndConversation(userId, conversationId).stream()
+                .map(feedback -> toVO(feedback, feedback.getTags() == null ? List.of() : feedback.getTags()))
+                .toList();
+    }
+
     @Transactional
     public void revoke(Long messageId, Long userId) {
         if (get(messageId, userId) == null) {
@@ -177,6 +190,7 @@ public class AiFeedbackService {
         vo.setId(feedback.getId());
         vo.setMessageId(feedback.getMessageId());
         vo.setUserId(feedback.getUserId());
+        vo.setConversationId(feedback.getConversationId());
         vo.setRating(feedback.getRating());
         vo.setTags(tags);
         vo.setComment(feedback.getComment());

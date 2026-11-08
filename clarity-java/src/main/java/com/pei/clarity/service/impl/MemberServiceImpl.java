@@ -536,13 +536,14 @@ public class MemberServiceImpl extends ServiceImpl<SysMemberMapper, SysMember> i
                 .toList();
         com.pei.clarity.model.entity.SysUserCoupon activeTrial = null;
         if (!trialCouponIds.isEmpty()) {
-            activeTrial = userCouponMapper.selectOne(new LambdaQueryWrapper<com.pei.clarity.model.entity.SysUserCoupon>()
-                    .eq(com.pei.clarity.model.entity.SysUserCoupon::getUserId, userId)
-                    .in(com.pei.clarity.model.entity.SysUserCoupon::getCouponId, trialCouponIds)
-                    .eq(com.pei.clarity.model.entity.SysUserCoupon::getStatus, 1)
-                    .gt(com.pei.clarity.model.entity.SysUserCoupon::getExpireTime, LocalDateTime.now())
-                    .orderByAsc(com.pei.clarity.model.entity.SysUserCoupon::getExpireTime)
-                    .last("LIMIT 1"));
+            activeTrial =
+                    userCouponMapper.selectOne(new LambdaQueryWrapper<com.pei.clarity.model.entity.SysUserCoupon>()
+                            .eq(com.pei.clarity.model.entity.SysUserCoupon::getUserId, userId)
+                            .in(com.pei.clarity.model.entity.SysUserCoupon::getCouponId, trialCouponIds)
+                            .eq(com.pei.clarity.model.entity.SysUserCoupon::getStatus, 1)
+                            .gt(com.pei.clarity.model.entity.SysUserCoupon::getExpireTime, LocalDateTime.now())
+                            .orderByAsc(com.pei.clarity.model.entity.SysUserCoupon::getExpireTime)
+                            .last("LIMIT 1"));
         }
         boolean voucherActivated = activeTrial != null;
 

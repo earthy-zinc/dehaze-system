@@ -28,9 +28,9 @@ public class AiArtifactVO {
 
     private Map<String, Object> summary;
 
-    private Integer isInvalid;
+    private Boolean isInvalid;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createTime;
 }

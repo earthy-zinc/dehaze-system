@@ -19,7 +19,7 @@ public class AiMessagePageVO {
     @Schema(description = "消息列表（id 倒序）")
     private List<AiMessageVO> list;
 
-    @Schema(description = "该会话消息总数")
+    @Schema(description = "self 视角为当前激活链长度，admin 视角为会话消息总数")
     private long total;
 
     @Schema(description = "是否还存在比本页最后一条更早的消息")

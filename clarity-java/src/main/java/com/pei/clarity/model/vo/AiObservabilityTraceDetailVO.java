@@ -84,9 +84,11 @@ public class AiObservabilityTraceDetailVO extends AiObservabilityTraceItemVO {
 
         private String role;
 
+        /** 正文由 text 块派生 */
         private String content;
 
-        private Integer status;
+        /** 取值: running | completed | failed | canceled | awaiting_input */
+        private String status;
 
         private String model;
 

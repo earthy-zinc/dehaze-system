@@ -51,10 +51,10 @@ public interface AiInsightMapper {
     List<Long> listRiskyToolConversationIds(@Param("convIds") List<Long> convIds);
 
     /**
-     * 会话消息状态分布（异常标注：失败 3 / 取消 4）
+     * 会话消息状态分布（异常标注：failed / canceled）
      */
     @Select("<script>SELECT DISTINCT conversation_id AS conversationId, status FROM sys_ai_message "
-            + "WHERE deleted = 0 AND status IN (3, 4) AND conversation_id IN "
+            + "WHERE deleted = 0 AND status IN ('failed', 'canceled') AND conversation_id IN "
             + "<foreach collection='convIds' item='id' open='(' separator=',' close=')'>#{id}</foreach></script>")
     List<AnomalyStatusRead> listAnomalyStatusByConversations(@Param("convIds") List<Long> convIds);
 

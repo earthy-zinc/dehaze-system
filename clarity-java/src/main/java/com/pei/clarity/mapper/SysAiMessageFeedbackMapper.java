@@ -3,6 +3,7 @@ package com.pei.clarity.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.clarity.model.entity.SysAiMessageFeedback;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
@@ -29,6 +30,21 @@ public interface SysAiMessageFeedbackMapper extends BaseMapper<SysAiMessageFeedb
     })
     SysAiMessageFeedback selectByUserAndMessageIgnoringDeleted(
             @Param("messageId") Long messageId, @Param("userId") Long userId);
+
+    /**
+     * 当前用户在指定会话下的全部未删反馈（一次查询、不分页；按消息 id、反馈 id 升序）
+     *
+     * <p>供会话级批量反馈接口使用：进入会话一次拉全，替代前端逐条消息请求。
+     */
+    @Select("SELECT * FROM sys_ai_message_feedback WHERE user_id = #{userId} "
+            + "AND conversation_id = #{conversationId} AND deleted = 0 "
+            + "ORDER BY message_id ASC, id ASC")
+    @Results({
+        // 手写 SELECT 不经过 MP 自动 resultMap，tags(JSON 列) 必须显式指定 typeHandler
+        @Result(column = "tags", property = "tags", typeHandler = JacksonTypeHandler.class)
+    })
+    List<SysAiMessageFeedback> listByUserAndConversation(
+            @Param("userId") Long userId, @Param("conversationId") Long conversationId);
 
     /**
      * 复活并覆盖软删反馈行（deleted 归零）

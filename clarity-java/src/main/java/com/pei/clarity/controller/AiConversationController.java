@@ -2,6 +2,7 @@ package com.pei.clarity.controller;
 
 import com.pei.clarity.common.result.PageResult;
 import com.pei.clarity.common.result.Result;
+import com.pei.clarity.model.dto.ai.AiContract;
 import com.pei.clarity.model.form.AiConversationBatchForm;
 import com.pei.clarity.model.form.AiConversationCreateForm;
 import com.pei.clarity.model.form.AiConversationUpdateForm;
@@ -139,7 +140,7 @@ public class AiConversationController {
         response.getWriter().write(export.content());
     }
 
-    @Operation(summary = "会话消息列表（游标分页，id 倒序；assistant 消息附带推理步骤）")
+    @Operation(summary = "会话消息列表（self 视角仅当前激活链，游标分页，id 倒序；消息为契约形状，正文在 blocks 中）")
     @GetMapping("/conversations/{convId}/messages")
     public Result<AiMessagePageVO> listMessages(
             @Parameter(description = "会话ID") @PathVariable Long convId,
@@ -149,12 +150,20 @@ public class AiConversationController {
                 convId, currentUserId(), query.getBefore(), query.getLimit(), isAdminView(view)));
     }
 
-    @Operation(summary = "消息详情（含推理步骤）")
+    @Operation(summary = "消息详情（含内容块、计划与待恢复中断）")
     @GetMapping("/messages/{msgId}")
     public Result<AiMessageVO> getMessage(
             @Parameter(description = "消息ID") @PathVariable Long msgId,
             @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
         return Result.success(conversationService.getMessage(msgId, currentUserId(), isAdminView(view)));
+    }
+
+    @Operation(summary = "消息待恢复中断（无中断返回 null，超过 expiresAt 时 actionable=false）")
+    @GetMapping("/messages/{msgId}/interrupt")
+    public Result<AiContract.Interrupt> getInterrupt(
+            @Parameter(description = "消息ID") @PathVariable Long msgId,
+            @Parameter(description = "视角(admin)") @RequestParam(required = false) String view) {
+        return Result.success(conversationService.getPendingInterrupt(msgId, currentUserId(), isAdminView(view)));
     }
 
     @Operation(summary = "删除助手回复消息（软删除）")

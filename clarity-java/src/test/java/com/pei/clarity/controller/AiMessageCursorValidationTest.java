@@ -176,6 +176,27 @@ class AiMessageCursorValidationTest {
     }
 
     @Test
+    @DisplayName("响应结构：契约可空字段以显式 null 返回（不被全局 non_null 省略）")
+    void responseKeepsNullableContractFields() throws Exception {
+        AiMessageVO message = new AiMessageVO();
+        message.setId(5L);
+        message.setConversationId(1L);
+        message.setRole("assistant");
+        message.setStatus("completed");
+        when(conversationService.listMessages(anyLong(), any(), any(), anyInt(), anyBoolean()))
+                .thenReturn(pageVO(List.of(message), 1L, false));
+
+        mockMvc.perform(get(MESSAGES))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.list[0].blocks").hasJsonPath())
+                .andExpect(jsonPath("$.data.list[0].plan").hasJsonPath())
+                .andExpect(jsonPath("$.data.list[0].plan").isEmpty())
+                .andExpect(jsonPath("$.data.list[0].pendingInterrupt").hasJsonPath())
+                .andExpect(jsonPath("$.data.list[0].error").hasJsonPath())
+                .andExpect(jsonPath("$.data.list[0].artifactIds").hasJsonPath());
+    }
+
+    @Test
     @DisplayName("空会话：list 为空、total=0、hasMore=false")
     void emptyConversationShape() throws Exception {
         mockMvc.perform(get(MESSAGES))

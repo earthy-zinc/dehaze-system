@@ -20,6 +20,8 @@ public class AiFeedbackVO {
 
     private Long userId;
 
+    private Long conversationId;
+
     private Integer rating;
 
     private List<String> tags;
@@ -27,10 +29,10 @@ public class AiFeedbackVO {
     private String comment;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createTime;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime updateTime;
 }

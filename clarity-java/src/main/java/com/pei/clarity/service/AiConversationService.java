@@ -6,14 +6,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.clarity.common.exception.BusinessException;
 import com.pei.clarity.common.result.ResultCode;
+import com.pei.clarity.common.util.AiDateTimeUtils;
 import com.pei.clarity.mapper.AiInsightMapper;
 import com.pei.clarity.mapper.SysAiAgentMapper;
-import com.pei.clarity.mapper.SysAiAgentThoughtMapper;
 import com.pei.clarity.mapper.SysAiAgentVersionMapper;
+import com.pei.clarity.mapper.SysAiArtifactMapper;
 import com.pei.clarity.mapper.SysAiConversationMapper;
 import com.pei.clarity.mapper.SysAiMessageMapper;
+import com.pei.clarity.model.dto.ai.AiContract;
 import com.pei.clarity.model.entity.SysAiAgent;
-import com.pei.clarity.model.entity.SysAiAgentThought;
 import com.pei.clarity.model.entity.SysAiAgentVersion;
 import com.pei.clarity.model.entity.SysAiConversation;
 import com.pei.clarity.model.entity.SysAiMessage;
@@ -24,12 +25,14 @@ import com.pei.clarity.model.query.AiConversationPageQuery;
 import com.pei.clarity.model.read.AnomalyStatusRead;
 import com.pei.clarity.model.read.ConversationConsumptionRead;
 import com.pei.clarity.model.read.DisplayNameRead;
-import com.pei.clarity.model.vo.AiAgentThoughtVO;
 import com.pei.clarity.model.vo.AiConversationVO;
 import com.pei.clarity.model.vo.AiMessagePageVO;
 import com.pei.clarity.model.vo.AiMessageVO;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -63,6 +66,15 @@ public class AiConversationService {
 
     /** 未指定 Agent 时的平台默认 Agent 编码 */
     private static final String DEFAULT_AGENT_CODE = "default";
+
+    /** 消息可续状态：只有该状态下残留的中断才可能 actionable */
+    private static final String STATUS_AWAITING_INPUT = "awaiting_input";
+
+    /** 会话标题 LIKE（显式 ESCAPE，与消息检索、Python/Go 的转义口径一致） */
+    private static final String TITLE_LIKE = "title LIKE {0} ESCAPE '\\\\'";
+
+    /** 推理中断句柄键前缀（与 python {@code InterruptHandler.INTERRUPT_KEY} 同口径：{convId}:{msgId}） */
+    private static final String INTERRUPT_KEY_PREFIX = "ai:interrupt:";
 
     /** 置顶会话上限 */
     private static final int PINNED_CONVERSATION_LIMIT = 10;
@@ -103,7 +115,7 @@ public class AiConversationService {
 
     private final SysAiMessageMapper messageMapper;
 
-    private final SysAiAgentThoughtMapper thoughtMapper;
+    private final SysAiArtifactMapper artifactMapper;
 
     private final SysAiAgentMapper agentMapper;
 
@@ -167,16 +179,17 @@ public class AiConversationService {
                 .orderByDesc(SysAiConversation::getId);
         if (keywordPresent) {
             String keyword = query.getKeyword();
+            // 关键词是用户输入，LIKE 模式须先转义 \ % _，否则搜 "50%" / "a_b" 会退化成通配符
             if (admin) {
-                wrapper.and(w -> w.like(SysAiConversation::getTitle, keyword));
+                wrapper.and(w -> w.apply(TITLE_LIKE, likePattern(keyword)));
             } else {
                 // 无 ES 全文检索能力，以标题 LIKE + 消息正文命中等价定位（命中消息 ID 供前端定位）
-                List<Long> hitConvIds = messageMapper.listConversationIdsByKeyword(keyword);
+                List<Long> hitConvIds = messageMapper.listConversationIdsByKeyword(escapeLike(keyword));
                 if (hitConvIds.isEmpty()) {
-                    wrapper.and(w -> w.like(SysAiConversation::getTitle, keyword));
+                    wrapper.and(w -> w.apply(TITLE_LIKE, likePattern(keyword)));
                 } else {
                     wrapper.and(w ->
-                            w.like(SysAiConversation::getTitle, keyword).or().in(SysAiConversation::getId, hitConvIds));
+                            w.apply(TITLE_LIKE, likePattern(keyword)).or().in(SysAiConversation::getId, hitConvIds));
                 }
             }
         }
@@ -346,7 +359,7 @@ public class AiConversationService {
     }
 
     /**
-     * 导出会话：沿当前激活分支回溯全部消息，仅导 user/assistant 正文（推理过程与工具调用不导出）
+     * 导出会话：沿当前激活分支回溯全部消息，仅导 user/assistant 正文（思考与工具块不导出）
      */
     public ConversationExport export(Long convId, Long userId, String format) {
         SysAiConversation conv = getOwned(convId, userId);
@@ -374,7 +387,7 @@ public class AiConversationService {
             for (SysAiMessage msg : chain) {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("role", msg.getRole());
-                item.put("content", msg.getContent() == null ? "" : msg.getContent());
+                item.put("content", textOf(msg));
                 item.put(
                         "create_time",
                         msg.getCreateTime() == null ? "" : msg.getCreateTime().toString());
@@ -395,7 +408,7 @@ public class AiConversationService {
             sb.append("## ")
                     .append("user".equals(msg.getRole()) ? "用户" : "助手")
                     .append("\n\n")
-                    .append(msg.getContent() == null ? "" : msg.getContent())
+                    .append(textOf(msg))
                     .append("\n\n");
         }
         return new ConversationExport("conversation_" + convId + ".md", "text/markdown", sb.toString());
@@ -404,17 +417,56 @@ public class AiConversationService {
     // ── 会话消息 ─────────────────────────────────────────────
 
     /**
-     * 会话消息列表（游标分页：id 倒序，仅取 {@code id < before}；缺省取最新一页）。
+     * 会话消息列表。
      *
-     * <p>{@code hasMore} 由"取 limit+1 条"判定——多取的一条即为"是否存在比本页最后一条更早的消息"，
-     * 单次查询得出，不额外往返；{@code total} 为会话消息总数（与游标无关）。
-     * 关掉 {@code searchCount} 避免 MyBatis-Plus 自动附加的 count 查询。
+     * <p>self 视角（默认）只返回当前激活链：以会话 {@code currentBranchMessageId} 为链尾沿
+     * {@code parentMessageId} 回溯（指针为空/悬空/指向已删消息时回退到会话最大 id 的未删消息），
+     * 链即用户实际看到的对话。分页在链上切：{@code before} 之前的最后 {@code limit} 条按 id 倒序
+     * 返回，{@code hasMore} 表示链上是否还有更早消息，{@code total} 为链长——分支消息不再混入列表。
+     *
+     * <p>admin 视角保持全量分支游标分页（审计需要看到所有分叉），{@code total} 为会话消息总数；
+     * {@code siblingIndex/siblingCount} 仅在 self 视角的 assistant 消息上填充。
      */
     public AiMessagePageVO listMessages(Long convId, Long userId, Long before, int limit, boolean admin) {
         SysAiConversation conv = admin ? conversationMapper.selectById(convId) : getOwned(convId, userId);
         if (conv == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在");
         }
+        if (admin) {
+            return listAllBranchMessages(convId, before, limit);
+        }
+        List<SysAiMessage> chain = loadActiveChain(conv);
+        List<SysAiMessage> eligible = before == null
+                ? chain
+                : chain.stream().filter(m -> m.getId() < before).toList();
+        boolean hasMore = eligible.size() > limit;
+        // 链回溯按 id 升序，接口契约仍按 id 倒序返回（最新一页在前）
+        List<SysAiMessage> page =
+                new ArrayList<>(eligible.subList(Math.max(0, eligible.size() - limit), eligible.size()));
+        Collections.reverse(page);
+        Map<Long, SiblingPosition> positions = siblingPositions(convId, page);
+        Map<Long, List<Long>> artifactIds =
+                artifactIdsByMessage(page.stream().map(SysAiMessage::getId).toList());
+        List<AiMessageVO> records = new ArrayList<>();
+        for (SysAiMessage msg : page) {
+            SiblingPosition position = positions.get(msg.getId());
+            records.add(toMessageVO(
+                    msg,
+                    artifactIds.getOrDefault(msg.getId(), List.of()),
+                    position == null ? null : position.index(),
+                    position == null ? null : position.count()));
+        }
+        AiMessagePageVO result = new AiMessagePageVO();
+        result.setList(records);
+        result.setTotal(chain.size());
+        result.setHasMore(hasMore);
+        return result;
+    }
+
+    /**
+     * 管理端审计视角：全量分支游标分页（id 倒序，多取一条判定 hasMore），total 为会话消息总数
+     */
+    private AiMessagePageVO listAllBranchMessages(Long convId, Long before, int limit) {
         Page<SysAiMessage> cursor = new Page<>(1, limit + 1L, false);
         List<SysAiMessage> rows = messageMapper
                 .selectPage(
@@ -428,18 +480,11 @@ public class AiConversationService {
         List<SysAiMessage> pageRecords = hasMore ? rows.subList(0, limit) : rows;
         long total = messageMapper.selectCount(
                 new LambdaQueryWrapper<SysAiMessage>().eq(SysAiMessage::getConversationId, convId));
-        List<Long> assistantIds = pageRecords.stream()
-                .filter(m -> "assistant".equals(m.getRole()))
-                .map(SysAiMessage::getId)
-                .toList();
-        Map<Long, List<SysAiAgentThought>> thoughtsMap = listThoughts(assistantIds);
+        Map<Long, List<Long>> artifactIds = artifactIdsByMessage(
+                pageRecords.stream().map(SysAiMessage::getId).toList());
         List<AiMessageVO> records = new ArrayList<>();
         for (SysAiMessage msg : pageRecords) {
-            AiMessageVO vo = toMessageVO(msg);
-            vo.setThoughts(thoughtsMap.getOrDefault(msg.getId(), List.of()).stream()
-                    .map(this::toThoughtVO)
-                    .toList());
-            records.add(vo);
+            records.add(toMessageVO(msg, artifactIds.getOrDefault(msg.getId(), List.of())));
         }
         AiMessagePageVO result = new AiMessagePageVO();
         result.setList(records);
@@ -448,17 +493,93 @@ public class AiConversationService {
         return result;
     }
 
+    /**
+     * 当前激活链（id 升序）：指针为空/悬空/指向已删消息时回退到最新未删消息。
+     *
+     * <p>软删中间节点会在链上断开（{@code chainByTail} 只读取未删消息），此时只返回断点之后的活跃后缀。
+     */
+    private List<SysAiMessage> loadActiveChain(SysAiConversation conv) {
+        Long tailId = conv.getCurrentBranchMessageId();
+        if (tailId != null) {
+            SysAiMessage tail = messageMapper.selectById(tailId);
+            // 悬空、已软删（selectById 过滤 deleted=0）或不属于本会话，一律回退
+            if (tail == null || !Objects.equals(tail.getConversationId(), conv.getId())) {
+                tailId = null;
+            }
+        }
+        if (tailId == null) {
+            tailId = messageMapper.getMaxMessageId(conv.getId());
+        }
+        if (tailId == null) {
+            return List.of();
+        }
+        return chainByTail(conv.getId(), tailId);
+    }
+
+    /**
+     * 批量计算本页 assistant 消息的兄弟序号：{messageId: (1 起序号, 兄弟总数)}。
+     *
+     * <p>仅 parentMessageId 非空（分叉下的助手回复）参与，root 级与非 assistant 保持 null；
+     * 一次 IN 查询取全部兄弟，避免逐条消息查询的 N+1。
+     */
+    private Map<Long, SiblingPosition> siblingPositions(Long convId, List<SysAiMessage> msgs) {
+        Set<Long> pageIds = msgs.stream().map(SysAiMessage::getId).collect(Collectors.toSet());
+        List<Long> parentIds = msgs.stream()
+                .filter(m -> "assistant".equals(m.getRole()) && m.getParentMessageId() != null)
+                .map(SysAiMessage::getParentMessageId)
+                .distinct()
+                .sorted()
+                .toList();
+        if (parentIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<Long>> grouped = new LinkedHashMap<>();
+        for (SysAiMessageMapper.SiblingRow row : messageMapper.listAssistantSiblingIds(convId, parentIds)) {
+            grouped.computeIfAbsent(row.getParentMessageId(), k -> new ArrayList<>())
+                    .add(row.getMessageId());
+        }
+        Map<Long, SiblingPosition> positions = new HashMap<>();
+        for (List<Long> siblingIds : grouped.values()) {
+            int count = siblingIds.size();
+            for (int i = 0; i < count; i++) {
+                if (pageIds.contains(siblingIds.get(i))) {
+                    positions.put(siblingIds.get(i), new SiblingPosition(i + 1, count));
+                }
+            }
+        }
+        return positions;
+    }
+
+    /**
+     * 消息详情。assistant 消息与列表同口径补 {@code siblingIndex/siblingCount}（同父未删 assistant，
+     * id 升序，1 起）；root 级与非 assistant 保持 null。
+     */
     public AiMessageVO getMessage(Long msgId, Long userId, boolean admin) {
         SysAiMessage msg = admin ? messageMapper.selectById(msgId) : getOwnedMessage(msgId, userId);
         if (msg == null) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
         }
-        AiMessageVO vo = toMessageVO(msg);
-        List<SysAiAgentThought> thoughts = thoughtMapper.selectList(new LambdaQueryWrapper<SysAiAgentThought>()
-                .eq(SysAiAgentThought::getMessageId, msgId)
-                .orderByAsc(SysAiAgentThought::getPosition));
-        vo.setThoughts(thoughts.stream().map(this::toThoughtVO).toList());
-        return vo;
+        Map<Long, SiblingPosition> positions = siblingPositions(msg.getConversationId(), List.of(msg));
+        SiblingPosition position = positions.get(msgId);
+        return toMessageVO(
+                msg,
+                artifactIdsByMessage(List.of(msgId)).getOrDefault(msgId, List.of()),
+                position == null ? null : position.index(),
+                position == null ? null : position.count());
+    }
+
+    /**
+     * 消息待恢复中断：无中断返回 null；消息已不在 {@code awaiting_input} 或超过 {@code expiresAt}
+     * 时以 {@code actionable=false} 明确标注不可续（payload 原样保留，供前端展示"不可续"）。
+     *
+     * <p>过期判定在读取时按当前时间计算，不改写库内记录；列表、详情与本端点共用同一口径。
+     */
+    public AiContract.Interrupt getPendingInterrupt(Long msgId, Long userId, boolean admin) {
+        SysAiMessage msg = admin ? messageMapper.selectById(msgId) : getOwnedMessage(msgId, userId);
+        if (msg == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
+        }
+        return normalizePendingInterrupt(msg);
     }
 
     public List<AiMessageVO> getBranches(Long convId, Long userId, Long msgId) {
@@ -467,17 +588,27 @@ public class AiConversationService {
         if (msg == null || !Objects.equals(msg.getConversationId(), convId)) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
         }
-        return messageMapper
-                .selectList(new LambdaQueryWrapper<SysAiMessage>()
-                        .eq(SysAiMessage::getConversationId, convId)
-                        .eq(SysAiMessage::getParentMessageId, msgId)
-                        .orderByDesc(SysAiMessage::getCreateTime)
-                        .orderByDesc(SysAiMessage::getId))
-                .stream()
-                .map(this::toMessageVO)
+        // 分支即父消息下的多个助手回复：user 子消息是下一轮提问，不属于可切换分支
+        List<SysAiMessage> branches = messageMapper.selectList(new LambdaQueryWrapper<SysAiMessage>()
+                .eq(SysAiMessage::getConversationId, convId)
+                .eq(SysAiMessage::getParentMessageId, msgId)
+                .eq(SysAiMessage::getRole, "assistant")
+                .orderByDesc(SysAiMessage::getCreateTime)
+                .orderByDesc(SysAiMessage::getId));
+        Map<Long, List<Long>> artifactIds =
+                artifactIdsByMessage(branches.stream().map(SysAiMessage::getId).toList());
+        return branches.stream()
+                .map(branch -> toMessageVO(branch, artifactIds.getOrDefault(branch.getId(), List.of())))
                 .toList();
     }
 
+    /**
+     * 切换当前激活分支。
+     *
+     * <p>当前指针存在待恢复中断时拒绝切换：切换会改变会话上下文，与 send/regenerate 的中断挂起校验同口径，
+     * 避免闯入挂起流。中断判定同时看推理侧 Redis 句柄与库内 {@code pending_interrupt}（事实源），
+     * 后者按 {@code actionable} 口径归一化后判定。
+     */
     @Transactional
     public AiConversationVO switchBranch(Long convId, Long userId, Long msgId) {
         SysAiConversation conv = getOwned(convId, userId);
@@ -485,11 +616,28 @@ public class AiConversationService {
         if (msg == null || !Objects.equals(msg.getConversationId(), convId)) {
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在");
         }
+        if (hasPendingInterrupt(conv.getId(), conv.getCurrentBranchMessageId())) {
+            throw new BusinessException(ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止");
+        }
         conversationMapper.updateCurrentBranch(convId, msgId);
         conv.setCurrentBranchMessageId(msgId);
         return toVO(conv);
     }
 
+    /**
+     * 删除助手消息（软删）。
+     *
+     * <p>删除策略：
+     * <ul>
+     *   <li>仍有未删子消息（非叶子）一律拒绝：中间节点软删会让后续消息失去父链、历史不可读，须先删后续对话；</li>
+     *   <li>被删消息恰为当前分支指针时，指针回退到其父消息（可为 null），避免指针悬空；</li>
+     *   <li>非激活分支上的旧消息允许删除，指针不动。</li>
+     * </ul>
+     *
+     * <p>并发：children 检查、软删与指针回退要求与会话内的 send/switch 串行。事务内先
+     * {@code SELECT ... FOR UPDATE} 锁会话行，再执行上述检查与写入；指针回退用 CAS，避免窗口内被
+     * 并发 send 推进的指针被覆盖。
+     */
     @Transactional
     public void deleteMessage(Long msgId, Long userId) {
         SysAiMessage msg = getOwnedMessage(msgId, userId);
@@ -499,7 +647,20 @@ public class AiConversationService {
         if (!"assistant".equals(msg.getRole())) {
             throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "仅助手消息可删除");
         }
+        SysAiConversation conv = conversationMapper.selectByIdForUpdate(msg.getConversationId(), userId);
+        if (conv == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在");
+        }
+        Long childCount = messageMapper.selectCount(new LambdaQueryWrapper<SysAiMessage>()
+                .eq(SysAiMessage::getConversationId, msg.getConversationId())
+                .eq(SysAiMessage::getParentMessageId, msg.getId()));
+        if (childCount != null && childCount > 0) {
+            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "请先删除该回复之后的对话");
+        }
         messageMapper.softDeleteByIds(List.of(msg.getId()));
+        if (Objects.equals(conv.getCurrentBranchMessageId(), msg.getId())) {
+            conversationMapper.compareAndSetCurrentBranch(conv.getId(), msg.getId(), msg.getParentMessageId());
+        }
     }
 
     // ── 内部工具 ─────────────────────────────────────────────
@@ -508,6 +669,11 @@ public class AiConversationService {
      * 会话锚定的 Agent 编码与已发布版本号（无已发布版本时为 null）
      */
     private record AgentAnchor(String code, Integer version) {}
+
+    /**
+     * assistant 消息的兄弟序号（1 起）与同父兄弟总数
+     */
+    private record SiblingPosition(int index, int count) {}
 
     private AgentAnchor resolveAgentAnchor(String agentCode) {
         String code = agentCode == null || agentCode.isBlank() ? DEFAULT_AGENT_CODE : agentCode.trim();
@@ -584,6 +750,31 @@ public class AiConversationService {
     }
 
     /**
+     * 当前激活分支末端是否挂起待恢复中断。
+     *
+     * <p>两个信号取并集：推理侧（python {@code InterruptHandler}）写入的 Redis 句柄
+     * {@code ai:interrupt:{convId}:{msgId}}（TTL 30 天），以及库内消息的 {@code pending_interrupt}
+     * （事实源）。库内记录按 {@link #normalizePendingInterrupt} 归一化，仅 {@code actionable=true}
+     * （awaiting_input 且未过期）才算挂起——避免历史残留/已过期中断挡住分支切换。
+     *
+     * <p>Java 侧只读不写中断状态：send/regenerate 全量转发推理服务，本地没有中断处理器。
+     */
+    private boolean hasPendingInterrupt(Long convId, Long tailMsgId) {
+        if (tailMsgId == null) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(INTERRUPT_KEY_PREFIX + convId + ":" + tailMsgId))) {
+            return true;
+        }
+        SysAiMessage tail = messageMapper.selectById(tailMsgId);
+        if (tail == null || !Objects.equals(tail.getConversationId(), convId)) {
+            return false;
+        }
+        AiContract.Interrupt interrupt = normalizePendingInterrupt(tail);
+        return interrupt != null && interrupt.actionable();
+    }
+
+    /**
      * 按当前激活分支末端回溯完整消息链（一次查询本会话消息 + 内存组链，visited 防环），返回正序链
      */
     private List<SysAiMessage> chainByTail(Long convId, Long tailMsgId) {
@@ -607,19 +798,103 @@ public class AiConversationService {
         return chain;
     }
 
-    private Map<Long, List<SysAiAgentThought>> listThoughts(List<Long> messageIds) {
+    /**
+     * 批量装配消息的产物引用：消息不存产物正文，只按 messageId 取 sys_ai_artifact 的 id 列表
+     */
+    private Map<Long, List<Long>> artifactIdsByMessage(List<Long> messageIds) {
         if (messageIds.isEmpty()) {
             return Map.of();
         }
-        List<SysAiAgentThought> thoughts = thoughtMapper.selectList(new LambdaQueryWrapper<SysAiAgentThought>()
-                .in(SysAiAgentThought::getMessageId, messageIds)
-                .orderByAsc(SysAiAgentThought::getPosition));
-        Map<Long, List<SysAiAgentThought>> grouped = new HashMap<>();
-        for (SysAiAgentThought thought : thoughts) {
-            grouped.computeIfAbsent(thought.getMessageId(), k -> new ArrayList<>())
-                    .add(thought);
+        Map<Long, List<Long>> grouped = new LinkedHashMap<>();
+        for (SysAiArtifactMapper.ArtifactRefRow row : artifactMapper.listRefsByMessageIds(messageIds)) {
+            grouped.computeIfAbsent(row.getMessageId(), k -> new ArrayList<>()).add(row.getId());
         }
         return grouped;
+    }
+
+    /** 消息正文由 text 块派生（thinking/tool_use 块不进正文，同 kind 按 seq 保序） */
+    private static String textOf(SysAiMessage msg) {
+        if (msg.getBlocks() == null) {
+            return "";
+        }
+        return msg.getBlocks().stream()
+                .filter(block -> "text".equals(block.kind()))
+                .map(AiContract.Block::text)
+                .filter(text -> text != null && !text.isEmpty())
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    /**
+     * 待恢复中断的读时归一化（列表 / 详情 / 专用端点共用）。
+     *
+     * <p>只有"消息仍处于 awaiting_input 且未过 expiresAt"才保留可续；其余情况一律
+     * {@code actionable=false}，避免历史残留或已过期中断在前端表现为可点击。payload 全部字段
+     * 原样保留，只改 {@code actionable}，且不回写库（库内记录是中断发生时刻的事实）。
+     */
+    private static AiContract.Interrupt normalizePendingInterrupt(SysAiMessage msg) {
+        AiContract.Interrupt interrupt = msg.getPendingInterrupt();
+        if (interrupt == null) {
+            return null;
+        }
+        boolean actionable = interrupt.actionable()
+                && STATUS_AWAITING_INPUT.equals(msg.getStatus())
+                && !isExpired(interrupt.expiresAt());
+        if (actionable == interrupt.actionable()) {
+            return interrupt;
+        }
+        return new AiContract.Interrupt(
+                interrupt.id(),
+                interrupt.type(),
+                interrupt.confirmKind(),
+                interrupt.action(),
+                interrupt.recommendation(),
+                interrupt.alternatives(),
+                interrupt.upgradeTip(),
+                interrupt.usedDaily(),
+                interrupt.dailyLimit(),
+                interrupt.usedMonthly(),
+                interrupt.monthlyLimit(),
+                interrupt.estDuration(),
+                interrupt.imageCount(),
+                interrupt.plan(),
+                interrupt.reason(),
+                interrupt.detail(),
+                interrupt.createdAt(),
+                interrupt.expiresAt(),
+                actionable);
+    }
+
+    /**
+     * {@code expiresAt} 过期判定：支持带时区偏移的 ISO-8601，也接受库内
+     * {@code yyyy-MM-dd HH:mm:ss} 口径。
+     *
+     * <p>缺失或无法解析按"已过期"处理（对齐 Go {@code NormalizeInterrupt}）：无法确认窗口
+     * 就不应给出可续信号，resume 侧也会拒绝。
+     */
+    private static boolean isExpired(String expiresAt) {
+        if (expiresAt == null || expiresAt.isBlank()) {
+            return true;
+        }
+        try {
+            return !Instant.now().isBefore(OffsetDateTime.parse(expiresAt).toInstant());
+        } catch (DateTimeParseException ignored) {
+            // 继续按无时区本地时间解析
+        }
+        LocalDateTime local = AiDateTimeUtils.parseOrNull(expiresAt);
+        return local == null || !LocalDateTime.now().isBefore(local);
+    }
+
+    /** LIKE 模式：用户输入先转义 \ % _，再包上前后通配符（配合 SQL 的 {@code ESCAPE '\\'}） */
+    private static String likePattern(String keyword) {
+        return "%" + escapeLike(keyword) + "%";
+    }
+
+    /** LIKE 转义：反斜杠须先替换，避免把后插入的转义符再转义一遍（对齐 python escape_like / go escapeLike） */
+    static String escapeLike(String keyword) {
+        if (keyword == null || keyword.isEmpty()) {
+            return "";
+        }
+        return keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     /**
@@ -637,7 +912,7 @@ public class AiConversationService {
         Map<Long, ConversationConsumptionRead> consumption =
                 insightMapper.sumConsumptionByConversationIds(convIds).stream()
                         .collect(Collectors.toMap(ConversationConsumptionRead::getConversationId, r -> r, (a, b) -> a));
-        Map<Long, Set<Integer>> anomalyStatus = new HashMap<>();
+        Map<Long, Set<String>> anomalyStatus = new HashMap<>();
         for (AnomalyStatusRead row : insightMapper.listAnomalyStatusByConversations(convIds)) {
             anomalyStatus
                     .computeIfAbsent(row.getConversationId(), k -> new HashSet<>())
@@ -650,8 +925,8 @@ public class AiConversationService {
             ConversationConsumptionRead stat = consumption.get(result.getId());
             result.setTokenConsumed(stat == null || stat.getToken() == null ? 0L : stat.getToken());
             result.setCreditsConsumed(stat == null || stat.getCredits() == null ? 0L : stat.getCredits());
-            Set<Integer> statuses = anomalyStatus.getOrDefault(result.getId(), Set.of());
-            if (statuses.contains(3)) {
+            Set<String> statuses = anomalyStatus.getOrDefault(result.getId(), Set.of());
+            if (statuses.contains("failed")) {
                 result.setAnomalyType("failed");
                 result.setAnomalyLabel("存在失败消息");
             } else if (quotaConvIds.contains(result.getId())) {
@@ -660,7 +935,7 @@ public class AiConversationService {
             } else if (riskyToolConvIds.contains(result.getId())) {
                 result.setAnomalyType("risky_tool");
                 result.setAnomalyLabel("存在高风险工具调用");
-            } else if (statuses.contains(4)) {
+            } else if (statuses.contains("canceled")) {
                 result.setAnomalyType("canceled");
                 result.setAnomalyLabel("存在已取消消息");
             }
@@ -678,7 +953,7 @@ public class AiConversationService {
         if (convIds.isEmpty()) {
             return;
         }
-        Map<Long, Long> matched = messageMapper.findLatestIdsByKeyword(convIds, keyword).stream()
+        Map<Long, Long> matched = messageMapper.findLatestIdsByKeyword(convIds, escapeLike(keyword)).stream()
                 .collect(Collectors.toMap(
                         SysAiMessageMapper.KeywordMatchRow::getConversationId,
                         SysAiMessageMapper.KeywordMatchRow::getMessageId,
@@ -726,48 +1001,42 @@ public class AiConversationService {
         return vo;
     }
 
-    private AiMessageVO toMessageVO(SysAiMessage msg) {
+    private AiMessageVO toMessageVO(SysAiMessage msg, List<Long> artifactIds) {
+        return toMessageVO(msg, artifactIds, null, null);
+    }
+
+    private AiMessageVO toMessageVO(
+            SysAiMessage msg, List<Long> artifactIds, Integer siblingIndex, Integer siblingCount) {
         AiMessageVO vo = new AiMessageVO();
         vo.setId(msg.getId());
         vo.setConversationId(msg.getConversationId());
         vo.setParentMessageId(msg.getParentMessageId());
         vo.setRole(msg.getRole());
-        vo.setContent(msg.getContent());
-        vo.setToolCalls(msg.getToolCalls());
-        vo.setToolCallId(msg.getToolCallId());
-        vo.setModel(msg.getModel());
         vo.setStatus(msg.getStatus());
+        vo.setModel(msg.getModel());
         vo.setError(msg.getError());
-        vo.setMetadata(msg.getMetadata());
-        vo.setInputTokens(msg.getInputTokens());
-        vo.setOutputTokens(msg.getOutputTokens());
-        vo.setCachedInputTokens(msg.getCachedInputTokens());
-        vo.setCredits(msg.getCredits());
-        vo.setTaskId(msg.getTaskId());
-        vo.setUsedMemoryIds(msg.getUsedMemoryIds());
-        vo.setEdited(msg.getEdited());
-        vo.setOriginalContent(msg.getOriginalContent());
+        vo.setBlocks(msg.getBlocks());
+        vo.setPlan(msg.getPlan());
+        vo.setPendingInterrupt(normalizePendingInterrupt(msg));
+        vo.setUsage(toUsage(msg));
+        vo.setArtifactIds(artifactIds);
+        vo.setMemoryIds(msg.getUsedMemoryIds() == null ? List.of() : msg.getUsedMemoryIds());
+        vo.setSuggestions(msg.getSuggestions() == null ? List.of() : msg.getSuggestions());
+        vo.setEdited(Integer.valueOf(1).equals(msg.getEdited()));
+        vo.setSiblingIndex(siblingIndex);
+        vo.setSiblingCount(siblingCount);
         vo.setCreateTime(msg.getCreateTime());
+        vo.setUpdateTime(msg.getUpdateTime());
         return vo;
     }
 
-    private AiAgentThoughtVO toThoughtVO(SysAiAgentThought thought) {
-        AiAgentThoughtVO vo = new AiAgentThoughtVO();
-        vo.setId(thought.getId());
-        vo.setMessageId(thought.getMessageId());
-        vo.setConversationId(thought.getConversationId());
-        vo.setPosition(thought.getPosition());
-        vo.setAgentCode(thought.getAgentCode());
-        vo.setIsSubagent(thought.getIsSubagent());
-        vo.setThought(thought.getThought());
-        vo.setTool(thought.getTool());
-        vo.setToolInput(thought.getToolInput());
-        vo.setObservation(thought.getObservation());
-        vo.setStatus(thought.getStatus());
-        vo.setLatencyMs(thought.getLatencyMs());
-        vo.setError(thought.getError());
-        vo.setCreateTime(thought.getCreateTime());
-        return vo;
+    private AiContract.Usage toUsage(SysAiMessage msg) {
+        return new AiContract.Usage(
+                msg.getInputTokens() == null ? 0L : msg.getInputTokens(),
+                msg.getOutputTokens() == null ? 0L : msg.getOutputTokens(),
+                msg.getCachedInputTokens() == null ? 0L : msg.getCachedInputTokens(),
+                msg.getCredits() == null ? 0L : msg.getCredits(),
+                msg.getSubAgentUsage());
     }
 
     private <T> IPage<T> pageOf(Page<?> page, List<T> records, long total) {

@@ -83,8 +83,7 @@ class LoginLogServiceImplTest {
         assertThat(filter.get("device_type")).isEqualTo("web");
         // 值 + BSON 类型双断言：Long（int64 口径）在前，Integer（python 历史 int32）在后
         assertThat(candidatesOf(filter, "user_id")).containsExactly(7L, 7);
-        assertThat(bsonTypesOfCandidates(filter, "user_id"))
-                .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
+        assertThat(bsonTypesOfCandidates(filter, "user_id")).containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
         assertThat(((Document) filter.get("create_time")).keySet()).containsExactlyInAnyOrder("$gte", "$lte");
         assertThat(mongoQuery.getSortObject()).isEqualTo(new Document("create_time", -1));
         assertThat(mongoQuery.getSkip()).isEqualTo(10L);
@@ -111,8 +110,7 @@ class LoginLogServiceImplTest {
                 .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
 
         Document outOfInt32Range = queries.get(1).getQueryObject();
-        assertThat(candidatesOf(outOfInt32Range, "user_id"))
-                .containsExactly((long) Integer.MAX_VALUE + 1);
+        assertThat(candidatesOf(outOfInt32Range, "user_id")).containsExactly((long) Integer.MAX_VALUE + 1);
         assertThat(bsonTypesOfCandidates(outOfInt32Range, "user_id")).containsExactly(BsonType.INT64);
     }
 

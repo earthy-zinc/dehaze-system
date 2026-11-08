@@ -81,8 +81,7 @@ class AiCompatCallServiceTest {
         // user_id 必须双类型 $in：改造前的 int32 历史记录否则静默读不到
         Document filter = mongoQuery.getQueryObject();
         assertThat(candidatesOf(filter, "user_id")).containsExactly(7L, 7);
-        assertThat(bsonTypesOfCandidates(filter, "user_id"))
-                .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
+        assertThat(bsonTypesOfCandidates(filter, "user_id")).containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
     }
 
     @Test
@@ -106,8 +105,7 @@ class AiCompatCallServiceTest {
         Document filter = captor.getValue().getQueryObject();
         assertThat(candidatesOf(filter, "user_id")).containsExactly(7L, 7);
         assertThat(candidatesOf(filter, "key_id")).containsExactly(3L, 3);
-        assertThat(bsonTypesOfCandidates(filter, "key_id"))
-                .containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
+        assertThat(bsonTypesOfCandidates(filter, "key_id")).containsExactlyInAnyOrder(BsonType.INT64, BsonType.INT32);
         assertThat(filter.get("model")).isEqualTo("gpt-4o");
         Document timeRange = (Document) filter.get("create_time");
         assertThat(epochMillis(timeRange.get("$gte")))

@@ -15,10 +15,12 @@ import com.pei.clarity.common.exception.BusinessException;
 import com.pei.clarity.common.result.ResultCode;
 import com.pei.clarity.mapper.SysAiMemoryMapper;
 import com.pei.clarity.mapper.SysAiMessageFeedbackMapper;
+import com.pei.clarity.model.entity.SysAiConversation;
 import com.pei.clarity.model.entity.SysAiMemory;
 import com.pei.clarity.model.entity.SysAiMessage;
 import com.pei.clarity.model.entity.SysAiMessageFeedback;
 import com.pei.clarity.model.form.AiFeedbackCreateForm;
+import com.pei.clarity.model.vo.AiFeedbackVO;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -272,6 +274,56 @@ class AiFeedbackServiceTest {
                 .thenReturn(existing);
 
         assertThat(service.get(MESSAGE_ID, USER_ID).getTags()).containsExactly("accurate", "detailed");
+    }
+
+    @Test
+    @DisplayName("会话级批量反馈：返回当前用户在该会话下的全部反馈（含标签与评论）")
+    void listByConversationReturnsOwnFeedbacks() {
+        when(conversationService.getOwned(1L, USER_ID)).thenReturn(new SysAiConversation());
+        SysAiMessageFeedback liked = new SysAiMessageFeedback();
+        liked.setId(21L);
+        liked.setMessageId(9L);
+        liked.setUserId(USER_ID);
+        liked.setConversationId(1L);
+        liked.setRating(1);
+        liked.setTags(List.of("accurate"));
+        liked.setCreateTime(LocalDateTime.now());
+        SysAiMessageFeedback disliked = new SysAiMessageFeedback();
+        disliked.setId(22L);
+        disliked.setMessageId(10L);
+        disliked.setUserId(USER_ID);
+        disliked.setConversationId(1L);
+        disliked.setRating(-1);
+        disliked.setTags(List.of("too_long"));
+        disliked.setComment("太长了");
+        when(feedbackMapper.listByUserAndConversation(USER_ID, 1L)).thenReturn(List.of(liked, disliked));
+
+        List<AiFeedbackVO> result = service.listByConversation(1L, USER_ID);
+
+        assertThat(result).extracting(AiFeedbackVO::getMessageId).containsExactly(9L, 10L);
+        assertThat(result.get(0).getTags()).containsExactly("accurate");
+        assertThat(result.get(1).getRating()).isEqualTo(-1);
+        assertThat(result.get(1).getComment()).isEqualTo("太长了");
+        verify(feedbackMapper).listByUserAndConversation(USER_ID, 1L);
+    }
+
+    @Test
+    @DisplayName("会话级批量反馈：无反馈返回空列表")
+    void listByConversationReturnsEmptyWhenNone() {
+        when(conversationService.getOwned(1L, USER_ID)).thenReturn(new SysAiConversation());
+        when(feedbackMapper.listByUserAndConversation(USER_ID, 1L)).thenReturn(List.of());
+
+        assertThat(service.listByConversation(1L, USER_ID)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("会话级批量反馈：会话不属于当前用户报 A0401，且不查反馈表")
+    void listByConversationRejectsForeignConversation() {
+        when(conversationService.getOwned(1L, USER_ID))
+                .thenThrow(new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在"));
+
+        assertBizError(ResultCode.RESOURCE_NOT_FOUND, () -> service.listByConversation(1L, USER_ID));
+        verify(feedbackMapper, never()).listByUserAndConversation(any(), any());
     }
 
     @Test
