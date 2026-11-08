@@ -9,6 +9,7 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
+from itertools import pairwise
 
 # 句末标点集合，与分块引擎 _SENTENCE_END 保持一致
 SENTENCE_END = "。！？!?；;"
@@ -45,21 +46,19 @@ def table_row_broken(text: str, chunks) -> int:
     引擎的空白清理会压缩行内空格，因此两侧行都先做同样的规范化再按内容匹配。
     按内容匹配在"同一行内容出现在文档多处表格"时有极小误判概率，可忽略。
     """
+
     def norm(line: str) -> str:
         return re.sub(r"[ \t]+", " ", line.strip())
 
     lines = [norm(line) for line in text.split("\n")]
-    adjacent = {
-        (a, b) for a, b in zip(lines, lines[1:]) if a.startswith("|") and b.startswith("|")
-    }
+    adjacent = {(a, b) for a, b in pairwise(lines) if a.startswith("|") and b.startswith("|")}
     if not adjacent:
         return 0
     rows_per_chunk = [
-        [norm(line) for line in c.content.split("\n") if norm(line).startswith("|")]
-        for c in chunks
+        [norm(line) for line in c.content.split("\n") if norm(line).startswith("|")] for c in chunks
     ]
     broken = 0
-    for prev, nxt in zip(rows_per_chunk, rows_per_chunk[1:]):
+    for prev, nxt in pairwise(rows_per_chunk):
         if prev and nxt and (prev[-1], nxt[0]) in adjacent:
             broken += 1
     known_lines = set(lines)
@@ -97,6 +96,7 @@ def coverage(text: str, chunks) -> float:
     overlap 导致的块间重复字符无碍（取 min 计入）；丢段、丢行、字符被乱码
     替换都会拉低覆盖率，因此它同时兜住"内容丢失"与"字符损坏"两类缺陷。
     """
+
     def counter(s: str) -> Counter:
         return Counter(ch for ch in s if not ch.isspace())
 

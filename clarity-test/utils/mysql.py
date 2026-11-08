@@ -6,6 +6,7 @@
 - 默认 autocommit=True，方便调试脚本立即看到效果
 - DictCursor，返回 dict 列表
 """
+
 from __future__ import annotations
 
 from typing import cast
@@ -13,7 +14,6 @@ from typing import cast
 import pymysql
 
 from . import config
-
 
 _conn: pymysql.Connection | None = None
 
@@ -53,7 +53,9 @@ def query(sql: str, params: tuple | list | None = None, database: str | None = N
         return cast(list[dict], list(cur.fetchall()))
 
 
-def query_one(sql: str, params: tuple | list | None = None, database: str | None = None) -> dict | None:
+def query_one(
+    sql: str, params: tuple | list | None = None, database: str | None = None
+) -> dict | None:
     """执行 SELECT，返回单条 dict（无结果返回 None）。"""
     rows = query(sql, params, database)
     return rows[0] if rows else None
@@ -75,6 +77,7 @@ def disconnect_mysql() -> None:
 
 
 # ===== 业务相关便捷查询（按需扩展） =====
+
 
 def get_user_by_username(username: str) -> dict | None:
     return query_one("SELECT * FROM sys_user WHERE username = %s AND deleted = 0", (username,))

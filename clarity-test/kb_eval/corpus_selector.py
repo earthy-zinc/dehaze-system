@@ -146,10 +146,11 @@ def build_adversarial() -> list[CorpusItem]:
         "| 字段 | 类型 | 允许空 | 默认值 | 说明 | 示例 | 索引 | 关联 |",
         "|---|---|---|---|---|---|---|---|",
     ]
-    for i in range(60):
-        rows.append(
-            f"| col_{i} | varchar(64) | 否 | '' | 第{i}个字段的详细说明内容 | value_{i} | idx_{i} | fk_table_{i % 5} |"
-        )
+    rows.extend(
+        f"| col_{i} | varchar(64) | 否 | '' | 第{i}个字段的详细说明内容 | value_{i} "
+        f"| idx_{i} | fk_table_{i % 5} |"
+        for i in range(60)
+    )
     table_only = "\n".join(rows)
 
     # 仅代码块：单围栏长代码（多函数定义），考察围栏是否被块边界切断
@@ -196,7 +197,9 @@ def build_adversarial() -> list[CorpusItem]:
     return items
 
 
-def write_manifest(items: list[CorpusItem], doc_root: str | Path, per_cell: int, out_path: str | Path):
+def write_manifest(
+    items: list[CorpusItem], doc_root: str | Path, per_cell: int, out_path: str | Path
+):
     """抽样清单落盘：记录路径与分类信息（不含全文），附 sha256 前缀供语料漂移校验。"""
     payload = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),

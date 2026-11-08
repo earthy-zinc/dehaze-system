@@ -3,6 +3,7 @@
 用法：
     python scripts/unread_count.py [--user admin] [--backend java]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -11,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from utils import auth, api, mysql
+from utils import api, auth, mysql
 
 
 def main() -> None:

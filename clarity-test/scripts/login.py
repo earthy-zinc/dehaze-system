@@ -3,6 +3,7 @@
 用法：
     python scripts/login.py [--backend java|go|python] [--user admin]
 """
+
 from __future__ import annotations
 
 import argparse

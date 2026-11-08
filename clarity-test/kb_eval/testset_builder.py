@@ -47,7 +47,9 @@ def _strip_fence_markers(lines: list[str]) -> list[str]:
 
 
 def _scan_headings(content: str) -> tuple[list[tuple[int, str, int]], bool]:
-    """扫描围栏外的 #/##/### 标题行，返回 [(level, title, line_idx)] 与是否跳过 YAML frontmatter。"""
+    """扫描围栏外的 #/##/### 标题行，返回 [(level, title, line_idx)] 与是否跳过 YAML
+    frontmatter。
+    """
     lines = content.split("\n")
     headings: list[tuple[int, str, int]] = []
     in_fence = False
@@ -83,9 +85,7 @@ def _extract_sections(content: str) -> tuple[str, list[tuple[str, str]]]:
         if level == 1:
             continue  # H1 只作模块上下文，不生成用例（query 会与自身重复）
         end = headings[i + 1][2] if i + 1 < len(headings) else len(lines)
-        body_lines = [
-            ln for ln in lines[line_idx + 1 : end] if not ln.lstrip().startswith("#")
-        ]
+        body_lines = [ln for ln in lines[line_idx + 1 : end] if not ln.lstrip().startswith("#")]
         body = "\n".join(_strip_fence_markers(body_lines)).strip()
         sections.append((title, body))
     return module_context, sections

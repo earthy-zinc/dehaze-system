@@ -6,6 +6,7 @@
 - BACKENDS：三端后端 base_url（debug 用本机映射端口，与 sdk-js/test 一致）
 - REDIS / MYSQL：直连远程基础设施（不依赖本地 docker）
 """
+
 from __future__ import annotations
 
 import os
@@ -34,7 +35,8 @@ def _required(name: str) -> str:
     value = os.environ.get(name)
     if not value:
         raise RuntimeError(
-            f"缺少环境变量 {name}：请确认仓库根 .env 已按环境模板落地（.env.dev.example / .env.pre.example）"
+            f"缺少环境变量 {name}：请确认仓库根 .env 已按环境模板落地"
+            "（.env.dev.example / .env.pre.example）"
         )
     return value
 

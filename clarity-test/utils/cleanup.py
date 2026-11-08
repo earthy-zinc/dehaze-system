@@ -6,10 +6,10 @@
 - 清理 Redis session（session:*）
 - 清理业务缓存（msg:unread:* / role:perms:* / user:auth:*）
 """
+
 from __future__ import annotations
 
 from . import redis
-
 
 # 限流 key 前缀（与后端 RateLimitAspect 对齐）
 RATE_LIMIT_PATTERNS = [

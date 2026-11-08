@@ -22,6 +22,7 @@ sys.path.insert(0, str(WORKSPACE / "clarity-python"))
 sys.path.insert(0, str(HERE.parent))
 
 from app.service.kb.chunking_engine import chunk_text  # noqa: E402
+
 from kb_eval.corpus_selector import (  # noqa: E402
     SKIP_DIR_NAMES,
     CorpusItem,
@@ -76,7 +77,9 @@ def _git_commit() -> str:
     try:
         out = subprocess.run(
             ["git", "-C", str(WORKSPACE), "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         return out.stdout.strip() or "unknown"
     except Exception:
@@ -161,7 +164,9 @@ def _bottlenecks(records: list[dict], top: int = 5, min_avg_chunks: int = 5):
     return scored[:top]
 
 
-def _pick_bad_excerpt(item_by_path: dict[str, CorpusItem], strategy: str, path: str) -> tuple[str, str]:
+def _pick_bad_excerpt(
+    item_by_path: dict[str, CorpusItem], strategy: str, path: str
+) -> tuple[str, str]:
     """取该组合最差文档（coverage 最低）的典型坏块摘录：乱码 > 碎块 > 块尾非句末 > 首块。"""
     item = item_by_path[path]
     chunks = chunk_text(item.content, strategy, CHUNK_SIZE, CHUNK_OVERLAP)
@@ -189,32 +194,32 @@ def build_report(
     doc_count = sum(1 for i in items if not i.adversarial)
     adv_count = sum(1 for i in items if i.adversarial)
     doc_total = sum(
-        1
-        for p in DOC_ROOT.rglob("*.md")
-        if not any(part in SKIP_DIR_NAMES for part in p.parts)
+        1 for p in DOC_ROOT.rglob("*.md") if not any(part in SKIP_DIR_NAMES for part in p.parts)
     )
     lines = [
         "# 知识库分块质量离线基线报告",
         "",
         f"- 生成时间：{datetime.now():%Y-%m-%d %H:%M}",
         f"- git commit：`{_git_commit()}`（clarity-vision workspace）",
-        f"- 语料：clarity-doc/docs 全库 {doc_total} 篇 md，分层抽样 {doc_count} 篇 + 对抗样本 {adv_count} 个",
+        f"- 语料：clarity-doc/docs 全库 {doc_total} 篇 md，分层抽样 {doc_count} 篇"
+        f" + 对抗样本 {adv_count} 个",
         f"- 参数：chunk_size={CHUNK_SIZE}，chunk_overlap={CHUNK_OVERLAP}；"
         f"strategies={','.join(strategies)}；per_cell={per_cell}",
         "- 指标定义见 kb_eval/README.md；qa/table 的 sentence_complete_rate 不适用（结构语义优先）",
         "",
         "## 1. 总览（全语料宏平均，文档等权）",
         "",
-        "| 策略 | n | 块数/篇 | repl | sentence | fence_brk | table_row_brk | token_p50 | token_p95 | fragment | oversized | coverage |",
+        "| 策略 | n | 块数/篇 | repl | sentence | fence_brk | table_row_brk "
+        "| token_p50 | token_p95 | fragment | oversized | coverage |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
-    for row in _overview_rows(doc_records, strategies):
-        lines.append(
-            f"| {row['strategy']} | {row['n']} | {_f(row['chunks'], 1)} | {_f(row['repl'], 2)} "
-            f"| {_f(row['sentence'])} | {_f(row['fence'], 2)} | {_f(row['table_row'], 2)} "
-            f"| {_f(row['p50'], 0)} | {_f(row['p95'], 0)} | {_f(row['fragment'])} "
-            f"| {_f(row['oversized'])} | {_f(row['coverage'], 4)} |"
-        )
+    lines.extend(
+        f"| {row['strategy']} | {row['n']} | {_f(row['chunks'], 1)} | {_f(row['repl'], 2)} "
+        f"| {_f(row['sentence'])} | {_f(row['fence'], 2)} | {_f(row['table_row'], 2)} "
+        f"| {_f(row['p50'], 0)} | {_f(row['p95'], 0)} | {_f(row['fragment'])} "
+        f"| {_f(row['oversized'])} | {_f(row['coverage'], 4)} |"
+        for row in _overview_rows(doc_records, strategies)
+    )
     lines += [
         "",
         "## 2. 分层表（策略 × 规模 × 结构）",
@@ -232,7 +237,8 @@ def build_report(
         "",
         "## 3. 对抗样本专项",
         "",
-        "| 样本 | 策略 | chunks | repl | fence_brk | table_row_brk | fragment | oversized | coverage |",
+        "| 样本 | 策略 | chunks | repl | fence_brk | table_row_brk | fragment "
+        "| oversized | coverage |",
         "|---|---|---|---|---|---|---|---|---|",
     ]
     for r in adv_records:
@@ -245,7 +251,8 @@ def build_report(
         "",
         "## 4. 瓶颈清单（最差 5 个 策略×分层 组合）",
         "",
-        "| 排名 | 策略 | 规模 | 结构 | n | score | sentence | fragment | oversized | coverage | fence_brk | table_row_brk |",
+        "| 排名 | 策略 | 规模 | 结构 | n | score | sentence | fragment | oversized "
+        "| coverage | fence_brk | table_row_brk |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     item_by_path = {i.path: i for i in items}
@@ -273,7 +280,9 @@ def build_report(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="知识库分块质量离线评估")
-    parser.add_argument("--strategies", default=",".join(DEFAULT_STRATEGIES), help="逗号分隔的策略列表")
+    parser.add_argument(
+        "--strategies", default=",".join(DEFAULT_STRATEGIES), help="逗号分隔的策略列表"
+    )
     parser.add_argument("--per-cell", type=int, default=4, help="分层矩阵每格抽样篇数")
     args = parser.parse_args()
     strategies = [s.strip() for s in args.strategies.split(",") if s.strip()]
@@ -283,7 +292,10 @@ def main() -> None:
     write_manifest(items, DOC_ROOT, args.per_cell, reports_dir / "corpus_manifest.json")
     doc_count = sum(1 for i in items if not i.adversarial)
     adv_count = len(items) - doc_count
-    print(f"[corpus] {doc_count} 篇文档 + {adv_count} 个对抗样本，清单已写 reports/corpus_manifest.json")
+    print(
+        f"[corpus] {doc_count} 篇文档 + {adv_count} 个对抗样本，"
+        "清单已写 reports/corpus_manifest.json"
+    )
 
     print(f"[eval] chunk_size={CHUNK_SIZE} overlap={CHUNK_OVERLAP} strategies={strategies}")
     records = evaluate(items, strategies)

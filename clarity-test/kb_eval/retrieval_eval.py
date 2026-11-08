@@ -55,9 +55,8 @@ HERE = Path(__file__).resolve().parent  # clarity-test/kb_eval
 WORKSPACE = HERE.parents[1]  # clarity-vision 根
 sys.path.insert(0, str(HERE.parent))
 
-from utils import api, auth  # noqa: E402
-
 from kb_eval.testset_builder import TestCase, build_testset  # noqa: E402
+from utils import api, auth  # noqa: E402
 
 BACKEND = "python"
 
@@ -345,7 +344,8 @@ def collect_strategy(strategy: str, cases: list[TestCase], doc_titles: dict[str,
             if err:
                 failed[path] = err
                 print(
-                    f"[{strategy}] 上传 {i}/{len(doc_titles)}: {md_path.name} (doc={doc_id}) 失败: {err}",
+                    f"[{strategy}] 上传 {i}/{len(doc_titles)}: {md_path.name} (doc={doc_id}) "
+                    f"失败: {err}",
                     flush=True,
                 )
             else:
@@ -358,7 +358,9 @@ def collect_strategy(strategy: str, cases: list[TestCase], doc_titles: dict[str,
         # 相关块全集在检索前整体落盘：evaluate 重算 relevant_total（调阈值）必需，
         # 此后即与后端解耦；此处之后任意中断都不影响 chunk 数据完整性。
         chunks_by_title = {
-            doc_titles[path]: _list_chunks(did) for path, did in doc_ids.items() if path not in failed
+            doc_titles[path]: _list_chunks(did)
+            for path, did in doc_ids.items()
+            if path not in failed
         }
         _chunks_path(strategy).write_text(
             json.dumps(chunks_by_title, ensure_ascii=False), encoding="utf-8"
@@ -420,7 +422,9 @@ def cmd_collect(args: argparse.Namespace) -> None:
         for strategy in strategies:
             try:
                 n = collect_strategy(strategy, cases, doc_titles)
-                print(f"[collect] {strategy}: raw 落盘 {n}/{len(cases)} 行 -> {_raw_path(strategy)}")
+                print(
+                    f"[collect] {strategy}: raw 落盘 {n}/{len(cases)} 行 -> {_raw_path(strategy)}"
+                )
             except Exception as exc:  # 单策略失败不拖垮后续策略，raw 已落部分保完整
                 errors[strategy] = exc
                 print(f"[error] [{strategy}] collect 中断: {exc!r}", flush=True)
@@ -532,7 +536,8 @@ def _load_offline_summary() -> tuple[str, dict, dict] | None:
             except (ValueError, IndexError):
                 return None
 
-        # 总览表 12 列：策略 n 块数 repl sentence fence table_row p50 p95 fragment oversized coverage
+        # 总览表 12 列：策略 n 块数 repl sentence fence table_row p50 p95 fragment oversized
+        # coverage
         if section == "overview" and len(cells) == 12 and cells[0] in DEFAULT_STRATEGIES:
             overview[cells[0]] = {"fence": fnum(5), "table_row": fnum(6), "fragment": fnum(9)}
         # 分层表 8 列：策略 规模 结构 n sentence fragment oversized coverage
@@ -560,7 +565,8 @@ def _correlation_lines(strategies: list[str], results: dict, offline: tuple) -> 
         "",
         "### 策略级对照",
         "",
-        "| 策略 | 离线 fence_brk(次/篇) | 离线 table_row_brk | 离线 fragment | 检索 Recall@5 | 检索 MRR |",
+        "| 策略 | 离线 fence_brk(次/篇) | 离线 table_row_brk | 离线 fragment "
+        "| 检索 Recall@5 | 检索 MRR |",
         "|---|---|---|---|---|---|",
     ]
     for s in strategies:
@@ -587,7 +593,8 @@ def _correlation_lines(strategies: list[str], results: dict, offline: tuple) -> 
             frag = _offline_struct_fragment(offline, s, struct_t)
             frag_txt = f"{frag:.3f}" if frag is not None else "N/A"
             lines.append(
-                f"| {s} | {struct_t} | {_mean([r['recall5'] for r in recs]):.3f} | {len(recs)} | {frag_txt} |"
+                f"| {s} | {struct_t} | {_mean([r['recall5'] for r in recs]):.3f} | {len(recs)} "
+                f"| {frag_txt} |"
             )
 
     lines += ["", "### 对照结论", ""]
@@ -603,7 +610,8 @@ def _correlation_lines(strategies: list[str], results: dict, offline: tuple) -> 
         + (
             "两者一致，支持『围栏切断 → 代码块语义破损 → 向量漂移 → 召回下降』的传导方向。"
             if worst_fence == worst_recall
-            else "两者不一致：检索召回还叠加 embedding/查询形态/阈值过滤等链路因素，不能单归因于分块缺陷。"
+            else "两者不一致：检索召回还叠加 embedding/查询形态/阈值过滤等链路因素，"
+            "不能单归因于分块缺陷。"
         )
     )
     for s in strategies:
@@ -618,7 +626,10 @@ def _correlation_lines(strategies: list[str], results: dict, offline: tuple) -> 
         low_struct = min(by_struct, key=lambda t: by_struct[t])
         frag = _offline_struct_fragment(offline, s, low_struct)
         frag_txt = f"，其离线 fragment={frag:.3f}" if frag is not None else ""
-        lines.append(f"- {s} 检索 Recall@5 最差的结构分层为 {low_struct}（{by_struct[low_struct]:.3f}）{frag_txt}。")
+        lines.append(
+            f"- {s} 检索 Recall@5 最差的结构分层为 {low_struct}（{by_struct[low_struct]:.3f}）"
+            f"{frag_txt}。"
+        )
     return lines
 
 
@@ -629,14 +640,18 @@ def _git_commit() -> str:
     try:
         out = subprocess.run(
             ["git", "-C", str(WORKSPACE), "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         return out.stdout.strip() or "unknown"
     except Exception:
         return "unknown"
 
 
-def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int, threshold: float) -> str:
+def build_report(
+    strategies: list[str], results: dict, n_docs: int, n_cases: int, threshold: float
+) -> str:
     raw_meta = "；".join(
         f"{s} {results[s]['n_rows']} 行（collect 完成于 "
         f"{datetime.fromtimestamp(_raw_path(s).stat().st_mtime):%m-%d %H:%M}）"
@@ -649,20 +664,25 @@ def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int
         f"- 生成时间：{datetime.now():%Y-%m-%d %H:%M}",
         f"- git commit：`{_git_commit()}`（clarity-vision workspace）",
         "- 链路：collect 阶段走 8991 真实后端（bge-m3/local → KB → 解析分块 → ES 向量检索 Top-5），"
-        "每策略独立建库串行执行、finally 删库；本报告为 evaluate 阶段离线重放 raw 数据（零检索成本）",
+        "每策略独立建库串行执行、finally 删库；本报告为 evaluate 阶段离线重放 raw 数据"
+        "（零检索成本）",
         f"- raw 数据：reports/raw/*.jsonl —— {raw_meta}",
-        f"- 语料：corpus_manifest.json 每个规模×结构格子 1 篇，共 {n_docs} 篇真实文档（对抗样本不参与），"
-        f"测试用例 {n_cases} 条（结构即标注：query=「一级标题的{{小节标题}}」，expected_text=小节正文）",
+        f"- 语料：corpus_manifest.json 每个规模×结构格子 1 篇，共 {n_docs} 篇真实文档"
+        "（对抗样本不参与），"
+        f"测试用例 {n_cases} 条（结构即标注：query=「一级标题的{{小节标题}}」，"
+        "expected_text=小节正文）",
         "- 参数：chunk_size=512，chunk_overlap=64，searchStrategy=vector，"
         f"score_threshold=建库默认 0.5，top_k={TOP_K}，strategies={','.join(strategies)}",
         f"- 命中判定：{SHINGLE_N}-gram shingle 覆盖率（chunk 对 expected_text）"
         f"块侧或节侧任一 ≥ {threshold}；"
-        "依据：逐字子集块块侧≈1.0、短节完整入块时节侧≈1.0，跨节套话两侧均 <0.15，间隔宽（校准分布见附录）；"
+        "依据：逐字子集块块侧≈1.0、短节完整入块时节侧≈1.0，跨节套话两侧均 <0.15，"
+        "间隔宽（校准分布见附录）；"
         "阈值在 evaluate 阶段参数化，调整只需重放 raw，无需重新检索",
         "",
         "## 1. 总览（策略 × 指标）",
         "",
-        "| 策略 | 有效用例 | 无效用例 | Recall@1 | Recall@3 | Recall@5 | MRR | NDCG@5 | HitRate@5 | 空结果 |",
+        "| 策略 | 有效用例 | 无效用例 | Recall@1 | Recall@3 | Recall@5 | MRR | NDCG@5 "
+        "| HitRate@5 | 空结果 |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for s in strategies:
@@ -670,7 +690,8 @@ def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int
         recs = r["records"]
         lines.append(
             f"| {s} | {len(recs)} | {len(r['invalid'])} "
-            f"| {_mean([x['recall1'] for x in recs]):.3f} | {_mean([x['recall3'] for x in recs]):.3f} "
+            f"| {_mean([x['recall1'] for x in recs]):.3f} "
+            f"| {_mean([x['recall3'] for x in recs]):.3f} "
             f"| {_mean([x['recall5'] for x in recs]):.3f} | {_mean([x['mrr'] for x in recs]):.3f} "
             f"| {_mean([x['ndcg'] for x in recs]):.3f} "
             f"| {_mean([1.0 if x['hit5'] else 0.0 for x in recs]):.3f} | {r['zero_result']} |"
@@ -687,7 +708,8 @@ def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int
         for size_b in SIZE_ORDER:
             for struct_t in STRUCT_ORDER:
                 recs = [
-                    x for x in results.get(s, _EMPTY_RESULT)["records"]
+                    x
+                    for x in results.get(s, _EMPTY_RESULT)["records"]
                     if x["size"] == size_b and x["struct"] == struct_t
                 ]
                 if recs:
@@ -703,7 +725,9 @@ def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int
         "| # | 策略 | 文档 | query | 期望节标题 | Recall@5 | Top-1 重合度 |",
         "|---|---|---|---|---|---|---|",
     ]
-    zero = [x for s in strategies for x in results.get(s, _EMPTY_RESULT)["records"] if not x["hit5"]]
+    zero = [
+        x for s in strategies for x in results.get(s, _EMPTY_RESULT)["records"] if not x["hit5"]
+    ]
     if zero:
         for i, x in enumerate(zero[:20], 1):
             lines.append(
@@ -730,7 +754,19 @@ def build_report(strategies: list[str], results: dict, n_docs: int, n_cases: int
     for s in strategies:
         buckets = [0] * 6
         for v in results.get(s, _EMPTY_RESULT)["top1_scores"]:
-            idx = 0 if v < 0.1 else 1 if v < 0.3 else 2 if v < 0.5 else 3 if v < 0.7 else 4 if v < 0.9 else 5
+            idx = (
+                0
+                if v < 0.1
+                else 1
+                if v < 0.3
+                else 2
+                if v < 0.5
+                else 3
+                if v < 0.7
+                else 4
+                if v < 0.9
+                else 5
+            )
             buckets[idx] += 1
         lines.append(f"| {s} | " + " | ".join(str(b) for b in buckets) + " |")
     lines += [
@@ -773,7 +809,8 @@ def cmd_evaluate(args: argparse.Namespace) -> None:
     for s in strategies:
         recs = results[s]["records"]
         print(
-            f"[{s}] raw {results[s]['n_rows']} 行，有效 {len(recs)} / 无效 {len(results[s]['invalid'])}，"
+            f"[{s}] raw {results[s]['n_rows']} 行，有效 {len(recs)} / "
+            f"无效 {len(results[s]['invalid'])}，"
             f"Recall@5={_mean([r['recall5'] for r in recs]):.3f}，"
             f"MRR={_mean([r['mrr'] for r in recs]):.3f}，空结果 {results[s]['zero_result']} 条"
         )
@@ -788,14 +825,24 @@ def main() -> None:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_collect = sub.add_parser("collect", help="阶段一：真实链路执行检索，逐条落盘 raw（唯一有成本环节）")
-    p_collect.add_argument("--strategies", default=",".join(DEFAULT_STRATEGIES), help="逗号分隔的分块策略")
-    p_collect.add_argument("--docs", type=int, default=0, help="格子精选后再截前 N 篇文档（调试用，0=不截）")
+    p_collect = sub.add_parser(
+        "collect", help="阶段一：真实链路执行检索，逐条落盘 raw（唯一有成本环节）"
+    )
+    p_collect.add_argument(
+        "--strategies", default=",".join(DEFAULT_STRATEGIES), help="逗号分隔的分块策略"
+    )
+    p_collect.add_argument(
+        "--docs", type=int, default=0, help="格子精选后再截前 N 篇文档（调试用，0=不截）"
+    )
     p_collect.set_defaults(func=cmd_collect)
 
     p_eval = sub.add_parser("evaluate", help="阶段二：读 raw 离线计算指标并出报告（零成本可反复）")
-    p_eval.add_argument("--threshold", type=float, default=HIT_THRESHOLD, help="命中阈值（双向 shingle 覆盖率）")
-    p_eval.add_argument("--strategies", default="", help="逗号分隔的策略，缺省自动发现 reports/raw/*.jsonl")
+    p_eval.add_argument(
+        "--threshold", type=float, default=HIT_THRESHOLD, help="命中阈值（双向 shingle 覆盖率）"
+    )
+    p_eval.add_argument(
+        "--strategies", default="", help="逗号分隔的策略，缺省自动发现 reports/raw/*.jsonl"
+    )
     p_eval.set_defaults(func=cmd_evaluate)
 
     args = parser.parse_args()

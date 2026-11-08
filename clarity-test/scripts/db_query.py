@@ -6,6 +6,7 @@
     python scripts/db_query.py  # 进入交互模式
     python scripts/db_query.py "SELECT ..." --json   # 输出原始 JSON（程序化取值用，不含边框/空行）
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from utils import mysql, config
+from utils import config, mysql
 
 
 def run_query(sql: str, database: str | None = None) -> None:
@@ -26,8 +27,11 @@ def run_query(sql: str, database: str | None = None) -> None:
 
     print(f"→ {sql_stripped}")
     try:
-        if sql_stripped.upper().startswith("SELECT") or sql_stripped.upper().startswith("SHOW") \
-                or sql_stripped.upper().startswith("DESC"):
+        if (
+            sql_stripped.upper().startswith("SELECT")
+            or sql_stripped.upper().startswith("SHOW")
+            or sql_stripped.upper().startswith("DESC")
+        ):
             rows = mysql.query(sql_stripped, database=database)
             if not rows:
                 print("  (empty)")

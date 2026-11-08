@@ -10,6 +10,7 @@ SSE 事件块格式（与 clarity-python/app/infrastructure/sse/sse_emitter_mana
     data: {json}
     空行分隔
 """
+
 from __future__ import annotations
 
 import json
@@ -73,9 +74,9 @@ def stream_request(
             event_name = None
             data_lines = []
         elif line.startswith("event:"):
-            event_name = line[len("event:"):].strip()
+            event_name = line[len("event:") :].strip()
         elif line.startswith("data:"):
-            data_lines.append(line[len("data:"):].strip())
+            data_lines.append(line[len("data:") :].strip())
         # id: 行仅用于断点续传，解析时无需使用
     # 末尾可能没有空行结尾
     if event_name and data_lines:

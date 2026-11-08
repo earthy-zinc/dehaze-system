@@ -1,7 +1,8 @@
 """消息未读数集成测试（本次 Android 联调场景）。"""
+
 from __future__ import annotations
 
-from utils import auth, api, mysql
+from utils import api, auth, mysql
 
 
 class TestMessages:
@@ -9,7 +10,8 @@ class TestMessages:
         """API 返回的未读数应为非负整数。"""
         resp = api.get("/api/v1/messages/unread-count")
         count = resp["data"]["count"]
-        assert isinstance(count, int) and count >= 0
+        assert isinstance(count, int)
+        assert count >= 0
 
     def test_unread_count_db(self):
         """DB 直接查未读数应为非负整数。"""
@@ -26,9 +28,7 @@ class TestMessages:
         db_count = mysql.get_unread_message_count(user_id)
 
         # 允许有 1-2 条误差（并发标记已读），但应大致一致
-        assert abs(api_count - db_count) <= 2, (
-            f"API={api_count}, DB={db_count}, 误差过大"
-        )
+        assert abs(api_count - db_count) <= 2, f"API={api_count}, DB={db_count}, 误差过大"
 
     def test_messages_page(self, session):
         """消息列表应能正常分页查询。"""

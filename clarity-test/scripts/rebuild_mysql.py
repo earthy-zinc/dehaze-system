@@ -13,6 +13,7 @@
 
 注意：会清空 clarity / clarity_test 两个数据库的全部数据！
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import httpx
 import pymysql
 
-from utils import config, cleanup
+from utils import cleanup, config
 
 
 def _connect_admin(database: str | None = None) -> pymysql.Connection:
@@ -95,14 +96,11 @@ def rebuild_mysql(targets: list[str] | None = None) -> None:
 
     # 1. 用 admin 连接（不指定 database）创建/重建数据库
     print("=== 重建数据库 ===")
-    with _connect_admin() as conn:
-        with conn.cursor() as cur:
-            for db in targets:
-                cur.execute(f"DROP DATABASE IF EXISTS `{db}`")
-                cur.execute(
-                    f"CREATE DATABASE `{db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
-                )
-                print(f"  ✓ 重建 {db}")
+    with _connect_admin() as conn, conn.cursor() as cur:
+        for db in targets:
+            cur.execute(f"DROP DATABASE IF EXISTS `{db}`")
+            cur.execute(f"CREATE DATABASE `{db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci")
+            print(f"  ✓ 重建 {db}")
 
     # 2. 逐个导入 schema
     schema_files = sorted(config.SQL_SCHEMA_DIR.glob("sys_*.sql"))
@@ -220,7 +218,8 @@ def main() -> None:
         dest="import_files",
         nargs="+",
         metavar="FILE",
-        help="增量同步 config/sql/data/ 下指定的种子数据 SQL 文件（先清对应表再导入，不重建库不清其他数据），"
+        help="增量同步 config/sql/data/ 下指定的种子数据 SQL 文件"
+        "（先清对应表再导入，不重建库不清其他数据），"
         "如：--import sys_menu.sql sys_role_menu.sql",
     )
     parser.add_argument(

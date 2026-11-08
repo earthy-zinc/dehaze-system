@@ -5,6 +5,7 @@
 - redis-py 同步客户端（同步 API 适合调试脚本，避免 async 样板）
 - decode_responses=True，直接拿到 str 而非 bytes
 """
+
 from __future__ import annotations
 
 from typing import cast
@@ -12,7 +13,6 @@ from typing import cast
 import redis
 
 from . import config
-
 
 _client: redis.Redis | None = None
 
@@ -42,6 +42,7 @@ def disconnect_redis() -> None:
 
 
 # ===== 业务相关便捷操作（按需扩展） =====
+
 
 def get_captcha(captcha_key: str) -> str | None:
     """根据 captchaKey 从 Redis 读取验证码明文（key 格式: captcha_code:{captchaKey}）。"""

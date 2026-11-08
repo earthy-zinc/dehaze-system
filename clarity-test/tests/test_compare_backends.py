@@ -1,9 +1,10 @@
 """三端 API 响应对比测试。"""
+
 from __future__ import annotations
 
 import httpx
 
-from utils import config, api
+from utils import api, config
 
 
 class TestCompareBackends:
@@ -17,8 +18,8 @@ class TestCompareBackends:
     def test_health_all_backends(self):
         """三端健康检查都应返回 HTTP 200。
 
-        三端响应格式不一致（Java: {"status":"UP"}, Go: {"code":"00000"}, Python: {"status":"healthy"}），
-        只验证 HTTP 状态码。
+        三端响应格式不一致（Java: {"status":"UP"}, Go: {"code":"00000"},
+        Python: {"status":"healthy"}），只验证 HTTP 状态码。
         """
         health_paths = {"java": "/actuator/health", "go": "/health", "python": "/health"}
         for name in config.BACKENDS:

@@ -6,15 +6,17 @@
 - 提供 get / post / put / patch / delete
 - 响应体自动解析 JSON，失败时抛出 DehazeApiError（含 traceId）
 """
+
 from __future__ import annotations
 
 import httpx
 
-from . import config, auth
+from . import auth, config
 
 
 class DehazeApiError(Exception):
     """后端 API 业务错误。"""
+
     def __init__(self, code: str, msg: str, trace_id: str | None = None):
         super().__init__(f"[{code}] {msg} (traceId={trace_id})")
         self.code = code

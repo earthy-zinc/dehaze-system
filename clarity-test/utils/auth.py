@@ -5,14 +5,15 @@
 - 验证码直接从 Redis 读（key: captcha_code:{captchaKey}），避免 OCR
 - 不做本地文件缓存（避免与后端 Redis session 状态不同步）
 """
+
 from __future__ import annotations
 
+import contextlib
 import re
 
 import httpx
 
 from . import config, redis
-
 
 # (backend, username) -> session_id
 _session_store: dict[tuple[str, str], str] = {}
@@ -94,6 +95,7 @@ def login(
 
     # 4. 缓存（避免循环 import，延迟导入 api）
     from . import api
+
     _session_store[key] = session_id
     api.set_session(backend, session_id)
 
@@ -103,19 +105,20 @@ def login(
 def logout(backend: str = config.DEFAULT_BACKEND) -> None:
     """登出指定后端，清除缓存。"""
     from . import api  # 延迟导入避免循环依赖
+
     for key in list(_session_store.keys()):
         if key[0] == backend:
             session_id = _session_store.pop(key, None)
             api.set_session(backend, None)
             if session_id:
-                try:
-                    api.post("/api/v1/auth/logout", backend=backend)
-                except Exception:
-                    pass  # 静默失败
+                with contextlib.suppress(Exception):
+                    api.post("/api/v1/auth/logout", backend=backend)  # 静默失败
             break
 
 
-def get_current_session(backend: str = config.DEFAULT_BACKEND, username: str = config.DEFAULT_USERNAME) -> str:
+def get_current_session(
+    backend: str = config.DEFAULT_BACKEND, username: str = config.DEFAULT_USERNAME
+) -> str:
     """获取已缓存的 session（未登录则自动登录）。"""
     return _session_store.get((backend, username)) or login(username=username, backend=backend)
 
@@ -123,6 +126,7 @@ def get_current_session(backend: str = config.DEFAULT_BACKEND, username: str = c
 def clear_cache() -> None:
     """清除所有缓存的 session（不从后端登出，仅清本地缓存）。"""
     from . import api  # 延迟导入避免循环依赖
+
     _session_store.clear()
     api.clear_sessions()
 
@@ -130,6 +134,7 @@ def clear_cache() -> None:
 def get_user_id(username: str = config.DEFAULT_USERNAME) -> int:
     """查询用户 ID（从 MySQL）。"""
     from . import mysql
+
     user = mysql.get_user_by_username(username)
     if not user:
         raise RuntimeError(f"用户不存在: {username}")

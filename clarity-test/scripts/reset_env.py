@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from utils import config  # noqa: E402
+from utils import config
 
 SERVICES = "java,go,python,mcp"
 
@@ -108,11 +108,17 @@ def _reset_elasticsearch(dry_run: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="按 .env 命名空间重置环境（MySQL + Redis + MinIO + MongoDB + ES）")
-    parser.add_argument("--target", required=True, help="目标库名，必须等于根 .env 的 MYSQL_DATABASE")
+    parser = argparse.ArgumentParser(
+        description="按 .env 命名空间重置环境（MySQL + Redis + MinIO + MongoDB + ES）"
+    )
+    parser.add_argument(
+        "--target", required=True, help="目标库名，必须等于根 .env 的 MYSQL_DATABASE"
+    )
     parser.add_argument("--yes", action="store_true", help="确认执行破坏性操作（缺省仅打印计划）")
     parser.add_argument("--dry-run", action="store_true", help="只打印将执行的动作，不做任何修改")
-    parser.add_argument("--skip-services", action="store_true", help="跳过停/起三端（服务未运行时用）")
+    parser.add_argument(
+        "--skip-services", action="store_true", help="跳过停/起三端（服务未运行时用）"
+    )
     parser.add_argument("--skip-mysql", action="store_true", help="跳过 MySQL 重建")
     parser.add_argument("--skip-redis", action="store_true", help="跳过 Redis 清空")
     parser.add_argument("--skip-object", action="store_true", help="跳过 MinIO 清空")
@@ -122,7 +128,8 @@ def main() -> None:
 
     if args.target != config.MYSQL_DATABASE:
         raise SystemExit(
-            f"--target 与 .env 不一致：--target={args.target}，MYSQL_DATABASE={config.MYSQL_DATABASE}\n"
+            f"--target 与 .env 不一致：--target={args.target}，"
+            f"MYSQL_DATABASE={config.MYSQL_DATABASE}\n"
             "（防呆：确认 .env 指向的就是要重置的环境，避免误清另一个环境的库）"
         )
     dry_run = args.dry_run or not args.yes
@@ -149,7 +156,10 @@ def main() -> None:
         from rebuild_mysql import rebuild_mysql
 
         if dry_run:
-            print(f"\n=== MySQL {config.MYSQL_DATABASE} 重建 ===\n  [dry-run] 将 DROP/CREATE 并导入 schema + data")
+            print(
+                f"\n=== MySQL {config.MYSQL_DATABASE} 重建 ===\n  [dry-run] 将 DROP/CREATE "
+                "并导入 schema + data"
+            )
         else:
             rebuild_mysql([config.MYSQL_DATABASE])
     if not args.skip_redis:
