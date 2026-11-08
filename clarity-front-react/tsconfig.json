@@ -19,7 +19,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "clarity-sdk-js": ["../clarity-sdk-js/index.ts"]
     }
   },
   "include": ["**/*.ts", "src", "mock", ".storybook/**/*.ts"],

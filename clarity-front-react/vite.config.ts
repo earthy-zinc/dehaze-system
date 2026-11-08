@@ -25,9 +25,19 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
   const env = loadEnv(mode, process.cwd());
   return {
     resolve: {
-      alias: {
-        "@": pathSrc,
-      },
+      alias: [
+        // 源码直连：SDK 以 TS 源码参与编译与类型检查，改 SDK 不再需要先 build 产物。
+        // 精确匹配包名，避免把未来可能的子路径导入一并吞掉。
+        {
+          find: /^clarity-sdk-js$/,
+          replacement: resolve(__dirname, "../clarity-sdk-js/index.ts"),
+        },
+        { find: "@", replacement: pathSrc },
+      ],
+    },
+    // SDK 走源码（alias 到 index.ts），不进预构建，改源码直接走 HMR
+    optimizeDeps: {
+      exclude: ["clarity-sdk-js"],
     },
 
     server: {
