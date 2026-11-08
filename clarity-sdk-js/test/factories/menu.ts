@@ -1,7 +1,7 @@
-import { MenuForm, MenuQuery, MenuVO } from "@/api/menu/model";
+import type { MenuForm, MenuQuery, MenuVO } from "@/api/menu/model";
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
 import { uniqueName, uniqueCode } from "./common";
-import { TestCleanupRegistry } from "#/utils/cleanup";
+import type { TestCleanupRegistry } from "#/utils/cleanup";
 import MenuAPI from "@/api/menu";
 
 /** 测试菜单统一名称前缀：集测按此前缀清理（《菜单管理/测试用例》约定），勿改动 */

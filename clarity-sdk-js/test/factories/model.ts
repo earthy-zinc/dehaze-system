@@ -1,4 +1,4 @@
-import { CompareReportForm, EvaluationForm, ImageEditForm, PresetForm } from "../../index";
+import type { CompareReportForm, EvaluationForm, ImageEditForm, PresetForm } from "../../index";
 import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 
 const DATASET_BASE_URL = `http://${NGINX_STATIC_HOST}:${NGINX_STATIC_PORT}/datasets`;

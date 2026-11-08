@@ -1,4 +1,5 @@
-import { AiImageAPI, FileAPI, ImageEditForm } from "../../../index";
+import type { ImageEditForm } from "../../../index";
+import { AiImageAPI, FileAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createImageEditForm, DEFAULT_IMAGE_MODEL } from "#/factories/model";
 import { login, logout, forceLogin } from "#/utils/auth";

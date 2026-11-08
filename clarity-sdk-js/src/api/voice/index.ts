@@ -1,6 +1,6 @@
-import request, { service } from "@/utils/request";
-import { createWebSocket, type WSClient } from "@/utils/websocket";
-import {
+import request, { service } from "../../utils/request";
+import { createWebSocket, type WSClient } from "../../utils/websocket";
+import type {
   AsrResultVO,
   AsrStreamHandlers,
   AsrStreamMessage,

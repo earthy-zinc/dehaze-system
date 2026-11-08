@@ -1,4 +1,4 @@
-import { UserForm, UserQuery } from "@/api/user/model";
+import type { UserForm, UserQuery } from "@/api/user/model";
 import { uniqueName, uniqueEmail, uniqueMobile, pageQuery } from "./common";
 
 export function createUserForm(overrides: Partial<UserForm> = {}): UserForm {

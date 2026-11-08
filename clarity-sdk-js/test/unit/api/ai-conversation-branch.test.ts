@@ -1,25 +1,22 @@
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import AiConversationAPI from "@/api/ai-conversation";
 import type {
-  AiMessageThought,
-  AiMessageVO,
   ConversationVO,
-  FeedbackVO,
-  InterruptData,
+  Interrupt,
+  Message,
   Plan,
-  PlanPayload,
   PlanRevision,
   PlanTask,
+  ToolCall,
 } from "@/api/ai-conversation/model";
 
 /**
- * 分支端点请求契约 + plan/中断类型统一后的单元测试。
+ * 分支端点请求契约 + 计划/中断契约形状单元测试。
  *
- * mock 掉 axios 封装层，锁定新增的两个分支端点路径与参数拼装（严格对齐 python
+ * mock 掉 axios 封装层，锁定两个分支端点路径与参数拼装（对齐
  * `GET /conversations/{conv_id}/messages/{msg_id}/branches` 与
- * `PUT /conversations/{conv_id}/branches/{msg_id}`），并以编译期断言锁定：
- * `Plan`（事件完整形状）与 `PlanPayload`（中断形状，仅去掉 `phase`）同形，
- * 中断数据与计划任务项全 camelCase。
+ * `PUT /conversations/{conv_id}/branches/{msg_id}`），并以编译期断言锁定契约生成的
+ * `Plan` / `Interrupt` 形状：全 camelCase、无旧键。
  */
 
 const { requestMock, serviceMock } = vi.hoisted(() => ({
@@ -56,73 +53,79 @@ describe("AiConversationAPI 分支端点", () => {
   });
 
   it("getBranches 返回消息列表、switchBranch 返回会话（编译期断言）", () => {
-    expectTypeOf(AiConversationAPI.getBranches).returns.toEqualTypeOf<Promise<AiMessageVO[]>>();
+    expectTypeOf(AiConversationAPI.getBranches).returns.toEqualTypeOf<Promise<Message[]>>();
     expectTypeOf(AiConversationAPI.switchBranch).returns.toEqualTypeOf<Promise<ConversationVO>>();
   });
 });
 
-describe("plan 统一形状（编译期断言）", () => {
-  it("PlanPayload 为 Plan 去掉 phase，phase 仅事件路径存在", () => {
-    expectTypeOf<PlanPayload>().toEqualTypeOf<Omit<Plan, "phase">>();
+describe("Plan 契约形状（编译期断言）", () => {
+  it("Plan 必含 status/tasks/revisions/awaitingApproval，phase 可选且仅在事件路径出现", () => {
+    expectTypeOf<Plan>().toHaveProperty("status");
+    expectTypeOf<Plan>().toHaveProperty("tasks");
+    expectTypeOf<Plan>().toHaveProperty("revisions");
+    expectTypeOf<Plan>().toHaveProperty("awaitingApproval");
     expectTypeOf<Plan["tasks"]>().toEqualTypeOf<PlanTask[]>();
-    expectTypeOf<PlanPayload["tasks"]>().toEqualTypeOf<PlanTask[]>();
-    expectTypeOf<PlanPayload["revisions"]>().toEqualTypeOf<PlanRevision[]>();
-    expectTypeOf<InterruptData["plan"]>().toEqualTypeOf<PlanPayload | undefined>();
+    expectTypeOf<Plan["revisions"]>().toEqualTypeOf<PlanRevision[]>();
+    expectTypeOf<Plan["awaitingApproval"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<Plan["status"]>().toEqualTypeOf<"pending" | "running" | "completed" | "failed">();
 
-    // 事件完整形状可赋给中断形状（多出的 phase 不破坏形状）
-    const event: Plan = { tasks: [], revisions: [], phase: "plan" };
-    const asPayload: PlanPayload = event;
-    expect(asPayload).toBe(event);
-    expectTypeOf<Plan["phase"]>().toEqualTypeOf<string | undefined>();
-    expectTypeOf<PlanPayload>().not.toHaveProperty("phase");
+    // phase 可选：不传也合法
+    const plan: Plan = { status: "pending", tasks: [], revisions: [], awaitingApproval: false };
+    expect(plan).not.toHaveProperty("phase");
   });
 
-  it("任务项与修订项为统一 camelCase 形状，不含旧键", () => {
+  it("任务项与修订项为契约 camelCase 形状，不含旧键", () => {
     expectTypeOf<PlanTask>().toHaveProperty("dependsOn");
+    expectTypeOf<PlanTask>().toHaveProperty("paradigm");
     expectTypeOf<PlanTask>().not.toHaveProperty("depends_on");
     expectTypeOf<PlanTask>().not.toHaveProperty("tool_hint");
+    expectTypeOf<PlanTask>().not.toHaveProperty("toolHint");
+    expectTypeOf<PlanTask>().not.toHaveProperty("result");
 
     expectTypeOf<PlanRevision>().toHaveProperty("revisionNo");
-    expectTypeOf<PlanRevision>().toHaveProperty("changedTaskIds");
-    expectTypeOf<PlanRevision>().not.toHaveProperty("at");
-    expectTypeOf<PlanRevision>().not.toHaveProperty("change");
-  });
-
-  it("InterruptData 按统一后的 camelCase 键声明，不含旧 snake_case 键", () => {
-    expectTypeOf<InterruptData>().toHaveProperty("confirmKind");
-    expectTypeOf<InterruptData>().toHaveProperty("previousWriter");
-    expectTypeOf<InterruptData>().toHaveProperty("artifactId");
-    expectTypeOf<InterruptData>().toHaveProperty("upgradeTip");
-    expectTypeOf<InterruptData>().toHaveProperty("usedDaily");
-    expectTypeOf<InterruptData>().toHaveProperty("dailyLimit");
-    expectTypeOf<InterruptData>().toHaveProperty("usedMonthly");
-    expectTypeOf<InterruptData>().toHaveProperty("monthlyLimit");
-    expectTypeOf<InterruptData>().toHaveProperty("quotaDataError");
-    expectTypeOf<InterruptData>().toHaveProperty("taskId");
-    expectTypeOf<InterruptData>().toHaveProperty("taskType");
-    expectTypeOf<InterruptData>().toHaveProperty("estDuration");
-    expectTypeOf<InterruptData>().toHaveProperty("imageCount");
-
-    expectTypeOf<InterruptData>().not.toHaveProperty("confirm_kind");
-    expectTypeOf<InterruptData>().not.toHaveProperty("previous_writer");
-    expectTypeOf<InterruptData>().not.toHaveProperty("upgrade_tip");
-    expectTypeOf<InterruptData>().not.toHaveProperty("used_daily");
-    expectTypeOf<InterruptData>().not.toHaveProperty("daily_limit");
-    expectTypeOf<InterruptData>().not.toHaveProperty("used_monthly");
-    expectTypeOf<InterruptData>().not.toHaveProperty("monthly_limit");
-    expectTypeOf<InterruptData>().not.toHaveProperty("quota_data_error");
-    expectTypeOf<InterruptData>().not.toHaveProperty("task_id");
-    expectTypeOf<InterruptData>().not.toHaveProperty("task_type");
-    expectTypeOf<InterruptData>().not.toHaveProperty("est_duration");
-    expectTypeOf<InterruptData>().not.toHaveProperty("image_count");
+    expectTypeOf<PlanRevision>().toHaveProperty("reason");
+    expectTypeOf<PlanRevision>().toHaveProperty("actor");
+    expectTypeOf<PlanRevision>().toHaveProperty("at");
+    expectTypeOf<PlanRevision>().not.toHaveProperty("changedTaskIds");
   });
 });
 
-describe("弥补落后于后端的字段（编译期断言）", () => {
-  it("思考步骤/消息/反馈新增字段为可选且不带显式 null", () => {
-    expectTypeOf<AiMessageThought["agentCode"]>().toEqualTypeOf<string | undefined>();
-    expectTypeOf<AiMessageThought["isSubagent"]>().toEqualTypeOf<number | undefined>();
-    expectTypeOf<AiMessageVO["metadata"]>().toEqualTypeOf<unknown>();
-    expectTypeOf<FeedbackVO["updateTime"]>().toEqualTypeOf<string | undefined>();
+describe("Interrupt 契约形状（编译期断言）", () => {
+  it("按契约 camelCase 键声明，含可续期语义，不含旧 snake_case 键", () => {
+    expectTypeOf<Interrupt>().toHaveProperty("confirmKind");
+    expectTypeOf<Interrupt>().toHaveProperty("action");
+    expectTypeOf<Interrupt>().toHaveProperty("recommendation");
+    expectTypeOf<Interrupt>().toHaveProperty("alternatives");
+    expectTypeOf<Interrupt>().toHaveProperty("upgradeTip");
+    expectTypeOf<Interrupt>().toHaveProperty("usedDaily");
+    expectTypeOf<Interrupt>().toHaveProperty("dailyLimit");
+    expectTypeOf<Interrupt>().toHaveProperty("usedMonthly");
+    expectTypeOf<Interrupt>().toHaveProperty("monthlyLimit");
+    expectTypeOf<Interrupt>().toHaveProperty("estDuration");
+    expectTypeOf<Interrupt>().toHaveProperty("imageCount");
+    expectTypeOf<Interrupt>().toHaveProperty("plan");
+    expectTypeOf<Interrupt>().toHaveProperty("createdAt");
+    expectTypeOf<Interrupt>().toHaveProperty("expiresAt");
+    expectTypeOf<Interrupt>().toHaveProperty("actionable");
+
+    expectTypeOf<Interrupt>().not.toHaveProperty("confirm_kind");
+    expectTypeOf<Interrupt>().not.toHaveProperty("upgrade_tip");
+    expectTypeOf<Interrupt>().not.toHaveProperty("used_daily");
+    expectTypeOf<Interrupt>().not.toHaveProperty("daily_limit");
+    expectTypeOf<Interrupt>().not.toHaveProperty("used_monthly");
+    expectTypeOf<Interrupt>().not.toHaveProperty("monthly_limit");
+    expectTypeOf<Interrupt>().not.toHaveProperty("est_duration");
+    expectTypeOf<Interrupt>().not.toHaveProperty("image_count");
+    expectTypeOf<Interrupt>().not.toHaveProperty("data");
+    expectTypeOf<Interrupt>().not.toHaveProperty("artifactId");
+  });
+
+  it("工具调用为契约 ToolCall，状态为字符串枚举", () => {
+    expectTypeOf<ToolCall>().toHaveProperty("callId");
+    expectTypeOf<ToolCall>().toHaveProperty("subAgent");
+    expectTypeOf<ToolCall["status"]>().toEqualTypeOf<
+      "running" | "success" | "failed" | "skipped"
+    >();
+    expectTypeOf<ToolCall>().not.toHaveProperty("tool_call_id");
   });
 });

@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /**
  * 任务类型

@@ -1,6 +1,6 @@
-import { OptionType } from "@/types";
-import request from "@/utils/request";
-import { DeptForm, DeptQuery, DeptVO } from "./model";
+import type { OptionType } from "../../types";
+import request from "../../utils/request";
+import type { DeptForm, DeptQuery, DeptVO } from "./model";
 
 class DeptAPI {
   /**

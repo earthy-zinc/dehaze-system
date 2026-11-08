@@ -1,4 +1,4 @@
-import { DictForm, DictQuery, DictTypeForm, DictTypeQuery } from "@/api/dict/model";
+import type { DictForm, DictQuery, DictTypeForm, DictTypeQuery } from "@/api/dict/model";
 import { uniqueName, uniqueCode, pageQuery } from "./common";
 
 export function createDictTypeForm(overrides: Partial<DictTypeForm> = {}): DictTypeForm {

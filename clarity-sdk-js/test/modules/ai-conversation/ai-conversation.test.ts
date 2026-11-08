@@ -41,8 +41,8 @@ async function collectStream(
         events.push("start");
         capture.onStart?.(data);
       },
-      onContentBlockDelta: () => events.push("delta"),
-      onContentBlockStop: () => events.push("block_stop"),
+      onBlockDelta: () => events.push("delta"),
+      onBlockStop: () => events.push("block_stop"),
       onEnd: (data) => {
         events.push("end");
         capture.onEnd?.(data);
@@ -89,7 +89,7 @@ function sendMessageCompleted(conversationId: number, content: string): Promise<
       { content },
       {
         onStart: (data) => {
-          msgId = data.messageId;
+          msgId = data.assistantMessage.id;
         },
         onEnd: () => {
           clearTimeout(timeout);
@@ -736,7 +736,7 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
           ),
         {
           onStart: (data) => {
-            receivedMessageId = data.messageId;
+            receivedMessageId = data.assistantMessage.id;
           },
         },
         65000
@@ -748,7 +748,7 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       expect(receivedMessageId).toBeGreaterThan(0);
     }, 65000);
 
-    test("正向测试：onStart 返回 messageId/conversationId/model/streamSessionId [T-CV-022]", async () => {
+    test("正向测试：onStart 返回用户/助手消息与 streamSessionId [T-CV-022]", async () => {
       const conv = await createTestConversation();
 
       let startData: MessageStartEvent | null = null;
@@ -763,14 +763,16 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       );
 
       expect(startData).not.toBeNull();
-      expect(startData!.messageId).toBeGreaterThan(0);
-      expect(startData!.conversationId).toBe(conv.id);
-      expect(startData!.model).toBeTruthy();
+      expect(startData!.assistantMessage.id).toBeGreaterThan(0);
+      expect(startData!.assistantMessage.conversationId).toBe(conv.id);
+      expect(startData!.assistantMessage.status).toBe("running");
+      expect(startData!.userMessage.role).toBe("user");
+      expect(startData!.userMessage.blocks.length).toBeGreaterThan(0);
       // streamSessionId 供断线重连（Last-Event-ID + stream/{id} 端点），必返回
       expect(startData!.streamSessionId).toBeTruthy();
     }, 65000);
 
-    test("正向测试：onEnd 返回 stopReason 和 token 用量 [T-CV-026]", async () => {
+    test("正向测试：onEnd 返回终态与用量 [T-CV-026]", async () => {
       const conv = await createTestConversation();
 
       let endData: MessageEndEvent | null = null;
@@ -785,7 +787,8 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
       );
 
       expect(endData).not.toBeNull();
-      expect(endData!.stopReason).toBeTruthy();
+      expect(["completed", "failed", "canceled", "awaiting_input"]).toContain(endData!.status);
+      expect(endData!.messageId).toBeGreaterThan(0);
       if (endData!.usage) {
         expect(typeof endData!.usage.inputTokens).toBe("number");
         expect(typeof endData!.usage.outputTokens).toBe("number");
@@ -810,7 +813,7 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
         (handlers) => AiConversationAPI.sendMessage(conv.id, { content: "1+1=?" }, handlers),
         {
           onStart: (data) => {
-            firstMessageId = data.messageId;
+            firstMessageId = data.assistantMessage.id;
           },
         }
       );
@@ -900,12 +903,12 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
 
   // 依赖真实多步推理 LLM 才能触发工具调用事件，当前模型无此能力，保持 skip
   describe.skip("多步推理 - 工具调用事件 [T-RS-110]（依赖真实多步推理 LLM）", () => {
-    test("正向测试：发送消息可收到 thought/plan/suggestions 事件（视场景而定）", async () => {
+    test("正向测试：发送消息可收到 block/plan/suggestions 事件（视场景而定）", async () => {
       const conv = await createTestConversation();
 
       let startSeen = false;
       let endSeen = false;
-      const thoughtStatuses: number[] = [];
+      const blockKinds: string[] = [];
 
       await new Promise<void>((resolve, reject) => {
         let controller: AbortController | null = null;
@@ -921,10 +924,9 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
             onStart: () => {
               startSeen = true;
             },
-            onThought: (data) => {
-              // ThoughtEvent.status 为 number
-              expect(typeof data.status).toBe("number");
-              thoughtStatuses.push(data.status);
+            onBlockStop: (data) => {
+              // 推理过程落在 thinking/tool_use 块，正文落在 text 块
+              blockKinds.push(data.block.kind);
             },
             onEnd: () => {
               endSeen = true;
@@ -945,8 +947,8 @@ describe("AI 对话模块接口测试 - AiConversationAPI", () => {
 
       expect(startSeen).toBe(true);
       expect(endSeen).toBe(true);
-      // 简单问答不保证触发工具调用，因此不强制断言 thought 数量
-      expect(Array.isArray(thoughtStatuses)).toBe(true);
+      // 简单问答不保证触发工具调用，因此不强制断言块数量
+      expect(Array.isArray(blockKinds)).toBe(true);
     }, 65000);
   });
 });

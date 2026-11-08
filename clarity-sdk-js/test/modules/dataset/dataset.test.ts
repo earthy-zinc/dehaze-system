@@ -1,4 +1,5 @@
-import { DatasetAPI, DatasetItemAPI, BatchDeleteForm, TaskAPI } from "../../../index";
+import type { BatchDeleteForm } from "../../../index";
+import { DatasetAPI, DatasetItemAPI, TaskAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import {
   createDatasetForm,

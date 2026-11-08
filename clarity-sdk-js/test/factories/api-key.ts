@@ -1,4 +1,4 @@
-import { ApiKeyCreateForm } from "@/api/api-key/model";
+import type { ApiKeyCreateForm } from "@/api/api-key/model";
 import { uniqueName } from "./common";
 
 export function createApiKeyForm(overrides: Partial<ApiKeyCreateForm> = {}): ApiKeyCreateForm {

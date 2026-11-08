@@ -3,6 +3,13 @@ import { initWebPerformanceMonitoring } from "./performance";
 import { ConsoleTransport } from "./transports";
 import type { InstallConfig, LogEntry, LogLevel, LogTransport, LoggerStorage } from "./types";
 
+/**
+ * RN 宿主注入的 CommonJS require。Metro 依赖字面量 `require("...")` 做静态打包，
+ * 因此不能改成运行时取值；库自身不依赖 @types/node，这里做最小声明，
+ * 避免小程序 / RN 工程（无 node 类型）把 require 判成未定义标识符。
+ */
+declare const require: (id: string) => any;
+
 const QUEUE_KEY = "clarity_logs";
 const MAX_QUEUE = 100;
 const INITIAL_BACKOFF_MS = 1_000;

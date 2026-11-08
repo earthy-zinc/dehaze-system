@@ -1,4 +1,5 @@
-import { ImportExportAPI, MenuAPI, RoleAPI, RoleForm, RoleQuery, UserAPI } from "../../../index";
+import type { RoleForm, RoleQuery } from "../../../index";
+import { ImportExportAPI, MenuAPI, RoleAPI, UserAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { createRoleForm, createRoleQuery } from "#/factories/role";
 import { uniqueCode, uniqueName } from "#/factories/common";

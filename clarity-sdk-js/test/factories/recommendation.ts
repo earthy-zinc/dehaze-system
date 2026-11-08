@@ -1,4 +1,4 @@
-import { AnalyzeRequest, RecommendationFeedback, RecommendationRule } from "../../index";
+import type { AnalyzeRequest, RecommendationFeedback, RecommendationRule } from "../../index";
 import { NGINX_STATIC_HOST, NGINX_STATIC_PORT } from "#/config/constant";
 import { uniqueName } from "./common";
 

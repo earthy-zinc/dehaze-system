@@ -1,4 +1,4 @@
-import { FavoriteForm, FavoriteQuery, FavoriteTargetType } from "@/api/favorite/model";
+import type { FavoriteForm, FavoriteQuery, FavoriteTargetType } from "@/api/favorite/model";
 import { pageQuery } from "./common";
 
 /** 创建添加收藏表单 */

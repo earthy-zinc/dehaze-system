@@ -1,9 +1,9 @@
-import { configManager } from "@/config";
-import { ResultEnum } from "@/enums/ResultEnum";
-import { generateTraceId, Logger } from "@/logger";
-import type { LogEntry } from "@/logger";
-import { ResponseData } from "@/types";
-import type { RequestMetadata } from "@/types/global";
+import { configManager } from "../config";
+import { ResultEnum } from "../enums/ResultEnum";
+import { generateTraceId, Logger } from "../logger";
+import type { LogEntry } from "../logger";
+import type { ResponseData } from "../types";
+import type { RequestMetadata } from "../types/global";
 import type {
   AxiosError,
   AxiosRequestConfig,

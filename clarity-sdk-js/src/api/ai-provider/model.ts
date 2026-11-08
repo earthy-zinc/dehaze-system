@@ -1,4 +1,4 @@
-import { EnabledStatus, PageQuery } from "@/types";
+import type { EnabledStatus, PageQuery } from "../../types";
 
 // ==================== AI 模型供应商管理 ====================
 

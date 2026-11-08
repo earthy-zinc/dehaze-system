@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 会员等级（套餐关联） */
 export type PackageLevelCode = "level_1" | "level_2" | "level_3";

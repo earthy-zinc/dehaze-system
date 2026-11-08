@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 历史记录创建表单 */
 export interface HistoryForm {

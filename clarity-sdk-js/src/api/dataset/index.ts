@@ -1,4 +1,4 @@
-import {
+import type {
   BatchDeleteForm,
   BatchDeleteResult,
   BatchDeleteResultVO,
@@ -15,8 +15,8 @@ import {
   ImageUrlVO,
   ItemFileUpdateForm,
 } from "./model";
-import { OptionType, PageResult } from "@/types";
-import request from "@/utils/request";
+import type { OptionType, PageResult } from "../../types";
+import request from "../../utils/request";
 
 /**
  * 数据集 API

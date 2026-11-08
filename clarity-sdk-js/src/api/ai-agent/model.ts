@@ -1,4 +1,4 @@
-import { EnabledStatus, PageQuery } from "@/types";
+import type { EnabledStatus, PageQuery } from "../../types";
 
 // ==================== Agent 推理参数 / 护栏配置 ====================
 

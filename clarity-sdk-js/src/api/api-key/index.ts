@@ -1,5 +1,5 @@
-import request from "@/utils/request";
-import { ApiKeyCreateForm, ApiKeyVO } from "./model";
+import request from "../../utils/request";
+import type { ApiKeyCreateForm, ApiKeyVO } from "./model";
 
 class ApiKeyAPI {
   static create(data: ApiKeyCreateForm) {

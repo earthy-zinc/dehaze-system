@@ -1,5 +1,5 @@
-import request from "@/utils/request";
-import {
+import request from "../../utils/request";
+import type {
   ExportModule,
   ExportRequest,
   ExportResult,

@@ -1,4 +1,5 @@
-import { TaskAPI, TaskQuery } from "../../../index";
+import type { TaskQuery } from "../../../index";
+import { TaskAPI } from "../../../index";
 import { pageQuery } from "#/factories/common";
 
 describe("任务列表筛选接口测试 - TaskAPI.getPage", () => {

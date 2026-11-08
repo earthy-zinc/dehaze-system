@@ -13,6 +13,9 @@
       "require": "./dist/index.cjs"
     }
   },
+  "browser": {
+    "@react-native-async-storage/async-storage": false
+  },
   "files": [
     "dist/",
     "src/types"

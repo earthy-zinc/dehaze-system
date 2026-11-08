@@ -1,4 +1,4 @@
-import { AnnouncementForm, MessageSendRequest } from "@/api/message/model";
+import type { AnnouncementForm, MessageSendRequest } from "@/api/message/model";
 import { uniqueName } from "./common";
 import { USERS } from "./constants";
 

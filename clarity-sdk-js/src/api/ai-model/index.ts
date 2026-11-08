@@ -1,5 +1,5 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
 import type {
   AiModelForm,
   AiModelQuery,

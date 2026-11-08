@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /**
  * 登录用户信息

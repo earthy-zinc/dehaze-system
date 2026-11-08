@@ -1,15 +1,22 @@
 import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 import AiConversationAPI from "@/api/ai-conversation";
-import type { AiMessageVO, TokenUsage } from "@/api/ai-conversation/model";
-import type { CursorResult } from "@/types";
+import type {
+  Interrupt,
+  Message,
+  MessageList,
+  MessageListQuery,
+  MessageResume,
+  MessageSend,
+  Usage,
+} from "@/api/ai-conversation/model";
 
 /**
- * 消息列表游标分页契约 + message.end 子智能体粒度用量。
+ * 消息读模型与中断查询契约单元测试。
  *
  * mock 掉 axios 封装层，锁定：
- * - getMessages 由 pageNum/pageSize 改为 before/limit（保留 view=admin），返回
- *   `CursorResult<AiMessageVO[]>`（list/total/hasMore），不再暴露 PageResult；
- * - message.end 的 TokenUsage 新增可选 subAgents（仅在存在子智能体调用时下发）。
+ * - 历史消息直接返回契约 `Message` / `MessageList`（含 list/total/hasMore），不再二次改名；
+ * - 消息不再有 content/toolCalls/thoughts，正文与推理过程全在 blocks；
+ * - 待处理中断可单独查询（进入会话时补查，SSE 中断事件只在推流当下出现）。
  */
 
 const { requestMock, serviceMock } = vi.hoisted(() => ({
@@ -23,15 +30,13 @@ vi.mock("@/utils/request", () => ({
   service: serviceMock,
 }));
 
-type MessageCursorQuery = Parameters<typeof AiConversationAPI.getMessages>[1];
-
-describe("AiConversationAPI.getMessages 游标分页契约", () => {
+describe("AiConversationAPI 消息读模型", () => {
   beforeEach(() => {
     requestMock.mockReset();
     requestMock.mockResolvedValue({ list: [], total: 0, hasMore: false });
   });
 
-  it("透传 before/limit/view 至 GET /conversations/{id}/messages", async () => {
+  it("getMessages 透传 before/limit/view 至 GET /conversations/{id}/messages", async () => {
     await AiConversationAPI.getMessages(7, { before: 100, limit: 20, view: "admin" });
     expect(requestMock).toHaveBeenCalledWith({
       url: "/api/v1/ai/conversations/7/messages",
@@ -49,27 +54,91 @@ describe("AiConversationAPI.getMessages 游标分页契约", () => {
     });
   });
 
-  it("返回 CursorResult<AiMessageVO[]>（编译期断言）", () => {
-    expectTypeOf(AiConversationAPI.getMessages).returns.toEqualTypeOf<
-      Promise<CursorResult<AiMessageVO[]>>
-    >();
-    expectTypeOf<CursorResult<AiMessageVO[]>["list"]>().toEqualTypeOf<AiMessageVO[]>();
-    expectTypeOf<CursorResult<AiMessageVO[]>["hasMore"]>().toEqualTypeOf<boolean>();
+  it("getMessages 返回契约 MessageList（编译期断言）", () => {
+    expectTypeOf(AiConversationAPI.getMessages).returns.toEqualTypeOf<Promise<MessageList>>();
+    expectTypeOf<MessageList["list"]>().toEqualTypeOf<Message[]>();
+    expectTypeOf<MessageList["hasMore"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<MessageList["total"]>().toEqualTypeOf<number>();
+  });
+
+  it("getMessageDetail 返回完整 Message", () => {
+    expectTypeOf(AiConversationAPI.getMessageDetail).returns.toEqualTypeOf<Promise<Message>>();
+    expectTypeOf(AiConversationAPI.getBranches).returns.toEqualTypeOf<Promise<Message[]>>();
+    expectTypeOf(AiConversationAPI.stopMessage).returns.toEqualTypeOf<Promise<Message>>();
   });
 
   it("查询参数含 before/limit/view，不含旧的 pageNum/pageSize", () => {
-    expectTypeOf<NonNullable<MessageCursorQuery>>().toHaveProperty("before");
-    expectTypeOf<NonNullable<MessageCursorQuery>>().toHaveProperty("limit");
-    expectTypeOf<NonNullable<MessageCursorQuery>>().toHaveProperty("view");
-    expectTypeOf<NonNullable<MessageCursorQuery>>().not.toHaveProperty("pageNum");
-    expectTypeOf<NonNullable<MessageCursorQuery>>().not.toHaveProperty("pageSize");
-    expectTypeOf<NonNullable<MessageCursorQuery>["view"]>().toEqualTypeOf<"admin" | undefined>();
+    expectTypeOf<MessageListQuery>().toHaveProperty("before");
+    expectTypeOf<MessageListQuery>().toHaveProperty("limit");
+    expectTypeOf<MessageListQuery>().toHaveProperty("view");
+    expectTypeOf<MessageListQuery>().not.toHaveProperty("pageNum");
+    expectTypeOf<MessageListQuery>().not.toHaveProperty("pageSize");
+    expectTypeOf<MessageListQuery["view"]>().toEqualTypeOf<"admin" | undefined>();
   });
 });
 
-describe("TokenUsage 子智能体粒度用量", () => {
+describe("AiConversationAPI.getMessageInterrupt", () => {
+  beforeEach(() => {
+    requestMock.mockReset();
+    requestMock.mockResolvedValue(null);
+  });
+
+  it("请求 GET /api/v1/ai/messages/{id}/interrupt", async () => {
+    await AiConversationAPI.getMessageInterrupt(42);
+    expect(requestMock).toHaveBeenCalledWith({
+      url: "/api/v1/ai/messages/42/interrupt",
+      method: "get",
+    });
+  });
+
+  it("返回 Interrupt | null（无待处理中断为 null）", () => {
+    expectTypeOf(AiConversationAPI.getMessageInterrupt).returns.toEqualTypeOf<
+      Promise<Interrupt | null>
+    >();
+    expectTypeOf<Interrupt["actionable"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<Interrupt["expiresAt"]>().toEqualTypeOf<string>();
+    expectTypeOf<Interrupt["type"]>().toEqualTypeOf<
+      "confirm" | "quota" | "async_wait" | "plan_approve"
+    >();
+  });
+});
+
+describe("Message 形状（新旧字段边界，编译期断言）", () => {
+  it("正文/推理/工具全在 blocks，不含 content/toolCalls/thoughts", () => {
+    expectTypeOf<Message>().toHaveProperty("blocks");
+    expectTypeOf<Message>().toHaveProperty("pendingInterrupt");
+    expectTypeOf<Message>().toHaveProperty("plan");
+    expectTypeOf<Message>().toHaveProperty("usage");
+    expectTypeOf<Message>().toHaveProperty("status");
+
+    expectTypeOf<Message>().not.toHaveProperty("content");
+    expectTypeOf<Message>().not.toHaveProperty("toolCalls");
+    expectTypeOf<Message>().not.toHaveProperty("thoughts");
+    expectTypeOf<Message>().not.toHaveProperty("metadata");
+    expectTypeOf<Message>().not.toHaveProperty("toolCallId");
+    expectTypeOf<Message>().not.toHaveProperty("originalContent");
+  });
+
+  it("status 为字符串通道枚举，不再是数字状态码", () => {
+    expectTypeOf<Message["status"]>().toEqualTypeOf<
+      "running" | "completed" | "failed" | "canceled" | "awaiting_input"
+    >();
+  });
+
+  it("请求类型为契约 MessageSend / MessageResume", () => {
+    expectTypeOf<MessageSend>().toHaveProperty("content");
+    expectTypeOf<MessageSend>().toHaveProperty("model");
+    expectTypeOf<MessageSend>().not.toHaveProperty("conversationId");
+    expectTypeOf<MessageResume>().toHaveProperty("confirm");
+    expectTypeOf<MessageResume>().toHaveProperty("params");
+    expectTypeOf<MessageResume>().toHaveProperty("planEdit");
+    expectTypeOf<MessageResume>().not.toHaveProperty("plan_edit");
+  });
+});
+
+describe("Usage 子智能体粒度用量", () => {
   it("subAgents 为可选字段且形状固定（后端不下发时该键不存在）", () => {
-    expectTypeOf<TokenUsage["subAgents"]>().toEqualTypeOf<
+    expectTypeOf<Usage["subAgents"]>().toEqualTypeOf<
       | Array<{
           agentCode: string;
           inputTokens: number;
@@ -77,6 +146,7 @@ describe("TokenUsage 子智能体粒度用量", () => {
           cachedInputTokens: number;
           credits: number;
         }>
+      | null
       | undefined
     >();
 
@@ -85,10 +155,10 @@ describe("TokenUsage 子智能体粒度用量", () => {
       outputTokens: 2,
       cachedInputTokens: 0,
       credits: 3,
-    } satisfies TokenUsage;
+    } satisfies Usage;
     expect(withoutSub).not.toHaveProperty("subAgents");
 
-    const withSub: TokenUsage = {
+    const withSub: Usage = {
       ...withoutSub,
       subAgents: [
         {

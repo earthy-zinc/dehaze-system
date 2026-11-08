@@ -31,6 +31,9 @@
     },
     "strict": true,
     "isolatedModules": true,
+    // 下游（uniapp 继承 @vue/tsconfig）开启该开关；SDK 源码被各端直接纳入类型检查，
+    // 这里同步开启以保证 type-only 导入不回归
+    "verbatimModuleSyntax": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,

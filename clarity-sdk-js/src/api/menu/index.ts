@@ -1,6 +1,6 @@
-import { OptionType } from "@/types";
-import request from "@/utils/request";
-import { MenuForm, MenuQuery, MenuVO, RouteVO } from "./model";
+import type { OptionType } from "../../types";
+import request from "../../utils/request";
+import type { MenuForm, MenuQuery, MenuVO, RouteVO } from "./model";
 
 class MenuAPI {
   /**

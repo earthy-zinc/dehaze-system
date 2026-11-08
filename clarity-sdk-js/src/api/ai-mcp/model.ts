@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** MCP 传输协议：仅 URL 型协议可注册（stdio 无网络端点，拉取/装载/探测均不支持，已退役） */
 export type McpProtocolType = "streamable-http" | "sse";

@@ -1,4 +1,5 @@
-import { MenuAPI, MenuForm, MenuVO, RouteVO } from "../../../index";
+import type { MenuForm, MenuVO, RouteVO } from "../../../index";
+import { MenuAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import {
   createMenuForm,

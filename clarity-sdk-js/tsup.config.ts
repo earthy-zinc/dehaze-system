@@ -9,12 +9,6 @@ export default defineConfig({
   outDir: "dist",
   external: ["axios"],
   splitting: false,
-  esbuildOptions(options) {
-    options.alias = {
-      "@": "./src",
-      "#": "./test",
-    };
-  },
   target: "es2020",
   platform: "neutral",
 });

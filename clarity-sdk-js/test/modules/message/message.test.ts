@@ -1,11 +1,10 @@
 import { expect } from "vitest";
+import type { MessageSendRequest, MessageVO } from "../../../index";
 import {
   AnnouncementAPI,
   MessageAPI,
   MessageTemplateAPI,
-  MessageSendRequest,
   NotificationSettingAPI,
-  MessageVO,
 } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";

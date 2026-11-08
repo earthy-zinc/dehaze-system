@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 // ==================== 枚举类型 ====================
 
@@ -95,7 +95,7 @@ export interface AiObservabilityContextEvent {
   plan_summary?: string;
   /** 中断类型（resume 事件） */
   interrupt_type?: string;
-  /** 用户决策摘要（confirm 的 confirmed/modelId、plan_approve 的 plan_edit 等） */
+  /** 用户决策摘要（confirm 的 confirmed/modelId、plan_approve 的 planEdit 等） */
   decision?: string;
   /** 原中断链路 trace_id（resume 事件关联） */
   from_trace_id?: string;
@@ -173,7 +173,7 @@ export interface AiObservabilityLlmCall {
   createTime?: string;
 }
 
-/** 过程链详情内的推理步骤（结构对齐 src/api/ai-conversation 的 AiMessageThought） */
+/** 过程链详情内的推理步骤（对应消息 thinking/tool_use 块的落库记录） */
 export interface AiObservabilityThought {
   id: number;
   messageId: number;

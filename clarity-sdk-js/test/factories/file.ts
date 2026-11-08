@@ -1,4 +1,4 @@
-import { FileInfo } from "@/api/file/model";
+import type { FileInfo } from "@/api/file/model";
 
 /**
  * 创建文件信息

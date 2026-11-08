@@ -1,6 +1,6 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
-import { TaskCreateForm, TaskQuery, TaskVO } from "./model";
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
+import type { TaskCreateForm, TaskQuery, TaskVO } from "./model";
 
 class TaskAPI {
   /**

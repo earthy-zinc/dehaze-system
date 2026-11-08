@@ -1,3 +1,3 @@
-export { SESSION_KEY } from "@/enums/CacheEnum";
-export { ResultEnum } from "@/enums/ResultEnum";
-export { MenuTypeEnum } from "@/enums/MenuTypeEnum";
+export { SESSION_KEY } from "./CacheEnum";
+export { ResultEnum } from "./ResultEnum";
+export { MenuTypeEnum } from "./MenuTypeEnum";

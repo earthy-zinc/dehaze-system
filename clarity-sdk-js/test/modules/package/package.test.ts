@@ -2,7 +2,7 @@
 // 用例按 clarity-doc 套餐管理 API 接口文档编写，断言以文档为准；
 // 后端落地后条件断言自动生效，无需修改用例。
 import { CouponAPI, OrderAPI, PackageAPI, PromotionAPI } from "../../../index";
-import { CouponForm, PackageForm, PackagePageVO, PromotionForm } from "@/api/package/model";
+import type { CouponForm, PackageForm, PackagePageVO, PromotionForm } from "@/api/package/model";
 import { expectBizError } from "#/utils/assertion";
 import { forceLogin, login, logout } from "#/utils/auth";
 import {

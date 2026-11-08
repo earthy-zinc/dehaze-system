@@ -1,4 +1,5 @@
-import { ImageInputHistoryAPI, HistoryForm } from "../../../index";
+import type { HistoryForm } from "../../../index";
+import { ImageInputHistoryAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { TestCleanupRegistry } from "#/utils/cleanup";

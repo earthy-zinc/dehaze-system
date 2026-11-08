@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 反馈状态(pending:待处理;processing:处理中;replied:已回复;closed:已关闭) */
 export type FeedbackStatus = "pending" | "processing" | "replied" | "closed";

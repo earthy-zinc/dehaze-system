@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 订单状态(pending:待支付;paid:已支付;completed:已完成;cancelled:已取消;refunding:退款中;refunded:已退款) */
 export type OrderStatus = "pending" | "paid" | "completed" | "cancelled" | "refunding" | "refunded";

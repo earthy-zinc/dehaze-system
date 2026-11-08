@@ -1,6 +1,6 @@
-import { OptionType, ResponseData } from "@/types";
-import request from "@/utils/request";
-import {
+import type { OptionType } from "../../types";
+import request from "../../utils/request";
+import type {
   DictForm,
   DictPageResult,
   DictQuery,

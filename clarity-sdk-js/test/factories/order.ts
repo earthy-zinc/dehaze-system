@@ -1,4 +1,4 @@
-import { OrderCreateForm, OrderQuery, RefundApplyForm, RefundQuery } from "@/api/order/model";
+import type { OrderCreateForm, OrderQuery, RefundApplyForm, RefundQuery } from "@/api/order/model";
 import { pageQuery, uniqueName } from "./common";
 
 /** 分转换为元 */

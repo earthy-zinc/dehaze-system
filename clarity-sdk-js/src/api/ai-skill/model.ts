@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** SKILL 目录内资源文件清单项（内容存对象存储，按需加载） */
 export interface SkillFileVO {

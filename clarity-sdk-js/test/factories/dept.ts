@@ -1,6 +1,6 @@
-import { DeptForm, DeptQuery } from "@/api/dept/model";
+import type { DeptForm, DeptQuery } from "@/api/dept/model";
 import { uniqueName } from "./common";
-import { TestCleanupRegistry } from "#/utils/cleanup";
+import type { TestCleanupRegistry } from "#/utils/cleanup";
 import DeptAPI from "@/api/dept";
 
 /**

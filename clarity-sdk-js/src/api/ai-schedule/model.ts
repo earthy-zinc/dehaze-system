@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 // ==================== 定时任务（F-M08-009） ====================
 

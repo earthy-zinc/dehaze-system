@@ -1,67 +1,71 @@
-import { CursorResult, PageResult } from "@/types";
-import request, { service } from "@/utils/request";
-import { fetchSSE, type SSEEvent, type SSEStreamOptions } from "@/utils/sse";
+import type { PageResult } from "../../types";
+import request, { service } from "../../utils/request";
+import {
+  fetchSSE,
+  isAIChatStreamEvent,
+  type SSEEvent,
+  type SSEStreamOptions,
+} from "../../utils/sse";
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { configManager } from "@/config";
-import { generateTraceId } from "@/logger";
+import { configManager } from "../../config";
+import { generateTraceId } from "../../logger";
 import type {
-  CompatCallQuery,
-  ArtifactVO,
+  Artifact,
+  BlockDeltaEvent,
+  BlockStartEvent,
+  BlockStopEvent,
   ClaudeMessageForm,
+  CompatCallQuery,
   ConversationCreateForm,
   ConversationQuery,
   ConversationUpdateForm,
   ConversationVO,
   EditMessageForm,
   ErrorEvent,
+  Feedback,
   FeedbackForm,
-  FeedbackVO,
+  Interrupt,
+  InterruptEvent,
   MemoryCreateForm,
   MemoryQuery,
   MemoryUpdateForm,
   MemoryVO,
+  Message,
   MessageEndEvent,
-  MessageResumeForm,
+  MessageList,
+  MessageListQuery,
+  MessageResume,
+  MessageSend,
   MessageStartEvent,
-  AiMessageVO,
-  Plan,
-  SendMessageForm,
-  SuggestionsEvent,
-  ThoughtEvent,
-  ContentBlockStartEvent,
-  ContentBlockDeltaEvent,
-  ContentBlockStopEvent,
-  InterruptEvent,
   OpenAICompletionForm,
+  PlanUpdateEvent,
+  SuggestionsEvent,
+  UsageEvent,
 } from "./model";
 
-/** SSE 事件回调集合 */
+/** SSE 事件回调集合（回调名与线上事件名一一对应） */
 export interface MessageStreamHandlers {
-  /** message.start：消息开始（后端推送 messageId/conversationId/model） */
+  /** message.start：本轮开始，携带用户消息与助手消息（均已落库） */
   onStart?: (data: MessageStartEvent) => void;
-  /** content_block.start：内容块开始（text/thinking/tool_use） */
-  onContentBlockStart?: (data: ContentBlockStartEvent) => void;
-  /**
-   * content_block.delta：内容块增量（逐 token 推送）。
-   *
-   * 调用方需自行累加文本：`text += data.delta.text`；思考增量读 `data.delta.thinking`。
-   */
-  onContentBlockDelta?: (data: ContentBlockDeltaEvent) => void;
-  /** content_block.stop：内容块结束 */
-  onContentBlockStop?: (data: ContentBlockStopEvent) => void;
-  /** thought：推理步骤完成（status: 1 成功 / 2 失败 / 3 跳过） */
-  onThought?: (data: ThoughtEvent) => void;
-  /** plan：Plan-and-Execute 计划推送 */
-  onPlan?: (data: Plan) => void;
-  /** suggestions：回复完成后推荐追问 */
-  onSuggestions?: (data: SuggestionsEvent) => void;
-  /** interrupt：推理中断（confirm/quota/async_wait/plan_approve） */
+  /** block.start：块开始（text/thinking/tool_use，同一消息内按 seq 排序） */
+  onBlockStart?: (data: BlockStartEvent) => void;
+  /** block.delta：块增量，调用方按 blockId 自行累加文本 */
+  onBlockDelta?: (data: BlockDeltaEvent) => void;
+  /** block.stop：块结束，携带落库后的完整块（工具结果、耗时已就位） */
+  onBlockStop?: (data: BlockStopEvent) => void;
+  /** plan.update：计划全量推送（含修订记录） */
+  onPlanUpdate?: (data: PlanUpdateEvent) => void;
+  /** interrupt：推理中断（confirm/quota/async_wait/plan_approve），可查可续 */
   onInterrupt?: (data: InterruptEvent) => void;
+  /** usage：本轮用量（可多次推送，最后一次为终值） */
+  onUsage?: (data: UsageEvent) => void;
+  /** suggestions：回复完成后的追问建议 */
+  onSuggestions?: (data: SuggestionsEvent) => void;
   /** ping：心跳保活 */
   onPing?: () => void;
-  /** error：业务错误事件（SSE error 帧，如模型超载/内容过滤） */
+  /** error：业务错误事件（模型超载/内容过滤等），≠ 本轮终态，终态由 message.end 表达 */
   onError?: (data: ErrorEvent) => void;
-  /** message.end：消息结束（含 stopReason 和 usage） */
+  /** message.end：本轮终态（completed/failed/canceled/awaiting_input），每轮最多一次 */
   onEnd?: (data: MessageEndEvent) => void;
   /**
    * 每个 SSE 事件携带的递增 ID（后端 `id:` 帧）。
@@ -76,51 +80,75 @@ export interface MessageStreamHandlers {
   onClose?: () => void;
 }
 
-/** 将 SSE 事件分发到对应回调 */
-function dispatchSSEEvent(event: SSEEvent, handlers: MessageStreamHandlers): void {
-  if (event.id !== undefined) handlers.onEventId?.(event.id);
-  if (!event.data) return;
-  let payload: unknown;
-  try {
-    payload = JSON.parse(event.data);
-  } catch {
-    return;
-  }
-  switch (event.event) {
-    case "message.start":
-      handlers.onStart?.(payload as MessageStartEvent);
-      break;
-    case "content_block.start":
-      handlers.onContentBlockStart?.(payload as ContentBlockStartEvent);
-      break;
-    case "content_block.delta":
-      handlers.onContentBlockDelta?.(payload as ContentBlockDeltaEvent);
-      break;
-    case "content_block.stop":
-      handlers.onContentBlockStop?.(payload as ContentBlockStopEvent);
-      break;
-    case "thought":
-      handlers.onThought?.(payload as ThoughtEvent);
-      break;
-    case "plan":
-      handlers.onPlan?.(payload as Plan);
-      break;
-    case "suggestions":
-      handlers.onSuggestions?.(payload as SuggestionsEvent);
-      break;
-    case "interrupt":
-      handlers.onInterrupt?.(payload as InterruptEvent);
-      break;
-    case "ping":
-      handlers.onPing?.();
-      break;
-    case "error":
-      handlers.onError?.(payload as ErrorEvent);
-      break;
-    case "message.end":
-      handlers.onEnd?.(payload as MessageEndEvent);
-      break;
-  }
+/**
+ * 创建单条流的事件分发器。
+ *
+ * 终态唯一：`message.end` 到达后本轮结束，后续帧（重放重叠、迟到心跳）一律丢弃，
+ * 避免同一条消息被二次置为终态；唯一例外是 `suggestions` —— 推荐追问由后端在
+ * message.end 之后异步生成（需调用 LLM），它只补充消息内容、不改变终态。
+ * `error` 不是终态，仍可能后接 `message.end`。
+ */
+function createStreamDispatcher(handlers: MessageStreamHandlers): (event: SSEEvent) => void {
+  let ended = false;
+  return (event: SSEEvent) => {
+    if (event.id !== undefined) handlers.onEventId?.(event.id);
+    const name = event.event;
+    // suggestions 是终态后的内容补全，不能因 ended 丢弃；其余事件一律丢弃。
+    if (ended && name !== "suggestions") return;
+    if (!event.data) return;
+    if (!isAIChatStreamEvent(name)) return;
+    let payload: unknown;
+    try {
+      payload = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    switch (name) {
+      case "message.start":
+        handlers.onStart?.(payload as MessageStartEvent);
+        break;
+      case "block.start":
+        handlers.onBlockStart?.(payload as BlockStartEvent);
+        break;
+      case "block.delta":
+        handlers.onBlockDelta?.(payload as BlockDeltaEvent);
+        break;
+      case "block.stop":
+        handlers.onBlockStop?.(payload as BlockStopEvent);
+        break;
+      case "plan.update":
+        handlers.onPlanUpdate?.(payload as PlanUpdateEvent);
+        break;
+      case "interrupt":
+        handlers.onInterrupt?.(payload as InterruptEvent);
+        break;
+      case "usage":
+        handlers.onUsage?.(payload as UsageEvent);
+        break;
+      case "suggestions":
+        handlers.onSuggestions?.(payload as SuggestionsEvent);
+        break;
+      case "message.end":
+        ended = true;
+        handlers.onEnd?.(payload as MessageEndEvent);
+        break;
+      case "error":
+        handlers.onError?.(payload as ErrorEvent);
+        break;
+      case "ping":
+        handlers.onPing?.();
+        break;
+    }
+  };
+}
+
+/** 组装 fetchSSE 的接收入参：事件分发器 + 网络错误 + 关闭 */
+function toSSEHandlers(handlers: MessageStreamHandlers) {
+  return {
+    onEvent: createStreamDispatcher(handlers),
+    onError: (error: Error) => handlers.onNetworkError?.(error),
+    onClose: () => handlers.onClose?.(),
+  };
 }
 
 /**
@@ -328,7 +356,7 @@ class AiConversationAPI {
    */
   static sendMessage(
     conversationId: number,
-    data: SendMessageForm,
+    data: MessageSend,
     handlers: MessageStreamHandlers,
     options?: SSEStreamOptions
   ): AbortController {
@@ -347,11 +375,7 @@ class AiConversationAPI {
         signal: controller.signal,
         ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
-      {
-        onEvent: (event) => dispatchSSEEvent(event, handlers),
-        onError: (error) => handlers.onNetworkError?.(error),
-        onClose: () => handlers.onClose?.(),
-      }
+      toSSEHandlers(handlers)
     );
 
     return controller;
@@ -360,40 +384,31 @@ class AiConversationAPI {
   /**
    * 恢复中断的推理（SSE 续流）。
    *
+   * 请求体即契约 `MessageResume`（confirm/params/planEdit 全 camelCase），原样上行。
+   *
    * @param messageId 中断的消息 ID
-   * @param data 恢复表单（confirm/params/planEdit）
+   * @param data 恢复表单
    * @param handlers SSE 事件回调（同 sendMessage）
    * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
    * @returns AbortController
    */
   static resumeMessage(
     messageId: number,
-    data: MessageResumeForm,
+    data: MessageResume,
     handlers: MessageStreamHandlers,
     options?: SSEStreamOptions
   ): AbortController {
     const controller = new AbortController();
-    // 后端 MessageResume 为纯 BaseModel，plan_edit 以 snake_case 传输（无 camelCase 别名）；
-    // 其余字段 confirm/params 与 wire 同名，直接透传。
-    const { planEdit, ...rest } = data;
-    const body: Record<string, unknown> = { ...rest };
-    if (planEdit !== undefined) {
-      body.plan_edit = planEdit;
-    }
     void fetchSSE(
       {
         url: resolveApiUrl(`/api/v1/ai/messages/${messageId}/resume`),
         method: "POST",
-        body,
+        body: data,
         headers: buildSSEHeaders(),
         signal: controller.signal,
         ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
-      {
-        onEvent: (event) => dispatchSSEEvent(event, handlers),
-        onError: (error) => handlers.onNetworkError?.(error),
-        onClose: () => handlers.onClose?.(),
-      }
+      toSSEHandlers(handlers)
     );
     return controller;
   }
@@ -408,6 +423,7 @@ class AiConversationAPI {
    * @param lastEventId 最后收到的事件 ID
    * @param handlers SSE 事件回调（同 sendMessage）
    * @param options 可选注入（fetchImpl，供测试注入假 fetch；缺省用全局 fetch）
+   * @returns 本次重连连接的 AbortController（调用方需替换持有的旧连接引用）
    */
   static reconnectStream(
     conversationId: number,
@@ -415,7 +431,8 @@ class AiConversationAPI {
     lastEventId: string,
     handlers: MessageStreamHandlers,
     options?: SSEStreamOptions
-  ): void {
+  ): AbortController {
+    const controller = new AbortController();
     void fetchSSE(
       {
         url: resolveApiUrl(
@@ -424,42 +441,31 @@ class AiConversationAPI {
         method: "GET",
         headers: buildSSEHeaders(),
         lastEventId,
+        signal: controller.signal,
         ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
-      {
-        onEvent: (event) => dispatchSSEEvent(event, handlers),
-        onError: (error) => handlers.onNetworkError?.(error),
-        onClose: () => handlers.onClose?.(),
-      }
+      toSSEHandlers(handlers)
     );
+    return controller;
   }
 
   /**
    * 会话消息列表（游标分页，按 id 倒序返回）。
    *
    * 向上增量加载更早历史：以本页最小 id 作为下一次的 `before`。
+   * 返回即契约 `MessageList`，历史消息是完整 `Message`（含 blocks/plan/pendingInterrupt/usage）。
    */
-  static getMessages(
-    conversationId: number,
-    query?: {
-      /** 游标：仅返回 id < before 的消息（>=1） */
-      before?: number;
-      /** 每页条数（默认 50，1..100） */
-      limit?: number;
-      /** 管理端审计视角：admin 读取任意用户会话的消息（需 ai:conversation:audit），省略为本人 */
-      view?: "admin";
-    }
-  ) {
-    return request<CursorResult<AiMessageVO[]>>({
+  static getMessages(conversationId: number, query?: MessageListQuery) {
+    return request<MessageList>({
       url: `/api/v1/ai/conversations/${conversationId}/messages`,
       method: "get",
       params: query,
     });
   }
 
-  /** 消息详情（含推理步骤、工具调用） */
+  /** 消息详情（完整 Message，含块、计划、待处理中断与用量） */
   static getMessageDetail(messageId: number, query?: { view?: "admin" }) {
-    return request<AiMessageVO>({
+    return request<Message>({
       url: `/api/v1/ai/messages/${messageId}`,
       method: "get",
       params: query,
@@ -467,12 +473,21 @@ class AiConversationAPI {
   }
 
   /**
-   * 某消息的分支列表（全部子消息，后端按时间倒序）。
+   * 查询消息当前待处理的中断。
    *
-   * 后端返回 `MessageResult`（序列化为 camelCase，与 AiMessageVO 同形）。
+   * 进入会话时补查（SSE 中断事件只在推流当下出现）；无待处理中断返回 null，
+   * 超出 `expiresAt` 的中断 `actionable=false`，不可再 resume。
    */
+  static getMessageInterrupt(messageId: number) {
+    return request<Interrupt | null>({
+      url: `/api/v1/ai/messages/${messageId}/interrupt`,
+      method: "get",
+    });
+  }
+
+  /** 某消息的分支列表（全部兄弟消息，后端按时间倒序） */
   static getBranches(conversationId: number, messageId: number) {
-    return request<AiMessageVO[]>({
+    return request<Message[]>({
       url: `/api/v1/ai/conversations/${conversationId}/messages/${messageId}/branches`,
       method: "get",
     });
@@ -506,11 +521,7 @@ class AiConversationAPI {
         signal: controller.signal,
         ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
-      {
-        onEvent: (event) => dispatchSSEEvent(event, handlers),
-        onError: (error) => handlers.onNetworkError?.(error),
-        onClose: () => handlers.onClose?.(),
-      }
+      toSSEHandlers(handlers)
     );
     return controller;
   }
@@ -537,11 +548,7 @@ class AiConversationAPI {
         signal: controller.signal,
         ...(options?.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       },
-      {
-        onEvent: (event) => dispatchSSEEvent(event, handlers),
-        onError: (error) => handlers.onNetworkError?.(error),
-        onClose: () => handlers.onClose?.(),
-      }
+      toSSEHandlers(handlers)
     );
     return controller;
   }
@@ -554,9 +561,9 @@ class AiConversationAPI {
     });
   }
 
-  /** 停止流式输出 / 取消当前推理 */
+  /** 停止流式输出 / 取消当前推理（返回终态 Message） */
   static stopMessage(messageId: number) {
-    return request<AiMessageVO>({
+    return request<Message>({
       url: `/api/v1/ai/messages/${messageId}/stop`,
       method: "post",
     });
@@ -566,7 +573,7 @@ class AiConversationAPI {
 
   /** 会话中间产物列表（分页） */
   static getArtifacts(conversationId: number, query?: { pageNum?: number; pageSize?: number }) {
-    return request<PageResult<ArtifactVO[]>>({
+    return request<PageResult<Artifact[]>>({
       url: `/api/v1/ai/conversations/${conversationId}/artifacts`,
       method: "get",
       params: query,
@@ -575,7 +582,7 @@ class AiConversationAPI {
 
   /** 消息关联产物列表 */
   static getMessageArtifacts(messageId: number) {
-    return request<ArtifactVO[]>({
+    return request<Artifact[]>({
       url: `/api/v1/ai/messages/${messageId}/artifacts`,
       method: "get",
     });
@@ -583,7 +590,7 @@ class AiConversationAPI {
 
   /** 按业务引用反查产物列表 */
   static getArtifactsByRef(refType: string, refId: number) {
-    return request<ArtifactVO[]>({
+    return request<Artifact[]>({
       url: "/api/v1/ai/artifacts/by-ref",
       method: "get",
       params: { refType, refId },
@@ -706,9 +713,22 @@ class AiConversationAPI {
 
   // ==================== 消息反馈 ====================
 
+  /**
+   * 会话内当前用户的全部反馈（批量）。
+   *
+   * 返回契约 `Feedback` 数组；会话内无反馈时为空数组（不是 undefined/null），
+   * 供进入会话时一次性还原各消息的点赞/点踩状态，避免逐条查询。
+   */
+  static getConversationFeedback(conversationId: number) {
+    return request<Feedback[]>({
+      url: `/api/v1/ai/conversations/${conversationId}/feedback`,
+      method: "get",
+    });
+  }
+
   /** 提交/更新反馈（点赞/点踩） */
   static submitFeedback(messageId: number, data: FeedbackForm) {
-    return request<FeedbackVO>({
+    return request<Feedback>({
       url: `/api/v1/ai/messages/${messageId}/feedback`,
       method: "post",
       data,
@@ -717,7 +737,7 @@ class AiConversationAPI {
 
   /** 查询消息反馈状态 */
   static getFeedback(messageId: number) {
-    return request<FeedbackVO | undefined>({
+    return request<Feedback | undefined>({
       url: `/api/v1/ai/messages/${messageId}/feedback`,
       method: "get",
     });

@@ -1,5 +1,6 @@
 import { expectBizError } from "#/utils/assertion";
-import { ImportExportAPI, ImportModule } from "../../../index";
+import type { ImportModule } from "../../../index";
+import { ImportExportAPI } from "../../../index";
 import { isBlobLike } from "./factories";
 
 const expectTemplateBlob = async (module: ImportModule, format?: "excel" | "csv") => {

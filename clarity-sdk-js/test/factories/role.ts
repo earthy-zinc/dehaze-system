@@ -1,4 +1,4 @@
-import { RoleForm, RoleQuery } from "@/api/role/model";
+import type { RoleForm, RoleQuery } from "@/api/role/model";
 import { uniqueName, uniqueCode, pageQuery } from "./common";
 
 export function createRoleForm(overrides: Partial<RoleForm> = {}): RoleForm {

@@ -1,5 +1,5 @@
 import { MemberAPI, OrderAPI, PackageAPI } from "../../../index";
-import { PackageStatus } from "@/api/package/model";
+import type { PackageStatus } from "@/api/package/model";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import {

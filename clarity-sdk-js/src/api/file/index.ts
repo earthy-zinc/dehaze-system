@@ -1,6 +1,6 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
-import { FileInfo, FileQuery } from "./model";
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
+import type { FileInfo, FileQuery } from "./model";
 
 class FileAPI {
   /**

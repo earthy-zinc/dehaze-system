@@ -4,7 +4,7 @@ import { uniqueName, uniqueEmail, uniqueMobile } from "#/factories/common";
 import { getCaptchaCode, login, clearLoginFailCounters } from "#/utils/auth";
 import UserAPI from "@/api/user";
 import AuthAPI from "@/api/auth";
-import { UserForm, UserQuery, UserPageVO } from "@/api/user/model";
+import type { UserForm, UserQuery, UserPageVO } from "@/api/user/model";
 import { ImportExportAPI } from "../../../index";
 import { ROLES, USERS, DEPTS, ADMIN_VISIBLE_USER_COUNT } from "#/factories/constants";
 

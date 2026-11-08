@@ -1,4 +1,5 @@
-import { DictAPI, DictForm, DictTypeForm, DictTypePageVO, DictPageVO } from "../../../index";
+import type { DictForm, DictTypeForm, DictTypePageVO, DictPageVO } from "../../../index";
+import { DictAPI } from "../../../index";
 import { expectBizError } from "#/utils/assertion";
 import {
   createDictTypeForm,

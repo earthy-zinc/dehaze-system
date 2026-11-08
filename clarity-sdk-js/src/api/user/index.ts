@@ -1,6 +1,6 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
-import { UserForm, UserInfo, UserPageVO, UserQuery } from "./model";
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
+import type { UserForm, UserInfo, UserPageVO, UserQuery } from "./model";
 
 class UserAPI {
   /**

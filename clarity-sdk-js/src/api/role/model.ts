@@ -1,4 +1,4 @@
-import { PageQuery, PageResult } from "@/types";
+import type { PageQuery, PageResult } from "../../types";
 
 /**
  * 角色查询参数

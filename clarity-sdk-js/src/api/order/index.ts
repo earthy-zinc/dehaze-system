@@ -1,6 +1,6 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
-import {
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
+import type {
   AutoRenewConfigForm,
   AutoRenewConfigVO,
   BalanceAccountVO,

@@ -1,4 +1,4 @@
-import { generateTraceId } from "@/logger";
+import { generateTraceId } from "../logger";
 
 /** SSE 事件结构 */
 export interface SSEEvent {
@@ -8,6 +8,44 @@ export interface SSEEvent {
   event?: string;
   /** 事件数据（JSON 字符串） */
   data: string;
+}
+
+/**
+ * AI 对话流式事件名（唯一合法集合）。
+ *
+ * 与 `config/schema/ai-conversation.schema.json` 的事件 DTO 一一对应；集合外的
+ * 事件名（含历史 `content_block.*` / `thought`）一律视为未知事件丢弃。
+ */
+export type AIChatStreamEvent =
+  | "message.start"
+  | "block.start"
+  | "block.delta"
+  | "block.stop"
+  | "plan.update"
+  | "interrupt"
+  | "usage"
+  | "suggestions"
+  | "message.end"
+  | "error"
+  | "ping";
+
+const AI_CHAT_STREAM_EVENT_NAMES: ReadonlySet<string> = new Set<AIChatStreamEvent>([
+  "message.start",
+  "block.start",
+  "block.delta",
+  "block.stop",
+  "plan.update",
+  "interrupt",
+  "usage",
+  "suggestions",
+  "message.end",
+  "error",
+  "ping",
+]);
+
+/** 判断事件名是否为 AI 对话流式事件 */
+export function isAIChatStreamEvent(name: string | undefined): name is AIChatStreamEvent {
+  return name !== undefined && AI_CHAT_STREAM_EVENT_NAMES.has(name);
 }
 
 /**

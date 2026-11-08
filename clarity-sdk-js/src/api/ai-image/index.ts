@@ -1,7 +1,7 @@
-import { PageResult } from "@/types";
-import request from "@/utils/request";
-import { DEFAULT_POLL_INTERVAL_MS, DEFAULT_POLL_TIMEOUT_MS, sleep } from "@/utils/poll";
-import {
+import type { PageResult } from "../../types";
+import request from "../../utils/request";
+import { DEFAULT_POLL_INTERVAL_MS, DEFAULT_POLL_TIMEOUT_MS, sleep } from "../../utils/poll";
+import type {
   ImageEditForm,
   ImageTaskQuery,
   ImageTaskResponse,

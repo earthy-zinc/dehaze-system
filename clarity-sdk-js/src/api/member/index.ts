@@ -1,7 +1,7 @@
-import { PageQuery, PageResult } from "@/types";
-import request from "@/utils/request";
-import { MyOrderQuery, MyOrderVO } from "@/api/order/model";
-import {
+import type { PageQuery, PageResult } from "../../types";
+import request from "../../utils/request";
+import type { MyOrderQuery, MyOrderVO } from "../order/model";
+import type {
   BenefitForm,
   BenefitSummaryVO,
   BenefitVO,

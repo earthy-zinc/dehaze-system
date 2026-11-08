@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 会员等级枚举 */
 export type MemberLevelCode = "level_0" | "level_1" | "level_2" | "level_3";

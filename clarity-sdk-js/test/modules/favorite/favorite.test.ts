@@ -1,5 +1,5 @@
 import { AiModelAPI, AiProviderAPI, DatasetAPI, FavoriteAPI } from "../../../index";
-import { FavoriteTargetType } from "@/api/favorite/model";
+import type { FavoriteTargetType } from "@/api/favorite/model";
 import { expectBizError } from "#/utils/assertion";
 import { login } from "#/utils/auth";
 import { createFavoriteForm, createFavoriteQuery } from "#/factories/favorite";

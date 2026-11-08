@@ -1,45 +1,59 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
-// ==================== 枚举类型 ====================
+// ==================== 契约 DTO（唯一来源：config/schema/ai-conversation.schema.json） ====================
+
+/**
+ * 消息、块、计划、中断、用量、产物、反馈与流式事件类型全部由契约生成。
+ *
+ * 此处只做重导出，不手写同名字段；改字段请改 Schema 后重跑
+ * `scripts/tooling/gen-ai-contract.mjs`。
+ */
+export type {
+  Alternative,
+  Artifact,
+  Block,
+  BlockDeltaEvent,
+  BlockKind,
+  BlockStartEvent,
+  BlockStopEvent,
+  ConfirmKind,
+  ErrorEvent,
+  Feedback,
+  Interrupt,
+  InterruptEvent,
+  InterruptType,
+  Message,
+  MessageEndEvent,
+  MessageList,
+  MessageResume,
+  MessageSend,
+  MessageStartEvent,
+  MessageStatus,
+  Plan,
+  PlanRevision,
+  PlanStatus,
+  PlanTask,
+  PlanUpdateEvent,
+  Recommendation,
+  Role,
+  SubAgentUsage,
+  SuggestionsEvent,
+  ToolCall,
+  ToolStatus,
+  Usage,
+  UsageEvent,
+} from "./contract.gen";
+
+// ==================== 会话枚举 ====================
 
 /** 会话状态：1-活跃，2-已归档 */
 export type ConversationStatus = 1 | 2;
-
-/** 消息角色 */
-export type MessageRole = "user" | "assistant" | "system";
-
-/** 消息状态：1-流式输出中，2-已完成，3-失败，4-已取消 */
-export type MessageStatus = 1 | 2 | 3 | 4;
-
-/** 推理中断类型 */
-export type InterruptType = "confirm" | "quota" | "async_wait" | "plan_approve";
-
-/**
- * 消息停止原因。
- * max_steps/token_budget_exceeded：推理护栏终止；quota_exceeded：配额预扣阻断（direct 路径终态）
- */
-export type StopReason =
-  | "stop"
-  | "tool_calls"
-  | "length"
-  | "content_filter"
-  | "canceled"
-  | "error"
-  | "max_steps"
-  | "token_budget_exceeded"
-  | "quota_exceeded";
-
-/** 内容块类型 */
-export type ContentBlockType = "text" | "thinking" | "tool_use";
 
 /** 长期记忆子类型 */
 export type MemoryType = "episodic" | "semantic" | "procedural";
 
 /** 记忆来源 */
 export type MemorySource = "conversation" | "feedback" | "reflection" | "manual";
-
-/** 产物类型 */
-export type ArtifactType = "image_result" | "metric_report" | "algorithm_recommend" | "file_ref";
 
 /** 反馈评分：1-点赞，-1-点踩 */
 export type FeedbackRating = 1 | -1;
@@ -119,7 +133,7 @@ export interface ConversationVO {
   /** 最后已读消息 ID */
   lastReadMessageId?: number;
   /** 当前激活分支末端消息 ID */
-  currentBranchMessageId?: number;
+  currentBranchMessageId?: number | null;
   /** 会话摘要（自动压缩生成） */
   summary?: string;
   lastMessageAt?: string;
@@ -141,97 +155,16 @@ export interface ConversationVO {
   updateTime?: string;
 }
 
-// ==================== 消息 ====================
+// ==================== 消息请求 ====================
 
-/** 发送消息表单（仅 content/model） */
-export interface SendMessageForm {
-  content: string;
-  model?: string;
-}
-
-/** 恢复中断推理表单 */
-export interface MessageResumeForm {
-  /** confirm 中断必填：True 接受推荐；False 拒绝 */
-  confirm?: boolean;
-  /** 确认参数（如 modelId 表示选择了备选图像模型） */
-  params?: Record<string, unknown>;
-  /**
-   * Plan-and-Execute 计划干预（仅计划待执行时允许）。
-   *
-   * `remove`/`reorder` 为任务 ID 列表、`add` 仅接受单条；外层键以 `plan_edit` 上行，
-   * 内层为对外契约、一律 camelCase。
-   */
-  planEdit?: {
-    remove?: string[];
-    reorder?: string[];
-    add?: { description?: string; dependsOn?: string[]; toolHint?: string; paradigm?: string };
-  };
-}
-
-/**
- * 推理步骤（消息详情附带，按 position 正序）。
- *
- * 对应后端 `AgentThoughtResult`，与流式 `thought` 事件（`ThoughtEvent`）字段不同：
- * 此处为落库记录，额外带 id/messageId/conversationId/createTime。
- */
-export interface AiMessageThought {
-  id: number;
-  messageId: number;
-  conversationId: number;
-  /** 步骤序号 */
-  position: number;
-  /** 步骤来源 Agent 编码（空=主 Agent） */
-  agentCode?: string;
-  /** 是否为子 Agent 的推理步骤（0-否，1-是） */
-  isSubagent?: number;
-  thought?: string;
-  /** 工具名称 */
-  tool?: string;
-  toolInput?: unknown;
-  /** 工具返回摘要 */
-  observation?: string;
-  /** 步骤状态：1-成功，2-失败，3-跳过 */
-  status: number;
-  /** 工具调用耗时（毫秒） */
-  latencyMs: number;
-  /** 失败原因（status=2 时填充） */
-  error?: string;
-  createTime?: string;
-}
-
-/** AI 对话消息视图对象 */
-export interface AiMessageVO {
-  id: number;
-  conversationId: number;
-  role: MessageRole;
-  content?: string;
-  status: MessageStatus;
-  /** 父消息 ID（分支对话） */
-  parentMessageId?: number;
-  /** 工具调用列表 */
-  toolCalls?: unknown;
-  toolCallId?: string;
-  /** 实际使用的模型 */
-  model?: string;
-  error?: string;
-  /** 元数据（后端 `metadata_` 的序列化别名） */
-  metadata?: unknown;
-  inputTokens?: number;
-  outputTokens?: number;
-  cachedInputTokens?: number;
-  /** 积分消耗 */
-  credits?: number;
-  /** 是否已编辑 */
-  edited?: number;
-  /** 编辑前原文 */
-  originalContent?: string;
-  /** 本次回复注入的长期记忆 ID 清单（注入可见性，供展开查看引用了哪些记忆） */
-  usedMemoryIds?: number[];
-  /** 关联异步任务 ID */
-  taskId?: string;
-  createTime: string;
-  /** 推理步骤/思考链（消息列表与详情返回，按 position 正序；无思考时为空数组） */
-  thoughts?: AiMessageThought[];
+/** 会话消息列表查询参数（游标分页，向上增量加载更早历史） */
+export interface MessageListQuery {
+  /** 游标：仅返回 id < before 的消息（>=1） */
+  before?: number;
+  /** 每页条数（默认 50，1..100） */
+  limit?: number;
+  /** 管理端审计视角：admin 读取任意用户会话的消息（需 ai:conversation:audit），省略为本人 */
+  view?: "admin";
 }
 
 /** 编辑用户消息表单 */
@@ -239,220 +172,7 @@ export interface EditMessageForm {
   content: string;
 }
 
-// ==================== SSE 事件类型 ====================
-
-/** message.start 事件 */
-export interface MessageStartEvent {
-  messageId: number;
-  conversationId: number;
-  model: string;
-  /** 流式会话 ID（断线重连：携带 Last-Event-ID 调用 stream/{streamSessionId} 端点） */
-  streamSessionId: string;
-}
-
-/** 内容块类型标识 */
-export interface ContentBlockStartEvent {
-  index: number;
-  type: ContentBlockType;
-  /** 工具调用 ID（仅 type=tool_use 时下发，供兼容层构造工具调用头） */
-  id?: string;
-  /** 工具名（仅 type=tool_use 时下发） */
-  name?: string;
-}
-
-/** 内容块增量 */
-export interface ContentBlockDeltaEvent {
-  index: number;
-  delta: {
-    type: "text_delta" | "thinking_delta" | "input_json_delta";
-    /** 文本增量 */
-    text?: string;
-    /** 思考增量 */
-    thinking?: string;
-    /** 工具参数流式增量（部分 JSON 字符串，需拼接） */
-    partialJson?: string;
-    /** 工具调用名（input_json_delta 首片段携带） */
-    name?: string;
-  };
-}
-
-/** 内容块结束 */
-export interface ContentBlockStopEvent {
-  index: number;
-}
-
-/** 推理步骤完成事件（status: 1 成功 / 2 失败 / 3 跳过） */
-export interface ThoughtEvent {
-  position: number;
-  thought?: string;
-  tool?: string;
-  toolInput?: unknown;
-  observation?: string;
-  status: number;
-  /** 失败原因（status=2 时透出） */
-  error?: string;
-  /** 本步骤耗时（毫秒） */
-  latencyMs?: number;
-}
-
-/** 计划任务项（plan 事件与 plan_approve 中断共用同一形状） */
-export interface PlanTask {
-  id?: string;
-  description?: string;
-  dependsOn?: string[];
-  /** 任务状态：pending|done|failed */
-  status?: string;
-  paradigm?: string;
-  toolHint?: string;
-  result?: string;
-}
-
-/** 计划修订记录（Replanner 修订后追加） */
-export interface PlanRevision {
-  /** 修订序号 */
-  revisionNo: number;
-  reason: string;
-  /** 本次修订涉及的任务 ID */
-  changedTaskIds: string[];
-}
-
-/**
- * Plan-and-Execute 计划（`plan` SSE 事件载荷，两条下发路径的完整形状）。
- *
- * `revisions` 两条路径恒有；`phase` 仅事件路径下发（中断路径见 `PlanPayload`）。
- */
-export interface Plan {
-  tasks: PlanTask[];
-  /** 计划状态：pending|executing|revised|done */
-  status?: string;
-  revisions: PlanRevision[];
-  /** 计划阶段（仅 plan 事件下发） */
-  phase?: string;
-}
-
-/** `plan_approve` 中断 `data.plan` 的形状：与事件同形，仅不含 `phase` */
-export type PlanPayload = Omit<Plan, "phase">;
-
-/** suggestions 事件（回复完成后推荐追问） */
-export interface SuggestionsEvent {
-  questions: Array<{ question: string }>;
-}
-
-/** 中断事件 */
-export interface InterruptEvent {
-  type: InterruptType;
-  data: InterruptData;
-}
-
-/**
- * 中断数据（全 camelCase）。按中断类型出现的键：
- * - confirm(algorithm_recommend)：{confirmKind, artifactId, recommendation, alternatives, imageFeatures}
- *   - recommendation：{recommendationId, modelId, modelName, reason, effectDescription}
- *   - alternatives：[{modelId, modelName, matchScore, reason}]
- * - confirm(dangerous_op)：{confirmKind, action, command, impact}（Shell/高风险代码执行）
- *   或 {confirmKind, action: "write_conflict", tool, resource, previousWriter, impact, reason}
- * - confirm(tool_permission)：{confirmKind, tool, reason, detail}
- * - quota：{upgradeTip, usedDaily, dailyLimit, usedMonthly, monthlyLimit, quotaDataError}
- * - async_wait：{taskId, taskType, estDuration, imageCount}
- * - plan_approve：{plan}（统一计划形状，不含 phase）
- */
-export interface InterruptData {
-  // confirm 子类型，决定 resume 路由
-  confirmKind?: "algorithm_recommend" | "tool_permission" | "dangerous_op";
-  // confirm(algorithm_recommend)：推荐主模型与备选（对应后端 summary.model 结构）
-  artifactId?: number;
-  recommendation?: {
-    recommendationId: number;
-    /** 图像模型标识（统一模型规范 slug） */
-    modelId: string;
-    modelName: string;
-    reason: string;
-    effectDescription?: string;
-  };
-  alternatives?: Array<{
-    /** 图像模型标识（统一模型规范 slug） */
-    modelId: string;
-    modelName: string;
-    matchScore: number;
-    reason: string;
-  }>;
-  imageFeatures?: { hazeLevel?: number; sceneType?: string; lighting?: string };
-  // confirm(dangerous_op/tool_permission)：危险操作/写冲突/权限确认
-  action?: string;
-  command?: string;
-  impact?: string;
-  tool?: string;
-  reason?: string;
-  detail?: string;
-  resource?: string;
-  previousWriter?: string;
-  // quota: 配额用量与升级引导（组装失败时 quotaDataError=true，勿伪造达标展示）
-  upgradeTip?: string;
-  usedDaily?: number;
-  dailyLimit?: number;
-  usedMonthly?: number;
-  monthlyLimit?: number;
-  quotaDataError?: boolean;
-  // async_wait: 异步任务信息
-  taskId?: string;
-  taskType?: string;
-  estDuration?: string;
-  imageCount?: number;
-  // plan_approve: 待确认的计划（与 plan 事件同形，不含 phase）
-  plan?: PlanPayload;
-}
-
-/** 错误事件 */
-export interface ErrorEvent {
-  code: string;
-  message: string;
-}
-
-/** Token 用量 */
-export interface TokenUsage {
-  inputTokens: number;
-  outputTokens: number;
-  cachedInputTokens: number;
-  /** 积分消耗 */
-  credits: number;
-  /**
-   * 子智能体粒度用量（仅在存在子智能体调用时下发；后端不下发时不出现该键）
-   */
-  subAgents?: Array<{
-    /** 子智能体编码 */
-    agentCode: string;
-    inputTokens: number;
-    outputTokens: number;
-    cachedInputTokens: number;
-    /** 积分消耗 */
-    credits: number;
-  }>;
-}
-
-/** message.end 事件 */
-export interface MessageEndEvent {
-  stopReason: StopReason;
-  usage: TokenUsage;
-}
-
-// ==================== 上下文：产物与记忆 ====================
-
-/** 中间产物视图对象 */
-export interface ArtifactVO {
-  id: number;
-  conversationId: number;
-  messageId?: number;
-  type: ArtifactType;
-  /** 引用业务表（sys_pred_log / sys_eval_log / sys_file / sys_recommendation） */
-  refType?: string;
-  /** 引用业务 ID */
-  refId?: number;
-  /** 业务摘要元数据（指标数值/算法信息等，绝不存 URL） */
-  summary?: unknown;
-  /** 是否失效（关联文件被删除时标记） */
-  isInvalid: number;
-  createTime?: string;
-}
+// ==================== 上下文：记忆 ====================
 
 /** 长期记忆视图对象 */
 export interface MemoryVO {
@@ -511,18 +231,6 @@ export interface FeedbackForm {
   tags?: string[];
   /** 改进建议（可选，点踩不强制填写） */
   comment?: string;
-}
-
-/** 反馈视图对象 */
-export interface FeedbackVO {
-  id: number;
-  messageId: number;
-  userId: number;
-  rating: FeedbackRating;
-  tags?: string[];
-  comment?: string;
-  createTime: string;
-  updateTime?: string;
 }
 
 // ==================== OpenAI 兼容 API ====================

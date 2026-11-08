@@ -1,4 +1,4 @@
-import { PageQuery } from "@/types";
+import type { PageQuery } from "../../types";
 
 /** 收藏对象类型 */
 export type FavoriteTargetType = "model" | "result" | "dataset" | "image" | "preset";

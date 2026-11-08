@@ -1,5 +1,6 @@
-import { DeptAPI, DeptForm } from "../../../index";
-import { DeptVO } from "@/api/dept/model";
+import type { DeptForm } from "../../../index";
+import { DeptAPI } from "../../../index";
+import type { DeptVO } from "@/api/dept/model";
 import { expectBizError } from "#/utils/assertion";
 import { createDeptForm, createDeptQuery, createDeptChain } from "#/factories/dept";
 import { uniqueName } from "#/factories/common";
