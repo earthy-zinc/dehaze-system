@@ -108,11 +108,15 @@ def _describe_schema(node, spec, depth=0):
 
 
 def _is_binary_schema(schema) -> bool:
-    return isinstance(schema, dict) and (schema.get("format") == "binary" or schema.get("type") == "file")
+    return isinstance(schema, dict) and (
+        schema.get("format") == "binary" or schema.get("type") == "file"
+    )
 
 
 def _has_binary_param(op, spec) -> bool:
-    """API 是否含文件/二进制参数，或请求体不是 JSON（multipart/octet-stream 等 LLM 无法构造的形态）。"""
+    """API 是否含文件/二进制参数，或请求体不是 JSON（multipart/octet-stream 等
+    LLM 无法构造的形态）。
+    """
     for p in op.get("parameters", []):
         p = _resolve(p, spec)
         if _is_binary_schema(_resolve(p.get("schema", {}), spec)):
@@ -123,7 +127,9 @@ def _has_binary_param(op, spec) -> bool:
         if "application/json" not in content:
             return True
         root = _resolve(content["application/json"].get("schema", {}), spec)
-        return any(_is_binary_schema(_resolve(prop, spec)) for prop in root.get("properties", {}).values())
+        return any(
+            _is_binary_schema(_resolve(prop, spec)) for prop in root.get("properties", {}).values()
+        )
     return False
 
 
@@ -133,24 +139,28 @@ def _parse_params(op, spec):
     for p in op.get("parameters", []):
         p = _resolve(p, spec)
         schema = _resolve(p.get("schema", {}), spec)
-        params.append({
-            "name": p.get("name", ""),
-            "in": p.get("in", "query"),
-            "required": p.get("required", False),
-            "desc": _describe_schema(schema, spec),
-            "schema": schema,
-        })
+        params.append(
+            {
+                "name": p.get("name", ""),
+                "in": p.get("in", "query"),
+                "required": p.get("required", False),
+                "desc": _describe_schema(schema, spec),
+                "schema": schema,
+            }
+        )
     body = _resolve(op.get("requestBody"), spec)
     if body:
         root = _resolve(body.get("content", {}).get("application/json", {}).get("schema", {}), spec)
         for name, prop in root.get("properties", {}).items():
-            params.append({
-                "name": name,
-                "in": "body",
-                "required": name in root.get("required", []),
-                "desc": _describe_schema(prop, spec),
-                "schema": _resolve(prop, spec),
-            })
+            params.append(
+                {
+                    "name": name,
+                    "in": "body",
+                    "required": name in root.get("required", []),
+                    "desc": _describe_schema(prop, spec),
+                    "schema": _resolve(prop, spec),
+                }
+            )
     return params
 
 
@@ -206,8 +216,13 @@ def _parse_spec(spec: dict) -> dict[str, dict]:
             params = _parse_params(op, spec)
             tags = op.get("tags", []) or []
             desc = op.get("summary") or op.get("description") or f"{method.upper()} {path}"
-            apis[name] = {"path": path, "method": method.upper(), "params": params,
-                          "description": desc, "namespace": tags[0] if tags else "other"}
+            apis[name] = {
+                "path": path,
+                "method": method.upper(),
+                "params": params,
+                "description": desc,
+                "namespace": tags[0] if tags else "other",
+            }
     return apis
 
 
@@ -222,7 +237,7 @@ def _tokenize(text):
         if len(cjk) == 1:
             tokens.add(cjk)
         else:
-            tokens.update(cjk[i:i + 2] for i in range(len(cjk) - 1))
+            tokens.update(cjk[i : i + 2] for i in range(len(cjk) - 1))
     return tokens
 
 
@@ -251,7 +266,11 @@ def _search_apis(query, limit=10):
 
     # 路径风格（如 /api/v1/model、presets/{id}）：直接按 path 子串匹配，最精确
     if "/" in q:
-        scored = [(3.0, n, a) for n, a in _apis.items() if q in a["path"].lower() or a["path"].lower() in q]
+        scored = [
+            (3.0, n, a)
+            for n, a in _apis.items()
+            if q in a["path"].lower() or a["path"].lower() in q
+        ]
         if scored:
             scored.sort(reverse=True)
             return scored[:limit]
@@ -268,11 +287,13 @@ def _search_apis(query, limit=10):
         # 权重层层递减：name(3) > 参数名(2) > 描述(1) > namespace(0.5) > 参数描述(0.3)
         ns_doc = _tokenize(a.get("namespace", ""))
         param_desc_doc = _tokenize(" ".join(p["desc"] for p in a["params"]))
-        score = (_match_score(q_tokens, name_doc, 3.0)
-                 + _match_score(q_tokens, param_doc, 2.0)
-                 + _match_score(q_tokens, desc_doc, 1.0)
-                 + _match_score(q_tokens, ns_doc, 0.5)
-                 + _match_score(q_tokens, param_desc_doc, 0.3))
+        score = (
+            _match_score(q_tokens, name_doc, 3.0)
+            + _match_score(q_tokens, param_doc, 2.0)
+            + _match_score(q_tokens, desc_doc, 1.0)
+            + _match_score(q_tokens, ns_doc, 0.5)
+            + _match_score(q_tokens, param_desc_doc, 0.3)
+        )
         if score > 0:
             # 归一化：按 query 词数摊分，长 query 需命中多数词才有高分，避免单词命中即宽泛召回
             scored.append((score / len(q_tokens), n, a))
@@ -321,18 +342,22 @@ async def lookup_tool(query: str) -> str:
         # 无匹配时给出相近候选（按工具名/描述子串包含排序），避免 LLM 反复换词
         q = query.strip().lower()
         near = sorted(
-            (n, a) for n, a in _apis.items()
-            if q in n.lower() or q in a["description"].lower() or q in a.get("namespace", "").lower()
+            (n, a)
+            for n, a in _apis.items()
+            if q in n.lower()
+            or q in a["description"].lower()
+            or q in a.get("namespace", "").lower()
         )[:3]
-        if near:
-            hint = "；相近候选: " + ", ".join(n for n, _ in near)
-        else:
-            hint = "；可尝试更简短的关键词"
+        hint = "；相近候选: " + ", ".join(n for n, _ in near) if near else "；可尝试更简短的关键词"
         return f"无匹配工具{hint}"
     lines = []
     for _, n, a in scored:
         params = ", ".join(_param_names(p) for p in a["params"])
-        lines.append(f"{n}: {a['description']} | 参数: {params}" if params else f"{n}: {a['description']} | 无参数")
+        lines.append(
+            f"{n}: {a['description']} | 参数: {params}"
+            if params
+            else f"{n}: {a['description']} | 无参数"
+        )
     return "\n".join(lines)
 
 
@@ -344,21 +369,30 @@ async def lookup_tool_param_schema(tool_name: str) -> str:
     api = _apis.get(tool_name)
     if not api:
         return f"工具 {tool_name} 不存在，请先调用 lookup_tool 搜索"
-    return json.dumps({
-        "tool_name": tool_name,
-        "description": api["description"],
-        "method": api["method"],
-        "path": api["path"],
-        "namespace": api["namespace"],
-        "params": [
-            {"name": p["name"], "location": p["in"], "required": p["required"],
-             "schema": p["desc"], "example": _schema_example(p.get("schema"))}
-            for p in api["params"]
-        ],
-        "arguments_example": {
-            p["name"]: _schema_example(p.get("schema")) for p in api["params"] if p["required"]
+    return json.dumps(
+        {
+            "tool_name": tool_name,
+            "description": api["description"],
+            "method": api["method"],
+            "path": api["path"],
+            "namespace": api["namespace"],
+            "params": [
+                {
+                    "name": p["name"],
+                    "location": p["in"],
+                    "required": p["required"],
+                    "schema": p["desc"],
+                    "example": _schema_example(p.get("schema")),
+                }
+                for p in api["params"]
+            ],
+            "arguments_example": {
+                p["name"]: _schema_example(p.get("schema")) for p in api["params"] if p["required"]
+            },
         },
-    }, ensure_ascii=False, indent=2)
+        ensure_ascii=False,
+        indent=2,
+    )
 
 
 @mcp.tool()
@@ -395,7 +429,9 @@ async def execute_tool(tool_name: str, arguments: str = "{}") -> str:
             body[p["name"]] = val
 
     headers = {"Authorization": f"Bearer {API_KEY}"} if API_KEY else {}
-    resp = await _http.request(api["method"], BACKEND_URL + path, params=query, json=body or None, headers=headers)
+    resp = await _http.request(
+        api["method"], BACKEND_URL + path, params=query, json=body or None, headers=headers
+    )
     text = resp.text
     if resp.status_code >= 500:
         # 透传响应体中的可诊断信息（如熔断/超时原因），而非只给状态码
@@ -455,7 +491,7 @@ def _run_cli():
     if len(sys.argv) < 3:
         print("用法: python server.py cli lookup <keyword>")
         print("      python server.py cli schema <tool_name>")
-        print("      python server.py cli execute <tool_name> '{\"key\":\"value\"}'")
+        print('      python server.py cli execute <tool_name> \'{"key":"value"}\'')
         print("      python server.py cli list")
         sys.exit(1)
 
@@ -471,7 +507,11 @@ def _run_cli():
         keyword = sys.argv[3] if len(sys.argv) > 3 else ""
         for _, n, a in _search_apis(keyword):
             params = ", ".join(_param_names(p) for p in a["params"])
-            print(f"  {n}: {a['description']} | 参数: {params}" if params else f"  {n}: {a['description']} | 无参数")
+            print(
+                f"  {n}: {a['description']} | 参数: {params}"
+                if params
+                else f"  {n}: {a['description']} | 无参数"
+            )
         if not _search_apis(keyword):
             print("无匹配工具")
         return
@@ -503,7 +543,9 @@ if __name__ == "__main__":
         _run_cli()
     else:
         if not MCP_GATEWAY_KEY:
-            print("[MCP] 启动失败：MCP_GATEWAY_KEY 未配置（网关持有 M2M 凭证，必须启用共享密钥鉴权）")
+            print(
+                "[MCP] 启动失败：MCP_GATEWAY_KEY 未配置（网关持有 M2M 凭证，必须启用共享密钥鉴权）"
+            )
             sys.exit(1)
         import uvicorn
 

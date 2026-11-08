@@ -4,6 +4,7 @@
 运行（仓库根目录）：
     clarity-python/.venv/bin/python clarity-mcp-gateway/tests/live_test.py
 """
+
 import asyncio
 import json
 import os
@@ -62,15 +63,31 @@ async def main():
 
     # 0. 网关共享密钥鉴权（原始 HTTP 层，无需 MCP 会话）
     async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(GW_URL, headers={}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        r = await client.post(
+            GW_URL,
+            headers={},
+            json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        )
         check("无 Authorization 被拒 401", r.status_code == 401, str(r.status_code))
-        r = await client.post(GW_URL, headers={"Authorization": "Bearer wrong-key"}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        r = await client.post(
+            GW_URL,
+            headers={"Authorization": "Bearer wrong-key"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        )
         check("错误 Bearer 密钥被拒 401", r.status_code == 401, str(r.status_code))
-        r = await client.post(GW_URL, headers={"Authorization": f"Bearer {key}"}, json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        r = await client.post(
+            GW_URL,
+            headers={"Authorization": f"Bearer {key}"},
+            json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        )
         check("正确 Bearer 密钥通过鉴权", r.status_code != 401, str(r.status_code))
 
     t0 = time.perf_counter()
-    async with streamablehttp_client(GW_URL, headers={"Authorization": f"Bearer {key}"}) as (read, write, _):
+    async with streamablehttp_client(GW_URL, headers={"Authorization": f"Bearer {key}"}) as (
+        read,
+        write,
+        _,
+    ):
         connect_ms = (time.perf_counter() - t0) * 1000
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -79,19 +96,27 @@ async def main():
             # 1. tools/list：3 个元 tool
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
-            check("tools/list 返回 3 个元 tool",
-                  names == {"lookup_tool", "lookup_tool_param_schema", "execute_tool"},
-                  str(sorted(names)))
+            check(
+                "tools/list 返回 3 个元 tool",
+                names == {"lookup_tool", "lookup_tool_param_schema", "execute_tool"},
+                str(sorted(names)),
+            )
 
             # 1.1 写操作白名单：非白名单 POST/PUT/PATCH 不注册，POST 仅限图像编辑
             write_tools = [n for n in names if n.startswith(("post_", "put_", "patch_"))]
-            check("写工具仅白名单内可见",
-                  all(n in {"post_api_v1_images_edits"} for n in write_tools),
-                  str(write_tools))
+            check(
+                "写工具仅白名单内可见",
+                all(n in {"post_api_v1_images_edits"} for n in write_tools),
+                str(write_tools),
+            )
 
             # 2. lookup_tool：中文检索
             out = await call(session, "lookup_tool", {"query": "图像编辑"})
-            check("lookup_tool 中文检索命中", "edits" in out.lower(), out.splitlines()[0] if out else "空")
+            check(
+                "lookup_tool 中文检索命中",
+                "edits" in out.lower(),
+                out.splitlines()[0] if out else "空",
+            )
 
             # 3. lookup_tool 空查询 / 无匹配
             out = await call(session, "lookup_tool", {"query": "   "})
@@ -110,35 +135,67 @@ async def main():
             # 5. execute_tool：本地校验
             out = await call(session, "execute_tool", {"tool_name": "no_such", "arguments": "{}"})
             check("execute 未知工具提示", "不存在" in out)
-            out = await call(session, "execute_tool", {"tool_name": tool_name, "arguments": "not-json"})
+            out = await call(
+                session, "execute_tool", {"tool_name": tool_name, "arguments": "not-json"}
+            )
             check("execute 非法 JSON 拒绝", "不是合法 JSON" in out)
-            out = await call(session, "execute_tool", {"tool_name": tool_name, "arguments": "[1,2]"})
+            out = await call(
+                session, "execute_tool", {"tool_name": tool_name, "arguments": "[1,2]"}
+            )
             check("execute 非 JSON 对象拒绝", "必须是 JSON 对象" in out)
-            out = await call(session, "execute_tool", {"tool_name": "post_api_v1_images_edits", "arguments": "{}"})
+            out = await call(
+                session,
+                "execute_tool",
+                {"tool_name": "post_api_v1_images_edits", "arguments": "{}"},
+            )
             check("execute 缺必填参数提示", "缺少必填参数" in out)
             # 写白名单：非白名单 PUT 工具不注册，LLM 不可见
-            out = await call(session, "execute_tool", {"tool_name": "put_api_v1_presets_by_id", "arguments": "{}"})
+            out = await call(
+                session,
+                "execute_tool",
+                {"tool_name": "put_api_v1_presets_by_id", "arguments": "{}"},
+            )
             check("execute 非白名单写工具不可见", "不存在" in out)
 
             # 6. 对抗：路径注入（../ 与额外路径段）——应被整体编码，后端 4xx/404，而非执行到其他端点
             evil = "../api/v1/admin/users"
-            out = await call(session, "execute_tool",
-                             {"tool_name": tool_name, "arguments": json.dumps({"taskId": evil})})
-            check("execute 路径注入被编码（未跨端点执行）",
-                  ("错误(" in out or "不可用" in out), out[:100])
+            out = await call(
+                session,
+                "execute_tool",
+                {"tool_name": tool_name, "arguments": json.dumps({"taskId": evil})},
+            )
+            check(
+                "execute 路径注入被编码（未跨端点执行）",
+                ("错误(" in out or "不可用" in out),
+                out[:100],
+            )
 
             # 7. 对抗：超长 query / 特殊字符透传
             out = await call(session, "lookup_tool", {"query": "去" * 500})
             check("lookup 超长 query 不崩溃", isinstance(out, str))
-            out = await call(session, "execute_tool",
-                             {"tool_name": tool_name,
-                              "arguments": json.dumps({"taskId": "<script>alert(1)</script>"})})
-            check("execute 特殊字符透传不崩溃（错误透传）", ("错误(" in out or "不可用" in out), out[:80])
+            out = await call(
+                session,
+                "execute_tool",
+                {
+                    "tool_name": tool_name,
+                    "arguments": json.dumps({"taskId": "<script>alert(1)</script>"}),
+                },
+            )
+            check(
+                "execute 特殊字符透传不崩溃（错误透传）",
+                ("错误(" in out or "不可用" in out),
+                out[:80],
+            )
 
             # 8. 真实只读调用：预测日志列表（M2M key 认证 + 业务信封透传）
-            out = await call(session, "execute_tool",
-                             {"tool_name": "get_api_v1_images_tasks",
-                              "arguments": json.dumps({"pageNum": 1, "pageSize": 1})})
+            out = await call(
+                session,
+                "execute_tool",
+                {
+                    "tool_name": "get_api_v1_images_tasks",
+                    "arguments": json.dumps({"pageNum": 1, "pageSize": 1}),
+                },
+            )
             ok = '"00000"' in out or "错误(" in out
             check("execute 真实后端调用", ok, out[:120].replace("\n", " "))
 
@@ -157,12 +214,18 @@ async def main():
 
     tools = await mcp_gateway_client.list_tools()
     names = sorted(t["name"] for t in tools)
-    check("McpGatewayClient.list_tools 返回 3 个元 tool",
-          names == ["execute_tool", "lookup_tool", "lookup_tool_param_schema"], str(names))
+    check(
+        "McpGatewayClient.list_tools 返回 3 个元 tool",
+        names == ["execute_tool", "lookup_tool", "lookup_tool_param_schema"],
+        str(names),
+    )
 
     out = await mcp_gateway_client.lookup_tool("图像编辑")
-    check("McpGatewayClient.lookup_tool 元工具 call 命中",
-          "edits" in out.lower(), out.splitlines()[0] if out else "空")
+    check(
+        "McpGatewayClient.lookup_tool 元工具 call 命中",
+        "edits" in out.lower(),
+        out.splitlines()[0] if out else "空",
+    )
 
     out = await mcp_gateway_client.lookup_tool_param_schema("get_api_v1_images_tasks_by_taskid")
     check("McpGatewayClient 参数 schema 元工具 call", "taskId" in out, out[:80] if out else "空")

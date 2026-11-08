@@ -76,6 +76,8 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# pre-commit 会显式传入暂存文件路径，默认 exclude 对显式路径不生效
+force-exclude = true
 extend-exclude = [
     "algorithm",  # 论文复现代码，保持与官方仓库结构一致，不格式化
     "logs",

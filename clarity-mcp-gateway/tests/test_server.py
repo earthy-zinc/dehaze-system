@@ -3,6 +3,7 @@
 运行方式（网关目录下）：
     uv run --with pytest pytest tests -q
 """
+
 import asyncio
 import json
 import time
@@ -12,8 +13,8 @@ import pytest
 time.sleep = lambda s: None  # 跳过模块导入时的启动重试等待
 import server  # noqa: E402
 
-
 # ---------- 测试用 OpenAPI 规格 ----------
+
 
 def _make_spec():
     """构造覆盖过滤管道/参数映射/递归 schema 的最小 OpenAPI 规格。"""
@@ -25,12 +26,21 @@ def _make_spec():
                     "type": "object",
                     "properties": {
                         "id": {"type": "integer"},
-                        "children": {"type": "array", "items": {"$ref": "#/components/schemas/TreeNode"}},
+                        "children": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/TreeNode"},
+                        },
                     },
                 },
                 # 循环引用：A -> B -> A
-                "LoopA": {"type": "object", "properties": {"b": {"$ref": "#/components/schemas/LoopB"}}},
-                "LoopB": {"type": "object", "properties": {"a": {"$ref": "#/components/schemas/LoopA"}}},
+                "LoopA": {
+                    "type": "object",
+                    "properties": {"b": {"$ref": "#/components/schemas/LoopB"}},
+                },
+                "LoopB": {
+                    "type": "object",
+                    "properties": {"a": {"$ref": "#/components/schemas/LoopA"}},
+                },
             }
         },
         "paths": {
@@ -39,11 +49,18 @@ def _make_spec():
                     "tags": ["去雾处理"],
                     "summary": "提交图像编辑任务（去雾等，异步）",
                     "requestBody": {
-                        "content": {"application/json": {"schema": {
-                            "type": "object",
-                            "properties": {"model": {"type": "string"}, "fileId": {"type": "string"}},
-                            "required": ["model"],
-                        }}}
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "model": {"type": "string"},
+                                        "fileId": {"type": "string"},
+                                    },
+                                    "required": ["model"],
+                                }
+                            }
+                        }
                     },
                 }
             },
@@ -52,15 +69,24 @@ def _make_spec():
                     "tags": ["预设管理"],
                     "summary": "更新预设",
                     "parameters": [
-                        {"name": "id", "in": "path", "required": True, "schema": {"type": "integer"}},
+                        {
+                            "name": "id",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "integer"},
+                        },
                         {"name": "keyword", "in": "query", "schema": {"type": "string"}},
                     ],
                     "requestBody": {
-                        "content": {"application/json": {"schema": {
-                            "type": "object",
-                            "properties": {"name": {"type": "string"}},
-                            "required": ["name"],
-                        }}}
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {"name": {"type": "string"}},
+                                    "required": ["name"],
+                                }
+                            }
+                        }
                     },
                 }
             },
@@ -69,7 +95,12 @@ def _make_spec():
                     "tags": ["去雾处理"],
                     "summary": "获取图像任务",
                     "parameters": [
-                        {"name": "taskId", "in": "path", "required": True, "schema": {"type": "string"}}
+                        {
+                            "name": "taskId",
+                            "in": "path",
+                            "required": True,
+                            "schema": {"type": "string"},
+                        }
                     ],
                 },
                 "delete": {"tags": ["去雾处理"], "summary": "删除任务"},
@@ -78,12 +109,16 @@ def _make_spec():
                 "post": {
                     "tags": ["文件"],
                     "summary": "上传文件",
-                    "requestBody": {"content": {
-                        "multipart/form-data": {"schema": {
-                            "type": "object",
-                            "properties": {"file": {"type": "string", "format": "binary"}},
-                        }}
-                    }},
+                    "requestBody": {
+                        "content": {
+                            "multipart/form-data": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {"file": {"type": "string", "format": "binary"}},
+                                }
+                            }
+                        }
+                    },
                 }
             },
             # springdoc 风格：MultipartFile 参数在 query 参数位置携带 format binary
@@ -92,8 +127,12 @@ def _make_spec():
                     "tags": ["导入"],
                     "summary": "导入数据",
                     "parameters": [
-                        {"name": "file", "in": "query", "required": True,
-                         "schema": {"type": "string", "format": "binary"}}
+                        {
+                            "name": "file",
+                            "in": "query",
+                            "required": True,
+                            "schema": {"type": "string", "format": "binary"},
+                        }
                     ],
                 }
             },
@@ -102,23 +141,37 @@ def _make_spec():
                 "get": {
                     "tags": ["菜单"],
                     "summary": "菜单树",
-                    "responses": {"200": {"content": {"application/json": {"schema": {
-                        "$ref": "#/components/schemas/TreeNode"}}}}},
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/TreeNode"}
+                                }
+                            }
+                        }
+                    },
                 }
             },
             "/api/v1/loop": {
                 "get": {
                     "tags": ["循环"],
                     "summary": "循环引用 schema",
-                    "responses": {"200": {"content": {"application/json": {"schema": {
-                        "$ref": "#/components/schemas/LoopA"}}}}},
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/LoopA"}
+                                }
+                            }
+                        }
+                    },
                 }
             },
         },
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def apis(monkeypatch):
     # 默认写白名单仅放行图像编辑；参数映射类用例需要 PUT 工具，临时扩充
     monkeypatch.setattr(
@@ -131,6 +184,7 @@ def apis(monkeypatch):
 
 
 # ---------- 写操作白名单 ----------
+
 
 def test_default_whitelist_keeps_documented_image_edit_write(monkeypatch):
     """发起图像编辑是文档定义的唯一常规 LLM 写场景，默认白名单必须放行。"""
@@ -159,9 +213,12 @@ def test_write_whitelist_extensible(monkeypatch):
 
 # ---------- 网关共享密钥鉴权（Authorization: Bearer） ----------
 
+
 def _http_scope(headers: dict):
     return {
-        "type": "http", "method": "POST", "path": "/mcp",
+        "type": "http",
+        "method": "POST",
+        "path": "/mcp",
         "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()],
     }
 
@@ -179,7 +236,7 @@ def _call_asgi(app, scope):
     return sent
 
 
-@pytest.fixture()
+@pytest.fixture
 def gateway_key(monkeypatch):
     monkeypatch.setattr(server, "MCP_GATEWAY_KEY", "test-key-123")
 
@@ -226,6 +283,7 @@ def test_auth_correct_key_passthrough(gateway_key, monkeypatch):
 
 # ---------- 过滤管道 ----------
 
+
 def test_skip_delete_method(apis):
     assert "delete_api_v1_images_tasks_by_taskid" not in apis
 
@@ -253,10 +311,12 @@ def test_keep_normal_apis_with_param_mapping(apis):
 
 # ---------- 递归 / 循环 schema 健壮性 ----------
 
+
 def test_recursive_schema_describe_terminates(apis):
-    tree = apis["get_api_v1_menus_tree"]
     spec = _make_spec()
-    ref = spec["paths"]["/api/v1/menus/tree"]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    ref = spec["paths"]["/api/v1/menus/tree"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
     text = server._describe_schema(ref, spec)
     assert "…" in text  # 深度截断标记，且未抛 RecursionError
 
@@ -284,9 +344,13 @@ def test_circular_ref_resolve_terminates():
 
 # ---------- 工具名与搜索 ----------
 
+
 def test_tool_name_rules():
     assert server._tool_name("put", "/api/v1/presets/{id}") == "put_api_v1_presets_by_id"
-    assert server._tool_name("get", "/api/v1/images/tasks/{taskId}") == "get_api_v1_images_tasks_by_taskid"
+    assert (
+        server._tool_name("get", "/api/v1/images/tasks/{taskId}")
+        == "get_api_v1_images_tasks_by_taskid"
+    )
     assert server._tool_name("get", "/api/v1/a-b/c.d") == "get_api_v1_a_b_c_d"
 
 
@@ -308,13 +372,14 @@ def test_search_empty_and_deterministic(apis):
 
 # ---------- execute_tool ----------
 
+
 class _FakeResp:
     def __init__(self, status_code=200, text="{}"):
         self.status_code = status_code
         self.text = text
 
 
-@pytest.fixture()
+@pytest.fixture
 def http_capture(monkeypatch):
     calls = {}
     _json = json  # fake_request 的 json 形参会遮蔽模块，提前捕获
@@ -340,12 +405,16 @@ def test_execute_rejects_non_object_arguments(apis, bad):
 
 def test_execute_missing_required(apis):
     out = asyncio.run(server.execute_tool("put_api_v1_presets_by_id", json.dumps({"name": "x"})))
-    assert "缺少必填参数" in out and "id" in out
+    assert "缺少必填参数" in out
+    assert "id" in out
 
 
 def test_execute_param_mapping_and_auth_header(apis, http_capture):
-    out = asyncio.run(server.execute_tool(
-        "put_api_v1_presets_by_id", json.dumps({"id": 3, "name": "n", "keyword": "k"})))
+    out = asyncio.run(
+        server.execute_tool(
+            "put_api_v1_presets_by_id", json.dumps({"id": 3, "name": "n", "keyword": "k"})
+        )
+    )
     assert http_capture["method"] == "PUT"
     assert http_capture["url"].endswith("/api/v1/presets/3")
     assert http_capture["params"] == {"keyword": "k"}
@@ -357,27 +426,32 @@ def test_execute_param_mapping_and_auth_header(apis, http_capture):
 def test_execute_path_traversal_encoded(apis, http_capture):
     """路径参数含 / 与 .. 必须整体编码，不能注入额外路径段。"""
     evil = "../../api/v1/admin/users"
-    asyncio.run(server.execute_tool(
-        "get_api_v1_images_tasks_by_taskid", json.dumps({"taskId": evil})))
+    asyncio.run(
+        server.execute_tool("get_api_v1_images_tasks_by_taskid", json.dumps({"taskId": evil}))
+    )
     url = http_capture["url"]
     assert "../" not in url
     assert "%2F" in url.upper()  # 整体编码，未注入额外路径段
     assert http_capture["url"].startswith(server.BACKEND_URL + "/api/v1/images/tasks/")
 
 
-@pytest.mark.parametrize("status,frag", [
-    (500, "后端服务不可用(500)"),
-    (502, "后端服务不可用(502)"),
-    (400, "错误(400)"),
-    (401, "错误(401)"),
-])
+@pytest.mark.parametrize(
+    ("status", "frag"),
+    [
+        (500, "后端服务不可用(500)"),
+        (502, "后端服务不可用(502)"),
+        (400, "错误(400)"),
+        (401, "错误(401)"),
+    ],
+)
 def test_execute_backend_error_passthrough(apis, monkeypatch, status, frag):
     async def fake_request(method, url, **kw):
         return _FakeResp(status, '{"msg":"boom"}')
 
     monkeypatch.setattr(server._http, "request", fake_request)
     out = asyncio.run(server.execute_tool("get_api_v1_images_tasks_by_taskid", '{"taskId": "t1"}'))
-    assert frag in out and "boom" in out
+    assert frag in out
+    assert "boom" in out
 
 
 def test_execute_long_response_truncated(apis, monkeypatch):
@@ -386,10 +460,12 @@ def test_execute_long_response_truncated(apis, monkeypatch):
 
     monkeypatch.setattr(server._http, "request", fake_request)
     out = asyncio.run(server.execute_tool("get_api_v1_images_tasks_by_taskid", '{"taskId": "t1"}'))
-    assert "响应过长已截断" in out and len(out) < 9000
+    assert "响应过长已截断" in out
+    assert len(out) < 9000
 
 
 # ---------- 启动加载 ----------
+
 
 def test_load_apis_failure_returns_false(monkeypatch):
     def fake_get(*a, **kw):
@@ -400,8 +476,13 @@ def test_load_apis_failure_returns_false(monkeypatch):
 
 
 def test_load_apis_success_parses(monkeypatch):
-    monkeypatch.setattr(server.httpx, "get", lambda *a, **kw: type("R", (), {
-        "raise_for_status": lambda self: None, "json": lambda self: _make_spec()})())
+    monkeypatch.setattr(
+        server.httpx,
+        "get",
+        lambda *a, **kw: type(
+            "R", (), {"raise_for_status": lambda self: None, "json": lambda self: _make_spec()}
+        )(),
+    )
     old = (server._apis, server._SPEC)
     try:
         assert server._load_apis() is True
