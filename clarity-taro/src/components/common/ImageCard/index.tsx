@@ -1,5 +1,6 @@
+import { Image } from "@tarojs/components";
 import React from "react";
-import { View, Image, Text } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import {
   getImageTypeLabel,
   getImageTypeBadgeClass,

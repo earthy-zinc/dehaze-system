@@ -8,6 +8,9 @@ import { version as APP_VERSION } from "../package.json";
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
 export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
+  // 源码直连：SDK 以 TS 源码参与编译与类型检查，改 SDK 不再需要先 build 产物
+  const sdkRoot = path.resolve(__dirname, "../../clarity-sdk-js");
+  const sdkEntry = path.join(sdkRoot, "index.ts");
   const baseConfig: UserConfigExport<"webpack5"> = {
     projectName: "clarity-taro",
     date: "2025-9-22",
@@ -23,6 +26,8 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
     },
     alias: {
       "@": path.resolve(__dirname, "..", "src"),
+      // 精确指向源码入口；Taro 的 script 规则只扫 sourceDir，另需 compile.include 放行 SDK 目录
+      "clarity-sdk-js": sdkEntry,
     },
     sourceRoot: "src",
     outputRoot: `dist/${process.env.TARO_ENV}`,
@@ -59,6 +64,10 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       ],
     },
     mini: {
+      // SDK 源码在 node_modules 之外，Taro 默认只转译 sourceDir，需显式放行
+      compile: {
+        include: [sdkRoot],
+      },
       postcss: {
         pxtransform: {
           enable: true,
@@ -77,6 +86,10 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       },
     },
     h5: {
+      // 同 mini：放行 node_modules 外的 SDK 源码
+      compile: {
+        include: [sdkRoot],
+      },
       publicPath: "/",
       staticDirectory: "static",
       output: {
@@ -106,10 +119,43 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       },
     },
     rn: {
+      // 须与壳工程 rn/app.json 的 name 一致，否则报 "xxx has not been registered"
       appName: "taroDemo",
+      // 官方壳工程与 JS 分仓：release 产物直接落到壳工程的 assets
+      output: {
+        android: path.resolve(
+          __dirname,
+          "../rn/android/app/src/main/assets/index.android.bundle"
+        ),
+        androidAssetsDest: path.resolve(
+          __dirname,
+          "../rn/android/app/src/main/res"
+        ),
+        ios: path.resolve(__dirname, "../rn/ios/main.jsbundle"),
+        iosAssetsDest: path.resolve(__dirname, "../rn/ios"),
+      },
+      // components-rn 没有 Canvas，filter 页面的滤镜预览改用占位。
+      // View / Text 的渐变替换放在 metro.config.js 的 resolveRequest 里，因为包入口会导回同一个
+      // 文件，用 alias 会形成循环依赖。
+      alias: {
+        "@tarojs/components-rn/dist/components/Canvas": path.resolve(
+          __dirname,
+          "../src/platform/ui/Canvas.tsx"
+        ),
+      },
       postcss: {
         cssModules: {
           enable: false, // 默认为 false，如需使用 css modules 功能，则设为 true
+        },
+        // 变量定义集中在 app.less，Taro 自带的展开器在本文件内找不到定义会写成 undefined，
+        // 改由下面的 rn-compat 插件按 app.less 的变量表内联
+        "postcss-css-variables": {
+          enable: false,
+        },
+        // RN 缺失的样式能力（CSS 变量、rpx/vh 单位、渐变）在编译期补齐，详见插件内说明
+        "./plugins/postcss-rn-compat": {
+          enable: true,
+          config: {},
         },
       },
     },

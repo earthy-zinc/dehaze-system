@@ -1,5 +1,6 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import { Button } from "@taroify/core";
 import Taro from "@tarojs/taro";
 

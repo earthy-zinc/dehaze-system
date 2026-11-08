@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { SwipeCell, Button, Cell, Tag } from "@taroify/core";
-import { Arrow, Add, Edit, Delete } from "@taroify/icons";
+import { Icon, View, Text, Tag } from "@/platform/ui";
+import { Button, SwipeCell, Cell } from "@taroify/core";
 import type { MenuVO } from "clarity-sdk-js";
 import { MENU_TYPE_CONFIG } from "../../constants";
 
@@ -40,7 +39,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onAddChild(node.id!)}
             >
-              <Add />
+              <Icon name="add" />
               子级
             </Button>
           )}
@@ -50,7 +49,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onEdit(node)}
             >
-              <Edit />
+              <Icon name="edit" />
               编辑
             </Button>
           )}
@@ -60,7 +59,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onDelete(node)}
             >
-              <Delete />
+              <Icon name="delete" />
               删除
             </Button>
           )}
@@ -73,7 +72,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <View className="menu-row">
             {hasChildren ? (
               <View className="menu-toggle">
-                <Arrow
+                <Icon
+                  name="arrow"
                   className={isExpanded ? "arrow-expanded" : "arrow-collapsed"}
                 />
               </View>

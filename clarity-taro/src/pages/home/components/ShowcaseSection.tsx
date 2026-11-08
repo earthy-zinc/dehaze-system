@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import { DatasetItemAPI } from "clarity-sdk-js";
 import ComparisonItem from "./ComparisonItem";
 import "./ShowcaseSection.less";

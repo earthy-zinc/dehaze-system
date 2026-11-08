@@ -7,7 +7,7 @@
  * - L3 深度沉浸页：无全局导航（页面内工具栏），由 ImmersiveLayout 负责
  */
 import React from "react";
-import { View } from "@tarojs/components";
+import { View } from "@/platform/ui";
 import AppNavbar from "./navbar";
 import "./index.less";
 

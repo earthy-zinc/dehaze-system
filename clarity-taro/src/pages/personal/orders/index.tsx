@@ -1,7 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text, Tag } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Tag } from "@taroify/core";
+
 import { OrderAPI } from "clarity-sdk-js";
 import type { MyOrderVO, OrderStatus, MyOrderQuery } from "clarity-sdk-js";
 import PageLayout from "@/layout";

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import type { ImageTaskResponse } from "clarity-sdk-js";
 import type { SelectedModel } from "@/stores/process";
 import { formatSeconds } from "@/utils/format";

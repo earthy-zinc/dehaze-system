@@ -1,5 +1,6 @@
+import { ScrollView, Switch, Picker } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Switch, Picker } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import { NotificationSettingAPI } from "clarity-sdk-js";
 import type {

@@ -1,0 +1,85 @@
+require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+# RN 0.73 默认 13.4，但 Xcode 27 起只支持 iOS 15+，pod 的部署目标必须一起抬高
+platform :ios, '15.0'
+prepare_react_native_project!
+
+# boostorg.jfrog.io 已停止服务，RN 0.73 的 Boost.podspec 里仍指向它，
+# 实际下载到的是重定向页面，checksum 必然不符而中断安装。改成官方归档站（同一份文件）。
+boost_podspec = File.join(__dir__, "../node_modules/react-native/third-party-podspecs/Boost.podspec")
+if File.exist?(boost_podspec)
+  original = File.read(boost_podspec)
+  fixed = original.gsub(
+    "https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.bz2",
+    "https://archives.boost.io/release/1.83.0/source/boost_1_83_0.tar.bz2"
+  )
+  File.write(boost_podspec, fixed) if fixed != original
+end
+
+# If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
+# because `react-native-flipper` depends on (FlipperKit,...) that will be excluded
+#
+# To fix this you can also exclude `react-native-flipper` using a `react-native.config.js`
+# ```js
+# module.exports = {
+#   dependencies: {
+#     ...(process.env.NO_FLIPPER ? { 'react-native-flipper': { platforms: { ios: null } } } : {}),
+# ```
+flipper_config = ENV['NO_FLIPPER'] == "1" ? FlipperConfiguration.disabled : FlipperConfiguration.enabled
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'taroDemo' do
+  use_expo_modules!
+  post_integrate do |installer|
+    begin
+      expo_patch_react_imports!(installer)
+    rescue => e
+      Pod::UI.warn e
+    end
+  end
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # Enables Flipper.
+    #
+    # Note that if you have use_frameworks! enabled, Flipper will not work and
+    # you should disable the next line.
+    :flipper_configuration => flipper_config,
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  target 'taroDemoTests' do
+    inherit! :complete
+    # Pods for testing
+  end
+
+  post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false
+    )
+
+    # Xcode 27 只接受 iOS 15+ 的部署目标，而 RN 0.73 生态里的 pod 普遍写成 13.4 / 9.0
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        current = build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f
+        build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' if current < 15.0
+      end
+    end
+  end
+end

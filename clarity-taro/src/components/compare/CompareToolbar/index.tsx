@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import { saveImageToAlbum } from "@/utils/saveImage";
 import { isH5 } from "@/utils/platform";

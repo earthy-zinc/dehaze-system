@@ -2,10 +2,10 @@
  * 图片预览组件
  */
 
+import { Image } from "@tarojs/components";
 import React from "react";
-import { View, Text, Image } from "@tarojs/components";
-import { Popup, Button } from "@taroify/core";
-import { Cross, PhotoOutlined, Expand } from "@taroify/icons";
+import { Icon, View, Text, Popup } from "@/platform/ui";
+import { Button } from "@taroify/core";
 import { formatFileSize, formatHazeLevel } from "@/utils/format";
 import { ImageData } from "../../services/types";
 import "./ImagePreview.less";
@@ -38,7 +38,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         <View className="preview-header">
           <Text className="preview-title">图片预览</Text>
           <View className="close-btn" onClick={onCancel}>
-            <Cross size="20" />
+            <Icon name="cross" size="20" />
           </View>
         </View>
 
@@ -61,14 +61,14 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         <View className="preview-info">
           <View className="info-item">
             <View className="info-icon">
-              <PhotoOutlined size="16" color="#3b82f6" />
+              <Icon name="photo-o" size="16" color="#3b82f6" />
             </View>
             <Text className="info-label">文件大小</Text>
             <Text className="info-value">{formatFileSize(imageData.size)}</Text>
           </View>
           <View className="info-item">
             <View className="info-icon">
-              <Expand size="16" color="#10b981" />
+              <Icon name="expand-o" size="16" color="#10b981" />
             </View>
             <Text className="info-label">图片尺寸</Text>
             <Text className="info-value">

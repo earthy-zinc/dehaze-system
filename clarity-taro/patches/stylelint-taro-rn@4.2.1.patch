@@ -1,0 +1,41 @@
+diff --git a/dist/index.cjs.js b/dist/index.cjs.js
+index 05fd6648fe48680be31b6cdccf0c5a5bd6cf2620..f64875acb5064323fe2820814e48b21419324030 100644
+--- a/dist/index.cjs.js
++++ b/dist/index.cjs.js
+@@ -4,7 +4,16 @@ Object.defineProperty(exports, '__esModule', { value: true });
+ 
+ var stylelint = require('stylelint');
+ var reactNativeKnownStylingProperties = require('react-native-known-styling-properties');
+-var declarationValueIndex = require('stylelint/lib/utils/declarationValueIndex.cjs');
++// patch: stylelint 16.11 起移除了 lib/utils/declarationValueIndex.cjs，
++// 这里内联原实现（仅用于计算 report 的位置索引），保持规则可用。
++var declarationValueIndex = function (decl) {
++    var isObject = function (v) { return v !== null && typeof v === 'object'; };
++    var raws = decl.raws;
++    var prop = raws.prop;
++    return [isObject(prop) && 'prefix' in prop && prop.prefix, (isObject(prop) && 'raw' in prop && prop.raw) || decl.prop, isObject(prop) && 'suffix' in prop && prop.suffix, raws.between || ':', raws.value && 'prefix' in raws.value && raws.value.prefix].reduce(function (count, str) {
++        return typeof str === 'string' ? count + str.length : count;
++    }, 0);
++};
+ 
+ const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
+ 
+diff --git a/dist/index.esm.js b/dist/index.esm.js
+index 78412ee1e914c7ad2d477b0d4973acc881c15372..2335b5f0fd6e502e16042c0921c3675448836f7a 100644
+--- a/dist/index.esm.js
++++ b/dist/index.esm.js
+@@ -1,6 +1,13 @@
+ import stylelint from 'stylelint';
+ import { allCSS2RNProps, allProps } from 'react-native-known-styling-properties';
+-import declarationValueIndex from 'stylelint/lib/utils/declarationValueIndex.cjs';
++// patch: stylelint 16.11 起移除了 lib/utils/declarationValueIndex.cjs，
++// 这里内联原实现（仅用于计算 report 的位置索引），保持规则可用。
++const declarationValueIndex = (decl) => {
++    const isObject = (v) => v !== null && typeof v === 'object';
++    const raws = decl.raws;
++    const prop = raws.prop;
++    return [isObject(prop) && 'prefix' in prop && prop.prefix, (isObject(prop) && 'raw' in prop && prop.raw) || decl.prop, isObject(prop) && 'suffix' in prop && prop.suffix, raws.between || ':', raws.value && 'prefix' in raws.value && raws.value.prefix].reduce((count, str) => (typeof str === 'string' ? count + str.length : count), 0);
++};
+ 
+ const endsWith = (str, suffix) => str.indexOf(suffix, str.length - suffix.length) !== -1;
+ 

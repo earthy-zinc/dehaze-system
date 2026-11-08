@@ -1,8 +1,9 @@
 /**
  * 消息详情页面 (L2)
  */
+import { RichText } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, RichText } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import { MessageAPI } from "clarity-sdk-js";
 import type { MessageVO } from "clarity-sdk-js";

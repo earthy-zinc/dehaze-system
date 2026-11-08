@@ -1,2 +1,10 @@
-onlyBuiltDependencies:
-  - esbuild
+nodeLinker: hoisted
+allowBuilds:
+  esbuild: true
+# React 三件套必须与 react-native 的 peer 对齐，且全局只允许一份实例：
+# 19.2 线会让 RN 0.81 的 renderer 与 react-test-renderer 错配，
+# 任一副本漂移还会造成 "Invalid hook call"。
+overrides:
+  react: 19.1.10
+  react-dom: 19.1.10
+  react-test-renderer: 19.1.10

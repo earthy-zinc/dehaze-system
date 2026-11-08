@@ -1,7 +1,7 @@
+import { Image } from "@tarojs/components";
 import React from "react";
-import { View, Image, Text } from "@tarojs/components";
-import { Tag, Button, Space } from "@taroify/core";
-import { Edit, Delete, Lock, Phone } from "@taroify/icons";
+import { Icon, View, Text, Tag } from "@/platform/ui";
+import { Button, Space } from "@taroify/core";
 import type { UserPageVO } from "clarity-sdk-js";
 import { usePermission } from "@/hooks/usePermission";
 import "./UserCard.less";
@@ -81,14 +81,14 @@ const UserCard: React.FC<UserCardProps> = ({
       <View className="user-card__body">
         {user.mobile && (
           <View className="contact-item">
-            <Phone className="contact-item__icon" />
+            <Icon name="phone-o" className="contact-item__icon" />
             <Text className="contact-item__text">{user.mobile}</Text>
           </View>
         )}
 
         {user.email && (
           <View className="contact-item">
-            <Phone className="contact-item__icon" />
+            <Icon name="phone-o" className="contact-item__icon" />
             <Text className="contact-item__text">{user.email}</Text>
           </View>
         )}
@@ -119,13 +119,13 @@ const UserCard: React.FC<UserCardProps> = ({
         <Space className="action-buttons">
           {hasPermission("sys:user:password:reset") && (
             <Button size="mini" variant="outlined" onClick={onResetPassword}>
-              <Lock /> 重置密码
+              <Icon name="lock" /> 重置密码
             </Button>
           )}
 
           {hasPermission("sys:user:edit") && (
             <Button size="mini" variant="outlined" onClick={onEdit}>
-              <Edit /> 编辑
+              <Icon name="edit" /> 编辑
             </Button>
           )}
 
@@ -136,7 +136,7 @@ const UserCard: React.FC<UserCardProps> = ({
               color="danger"
               onClick={onDelete}
             >
-              <Delete /> 删除
+              <Icon name="delete" /> 删除
             </Button>
           )}
         </Space>

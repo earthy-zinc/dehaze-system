@@ -3,7 +3,8 @@
   "compilerOptions": {
     "sourceMap": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "clarity-sdk-js": ["../clarity-sdk-js/index.ts"]
     },
     "lib": ["esnext", "dom"],
     "types": ["@dcloudio/types"]

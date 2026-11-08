@@ -2,9 +2,9 @@
  * 样例图片库组件
  */
 
+import { Image } from "@tarojs/components";
 import React from "react";
-import { View, Text, Image } from "@tarojs/components";
-import { Loading } from "@taroify/core";
+import { View, Text, Loading } from "@/platform/ui";
 import FilterTabs from "@/components/common/FilterTabs";
 import { formatHazeLevel } from "@/utils/format";
 import { SampleImage, SampleCategory } from "../../services/types";

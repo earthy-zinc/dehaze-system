@@ -1,8 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView } from "@tarojs/components";
+import { Icon, View, Loading, Empty } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Loading, Empty } from "@taroify/core";
-import { Add } from "@taroify/icons";
+
 import { DatasetAPI } from "clarity-sdk-js";
 import type { DatasetVO } from "clarity-sdk-js";
 import PageLayout from "@/layout";
@@ -205,7 +205,7 @@ const DatasetManagePage: React.FC = () => {
         <View className="action-bar">
           {canAdd && (
             <View className="add-btn" onClick={handleAddRoot}>
-              <Add size="16" color="#ffffff" />
+              <Icon name="add" size="16" color="#ffffff" />
               <View className="add-btn-text">新增数据集</View>
             </View>
           )}

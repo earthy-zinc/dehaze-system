@@ -1,7 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text, Loading, Tag } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Loading, Tag } from "@taroify/core";
+
 import { AiModelAPI, DatasetAPI, TaskAPI, UserAPI } from "clarity-sdk-js";
 import type { TaskVO } from "clarity-sdk-js";
 import { useAuth } from "@/hooks/useAuth";

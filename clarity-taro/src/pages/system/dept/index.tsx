@@ -1,21 +1,10 @@
+import { Input, ScrollView } from "@tarojs/components";
 import React, { useState } from "react";
-import { View, Text, Input, ScrollView } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
+import { Icon, View, Text, Loading, Tag, Empty, Popup } from "@/platform/ui";
+import { Button, Navbar, Search, SwipeCell, Cell, Switch } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
 import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
 import { confirmDialog } from "@/utils/dialog";
-import {
-  Navbar,
-  Search,
-  Button,
-  Loading,
-  Empty,
-  SwipeCell,
-  Tag,
-  Cell,
-  Popup,
-  Switch,
-} from "@taroify/core";
-import { ArrowLeft, Add, Edit, Delete, Arrow } from "@taroify/icons";
 import { useDeptManagement } from "@/hooks/useDeptManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { DeptVO, DeptForm } from "clarity-sdk-js";
@@ -64,7 +53,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onAddChild(node.id!)}
             >
-              <Add />
+              <Icon name="add" />
               子级
             </Button>
           )}
@@ -74,7 +63,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onEdit(node)}
             >
-              <Edit />
+              <Icon name="edit" />
               编辑
             </Button>
           )}
@@ -84,7 +73,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               size="small"
               onClick={() => onDelete(node)}
             >
-              <Delete />
+              <Icon name="delete" />
               删除
             </Button>
           )}
@@ -97,7 +86,8 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <View className="dept-row">
             {hasChildren ? (
               <View className="dept-toggle">
-                <Arrow
+                <Icon
+                  name="arrow"
                   className={isExpanded ? "arrow-expanded" : "arrow-collapsed"}
                 />
               </View>
@@ -305,10 +295,12 @@ const DeptPage: React.FC = () => {
     <View className="dept-page">
       <Navbar title="部门管理">
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission("sys:dept:add") && <Add onClick={handleAdd} />}
+          {hasPermission("sys:dept:add") && (
+            <Icon name="add" onClick={handleAdd} />
+          )}
         </Navbar.NavRight>
       </Navbar>
 

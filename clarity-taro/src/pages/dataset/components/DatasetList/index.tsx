@@ -1,5 +1,6 @@
+import { ScrollView } from "@tarojs/components";
 import React from "react";
-import { View, ScrollView } from "@tarojs/components";
+import { View } from "@/platform/ui";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import type { DatasetVO } from "../../services/types";

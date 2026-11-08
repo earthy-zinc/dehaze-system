@@ -1,7 +1,9 @@
+import { Image, ScrollView } from "@tarojs/components";
 import React, { useState } from "react";
-import { View, Text, Image, ScrollView } from "@tarojs/components";
-import Taro from "@tarojs/taro";
+import { View, Text } from "@/platform/ui";
 import { Button } from "@taroify/core";
+import Taro from "@tarojs/taro";
+
 import { ModelAPI } from "clarity-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";

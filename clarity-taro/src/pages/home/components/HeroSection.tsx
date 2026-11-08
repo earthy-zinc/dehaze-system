@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text, Button } from "@tarojs/components";
+import { Icon, View, Text, Button } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Arrow } from "@taroify/icons";
 
 import "./HeroSection.less";
 
@@ -26,7 +25,7 @@ const HeroSection: React.FC = () => {
         <View className="hero-cta">
           <Button className="cta-primary" onClick={handleStartClick}>
             开始去雾
-            <Arrow className="cta-icon" size="14" color="#ffffff" />
+            <Icon name="arrow" className="cta-icon" size="14" color="#ffffff" />
           </Button>
           <Button className="cta-secondary" onClick={handleDatasetClick}>
             浏览数据集

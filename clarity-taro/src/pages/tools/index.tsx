@@ -3,16 +3,11 @@
  *
  * 按 05 规划 2.2：功能聚合中心 —— 页内搜索 + 快捷入口横滑 + 功能网格
  */
+import { ScrollView } from "@tarojs/components";
 import React, { useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import {
-  Clock,
-  PhotoOutlined,
-  BarChartOutlined,
-  Arrow,
-  DescriptionOutlined,
-} from "@taroify/icons";
+
 import SearchBar from "@/components/common/SearchBar";
 import PageLayout from "@/layout";
 import "./index.less";
@@ -33,22 +28,22 @@ interface GridEntry {
 const quickEntries: QuickEntry[] = [
   {
     label: "处理历史",
-    icon: <Clock size="20" color="#3b82f6" />,
+    icon: <Icon name="clock" size="20" color="#3b82f6" />,
     target: "/pages/task/index",
   },
   {
     label: "我的收藏",
-    icon: <BarChartOutlined size="20" color="#3b82f6" />,
+    icon: <Icon name="bar-chart-o" size="20" color="#3b82f6" />,
     target: "/pages/favorite/index",
   },
   {
     label: "批量处理",
-    icon: <Arrow size="20" color="#3b82f6" />,
+    icon: <Icon name="arrow" size="20" color="#3b82f6" />,
     target: "/pages/task/index",
   },
   {
     label: "去雾处理",
-    icon: <Arrow size="20" color="#3b82f6" />,
+    icon: <Icon name="arrow" size="20" color="#3b82f6" />,
     target: "/pages/processing/index",
   },
 ];
@@ -56,27 +51,27 @@ const quickEntries: QuickEntry[] = [
 const gridEntries: GridEntry[] = [
   {
     label: "图像输入",
-    icon: <PhotoOutlined size="24" color="#3b82f6" />,
+    icon: <Icon name="photo-o" size="24" color="#3b82f6" />,
     target: "/pages/image-input/index",
   },
   {
     label: "数据集",
-    icon: <BarChartOutlined size="24" color="#3b82f6" />,
+    icon: <Icon name="bar-chart-o" size="24" color="#3b82f6" />,
     target: "/pages/dataset/index",
   },
   {
     label: "批量处理",
-    icon: <Arrow size="24" color="#3b82f6" />,
+    icon: <Icon name="arrow" size="24" color="#3b82f6" />,
     target: "/pages/task/index",
   },
   {
     label: "指标管理",
-    icon: <BarChartOutlined size="24" color="#3b82f6" />,
+    icon: <Icon name="bar-chart-o" size="24" color="#3b82f6" />,
     target: "/pages/metrics/index",
   },
   {
     label: "API 文档",
-    icon: <DescriptionOutlined size="24" color="#3b82f6" />,
+    icon: <Icon name="description-o" size="24" color="#3b82f6" />,
     target: "",
   },
 ];

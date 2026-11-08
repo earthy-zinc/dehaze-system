@@ -4,15 +4,15 @@
  * 展示去雾处理历史记录，支持查看对比和重新处理。
  * 对接 AiImageAPI.listImageTasks（分页查询图像任务）
  */
+import { Image, ScrollView } from "@tarojs/components";
 import React, { useState, useCallback } from "react";
-import { View, Text, Image, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Loading, Empty } from "@/platform/ui";
 import Taro, {
   useLoad,
   usePullDownRefresh,
   useReachBottom,
 } from "@tarojs/taro";
-import { Navbar, Loading, Empty } from "@taroify/core";
-import { ArrowLeft } from "@taroify/icons";
+import { Navbar } from "@taroify/core";
 import { AiImageAPI } from "clarity-sdk-js";
 import type { ImageTaskVO } from "clarity-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
@@ -116,7 +116,7 @@ const TaskPage: React.FC = () => {
     <View className="task-page">
       <Navbar title="处理历史">
         <Navbar.NavLeft>
-          <ArrowLeft />
+          <Icon name="arrow-left" />
         </Navbar.NavLeft>
       </Navbar>
 

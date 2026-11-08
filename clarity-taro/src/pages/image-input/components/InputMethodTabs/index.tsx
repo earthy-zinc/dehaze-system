@@ -3,13 +3,7 @@
  */
 
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import {
-  PhotoOutlined,
-  Photograph,
-  Photo,
-  ManagerOutlined,
-} from "@taroify/icons";
+import { Icon, View, Text } from "@/platform/ui";
 import { InputMethod } from "../../services/types";
 import "./InputMethodTabs.less";
 
@@ -23,25 +17,25 @@ const methodConfig = [
     key: "upload" as InputMethod,
     label: "上传图片",
     subLabel: "从相册选择",
-    icon: PhotoOutlined,
+    icon: "photo-o" as const,
   },
   {
     key: "camera" as InputMethod,
     label: "拍照",
     subLabel: "实时拍摄",
-    icon: Photograph,
+    icon: "photograph" as const,
   },
   {
     key: "sample" as InputMethod,
     label: "样例图片",
     subLabel: "快速体验",
-    icon: Photo,
+    icon: "photo" as const,
   },
   {
     key: "history" as InputMethod,
     label: "历史记录",
     subLabel: "最近处理",
-    icon: ManagerOutlined,
+    icon: "manager-o" as const,
   },
 ];
 
@@ -52,7 +46,6 @@ const InputMethodTabs: React.FC<InputMethodTabsProps> = ({
   return (
     <View className="input-method-tabs">
       {methodConfig.map((method) => {
-        const Icon = method.icon;
         const isActive = activeMethod === method.key;
         return (
           <View
@@ -61,7 +54,11 @@ const InputMethodTabs: React.FC<InputMethodTabsProps> = ({
             onClick={() => onChange(method.key)}
           >
             <View className="tab-icon">
-              <Icon size="28" color={isActive ? "#3b82f6" : "#9ca3af"} />
+              <Icon
+                name={method.icon}
+                size="28"
+                color={isActive ? "#3b82f6" : "#9ca3af"}
+              />
             </View>
             <Text className="tab-label">{method.label}</Text>
             <Text className="tab-sub-label">{method.subLabel}</Text>

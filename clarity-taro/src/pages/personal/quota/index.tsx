@@ -1,5 +1,6 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import { AiBillingAPI } from "clarity-sdk-js";
 import type { BalanceVO } from "clarity-sdk-js";
 import PageLayout from "@/layout";

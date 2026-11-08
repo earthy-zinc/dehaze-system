@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -15,10 +17,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
     defaultConfig {
         // 包名与其它客户端同构：clarity-android=com.pei.clarity、clarity-react-native=com.pei.react.dehaze
         applicationId = "com.pei.flutter.dehaze"
@@ -34,6 +32,13 @@ android {
             // 需要上架时再按 flutter.dev/to/review-gradle-config 接入 keystore。
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+}
+
+// Kotlin 2.2 起 kotlinOptions DSL 废弃，统一走 compilerOptions
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 

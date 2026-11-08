@@ -1,8 +1,10 @@
+import { Image } from "@tarojs/components";
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, Image } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
-import Taro from "@tarojs/taro";
+import { View, Text } from "@/platform/ui";
 import { Button } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
+import Taro from "@tarojs/taro";
+
 import { ModelAPI } from "clarity-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
 import CompareToolbar from "@/components/compare/CompareToolbar";

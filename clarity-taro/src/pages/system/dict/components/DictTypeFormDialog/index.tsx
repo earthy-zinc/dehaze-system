@@ -1,6 +1,7 @@
+import { Input, Textarea } from "@tarojs/components";
 import React from "react";
-import { View, Text, Input, Textarea } from "@tarojs/components";
-import { Popup, Button, Switch } from "@taroify/core";
+import { View, Text, Popup } from "@/platform/ui";
+import { Button, Switch } from "@taroify/core";
 import type { DictTypeForm } from "clarity-sdk-js";
 
 interface DictTypeFormDialogProps {

@@ -1,6 +1,6 @@
+import { Image } from "@tarojs/components";
 import React, { useState, useEffect } from "react";
-import { View, Text, Image } from "@tarojs/components";
-import { Success } from "@taroify/icons";
+import { Icon, View, Text } from "@/platform/ui";
 import { DatasetItemAPI } from "clarity-sdk-js";
 
 import "./ModelSection.less";
@@ -51,7 +51,7 @@ const ModelSection: React.FC = () => {
           <View className="model-features">
             {modelFeatures.map((feature) => (
               <View key={feature.text} className="feature-item">
-                <Success size="18" color="#34d399" />
+                <Icon name="success" size="18" color="#34d399" />
                 <Text className="feature-text">{feature.text}</Text>
               </View>
             ))}

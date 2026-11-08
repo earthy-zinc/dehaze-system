@@ -1,14 +1,6 @@
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { SwipeCell, Button } from "@taroify/core";
-import {
-  Arrow,
-  PhotoOutlined,
-  CalendarOutlined,
-  Edit,
-  Delete,
-  Add,
-} from "@taroify/icons";
+import { Icon, View, Text } from "@/platform/ui";
+import { Button, SwipeCell } from "@taroify/core";
 import type { DatasetVO } from "../../services/types";
 import "./DatasetCard.less";
 
@@ -92,7 +84,8 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
               {loading ? (
                 <View className="expand-loading" />
               ) : (
-                <Arrow
+                <Icon
+                  name="arrow"
                   size="14"
                   color="#9ca3af"
                   style={{
@@ -107,7 +100,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
 
           {/* 图标占位（path 是存储路径非图片URL，不作为缩略图） */}
           <View className="card-icon">
-            <PhotoOutlined size="24" color="#9ca3af" />
+            <Icon name="photo-o" size="24" color="#9ca3af" />
           </View>
 
           <View className="card-info">
@@ -127,11 +120,11 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
             </Text>
             <View className="dataset-stats">
               <View className="stat-item">
-                <PhotoOutlined size="14" color="#9ca3af" />
+                <Icon name="photo-o" size="14" color="#9ca3af" />
                 <Text className="stat-value">{fileCount}</Text>
               </View>
               <View className="stat-item">
-                <CalendarOutlined size="14" color="#9ca3af" />
+                <Icon name="calendar-o" size="14" color="#9ca3af" />
                 <Text className="stat-value">
                   {formatDate(dataset.createTime)}
                 </Text>
@@ -150,7 +143,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
               onAddChild();
             }}
           >
-            <Add size="14" />
+            <Icon name="add" size="14" />
           </Button>
         )}
         {onEdit && (
@@ -162,7 +155,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
               onEdit();
             }}
           >
-            <Edit size="14" />
+            <Icon name="edit" size="14" />
           </Button>
         )}
         {onDelete && (
@@ -174,7 +167,7 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
               onDelete();
             }}
           >
-            <Delete size="14" />
+            <Icon name="delete" size="14" />
           </Button>
         )}
       </SwipeCell.Actions>

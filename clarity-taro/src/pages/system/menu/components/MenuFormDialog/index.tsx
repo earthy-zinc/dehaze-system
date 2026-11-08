@@ -1,6 +1,7 @@
+import { Input, ScrollView } from "@tarojs/components";
 import React from "react";
-import { View, Text, Input, ScrollView } from "@tarojs/components";
-import { Popup, Button, Switch } from "@taroify/core";
+import { View, Text, Popup } from "@/platform/ui";
+import { Button, Switch } from "@taroify/core";
 import { MenuTypeEnum } from "clarity-sdk-js";
 import type { MenuForm } from "clarity-sdk-js";
 import { MENU_TYPE_OPTIONS } from "../../constants";

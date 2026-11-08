@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text, Button } from "@tarojs/components";
+import { Icon, View, Text, Button } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Arrow } from "@taroify/icons";
 
 import "./CTASection.less";
 
@@ -16,7 +15,7 @@ const CTASection: React.FC = () => {
       <Text className="cta-subtitle">立即开始，让您的图像重获清晰</Text>
       <Button className="cta-large-btn" onClick={handleStartClick}>
         开始去雾
-        <Arrow className="cta-icon" size="16" color="#ffffff" />
+        <Icon name="arrow" className="cta-icon" size="16" color="#ffffff" />
       </Button>
     </View>
   );

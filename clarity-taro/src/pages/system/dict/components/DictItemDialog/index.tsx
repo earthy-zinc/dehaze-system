@@ -1,7 +1,6 @@
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { Popup, Button, Loading, Empty, SwipeCell, Cell } from "@taroify/core";
-import { Add, Edit, Delete } from "@taroify/icons";
+import { Icon, View, Text, Loading, Empty, Popup } from "@/platform/ui";
+import { Button, SwipeCell, Cell } from "@taroify/core";
 import type { DictPageVO } from "clarity-sdk-js";
 import StatusTag from "@/components/common/StatusTag";
 
@@ -44,7 +43,7 @@ const DictItemDialog: React.FC<DictItemDialogProps> = ({
           <Text className="item-title">字典数据 - {typeName}</Text>
           {canAdd && (
             <Button size="small" color="primary" onClick={onAdd}>
-              <Add /> 新增
+              <Icon name="add" /> 新增
             </Button>
           )}
         </View>
@@ -62,7 +61,7 @@ const DictItemDialog: React.FC<DictItemDialogProps> = ({
                 <SwipeCell.Actions side="right">
                   {canEdit && (
                     <Button size="small" onClick={() => onEdit(item.id!)}>
-                      <Edit /> 编辑
+                      <Icon name="edit" /> 编辑
                     </Button>
                   )}
                   {canDelete && (
@@ -71,7 +70,7 @@ const DictItemDialog: React.FC<DictItemDialogProps> = ({
                       size="small"
                       onClick={() => onDelete(item)}
                     >
-                      <Delete /> 删除
+                      <Icon name="delete" /> 删除
                     </Button>
                   )}
                 </SwipeCell.Actions>

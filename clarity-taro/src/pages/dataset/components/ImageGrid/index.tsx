@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { View } from "@tarojs/components";
+import { View } from "@/platform/ui";
 import ImageCard from "@/components/common/ImageCard";
 import ImageViewer from "@/components/common/ImageViewer";
 import type { ImageUrlVO } from "../../services/types";

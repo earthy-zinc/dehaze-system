@@ -1,6 +1,6 @@
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { Popup, Tag, Button, Progress } from "@taroify/core";
+import { View, Text, Tag, Popup } from "@/platform/ui";
+import { Button, Progress } from "@taroify/core";
 import type { TaskVO } from "clarity-sdk-js";
 import { formatDateTime } from "@/utils/format";
 import {

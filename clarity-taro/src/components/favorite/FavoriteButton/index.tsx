@@ -1,6 +1,5 @@
 import React from "react";
-import { View } from "@tarojs/components";
-import { Star, StarOutlined } from "@taroify/icons";
+import { Icon, View } from "@/platform/ui";
 import type { FavoriteTargetType } from "clarity-sdk-js";
 import { useFavorite } from "@/hooks/useFavorite";
 import "./index.less";
@@ -35,9 +34,9 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   return (
     <View className="favorite-button" onClick={handleTap}>
       {isFavorited ? (
-        <Star size={size} color="var(--color-warning)" />
+        <Icon name="star" size={size} color="var(--color-warning)" />
       ) : (
-        <StarOutlined size={size} color="var(--color-text-muted)" />
+        <Icon name="star-o" size={size} color="var(--color-text-muted)" />
       )}
       {showLabel && (
         <View className="fav-label">{isFavorited ? "已收藏" : "收藏"}</View>

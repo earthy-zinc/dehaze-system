@@ -1,15 +1,11 @@
+import { syncStorage } from "@/utils/storage";
+import { Image, ScrollView, Slider, Canvas } from "@tarojs/components";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  Slider,
-  Canvas,
-} from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
-import Taro from "@tarojs/taro";
+import { View, Text } from "@/platform/ui";
 import { Button } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
+import Taro from "@tarojs/taro";
+
 import { ModelAPI } from "clarity-sdk-js";
 import ImmersiveLayout from "@/layout/immersive";
 import { isH5 } from "@/utils/platform";
@@ -137,7 +133,7 @@ const FilterPage: React.FC = () => {
   useEffect(() => {
     // 加载自定义预设
     try {
-      const stored = Taro.getStorageSync(CUSTOM_PRESETS_KEY);
+      const stored = syncStorage.get<string>(CUSTOM_PRESETS_KEY);
       if (stored) setCustomPresets(JSON.parse(stored));
     } catch {
       /* ignore */
@@ -298,7 +294,7 @@ const FilterPage: React.FC = () => {
           const newPreset = { name, params };
           const updated = [...customPresets, newPreset];
           setCustomPresets(updated);
-          Taro.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(updated));
+          syncStorage.set(CUSTOM_PRESETS_KEY, JSON.stringify(updated));
           Taro.showToast({ title: "预设已保存", icon: "success" });
         }
       },
@@ -315,7 +311,7 @@ const FilterPage: React.FC = () => {
           if (res.confirm) {
             const updated = customPresets.filter((_, i) => i !== index);
             setCustomPresets(updated);
-            Taro.setStorageSync(CUSTOM_PRESETS_KEY, JSON.stringify(updated));
+            syncStorage.set(CUSTOM_PRESETS_KEY, JSON.stringify(updated));
             Taro.showToast({ title: "已删除", icon: "success" });
           }
         },

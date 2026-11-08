@@ -1,8 +1,9 @@
+import { Image, ScrollView } from "@tarojs/components";
 import React, { useState } from "react";
-import { View, Image, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Tag } from "@/platform/ui";
+import { Button, Progress, Skeleton } from "@taroify/core";
 import Taro from "@tarojs/taro";
-import { Photograph, Star } from "@taroify/icons";
-import { Button, Tag, Progress, Skeleton } from "@taroify/core";
+
 import { RecommendationAPI } from "clarity-sdk-js";
 import type { ImageFeatureAnalysis, RecommendedModelVO } from "clarity-sdk-js";
 import "./index.less";
@@ -137,7 +138,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
           </Text>
         </View>
         <View className="rec-empty-area" onClick={handleChooseImage}>
-          <Photograph size="48" color="var(--color-text-muted)" />
+          <Icon name="photograph" size="48" color="var(--color-text-muted)" />
           <Text className="rec-empty-text">点击选择图片</Text>
         </View>
       </View>
@@ -162,7 +163,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
             onClick={handleChooseImage}
             className="rec-action-btn"
           >
-            <Photograph size="14" color="var(--color-primary)" />
+            <Icon name="photograph" size="14" color="var(--color-primary)" />
             <Text className="rec-action-text">换图</Text>
           </Button>
           {!analysis && !analyzing && (
@@ -172,7 +173,7 @@ const RecommendationWidget: React.FC<RecommendationWidgetProps> = ({
               onClick={handleAnalyze}
               className="rec-action-btn"
             >
-              <Star size="14" color="var(--color-text-inverse)" />
+              <Icon name="star" size="14" color="var(--color-text-inverse)" />
               <Text className="rec-action-text">开始分析</Text>
             </Button>
           )}

@@ -2,8 +2,8 @@
  * 通用状态标签组件
  * status=1 → 启用（success），其他 → 禁用（danger）
  */
+import { Tag } from "@/platform/ui";
 import React from "react";
-import { Tag } from "@taroify/core";
 
 interface StatusTagProps {
   status?: number;

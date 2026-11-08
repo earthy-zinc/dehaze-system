@@ -3,18 +3,11 @@
  *
  * 按 05 规划 2.3：上传 → 模型选择 → 参数调节 → 处理 → 对比（页内步骤流）
  */
+import { Image, Slider, Input, ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-  View,
-  Text,
-  Image,
-  Button,
-  Slider,
-  Input,
-  ScrollView,
-} from "@tarojs/components";
+import { Icon, View, Text, Button } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { PhotoOutlined, Search, Arrow } from "@taroify/icons";
+
 import PageLayout from "@/layout";
 import { AiImageAPI, ModelAPI } from "clarity-sdk-js";
 import type { AiModelVO, ImageTaskResponse, PresetVO } from "clarity-sdk-js";
@@ -356,7 +349,7 @@ const DehazePage: React.FC = () => {
           />
         ) : (
           <View className="dehaze-upload-placeholder">
-            <PhotoOutlined size="48" color="#9ca3af" />
+            <Icon name="photo-o" size="48" color="#9ca3af" />
             <Text className="dehaze-upload-text">点击选择图片</Text>
             <Text className="dehaze-upload-hint">支持相册或拍照</Text>
           </View>
@@ -380,7 +373,7 @@ const DehazePage: React.FC = () => {
           disabled={!currentImage}
         >
           下一步：选择模型
-          <Arrow size="14" color="#fff" />
+          <Icon name="arrow" size="14" color="#fff" />
         </Button>
       </View>
     </View>
@@ -390,7 +383,7 @@ const DehazePage: React.FC = () => {
   const renderModelSelect = () => (
     <View className="dehaze-step-content">
       <View className="dehaze-algo-search">
-        <Search size="16" color="#9ca3af" />
+        <Icon name="search" size="16" color="#9ca3af" />
         <Input
           className="dehaze-algo-search-input"
           placeholder="搜索模型..."
@@ -431,7 +424,7 @@ const DehazePage: React.FC = () => {
           disabled={!selectedModel}
         >
           下一步：调节参数
-          <Arrow size="14" color="#fff" />
+          <Icon name="arrow" size="14" color="#fff" />
         </Button>
       </View>
     </View>
@@ -549,7 +542,7 @@ const DehazePage: React.FC = () => {
           onClick={handleProcess}
         >
           开始去雾
-          <Arrow size="14" color="#fff" />
+          <Icon name="arrow" size="14" color="#fff" />
         </Button>
       </View>
     </View>
@@ -598,7 +591,7 @@ const DehazePage: React.FC = () => {
               onClick={handleGoCompare}
             >
               进入效果对比
-              <Arrow size="14" color="#fff" />
+              <Icon name="arrow" size="14" color="#fff" />
             </Button>
             <View
               className="dehaze-btn dehaze-btn-secondary"
@@ -650,7 +643,7 @@ const DehazePage: React.FC = () => {
             onClick={handleGoCompare}
           >
             进入效果对比
-            <Arrow size="14" color="#fff" />
+            <Icon name="arrow" size="14" color="#fff" />
           </Button>
           <View
             className="dehaze-btn dehaze-btn-secondary"

@@ -3,10 +3,10 @@
  * 公开/共享浏览：数据集列表、详情查看、图片浏览
  * 无创建/编辑/删除管理操作
  */
+import { ScrollView, Text as TaroText } from "@tarojs/components";
 import React, { useEffect, useState } from "react";
-import { View, ScrollView, Text as TaroText } from "@tarojs/components";
+import { Icon, View } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Arrow } from "@taroify/icons";
 
 import SearchBar from "@/components/common/SearchBar";
 import FilterTabs from "@/components/common/FilterTabs";
@@ -193,7 +193,7 @@ const DatasetBrowseContent: React.FC = () => {
         <View className="detail-view">
           <View className="back-section">
             <View className="back-btn" onClick={handleBackToList}>
-              <Arrow />
+              <Icon name="arrow" />
               <View className="back-text">返回列表</View>
             </View>
           </View>

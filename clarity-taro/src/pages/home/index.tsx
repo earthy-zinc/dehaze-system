@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "@tarojs/components";
+import { View } from "@/platform/ui";
 
 import PageLayout from "@/layout";
 import HeroSection from "./components/HeroSection";

@@ -1,23 +1,15 @@
 import React, { useState } from "react";
-import { View } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
+import { Icon, View, Loading, Empty } from "@/platform/ui";
+import { Button, Navbar, Search, SwipeCell, Cell } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
 import Taro, {
   useLoad,
   usePullDownRefresh,
   useReachBottom,
 } from "@tarojs/taro";
-import {
-  Navbar,
-  Search,
-  Button,
-  Loading,
-  Empty,
-  SwipeCell,
-  Cell,
-} from "@taroify/core";
 import { confirmDialog } from "@/utils/dialog";
 import { formatDateTime } from "@/utils/format";
-import { ArrowLeft, Add, Edit, Delete, Lock } from "@taroify/icons";
+
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { RolePageVO } from "clarity-sdk-js";
@@ -127,10 +119,12 @@ const RoleListPage: React.FC = () => {
     <View className="role-list-page">
       <Navbar title="角色管理">
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission("sys:role:add") && <Add onClick={handleAdd} />}
+          {hasPermission("sys:role:add") && (
+            <Icon name="add" onClick={handleAdd} />
+          )}
         </Navbar.NavRight>
       </Navbar>
 
@@ -176,7 +170,7 @@ const RoleListPage: React.FC = () => {
                     size="small"
                     onClick={() => handlePermission(role.id)}
                   >
-                    <Lock />
+                    <Icon name="lock" />
                     权限
                   </Button>
                 )}
@@ -186,7 +180,7 @@ const RoleListPage: React.FC = () => {
                     size="small"
                     onClick={() => handleEdit(role.id)}
                   >
-                    <Edit />
+                    <Icon name="edit" />
                     编辑
                   </Button>
                 )}
@@ -196,7 +190,7 @@ const RoleListPage: React.FC = () => {
                     size="small"
                     onClick={() => handleDelete(role)}
                   >
-                    <Delete />
+                    <Icon name="delete" />
                     删除
                   </Button>
                 )}

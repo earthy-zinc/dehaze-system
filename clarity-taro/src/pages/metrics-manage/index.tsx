@@ -3,11 +3,11 @@
  * 评估指标历史列表 + 筛选 + 多选对比
  * 与 L3 compare/metrics 的区别：这里是管理视角（列表+筛选+对比表格）
  */
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useCallback, useMemo } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Loading, Tag } from "@/platform/ui";
+import { Button, Navbar } from "@taroify/core";
 import Taro, { useLoad } from "@tarojs/taro";
-import { Navbar, Button, Loading, Tag } from "@taroify/core";
-import { ArrowLeft } from "@taroify/icons";
 import { ModelAPI } from "clarity-sdk-js";
 import type { EvalMetricsVO, EvalTaskStatus } from "clarity-sdk-js";
 import ErrorState from "@/components/common/ErrorState";
@@ -114,7 +114,7 @@ const MetricsManagePage: React.FC = () => {
     <View className="metrics-manage-page">
       <Navbar title="指标管理">
         <Navbar.NavLeft>
-          <ArrowLeft />
+          <Icon name="arrow-left" />
         </Navbar.NavLeft>
       </Navbar>
 

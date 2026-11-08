@@ -16,6 +16,20 @@ export default defineConfig(({ mode }) => {
   const apiHost = env.VITE_API_HOST || "http://127.0.0.1:8989";
 
   return {
+    resolve: {
+      alias: [
+        // 源码直连：SDK 以 TS 源码参与编译与类型检查，改 SDK 不再需要先 build 产物。
+        // 精确匹配包名，避免把未来可能的子路径导入一并吞掉（@ 别名由 uni 插件注入，不动）。
+        {
+          find: /^clarity-sdk-js$/,
+          replacement: path.resolve(__dirname, "../clarity-sdk-js/index.ts"),
+        },
+      ],
+    },
+    optimizeDeps: {
+      // SDK 走源码，不进预构建，改源码直接走 HMR
+      exclude: ["clarity-sdk-js"],
+    },
     plugins: [
       uni(),
       createSvgIconsPlugin({

@@ -1,5 +1,6 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import { FileAPI } from "clarity-sdk-js";
 import type { FileInfo } from "clarity-sdk-js";

@@ -1,10 +1,10 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState } from "react";
-import { View, ScrollView } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
+import { Icon, View, Loading, Empty } from "@/platform/ui";
+import { Button, Navbar, Search } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
 import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
 import { confirmDialog } from "@/utils/dialog";
-import { Navbar, Search, Button, Loading, Empty } from "@taroify/core";
-import { ArrowLeft, Add } from "@taroify/icons";
 import { useMenuManagement } from "@/hooks/useMenuManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { MenuVO, MenuForm } from "clarity-sdk-js";
@@ -221,10 +221,12 @@ const MenuPage: React.FC = () => {
     <View className="menu-page">
       <Navbar title="菜单管理">
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission("sys:menu:add") && <Add onClick={handleAdd} />}
+          {hasPermission("sys:menu:add") && (
+            <Icon name="add" onClick={handleAdd} />
+          )}
         </Navbar.NavRight>
       </Navbar>
 

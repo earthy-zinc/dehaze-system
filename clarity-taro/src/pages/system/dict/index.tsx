@@ -1,22 +1,14 @@
 import React, { useState } from "react";
-import { View } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
+import { Icon, View, Loading, Empty } from "@/platform/ui";
+import { Button, Navbar, Search, SwipeCell, Cell } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
 import Taro, {
   useLoad,
   usePullDownRefresh,
   useReachBottom,
 } from "@tarojs/taro";
-import {
-  Navbar,
-  Search,
-  Button,
-  Loading,
-  Empty,
-  SwipeCell,
-  Cell,
-} from "@taroify/core";
 import { confirmDialog } from "@/utils/dialog";
-import { ArrowLeft, Add, Edit, Delete, SettingOutlined } from "@taroify/icons";
+
 import { useDictManagement } from "@/hooks/useDictManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type {
@@ -275,11 +267,11 @@ const DictPage: React.FC = () => {
     <View className="dict-page">
       <Navbar title="字典管理">
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
           {hasPermission("sys:dict:type:add") && (
-            <Add onClick={handleAddType} />
+            <Icon name="add" onClick={handleAddType} />
           )}
         </Navbar.NavRight>
       </Navbar>
@@ -318,7 +310,7 @@ const DictPage: React.FC = () => {
                   size="small"
                   onClick={() => handleManageItems(dictType)}
                 >
-                  <SettingOutlined />
+                  <Icon name="setting-o" />
                   数据
                 </Button>
                 {hasPermission("sys:dict:type:edit") && (
@@ -327,7 +319,7 @@ const DictPage: React.FC = () => {
                     size="small"
                     onClick={() => handleEditType(dictType.id)}
                   >
-                    <Edit />
+                    <Icon name="edit" />
                     编辑
                   </Button>
                 )}
@@ -337,7 +329,7 @@ const DictPage: React.FC = () => {
                     size="small"
                     onClick={() => handleDeleteType(dictType)}
                   >
-                    <Delete />
+                    <Icon name="delete" />
                     删除
                   </Button>
                 )}

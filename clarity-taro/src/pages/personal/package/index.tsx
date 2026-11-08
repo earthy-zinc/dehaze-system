@@ -1,7 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Gift } from "@taroify/icons";
+
 import { PackageAPI } from "clarity-sdk-js";
 import type { PackageDetailVO } from "clarity-sdk-js";
 import PageLayout from "@/layout";
@@ -79,7 +80,7 @@ const PackagePage: React.FC = () => {
                 <View key={pkg.id} className="package-card">
                   {pkg.name.includes("热门") && (
                     <View className="popular-badge">
-                      <Gift size="12" color="#ffffff" />
+                      <Icon name="gift" size="12" color="#ffffff" />
                       <Text className="popular-text">热门推荐</Text>
                     </View>
                   )}

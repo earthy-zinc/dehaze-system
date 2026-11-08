@@ -1,7 +1,8 @@
+import { Input } from "@tarojs/components";
 import React, { useState, useCallback, useRef } from "react";
-import { View, Input } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
-import { Search } from "@taroify/icons";
+import { Icon, View } from "@/platform/ui";
+import type { BaseEventOrig } from "@/platform/ui";
+
 import "./SearchBar.less";
 
 interface SearchBarProps {
@@ -61,7 +62,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <View className={`search-bar ${className}`}>
       <View className="search-input-wrapper">
-        <Search className="search-icon" size="20" color="#9ca3af" />
+        <Icon name="search" className="search-icon" size="20" color="#9ca3af" />
         <Input
           className="search-input"
           placeholder={placeholder}

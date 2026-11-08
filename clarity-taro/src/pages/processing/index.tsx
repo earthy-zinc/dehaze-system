@@ -1,5 +1,6 @@
+import { Image, Slider, ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, Image, Slider, ScrollView } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import CompareNavbar from "@/components/compare/CompareNavbar";
 import { AiImageAPI, ModelAPI } from "clarity-sdk-js";

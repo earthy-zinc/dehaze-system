@@ -2,6 +2,55 @@ import Taro from "@tarojs/taro";
 import { CacheEnum } from "@/enums/CacheEnum";
 import { SESSION_KEY, type UserInfo } from "clarity-sdk-js";
 
+// Taro 的 Sync 存储 API 在 RN 端没有实现（会弹「暂不支持」警告）。
+// RN 改为「内存缓存 + 异步持久化」：读走缓存，写同时更新缓存并异步落盘。
+// 冷启动第一次读可能为空，需要恢复登录态时由 preload 预载一次。
+const isRN = process.env.TARO_ENV === "rn";
+const syncCache = new Map<string, string | null>();
+
+/** 启动时调用，把需要同步读取的 key 预热进内存 */
+export async function preloadSyncKeys(keys: string[]): Promise<void> {
+  if (!isRN) return;
+  await Promise.all(
+    keys.map(async (key) => {
+      try {
+        const result = await Taro.getStorage({ key });
+        syncCache.set(key, (result.data as string) ?? null);
+      } catch {
+        syncCache.set(key, null);
+      }
+    })
+  );
+}
+
+/** 通用同步读写：小程序 / H5 走 Taro，RN 走内存缓存 + 异步落盘 */
+export const syncStorage = {
+  get<T = string>(key: string): T | null {
+    try {
+      if (isRN) return (syncCache.get(key) ?? null) as T | null;
+      return (Taro.getStorageSync(key) as T) || null;
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string): void {
+    if (isRN) {
+      syncCache.set(key, value);
+      void Taro.setStorage({ key, data: value });
+      return;
+    }
+    Taro.setStorageSync(key, value);
+  },
+  remove(key: string): void {
+    if (isRN) {
+      syncCache.delete(key);
+      void Taro.removeStorage({ key });
+      return;
+    }
+    Taro.removeStorageSync(key);
+  },
+};
+
 class StorageManager {
   async setItem<T>(key: string, value: T, expire?: number): Promise<void> {
     try {
@@ -53,11 +102,17 @@ class StorageManager {
   }
 
   setSessionId(sessionId: string): void {
+    if (isRN) {
+      syncCache.set(SESSION_KEY, sessionId);
+      void Taro.setStorage({ key: SESSION_KEY, data: sessionId });
+      return;
+    }
     Taro.setStorageSync(SESSION_KEY, sessionId);
   }
 
   getSessionId(): string | null {
     try {
+      if (isRN) return syncCache.get(SESSION_KEY) ?? null;
       return Taro.getStorageSync(SESSION_KEY) || null;
     } catch {
       return null;
@@ -66,6 +121,11 @@ class StorageManager {
 
   removeSessionId(): void {
     try {
+      if (isRN) {
+        syncCache.delete(SESSION_KEY);
+        void Taro.removeStorage({ key: SESSION_KEY });
+        return;
+      }
       Taro.removeStorageSync(SESSION_KEY);
     } catch (error) {
       console.error("删除SessionId失败:", error);
@@ -99,6 +159,18 @@ class StorageManager {
   }
 
   clearAuth(): void {
+    if (isRN) {
+      [
+        SESSION_KEY,
+        CacheEnum.USER_INFO,
+        CacheEnum.PERMS,
+        CacheEnum.ROLES,
+      ].forEach((key) => {
+        syncCache.delete(key);
+        void Taro.removeStorage({ key });
+      });
+      return;
+    }
     Taro.removeStorageSync(SESSION_KEY);
     Taro.removeStorageSync(CacheEnum.USER_INFO);
     Taro.removeStorageSync(CacheEnum.PERMS);

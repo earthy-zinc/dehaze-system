@@ -5,9 +5,9 @@
  * L2（二级功能页）：返回按钮 + 居中页面标题 + 右侧操作区
  */
 import React from "react";
-import { View, Text } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Search, ArrowLeft } from "@taroify/icons";
+
 import { useStatusBarHeight } from "@/hooks/useLayout";
 import "./index.less";
 
@@ -63,7 +63,7 @@ const AppNavbar: React.FC<AppNavbarProps> = ({
     if (level === "L1" && isHome) {
       return (
         <View className="action-btn" onClick={handleSearch}>
-          <Search size="18" color="#374151" />
+          <Icon name="search" size="18" color="#374151" />
         </View>
       );
     }
@@ -84,7 +84,7 @@ const AppNavbar: React.FC<AppNavbarProps> = ({
         {/* L2：返回 */}
         {level === "L2" ? (
           <View className="navbar-back" onClick={goBack}>
-            <ArrowLeft size="18" color="#374151" />
+            <Icon name="arrow-left" size="18" color="#374151" />
           </View>
         ) : isHome ? (
           /* L1 首页：品牌标识（点击回首页）+ Tab 标题 */

@@ -1,9 +1,14 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text, Tag, Loading, Empty, Popup } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Tag, Loading, Empty, Popup, Input } from "@taroify/core";
+import { Input } from "@taroify/core";
 import { PackageAPI } from "clarity-sdk-js";
-import type { PackagePageVO, PackageQuery, PackageStatus } from "clarity-sdk-js";
+import type {
+  PackagePageVO,
+  PackageQuery,
+  PackageStatus,
+} from "clarity-sdk-js";
 import PageLayout from "@/layout";
 import { usePermission } from "@/hooks/usePermission";
 import { getErrorMessage } from "@/utils/error";

@@ -3,9 +3,7 @@
  */
 
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { Plus, PhotoOutlined } from "@taroify/icons";
-import { Loading } from "@taroify/core";
+import { Icon, View, Text, Loading } from "@/platform/ui";
 import "./UploadArea.less";
 
 interface UploadAreaProps {
@@ -39,11 +37,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         ) : (
           <>
             <View className="upload-icon">
-              <PhotoOutlined size="48" color="#9ca3af" />
+              <Icon name="photo-o" size="48" color="#9ca3af" />
             </View>
             <View className="upload-content">
               <View className="upload-btn">
-                <Plus size="16" />
+                <Icon name="plus" size="16" />
                 <Text>点击上传图片</Text>
               </View>
               <Text className="upload-hint">仅支持 JPG、PNG、WEBP 格式</Text>

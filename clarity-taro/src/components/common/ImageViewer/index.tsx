@@ -1,7 +1,8 @@
+import { Image } from "@tarojs/components";
 import React, { useEffect } from "react";
-import { View, Image, Text } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
-import { Close } from "@taroify/icons";
+import { Icon, View, Text } from "@/platform/ui";
+import type { BaseEventOrig } from "@/platform/ui";
+
 import { getImageTypeLabel } from "@/pages/dataset/services/imageUtils";
 import { formatFileSize, formatHazeLevel } from "@/utils/format";
 import "./ImageViewer.less";
@@ -65,7 +66,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
     <View className="image-viewer" onClick={handleMaskClick}>
       <View className="viewer-container">
         <View className="close-btn" onClick={onClose}>
-          <Close size="24" color="white" />
+          <Icon name="close" size="24" color="white" />
         </View>
 
         <View className="image-container">

@@ -13,9 +13,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "sourceMap": true,
-    "rootDir": ".",
+    // SDK 源码直连后公共源目录是仓库根（clarity-taro 的上一级），必须显式声明 rootDir，
+    // 否则 TS 会报「common source directory is '..'」；本仓只用 tsc --noEmit 检查，不实际 emit
+    "rootDir": "..",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "clarity-sdk-js": ["../clarity-sdk-js/index.ts"]
     },
     "jsx": "react-jsx",
     "allowJs": true,

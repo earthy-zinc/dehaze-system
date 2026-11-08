@@ -4,9 +4,7 @@
  */
 
 import React, { useEffect } from "react";
-import { View, Text } from "@tarojs/components";
-import { Fire } from "@taroify/icons";
-
+import { Icon, View, Text } from "@/platform/ui";
 // 组件导入
 import InputMethodTabs from "./components/InputMethodTabs";
 import UploadArea from "./components/UploadArea";
@@ -118,7 +116,7 @@ const ImageInputContent: React.FC = () => {
       <View className="quick-start-card" onClick={handleQuickStart}>
         <View className="quick-start-content">
           <View className="quick-start-icon">
-            <Fire size="24" color="white" />
+            <Icon name="fire" size="24" color="white" />
           </View>
           <View className="quick-start-text">
             <Text className="quick-title">快速体验</Text>

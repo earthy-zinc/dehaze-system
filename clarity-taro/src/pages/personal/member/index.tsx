@@ -1,7 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Star, Gift } from "@taroify/icons";
+
 import { MemberAPI } from "clarity-sdk-js";
 import type {
   MemberProfileVO,
@@ -112,7 +113,7 @@ const MemberPage: React.FC = () => {
             <View className="growth-section">
               <View className="growth-header">
                 <View className="growth-left">
-                  <Star size="14" color="#f59e0b" />
+                  <Icon name="star" size="14" color="#f59e0b" />
                   <Text className="growth-label">成长值</Text>
                 </View>
                 <Text className="growth-value">{growthValue}</Text>
@@ -134,7 +135,7 @@ const MemberPage: React.FC = () => {
           {/* 月度用量统计 */}
           <View className="usage-section">
             <View className="section-header">
-              <Star size="16" color="#3b82f6" />
+              <Icon name="star" size="16" color="#3b82f6" />
               <Text className="section-title">本月用量</Text>
             </View>
             <View className="usage-row">
@@ -157,7 +158,7 @@ const MemberPage: React.FC = () => {
           {benefitItems.length > 0 && (
             <View className="benefits-section">
               <View className="section-header">
-                <Gift size="16" color="#3b82f6" />
+                <Icon name="gift" size="16" color="#3b82f6" />
                 <Text className="section-title">会员权益</Text>
               </View>
               <View className="benefits-grid">
@@ -184,14 +185,14 @@ const MemberPage: React.FC = () => {
           {growthLogs.length > 0 && (
             <View className="growth-log-section">
               <View className="section-header">
-                <Star size="16" color="#f59e0b" />
+                <Icon name="star" size="16" color="#f59e0b" />
                 <Text className="section-title">成长记录</Text>
               </View>
               <View className="growth-log-list">
                 {growthLogs.slice(0, 5).map((log) => (
                   <View key={log.id} className="log-item">
                     <View className="log-icon">
-                      <Star size="12" color="#f59e0b" />
+                      <Icon name="star" size="12" color="#f59e0b" />
                     </View>
                     <View className="log-content">
                       <Text className="log-desc">

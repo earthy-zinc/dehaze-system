@@ -1,8 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Tag, Loading, Empty, Popup } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { Popup, Input, Switch, Tag, Loading, Empty } from "@taroify/core";
-import { Plus, Edit, Delete } from "@taroify/icons";
+import { Input, Switch } from "@taroify/core";
 import { RecommendationAPI } from "clarity-sdk-js";
 import type { RecommendationRule } from "clarity-sdk-js";
 import PageLayout from "@/layout";
@@ -156,7 +156,7 @@ const RecommendManagePage: React.FC = () => {
           </View>
           {canEdit && (
             <View className="stat-item create-stat">
-              <Plus size="20" color="#3b82f6" />
+              <Icon name="plus" size="20" color="#3b82f6" />
               <Text className="stat-label">规则列表</Text>
             </View>
           )}
@@ -211,14 +211,14 @@ const RecommendManagePage: React.FC = () => {
                       className="action-edit"
                       onClick={() => handleEdit(rule)}
                     >
-                      <Edit size="14" color="#3b82f6" />
+                      <Icon name="edit" size="14" color="#3b82f6" />
                       <Text className="action-text">编辑</Text>
                     </View>
                     <View
                       className="action-delete"
                       onClick={() => handleDelete(rule)}
                     >
-                      <Delete size="14" color="#ef4444" />
+                      <Icon name="delete" size="14" color="#ef4444" />
                       <Text className="action-text">删除</Text>
                     </View>
                   </View>

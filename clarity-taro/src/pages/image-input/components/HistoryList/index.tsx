@@ -2,10 +2,10 @@
  * 历史记录组件
  */
 
+import { Image } from "@tarojs/components";
 import React from "react";
-import { View, Text, Image } from "@tarojs/components";
-import { SwipeCell, Button, Loading } from "@taroify/core";
-import { Arrow, DeleteOutlined } from "@taroify/icons";
+import { Icon, View, Text, Loading } from "@/platform/ui";
+import { Button, SwipeCell } from "@taroify/core";
 import EmptyState from "@/components/common/EmptyState";
 import type { InputHistoryVO } from "clarity-sdk-js";
 import { groupHistoryByDate, formatTimestamp } from "../../services/history";
@@ -60,7 +60,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       <View className="history-header">
         <Text className="header-title">最近处理的图片</Text>
         <View className="clear-btn" onClick={onClear}>
-          <DeleteOutlined size="14" />
+          <Icon name="delete-o" size="14" />
           <Text>清空</Text>
         </View>
       </View>
@@ -115,7 +115,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
                       )}
                     </View>
                     <View className="item-arrow">
-                      <Arrow size="16" color="#9ca3af" />
+                      <Icon name="arrow" size="16" color="#9ca3af" />
                     </View>
                   </View>
                   <SwipeCell.Actions side="right">

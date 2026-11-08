@@ -7,9 +7,9 @@
  * - 内容区全屏沉浸，无全局导航/TabBar
  */
 import React from "react";
-import { View, Text } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+
 import "./index.less";
 
 interface ImmersiveLayoutProps {
@@ -38,7 +38,7 @@ const ImmersiveLayout: React.FC<ImmersiveLayoutProps> = ({
       {/* 顶部深色半透明导航栏 */}
       <View className="immersive-navbar">
         <View className="navbar-back" onClick={goBack}>
-          <ArrowLeft size="20" color="#fff" />
+          <Icon name="arrow-left" size="20" color="#fff" />
         </View>
         <Text className="navbar-title">{title}</Text>
         <View className="navbar-actions">{rightActions}</View>

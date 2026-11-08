@@ -53,5 +53,9 @@ module.exports = {
     ".prettierrc.cjs",
     ".stylelintrc.cjs",
     "jest.config.js",
+    // RN 构建的配置与 postcss 插件由 Metro 直接以 CommonJS 加载，不走 babel
+    "metro.config.js",
+    "index.js",
+    "plugins/",
   ],
 };

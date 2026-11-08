@@ -2,11 +2,11 @@
  * 批量处理页面（L2）
  * 批量上传图片 → 选择模型 → 逐张提交 → 进度追踪 → 结果查看
  */
+import { Image, ScrollView } from "@tarojs/components";
 import React, { useState, useCallback } from "react";
-import { View, Text, Image, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Loading } from "@/platform/ui";
+import { Button, Navbar, Progress } from "@taroify/core";
 import Taro, { useLoad } from "@tarojs/taro";
-import { Navbar, Button, Loading, Progress } from "@taroify/core";
-import { ArrowLeft, Plus, Cross } from "@taroify/icons";
 import { AiImageAPI, MemberAPI } from "clarity-sdk-js";
 import type { AiModelVO } from "clarity-sdk-js";
 import { getErrorMessage } from "@/utils/error";
@@ -199,7 +199,7 @@ const BatchPage: React.FC = () => {
     <View className="batch-page">
       <Navbar title="批量处理">
         <Navbar.NavLeft>
-          <ArrowLeft />
+          <Icon name="arrow-left" />
         </Navbar.NavLeft>
       </Navbar>
 
@@ -223,7 +223,7 @@ const BatchPage: React.FC = () => {
                   className="image-remove"
                   onClick={() => removeImage(img.id)}
                 >
-                  <Cross size="12" color="#fff" />
+                  <Icon name="cross" size="12" color="#fff" />
                 </View>
                 {img.status === "processing" && (
                   <View className="image-status processing">
@@ -245,7 +245,7 @@ const BatchPage: React.FC = () => {
 
             {images.length < maxImages && (
               <View className="image-add" onClick={handleChooseImages}>
-                <Plus size="32" color="#3b82f6" />
+                <Icon name="plus" size="32" color="#3b82f6" />
                 <Text className="add-text">添加图片</Text>
               </View>
             )}

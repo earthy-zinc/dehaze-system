@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text } from "@tarojs/components";
-import {
-  Fire,
-  PhoneOutlined,
-  BulbOutlined,
-  ChartTrendingOutlined,
-} from "@taroify/icons";
+import { Icon, View, Text } from "@/platform/ui";
 import { AiModelAPI } from "clarity-sdk-js";
 
 import "./TechSpecs.less";
@@ -56,25 +50,25 @@ const TechSpecs: React.FC = () => {
 
   const specs = [
     {
-      icon: <Fire size="28" color="#ffffff" />,
+      icon: <Icon name="fire" size="28" color="#ffffff" />,
       title: "高性能",
       value: "实时",
       description: "后端 GPU 加速去雾处理",
     },
     {
-      icon: <PhoneOutlined size="28" color="#ffffff" />,
+      icon: <Icon name="phone-o" size="28" color="#ffffff" />,
       title: "全平台",
       value: "H5·小程序",
       description: "适配手机、平板、桌面浏览器",
     },
     {
-      icon: <BulbOutlined size="28" color="#ffffff" />,
+      icon: <Icon name="bulb-o" size="28" color="#ffffff" />,
       title: "智能模型",
       value: modelCount === null ? "-" : `${modelCount}`,
       description: "支持多种先进去雾模型",
     },
     {
-      icon: <ChartTrendingOutlined size="28" color="#ffffff" />,
+      icon: <Icon name="chart-trending-o" size="28" color="#ffffff" />,
       title: "专业评估",
       value: "多维",
       description: "PSNR / SSIM 等定量指标",

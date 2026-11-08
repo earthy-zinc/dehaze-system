@@ -1,0 +1,16 @@
+export { default as View } from "./View";
+export { default as Text } from "./Text";
+export { default as Button } from "./Button";
+export { default as Icon } from "./Icon";
+export { default as Tag } from "./Tag";
+export { default as Loading } from "./Loading";
+export { default as Empty } from "./Empty";
+export { default as Popup } from "./Popup";
+export type { ButtonProps } from "./button-shared";
+export type { IconProps } from "./icon-shared";
+export type { IconName } from "./icon-map";
+export type { TagProps } from "./tag-shared";
+export type { LoadingProps } from "./loading-shared";
+export type { EmptyProps } from "./empty-shared";
+export type { PopupProps } from "./popup-shared";
+export type { BaseEventOrig, ITouchEvent } from "@tarojs/components";

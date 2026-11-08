@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "@tarojs/components";
+import { View } from "@/platform/ui";
 import { Loading as TaroLoading } from "@taroify/core";
 import "./Loading.less";
 

@@ -1,7 +1,7 @@
+import { Input, Textarea } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, Input, Textarea } from "@tarojs/components";
-import { Popup, Button, Switch, Cell } from "@taroify/core";
-import { Arrow } from "@taroify/icons";
+import { Icon, View, Text, Popup } from "@/platform/ui";
+import { Button, Switch, Cell } from "@taroify/core";
 import type { DatasetVO, OptionType } from "clarity-sdk-js";
 import "./index.less";
 
@@ -120,7 +120,7 @@ const DatasetFormDialog: React.FC<DatasetFormDialogProps> = ({
           {/* 父级数据集 */}
           <Cell
             title="上级数据集"
-            rightIcon={<Arrow size="16" color="#9ca3af" />}
+            rightIcon={<Icon name="arrow" size="16" color="#9ca3af" />}
             onClick={() => setShowParentSelect(true)}
           >
             <Text className="cell-value">

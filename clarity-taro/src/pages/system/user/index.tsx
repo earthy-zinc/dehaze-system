@@ -1,16 +1,8 @@
 import React, { useState } from "react";
-import { View } from "@tarojs/components";
-import type { BaseEventOrig } from "@tarojs/components";
+import { Icon, View, Loading, Empty } from "@/platform/ui";
+import { Button, Navbar, Search, PullRefresh } from "@taroify/core";
+import type { BaseEventOrig } from "@/platform/ui";
 import Taro, { useLoad, usePageScroll } from "@tarojs/taro";
-import {
-  Navbar,
-  Search,
-  Button,
-  Loading,
-  Empty,
-  PullRefresh,
-} from "@taroify/core";
-import { Plus } from "@taroify/icons";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { UserPageVO } from "clarity-sdk-js";
@@ -146,7 +138,7 @@ const UserListPage: React.FC = () => {
         <Navbar.NavRight>
           {hasPermission("sys:user:add") && (
             <Button size="small" color="primary" onClick={handleAddUser}>
-              <Plus /> 新增
+              <Icon name="plus" /> 新增
             </Button>
           )}
         </Navbar.NavRight>

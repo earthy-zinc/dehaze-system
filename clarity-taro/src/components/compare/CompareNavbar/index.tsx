@@ -2,9 +2,9 @@
  * 对比页面通用顶部导航栏
  */
 import React from "react";
-import { View, Text } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import { ArrowLeft } from "@taroify/icons";
+
 import "./index.less";
 
 interface CompareNavbarProps {
@@ -15,7 +15,7 @@ const CompareNavbar: React.FC<CompareNavbarProps> = ({ title }) => {
   return (
     <View className="navbar">
       <View className="nav-back" onClick={() => Taro.navigateBack()}>
-        <ArrowLeft size="20" color="#333" />
+        <Icon name="arrow-left" size="20" color="#333" />
       </View>
       <Text className="nav-title">{title}</Text>
     </View>

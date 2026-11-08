@@ -1,19 +1,16 @@
 import React, { useState } from "react";
-import { View } from "@tarojs/components";
-import Taro, { useRouter, useLoad } from "@tarojs/taro";
+import { Icon, View, Loading, Popup } from "@/platform/ui";
 import {
+  Button,
   Navbar,
   Form,
   Input,
   Radio,
-  Button,
-  Loading,
   Cell,
   Picker,
-  Popup,
   Field,
 } from "@taroify/core";
-import { ArrowLeft } from "@taroify/icons";
+import Taro, { useRouter, useLoad } from "@tarojs/taro";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { useDeptManagement } from "@/hooks/useDeptManagement";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
@@ -168,7 +165,7 @@ const UserDetailPage: React.FC = () => {
     <View className="user-detail-page">
       <Navbar title={isEdit ? "编辑用户" : "新增用户"}>
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
       </Navbar>
 

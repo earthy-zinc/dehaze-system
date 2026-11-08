@@ -1,18 +1,16 @@
 import React, { useState } from "react";
-import { View } from "@tarojs/components";
-import Taro, { useRouter, useLoad } from "@tarojs/taro";
+import { Icon, View, Loading } from "@/platform/ui";
 import {
+  Button,
   Navbar,
   Form,
   Input,
   Radio,
   Stepper,
-  Button,
-  Loading,
   Cell,
   Field,
 } from "@taroify/core";
-import { ArrowLeft } from "@taroify/icons";
+import Taro, { useRouter, useLoad } from "@tarojs/taro";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import type { RoleForm } from "clarity-sdk-js";
 import "./detail.less";
@@ -130,7 +128,7 @@ const RoleDetailPage: React.FC = () => {
     <View className="role-detail-page">
       <Navbar title={isEdit ? "编辑角色" : "新增角色"}>
         <Navbar.NavLeft>
-          <ArrowLeft onClick={() => Taro.navigateBack()} />
+          <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
       </Navbar>
 

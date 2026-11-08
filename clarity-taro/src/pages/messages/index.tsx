@@ -3,8 +3,9 @@
  *
  * 消息列表（分页/分类 Tab/未读红点）+ 搜索 + 删除 + 设置入口
  */
+import { ScrollView, Input } from "@tarojs/components";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, ScrollView, Input } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import { MessageAPI } from "clarity-sdk-js";
 import type { MessageVO } from "clarity-sdk-js";

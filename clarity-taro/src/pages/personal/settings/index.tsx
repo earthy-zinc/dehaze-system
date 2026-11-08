@@ -1,5 +1,6 @@
+import { ScrollView } from "@tarojs/components";
 import React from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 import PageLayout from "@/layout";
 import "./index.less";

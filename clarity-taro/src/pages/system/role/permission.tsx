@@ -1,14 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { View } from "@tarojs/components";
+import { Icon, View, Loading } from "@/platform/ui";
+import { Button, Navbar, Checkbox, ConfigProvider } from "@taroify/core";
 import Taro, { useRouter, useLoad } from "@tarojs/taro";
-import {
-  Navbar,
-  Button,
-  Checkbox,
-  Loading,
-  ConfigProvider,
-} from "@taroify/core";
-import { ArrowLeft } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import "./permission.less";
 
@@ -139,7 +132,7 @@ const RolePermissionPage: React.FC = () => {
         <View className="role-permission-page">
           <Navbar title="权限配置">
             <Navbar.NavLeft>
-              <ArrowLeft onClick={() => Taro.navigateBack()} />
+              <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
             </Navbar.NavLeft>
           </Navbar>
           <View className="loading-container">
@@ -155,7 +148,7 @@ const RolePermissionPage: React.FC = () => {
       <View className="role-permission-page">
         <Navbar title={roleName ? `权限配置 - ${roleName}` : "权限配置"}>
           <Navbar.NavLeft>
-            <ArrowLeft onClick={() => Taro.navigateBack()} />
+            <Icon name="arrow-left" onClick={() => Taro.navigateBack()} />
           </Navbar.NavLeft>
         </Navbar>
 

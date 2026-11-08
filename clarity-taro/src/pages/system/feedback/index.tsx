@@ -1,15 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { View, Text, Tag, Loading, Empty, Popup } from "@/platform/ui";
 import Taro from "@tarojs/taro";
-import {
-  Tag,
-  Loading,
-  Empty,
-  Tabs,
-  Popup,
-  Input,
-  Textarea,
-} from "@taroify/core";
+import { Tabs, Input, Textarea } from "@taroify/core";
 import { FeedbackAPI } from "clarity-sdk-js";
 import type {
   FeedbackPageVO,

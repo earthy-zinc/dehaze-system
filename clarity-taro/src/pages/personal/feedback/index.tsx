@@ -1,8 +1,8 @@
+import { ScrollView } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView } from "@tarojs/components";
+import { Icon, View, Text, Tag, Popup } from "@/platform/ui";
+import { Button, Textarea, Input, Tabs } from "@taroify/core";
 import Taro from "@tarojs/taro";
-import { Button, Tag, Popup, Textarea, Input, Tabs } from "@taroify/core";
-import { Plus } from "@taroify/icons";
 import { FeedbackAPI } from "clarity-sdk-js";
 import type {
   FeedbackPageVO,
@@ -175,7 +175,7 @@ const FeedbackPage: React.FC = () => {
                 className="submit-btn"
                 onClick={() => setSubmitVisible(true)}
               >
-                <Plus size="16" color="#fff" />
+                <Icon name="plus" size="16" color="#fff" />
                 <Text className="submit-text">提交反馈</Text>
               </View>
             </View>

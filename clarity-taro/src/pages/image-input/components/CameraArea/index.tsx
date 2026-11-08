@@ -3,9 +3,7 @@
  */
 
 import React from "react";
-import { View, Text } from "@tarojs/components";
-import { Photograph } from "@taroify/icons";
-import { Loading } from "@taroify/core";
+import { Icon, View, Text, Loading } from "@/platform/ui";
 import "./CameraArea.less";
 
 interface CameraAreaProps {
@@ -27,7 +25,7 @@ const CameraArea: React.FC<CameraAreaProps> = ({
     <View className="camera-area">
       <View className="camera-zone">
         <View className="camera-icon">
-          <Photograph size="64" color="#9ca3af" />
+          <Icon name="photograph" size="64" color="#9ca3af" />
         </View>
 
         <Text className="camera-desc">点击下方按钮打开相机</Text>
@@ -44,7 +42,7 @@ const CameraArea: React.FC<CameraAreaProps> = ({
             </>
           ) : (
             <>
-              <Photograph size="20" />
+              <Icon name="photograph" size="20" />
               <Text>打开相机</Text>
             </>
           )}

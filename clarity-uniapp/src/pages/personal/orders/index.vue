@@ -110,7 +110,7 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
-@import "@/styles/mixins";
+@import "@/styles/mixins.scss";
 
 .page {
   width: 100%;

@@ -41,5 +41,12 @@ target 'DehazeReactNative' do
         config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
       end
     end
+
+    # 部分三方 pod 仍声明 IPHONEOS_DEPLOYMENT_TARGET=9.0，低于当前 Xcode 支持的最低 15.0，直接构建失败。
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
+      end
+    end
   end
 end

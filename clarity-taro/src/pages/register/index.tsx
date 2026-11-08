@@ -1,5 +1,7 @@
+import { Image, Input } from "@tarojs/components";
 import React, { useEffect, useState } from "react";
-import { Button, Image, Input, Text, View } from "@tarojs/components";
+import { Text, View } from "@/platform/ui";
+import { Button } from "@taroify/core";
 import Taro from "@tarojs/taro";
 import { AuthAPI, CaptchaResult, RegisterData } from "clarity-sdk-js";
 import { useAuthStore } from "@/stores/global";

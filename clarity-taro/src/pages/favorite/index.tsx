@@ -1,8 +1,8 @@
+import { ScrollView, Image } from "@tarojs/components";
 import React, { useState, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, Image } from "@tarojs/components";
+import { Icon, View, Text } from "@/platform/ui";
 import Taro from "@tarojs/taro";
 
-import { Star } from "@taroify/icons";
 import { FavoriteAPI, FavoriteTargetType } from "clarity-sdk-js";
 import type { FavoriteVO } from "clarity-sdk-js";
 import SearchBar from "@/components/common/SearchBar";
@@ -198,7 +198,7 @@ const FavoritePage: React.FC = () => {
                         />
                       ) : (
                         <View className="fav-thumb-placeholder">
-                          <Star size="20" color="#f59e0b" />
+                          <Icon name="star" size="20" color="#f59e0b" />
                         </View>
                       )}
                     </View>
