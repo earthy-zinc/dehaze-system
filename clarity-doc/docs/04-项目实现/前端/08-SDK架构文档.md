@@ -52,12 +52,12 @@ graph TB
 
 SDK 自上而下分为四层：
 
-| 层         | 职责                                                            | 关键文件                                      |
-| ---------- | --------------------------------------------------------------- | --------------------------------------------- |
-| 出口层     | 统一导出 API 类、Logger、类型、配置函数、Axios 实例             | `clarity-sdk-js/index.ts`                      |
-| API 层     | 21 个业务模块，每个模块封装一组 RESTful 接口                    | `src/api/[模块]/index.ts`、`model.ts`         |
+| 层         | 职责                                                              | 关键文件                                      |
+| ---------- | ----------------------------------------------------------------- | --------------------------------------------- |
+| 出口层     | 统一导出 API 类、Logger、类型、配置函数、Axios 实例               | `clarity-sdk-js/index.ts`                     |
+| API 层     | 21 个业务模块，每个模块封装一组 RESTful 接口                      | `src/api/[模块]/index.ts`、`model.ts`         |
 | 基础设施层 | Axios 实例与请求、响应拦截器、trace_id 透传、慢请求与错误自动上报 | `src/utils/request.ts`、`src/config/index.ts` |
-| 监控层     | 多 transport 日志、全局错误捕获、Web Vitals 采集                | `src/logger/*`                                |
+| 监控层     | 多 transport 日志、全局错误捕获、Web Vitals 采集                  | `src/logger/*`                                |
 
 ### 关键技术决策
 
@@ -69,7 +69,6 @@ SDK 自上而下分为四层：
 | 拦截器扩展点    | `configAxios(callback)` 注入宿主拦截器                | SDK 内建拦截器（trace_id/错误上报）不可替换，宿主通过回调追加鉴权、loading 等业务逻辑 |
 | React 依赖      | SDK 不声明 react 依赖，宿主注入                       | 避免多 React 实例冲突，ErrorBoundary 在未注入 React 时降级为透传 children             |
 | 构建产物        | tsup 双格式 ESM + CJS                                 | 同时支持现代 bundler 与 CommonJS 消费场景                                             |
-
 
 ## 目录结构
 
@@ -121,18 +120,17 @@ SDK 自上而下分为四层：
 
 API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(params)`），方法返回 `Promise<响应数据>`，响应拦截器已解包 `Result<T>.data`，业务码非成功时 reject 为 `AxiosError`。
 
-
 ## 基础设施层
 
 ### Axios 实例与拦截器
 
 `service` 为预配置的 Axios 实例（`baseURL` 空、`timeout` 120s、`withCredentials`），通过 `index.ts` 导出供宿主直接使用。请求/响应拦截器由 SDK 内建，承载三类横切逻辑：
 
-| 拦截器       | 时机     | 职责                                                                                                                                                                                                                                          |
-| ------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 请求拦截器 1 | 请求最前 | 记录 `startTime` 到 `config.metadata`，供错误/慢请求计算耗时                                                                                                                                                                                  |
-| 请求拦截器 2 | 出站前   | 调 `Logger.ensureTraceId()` 生成/复用 trace_id 写入 `X-Trace-Id` 头；调宿主 `onRequest`                                                                                                                                                       |
-| 响应拦截器   | 成功路径 | 回读响应头 `X-Trace-Id` 对齐本地 trace_id；慢请求（>3s）WARN 上报；解包 `Result.data`；二进制响应特殊处理（Blob/arraybuffer 携带 JSON 错误体时转 reject）                                                                                     |
+| 拦截器       | 时机     | 职责                                                                                                                                                                                                                                   |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 请求拦截器 1 | 请求最前 | 记录 `startTime` 到 `config.metadata`，供错误/慢请求计算耗时                                                                                                                                                                           |
+| 请求拦截器 2 | 出站前   | 调 `Logger.ensureTraceId()` 生成/复用 trace_id 写入 `X-Trace-Id` 头；调宿主 `onRequest`                                                                                                                                                |
+| 响应拦截器   | 成功路径 | 回读响应头 `X-Trace-Id` 对齐本地 trace_id；慢请求（>3s）WARN 上报；解包 `Result.data`；二进制响应特殊处理（Blob/arraybuffer 携带 JSON 错误体时转 reject）                                                                              |
 | 响应拦截器   | 失败路径 | 回读失败响应头对齐 trace_id；构造 API 错误日志（method/path/status/duration/code）ERROR 上报，**401 例外**（鉴权结果，按 INFO 记录、不上报远端，见 [07-日志架构设计](../../02-系统架构/07-日志架构设计.md)）；调宿主 `onResponseError` |
 
 **响应解包约定**：业务码 `code !== SUCCESS` 时统一 reject 为 `AxiosError`（携带后端 `msg`），宿主只需 `try/catch` 处理错误，无需重复判断 `code`；reject 前会调用宿主 `onBizError(code, msg)` 钩子（若已注册）。
@@ -152,7 +150,6 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 `onBizError` 为可选钩子，未注册时行为不变；仅承载提示类副作用，不改变 reject 语义，页面 catch 仍会收到错误对象。
 
 宿主拦截器与 SDK 内建拦截器为**追加**关系，SDK 不允许替换 trace_id 注入与错误上报逻辑，保证监控链路完整性。
-
 
 ## 日志监控模块（Logger）
 
@@ -175,7 +172,7 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 多 transport   | Logger 单例按需组装 transport（Console / Remote），SDK 不感知 dev/prod，由应用端按构建产物组装                                                                                                                                                                                                                     |
 | trace_id 透传  | 请求拦截器生成 trace_id 注入 `X-Trace-Id` 请求头与 `config.metadata.traceId`（请求级绑定，不写全局变量）；响应拦截器回读响应头对齐到 `config.metadata.traceId`；`reportApiError` / `reportSlowRequest` 从 `config.metadata.traceId` 读取显式传入 `fields.trace_id`。非请求日志（全局错误/性能日志）`trace_id` 留空 |
-| 采样限流       | ERROR 100%、WARN 50%、INFO 不上报；单设备 60s 内最多 20 条（参数见 [07-日志架构设计.md](../../02-系统架构/07-日志架构设计.md)）                                                                                                                                                                           |
+| 采样限流       | ERROR 100%、WARN 50%、INFO 不上报；单设备 60s 内最多 20 条（参数见 [07-日志架构设计.md](../../02-系统架构/07-日志架构设计.md)）                                                                                                                                                                                    |
 | ERROR 去重     | 相同 `message + error_stack` fingerprint 在 10s 窗口内只输出首条，窗口结束时补发汇总条目（`dedup_count` 标记总次数），防止渲染错误每帧触发日志风暴且不丢失次数信息                                                                                                                                                 |
 | 不暴露 user_id | 前端 SDK 不上报 `user_id`，由三端后端从会话统一解析注入（避免前端伪造身份）                                                                                                                                                                                                                                        |
 | 崩溃补报       | 生产环境 Remote + 本地存储双写，刷新/重启后从本地队列恢复补报                                                                                                                                                                                                                                                      |
@@ -215,7 +212,6 @@ API 类采用静态方法风格（如 `AuthAPI.login(data)`、`UserAPI.list(para
 
 错误日志字段：`error_type`（js/promise/api/resource）、`error_source`、`error_stack`；API 失败日志含 `method/path/status/duration/code` + `trace_id`（从 `config.metadata.traceId` 读取）；性能日志含 `metric_name/metric_value/navigation_type/resource_url`（`trace_id` 留空，不属于请求链路）；全局错误日志（`window.onerror`/`unhandledrejection`/资源 error）`trace_id` 留空；ERROR 去重汇总条目含 `dedup_count`（10s 窗口内相同 fingerprint 总命中次数，>1），`trace_id` 沿用首条。
 
-
 ## 多端兼容策略
 
 SDK 一份源码覆盖 Web/React/Vue/Taro/UniApp/RN，差异通过运行时探测降级，不引入条件编译：
@@ -234,21 +230,34 @@ SDK 一份源码覆盖 Web/React/Vue/Taro/UniApp/RN，差异通过运行时探�
 - Flutter 端：[05-Flutter架构文档.md](./05-Flutter架构文档.md)
 - Android 端：[06-Android架构文档.md](./06-Android架构文档.md)
 
-
 ## 构建与测试架构
 
 ### 构建
 
-| 项       | 配置                                                   |
-| -------- | ------------------------------------------------------ |
-| 工具     | tsup（基于 esbuild）                                   |
-| 入口     | `index.ts`                                             |
-| 产物格式 | ESM + CJS 双格式（`dist/index.js` / `dist/index.cjs`） |
-| 类型声明 | `dts: true` 生成 `dist/index.d.ts`                     |
-| target   | es2020                                                 |
-| external | `axios`（peerDependency，不打包）                      |
-| platform | neutral（多端中立）                                    |
-| 路径别名 | `@` → `./src`、`#` → `./test`（esbuild alias）         |
+| 项       | 配置                                                                          |
+| -------- | ----------------------------------------------------------------------------- |
+| 工具     | tsup（基于 esbuild）                                                          |
+| 入口     | `index.ts`                                                                    |
+| 产物格式 | ESM + CJS 双格式（`dist/index.js` / `dist/index.cjs`）                        |
+| 类型声明 | `dts: true` 生成 `dist/index.d.ts`                                            |
+| target   | es2020                                                                        |
+| external | `axios`（peerDependency，不打包）                                             |
+| platform | neutral（多端中立）                                                           |
+| 路径别名 | `@` → `./src` 仅供 `test/`（tsconfig paths + vitest），`src` 内部一律相对路径 |
+
+### 消费方式（源码直连）
+
+5 个前端都不消费 `dist`，而是把 `clarity-sdk-js` 解析到仓库内的 `index.ts`，改 SDK 源码后编辑器类型与 dev 构建立即生效，不需要先 `pnpm build` 或重启 TS server：
+
+| 端                                                       | 解析方式                                                                                                                     |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| clarity-front-vue / clarity-front-react / clarity-uniapp | Vite `resolve.alias` 精确匹配包名 → `../clarity-sdk-js/index.ts`；`tsconfig.paths` 同映射；`optimizeDeps.exclude` 排除预构建 |
+| clarity-taro                                             | `config/index.ts` 的 `alias` 指向源码入口，并在 `mini/h5.compile.include` 放行 SDK 目录（Taro 默认只转译 `sourceDir`）       |
+| clarity-react-native                                     | Metro `resolver.resolveRequest` 指向源码入口；Jest `moduleNameMapper` 同映射（`watchFolders` 已包含 SDK）                    |
+
+`dist` 只在发布产物与 `file:` 安装形态（RN 的 `node_modules` 副本）兜底时使用。
+
+SDK 源码内部必须用相对路径：TS 的 `paths` 与各端的 `@` 别名都是「整个工程一份、不区分 importer」，SDK 若保留 `@/`，被应用直接导入时会被解析到应用自己的 `src`（找不到即报错，撞名则静默错类型）。
 
 ### 测试架构
 

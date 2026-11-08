@@ -11,7 +11,6 @@
 | 语义化状态码 | 采用业务状态码体系，分类清晰、便于定位问题                    |
 | 版本化管理   | API 路径包含版本号（如 `/api/v1`），支持平滑升级              |
 
-
 ## 公共约定
 
 ### 基础路径
@@ -91,8 +90,7 @@
 | AI模型管理        | `/api/v1/ai/models`、`/api/v1/ai/providers`                                            | 全模态模型与供应商统一管理                |
 | 数据集管理        | `/api/v1/datasets`                                                                     |                                           |
 | AI对话            | `/api/v1/ai`（内部）、`/api/v1/chat`（OpenAI 兼容）、`/api/v1/messages`（Claude 兼容） | 双轨设计                                  |
-| 内部 MCP 能力网关 | 独立服务 `http://127.0.0.1:8082/mcp`（clarity-mcp-gateway，不在后端 `/api/v1` 路径下）  | JSON-RPC over HTTP（MCP Streamable HTTP） |
-
+| 内部 MCP 能力网关 | 独立服务 `http://127.0.0.1:8082/mcp`（clarity-mcp-gateway，不在后端 `/api/v1` 路径下） | JSON-RPC over HTTP（MCP Streamable HTTP） |
 
 ## 统一响应格式
 
@@ -102,7 +100,10 @@
 
 ```json
 {
-  "code": "00000", "msg": "一切ok", "data": {}, "traceId": "abc123def456"
+  "code": "00000",
+  "msg": "一切ok",
+  "data": {},
+  "traceId": "abc123def456"
 }
 ```
 
@@ -119,10 +120,12 @@
 
 ```json
 {
-  "code": "A0400", "msg": "用户名不能为空；邮箱格式不正确", "data": null, "traceId": "abc123def456"
+  "code": "A0400",
+  "msg": "用户名不能为空；邮箱格式不正确",
+  "data": null,
+  "traceId": "abc123def456"
 }
 ```
-
 
 ## 分页约定
 
@@ -144,11 +147,23 @@ Cookie: X-Session-Id=<sessionId>
 
 ```json
 {
-  "code": "00000", "msg": "一切ok", "traceId": "abc123def456",
-  "data": { "list": [ { "id": 1, "username": "admin", "nickname": "管理员", "status": 1, "createTime": "2024-01-01 00:00:00" } ], "total": 50 }
+  "code": "00000",
+  "msg": "一切ok",
+  "traceId": "abc123def456",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "username": "admin",
+        "nickname": "管理员",
+        "status": 1,
+        "createTime": "2024-01-01 00:00:00"
+      }
+    ],
+    "total": 50
+  }
 }
 ```
-
 
 ## 状态码体系
 
@@ -260,7 +275,6 @@ HTTP 状态码**分端不同**（业务码统一 `A0002`）：python `429`、jav
 - 通用错误码（`A0400`、`A0401`、`A0403`、`A0500`~`A0504`）所有模块通用，无需重复定义。
 - 错误码表述＝**纯数字编号 + 中文语义**，对外文案与文档不得写成 `A0510（MEMBER_NOT_FOUND）` 这类英文标识形式（代码内常量名不受限）。
 
-
 ## 时间格式
 
 ### 约定
@@ -286,7 +300,6 @@ HTTP 状态码**分端不同**（业务码统一 `A0002`）：python `429`、jav
 **前端解析约定**：收到的时间字符串一律按 Asia/Shanghai 解析（`yyyy-MM-dd HH:mm:ss`），如需用户本地时区展示由前端自行换算，**不得按浏览器本地时区直接解析 naive 字符串**（否则非 UTC+8 用户显示错 8 小时）。
 
 **部署要求**：服务容器/进程 `TZ=Asia/Shanghai`（Java 进程建议 `-Duser.timezone=Asia/Shanghai`），保证 `datetime.now()` / `time.Now()` / `LocalDateTime.now()` 本地时间语义一致。日志时间戳（ISO8601 UTC）为运维时间线，与业务时间字段分离，不参与业务计算。
-
 
 ## 通用 CRUD 接口模板
 
@@ -344,7 +357,6 @@ HTTP 状态码**分端不同**（业务码统一 `A0002`）：python `429`、jav
 
 前端仅需根据 `code` 是否等于 `00000` 判断请求是否成功，失败时直接展示 `msg`，无需针对具体错误码编写分支逻辑。
 
-
 ## 版本管理
 
 ### 版本策略
@@ -395,7 +407,6 @@ curl -X POST http://127.0.0.1:8991/api/v1/cache/clear -H "X-Session-Id: <admin-s
 # 清指定缓存
 curl -X POST http://127.0.0.1:8991/api/v1/cache/clear -H "X-Session-Id: <admin-session>" -H "Content-Type: application/json" -d '{"key": "menu:routes"}'
 ```
-
 
 ## 参数与数值约定
 
