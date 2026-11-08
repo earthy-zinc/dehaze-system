@@ -1,16 +1,16 @@
-<!-- 产物卡片：图片缩略图/指标报告/模型推荐/文件引用（纯展示，props 进、open 事件出） -->
+<!-- 产物卡片：图片缩略图/指标报告/模型推荐/文件引用（纯展示，直接消费契约 Artifact） -->
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { ChatArtifactVM } from "../types";
+import type { Artifact } from "clarity-sdk-js";
 
 defineOptions({ name: "ArtifactCard" });
 
 const props = defineProps<{
-  artifact: ChatArtifactVM;
+  artifact: Artifact;
 }>();
 
 const emit = defineEmits<{
-  open: [artifact: ChatArtifactVM];
+  open: [artifact: Artifact];
 }>();
 
 const typeMeta = computed(() => {
@@ -40,7 +40,9 @@ const summaryText = computed(() => {
   <div class="artifact-card" @click="emit('open', artifact)">
     <div class="artifact-card__header">
       <el-tag size="small">{{ typeMeta.label }}</el-tag>
-      <el-tag v-if="artifact.invalid" size="small" type="danger">已失效</el-tag>
+      <el-tag v-if="artifact.isInvalid" size="small" type="danger"
+        >已失效</el-tag
+      >
     </div>
     <div v-if="summaryText" class="artifact-card__summary">
       {{ summaryText }}

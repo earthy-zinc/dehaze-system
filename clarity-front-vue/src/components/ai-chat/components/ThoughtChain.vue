@@ -1,20 +1,23 @@
 <!-- 推理过程折叠展示：按步骤显示，含子智能体并行执行用量（纯展示，props 进） -->
 <script lang="ts" setup>
 import { computed } from "vue";
-import { sortStepsByPosition } from "../vm/steps";
+import type { SubAgentUsage } from "clarity-sdk-js";
+import type { ChatThoughtStepVM } from "../types";
 import SubAgentPanel from "./SubAgentPanel.vue";
 import ThoughtStep from "./ThoughtStep.vue";
-import type { ChatSubAgentUsageVM, ChatThoughtStepVM } from "../types";
 
 defineOptions({ name: "ThoughtChain" });
 
 const props = defineProps<{
-  thoughts: ChatThoughtStepVM[];
+  /** 工具步骤（stepsOfBlocks 已按 seq 升序） */
+  steps: ChatThoughtStepVM[];
   /** 子智能体粒度用量（message.end usage.subAgents；缺省时子智能体面板不渲染） */
-  subAgents?: ChatSubAgentUsageVM[];
+  subAgents?: SubAgentUsage[];
 }>();
 
-const steps = computed(() => sortStepsByPosition(props.thoughts));
+const failedCount = computed(
+  () => props.steps.filter((step) => step.status === "failed").length
+);
 </script>
 
 <template>
@@ -23,11 +26,18 @@ const steps = computed(() => sortStepsByPosition(props.thoughts));
       <el-collapse-item :name="'chain'">
         <template #title>
           <span class="thought-chain__title"
-            >推理过程（{{ steps.length }} 步）</span
+            >查看过程（{{ steps.length }} 步）</span
           >
+          <el-tag v-if="failedCount" type="danger" size="small" class="ml-2">
+            {{ failedCount }} 步失败
+          </el-tag>
         </template>
         <SubAgentPanel :steps="steps" :sub-agents="subAgents" />
-        <ThoughtStep v-for="step in steps" :key="step.position" :step="step" />
+        <ThoughtStep
+          v-for="(step, index) in steps"
+          :key="`${step.position}-${index}`"
+          :step="step"
+        />
       </el-collapse-item>
     </el-collapse>
   </div>

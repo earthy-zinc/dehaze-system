@@ -10,6 +10,11 @@ import { useChatUserStore } from "@/store/modules/chatUser";
 
 defineOptions({ name: "MessageInput" });
 
+const props = defineProps<{
+  /** 可见分支是否正在流式/等待中断（由页面绑定层按可见消息计算） */
+  isStreaming: boolean;
+}>();
+
 const emit = defineEmits<{
   send: [text: string];
   stop: [];
@@ -48,7 +53,7 @@ const currentModel = computed(() => {
 function handleSend() {
   const content = text.value.trim();
   if (!content) return;
-  if (chatStore.isStreaming) {
+  if (props.isStreaming) {
     ElMessage.warning("当前正在推理中，请先停止或等待完成");
     return;
   }
@@ -89,14 +94,14 @@ async function handleFileChange(event: Event) {
     <QuotePreview />
 
     <div class="message-input__toolbar">
-      <VoiceInput v-model="text" :disabled="chatStore.isStreaming" />
+      <VoiceInput v-model="text" :disabled="props.isStreaming" />
       <el-tooltip content="图片附件" placement="top">
         <el-button
           circle
           :icon="Picture"
           aria-label="图片附件"
           :loading="uploading"
-          :disabled="chatStore.isStreaming"
+          :disabled="props.isStreaming"
           @click="handleAttachClick"
         />
       </el-tooltip>
@@ -119,7 +124,7 @@ async function handleFileChange(event: Event) {
         @keydown.enter.exact.prevent="handleSend"
       />
       <el-button
-        v-if="chatStore.isStreaming"
+        v-if="props.isStreaming"
         type="danger"
         :icon="VideoPause"
         @click="emit('stop')"

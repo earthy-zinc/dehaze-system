@@ -1,12 +1,19 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import type { Feedback } from "clarity-sdk-js";
 import FeedbackBar from "../components/FeedbackBar.vue";
-import type { ChatFeedbackVM } from "../types";
 import { elStubs, findButton } from "./stubs";
 
-const mountBar = (feedback: ChatFeedbackVM | null = null) =>
+const feedback = (over: Partial<Feedback> = {}): Feedback => ({
+  messageId: 9,
+  userId: 1,
+  rating: 1,
+  ...over,
+});
+
+const mountBar = (data: Feedback | null = null) =>
   mount(FeedbackBar, {
-    props: { messageId: 9, feedback },
+    props: { messageId: 9, feedback: data },
     global: { stubs: elStubs },
   });
 
@@ -38,7 +45,7 @@ describe("FeedbackBar", () => {
   });
 
   it("已有反馈展示撤销入口，无反馈展示收起入口", () => {
-    expect(findButton(mountBar({ rating: 1 }), "撤销反馈")).toBeDefined();
+    expect(findButton(mountBar(feedback()), "撤销反馈")).toBeDefined();
     expect(findButton(mountBar(null), "收起")).toBeDefined();
   });
 

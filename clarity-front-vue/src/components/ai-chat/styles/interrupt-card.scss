@@ -1,0 +1,57 @@
+// 中断卡共享样式：壳层与 interrupts/* 子组件共用同一套 BEM 类名。
+// 必须是全局样式（壳层引入且不带 scoped）：父组件的 scoped 作用域进不了子组件内部节点，
+// 放在壳层 scoped 里会让子组件的 body/actions 掉样式。前缀统一为 .interrupt-card，无泄漏风险。
+.interrupt-card {
+  max-width: 92%;
+  padding: 12px 14px;
+  margin: 0 auto 16px;
+  background-color: var(--el-color-warning-light-9);
+  border: 1px solid var(--el-color-warning-light-5);
+  border-radius: 8px;
+
+  &__header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__body {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  &__desc {
+    margin-top: 4px;
+    color: var(--el-text-color-secondary);
+  }
+
+  &__plan {
+    padding-left: 0;
+    margin: 4px 0 0;
+    font-size: 13px;
+    list-style: none;
+  }
+
+  &__task {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  &__task-input {
+    flex: 1;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+}

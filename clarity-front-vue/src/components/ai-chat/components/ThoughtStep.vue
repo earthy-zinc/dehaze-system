@@ -1,4 +1,4 @@
-<!-- 单个推理步骤：序号/耗时/thought/工具调用/observation/status（纯展示，props 进） -->
+<!-- 单个工具步骤：序号/耗时/工具调用入参/observation/status（纯展示，status 直接用契约 ToolStatus） -->
 <script lang="ts" setup>
 import { computed } from "vue";
 import type { ChatThoughtStepVM } from "../types";
@@ -11,14 +11,14 @@ const props = defineProps<{
 
 const statusMeta = computed(() => {
   switch (props.step.status) {
-    case 1:
+    case "success":
       return { label: "成功", type: "success" as const };
-    case 2:
+    case "failed":
       return { label: "失败", type: "danger" as const };
-    case 3:
+    case "skipped":
       return { label: "跳过", type: "info" as const };
     default:
-      return { label: "未知", type: "info" as const };
+      return { label: "执行中", type: "warning" as const };
   }
 });
 
@@ -42,7 +42,6 @@ function formatValue(value: unknown) {
         {{ step.latencyMs }}ms
       </span>
     </div>
-    <div v-if="step.thought" class="thought-step__text">{{ step.thought }}</div>
     <pre v-if="step.toolInput != null" class="thought-step__payload">{{
       formatValue(step.toolInput)
     }}</pre>
@@ -50,7 +49,7 @@ function formatValue(value: unknown) {
       {{ step.observation }}
     </div>
     <el-alert
-      v-if="step.status === 2 && step.error"
+      v-if="step.status === 'failed' && step.error"
       type="error"
       :closable="false"
       :title="step.error"
@@ -81,13 +80,6 @@ function formatValue(value: unknown) {
   &__latency {
     font-size: 12px;
     color: var(--el-text-color-secondary);
-  }
-
-  &__text {
-    margin-top: 4px;
-    font-size: 13px;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
   }
 
   &__payload,

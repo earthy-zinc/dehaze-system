@@ -4,7 +4,7 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter, type Router } from "vue-router";
-import { AiConversationAPI, type AiMessageVO } from "clarity-sdk-js";
+import { AiConversationAPI, type Block, type Message } from "clarity-sdk-js";
 import { elStubs } from "@/components/ai-chat/__tests__/stubs";
 import { useAdminAuditStore } from "@/store/modules/adminAudit";
 import ConversationDetailDrawer from "../ConversationDetailDrawer.vue";
@@ -55,19 +55,42 @@ const DialogStub = defineComponent({
         : null,
 });
 
-const message = (over: Partial<AiMessageVO>): AiMessageVO => ({
+const textBlock = (id: string, text: string): Block => ({
+  id,
+  kind: "text",
+  seq: 1,
+  text,
+});
+
+const message = (over: Partial<Message>): Message => ({
   id: 1,
   conversationId: 7,
+  parentMessageId: null,
   role: "assistant",
-  status: 2,
-  content: "答",
+  status: "completed",
+  model: null,
+  error: null,
+  blocks: [textBlock("1-text", "答")],
+  plan: null,
+  pendingInterrupt: null,
+  usage: {
+    inputTokens: 0,
+    outputTokens: 0,
+    cachedInputTokens: 0,
+    credits: 0,
+  },
+  artifactIds: [],
+  memoryIds: [],
+  suggestions: [],
+  edited: false,
   createTime: "2026-01-01T00:00:00Z",
+  updateTime: null,
   ...over,
 });
 
 let router: Router;
 
-async function mountDrawer(messages: AiMessageVO[], total: number) {
+async function mountDrawer(messages: Message[], total: number) {
   const audit = useAdminAuditStore();
   audit.detailVisible = true;
   audit.detailConversation = {
@@ -123,7 +146,14 @@ describe("管理端会话详情抽屉（scope=admin 只读审计）", () => {
 
   it("只读渲染：无编辑/重新生成/删除/反馈操作入口", async () => {
     const wrapper = await mountDrawer(
-      [message({ id: 1, role: "user", content: "问" }), message({ id: 2 })],
+      [
+        message({
+          id: 1,
+          role: "user",
+          blocks: [textBlock("1-text", "问")],
+        }),
+        message({ id: 2 }),
+      ],
       2
     );
 
@@ -143,7 +173,7 @@ describe("管理端会话详情抽屉（scope=admin 只读审计）", () => {
         conversationId: 7,
         messageId: 2,
         type: "metric_report",
-        isInvalid: 0,
+        isInvalid: false,
       },
     ] as never);
     const wrapper = await mountDrawer([message({ id: 2 })], 1);
@@ -166,7 +196,7 @@ describe("管理端会话详情抽屉（scope=admin 只读审计）", () => {
         conversationId: 7,
         messageId: 2,
         type: "metric_report",
-        isInvalid: 0,
+        isInvalid: false,
       },
     ] as never);
     vi.mocked(AiConversationAPI.getArtifactDetail).mockResolvedValueOnce({

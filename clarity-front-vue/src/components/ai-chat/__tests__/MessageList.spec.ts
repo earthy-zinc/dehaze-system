@@ -1,12 +1,8 @@
 import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import { describe, expect, it, vi } from "vitest";
+import type { Block, Message, Usage } from "clarity-sdk-js";
 import MessageList from "../components/MessageList.vue";
-import type {
-  ChatAssistantMessageVM,
-  ChatMessageVM,
-  ChatUserMessageVM,
-} from "../types";
 import { elStubs } from "./stubs";
 
 vi.mock("@/components/MarkdownRenderer.vue", () => ({
@@ -17,46 +13,56 @@ vi.mock("@/components/MarkdownRenderer.vue", () => ({
   },
 }));
 
-const user = (id: number, content: string): ChatUserMessageVM => ({
-  role: "user",
-  id,
-  content,
-});
+const EMPTY_USAGE: Usage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cachedInputTokens: 0,
+  credits: 0,
+};
 
-const assistant = (
+function textBlock(id: string, text: string): Block {
+  return { id, kind: "text", seq: 1, text };
+}
+
+const baseMessage = (
   id: number,
-  over: Partial<ChatAssistantMessageVM> = {}
-): ChatAssistantMessageVM => ({
-  role: "assistant",
+  role: Message["role"],
+  over: Partial<Message> = {}
+): Message => ({
   id,
+  conversationId: 1,
+  parentMessageId: null,
+  role,
   status: "completed",
-  text: "",
-  thinking: null,
-  steps: [],
-  toolCalls: [],
-  artifacts: [],
-  memories: [],
-  feedback: null,
+  model: null,
+  error: null,
+  blocks: [],
+  plan: null,
+  pendingInterrupt: null,
+  usage: { ...EMPTY_USAGE },
+  artifactIds: [],
+  memoryIds: [],
   suggestions: [],
+  edited: false,
+  createTime: "2026-01-01T00:00:00Z",
+  updateTime: null,
   ...over,
 });
 
-const tool = (id: number): ChatMessageVM => ({
-  role: "tool",
-  id,
-  name: "search",
-  content: "",
-  toolCalls: [],
-});
+const user = (id: number, content: string): Message =>
+  baseMessage(id, "user", { blocks: [textBlock(`u-${id}`, content)] });
+
+const assistant = (id: number, over: Partial<Message> = {}): Message =>
+  baseMessage(id, "assistant", over);
 
 const mountList = (over: Record<string, unknown> = {}) =>
   mount(MessageList, {
     props: {
       messages: [],
+      artifacts: {},
+      feedback: {},
+      branches: {},
       scope: "self",
-      streamingMessageId: null,
-      interruptedMessageId: null,
-      interrupts: [],
       scrollFollowEnabled: true,
       ...over,
     },
@@ -83,13 +89,18 @@ function body(wrapper: ReturnType<typeof mountList>) {
 }
 
 describe("MessageList", () => {
-  it("role 分流渲染 user / assistant / tool", () => {
+  it("role 分流渲染 user / assistant；system/tool 无渲染分支", () => {
     const wrapper = mountList({
-      messages: [user(1, "问"), assistant(2), tool(3)],
+      messages: [
+        user(1, "问"),
+        assistant(2),
+        baseMessage(3, "system", { blocks: [textBlock("s", "系统消息")] }),
+      ],
     });
     expect(wrapper.find(".user-message").exists()).toBe(true);
     expect(wrapper.find(".assistant-message").exists()).toBe(true);
-    expect(wrapper.find(".tool-message").exists()).toBe(true);
+    expect(wrapper.find(".tool-message").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("系统消息");
   });
 
   it("空 messages 展示空态", () => {
@@ -99,9 +110,7 @@ describe("MessageList", () => {
   });
 
   it("id 缺失的脏数据不崩溃（按索引兜底为 key）", () => {
-    const dirty = [
-      { role: "user", content: "无 id" } as unknown as ChatMessageVM,
-    ];
+    const dirty = [{ role: "user", content: "无 id" } as unknown as Message];
     const wrapper = mountList({ messages: [...dirty, user(2, "正常")] });
     expect(wrapper.findAll(".user-message")).toHaveLength(2);
   });
@@ -112,21 +121,42 @@ describe("MessageList", () => {
     expect(wrapper.find(".user-message__content").text().length).toBe(50000);
   });
 
-  it("interrupts 为空时不渲染中断卡", () => {
+  it("无 pendingInterrupt 时不渲染中断卡", () => {
     const wrapper = mountList({ messages: [assistant(2)] });
     expect(wrapper.find(".interrupt-card").exists()).toBe(false);
   });
 
-  it("中断卡内联到被中断的助手消息", () => {
+  it("中断卡内联到带 pendingInterrupt 的助手消息", () => {
     const wrapper = mountList({
-      messages: [user(1, "问"), assistant(2)],
-      interruptedMessageId: 2,
-      interrupts: [
-        { type: "confirm", confirmKind: "dangerous_op", detail: "危险" },
+      messages: [
+        user(1, "问"),
+        assistant(2, {
+          status: "awaiting_input",
+          pendingInterrupt: {
+            id: "i1",
+            type: "confirm",
+            confirmKind: "dangerous_op",
+            detail: "危险",
+            createdAt: "2026-01-01T00:00:00Z",
+            expiresAt: "2099-01-01T00:00:00Z",
+            actionable: true,
+          },
+        }),
       ],
     });
     expect(wrapper.find(".interrupt-card").exists()).toBe(true);
     expect(wrapper.find(".interrupt-card").text()).toContain("危险操作确认");
+  });
+
+  it("推荐追问只挂在最后一条 assistant 消息", () => {
+    const wrapper = mountList({
+      messages: [
+        assistant(1, { suggestions: ["追问一"] }),
+        user(2, "再问"),
+        assistant(3),
+      ],
+    });
+    expect(wrapper.text()).not.toContain("追问一");
   });
 
   it("到达底部恢复跟随（上抛 scroll-follow-toggle(true)）", async () => {
@@ -191,7 +221,7 @@ describe("MessageList", () => {
 describe("MessageList 轻量窗口化", () => {
   const EST = 96;
 
-  const many = (n: number): ChatUserMessageVM[] =>
+  const many = (n: number): Message[] =>
     Array.from({ length: n }, (_, i) => user(i + 1, `msg-${i + 1}`));
 
   /** 模拟布局：scrollHeight = 占位高度合计 + 已挂载条目数 × 估算高度（等价于总数 × 估算高度） */
@@ -204,7 +234,7 @@ describe("MessageList 轻量窗口化", () => {
       0
     );
     const items = el.querySelectorAll(
-      ".user-message, .assistant-message, .tool-message"
+      ".user-message, .assistant-message"
     ).length;
     return spacerSum + items * EST;
   }
@@ -245,7 +275,7 @@ describe("MessageList 轻量窗口化", () => {
     const before = renderedHeight(el);
     // 前置插入 50 条更早消息（头部）
     const prepended = [
-      ...many(50).map((m, i) => user(-i - 1, m.content)),
+      ...many(50).map((m, i) => user(-i - 1, String(m.blocks[0].text ?? ""))),
       ...older,
     ];
     await wrapper.setProps({ messages: prepended });
@@ -274,7 +304,7 @@ describe("MessageList 轻量窗口化", () => {
 
     const before = renderedHeight(el);
     const prepended = [
-      ...many(50).map((m, i) => user(-i - 1, m.content)),
+      ...many(50).map((m, i) => user(-i - 1, String(m.blocks[0].text ?? ""))),
       ...older,
     ];
     await wrapper.setProps({ messages: prepended });

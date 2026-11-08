@@ -46,9 +46,15 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
   }
   return {
     resolve: {
-      alias: {
-        "@": pathSrc,
-      },
+      alias: [
+        // 源码直连：SDK 以 TS 源码参与编译与类型检查，改 SDK 不再需要先 build 产物。
+        // 精确匹配包名，避免把未来可能的子路径导入一并吞掉。
+        {
+          find: /^clarity-sdk-js$/,
+          replacement: resolve(__dirname, "../clarity-sdk-js/index.ts"),
+        },
+        { find: "@", replacement: pathSrc },
+      ],
     },
     css: {
       // CSS 预处理器
@@ -68,16 +74,6 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
       port: Number(env.VITE_APP_PORT),
       // 运行是否自动打开浏览器
       open: false,
-      watch: {
-        /**
-         * 链接的工作区包 clarity-sdk-js 通过 dist 产物被引入（node_modules 软链），
-         * 其重建会触发 vite 整页 reload（日志形如 `page reload .../clarity-sdk-js/dist/index.js`），
-         * 打断正在做页面评审/测试的同学（评估期间曾多次整页刷新）。
-         * 该目录是构建产物而非应用源码，dev 下不监听：SDK 改动后手动刷新页面即可。
-         * 如需恢复监听，删除本 watch 配置项即可。
-         */
-        ignored: ["**/clarity-sdk-js/**"],
-      },
       proxy: {
         /** 代理前缀为 /api 的请求  */
         [env.VITE_BASE_API]: {
@@ -94,9 +90,8 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
       },
     },
     /**
-     * 预览服务：页面级功能测试走构建产物，避开 dev server 的整页 reload——SDK（软链引入）
-     * 的 dist 重建会让 optimizeDeps 重新预构建并全量刷新，`server.watch.ignored` 只作用于
-     * 文件监听、覆盖不到该路径。代理口径与 dev 保持一致，便于同一套页面用例切换。
+     * 预览服务：页面级功能测试走构建产物，避免 dev server 的模块热替换 / 整页刷新干扰断言。
+     * 代理口径与 dev 保持一致，便于同一套页面用例切换。
      *
      * 端口与 dev 错开（VITE_PREVIEW_PORT），两者可并存：测试期间无需停掉别人的 dev server。
      * 以 `vite preview --mode test` 启动：代理目标与端口定义在 .env.test（生产由 nginx
@@ -252,7 +247,8 @@ export default defineConfig(({ command, mode }: ConfigEnv): UserConfig => {
         "element-plus/es/components/drawer/style/css",
         "element-plus/es/components/color-picker/style/css",
       ],
-      exclude: [],
+      // SDK 走源码（alias 到 index.ts），不进预构建，改源码直接走 HMR
+      exclude: ["clarity-sdk-js"],
     },
     // 构建配置
     build: {

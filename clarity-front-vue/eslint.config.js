@@ -110,11 +110,12 @@ export default [
   eslintConfigPrettier,
   ...storybook.configs["flat/recommended"],
   {
-    // ai-chat 组件层红线：零 store、零 SDK、零 vue-router、零 ElMessage（见 skill 01-架构与模块定案 §4）
+    // ai-chat 组件层红线：零 store、零 SDK 运行时、零 vue-router、零 ElMessage。
+    // 契约类型（Message/Block/Plan/Interrupt/Usage/Artifact/Feedback 等）允许 import type，
+    // 组件不得引用 clarity-sdk-js 的任何运行时值（API/函数/常量）。
     files: ["src/components/ai-chat/**/*.{ts,vue}"],
-    ignores: ["src/components/ai-chat/adapters/**"],
     rules: {
-      "no-restricted-imports": [
+      "@typescript-eslint/no-restricted-imports": [
         "error",
         {
           paths: [
@@ -124,8 +125,9 @@ export default [
             },
             {
               name: "clarity-sdk-js",
+              allowTypeImports: true,
               message:
-                "ai-chat 组件层禁止直连 SDK（红线，统一走 adapters/fromSdk.ts）",
+                "ai-chat 组件层仅允许 import type 契约类型，禁止引用 SDK 运行时值（红线）",
             },
             {
               name: "element-plus",
@@ -137,34 +139,6 @@ export default [
             {
               group: ["@/store/**", "@/router/**"],
               message: "ai-chat 组件层禁止访问 store/router（红线）",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    // adapters 是唯一 wire→VM 翻译层，允许直连 SDK；store/router/UI 反馈仍禁
-    files: ["src/components/ai-chat/adapters/**/*.{ts,vue}"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          paths: [
-            {
-              name: "vue-router",
-              message: "adapters 层禁止路由依赖（红线）",
-            },
-            {
-              name: "element-plus",
-              importNames: ["ElMessage", "ElMessageBox", "ElNotification"],
-              message: "adapters 层禁止 UI 反馈（红线）",
-            },
-          ],
-          patterns: [
-            {
-              group: ["@/store/**", "@/router/**"],
-              message: "adapters 层禁止访问 store/router（红线）",
             },
           ],
         },

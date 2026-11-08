@@ -1,0 +1,103 @@
+id: 1
+event: ping
+data: {"ts":"2026-09-20T10:00:00.000Z"}
+
+id: 2
+event: message.start
+data: {"streamSessionId":"stream-9f3c","userMessage":{"id":9101,"conversationId":9001,"parentMessageId":null,"role":"user","status":"completed","model":null,"error":null,"blocks":[{"id":"9101-text-1","kind":"text","seq":1,"text":"帮我看下本月销售额","durationMs":null,"tool":null}],"plan":null,"pendingInterrupt":null,"usage":{"inputTokens":0,"outputTokens":0,"cachedInputTokens":0,"credits":0},"artifactIds":[],"memoryIds":[],"suggestions":[],"edited":false,"createTime":"2026-09-20T10:00:00Z","updateTime":null},"assistantMessage":{"id":9102,"conversationId":9001,"parentMessageId":9101,"role":"assistant","status":"running","model":"clarity-pro","error":null,"blocks":[],"plan":null,"pendingInterrupt":null,"usage":{"inputTokens":0,"outputTokens":0,"cachedInputTokens":0,"credits":0},"artifactIds":[],"memoryIds":[],"suggestions":[],"edited":false,"createTime":"2026-09-20T10:00:00Z","updateTime":null}}
+
+id: 3
+event: plan.update
+data: {"messageId":9102,"plan":{"phase":"分析","status":"running","tasks":[{"id":"t1","description":"查询本月销售额","dependsOn":[],"status":"running","paradigm":null},{"id":"t2","description":"生成结论与建议","dependsOn":["t1"],"status":"pending","paradigm":null}],"revisions":[{"revisionNo":1,"reason":"按区域拆分查询","actor":"planner","at":"2026-09-20T10:00:01Z"}],"awaitingApproval":false}}
+
+id: 4
+event: block.start
+data: {"messageId":9102,"block":{"id":"9102-think-1","kind":"thinking","seq":1,"text":"","durationMs":null,"tool":null}}
+
+id: 5
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-think-1","delta":"先确认统计口径："}
+
+id: 6
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-think-1","delta":"销售额取已支付订单。"}
+
+id: 7
+event: block.stop
+data: {"messageId":9102,"block":{"id":"9102-think-1","kind":"thinking","seq":1,"text":"先确认统计口径：销售额取已支付订单。","durationMs":1200,"tool":null}}
+
+id: 8
+event: block.start
+data: {"messageId":9102,"block":{"id":"9102-tool-1","kind":"tool_use","seq":2,"text":null,"durationMs":null,"tool":{"callId":"call-1","name":"query_sales","input":{"month":"2026-09"},"output":null,"summary":null,"status":"running","error":null,"latencyMs":null,"agentCode":null,"subAgent":false}}}
+
+id: 9
+event: block.stop
+data: {"messageId":9102,"block":{"id":"9102-tool-1","kind":"tool_use","seq":2,"text":null,"durationMs":null,"tool":{"callId":"call-1","name":"query_sales","input":{"month":"2026-09"},"output":"本月销售额 123.4 万元","summary":"按月汇总已支付订单","status":"success","error":null,"latencyMs":860,"agentCode":null,"subAgent":false}}}
+
+id: 10
+event: block.start
+data: {"messageId":9102,"block":{"id":"9102-text-1","kind":"text","seq":3,"text":"","durationMs":null,"tool":null}}
+
+id: 11
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-text-1","delta":"根据数据，"}
+
+id: 12
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-text-1","delta":"本月销售额为 **123.4 万元**。"}
+
+id: 13
+event: block.stop
+data: {"messageId":9102,"block":{"id":"9102-text-1","kind":"text","seq":3,"text":"根据数据，本月销售额为 **123.4 万元**。","durationMs":700,"tool":null}}
+
+id: 14
+event: block.start
+data: {"messageId":9102,"block":{"id":"9102-think-2","kind":"thinking","seq":4,"text":"","durationMs":null,"tool":null}}
+
+id: 15
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-think-2","delta":"再核对一下区域环比。"}
+
+id: 16
+event: block.stop
+data: {"messageId":9102,"block":{"id":"9102-think-2","kind":"thinking","seq":4,"text":"再核对一下区域环比。","durationMs":500,"tool":null}}
+
+id: 17
+event: block.start
+data: {"messageId":9102,"block":{"id":"9102-text-2","kind":"text","seq":5,"text":"","durationMs":null,"tool":null}}
+
+id: 18
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-text-2","delta":"建议关注华东区环比下滑。"}
+
+id: 19
+event: block.stop
+data: {"messageId":9102,"block":{"id":"9102-text-2","kind":"text","seq":5,"text":"建议关注华东区环比下滑。","durationMs":400,"tool":null}}
+
+id: 20
+event: usage
+data: {"messageId":9102,"usage":{"inputTokens":1200,"outputTokens":300,"cachedInputTokens":512,"credits":3,"subAgents":[{"agentCode":"sales-agent","inputTokens":120,"outputTokens":30,"cachedInputTokens":0,"credits":0.5}]}}
+
+id: 21
+event: message.end
+data: {"messageId":9102,"status":"completed","error":null,"usage":{"inputTokens":1200,"outputTokens":340,"cachedInputTokens":512,"credits":4,"subAgents":[{"agentCode":"sales-agent","inputTokens":120,"outputTokens":30,"cachedInputTokens":0,"credits":0.5}]}}
+
+id: 22
+event: block.delta
+data: {"messageId":9102,"blockId":"9102-text-2","delta":"【终态后迟到增量，必须丢弃】"}
+
+id: 23
+event: ping
+data: {"ts":"2026-09-20T10:00:09.000Z"}
+
+id: 24
+event: usage
+data: {"messageId":9102,"usage":{"inputTokens":9999,"outputTokens":9999,"cachedInputTokens":9999,"credits":9999,"subAgents":null}}
+
+id: 25
+event: error
+data: {"code":"A0500","message":"终态后迟到错误","messageId":9102}
+
+id: 26
+event: suggestions
+data: {"messageId":9102,"suggestions":["华东区下滑的主要原因是什么？","下月销售额预测是多少？"]}

@@ -1,16 +1,17 @@
-<!-- 子智能体并行执行面板：并行子智能体步骤数 + 各子智能体 Token/积分消耗（纯展示，props 进）。
+<!-- 子智能体并行执行面板：并行子智能体步骤数 + 各子智能体 Token/积分消耗（纯展示，直接消费契约 SubAgentUsage）。
      子智能体粒度用量来自 message.end usage.subAgents，仅存在子智能体调用时由后端下发；
      无该数据时不渲染（避免把主 Agent 汇总用量误标为子智能体消耗，也不产生空壳）。 -->
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { ChatSubAgentUsageVM, ChatThoughtStepVM } from "../types";
+import type { SubAgentUsage } from "clarity-sdk-js";
+import type { ChatThoughtStepVM } from "../types";
 
 defineOptions({ name: "SubAgentPanel" });
 
 const props = defineProps<{
   steps: ChatThoughtStepVM[];
   /** 子智能体粒度用量（后端不下发时缺省/为空，面板不渲染） */
-  subAgents?: ChatSubAgentUsageVM[];
+  subAgents?: SubAgentUsage[];
 }>();
 
 const stepCount = computed(() => props.steps.length);

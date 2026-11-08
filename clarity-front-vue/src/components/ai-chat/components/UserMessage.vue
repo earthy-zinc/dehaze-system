@@ -1,50 +1,41 @@
 <!-- 用户消息：右侧气泡，支持复制/引用/编辑重发；管理端审计只读（纯展示，复制经 emit 交由宿主） -->
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { ChatScopeVM, ChatUserMessageVM } from "../types";
+import type { Message } from "clarity-sdk-js";
+import { textOfBlocks } from "../model/blocks";
+import type { ChatMessageActionVM, ChatScopeVM } from "../types";
 
 defineOptions({ name: "UserMessage" });
 
 const props = defineProps<{
-  message: ChatUserMessageVM;
+  message: Message;
   scope: ChatScopeVM;
 }>();
 
 const emit = defineEmits<{
-  edit: [message: ChatUserMessageVM];
-  copy: [message: ChatUserMessageVM];
-  quote: [message: ChatUserMessageVM];
+  action: [action: ChatMessageActionVM];
 }>();
 
+function emitAction(type: "copy" | "quote" | "edit") {
+  emit("action", { type, messageId: props.message.id });
+}
+
 const readOnly = computed(() => props.scope === "admin");
+const text = computed(() => textOfBlocks(props.message.blocks));
 </script>
 
 <template>
   <div class="user-message">
     <div class="user-message__bubble">
       <div class="user-message__edited">
-        <el-tag v-if="message.edited" size="small" type="info">
-          已编辑
-          <el-tooltip
-            v-if="message.originalContent"
-            :content="message.originalContent"
-          >
-            <span class="user-message__original">?</span>
-          </el-tooltip>
-        </el-tag>
+        <el-tag v-if="message.edited" size="small" type="info">已编辑</el-tag>
       </div>
-      <div class="user-message__content">{{ message.content }}</div>
+      <div class="user-message__content">{{ text }}</div>
     </div>
     <div v-if="!readOnly" class="user-message__actions">
-      <el-button link size="small" @click="emit('copy', message)"
-        >复制</el-button
-      >
-      <el-button link size="small" @click="emit('quote', message)"
-        >引用</el-button
-      >
-      <el-button link size="small" @click="emit('edit', message)"
-        >编辑</el-button
-      >
+      <el-button link size="small" @click="emitAction('copy')">复制</el-button>
+      <el-button link size="small" @click="emitAction('quote')">引用</el-button>
+      <el-button link size="small" @click="emitAction('edit')">编辑</el-button>
     </div>
   </div>
 </template>
@@ -72,11 +63,6 @@ const readOnly = computed(() => props.scope === "admin");
 
   &__edited {
     margin-bottom: 4px;
-  }
-
-  &__original {
-    margin-left: 2px;
-    cursor: help;
   }
 
   &__actions {

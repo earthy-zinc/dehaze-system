@@ -13,8 +13,6 @@ import type {
   AiEvalRunCompareResult,
   AiEvalSampleDiffItem,
   AiEvalTrendItem,
-  AiMessageThought,
-  AiMessageVO,
   AiModelVO,
   AiObservabilityCostItem,
   AiObservabilityCostTrendItem,
@@ -23,29 +21,39 @@ import type {
   AiObservabilityTraceDetail,
   AiObservabilityTraceItem,
   AiObservabilityTrendItem,
-  ArtifactVO,
-  ContentBlockDeltaEvent,
+  Artifact,
+  Block,
+  BlockDeltaEvent,
+  BlockStartEvent,
+  BlockStopEvent,
   ConversationVO,
   EndpointResult,
   EvalDatasetResult,
   EvalRunResult,
   EvalSampleResult,
-  FeedbackVO,
+  Feedback,
+  Interrupt,
+  InterruptEvent,
   McpCallVO,
   McpMarketPresetVO,
   McpNamespaceVO,
   McpServerVO,
   McpToolVO,
   MemoryVO,
+  Message,
   MessageEndEvent,
+  MessageStartEvent,
   MessageStatus,
   PageResult,
+  Plan,
+  PlanUpdateEvent,
   RunHistoryItem,
   ScheduledTaskListItem,
   SkillMarketVO,
   SkillVO,
-  StopReason,
-  ThoughtEvent,
+  SuggestionsEvent,
+  Usage,
+  UsageEvent,
   VersionResult,
 } from "clarity-sdk-js";
 import { createSSEStream } from "vite-plugin-mock-dev-server";
@@ -67,6 +75,63 @@ const ANOMALY_LABELS: Record<string, string> = {
   quota: "配额不足中断",
   canceled: "存在已取消消息",
 };
+
+/** 无计费时的用量缺省（契约 Message.usage 必填） */
+const EMPTY_USAGE: Usage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cachedInputTokens: 0,
+  credits: 0,
+};
+
+function usageOf(
+  inputTokens: number,
+  outputTokens: number,
+  cachedInputTokens = 0,
+  credits = 0
+): Usage {
+  return { inputTokens, outputTokens, cachedInputTokens, credits };
+}
+
+function textBlock(id: string, seq: number, text: string): Block {
+  return { id, kind: "text", seq, text };
+}
+
+function thinkingBlock(
+  id: string,
+  seq: number,
+  text: string,
+  durationMs: number
+): Block {
+  return { id, kind: "thinking", seq, text, durationMs };
+}
+
+function toolBlock(
+  id: string,
+  seq: number,
+  tool: NonNullable<Block["tool"]>
+): Block {
+  return { id, kind: "tool_use", seq, tool };
+}
+
+/** 消息正文（text 块按 seq 拼接），mock 内部用于检索/导出/复制语义 */
+function textOfMessage(message: Message): string {
+  return message.blocks
+    .filter((block) => block.kind === "text")
+    .sort((a, b) => a.seq - b.seq)
+    .map((block) => block.text ?? "")
+    .filter((text) => text !== "")
+    .join("\n\n");
+}
+
+/** 替换消息正文：保留思考/工具块，只重写 text 块 */
+function replaceText(message: Message, content: string): void {
+  const rest = message.blocks.filter((block) => block.kind !== "text");
+  message.blocks = [
+    ...rest,
+    textBlock(`${message.id}-text-${Date.now()}`, 1, content),
+  ];
+}
 
 // ==================== 通用工具 ====================
 
@@ -100,8 +165,9 @@ interface ConversationRecord extends ConversationVO {
   deleted?: boolean;
 }
 
-let nextConversationId = 9;
-let nextMessageId = 1000;
+let nextConversationId = 10;
+/** 新消息 id 从 2000 起，避开种子消息（1001~1024） */
+let nextMessageId = 2000;
 let nextArtifactId = 6;
 let nextMemoryId = 7;
 let nextAgentId = 5;
@@ -116,7 +182,6 @@ let nextSkillId = 5;
 let nextScheduleId = 4;
 let nextScheduleRunId = 9;
 let nextFeedbackId = 4;
-let nextThoughtId = 2;
 let nextStreamSeq = 1;
 
 const conversations: ConversationRecord[] = [
@@ -129,18 +194,19 @@ const conversations: ConversationRecord[] = [
     agentVersion: 2,
     modelConfig: { temperature: 0.3, maxOutputTokens: 2048, topP: 0.9 },
     status: 1,
-    messageCount: 4,
+    messageCount: 5,
     pinned: 1,
     unreadCount: 0,
-    currentBranchMessageId: 1002,
+    // 激活链末条：1001 → 1002 → 1003 → 1022（1004 为同一分叉点的另一分支）
+    currentBranchMessageId: 1022,
     summary: "围绕暗通道先验去雾的窗口半径与透射率下限调参",
-    lastMessageAt: "2026-08-28 16:42:18",
+    lastMessageAt: "2026-08-28 17:04:22",
     userId: 1,
     userName: "管理员",
     tokenConsumed: 12480,
     creditsConsumed: 62,
     createTime: "2026-08-27 09:12:03",
-    updateTime: "2026-08-28 16:42:18",
+    updateTime: "2026-08-28 17:04:22",
   },
   {
     id: 2,
@@ -154,7 +220,8 @@ const conversations: ConversationRecord[] = [
     messageCount: 4,
     pinned: 0,
     unreadCount: 2,
-    currentBranchMessageId: 1006,
+    // 激活链末条：1005 → 1006 → 1007 → 1008
+    currentBranchMessageId: 1008,
     lastMessageAt: "2026-08-28 11:05:44",
     userId: 1,
     userName: "管理员",
@@ -277,6 +344,29 @@ const conversations: ConversationRecord[] = [
     updateTime: "2026-08-16 21:47:13",
     deleted: true,
   },
+  {
+    id: 9,
+    title: "视频流实时去雾吞吐与显存",
+    titleSource: "auto",
+    model: DEFAULT_MODEL,
+    agentCode: "dehaze-assistant",
+    agentVersion: 2,
+    modelConfig: { temperature: 0.4, maxOutputTokens: 3072, topP: 0.9 },
+    status: 1,
+    messageCount: 2,
+    pinned: 0,
+    unreadCount: 0,
+    // 激活链末条：1023 → 1024（1024 带待处理中断，用于验证中断卡）；
+    // 1025 与 1024 同属分叉点 1023，让「中断期间分支切换器必须 disabled」可验证
+    currentBranchMessageId: 1024,
+    lastMessageAt: "2026-08-29 09:15:00",
+    userId: 1,
+    userName: "管理员",
+    tokenConsumed: 5300,
+    creditsConsumed: 27,
+    createTime: "2026-08-29 09:12:40",
+    updateTime: "2026-08-29 09:15:00",
+  },
 ];
 
 /** 管理端审计字段（userId/userName/消耗/异常标注）仅在 view=admin 下透出 */
@@ -316,9 +406,9 @@ function refreshAnomaly(conversationId: number) {
   const messages = allMessages.filter(
     (item) => item.conversationId === conversationId && !item.deleted
   );
-  const anomaly = messages.find((item) => item.status === 3)
+  const anomaly = messages.find((item) => item.status === "failed")
     ? "failed"
-    : messages.find((item) => item.status === 4)
+    : messages.find((item) => item.status === "canceled")
       ? "canceled"
       : undefined;
   if (anomaly) {
@@ -329,7 +419,7 @@ function refreshAnomaly(conversationId: number) {
 
 // ==================== 消息 ====================
 
-interface ChatMessage extends AiMessageVO {
+interface ChatMessage extends Message {
   deleted?: boolean;
 }
 
@@ -337,7 +427,23 @@ function seedMessage(
   overrides: Partial<ChatMessage> &
     Pick<ChatMessage, "id" | "conversationId" | "role">
 ): ChatMessage {
-  return { status: 2, createTime: "2026-08-28 10:00:00", ...overrides };
+  return {
+    parentMessageId: null,
+    status: "completed",
+    model: null,
+    error: null,
+    blocks: [],
+    plan: null,
+    pendingInterrupt: null,
+    usage: { ...EMPTY_USAGE },
+    artifactIds: [],
+    memoryIds: [],
+    suggestions: [],
+    edited: false,
+    createTime: "2026-08-28 10:00:00",
+    updateTime: null,
+    ...overrides,
+  };
 }
 
 const allMessages: ChatMessage[] = [
@@ -345,58 +451,66 @@ const allMessages: ChatMessage[] = [
     id: 1001,
     conversationId: 1,
     role: "user",
-    content: "暗通道先验去雾时，窗口半径该怎么选？",
+    blocks: [
+      textBlock("1001-text-1", 1, "暗通道先验去雾时，窗口半径该怎么选？"),
+    ],
     createTime: "2026-08-27 09:12:03",
   }),
   seedMessage({
     id: 1002,
     conversationId: 1,
     role: "assistant",
-    content:
-      "窗口半径决定暗通道估计的局部范围，建议按图像分辨率分级选取：\n\n- 720p 及以下：窗口半径 7\n- 1080p：窗口半径 11\n- 2K 及以上：窗口半径 15\n\n半径过小会在大片天空区域产生光晕，过大则远景细节被过度增强。",
+    blocks: [
+      thinkingBlock(
+        "1002-thinking-1",
+        1,
+        "检索知识库中的暗通道先验调参文档",
+        420
+      ),
+      toolBlock("1002-tool-1", 2, {
+        callId: "call-1002-1",
+        name: "kb_search",
+        input: { query: "暗通道 窗口半径", top_k: 5 },
+        output: "命中 3 篇文档，取窗口半径分级建议",
+        status: "success",
+        latencyMs: 420,
+        subAgent: false,
+      }),
+      textBlock(
+        "1002-text-1",
+        3,
+        "窗口半径决定暗通道估计的局部范围，建议按图像分辨率分级选取：\n\n- 720p 及以下：窗口半径 7\n- 1080p：窗口半径 11\n- 2K 及以上：窗口半径 15\n\n半径过小会在大片天空区域产生光晕，过大则远景细节被过度增强。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 640,
-    outputTokens: 320,
-    cachedInputTokens: 128,
-    credits: 6,
+    usage: usageOf(640, 320, 128, 6),
+    memoryIds: [1, 4],
     parentMessageId: 1001,
     createTime: "2026-08-27 09:12:41",
-    toolCalls: [
-      { name: "kb_search", arguments: { query: "暗通道 窗口半径", top_k: 5 } },
-    ],
-    thoughts: [
-      {
-        id: 1,
-        messageId: 1002,
-        conversationId: 1,
-        position: 1,
-        thought: "检索知识库中的暗通道先验调参文档",
-        tool: "kb_search",
-        toolInput: { query: "暗通道 窗口半径", top_k: 5 },
-        observation: "命中 3 篇文档，取窗口半径分级建议",
-        status: 1,
-        latencyMs: 420,
-      },
-    ],
   }),
   seedMessage({
     id: 1003,
     conversationId: 1,
     role: "user",
-    content: "那透射率下限 t0 呢，设 0.1 会不会太低？",
+    blocks: [
+      textBlock("1003-text-1", 1, "那透射率下限 t0 呢，设 0.1 会不会太低？"),
+    ],
+    parentMessageId: 1002,
     createTime: "2026-08-28 16:40:02",
   }),
   seedMessage({
     id: 1004,
     conversationId: 1,
     role: "assistant",
-    content:
-      "t0 = 0.1 是文献常用默认值，适用于中低雾浓度。若处理浓雾场景，建议提高到 0.15~0.2，避免远景区域残留雾气；反过来，薄雾场景可降到 0.05 保留更多层次。",
+    blocks: [
+      textBlock(
+        "1004-text-1",
+        1,
+        "t0 = 0.1 是文献常用默认值，适用于中低雾浓度。若处理浓雾场景，建议提高到 0.15~0.2，避免远景区域残留雾气；反过来，薄雾场景可降到 0.05 保留更多层次。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 980,
-    outputTokens: 210,
-    cachedInputTokens: 256,
-    credits: 5,
+    usage: usageOf(980, 210, 256, 5),
     parentMessageId: 1003,
     createTime: "2026-08-28 16:42:18",
   }),
@@ -404,20 +518,28 @@ const allMessages: ChatMessage[] = [
     id: 1005,
     conversationId: 2,
     role: "user",
-    content: "对比一下 Retinex 和直方图均衡在低照度图像上的增强效果。",
+    blocks: [
+      textBlock(
+        "1005-text-1",
+        1,
+        "对比一下 Retinex 和直方图均衡在低照度图像上的增强效果。"
+      ),
+    ],
     createTime: "2026-08-28 11:02:10",
   }),
   seedMessage({
     id: 1006,
     role: "assistant",
     conversationId: 2,
-    content:
-      "| 维度 | Retinex（SSR/MSR） | 直方图均衡（HE/CLAHE） |\n| --- | --- | --- |\n| 亮度提升 | 平滑，保留光照结构 | 快，易过曝 |\n| 色彩保真 | 较好，需做色彩恢复 | 一般，可能偏色 |\n| 噪声放大 | 中等 | 明显 |\n| 耗时 | 较高 | 低 |\n\n结论：低照度且需要保留细节用 MSRCR，实时性优先用 CLAHE 并限制裁剪阈值。",
+    blocks: [
+      textBlock(
+        "1006-text-1",
+        1,
+        "| 维度 | Retinex（SSR/MSR） | 直方图均衡（HE/CLAHE） |\n| --- | --- | --- |\n| 亮度提升 | 平滑，保留光照结构 | 快，易过曝 |\n| 色彩保真 | 较好，需做色彩恢复 | 一般，可能偏色 |\n| 噪声放大 | 中等 | 明显 |\n| 耗时 | 较高 | 低 |\n\n结论：低照度且需要保留细节用 MSRCR，实时性优先用 CLAHE 并限制裁剪阈值。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 1120,
-    outputTokens: 486,
-    cachedInputTokens: 320,
-    credits: 12,
+    usage: usageOf(1120, 486, 320, 12),
     parentMessageId: 1005,
     createTime: "2026-08-28 11:05:44",
   }),
@@ -425,20 +547,23 @@ const allMessages: ChatMessage[] = [
     id: 1007,
     conversationId: 2,
     role: "user",
-    content: "再补充一下显存占用情况。",
+    blocks: [textBlock("1007-text-1", 1, "再补充一下显存占用情况。")],
+    parentMessageId: 1006,
     createTime: "2026-08-28 11:08:30",
   }),
   seedMessage({
     id: 1008,
     conversationId: 2,
     role: "assistant",
-    content:
-      "1080p 单帧 MSRCR 在 GPU 上峰值显存约 1.2GB，CLAHE 仅需 180MB 左右。",
+    blocks: [
+      textBlock(
+        "1008-text-1",
+        1,
+        "1080p 单帧 MSRCR 在 GPU 上峰值显存约 1.2GB，CLAHE 仅需 180MB 左右。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 1320,
-    outputTokens: 96,
-    cachedInputTokens: 480,
-    credits: 3,
+    usage: usageOf(1320, 96, 480, 3),
     parentMessageId: 1007,
     createTime: "2026-08-28 11:09:12",
   }),
@@ -446,15 +571,21 @@ const allMessages: ChatMessage[] = [
     id: 1009,
     conversationId: 3,
     role: "user",
-    content: "帮我分析 1080p 25fps 视频流去雾的吞吐瓶颈。",
+    blocks: [
+      textBlock(
+        "1009-text-1",
+        1,
+        "帮我分析 1080p 25fps 视频流去雾的吞吐瓶颈。"
+      ),
+    ],
     createTime: "2026-08-27 20:10:22",
   }),
   seedMessage({
     id: 1010,
     conversationId: 3,
     role: "assistant",
-    content: "",
-    status: 3,
+    blocks: [],
+    status: "failed",
     error: "上游模型服务返回 503，推理中断",
     model: DEFAULT_MODEL,
     parentMessageId: 1009,
@@ -464,27 +595,36 @@ const allMessages: ChatMessage[] = [
     id: 1011,
     conversationId: 3,
     role: "user",
-    content: "换个模型再试一次？",
+    blocks: [textBlock("1011-text-1", 1, "换个模型再试一次？")],
+    parentMessageId: 1010,
     createTime: "2026-08-27 20:19:40",
   }),
   seedMessage({
     id: 1012,
     conversationId: 4,
     role: "user",
-    content: "雾天车牌识别准确率从 72% 提升到 90% 有什么可行路径？",
+    blocks: [
+      textBlock(
+        "1012-text-1",
+        1,
+        "雾天车牌识别准确率从 72% 提升到 90% 有什么可行路径？"
+      ),
+    ],
     createTime: "2026-08-22 15:20:44",
   }),
   seedMessage({
     id: 1013,
     conversationId: 4,
     role: "assistant",
-    content:
-      "建议采用「去雾前置 + 检测微调」两段式：先用轻量化去雾网络做预处理，再用雾天样本微调检测头，通常可带来 12~18 个点的提升。",
+    blocks: [
+      textBlock(
+        "1013-text-1",
+        1,
+        "建议采用「去雾前置 + 检测微调」两段式：先用轻量化去雾网络做预处理，再用雾天样本微调检测头，通常可带来 12~18 个点的提升。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 720,
-    outputTokens: 260,
-    cachedInputTokens: 0,
-    credits: 7,
+    usage: usageOf(720, 260, 0, 7),
     parentMessageId: 1012,
     createTime: "2026-08-22 17:41:02",
   }),
@@ -492,15 +632,23 @@ const allMessages: ChatMessage[] = [
     id: 1014,
     conversationId: 5,
     role: "user",
-    content: "统计一下去雾模型在 4 卡上的显存占用。",
+    blocks: [
+      textBlock("1014-text-1", 1, "统计一下去雾模型在 4 卡上的显存占用。"),
+    ],
     createTime: "2026-08-28 09:30:11",
   }),
   seedMessage({
     id: 1015,
     conversationId: 5,
     role: "assistant",
-    content: "已收集 2 张卡的采样数据，剩余采集需要更多配额……",
-    status: 4,
+    blocks: [
+      textBlock(
+        "1015-text-1",
+        1,
+        "已收集 2 张卡的采样数据，剩余采集需要更多配额……"
+      ),
+    ],
+    status: "canceled",
     model: DEFAULT_MODEL,
     parentMessageId: 1014,
     createTime: "2026-08-28 09:33:27",
@@ -509,15 +657,23 @@ const allMessages: ChatMessage[] = [
     id: 1016,
     conversationId: 6,
     role: "user",
-    content: "把本周航拍图像批量去雾的结果整理成报告。",
+    blocks: [
+      textBlock("1016-text-1", 1, "把本周航拍图像批量去雾的结果整理成报告。"),
+    ],
     createTime: "2026-08-24 08:05:19",
   }),
   seedMessage({
     id: 1017,
     conversationId: 6,
     role: "assistant",
-    content: "正在汇总 128 张图像的指标（已处理 43 张）……",
-    status: 4,
+    blocks: [
+      textBlock(
+        "1017-text-1",
+        1,
+        "正在汇总 128 张图像的指标（已处理 43 张）……"
+      ),
+    ],
+    status: "canceled",
     model: DEFAULT_MODEL,
     parentMessageId: 1016,
     createTime: "2026-08-24 08:12:55",
@@ -526,19 +682,22 @@ const allMessages: ChatMessage[] = [
     id: 1018,
     conversationId: 7,
     role: "user",
-    content: "测试一下默认参数的去雾效果。",
+    blocks: [textBlock("1018-text-1", 1, "测试一下默认参数的去雾效果。")],
     createTime: "2026-08-18 19:10:02",
   }),
   seedMessage({
     id: 1019,
     conversationId: 7,
     role: "assistant",
-    content: "默认参数下 PSNR 21.4dB，SSIM 0.83，远景仍有残留雾气。",
+    blocks: [
+      textBlock(
+        "1019-text-1",
+        1,
+        "默认参数下 PSNR 21.4dB，SSIM 0.83，远景仍有残留雾气。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 520,
-    outputTokens: 120,
-    cachedInputTokens: 0,
-    credits: 3,
+    usage: usageOf(520, 120, 0, 3),
     parentMessageId: 1018,
     createTime: "2026-08-18 19:22:40",
   }),
@@ -546,22 +705,103 @@ const allMessages: ChatMessage[] = [
     id: 1020,
     conversationId: 8,
     role: "user",
-    content: "Retinex 尺度数量对结果影响大吗？",
+    blocks: [textBlock("1020-text-1", 1, "Retinex 尺度数量对结果影响大吗？")],
     createTime: "2026-08-16 21:30:58",
   }),
   seedMessage({
     id: 1021,
     conversationId: 8,
     role: "assistant",
-    content:
-      "三尺度（15/80/250）是性价比最高的配置，继续增加尺度收益递减且耗时上升明显。",
+    blocks: [
+      textBlock(
+        "1021-text-1",
+        1,
+        "三尺度（15/80/250）是性价比最高的配置，继续增加尺度收益递减且耗时上升明显。"
+      ),
+    ],
     model: DEFAULT_MODEL,
-    inputTokens: 610,
-    outputTokens: 180,
-    cachedInputTokens: 0,
-    credits: 4,
+    usage: usageOf(610, 180, 0, 4),
     parentMessageId: 1020,
     createTime: "2026-08-16 21:47:13",
+  }),
+  // 会话 1 的分支 2/2：与 1004 同属分叉点 1003（用于验证分支切换器）
+  seedMessage({
+    id: 1022,
+    conversationId: 1,
+    role: "assistant",
+    blocks: [
+      textBlock(
+        "1022-text-1",
+        1,
+        "t0 = 0.1 在浓雾场景确实偏低：透射率下限压得太低，远景会残留雾感。建议按雾浓度分档：薄雾 0.05、中雾 0.1、浓雾 0.15~0.2；同时把导向滤波半径提到 2 倍，避免块效应。"
+      ),
+    ],
+    model: DEFAULT_MODEL,
+    usage: usageOf(1010, 236, 256, 6),
+    parentMessageId: 1003,
+    createTime: "2026-08-28 17:04:22",
+  }),
+  // 会话 9：带待处理中断（confirm / algorithm_recommend）的助手消息
+  seedMessage({
+    id: 1023,
+    conversationId: 9,
+    role: "user",
+    blocks: [
+      textBlock("1023-text-1", 1, "1080p 视频流实时去雾，单卡吞吐能到多少路？"),
+    ],
+    createTime: "2026-08-29 09:12:55",
+  }),
+  seedMessage({
+    id: 1024,
+    conversationId: 9,
+    role: "assistant",
+    status: "awaiting_input",
+    blocks: [
+      textBlock(
+        "1024-text-1",
+        1,
+        "当前 1080p 单帧去雾单卡约 22 FPS，25FPS 视频流需要 2 卡或降到 720p。若以吞吐优先，建议改用轻量化去雾模型，可提升到 45+ FPS。"
+      ),
+    ],
+    model: DEFAULT_MODEL,
+    usage: usageOf(760, 164, 128, 4),
+    parentMessageId: 1023,
+    pendingInterrupt: {
+      id: "interrupt-1024-1",
+      type: "confirm",
+      confirmKind: "algorithm_recommend",
+      recommendation: {
+        modelId: "aodnet",
+        modelName: "AODNet",
+        reason: "吞吐优先且显存占用可控，适合实时视频流场景",
+      },
+      alternatives: [
+        { modelId: "aecr-net", modelName: "AECR-Net", matchScore: 0.82 },
+      ],
+      reason: "检测到实时性优先，建议切换轻量化模型后再继续推理",
+      detail: "检测到当前任务以实时性为第一目标，建议切换到 AODNet 推理。",
+      createdAt: "2026-08-29 09:15:00",
+      expiresAt: "2099-12-31 23:59:59",
+      actionable: true,
+    },
+    createTime: "2026-08-29 09:15:00",
+  }),
+  // 会话 9 的分支 2/2：与 1024 同属分叉点 1023，已完成（用于验证中断期间切换器 disabled）
+  seedMessage({
+    id: 1025,
+    conversationId: 9,
+    role: "assistant",
+    blocks: [
+      textBlock(
+        "1025-text-1",
+        1,
+        "先给结论：1080p 单帧去雾在单卡上约 22 FPS，25FPS 视频流建议双卡并行或降到 720p；若吞吐优先，可换轻量化模型到 45+ FPS。"
+      ),
+    ],
+    model: DEFAULT_MODEL,
+    usage: usageOf(760, 152, 128, 4),
+    parentMessageId: 1023,
+    createTime: "2026-08-29 09:14:20",
   }),
 ];
 
@@ -575,9 +815,63 @@ function conversationMessages(conversationId: number) {
     .sort((a, b) => a.id - b.id);
 }
 
+/**
+ * 当前激活链：从会话指针（currentBranchMessageId）沿 parentMessageId 上溯，
+ * 返回时间正序的消息（即后端 self 视图应下发的链路）。
+ * 指针缺失或指向已删除消息时退回会话最后一条。
+ */
+function activeChainMessages(conversationId: number): ChatMessage[] {
+  const list = conversationMessages(conversationId);
+  if (list.length === 0) return [];
+  const byId = new Map(list.map((item) => [item.id, item]));
+  const conversation = findConversation(conversationId);
+  const pointer = conversation?.currentBranchMessageId;
+  let leaf = pointer != null ? byId.get(pointer) : undefined;
+  if (!leaf) leaf = list[list.length - 1];
+  const chain: ChatMessage[] = [];
+  const seen = new Set<number>();
+  let cursor: ChatMessage | undefined = leaf;
+  while (cursor && !seen.has(cursor.id)) {
+    seen.add(cursor.id);
+    chain.push(cursor);
+    const parentId: number | null | undefined = cursor.parentMessageId;
+    cursor = parentId != null ? byId.get(parentId) : undefined;
+  }
+  return chain.sort((a, b) => a.id - b.id);
+}
+
+/** 同一分叉点的兄弟消息（assistant，时间正序） */
+function siblingMessagesOf(message: ChatMessage): ChatMessage[] {
+  if (message.role !== "assistant" || message.parentMessageId == null) {
+    return [message];
+  }
+  return allMessages
+    .filter(
+      (item) =>
+        !item.deleted &&
+        item.conversationId === message.conversationId &&
+        item.role === "assistant" &&
+        item.parentMessageId === message.parentMessageId
+    )
+    .sort((a, b) => a.id - b.id);
+}
+
+/** 契约字段 siblingIndex/siblingCount：仅 assistant 且存在分叉时填充（从 1 计） */
+function withSiblingInfo(message: ChatMessage): Message {
+  const siblings = siblingMessagesOf(message);
+  if (siblings.length <= 1) return message;
+  const index = siblings.findIndex((item) => item.id === message.id);
+  if (index < 0) return message;
+  return {
+    ...message,
+    siblingIndex: index + 1,
+    siblingCount: siblings.length,
+  };
+}
+
 // ==================== 产物 ====================
 
-let artifacts: ArtifactVO[] = [
+let artifacts: Artifact[] = [
   {
     id: 1,
     conversationId: 1,
@@ -591,7 +885,7 @@ let artifacts: ArtifactVO[] = [
       ssim: 0.91,
       windowRadius: 11,
     },
-    isInvalid: 0,
+    isInvalid: false,
     createTime: "2026-08-27 09:12:41",
   },
   {
@@ -602,7 +896,7 @@ let artifacts: ArtifactVO[] = [
     refType: "sys_pred_log",
     refId: 8801,
     summary: { fileName: "foggy_road_001.png", resolution: "1920x1080" },
-    isInvalid: 0,
+    isInvalid: false,
     createTime: "2026-08-27 09:12:45",
   },
   {
@@ -617,7 +911,7 @@ let artifacts: ArtifactVO[] = [
       matchScore: 0.87,
       reason: "低照度细节保留优先",
     },
-    isInvalid: 0,
+    isInvalid: false,
     createTime: "2026-08-28 11:05:50",
   },
   {
@@ -628,7 +922,7 @@ let artifacts: ArtifactVO[] = [
     refType: "sys_file",
     refId: 771,
     summary: { fileName: "显存占用采样.csv", sizeBytes: 18420 },
-    isInvalid: 0,
+    isInvalid: false,
     createTime: "2026-08-28 11:09:20",
   },
   {
@@ -643,7 +937,7 @@ let artifacts: ArtifactVO[] = [
       matchScore: 0.74,
       reason: "轻量化前置去雾",
     },
-    isInvalid: 0,
+    isInvalid: false,
     createTime: "2026-08-22 17:41:10",
   },
 ];
@@ -753,7 +1047,7 @@ let memories: MemoryVO[] = [
 
 // ==================== 反馈 ====================
 
-let feedbacks: FeedbackVO[] = [
+let feedbacks: Feedback[] = [
   {
     id: 1,
     messageId: 1002,
@@ -2550,57 +2844,53 @@ function replyFor(question: string): string {
   return genericReply(question.slice(0, 60));
 }
 
-function stopReasonToStatus(stopReason: StopReason): MessageStatus {
-  switch (stopReason) {
-    case "stop":
-    case "tool_calls":
-      return 2;
-    case "canceled":
-      return 4;
-    default:
-      return 3;
-  }
-}
-
-/** 流式事件落地到内存消息，保证中途刷新列表也一致 */
+/** 流式事件落地到内存消息，保证中途刷新列表也一致（blocks 为唯一内容源） */
 function applyStreamEvent(session: StreamSession, event: StreamEvent): void {
   const message = findMessage(session.messageId);
   if (!message) return;
-  if (event.event === "content_block.delta") {
-    const delta = event.data as ContentBlockDeltaEvent;
-    if (delta.delta.type === "text_delta" && delta.delta.text) {
-      message.content = (message.content ?? "") + delta.delta.text;
+  switch (event.event) {
+    case "block.start": {
+      const { block } = event.data as BlockStartEvent;
+      message.blocks.push(block);
+      return;
     }
-    return;
-  }
-  if (event.event === "thought") {
-    const thought = event.data as ThoughtEvent;
-    const record: AiMessageThought = {
-      id: nextThoughtId++,
-      messageId: message.id,
-      conversationId: message.conversationId,
-      position: thought.position,
-      thought: thought.thought,
-      tool: thought.tool,
-      toolInput: thought.toolInput,
-      observation: thought.observation,
-      status: thought.status,
-      latencyMs: thought.latencyMs ?? 0,
-    };
-    const list = message.thoughts ?? (message.thoughts = []);
-    const index = list.findIndex((item) => item.position === record.position);
-    if (index >= 0) list[index] = record;
-    else list.push(record);
-    return;
-  }
-  if (event.event === "message.end") {
-    const end = event.data as MessageEndEvent;
-    message.status = stopReasonToStatus(end.stopReason);
-    message.inputTokens = end.usage.inputTokens;
-    message.outputTokens = end.usage.outputTokens;
-    message.cachedInputTokens = end.usage.cachedInputTokens;
-    message.credits = end.usage.credits;
-    refreshAnomaly(session.conversationId);
+    case "block.delta": {
+      const { blockId, delta } = event.data as BlockDeltaEvent;
+      const block = message.blocks.find((item) => item.id === blockId);
+      if (block) block.text = (block.text ?? "") + delta;
+      return;
+    }
+    case "block.stop": {
+      const { block } = event.data as BlockStopEvent;
+      const index = message.blocks.findIndex((item) => item.id === block.id);
+      if (index >= 0) message.blocks[index] = block;
+      else message.blocks.push(block);
+      return;
+    }
+    case "plan.update": {
+      message.plan = (event.data as PlanUpdateEvent).plan;
+      return;
+    }
+    case "interrupt": {
+      message.pendingInterrupt = (event.data as InterruptEvent).interrupt;
+      return;
+    }
+    case "usage": {
+      message.usage = (event.data as UsageEvent).usage;
+      return;
+    }
+    case "suggestions": {
+      message.suggestions = (event.data as SuggestionsEvent).suggestions;
+      return;
+    }
+    case "message.end": {
+      const end = event.data as MessageEndEvent;
+      message.status = end.status;
+      message.error = end.error ?? null;
+      if (end.usage) message.usage = end.usage;
+      refreshAnomaly(session.conversationId);
+      return;
+    }
   }
 }
 
@@ -2616,102 +2906,136 @@ function buildStreamEvents(
     }
     events.push({ event, data, delay });
   };
-  const model = findMessage(session.messageId)?.model ?? DEFAULT_MODEL;
+  const assistant = findMessage(session.messageId);
+  if (!assistant) return events;
+  const user = assistant.parentMessageId
+    ? findMessage(assistant.parentMessageId)
+    : undefined;
   const thinking = `用户的问题聚焦「${toolQuery}」。先检索知识库中的算法文档，再结合会话历史给出可执行的参数建议，最后补充资源开销说明。`;
-  const toolArgs = JSON.stringify({ query: toolQuery, top_k: 5 });
+  const thinkingId = `${assistant.id}-thinking`;
+  const toolId = `${assistant.id}-tool`;
+  const textId = `${assistant.id}-text`;
+  let thinkingText = "";
 
   push(
     "message.start",
     {
-      messageId: session.messageId,
-      conversationId: session.conversationId,
-      model,
       streamSessionId: session.streamSessionId,
-    },
+      userMessage: user ?? { ...assistant, role: "user" },
+      // 重新生成/编辑产生的新回复：兄弟序号必须在 start 里给到，
+      // 否则流式期间分支切换器要等下次拉列表才出现
+      assistantMessage: withSiblingInfo(assistant),
+    } satisfies MessageStartEvent,
     80
   );
 
-  push("content_block.start", { index: 0, type: "thinking" }, 120);
+  push(
+    "block.start",
+    {
+      messageId: assistant.id,
+      block: { id: thinkingId, kind: "thinking", seq: 1, text: "" },
+    },
+    120
+  );
   for (const piece of chunkText(thinking, 8)) {
+    thinkingText += piece;
     push(
-      "content_block.delta",
-      {
-        index: 0,
-        delta: { type: "thinking_delta", thinking: piece },
-      },
+      "block.delta",
+      { messageId: assistant.id, blockId: thinkingId, delta: piece },
       20
     );
   }
-  push("content_block.stop", { index: 0 }, 40);
   push(
-    "thought",
+    "block.stop",
     {
-      position: 1,
-      thought: "检索知识库中的算法文档",
-      tool: "kb_search",
-      toolInput: { query: toolQuery, top_k: 5 },
-      observation: "命中 3 篇文档，取参数分级建议",
-      status: 1,
-      latencyMs: 420,
+      messageId: assistant.id,
+      block: {
+        id: thinkingId,
+        kind: "thinking",
+        seq: 1,
+        text: thinkingText,
+        durationMs: 420,
+      },
+    },
+    40
+  );
+
+  const toolInput = { query: toolQuery, top_k: 5 };
+  push(
+    "block.start",
+    {
+      messageId: assistant.id,
+      block: {
+        id: toolId,
+        kind: "tool_use",
+        seq: 2,
+        tool: {
+          callId: `call-${assistant.id}`,
+          name: "kb_search",
+          input: toolInput,
+          status: "running",
+          subAgent: false,
+        },
+      },
+    },
+    40
+  );
+  push(
+    "block.stop",
+    {
+      messageId: assistant.id,
+      block: {
+        id: toolId,
+        kind: "tool_use",
+        seq: 2,
+        tool: {
+          callId: `call-${assistant.id}`,
+          name: "kb_search",
+          input: toolInput,
+          output: "命中 3 篇文档，取参数分级建议",
+          status: "success",
+          latencyMs: 420,
+          subAgent: false,
+        },
+      },
     },
     60
   );
 
-  push("content_block.start", { index: 1, type: "tool_use" }, 40);
+  let text = "";
   push(
-    "content_block.delta",
+    "block.start",
     {
-      index: 1,
-      delta: {
-        type: "input_json_delta",
-        name: "kb_search",
-        partialJson: toolArgs.slice(0, 12),
-      },
+      messageId: assistant.id,
+      block: { id: textId, kind: "text", seq: 3, text: "" },
     },
-    30
+    40
   );
-  for (const piece of chunkText(toolArgs.slice(12), 8)) {
-    push(
-      "content_block.delta",
-      {
-        index: 1,
-        delta: { type: "input_json_delta", partialJson: piece },
-      },
-      20
-    );
-  }
-  push("content_block.stop", { index: 1 }, 30);
-  push(
-    "thought",
-    {
-      position: 2,
-      thought: "汇总文档结论并生成回答",
-      status: 1,
-      latencyMs: 860,
-    },
-    80
-  );
-
-  push("content_block.start", { index: 2, type: "text" }, 40);
   for (const piece of chunkText(reply, 6)) {
+    text += piece;
     push(
-      "content_block.delta",
-      {
-        index: 2,
-        delta: { type: "text_delta", text: piece },
-      },
+      "block.delta",
+      { messageId: assistant.id, blockId: textId, delta: piece },
       25
     );
   }
-  push("content_block.stop", { index: 2 }, 40);
+  push(
+    "block.stop",
+    {
+      messageId: assistant.id,
+      block: { id: textId, kind: "text", seq: 3, text },
+    },
+    40
+  );
 
   push(
     "suggestions",
     {
-      questions: [
-        { question: "窗口半径对边缘细节有什么影响？" },
-        { question: "浓雾场景该如何调整 t0？" },
-        { question: "给出一组可复现的调参参数" },
+      messageId: assistant.id,
+      suggestions: [
+        "窗口半径对边缘细节有什么影响？",
+        "浓雾场景该如何调整 t0？",
+        "给出一组可复现的调参参数",
       ],
     },
     60
@@ -2720,61 +3044,68 @@ function buildStreamEvents(
   push(
     "message.end",
     {
-      stopReason: "stop",
+      messageId: assistant.id,
+      status: "completed",
+      error: null,
       usage: {
         inputTokens: 980 + Math.round(reply.length / 4),
         outputTokens: Math.round(reply.length / 2),
         cachedInputTokens: 320,
         credits: Math.max(1, Math.round(reply.length / 60)),
       },
-    },
+    } satisfies MessageEndEvent,
     60
   );
 
   return events;
 }
 
-/** 中断恢复：只推送续写正文与收尾，不重复思考/工具阶段 */
+/** 中断恢复：不重发 message.start，只续写正文块与收尾 */
 function buildResumeEvents(
   session: StreamSession,
   extra: string
 ): StreamEvent[] {
   const events: StreamEvent[] = [];
-  const model = findMessage(session.messageId)?.model ?? DEFAULT_MODEL;
+  const message = findMessage(session.messageId);
+  if (!message) return events;
+  const blockId = `${message.id}-resume-${Date.now()}`;
+  let text = "";
   events.push({
-    event: "message.start",
+    event: "block.start",
     data: {
-      messageId: session.messageId,
-      conversationId: session.conversationId,
-      model,
-      streamSessionId: session.streamSessionId,
+      messageId: message.id,
+      block: { id: blockId, kind: "text", seq: 100, text: "" },
     },
-    delay: 80,
-  });
-  events.push({
-    event: "content_block.start",
-    data: { index: 0, type: "text" },
     delay: 40,
   });
   for (const piece of chunkText(extra, 6)) {
+    text += piece;
     events.push({
-      event: "content_block.delta",
-      data: { index: 0, delta: { type: "text_delta", text: piece } },
+      event: "block.delta",
+      data: { messageId: message.id, blockId, delta: piece },
       delay: 25,
     });
   }
-  events.push({ event: "content_block.stop", data: { index: 0 }, delay: 40 });
+  events.push({
+    event: "block.stop",
+    data: {
+      messageId: message.id,
+      block: { id: blockId, kind: "text", seq: 100, text },
+    },
+    delay: 40,
+  });
   events.push({
     event: "message.end",
     data: {
-      stopReason: "stop",
+      messageId: message.id,
+      status: "completed",
       usage: {
         inputTokens: 640,
         outputTokens: Math.round(extra.length / 2),
         cachedInputTokens: 180,
         credits: 2,
       },
-    },
+    } satisfies MessageEndEvent,
     delay: 80,
   });
   return events;
@@ -2863,17 +3194,16 @@ function appendAssistantMessage(
   model: string,
   parentMessageId?: number
 ): ChatMessage {
-  const message: ChatMessage = {
+  const message = seedMessage({
     id: nextMessageId++,
     conversationId,
     role: "assistant",
-    content: "",
-    status: 1,
+    blocks: [],
+    status: "running",
     model,
-    parentMessageId,
-    thoughts: [],
+    parentMessageId: parentMessageId ?? null,
     createTime: formatNow(),
-  };
+  });
   allMessages.push(message);
   const conversation = findConversation(conversationId);
   if (conversation) {
@@ -2887,16 +3217,17 @@ function appendAssistantMessage(
 
 function appendUserMessage(
   conversationId: number,
-  content: string
+  content: string,
+  parentMessageId?: number
 ): ChatMessage {
-  const message: ChatMessage = {
+  const message = seedMessage({
     id: nextMessageId++,
     conversationId,
     role: "user",
-    content,
-    status: 2,
+    blocks: [textBlock(`${nextMessageId - 1}-text-1`, 1, content)],
+    parentMessageId: parentMessageId ?? null,
     createTime: formatNow(),
-  };
+  });
   allMessages.push(message);
   const conversation = findConversation(conversationId);
   if (conversation) {
@@ -2924,12 +3255,13 @@ function exportConversation(conversationId: number, format: string): string {
     lines.push(
       `## ${role}（${message.createTime}）`,
       "",
-      message.content ?? "",
+      textOfMessage(message),
       ""
     );
-    for (const thought of message.thoughts ?? []) {
+    for (const block of message.blocks) {
+      if (block.kind !== "tool_use" || !block.tool) continue;
       lines.push(
-        `> 推理步骤 ${thought.position}：${thought.thought ?? ""}`,
+        `> 推理步骤 ${block.seq}：${block.tool.name ?? ""} ${block.tool.output ?? ""}`,
         ""
       );
     }
@@ -3213,24 +3545,34 @@ export default defineMock([
         .filter((item) => (admin ? true : item.userId === CURRENT_USER_ID))
         .filter((item) => (status ? item.status === status : true))
         .map((item) => {
-          if (!keyword) return { ...item, matchedMessageId: undefined };
-          if (item.title.includes(keyword))
-            return { ...item, matchedMessageId: undefined };
+          if (!keyword || item.title.includes(keyword)) {
+            return { conversation: item, matchedMessageId: undefined };
+          }
           const hit = conversationMessages(item.id).find((message) =>
-            (message.content ?? "").includes(keyword)
+            textOfMessage(message).includes(keyword)
           );
-          return hit ? { ...item, matchedMessageId: hit.id } : null;
+          return hit ? { conversation: item, matchedMessageId: hit.id } : null;
         })
-        .filter((item): item is ConversationRecord => item !== null)
+        .filter(
+          (
+            entry
+          ): entry is {
+            conversation: ConversationRecord;
+            matchedMessageId?: number;
+          } => entry !== null
+        )
         .sort((a, b) => {
-          if (b.pinned !== a.pinned) return b.pinned - a.pinned;
-          return String(b.lastMessageAt ?? "").localeCompare(
-            String(a.lastMessageAt ?? "")
+          if (b.conversation.pinned !== a.conversation.pinned)
+            return b.conversation.pinned - a.conversation.pinned;
+          return String(b.conversation.lastMessageAt ?? "").localeCompare(
+            String(a.conversation.lastMessageAt ?? "")
           );
         });
       return ok(
         paginate(
-          list.map((item) => projectConversation(item, admin)),
+          list.map(({ conversation, matchedMessageId }) =>
+            projectConversation({ ...conversation, matchedMessageId }, admin)
+          ),
           query
         )
       );
@@ -3389,10 +3731,15 @@ export default defineMock([
         res.end(JSON.stringify(bizFail("消息内容不能为空", "A0300")));
         return;
       }
-      appendUserMessage(conversation.id, content);
+      const history = conversationMessages(conversation.id);
+      const leaf =
+        conversation.currentBranchMessageId ??
+        (history.length > 0 ? history[history.length - 1].id : undefined);
+      const user = appendUserMessage(conversation.id, content, leaf);
       const assistant = appendAssistantMessage(
         conversation.id,
-        String(req.body?.model ?? conversation.model ?? DEFAULT_MODEL)
+        String(req.body?.model ?? conversation.model ?? DEFAULT_MODEL),
+        user.id
       );
       const reply = replyFor(content);
       const session = openStreamSession(
@@ -3404,13 +3751,60 @@ export default defineMock([
     },
   },
 
-  // 消息列表（按时间正序分页）
+  // 消息列表（当前激活链，游标分页：id 倒序 + hasMore）
   {
     url: "ai/conversations/:conversationId/messages",
     method: ["GET"],
     body({ params, query }) {
-      const list = conversationMessages(Number(params.conversationId));
-      return ok(paginate(list, query));
+      const conversationId = Number(params.conversationId);
+      const chain = activeChainMessages(conversationId);
+      const limit = Number(query.limit) > 0 ? Number(query.limit) : 50;
+      const before = Number(query.before) > 0 ? Number(query.before) : null;
+      const filtered =
+        before === null ? chain : chain.filter((item) => item.id < before);
+      const pageAsc = filtered.slice(Math.max(0, filtered.length - limit));
+      return ok({
+        // 后端游标分页按 id 倒序返回
+        list: pageAsc.slice().reverse().map(withSiblingInfo),
+        total: chain.length,
+        hasMore: filtered.length > pageAsc.length,
+      });
+    },
+  },
+
+  // 某分叉点的全部分支（同一父消息下的兄弟 assistant，按时间倒序）
+  {
+    url: "ai/conversations/:conversationId/messages/:messageId/branches",
+    method: ["GET"],
+    body({ params }) {
+      const conversationId = Number(params.conversationId);
+      const forkId = Number(params.messageId);
+      const list = allMessages
+        .filter(
+          (item) =>
+            !item.deleted &&
+            item.conversationId === conversationId &&
+            item.role === "assistant" &&
+            item.parentMessageId === forkId
+        )
+        .sort((a, b) => b.id - a.id)
+        .map(withSiblingInfo);
+      return ok(list);
+    },
+  },
+
+  // 切换当前激活分支（更新会话 currentBranchMessageId）
+  {
+    url: "ai/conversations/:conversationId/branches/:messageId",
+    method: ["PUT"],
+    body({ params }) {
+      const conversation = findConversation(Number(params.conversationId));
+      const message = findMessage(Number(params.messageId));
+      if (!conversation || !message || message.deleted) {
+        return bizFail("会话或消息不存在");
+      }
+      conversation.currentBranchMessageId = message.id;
+      return ok(projectConversation(conversation, false));
     },
   },
 
@@ -3453,7 +3847,7 @@ export default defineMock([
       const sibling = conversationMessages(source.conversationId).find(
         (item) => item.id === (source.parentMessageId ?? source.id)
       );
-      const prompt = sibling?.content ?? "";
+      const prompt = sibling ? textOfMessage(sibling) : "";
       const session = openStreamSession(
         source.conversationId,
         assistant.id,
@@ -3475,9 +3869,8 @@ export default defineMock([
         return;
       }
       const content = String(req.body?.content ?? "");
-      message.originalContent = message.content;
-      message.content = content;
-      message.edited = 1;
+      replaceText(message, content);
+      message.edited = true;
       const conversation = findConversation(message.conversationId);
       const assistant = appendAssistantMessage(
         message.conversationId,
@@ -3504,7 +3897,9 @@ export default defineMock([
         res.end(JSON.stringify(bizFail("消息不存在")));
         return;
       }
-      message.status = 1;
+      message.status = "running";
+      // 恢复后清中断：刷新会话时不应再看到待处理中断
+      message.pendingInterrupt = null;
       const extra =
         "\n\n（已恢复推理）继续补充：以上参数在 1080p 及以下分辨率可直接复用；2K 以上建议按 1.5 倍缩放窗口半径，并复核导向滤波耗时。";
       const session = openStreamSession(
@@ -3516,7 +3911,8 @@ export default defineMock([
     },
   },
 
-  // 停止流式输出
+  // 停止流式输出：返回的实体同样带兄弟序号（前端用它整体替换实体，
+  // 缺字段会让「停止」把刚出现的分支切换器抹掉）
   {
     url: "ai/messages/:id/stop",
     method: ["POST"],
@@ -3526,13 +3922,13 @@ export default defineMock([
       for (const session of streamSessions.values()) {
         if (session.messageId === message.id) cancelStream(session);
       }
-      message.status = 4;
+      message.status = "canceled";
       refreshAnomaly(message.conversationId);
-      return ok(message);
+      return ok(withSiblingInfo(message));
     },
   },
 
-  // 消息详情（含 thoughts；过程链审计收敛到可观测性 timeline 接口）
+  // 消息详情（blocks 承载全部内容；过程链审计收敛到可观测性 timeline 接口）
   {
     url: "ai/messages/:id",
     method: ["GET"],
@@ -3543,17 +3939,33 @@ export default defineMock([
     },
   },
 
-  // 删除助手回复（软删除）
+  // 删除助手回复（软删除）：
+  // 1) 有未删子消息 → A0502（必须先删掉该回复之后的对话）；
+  // 2) 删的是激活链叶子 → 指针回退到父消息（可为 null）；
+  // 3) 旧分支叶子删除不动指针。
   {
     url: "ai/messages/:id",
     method: ["DELETE"],
     body({ params }) {
       const message = findMessage(Number(params.id));
-      if (!message) return bizFail("消息不存在");
+      if (!message || message.deleted) return bizFail("消息不存在");
+      const hasChildren = allMessages.some(
+        (item) =>
+          !item.deleted &&
+          item.conversationId === message.conversationId &&
+          item.parentMessageId === message.id
+      );
+      if (hasChildren) {
+        return bizFail("请先删除该回复之后的对话", "A0502");
+      }
       message.deleted = true;
       const conversation = findConversation(message.conversationId);
-      if (conversation)
+      if (conversation) {
         conversation.messageCount = Math.max(0, conversation.messageCount - 1);
+        if (conversation.currentBranchMessageId === message.id) {
+          conversation.currentBranchMessageId = message.parentMessageId ?? null;
+        }
+      }
       return ok(null);
     },
   },
@@ -3570,6 +3982,21 @@ export default defineMock([
     },
   },
 
+  // 会话内当前用户的全部反馈（批量，进入会话时一次回填）
+  {
+    url: "ai/conversations/:conversationId/feedback",
+    method: ["GET"],
+    body({ params }) {
+      const conversationId = Number(params.conversationId);
+      const list = feedbacks.filter((item) => {
+        if (item.userId !== CURRENT_USER_ID) return false;
+        const message = findMessage(item.messageId);
+        return message?.conversationId === conversationId;
+      });
+      return ok(list);
+    },
+  },
+
   // 消息反馈
   {
     url: "ai/messages/:id/feedback",
@@ -3582,7 +4009,7 @@ export default defineMock([
         Object.assign(existing, body, { createTime: formatNow() });
         return ok(existing);
       }
-      const feedback: FeedbackVO = {
+      const feedback: Feedback = {
         id: nextFeedbackId++,
         messageId,
         userId: CURRENT_USER_ID,

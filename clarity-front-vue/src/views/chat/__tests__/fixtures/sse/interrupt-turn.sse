@@ -1,0 +1,35 @@
+id: 1
+event: message.start
+data: {"streamSessionId":"stream-4a17","userMessage":{"id":9201,"conversationId":9001,"parentMessageId":null,"role":"user","status":"completed","model":null,"error":null,"blocks":[{"id":"9201-text-1","kind":"text","seq":1,"text":"把结果导成报表","durationMs":null,"tool":null}],"plan":null,"pendingInterrupt":null,"usage":{"inputTokens":0,"outputTokens":0,"cachedInputTokens":0,"credits":0},"artifactIds":[],"memoryIds":[],"suggestions":[],"edited":false,"createTime":"2026-09-20T10:05:00Z","updateTime":null},"assistantMessage":{"id":9202,"conversationId":9001,"parentMessageId":9201,"role":"assistant","status":"running","model":"clarity-pro","error":null,"blocks":[],"plan":null,"pendingInterrupt":null,"usage":{"inputTokens":0,"outputTokens":0,"cachedInputTokens":0,"credits":0},"artifactIds":[],"memoryIds":[],"suggestions":[],"edited":false,"createTime":"2026-09-20T10:05:00Z","updateTime":null}}
+
+id: 2
+event: block.start
+data: {"messageId":9202,"block":{"id":"9202-think-1","kind":"thinking","seq":1,"text":"","durationMs":null,"tool":null}}
+
+id: 3
+event: block.delta
+data: {"messageId":9202,"blockId":"9202-think-1","delta":"导出需要写入本地文件，先申请工具授权。"}
+
+id: 4
+event: block.stop
+data: {"messageId":9202,"block":{"id":"9202-think-1","kind":"thinking","seq":1,"text":"导出需要写入本地文件，先申请工具授权。","durationMs":800,"tool":null}}
+
+id: 5
+event: block.start
+data: {"messageId":9202,"block":{"id":"9202-text-1","kind":"text","seq":2,"text":"","durationMs":null,"tool":null}}
+
+id: 6
+event: block.delta
+data: {"messageId":9202,"blockId":"9202-text-1","delta":"数据已准备好，等待你授权写入报表文件。"}
+
+id: 7
+event: block.stop
+data: {"messageId":9202,"block":{"id":"9202-text-1","kind":"text","seq":2,"text":"数据已准备好，等待你授权写入报表文件。","durationMs":300,"tool":null}}
+
+id: 8
+event: interrupt
+data: {"messageId":9202,"interrupt":{"id":"int-7","type":"confirm","confirmKind":"tool_permission","action":"write_file","recommendation":null,"alternatives":null,"estDuration":null,"imageCount":null,"plan":null,"reason":null,"detail":"需要授权调用 write_file 写入报表文件","createdAt":"2026-09-20T10:05:03Z","expiresAt":"2099-01-01T00:00:00Z","actionable":true}}
+
+id: 9
+event: message.end
+data: {"messageId":9202,"status":"awaiting_input","error":null,"usage":null}

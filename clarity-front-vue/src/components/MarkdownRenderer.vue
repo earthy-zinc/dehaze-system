@@ -8,7 +8,14 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from "vue";
 import MarkdownIt from "markdown-it";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -46,6 +53,8 @@ defineOptions({ name: "MarkdownRenderer" });
 
 const props = defineProps<{
   content: string;
+  /** 流式渲染中：跳过代码高亮与 Mermaid（结束态再补渲染），并抑制重复解析 */
+  streaming?: boolean;
 }>();
 
 mermaid.initialize({ startOnLoad: false });
@@ -87,7 +96,10 @@ function isSafeUrl(url: string): boolean {
   return !/^(javascript|vbscript|data):/i.test(trimmed);
 }
 
-function createMarkdownRenderer(isBlockExpanded: (index: number) => boolean) {
+function createMarkdownRenderer(
+  isBlockExpanded: (index: number) => boolean,
+  isStreaming: () => boolean
+) {
   const md = new MarkdownIt({
     html: false, // LLM 输出不可信，原生 HTML 一律转义
     linkify: true,
@@ -132,7 +144,12 @@ function createMarkdownRenderer(isBlockExpanded: (index: number) => boolean) {
     const token = tokens[idx];
     const code = token.content;
     const lang = (token.info || "").trim().split(/\s+/)[0].toLowerCase();
+    const streaming = isStreaming();
     if (lang === "mermaid") {
+      // 流式期间源码未完整：只渲染源码占位，结束后再按 Mermaid 图渲染（避免半成品报错闪烁）
+      if (streaming) {
+        return `<pre class="md-mermaid-pending"><code>${md.utils.escapeHtml(code)}</code></pre>\n`;
+      }
       // Mermaid 图：先以源码渲染（可折叠），DOM 更新后由 mermaid.run 异步渲染为 SVG
       return (
         `<div class="mermaid" data-code="${encodeURIComponent(code)}">` +
@@ -145,8 +162,9 @@ function createMarkdownRenderer(isBlockExpanded: (index: number) => boolean) {
     const foldable = lineCount > FOLD_LINE_THRESHOLD;
     const folded = foldable && !isBlockExpanded(blockIndex);
 
+    // 流式期间跳过高亮（每帧全量高亮是主要开销），仅转义输出；结束后统一补高亮
     const highlighted =
-      lang && hljs.getLanguage(lang)
+      !streaming && lang && hljs.getLanguage(lang)
         ? hljs.highlight(code, { language: lang, ignoreIllegals: true }).value
         : md.utils.escapeHtml(code);
 
@@ -195,15 +213,19 @@ function createMarkdownRenderer(isBlockExpanded: (index: number) => boolean) {
 
 const containerRef = ref<HTMLElement>();
 const expandedBlocks = ref(new Set<number>());
-const renderer = createMarkdownRenderer((index) =>
-  expandedBlocks.value.has(index)
-);
 
-// 流式场景：80ms 尾随节流合并 props 高频更新，避免每 token 全量重解析
+// 流式场景：80ms 尾随节流合并 props 高频更新，避免每 token 全量重解析；
+// 内容与流式态都未变化时直接跳过（同一内容不重复解析）。
 const pendingContent = ref(props.content);
+const pendingStreaming = ref(props.streaming === true);
+const renderer = createMarkdownRenderer(
+  (index) => expandedBlocks.value.has(index),
+  () => pendingStreaming.value
+);
 const html = computed(() => renderer.render(pendingContent.value));
 
 let latestContent = props.content;
+let latestStreaming = props.streaming === true;
 let renderTimer: ReturnType<typeof setTimeout> | null = null;
 let lastRenderAt = 0;
 
@@ -234,19 +256,48 @@ async function renderMermaid() {
 function flushRender() {
   renderTimer = null;
   lastRenderAt = Date.now();
+  // 文本与流式态均未变化：不重解析（高频 props 更新被合并为空操作）
+  if (
+    latestContent === pendingContent.value &&
+    latestStreaming === pendingStreaming.value
+  ) {
+    return;
+  }
   pendingContent.value = latestContent;
-  void nextTick(renderMermaid);
+  pendingStreaming.value = latestStreaming;
+  // 流式期间不渲染 Mermaid（源码占位），message.end 后补渲染
+  if (!pendingStreaming.value) void nextTick(renderMermaid);
+}
+
+function scheduleRender() {
+  if (renderTimer !== null) return;
+  const wait = Math.max(0, RENDER_INTERVAL_MS - (Date.now() - lastRenderAt));
+  renderTimer = setTimeout(flushRender, wait);
 }
 
 watch(
   () => props.content,
   (val) => {
     latestContent = val;
-    if (renderTimer !== null) return;
-    const wait = Math.max(0, RENDER_INTERVAL_MS - (Date.now() - lastRenderAt));
-    renderTimer = setTimeout(flushRender, wait);
+    if (val === pendingContent.value && !latestStreaming) return;
+    scheduleRender();
   }
 );
+
+// 流式结束（streaming → false）：即使文本未变也重渲染一次，补齐高亮与 Mermaid
+watch(
+  () => props.streaming,
+  (val) => {
+    latestStreaming = val === true;
+    if (latestStreaming === pendingStreaming.value) return;
+    scheduleRender();
+  }
+);
+
+// 历史消息（非流式）首次挂载：内容不变化也要补一次 Mermaid 异步渲染
+onMounted(() => {
+  if (!pendingStreaming.value) void nextTick(renderMermaid);
+});
 
 onBeforeUnmount(() => {
   if (renderTimer !== null) {

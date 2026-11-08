@@ -1,11 +1,10 @@
-<!-- 会话详情抽屉：审计元信息 + 只读消息浏览（MessageViews scope=admin，经宿主绑定层映射）+ 链路下钻跳转可观测中心 -->
+<!-- 会话详情抽屉：审计元信息 + 只读消息浏览（MessageList scope=admin，经宿主绑定层映射）+ 链路下钻跳转可观测中心 -->
 <script lang="ts" setup>
 import { storeToRefs } from "pinia";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { MessageViews } from "@/components/ai-chat";
-import type { ChatArtifactVM } from "@/components/ai-chat/types";
-import { useChatVmBinding } from "@/composables/useChatVmBinding";
+import { AiConversationAPI, type Artifact } from "clarity-sdk-js";
+import { MessageList } from "@/components/ai-chat";
 import { useAdminAuditStore } from "@/store/modules/adminAudit";
 import ArtifactDetailDialog from "@/components/ArtifactDetailDialog.vue";
 
@@ -26,7 +25,7 @@ const router = useRouter();
 // 产物详情弹窗：与用户端对话页共用同一只读组件（点击产物卡片 → 页面层拉取 getArtifactDetail 展示）
 const artifactDialogRef = ref<InstanceType<typeof ArtifactDetailDialog>>();
 
-function onOpenArtifact(artifact: ChatArtifactVM) {
+function onOpenArtifact(artifact: Artifact) {
   void artifactDialogRef.value?.open(artifact);
 }
 
@@ -40,25 +39,20 @@ function jumpToTimeline() {
   });
 }
 
-// 只读审计绑定：wire → VM；流式/滚动语义显式固定（不读 store，杜绝管理端被动依赖用户端流式态），
-// 历史分页沿用 adminAudit.loadMoreDetailMessages（后端游标分页，hasMore 取自响应）；
-// 产物卡片经绑定层按需拉取（审计只读展示，不引入任何内容操作入口）
-const {
-  messages: vmMessages,
-  interrupts: vmInterrupts,
-  hasMoreHistory,
-  loadingMore,
-  onReachTop,
-  onTrace,
-  onLoadArtifacts,
-} = useChatVmBinding({
-  scope: "admin",
-  messages: () => detailMessages.value,
-  hasMoreHistory: detailHasMore,
-  loadingMore: detailLoading,
-  onLoadMore: () => void adminAuditStore.loadMoreDetailMessages(),
-  onTrace: jumpToTimeline,
-});
+// 只读审计：消息原样透传，滚动/流式语义显式固定为审计口径（不读用户端 store 的流式态）；
+// 历史分页沿用 adminAudit.loadMoreDetailMessages；产物按需拉取，不引入任何内容操作入口
+const detailArtifacts = ref<Record<number, Artifact[]>>({});
+const requestedArtifacts = new Set<number>();
+async function loadArtifacts(messageId: number) {
+  if (messageId <= 0 || requestedArtifacts.has(messageId)) return;
+  requestedArtifacts.add(messageId);
+  try {
+    const list = await AiConversationAPI.getMessageArtifacts(messageId);
+    detailArtifacts.value = { ...detailArtifacts.value, [messageId]: list };
+  } catch {
+    requestedArtifacts.delete(messageId);
+  }
+}
 </script>
 
 <template>
@@ -96,18 +90,16 @@ const {
     />
 
     <div v-loading="detailLoading" class="detail-messages">
-      <MessageViews
+      <MessageList
         scope="admin"
-        :messages="vmMessages"
-        :streaming-message-id="null"
-        :interrupted-message-id="null"
-        :interrupts="vmInterrupts"
+        :messages="detailMessages"
+        :artifacts="detailArtifacts"
         :scroll-follow-enabled="true"
-        :has-more-history="hasMoreHistory"
-        :loading-more="loadingMore"
-        @trace="onTrace"
-        @reach-top="onReachTop"
-        @load-artifacts="onLoadArtifacts"
+        :has-more-history="detailHasMore"
+        :loading-more="detailLoading"
+        @trace="jumpToTimeline"
+        @reach-top="adminAuditStore.loadMoreDetailMessages()"
+        @load-artifacts="(id) => void loadArtifacts(id)"
         @open-artifact="onOpenArtifact"
       />
     </div>

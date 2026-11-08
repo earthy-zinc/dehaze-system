@@ -12,7 +12,13 @@ export function createConversationSlice(
   ctx: ChatCtx,
   teardownStream: () => void
 ) {
-  const { conversations, messages, currentConversationId, scope } = ctx;
+  const {
+    conversations,
+    messages,
+    messageOrder,
+    currentConversationId,
+    scope,
+  } = ctx;
 
   const conversationsTotal = ref(0);
   const conversationsLoading = ref(false);
@@ -22,14 +28,29 @@ export function createConversationSlice(
     pageSize: 50,
   });
 
-  /** 注入数据范围，由宿主页面在挂载时调用 */
+  /** 清空当前会话的消息实体表（切走/删除会话时） */
+  function clearMessages() {
+    messages.value = {};
+    messageOrder.value = [];
+    currentConversationId.value = null;
+  }
+
+  /**
+   * 注入数据范围，由宿主页面在挂载时调用。
+   *
+   * 只切换列表口径、不复位消息与当前会话：用户端与管理端页面可能同时存活
+   * （keep-alive / 抽屉），若在这里清消息或 teardown 流，会把另一页面正在进行的
+   * 对话与流式输出踩掉。消息清理由页面显式切会话（fetchMessages / 删除会话）驱动。
+   */
   function initScope(next: ChatScope) {
     if (scope.value === next) return;
-    teardownStream();
     scope.value = next;
     conversations.value = [];
-    messages.value = [];
-    currentConversationId.value = null;
+    conversationsTotal.value = 0;
+    conversationQuery.keyword = "";
+    conversationQuery.pageNum = 1;
+    // 在途请求属于上一个 scope，不能让新 scope 的 joinInflight 复用它
+    conversationsInflight = null;
   }
 
   /** 在途请求：首屏页面与侧边栏会同时触发列表加载，joinInflight=true 时复用同一请求 */
@@ -89,8 +110,7 @@ export function createConversationSlice(
     conversations.value = conversations.value.filter((item) => item.id !== id);
     if (currentConversationId.value === id) {
       teardownStream();
-      currentConversationId.value = null;
-      messages.value = [];
+      clearMessages();
     }
   }
 
@@ -109,8 +129,7 @@ export function createConversationSlice(
       ids.includes(currentConversationId.value)
     ) {
       teardownStream();
-      currentConversationId.value = null;
-      messages.value = [];
+      clearMessages();
     }
   }
 

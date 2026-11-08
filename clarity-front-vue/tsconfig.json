@@ -12,7 +12,8 @@
     "lib": ["esnext", "dom"],
     "allowJs": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "clarity-sdk-js": ["../clarity-sdk-js/index.ts"]
     },
     "types": [
       "vite/client",

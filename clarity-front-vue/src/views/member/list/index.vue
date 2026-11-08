@@ -1073,7 +1073,7 @@ function formatAuditChange(
 }
 
 const taskTypeLabels: Record<BenefitTaskType, string> = {
-  clarity: "去雾",
+  dehaze: "去雾",
   derain: "去雨",
   desnow: "去雪",
   lowlight: "低光",

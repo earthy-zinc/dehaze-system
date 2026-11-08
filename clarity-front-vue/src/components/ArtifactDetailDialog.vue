@@ -2,9 +2,8 @@
      点击产物卡片 → 按需拉取 getArtifactDetail → 只读展示（无任何内容操作入口）。
      拉取与弹窗收敛在视图层，ai-chat 组件层保持零 SDK。 -->
 <script lang="ts" setup>
-import { AiConversationAPI } from "clarity-sdk-js";
+import { AiConversationAPI, type Artifact } from "clarity-sdk-js";
 import { ref } from "vue";
-import type { ChatArtifactVM } from "@/components/ai-chat/types";
 
 defineOptions({ name: "ArtifactDetailDialog" });
 
@@ -12,7 +11,7 @@ const visible = ref(false);
 const detail = ref<Record<string, unknown> | null>(null);
 
 /** 打开产物详情：拉取详情后弹出（失败静默，不打断消息浏览） */
-async function open(artifact: ChatArtifactVM) {
+async function open(artifact: Artifact) {
   try {
     detail.value = await AiConversationAPI.getArtifactDetail(artifact.id);
     visible.value = true;

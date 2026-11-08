@@ -1,0 +1,27 @@
+id: 1
+event: content_block.start
+data: {"messageId":9302,"block":{"id":"9302-text-1","kind":"text","seq":1,"text":"","durationMs":null,"tool":null}}
+
+id: 2
+event: content_block.delta
+data: {"messageId":9302,"blockId":"9302-text-1","delta":"旧版事件名增量"}
+
+id: 3
+event: thought
+data: {"messageId":9302,"text":"旧版思考事件"}
+
+id: 4
+event: message.delta
+data: {"messageId":9302,"delta":"旧版消息增量"}
+
+id: 5
+event: block.delta
+data: {"messageId":9302,"blockId":
+
+id: 6
+event: ping
+data: {"ts":"2026-09-20T10:10:00.000Z"}
+
+id: 7
+event: message.end
+data: {"messageId":9302,"status":"completed","error":null,"usage":null}

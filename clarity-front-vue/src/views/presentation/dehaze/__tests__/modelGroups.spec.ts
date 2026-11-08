@@ -10,9 +10,9 @@ const model = (over: Partial<AiModelVO>): AiModelVO =>
 describe("groupModelsByTaskTag", () => {
   it("按首标签分组并映射中文组名，组内保持原顺序", () => {
     const groups = groupModelsByTaskTag([
-      model({ modelId: "a", taskTags: ["dehaze"] }),
+      model({ modelId: "a", taskTags: ["clarity"] }),
       model({ modelId: "b", taskTags: ["derain"] }),
-      model({ modelId: "c", taskTags: ["dehaze"] }),
+      model({ modelId: "c", taskTags: ["clarity"] }),
     ]);
 
     expect(groups.map((g) => g.label)).toEqual(["去雾", "去雨"]);
@@ -36,7 +36,7 @@ describe("groupModelsByTaskTag", () => {
   it("未知标签原样输出，多标签只取首标签", () => {
     const groups = groupModelsByTaskTag([
       model({ modelId: "unknown", taskTags: ["foo"] }),
-      model({ modelId: "multi", taskTags: ["dehaze", "derain"] }),
+      model({ modelId: "multi", taskTags: ["clarity", "derain"] }),
     ]);
 
     expect(groups.map((g) => g.label)).toEqual(["foo", "去雾"]);
@@ -44,7 +44,7 @@ describe("groupModelsByTaskTag", () => {
 
   it("带标签与无标签混排：兜底组按出现顺序插入，模型不丢失", () => {
     const models = [
-      model({ modelId: "a", taskTags: ["dehaze"] }),
+      model({ modelId: "a", taskTags: ["clarity"] }),
       model({ modelId: "b", taskTags: undefined }),
       model({ modelId: "c", taskTags: ["derain"] }),
       model({ modelId: "d", taskTags: [] }),

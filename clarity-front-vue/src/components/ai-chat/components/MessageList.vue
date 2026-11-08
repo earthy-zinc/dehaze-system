@@ -1,60 +1,56 @@
 <!-- 消息列表：按时间正序渲染，role 分流组件，自动滚动跟随；>100 条启用轻量窗口化。
-     无状态：数据 props 进、事件 emit 出（中断恢复经 resume-interrupt 交由页面层调用 store）。 -->
+     无状态：数据 props 进、事件 emit 出；内容动作统一上抛 message-action（判别联合）。 -->
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { shouldShowSuggestions } from "../vm";
+import type { Artifact, Feedback, Message } from "clarity-sdk-js";
+import { textOfBlocks } from "../model/blocks";
+import type { ChatBranchVM, ChatMessageActionVM, ChatScopeVM } from "../types";
 import AssistantMessage from "./AssistantMessage.vue";
-import InterruptCard from "./InterruptCard.vue";
-import ToolMessage from "./ToolMessage.vue";
 import UserMessage from "./UserMessage.vue";
-import type {
-  ChatArtifactVM,
-  ChatAssistantMessageVM,
-  ChatContextChipVM,
-  ChatFeedbackVM,
-  ChatInterruptVM,
-  ChatMessageVM,
-  ChatResumeFormVM,
-  ChatScopeVM,
-  ChatUserMessageVM,
-} from "../types";
 
 defineOptions({ name: "MessageList" });
 
 const props = defineProps<{
-  messages: ChatMessageVM[];
+  messages: Message[];
+  /** 宿主补充数据（按消息 id 索引）：产物/反馈/分支序号，消息实体本身不携带 */
+  artifacts?: Record<number, Artifact[]>;
+  feedback?: Record<number, Feedback | null>;
+  branches?: Record<number, ChatBranchVM>;
   scope: ChatScopeVM;
-  streamingMessageId: number | null;
-  interruptedMessageId: number | null;
-  interrupts: ChatInterruptVM[];
   scrollFollowEnabled: boolean;
   /** 是否还有更早的历史消息（滚动到顶触发 reach-top 加载） */
   hasMoreHistory?: boolean;
   /** 历史消息加载中 */
   loadingMore?: boolean;
-  /** 分支切换进行中（禁用切换器） */
-  branchSwitching?: boolean;
+  /** 历史加载失败（initial 首屏 / more 上翻）：行内提示并给出重试入口 */
+  error?: { kind: "initial" | "more"; message: string } | null;
+  /** 错误重试进行中（禁用重试按钮） */
+  retrying?: boolean;
+  /** 分支切换禁用（切换进行中或流式/中断中） */
+  branchDisabled?: boolean;
 }>();
 
 const emit = defineEmits<{
   "scroll-follow-toggle": [enabled: boolean];
   "reach-top": [];
-  edit: [message: ChatUserMessageVM];
-  copy: [message: ChatMessageVM];
-  quote: [message: ChatMessageVM];
-  regenerate: [message: ChatAssistantMessageVM];
-  feedback: [message: ChatAssistantMessageVM, data: ChatFeedbackVM | null];
-  delete: [message: ChatMessageVM];
-  speak: [message: ChatAssistantMessageVM];
-  trace: [message: ChatMessageVM];
-  "resume-interrupt": [messageId: number, data: ChatResumeFormVM];
-  "open-artifact": [artifact: ChatArtifactVM];
-  "apply-suggestion": [question: string];
+  /** 历史加载失败后重试 */
+  retry: [];
+  /** 单一消息动作（复制/编辑/引用/重新生成/重试/朗读/删除/反馈/恢复中断/采用推荐问题） */
+  "message-action": [action: ChatMessageActionVM];
+  "open-artifact": [artifact: Artifact];
   "load-artifacts": [messageId: number];
-  retry: [message: ChatAssistantMessageVM];
-  "switch-branch": [message: ChatAssistantMessageVM, index: number];
-  "context-open": [chip: ChatContextChipVM];
+  "switch-branch": [message: Message, index: number];
+  trace: [message: Message];
 }>();
+
+/** 推荐追问仅挂在最后一条 assistant 消息之后 */
+const lastAssistantId = computed<number | null>(() => {
+  for (let i = props.messages.length - 1; i >= 0; i--) {
+    const message = props.messages[i];
+    if (message.role === "assistant") return message.id;
+  }
+  return null;
+});
 
 const BOTTOM_THRESHOLD_PX = 40;
 const TOP_THRESHOLD_PX = 40;
@@ -98,32 +94,13 @@ const bottomSpacerHeight = computed(
   () => (props.messages.length - endIndex.value) * EST_ITEM_HEIGHT
 );
 
-function messageKey(message: ChatMessageVM, index: number) {
+function messageKey(message: Message, index: number) {
   return message.id != null
     ? `m-${message.id}`
     : `idx-${startIndex.value + index}`;
 }
 
-// ===== 中断卡：优先内联到对应被中断的消息，剩余作为尾部卡片兜底 =====
-function interruptFor(message: ChatMessageVM): ChatInterruptVM | undefined {
-  return message.id === props.interruptedMessageId
-    ? props.interrupts[0]
-    : undefined;
-}
-
-const hasMatchedInterrupt = computed(
-  () =>
-    props.interruptedMessageId != null &&
-    props.messages.some((m) => m.id === props.interruptedMessageId)
-);
-
-const orphanInterrupts = computed(() =>
-  hasMatchedInterrupt.value ? props.interrupts.slice(1) : props.interrupts
-);
-
-function resumeOrphan(data: ChatResumeFormVM) {
-  emit("resume-interrupt", props.interruptedMessageId ?? 0, data);
-}
+// ===== 中断卡由消息实体的 pendingInterrupt 内联渲染（无侧表、无兜底散卡） =====
 
 // ===== 滚动跟随 =====
 function scrollToBottom() {
@@ -146,7 +123,8 @@ function handleScroll() {
   if (
     el.scrollTop <= TOP_THRESHOLD_PX &&
     props.hasMoreHistory &&
-    !props.loadingMore
+    !props.loadingMore &&
+    !props.error
   ) {
     emit("reach-top");
   }
@@ -157,12 +135,9 @@ function backToBottom() {
   emit("scroll-follow-toggle", true);
 }
 
-/** 消息正文长度（assistant 用 text，user/tool 用 content） */
-function contentLength(message: ChatMessageVM | undefined): number {
-  if (!message) return 0;
-  return message.role === "assistant"
-    ? message.text.length
-    : message.content.length;
+/** 消息正文长度（text 块拼接，块增量推进时随之变化） */
+function contentLength(message: Message | undefined): number {
+  return message ? textOfBlocks(message.blocks).length : 0;
 }
 
 // 流式增量经 rAF 批量写入，仅监听尾部消息（id + 内容长度）即可低成本跟随；
@@ -230,6 +205,20 @@ defineExpose({ scrollToBottom });
       <div v-if="loadingMore" class="chat-message-list__loading">
         正在加载历史…
       </div>
+      <div v-if="error" class="chat-message-list__error">
+        <span class="chat-message-list__error-text">
+          历史消息加载失败：{{ error.message }}
+        </span>
+        <el-button
+          link
+          size="small"
+          type="primary"
+          class="chat-message-list__retry"
+          :disabled="retrying"
+          @click="emit('retry')"
+          >重试</el-button
+        >
+      </div>
       <div
         v-if="topSpacerHeight"
         class="chat-message-list__spacer"
@@ -244,51 +233,25 @@ defineExpose({ scrollToBottom });
           v-if="message.role === 'user'"
           :message="message"
           :scope="scope"
-          @edit="(m) => emit('edit', m)"
-          @copy="(m) => emit('copy', m)"
-          @quote="(m) => emit('quote', m)"
+          @action="(action) => emit('message-action', action)"
         />
         <AssistantMessage
           v-else-if="message.role === 'assistant'"
           :message="message"
+          :artifacts="artifacts?.[message.id]"
+          :feedback="feedback?.[message.id] ?? null"
+          :branch="branches?.[message.id]"
+          :can-delete="message.id === lastAssistantId"
           :scope="scope"
-          :thinking="message.thinking"
-          :steps="message.steps"
-          :artifacts="message.artifacts"
-          :memories="message.memories"
-          :feedback="message.feedback"
-          :suggestions="message.suggestions"
-          :show-suggestions="shouldShowSuggestions(messages, message.id)"
-          :interrupt="interruptFor(message)"
-          :branch-switching="branchSwitching"
-          @regenerate="(m) => emit('regenerate', m)"
-          @quote="(m) => emit('quote', m)"
-          @feedback="(m, data) => emit('feedback', m, data)"
-          @delete="(m) => emit('delete', m)"
-          @speak="(m) => emit('speak', m)"
-          @copy="(m) => emit('copy', m)"
-          @trace="(m) => emit('trace', m)"
+          :show-suggestions="message.id === lastAssistantId"
+          :branch-disabled="branchDisabled"
+          @action="(action) => emit('message-action', action)"
           @open-artifact="(a) => emit('open-artifact', a)"
-          @apply-suggestion="(q) => emit('apply-suggestion', q)"
           @load-artifacts="(id) => emit('load-artifacts', id)"
-          @retry="(m) => emit('retry', m)"
-          @resume="(payload) => emit('resume-interrupt', message.id, payload)"
           @switch-branch="(m, i) => emit('switch-branch', m, i)"
-          @context-open="(chip) => emit('context-open', chip)"
-        />
-        <ToolMessage
-          v-else
-          :message="message"
-          :tool-calls="message.toolCalls"
+          @trace="(m) => emit('trace', m)"
         />
       </template>
-
-      <InterruptCard
-        v-for="(interrupt, oi) in orphanInterrupts"
-        :key="`interrupt-${oi}`"
-        :interrupt="interrupt"
-        @resume="resumeOrphan"
-      />
 
       <div
         v-if="bottomSpacerHeight"
@@ -297,7 +260,7 @@ defineExpose({ scrollToBottom });
       />
 
       <el-empty
-        v-if="messages.length === 0"
+        v-if="messages.length === 0 && !error"
         description="开始你的第一轮对话吧"
       />
     </div>
@@ -336,6 +299,17 @@ defineExpose({ scrollToBottom });
     font-size: 12px;
     color: var(--el-text-color-secondary);
     text-align: center;
+  }
+
+  &__error {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--el-color-danger);
   }
 
   &__spacer {

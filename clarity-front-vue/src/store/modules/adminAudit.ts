@@ -3,7 +3,7 @@
 import {
   AiConversationAPI,
   AiObservabilityAPI,
-  type AiMessageVO,
+  type Message,
   type AiObservabilitySummary,
   type AiObservabilityTimeline,
   type ConversationStatus,
@@ -42,7 +42,7 @@ export const useAdminAuditStore = defineStore("adminAudit", () => {
   // ===== 详情抽屉 =====
   const detailVisible = ref(false);
   const detailConversation = ref<ConversationVO | null>(null);
-  const detailMessages = ref<AiMessageVO[]>([]);
+  const detailMessages = ref<Message[]>([]);
   const detailTotal = ref(0);
   /** 是否还有更早消息（游标分页 hasMore，驱动"滚动到顶加载更多"） */
   const detailHasMore = ref(false);

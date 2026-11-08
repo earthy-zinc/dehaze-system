@@ -1,15 +1,15 @@
-<!-- 计划面板：阶段/状态 + 任务清单（状态徽标）+ 修订说明 + 待批准提示（纯展示，props 进） -->
+<!-- 计划面板：阶段/状态 + 任务清单（状态徽标）+ 修订说明 + 待批准提示（纯展示，直接消费契约 Plan） -->
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { ChatPlanTaskVM, ChatPlanVM, ChatPlanStatusVM } from "../types";
+import type { Plan, PlanStatus, PlanTask } from "clarity-sdk-js";
 
 defineOptions({ name: "PlanPanel" });
 
 const props = defineProps<{
-  plan: ChatPlanVM;
+  plan: Plan;
 }>();
 
-const statusMeta: Record<ChatPlanStatusVM, { label: string; type: string }> = {
+const statusMeta: Record<PlanStatus, { label: string; type: string }> = {
   pending: { label: "待执行", type: "info" },
   running: { label: "执行中", type: "warning" },
   completed: { label: "已完成", type: "success" },
@@ -20,7 +20,7 @@ const planStatus = computed(
   () => statusMeta[props.plan.status] ?? statusMeta.pending
 );
 
-function taskStatusMeta(task: ChatPlanTaskVM) {
+function taskStatusMeta(task: PlanTask) {
   return task.status ? statusMeta[task.status] : null;
 }
 </script>

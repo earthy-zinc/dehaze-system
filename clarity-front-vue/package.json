@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.18.0",
   "main": "out/main/index.js",
   "scripts": {
-    "prepare": "husky",
+    "prepare": "cd .. && husky",
     "preinstall": "npx only-allow pnpm",
     "postinstall": "electron-builder install-app-deps",
     "dev": "vite serve --mode development",
@@ -21,7 +21,7 @@
     "test:unit:ui": "vitest watch --coverage --ui --project unit",
     "test:coverage": "vitest run --open=false --coverage --project unit",
     "test:storybook": "vitest run --project storybook",
-    "test:e2e": "pnpm --filter clarity-sdk-js build && pnpm build:test && playwright test",
+    "test:e2e": "pnpm build:test && playwright test",
     "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
     "lint:eslint": "eslint --fix ./src/**/*.{ts,vue}",

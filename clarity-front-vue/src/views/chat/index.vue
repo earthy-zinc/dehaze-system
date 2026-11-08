@@ -3,14 +3,11 @@
 import { ElMessage, ElMessageBox } from "element-plus";
 import { onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import type { Artifact, Message } from "clarity-sdk-js";
 import { MessageList } from "@/components/ai-chat";
-import type {
-  ChatArtifactVM,
-  ChatContextChipVM,
-  ChatMessageVM,
-  ChatUserMessageVM,
-} from "@/components/ai-chat/types";
-import { useChatVmBinding } from "@/composables/useChatVmBinding";
+import { textOfBlocks } from "@/components/ai-chat/model/blocks";
+import type { ChatMessageActionVM } from "@/components/ai-chat/types";
+import { useChatSessionView } from "@/composables/useChatSessionView";
 import { useChatStore } from "@/store/modules/chat";
 import { useChatUserStore } from "@/store/modules/chatUser";
 import ArtifactDetailDialog from "@/components/ArtifactDetailDialog.vue";
@@ -27,48 +24,95 @@ const settingsVisible = ref(false);
 const memoryVisible = ref(false);
 const taskDialogVisible = ref(false);
 
-// 宿主绑定层：store wire → 无状态组件 VM；组件 emit → store 方法（无状态组件层零 store 耦合）
-const binding = useChatVmBinding({
-  scope: "self",
-  messages: () => chatStore.messages,
-});
+// 会话视图：store 消息实体原样交给无状态组件；组件事件经此回接 store
 const {
-  messages: vmMessages,
-  streamingMessageId: vmStreamingMessageId,
-  interruptedMessageId: vmInterruptedMessageId,
-  interrupts: vmInterrupts,
+  messages: chatMessages,
+  branches: chatBranches,
+  artifacts: chatArtifacts,
+  feedback: chatFeedback,
   scrollFollowEnabled: vmScrollFollowEnabled,
   hasMoreHistory: vmHasMoreHistory,
   loadingMore: vmLoadingMore,
-  branchSwitching: vmBranchSwitching,
+  messagesError: vmMessagesError,
+  branchDisabled: vmBranchDisabled,
+  isStreaming,
+  interruptedMessageId,
   onScrollFollowToggle,
   onReachTop,
-  onRegenerate,
-  onRetry,
-  onQuote,
-  onSpeak,
-  onFeedback,
-  onApplySuggestion,
-  onResumeInterrupt,
+  onRetryMessages,
+  onMessageAction,
   onLoadArtifacts,
   onSwitchBranch,
-} = binding;
+} = useChatSessionView();
 
 // 产物详情弹窗：由组件内移到页面层（页面/视图层拉取 getArtifactDetail 展示）
 const artifactDialogRef = ref<InstanceType<typeof ArtifactDetailDialog>>();
 
-function handleOpenArtifact(artifact: ChatArtifactVM) {
+function handleOpenArtifact(artifact: Artifact) {
   void artifactDialogRef.value?.open(artifact);
 }
 
-// 复制：剪贴板写入与提示由组件内移到页面层
-async function handleCopy(message: ChatMessageVM) {
-  const content = message.role === "assistant" ? message.text : message.content;
+/** 复制：剪贴板写入与提示由页面层处理（不落 store） */
+async function handleCopy(messageId: number) {
+  const message = chatMessages.value.find((item) => item.id === messageId);
+  const content = message ? textOfBlocks(message.blocks) : "";
   if (await copyText(content)) {
     ElMessage.success("已复制");
   } else {
     ElMessage.error("复制失败，请手动选择复制");
   }
+}
+
+/** 编辑用户消息：页面层弹窗，确认后走 store 编辑重发 */
+function handleEdit(messageId: number) {
+  const message = chatMessages.value.find(
+    (item): item is Message => item.id === messageId && item.role === "user"
+  );
+  if (!message) return;
+  ElMessageBox.prompt("编辑后将以新分支重新触发回复", "编辑消息", {
+    inputValue: textOfBlocks(message.blocks),
+    inputType: "textarea",
+  })
+    .then(({ value }) => {
+      if (value?.trim()) chatStore.editMessage(message.id, value);
+    })
+    .catch(() => {});
+}
+
+/**
+ * 动作处理表：键全集取自 ChatMessageActionVM["type"]，每个处理器只接自己的载荷变体。
+ * 新增动作而这里没接处理时缺键，编译失败（store 侧另有穷尽检查，两处同时报错）。
+ */
+type MessageActionHandlers = {
+  [T in ChatMessageActionVM["type"]]: (
+    action: Extract<ChatMessageActionVM, { type: T }>
+  ) => void;
+};
+
+/** copy/edit 页面就地处理（剪贴板、编辑弹窗），其余原样转交绑定层进 store */
+const messageActionHandlers: MessageActionHandlers = {
+  copy: (action) => void handleCopy(action.messageId),
+  edit: (action) => handleEdit(action.messageId),
+  regenerate: onMessageAction,
+  retry: onMessageAction,
+  quote: onMessageAction,
+  speak: onMessageAction,
+  delete: onMessageAction,
+  feedback: onMessageAction,
+  "resume-interrupt": onMessageAction,
+  "apply-suggestion": onMessageAction,
+};
+
+/**
+ * 单一消息动作入口：按 type 查表分发。
+ * 分发处唯一的类型断言只用于恢复「动作类型 ↔ 载荷」的相关性——键与载荷同源于
+ * ChatMessageActionVM，处理器与动作不会错配。
+ */
+function handleMessageAction(action: ChatMessageActionVM) {
+  const handler = messageActionHandlers[action.type] as (
+    action: ChatMessageActionVM
+  ) => void;
+  handler(action);
 }
 
 const LAST_CONVERSATION_KEY = "dehaze.chat.lastConversationId";
@@ -123,11 +167,15 @@ onMounted(async () => {
   await chatStore.fetchConversations(true);
   // 等待加载期间用户已发起对话（流式进行中）：跳过默认跳转/消息加载，
   // 避免 fetchMessages 覆盖占位消息或路由切换打断当前流（否则界面永久"正在思考"）
-  if (chatStore.isStreaming) return;
+  if (isStreaming.value) return;
   const routeId = Number(route.params.conversationId);
   if (routeId) {
     if (routeId !== chatStore.currentConversationId) {
-      await chatStore.fetchMessages(routeId);
+      try {
+        await chatStore.fetchMessages(routeId);
+      } catch {
+        // 失败已进入 messagesError，由列表行内错误条提供重试
+      }
     }
     rememberConversation(routeId);
     return;
@@ -151,7 +199,12 @@ async function handleSend(text: string) {
   if (!chatStore.currentConversationId) {
     // 空态直接发送：先建会话，加载完成后路由与消息状态就绪
     const conversation = await chatStore.createConversation();
-    await chatStore.fetchMessages(conversation.id);
+    try {
+      await chatStore.fetchMessages(conversation.id);
+    } catch {
+      // 历史加载失败已进入 messagesError（列表展示重试入口），本次不发送
+      return;
+    }
     rememberConversation(conversation.id);
     router.replace(`/chat/${conversation.id}`);
   }
@@ -161,29 +214,7 @@ async function handleSend(text: string) {
 }
 
 function handleStop() {
-  chatStore.stopStreaming();
-}
-
-function handleEditMessage(message: ChatUserMessageVM) {
-  ElMessageBox.prompt("编辑后将以新分支重新触发回复", "编辑消息", {
-    inputValue: message.content ?? "",
-    inputType: "textarea",
-  })
-    .then(({ value }) => {
-      if (value?.trim()) chatStore.editMessage(message.id, value);
-    })
-    .catch(() => {});
-}
-
-function handleDeleteMessage(message: ChatMessageVM) {
-  ElMessageBox.confirm("确认删除该条消息？", "删除确认", { type: "warning" })
-    .then(() => chatStore.deleteMessage(message.id))
-    .catch(() => {});
-}
-
-/** 上下文构成项详情：用户端无可下钻原始来源（raw 报文仅管理端可见），展示人类可读说明 */
-function handleContextOpen(chip: ChatContextChipVM) {
-  ElMessage.info(chip.detail ?? chip.label);
+  chatStore.stopStreaming(interruptedMessageId.value ?? undefined);
 }
 </script>
 
@@ -208,36 +239,41 @@ function handleContextOpen(chip: ChatContextChipVM) {
 
       <div class="chat-page__body">
         <MessageList
-          v-if="chatStore.messages.length > 0 || chatStore.messagesLoading"
-          :messages="vmMessages"
+          v-if="
+            chatStore.messageList.length > 0 ||
+            chatStore.messagesLoading ||
+            vmMessagesError
+          "
+          :messages="chatMessages"
+          :artifacts="chatArtifacts"
+          :feedback="chatFeedback"
+          :branches="chatBranches"
           scope="self"
-          :streaming-message-id="vmStreamingMessageId"
-          :interrupted-message-id="vmInterruptedMessageId"
-          :interrupts="vmInterrupts"
           :scroll-follow-enabled="vmScrollFollowEnabled"
           :has-more-history="vmHasMoreHistory"
           :loading-more="vmLoadingMore"
-          :branch-switching="vmBranchSwitching"
+          :error="vmMessagesError"
+          :retrying="
+            vmMessagesError?.kind === 'more'
+              ? vmLoadingMore
+              : chatStore.messagesLoading
+          "
+          :branch-disabled="vmBranchDisabled"
           @scroll-follow-toggle="onScrollFollowToggle"
           @reach-top="onReachTop"
-          @edit="handleEditMessage"
-          @copy="handleCopy"
-          @quote="onQuote"
-          @regenerate="onRegenerate"
-          @feedback="onFeedback"
-          @delete="handleDeleteMessage"
-          @speak="onSpeak"
-          @retry="onRetry"
-          @apply-suggestion="onApplySuggestion"
+          @retry="onRetryMessages"
+          @message-action="handleMessageAction"
           @open-artifact="handleOpenArtifact"
           @load-artifacts="onLoadArtifacts"
-          @resume-interrupt="onResumeInterrupt"
           @switch-branch="onSwitchBranch"
-          @context-open="handleContextOpen"
         />
         <EmptyState v-else @select="handleSend" />
 
-        <MessageInput @send="handleSend" @stop="handleStop" />
+        <MessageInput
+          :is-streaming="isStreaming"
+          @send="handleSend"
+          @stop="handleStop"
+        />
       </div>
     </main>
 

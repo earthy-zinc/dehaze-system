@@ -1,19 +1,18 @@
 // 子智能体面板单测：有子智能体粒度用量时渲染，无数据（缺省/空）不渲染空壳。
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import type { SubAgentUsage } from "clarity-sdk-js";
 import SubAgentPanel from "../components/SubAgentPanel.vue";
-import type { ChatSubAgentUsageVM, ChatThoughtStepVM } from "../types";
+import type { ChatThoughtStepVM } from "../types";
 
 const step = (over: Partial<ChatThoughtStepVM> = {}): ChatThoughtStepVM => ({
   position: 1,
-  status: 1,
+  status: "success",
   tool: "task",
   ...over,
 });
 
-const agent = (
-  over: Partial<ChatSubAgentUsageVM> = {}
-): ChatSubAgentUsageVM => ({
+const agent = (over: Partial<SubAgentUsage> = {}): SubAgentUsage => ({
   agentCode: "researcher",
   inputTokens: 3,
   outputTokens: 4,

@@ -1,20 +1,28 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
+import type { Interrupt } from "clarity-sdk-js";
 import InterruptCard from "../components/InterruptCard.vue";
-import type { ChatInterruptVM } from "../types";
 import { elStubs, findButton } from "./stubs";
 
-const mountCard = (interrupt: ChatInterruptVM) =>
+const interrupt = (over: Partial<Interrupt> = {}): Interrupt => ({
+  id: "i1",
+  type: "confirm",
+  createdAt: "2026-01-01T00:00:00Z",
+  expiresAt: "2099-01-01T00:00:00Z",
+  actionable: true,
+  ...over,
+});
+
+const mountCard = (over: Partial<Interrupt> = {}) =>
   mount(InterruptCard, {
-    props: { interrupt },
+    props: { interrupt: interrupt(over) },
     global: { stubs: elStubs },
   });
 
 describe("InterruptCard", () => {
-  describe("confirm 按 confirmKind 路由", () => {
+  describe("confirm 按契约 confirmKind 路由", () => {
     it("algorithm_recommend：采纳推荐 / 选择备选 / 拒绝", async () => {
       const wrapper = mountCard({
-        type: "confirm",
         confirmKind: "algorithm_recommend",
         recommendation: {
           modelId: "aecrnet",
@@ -44,7 +52,6 @@ describe("InterruptCard", () => {
 
     it("tool_permission：允许 / 拒绝", async () => {
       const wrapper = mountCard({
-        type: "confirm",
         confirmKind: "tool_permission",
         detail: "调用 write_file",
       });
@@ -61,7 +68,6 @@ describe("InterruptCard", () => {
 
     it("dangerous_op：确认执行 / 取消", async () => {
       const wrapper = mountCard({
-        type: "confirm",
         confirmKind: "dangerous_op",
         detail: "将删除文件",
       });
@@ -76,9 +82,8 @@ describe("InterruptCard", () => {
       ]);
     });
 
-    it("write_conflict：覆盖写入携带 action 参数", async () => {
+    it("write_conflict：后端直出 confirmKind，覆盖写入仅需 confirm", async () => {
       const wrapper = mountCard({
-        type: "confirm",
         confirmKind: "write_conflict",
         action: "write_conflict",
         detail: "文件已被修改",
@@ -87,21 +92,37 @@ describe("InterruptCard", () => {
 
       await findButton(wrapper, "覆盖写入")!.trigger("click");
 
-      expect(wrapper.emitted("resume")).toEqual([
-        [{ confirm: true, params: { action: "write_conflict" } }],
-      ]);
+      expect(wrapper.emitted("resume")).toEqual([[{ confirm: true }]]);
     });
 
-    it("无 confirmKind 的通用确认：继续 / 拒绝", async () => {
-      const wrapper = mountCard({ type: "confirm", reason: "需要确认" });
+    it("无 confirmKind：禁用操作，不发起 resume", async () => {
+      const wrapper = mountCard({ reason: "需要确认" });
+      expect(wrapper.text()).toContain("确认类型缺失");
       await findButton(wrapper, "继续")!.trigger("click");
-      expect(wrapper.emitted("resume")).toEqual([[{ confirm: true }]]);
+      expect(wrapper.emitted("resume")).toBeUndefined();
+    });
+
+    it("未知 confirmKind：与缺失同处理，按钮禁用且点击不发起 resume", async () => {
+      const wrapper = mountCard({
+        confirmKind: "bogus" as Interrupt["confirmKind"],
+        detail: "契约外子类型",
+      });
+
+      expect(wrapper.text()).toContain("确认类型缺失，无法继续");
+      const proceed = findButton(wrapper, "继续")!;
+      const cancel = findButton(wrapper, "拒绝")!;
+      expect(proceed.attributes("disabled")).toBeDefined();
+      expect(cancel.attributes("disabled")).toBeDefined();
+
+      await proceed.trigger("click");
+      await cancel.trigger("click");
+      expect(wrapper.emitted("resume")).toBeUndefined();
     });
   });
 
   describe("plan_approve", () => {
-    const planInterrupt: ChatInterruptVM = {
-      type: "plan_approve",
+    const planInterrupt = {
+      type: "plan_approve" as const,
       plan: [
         { id: "t1", description: "步骤一" },
         { id: "t2", description: "步骤二" },
@@ -196,5 +217,44 @@ describe("InterruptCard", () => {
     });
     expect(wrapper.text()).toContain("预计耗时 30s");
     expect(wrapper.findAll("button")).toHaveLength(0);
+  });
+
+  describe("过期态", () => {
+    it("actionable=false：提示已失效、按钮禁用且点击不发起 resume", async () => {
+      const wrapper = mountCard({
+        confirmKind: "tool_permission",
+        detail: "调用 write_file",
+        actionable: false,
+      });
+
+      expect(wrapper.text()).toContain("已失效，不可继续");
+      const allow = findButton(wrapper, "允许")!;
+      expect(allow.attributes("disabled")).toBeDefined();
+      await allow.trigger("click");
+      expect(wrapper.emitted("resume")).toBeUndefined();
+    });
+
+    it("expiresAt 已过：即使 actionable=true 也按过期处理", async () => {
+      const wrapper = mountCard({
+        confirmKind: "tool_permission",
+        reason: "需要确认",
+        expiresAt: "2020-01-01T00:00:00Z",
+      });
+
+      expect(wrapper.text()).toContain("已失效，不可继续");
+      await findButton(wrapper, "允许")!.trigger("click");
+      expect(wrapper.emitted("resume")).toBeUndefined();
+    });
+
+    it("expiresAt 未到且 actionable=true：正常可操作", async () => {
+      const wrapper = mountCard({
+        confirmKind: "tool_permission",
+        reason: "需要确认",
+      });
+
+      expect(wrapper.text()).not.toContain("已失效");
+      await findButton(wrapper, "允许")!.trigger("click");
+      expect(wrapper.emitted("resume")).toEqual([[{ confirm: true }]]);
+    });
   });
 });

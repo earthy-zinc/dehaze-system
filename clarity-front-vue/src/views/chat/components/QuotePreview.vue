@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 import { ChatDotRound, Close } from "@element-plus/icons-vue";
 import { computed } from "vue";
+import { textOfBlocks } from "@/components/ai-chat/model/blocks";
 import { useChatStore } from "@/store/modules/chat";
 
 defineOptions({ name: "QuotePreview" });
@@ -9,7 +10,9 @@ defineOptions({ name: "QuotePreview" });
 const chatStore = useChatStore();
 
 const summary = computed(() => {
-  const content = chatStore.quotedMessage?.content ?? "";
+  const content = chatStore.quotedMessage
+    ? textOfBlocks(chatStore.quotedMessage.blocks)
+    : "";
   return content.length > 100 ? `${content.slice(0, 100)}…` : content;
 });
 

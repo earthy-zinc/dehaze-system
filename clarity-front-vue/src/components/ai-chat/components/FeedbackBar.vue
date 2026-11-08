@@ -1,17 +1,17 @@
 <!-- 渐进式反馈栏：点赞一键完成；点踩展开问题标签单选 + 可选说明；已反馈高亮，支持撤销/修改（纯展示） -->
 <script lang="ts" setup>
 import { computed, ref } from "vue";
-import type { ChatFeedbackVM } from "../types";
+import type { Feedback, FeedbackForm } from "clarity-sdk-js";
 
 defineOptions({ name: "FeedbackBar" });
 
 const props = defineProps<{
   messageId: number;
-  feedback?: ChatFeedbackVM | null;
+  feedback?: Feedback | null;
 }>();
 
 const emit = defineEmits<{
-  submit: [data: ChatFeedbackVM];
+  submit: [data: FeedbackForm];
   cancel: [];
 }>();
 
