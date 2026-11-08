@@ -36,3 +36,4 @@ peerDependencyRules:
 
 patchedDependencies:
   '@tarojs/vite-runner@4.2.1': clarity-taro/patches/@tarojs__vite-runner@4.2.1.patch
+  stylelint-taro-rn@4.2.1: clarity-taro/patches/stylelint-taro-rn@4.2.1.patch

@@ -1,0 +1,51 @@
+# Ruff 根配置：只服务仓库根 `scripts/` 下的工具脚本（docker/compose 校验、schema 漂移检测、
+# 测试数据与数据集初始化、run.py 编排入口等跨项目脚本）。
+#
+# 为什么放在根而不是某个项目里：这些脚本跨 clarity-python / clarity-service / clarity-go 等
+# 多个项目操作，不属于任何单一 Python 项目；ruff 按「被检查文件最近的配置文件」解析设置，
+# 所以本文件只对根级 .py 生效，clarity-python / clarity-service/* / clarity-algorithm /
+# clarity-mcp-gateway / clarity-test 各自项目内的配置优先，互不覆盖。
+#
+# 规则集与 clarity-python / clarity-service/* 保持一致（同一口径），差异仅限本目录实际需要的项。
+#
+# target-version 取 py38 而非 py311：这几个脚本的 shebang 是 `python3`，直接跑在宿主/开发机上，
+# scripts/run.py 头部明确写了「宿主 python3 可能是 3.8」，故不能让 pyupgrade 提示 3.9+ 才有的 API，
+# 否则门禁"修好"的语法会在宿主上炸。
+target-version = "py38"
+line-length = 100
+# pre-commit 会显式传入暂存文件路径，而 ruff 默认对显式路径不应用 exclude；
+# 打开后本目录的排除规则在 hook 里同样生效。
+force-exclude = true
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes（未使用导入/变量等）
+    "I",    # isort 导入排序
+    "B",    # bugbear 常见 bug 模式
+    "UP",   # pyupgrade 语法现代化
+    "RET",  # return 语句卫生（消除多余 else 分支、return 后死代码）
+    "ISC",  # 隐式字符串拼接检测
+    "PT",   # pytest 最佳实践
+    "FLY",  # join/format 旧写法 → f-string
+    "SIM",  # 常见可简化写法
+    "C4",   # comprehensions 推导式现代化
+    "RUF",  # ruff 自有规则（含无效 noqa 校验）
+    "N",    # PEP 8 命名规范
+    "EM",   # 异常消息规范
+    "PERF", # 性能反模式
+    "PTH",  # os.path → pathlib 现代路径写法
+]
+ignore = [
+    "RUF001", # 中文字符串中的全角标点，误报
+    "RUF002", # 中文 docstring 中的全角标点，误报
+    "RUF003", # 中文注释中的全角标点，误报
+    "EM101",  # 异常消息内联字面量即可，不必强制模块级常量
+    "EM102",  # 同上，f-string 异常消息可 grep
+]
+
+[lint.per-file-ignores]
+# run.py 的 log 句柄是交给子进程 stdout/stderr 的，必须活到子进程结束；
+# 用 with 包住会在 spawn 返回后立刻关闭，子进程日志全丢 ⇒ 这里的裸 open 是设计而非疏漏。
+"scripts/run.py" = ["SIM115"]

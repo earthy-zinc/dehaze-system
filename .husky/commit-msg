@@ -1,0 +1,8 @@
+# git 传入的是相对仓库根的路径，切到子包后必须换成绝对路径。
+# 两份 commitlint 配置目前实质一致，固定用 clarity-front-vue 那份校验；
+# 改规则时两份都要同步（cz-git 的交互式提示读的是各包自己那份）。
+msg="$(git rev-parse --absolute-git-dir)/COMMIT_EDITMSG"
+
+# 不用 pnpm exec：pnpm 会先校验依赖状态，package.json 一改就触发全量 install，
+# 提交时白等几秒；直接调包内的 bin 更稳。
+cd clarity-front-vue && exec node_modules/.bin/commitlint --config commitlint.config.cjs --edit "$msg"
