@@ -128,7 +128,7 @@ save_backup() {
     [ -f "$apt_source" ] && cp "$apt_source" "$BACKUP_ROOT/apt-sources.bak"
     [ -f "$HOME/.bashrc" ] && cp "$HOME/.bashrc" "$BACKUP_ROOT/bashrc.bak"
     [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$BACKUP_ROOT/clarity-tooling.sh.bak"
-    { for t in node npm pnpm go java python3 mise uv; do
+    { for t in node npm pnpm go java mvn python3 mise uv; do
         printf '%-8s %s\n' "$t" "$(command -v "$t" 2>/dev/null || echo '(none)')"
     done; } > "$BACKUP_ROOT/tools-snapshot.txt"
     ok '备份完成'
@@ -267,6 +267,30 @@ EOF
 }
 
 configure_ecosystem_mirrors() {
+    # Maven 镜像只在该文件不存在时才写，不属于「覆盖已有源」，所以放在 overrideExisting 判断之前，
+    # 与 setup-toolchain.ps1 的 Configure-Mirrors 行为保持一致。
+    local m2_settings="$HOME/.m2/settings.xml" maven_mirror
+    maven_mirror="$(cfg '.mirrors.mavenMirror')"
+    if [ ! -f "$m2_settings" ] && [ -n "$maven_mirror" ]; then
+        if [ "$DRY_RUN" = "1" ]; then
+            log WHAT "写 $m2_settings（maven 镜像 $maven_mirror）"
+        else
+            mkdir -p "$HOME/.m2"
+            cat > "$m2_settings" <<EOF
+<settings>
+  <mirrors>
+    <mirror>
+      <id>aliyun</id>
+      <mirrorOf>*</mirrorOf>
+      <url>$maven_mirror</url>
+    </mirror>
+  </mirrors>
+</settings>
+EOF
+            ok "maven 镜像已写入 $m2_settings"
+        fi
+    fi
+
     if [ "$(cfg '.mirrors.overrideExisting')" != "true" ]; then
         info '跳过 npm/pip 镜像写入（mirrors.overrideExisting=false，保留机器已有源）'
         return 0
@@ -294,6 +318,9 @@ install_runtimes() {
     run mise use -g "node@$(cfg '.runtimes.node')"
     run mise use -g "go@$(cfg '.runtimes.go')"
     run mise use -g "java@$(cfg '.runtimes.java')"
+    # Maven 同样交给 mise 管（clarity-java 构建与 spotless 要用 mvn），不再从 apt 另装一份，
+    # 否则系统 mvn 与 mise 的 Java 版本容易错配。
+    run mise use -g "maven@$(cfg '.runtimes.maven')"
 
     # 额外安装的 node/java 版本（只 install，不改变上面的全局默认版本）
     local v
@@ -429,7 +456,7 @@ cleanup_legacy() {
 show_summary() {
     info '=== 结果核对 ==='
     export PATH="$HOME/.local/bin:$PATH"
-    for t in mise uv node go java python3; do
+    for t in mise uv node go java mvn python3; do
         printf '  %-8s %s\n' "$t" "$(command -v "$t" 2>/dev/null || echo '(none)')"
     done
     info "备份目录：$BACKUP_ROOT"

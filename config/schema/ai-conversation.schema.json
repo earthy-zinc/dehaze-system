@@ -1,0 +1,389 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clarity.local/schema/ai-conversation.schema.json",
+  "title": "ClarityAIChatContract",
+  "description": "AI 对话域唯一契约源。所有 DTO 由 scripts/tooling/gen-ai-contract.mjs 生成，禁止在 Java/Go/Python/TypeScript 中手写同名字段。",
+  "type": "object",
+  "$defs": {
+    "Role": {
+      "type": "string",
+      "enum": ["system", "user", "assistant", "tool"]
+    },
+    "MessageStatus": {
+      "type": "string",
+      "enum": ["running", "completed", "failed", "canceled", "awaiting_input"]
+    },
+    "BlockKind": {
+      "type": "string",
+      "enum": ["text", "thinking", "tool_use"]
+    },
+    "ToolStatus": {
+      "type": "string",
+      "enum": ["running", "success", "failed", "skipped"]
+    },
+    "PlanStatus": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed"]
+    },
+    "InterruptType": {
+      "type": "string",
+      "enum": ["confirm", "quota", "async_wait", "plan_approve"]
+    },
+    "ConfirmKind": {
+      "type": "string",
+      "enum": [
+        "algorithm_recommend",
+        "tool_permission",
+        "dangerous_op",
+        "write_conflict"
+      ]
+    },
+    "ToolCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["callId", "name", "status", "subAgent"],
+      "properties": {
+        "callId": { "type": "string" },
+        "name": { "type": "string" },
+        "input": { "type": ["object", "null"] },
+        "output": { "type": ["string", "null"] },
+        "summary": { "type": ["string", "null"] },
+        "status": { "$ref": "#/$defs/ToolStatus" },
+        "error": { "type": ["string", "null"] },
+        "latencyMs": { "type": ["integer", "null"] },
+        "agentCode": { "type": ["string", "null"] },
+        "subAgent": { "type": "boolean" }
+      }
+    },
+    "Block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "seq"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/BlockKind" },
+        "seq": { "type": "integer" },
+        "text": { "type": ["string", "null"] },
+        "durationMs": { "type": ["integer", "null"] },
+        "tool": { "anyOf": [{ "$ref": "#/$defs/ToolCall" }, { "type": "null" }] }
+      }
+    },
+    "PlanTask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "dependsOn": { "type": ["array", "null"], "items": { "type": "string" } },
+        "status": { "anyOf": [{ "$ref": "#/$defs/PlanStatus" }, { "type": "null" }] },
+        "paradigm": { "type": ["string", "null"] }
+      }
+    },
+    "PlanRevision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revisionNo", "reason"],
+      "properties": {
+        "revisionNo": { "type": "integer" },
+        "reason": { "type": "string" },
+        "actor": { "type": ["string", "null"] },
+        "at": { "type": ["string", "null"] }
+      }
+    },
+    "Plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "tasks", "revisions", "awaitingApproval"],
+      "properties": {
+        "phase": { "type": ["string", "null"] },
+        "status": { "$ref": "#/$defs/PlanStatus" },
+        "tasks": { "type": "array", "items": { "$ref": "#/$defs/PlanTask" } },
+        "revisions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PlanRevision" }
+        },
+        "awaitingApproval": { "type": "boolean" }
+      }
+    },
+    "Recommendation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["modelId", "modelName"],
+      "properties": {
+        "modelId": { "type": "string" },
+        "modelName": { "type": "string" },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "Alternative": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["modelId", "modelName"],
+      "properties": {
+        "modelId": { "type": "string" },
+        "modelName": { "type": "string" },
+        "matchScore": { "type": ["number", "null"] },
+        "reason": { "type": ["string", "null"] }
+      }
+    },
+    "Interrupt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "createdAt", "expiresAt", "actionable"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "$ref": "#/$defs/InterruptType" },
+        "confirmKind": {
+          "anyOf": [{ "$ref": "#/$defs/ConfirmKind" }, { "type": "null" }]
+        },
+        "action": { "type": ["string", "null"] },
+        "recommendation": {
+          "anyOf": [{ "$ref": "#/$defs/Recommendation" }, { "type": "null" }]
+        },
+        "alternatives": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/Alternative" }
+        },
+        "upgradeTip": { "type": ["string", "null"] },
+        "usedDaily": { "type": ["integer", "null"] },
+        "dailyLimit": { "type": ["integer", "null"] },
+        "usedMonthly": { "type": ["integer", "null"] },
+        "monthlyLimit": { "type": ["integer", "null"] },
+        "estDuration": { "type": ["string", "null"] },
+        "imageCount": { "type": ["integer", "null"] },
+        "plan": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/PlanTask" }
+        },
+        "reason": { "type": ["string", "null"] },
+        "detail": { "type": ["string", "null"] },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "actionable": { "type": "boolean" }
+      }
+    },
+    "SubAgentUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agentCode", "inputTokens", "outputTokens", "cachedInputTokens", "credits"],
+      "properties": {
+        "agentCode": { "type": "string" },
+        "inputTokens": { "type": "integer" },
+        "outputTokens": { "type": "integer" },
+        "cachedInputTokens": { "type": "integer" },
+        "credits": { "type": "integer" }
+      }
+    },
+    "Usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputTokens", "outputTokens", "cachedInputTokens", "credits"],
+      "properties": {
+        "inputTokens": { "type": "integer" },
+        "outputTokens": { "type": "integer" },
+        "cachedInputTokens": { "type": "integer" },
+        "credits": { "type": "integer" },
+        "subAgents": {
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/SubAgentUsage" }
+        }
+      }
+    },
+    "Message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "conversationId",
+        "role",
+        "status",
+        "blocks",
+        "usage",
+        "artifactIds",
+        "memoryIds",
+        "suggestions",
+        "edited",
+        "createTime"
+      ],
+      "properties": {
+        "id": { "type": "integer" },
+        "conversationId": { "type": "integer" },
+        "parentMessageId": { "type": ["integer", "null"] },
+        "role": { "$ref": "#/$defs/Role" },
+        "status": { "$ref": "#/$defs/MessageStatus" },
+        "model": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] },
+        "blocks": { "type": "array", "items": { "$ref": "#/$defs/Block" } },
+        "plan": { "anyOf": [{ "$ref": "#/$defs/Plan" }, { "type": "null" }] },
+        "pendingInterrupt": {
+          "anyOf": [{ "$ref": "#/$defs/Interrupt" }, { "type": "null" }]
+        },
+        "usage": { "$ref": "#/$defs/Usage" },
+        "artifactIds": { "type": "array", "items": { "type": "integer" } },
+        "memoryIds": { "type": "array", "items": { "type": "integer" } },
+        "suggestions": { "type": "array", "items": { "type": "string" } },
+        "edited": { "type": "boolean" },
+        "siblingIndex": { "type": ["integer", "null"] },
+        "siblingCount": { "type": ["integer", "null"] },
+        "createTime": { "type": "string" },
+        "updateTime": { "type": ["string", "null"] }
+      }
+    },
+    "MessageList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["list", "total", "hasMore"],
+      "properties": {
+        "list": { "type": "array", "items": { "$ref": "#/$defs/Message" } },
+        "total": { "type": "integer" },
+        "hasMore": { "type": "boolean" }
+      }
+    },
+    "MessageSend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content"],
+      "properties": {
+        "content": { "type": "string" },
+        "model": { "type": ["string", "null"] }
+      }
+    },
+    "MessageResume": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "confirm": { "type": ["boolean", "null"] },
+        "params": { "type": ["object", "null"] },
+        "planEdit": { "type": ["object", "null"] }
+      }
+    },
+    "Artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "conversationId", "messageId", "type", "isInvalid"],
+      "properties": {
+        "id": { "type": "integer" },
+        "conversationId": { "type": "integer" },
+        "messageId": { "type": "integer" },
+        "type": { "type": "string" },
+        "refType": { "type": ["string", "null"] },
+        "refId": { "type": ["integer", "null"] },
+        "summary": { "type": ["object", "null"] },
+        "isInvalid": { "type": "boolean" },
+        "createTime": { "type": ["string", "null"] }
+      }
+    },
+    "Feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "userId", "rating"],
+      "properties": {
+        "id": { "type": ["integer", "null"] },
+        "messageId": { "type": "integer" },
+        "userId": { "type": "integer" },
+        "conversationId": { "type": ["integer", "null"] },
+        "rating": { "type": "integer", "enum": [1, -1] },
+        "tags": { "type": ["array", "null"], "items": { "type": "string" } },
+        "comment": { "type": ["string", "null"] },
+        "createTime": { "type": ["string", "null"] },
+        "updateTime": { "type": ["string", "null"] }
+      }
+    },
+    "MessageStartEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["streamSessionId", "userMessage", "assistantMessage"],
+      "properties": {
+        "streamSessionId": { "type": "string" },
+        "userMessage": { "$ref": "#/$defs/Message" },
+        "assistantMessage": { "$ref": "#/$defs/Message" }
+      }
+    },
+    "BlockStartEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "block"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "block": { "$ref": "#/$defs/Block" }
+      }
+    },
+    "BlockDeltaEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "blockId", "delta"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "blockId": { "type": "string" },
+        "delta": { "type": "string" }
+      }
+    },
+    "BlockStopEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "block"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "block": { "$ref": "#/$defs/Block" }
+      }
+    },
+    "PlanUpdateEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "plan"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "plan": { "$ref": "#/$defs/Plan" }
+      }
+    },
+    "InterruptEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "interrupt"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "interrupt": { "$ref": "#/$defs/Interrupt" }
+      }
+    },
+    "UsageEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "usage"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "usage": { "$ref": "#/$defs/Usage" }
+      }
+    },
+    "SuggestionsEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "suggestions"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "suggestions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "MessageEndEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId", "status"],
+      "properties": {
+        "messageId": { "type": "integer" },
+        "status": { "$ref": "#/$defs/MessageStatus" },
+        "error": { "type": ["string", "null"] },
+        "usage": { "anyOf": [{ "$ref": "#/$defs/Usage" }, { "type": "null" }] }
+      }
+    },
+    "ErrorEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "messageId": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

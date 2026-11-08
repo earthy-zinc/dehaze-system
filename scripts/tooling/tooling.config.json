@@ -4,7 +4,8 @@
   "runtimes": {
     "node": "24",
     "go": "1.25",
-    "java": "temurin-21"
+    "java": "temurin-21",
+    "maven": "3.9"
   },
 
   "python": {
@@ -50,8 +51,9 @@
     "useProxyBucket": true,
     "userApps": ["aria2", "pwsh"],
     "pnpmGlobals": ["yarn", "@ant-design/pro-cli", "node-stdio"],
+    "_globalAppsComment": "maven 不在此列：已改由 mise 统一管理（runtimes.maven），scoop 再装一份会出现两个 mvn 且版本不同。",
     "globalApps": [
-      "maven", "gradle", "protobuf", "pandoc", "make", "helm", "uv",
+      "gradle", "protobuf", "pandoc", "make", "helm", "uv",
       "jq", "yq", "ripgrep", "fd", "fzf", "bat", "delta", "zoxide",
       "hyperfine", "tree", "7zip", "wget", "just", "gh"
     ]

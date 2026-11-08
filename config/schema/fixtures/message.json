@@ -1,0 +1,147 @@
+{
+  "id": 9001,
+  "conversationId": 501,
+  "parentMessageId": 9000,
+  "role": "assistant",
+  "status": "awaiting_input",
+  "model": "deepseek-v4.1-flash",
+  "error": null,
+  "blocks": [
+    {
+      "id": "blk_9001_1",
+      "kind": "thinking",
+      "seq": 1,
+      "text": "用户要对夜景图去雾：先读元数据，再推荐算法，最后等确认。",
+      "durationMs": 1200,
+      "tool": null
+    },
+    {
+      "id": "blk_9001_2",
+      "kind": "tool_use",
+      "seq": 1,
+      "text": null,
+      "durationMs": 860,
+      "tool": {
+        "callId": "call_9001_01",
+        "name": "algorithm_recommend",
+        "input": {
+          "imageId": 7788,
+          "scene": "night",
+          "strength": 0.6
+        },
+        "output": "{\"candidates\":[{\"algorithm\":\"dehaze_v3\",\"score\":0.92}]}",
+        "summary": "推荐 dehaze_v3（夜景去雾，强度 0.6）",
+        "status": "success",
+        "error": null,
+        "latencyMs": 860,
+        "agentCode": "image_enhance",
+        "subAgent": true
+      }
+    },
+    {
+      "id": "blk_9001_3",
+      "kind": "text",
+      "seq": 2,
+      "text": "已为这张夜景图推荐 dehaze_v3，预计耗时 20 秒。是否继续执行？",
+      "durationMs": null,
+      "tool": null
+    }
+  ],
+  "plan": {
+    "phase": "confirm",
+    "status": "completed",
+    "tasks": [
+      {
+        "id": "t1",
+        "description": "读取图像元数据与场景标签",
+        "dependsOn": null,
+        "status": "completed",
+        "paradigm": "tool"
+      },
+      {
+        "id": "t2",
+        "description": "推荐去雾算法并给出候选",
+        "dependsOn": ["t1"],
+        "status": "completed",
+        "paradigm": "tool"
+      },
+      {
+        "id": "t3",
+        "description": "按确认结果执行去雾处理",
+        "dependsOn": ["t2"],
+        "status": "pending",
+        "paradigm": "tool"
+      }
+    ],
+    "revisions": [
+      {
+        "revisionNo": 1,
+        "reason": "用户补充夜景场景，收窄候选算法",
+        "actor": "assistant",
+        "at": "2026-10-21T09:30:00Z"
+      }
+    ],
+    "awaitingApproval": false
+  },
+  "pendingInterrupt": {
+    "id": "int_9001_01",
+    "type": "confirm",
+    "confirmKind": "algorithm_recommend",
+    "action": "run_algorithm",
+    "recommendation": {
+      "modelId": "dehaze_v3",
+      "modelName": "去雾 v3",
+      "reason": "夜景低照度场景匹配度最高"
+    },
+    "alternatives": [
+      {
+        "modelId": "dehaze_v2",
+        "modelName": "去雾 v2",
+        "matchScore": 0.72,
+        "reason": "速度更快，细节略弱"
+      }
+    ],
+    "upgradeTip": null,
+    "usedDaily": 8,
+    "dailyLimit": 20,
+    "usedMonthly": 120,
+    "monthlyLimit": 500,
+    "estDuration": "20s",
+    "imageCount": 1,
+    "plan": [
+      {
+        "id": "t3",
+        "description": "按确认结果执行去雾处理",
+        "dependsOn": ["t2"],
+        "status": "pending",
+        "paradigm": "tool"
+      }
+    ],
+    "reason": "推荐结果需用户确认后执行",
+    "detail": null,
+    "createdAt": "2026-10-21T09:30:05Z",
+    "expiresAt": "2026-10-21T09:40:05Z",
+    "actionable": true
+  },
+  "usage": {
+    "inputTokens": 1832,
+    "outputTokens": 264,
+    "cachedInputTokens": 1024,
+    "credits": 3,
+    "subAgents": [
+      {
+        "agentCode": "image_enhance",
+        "inputTokens": 412,
+        "outputTokens": 96,
+        "cachedInputTokens": 128,
+        "credits": 1
+      }
+    ]
+  },
+  "artifactIds": [3301, 3302],
+  "memoryIds": [77],
+  "suggestions": ["直接执行 dehaze_v3", "换成 dehaze_v2 对比效果", "把去雾强度调到 0.4"],
+  "edited": false,
+  "createTime": "2026-10-21T09:30:00Z",
+  "updateTime": "2026-10-21T09:30:06Z"
+}

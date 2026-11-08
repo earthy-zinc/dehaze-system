@@ -2,6 +2,7 @@
 # 注解延迟求值：宿主 python3 可能是 3.8（本脚本大量使用 `dict[str, ...]` 这类内置泛型注解）
 from __future__ import annotations
 
+import contextlib
 import os
 import re
 import signal
@@ -11,12 +12,13 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Optional
+from typing import IO
 
 ROOT = Path(__file__).resolve().parent.parent
 SELF = Path(__file__).resolve()
 IS_WIN = sys.platform == "win32"
-# CREATE_NO_WINDOW 仅 Windows 有（typeshed 按平台条件声明），跨平台直接取属性会触发静态检查告警；非 Windows 下为 0 即默认行为
+# CREATE_NO_WINDOW 仅 Windows 有（typeshed 按平台条件声明），跨平台直接取属性会触发静态检查告警；
+# 非 Windows 下为 0 即默认行为
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 _SERVICE_ROOT = ROOT / "clarity-service"
 MVN = "mvn.cmd" if IS_WIN else "mvn"
@@ -24,20 +26,39 @@ MVN = "mvn.cmd" if IS_WIN else "mvn"
 
 def _venv_py(*parts: str) -> str:
     """项目私有虚拟环境的解释器路径（各项目自行 uv sync 生成，不共享依赖）"""
-    return str(ROOT.joinpath(*parts, ".venv", "Scripts" if IS_WIN else "bin",
-                             "python.exe" if IS_WIN else "python"))
+    return str(
+        ROOT.joinpath(
+            *parts, ".venv", "Scripts" if IS_WIN else "bin", "python.exe" if IS_WIN else "python"
+        )
+    )
 
 
 SERVICES: dict[str, tuple[Path, list[str], int]] = {
-    "go":     (ROOT / "clarity-go",     ["go", "run", "./cmd/main.go"], 8990),
+    "go": (ROOT / "clarity-go", ["go", "run", "./cmd/main.go"], 8990),
     "python": (ROOT / "clarity-python", [_venv_py("clarity-python"), "-m", "app.main"], 8991),
-    "java":   (ROOT / "clarity-java",   [MVN, "spring-boot:run", "-DskipTests"], 8989),
+    "java": (ROOT / "clarity-java", [MVN, "spring-boot:run", "-DskipTests"], 8989),
     # uv 走系统证书库：办公网/企业代理会替换 TLS 证书链，uv 内置根证书校验不过（UnknownIssuer）
-    "mcp":    (ROOT / "clarity-mcp-gateway", ["uv", "run", "--native-tls", "python", "server.py"], 8082),
+    "mcp": (
+        ROOT / "clarity-mcp-gateway",
+        ["uv", "run", "--native-tls", "python", "server.py"],
+        8082,
+    ),
     # 外置推理服务（clarity-service/*，内网专用，各自独立 venv）
-    "llm":    (_SERVICE_ROOT / "clarity-llm",   [_venv_py("clarity-service", "clarity-llm"), "-m", "app.main"], 8992),
-    "voice":  (_SERVICE_ROOT / "clarity-voice", [_venv_py("clarity-service", "clarity-voice"), "-m", "app.main"], 8993),
-    "modal":  (_SERVICE_ROOT / "clarity-modal", [_venv_py("clarity-service", "clarity-modal"), "-m", "app.main"], 8994),
+    "llm": (
+        _SERVICE_ROOT / "clarity-llm",
+        [_venv_py("clarity-service", "clarity-llm"), "-m", "app.main"],
+        8992,
+    ),
+    "voice": (
+        _SERVICE_ROOT / "clarity-voice",
+        [_venv_py("clarity-service", "clarity-voice"), "-m", "app.main"],
+        8993,
+    ),
+    "modal": (
+        _SERVICE_ROOT / "clarity-modal",
+        [_venv_py("clarity-service", "clarity-modal"), "-m", "app.main"],
+        8994,
+    ),
 }
 
 # 需要存活守护的服务：uvicorn 的 reload（clarity-python 在 dev 下 `reload=settings.DEBUG`）会经
@@ -71,7 +92,8 @@ def _alive(pid: int) -> bool:
         # Windows 下 os.kill(pid, 0) 会发送 CTRL_C_EVENT 而非存活检查，改用 tasklist
         out = subprocess.run(
             ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         ).stdout
         return str(pid) in out
     try:
@@ -133,20 +155,23 @@ def _start_env(svc: str) -> dict[str, str]:
     return env
 
 
-def _prod_jar(cwd: Path) -> Optional[Path]:
+def _prod_jar(cwd: Path) -> Path | None:
     """prod profile 下的 java 生产化启动：先构建，再从 target/ 取唯一的 repackage fat jar。
 
     构建失败或产物不唯一时打印原因并返回 None，交由调用方中止启动，绝不猜路径继续。"""
     build = subprocess.run(
         [MVN, "-q", "-DskipTests", "package"],
-        cwd=cwd, capture_output=True, text=True,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
     )
     if build.returncode != 0:
         print(f"[java] 构建失败（mvn package 退出码 {build.returncode}），已中止启动：")
         print((build.stderr or build.stdout).strip()[-2000:])
         return None
     jars = [
-        p for p in (cwd / "target").glob("*.jar")
+        p
+        for p in (cwd / "target").glob("*.jar")
         if not p.name.endswith(".original")
         and "-sources" not in p.name
         and "-javadoc" not in p.name
@@ -180,7 +205,10 @@ def _skip_unprovisioned(svc: str, cmd: list[str]) -> None:
     """未 provision（clarity-service/* 首次需在该目录 uv sync）视为可缺省：打印提示后跳过，不报错。
 
     --native-tls 同 SERVICES 中 uv 命令的理由：企业代理替换证书链时需走系统证书库。"""
-    print(f"[{svc}] skip：未 provision（未找到 {cmd[0]}），如需本地/GPU 部署请先在该目录 uv sync --native-tls")
+    print(
+        f"[{svc}] skip：未 provision（未找到 {cmd[0]}），"
+        "如需本地/GPU 部署请先在该目录 uv sync --native-tls"
+    )
 
 
 def _launch_argv(svc: str, cmd: list[str]) -> list[str]:
@@ -216,7 +244,7 @@ def guard(svc: str) -> None:
     pid_file = cwd / f".{svc}.pid"
     log_path = _console_log_path(cwd)
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a") as log:
+    with log_path.open("a") as log:
         while True:
             try:
                 child = _spawn(svc, cmd, cwd, log, new_session=False)
@@ -231,7 +259,11 @@ def guard(svc: str) -> None:
                 return
             # PID 文件记守护 pid：`ps` 显示 running，`stop` 按该进程组整组清理
             pid_file.write_text(str(os.getpid()))
-            print(f"[{svc}] {_now()} 守护拉起服务进程 (pid={child.pid}, :{port})", file=log, flush=True)
+            print(
+                f"[{svc}] {_now()} 守护拉起服务进程 (pid={child.pid}, :{port})",
+                file=log,
+                flush=True,
+            )
             code = child.wait()
             print(
                 f"[{svc}] {_now()} 服务进程消失 (pid={child.pid}, {_exit_reason(code)})，"
@@ -262,9 +294,13 @@ def start(svc: str):
         cmd = ["java", "-jar", str(jar)]
 
     # 未 provision（clarity-service/* 首次需在该目录 uv sync 生成 venv）视为可缺省：跳过而非报错，
-    # 不中断其余服务。llm/voice 已退出默认链路、按需手动启动（验证 local / 极简协议调用时用）；modal 仍是去雾核心。
+    # 不中断其余服务。llm/voice 已退出默认链路、按需手动启动（验证 local / 极简协议调用时用）；
+    # modal 仍是去雾核心。
     if not cwd.is_dir():
-        print(f"[{svc}] skip：服务未 provision（目录缺失 {cwd}），如需本地/GPU 部署请先在该目录 uv sync")
+        print(
+            f"[{svc}] skip：服务未 provision（目录缺失 {cwd}），"
+            "如需本地/GPU 部署请先在该目录 uv sync"
+        )
         return
 
     # 守护服务由守护进程持有子进程，解释器缺失要到守护内才暴露；为保留"未 provision 直接跳过"
@@ -276,7 +312,7 @@ def start(svc: str):
 
     log_path = _console_log_path(cwd)
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    log = open(log_path, "a")
+    log = log_path.open("a")
     try:
         proc = _spawn(svc, _launch_argv(svc, cmd), cwd, log, new_session=True)
     except FileNotFoundError:
@@ -286,7 +322,9 @@ def start(svc: str):
         return
     pid_file.write_text(str(proc.pid))
     # 守护服务记的是守护进程 pid：服务进程消失不会让 PID 文件失效，`stop` 仍能按进程组收口
-    print(f"[{svc}] started (pid={proc.pid}{' 守护进程' if svc in GUARDED_SERVICES else ''}, :{port})")
+    print(
+        f"[{svc}] started (pid={proc.pid}{' 守护进程' if svc in GUARDED_SERVICES else ''}, :{port})"
+    )
     if svc in GUARDED_SERVICES:
         print(f"[{svc}] 存活守护已启用：服务进程消失即记录原因并重拉（见 console log）")
     print(f"[{svc}] console log: {log_path}")
@@ -299,10 +337,8 @@ def stop(svc: str):
 
     # 收集目标 PID：PID 文件 + 端口占用（ss 可能返回多个，如 uvicorn --reload 的 reloader+worker）
     file_pid = None
-    try:
+    with contextlib.suppress(FileNotFoundError, ValueError):
         file_pid = int(pid_file.read_text())
-    except (FileNotFoundError, ValueError):
-        pass
 
     target_pids = {file_pid, *_port_pids(port)} - {None}
 
@@ -327,14 +363,12 @@ def stop(svc: str):
         if not leftover:
             break
         for pid in leftover:
-            try:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
                 if IS_WIN:
                     subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
                 else:
                     os.kill(pid, 9)
                 killed = True
-            except (ProcessLookupError, PermissionError):
-                pass
         time.sleep(0.3)
 
     pid_file.unlink(missing_ok=True)
@@ -347,27 +381,28 @@ def _port_pids(port: int) -> list[int]:
         # Windows 无 ss，用 netstat -ano，最后一列为 PID，匹配 LISTENING 且本地地址以 :port 结尾
         out = subprocess.run(
             ["netstat", "-ano", "-p", "TCP"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         ).stdout
         pids = []
         for line in out.splitlines():
             parts = line.split()
             if len(parts) >= 5 and parts[-2] == "LISTENING" and parts[1].endswith(f":{port}"):
-                try:
+                with contextlib.suppress(ValueError):
                     pids.append(int(parts[-1]))
-                except ValueError:
-                    pass
         return pids
     if sys.platform == "darwin":
         # macOS 无 ss，lsof -t 直接输出监听进程 PID
         out = subprocess.run(
             ["lsof", "-nP", "-iTCP", f":{port}", "-sTCP:LISTEN", "-t"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         ).stdout
         return [int(line) for line in out.split() if line.isdigit()]
     out = subprocess.run(
         ["ss", "-tlnp", f"sport = :{port}"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     ).stdout
     return [int(m) for m in re.findall(r"pid=(\d+)", out)]
 
@@ -376,10 +411,8 @@ def status():
     for svc, (cwd, _, port) in SERVICES.items():
         pid = None
         # 优先读取 PID 文件
-        try:
+        with contextlib.suppress(FileNotFoundError, ValueError):
             pid = int((cwd / f".{svc}.pid").read_text())
-        except (FileNotFoundError, ValueError):
-            pass
 
         if pid and _alive(pid):
             st = f"running (pid={pid})"
@@ -430,7 +463,9 @@ def main():
         if not rest:
             print(f"用法: {cmd} <svc[,svc]|all>")
             sys.exit(1)
-        svcs = list(SERVICES) if rest[0] == "all" else [s for s in rest[0].split(",") if s in SERVICES]
+        svcs = (
+            list(SERVICES) if rest[0] == "all" else [s for s in rest[0].split(",") if s in SERVICES]
+        )
         for s in svcs:
             if cmd in ("run", "start"):
                 start(s)

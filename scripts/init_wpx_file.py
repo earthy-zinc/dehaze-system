@@ -9,7 +9,8 @@
 
 字段说明：
   - origin_*：原始数据集图（应由 init_dataset.py 先入库 sys_file）
-  - new_*：WPX 预处理图（本脚本创建 sys_file 记录，nginx 直服，登记为 nginx-static 后端，不上传 MinIO）
+  - new_*：WPX 预处理图（本脚本创建 sys_file 记录，nginx 直服，登记为 nginx-static 后端，
+    不上传 MinIO）
 
 前置条件：先执行 init_dataset.py，确保原始数据集图已写入 sys_file。
 
@@ -20,6 +21,7 @@
 WPX 图在 datasets/WPX/... 下，object_name 含 datasets/ 资源前缀。
 sys_wpx_file.origin_path/new_path 为路径快照、非访问 URL，仅用于记录原始/预处理图的相对位置。
 """
+
 import argparse
 import hashlib
 import re
@@ -38,7 +40,7 @@ HAZY_DIR_FLAGS = ("haze", "hazy")
 
 def md5_file(path: Path) -> str:
     h = hashlib.md5()
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1 << 16), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -113,8 +115,11 @@ def scan_wpx_pairs(dataset_root: Path) -> list[dict]:
             if not origin_type_dir.is_dir():
                 # 大小写回退：在原始数据集目录下找同名（忽略大小写）子目录
                 match = next(
-                    (p for p in origin_dataset_dir.iterdir()
-                     if p.is_dir() and p.name.lower() == type_name_lower),
+                    (
+                        p
+                        for p in origin_dataset_dir.iterdir()
+                        if p.is_dir() and p.name.lower() == type_name_lower
+                    ),
                     None,
                 )
                 if match is None:
@@ -130,22 +135,30 @@ def scan_wpx_pairs(dataset_root: Path) -> list[dict]:
                 origin_files = origin_index.get(key, [])
 
                 if len(wpx_files) > 1:
-                    print(f"  警告 [{dataset_name}/{img_type}/{key}] WPX 侧有多张文件，跳过: {wpx_files}")
+                    print(
+                        f"  警告 [{dataset_name}/{img_type}/{key}] WPX 侧有多张文件，"
+                        f"跳过: {wpx_files}"
+                    )
                     continue
                 if len(origin_files) > 1:
-                    print(f"  警告 [{dataset_name}/{img_type}/{key}] 原始侧有多张文件，跳过: {origin_files}")
+                    print(
+                        f"  警告 [{dataset_name}/{img_type}/{key}] 原始侧有多张文件，"
+                        f"跳过: {origin_files}"
+                    )
                     continue
                 if not origin_files:
                     print(f"  警告 [{dataset_name}/{img_type}/{key}] 未找到原始配对文件，跳过")
                     continue
 
-                pairs.append({
-                    "dataset": dataset_name,
-                    "img_type": img_type,
-                    "leading": key,
-                    "wpx_file": wpx_files[0],
-                    "origin_file": origin_files[0],
-                })
+                pairs.append(
+                    {
+                        "dataset": dataset_name,
+                        "img_type": img_type,
+                        "leading": key,
+                        "wpx_file": wpx_files[0],
+                        "origin_file": origin_files[0],
+                    }
+                )
 
     return pairs
 
@@ -165,8 +178,9 @@ def insert_file_record(cur, *, name, object_name, size_bytes, ext, md5) -> int:
     return cur.lastrowid
 
 
-def insert_wpx_file(cur, *, origin_file_id, origin_md5, origin_path,
-                    new_file_id, new_md5, new_path):
+def insert_wpx_file(
+    cur, *, origin_file_id, origin_md5, origin_path, new_file_id, new_md5, new_path
+):
     cur.execute(
         "INSERT INTO sys_wpx_file "
         "(origin_file_id, origin_md5, origin_path, new_file_id, new_md5, new_path) "
@@ -180,7 +194,9 @@ def delete_existing_wpx_records(cur, conn, *, origin_md5_set: set, new_md5_set: 
     if not origin_md5_set and not new_md5_set:
         return
     placeholders = ",".join(["%s"] * len(origin_md5_set))
-    cur.execute(f"DELETE FROM sys_wpx_file WHERE origin_md5 IN ({placeholders})", list(origin_md5_set))
+    cur.execute(
+        f"DELETE FROM sys_wpx_file WHERE origin_md5 IN ({placeholders})", list(origin_md5_set)
+    )
     placeholders = ",".join(["%s"] * len(new_md5_set))
     cur.execute(f"DELETE FROM sys_wpx_file WHERE new_md5 IN ({placeholders})", list(new_md5_set))
     conn.commit()
@@ -193,9 +209,17 @@ def main():
     parser.add_argument("--db-user", default="root")
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
-    parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
-    parser.add_argument("--nginx-base-url", required=True,
-                        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径；WPX 图由此直服")
+    parser.add_argument(
+        "--dataset-path",
+        required=True,
+        help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）",
+    )
+    parser.add_argument(
+        "--nginx-base-url",
+        required=True,
+        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径；"
+        "WPX 图由此直服",
+    )
     parser.add_argument("--regenerate", action="store_true", help="强制重建（先删后建）")
     args = parser.parse_args()
 
@@ -213,17 +237,23 @@ def main():
 
     print(f"发现 {len(pairs)} 对 WPX-原始图配对，开始处理（nginx_base_url={base_url}）...")
 
-    conn = pymysql.connect(host=args.db_host, port=args.db_port, user=args.db_user,
-                           password=args.db_password, database=args.db_name, autocommit=False)
+    conn = pymysql.connect(
+        host=args.db_host,
+        port=args.db_port,
+        user=args.db_user,
+        password=args.db_password,
+        database=args.db_name,
+        autocommit=False,
+    )
     try:
         with conn.cursor() as cur:
             if args.regenerate:
                 origin_md5_set = {md5_file(p["origin_file"]) for p in pairs}
                 new_md5_set = {md5_file(p["wpx_file"]) for p in pairs}
                 print("  [--regenerate] 清理已存在的 sys_wpx_file 记录...")
-                delete_existing_wpx_records(cur, conn,
-                                            origin_md5_set=origin_md5_set,
-                                            new_md5_set=new_md5_set)
+                delete_existing_wpx_records(
+                    cur, conn, origin_md5_set=origin_md5_set, new_md5_set=new_md5_set
+                )
 
             created = 0
             skipped = 0
@@ -235,7 +265,10 @@ def main():
                 origin_md5 = md5_file(origin_file)
                 origin_file_id = find_file_id_by_md5(cur, origin_md5)
                 if origin_file_id is None:
-                    print(f"  {tag} 原始图未入库 sys_file (md5={origin_md5})，跳过。请先执行 init_dataset.py")
+                    print(
+                        f"  {tag} 原始图未入库 sys_file (md5={origin_md5})，跳过。"
+                        "请先执行 init_dataset.py"
+                    )
                     skipped += 1
                     continue
 

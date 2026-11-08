@@ -331,6 +331,9 @@ function Install-Mise {
     Invoke-Native "mise 安装 node@$($Config.runtimes.node)" { mise use -g "node@$($Config.runtimes.node)" } | Out-Null
     Invoke-Native "mise 安装 go@$($Config.runtimes.go)" { mise use -g "go@$($Config.runtimes.go)" } | Out-Null
     Invoke-Native "mise 安装 java@$($Config.runtimes.java)" { mise use -g "java@$($Config.runtimes.java)" } | Out-Null
+    # Maven 同样交给 mise 管（clarity-java 构建与 spotless 要用 mvn），不再走 scoop，
+    # 否则 scoop 的 mvn 会绑定 scoop java，与 mise 的 Java 版本错配。
+    Invoke-Native "mise 安装 maven@$($Config.runtimes.maven)" { mise use -g "maven@$($Config.runtimes.maven)" } | Out-Null
 }
 
 function Install-Python {
@@ -444,7 +447,7 @@ function Invoke-Cleanup {
 function Show-Summary {
     Write-Log '=== 结果核对 ===' 'STEP'
     Update-SessionPath
-    foreach ($tool in @('scoop', 'mise', 'uv')) {
+    foreach ($tool in @('scoop', 'mise', 'uv', 'mvn')) {
         $cmd = Get-Command $tool -ErrorAction SilentlyContinue
         if ($cmd) { Write-Log ("{0}: {1}" -f $tool, $cmd.Source) 'OK' } else { Write-Log ("{0}: 未找到" -f $tool) 'WARN' }
     }

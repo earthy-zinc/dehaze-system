@@ -15,14 +15,14 @@
 幂等，重复执行覆盖写入。
 """
 
-import os
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-RESOURCES_DIR = os.path.join(ROOT_DIR, "clarity-sdk-js", "test", "resources")
-DATASETS_DIR = os.path.join(ROOT_DIR, "datasets")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+RESOURCES_DIR = ROOT_DIR / "clarity-sdk-js" / "test" / "resources"
+DATASETS_DIR = ROOT_DIR / "datasets"
 
 # (相对路径, 随机种子, 是否加雾)
 IMAGES = [
@@ -68,22 +68,22 @@ def make_image(seed: int, hazy: bool) -> Image.Image:
 
 def main() -> None:
     for rel, seed, hazy in IMAGES:
-        path = os.path.join(RESOURCES_DIR, rel)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path = RESOURCES_DIR / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
         make_image(seed, hazy).save(path, "JPEG", quality=90)
-        print(f"{rel}: {os.path.getsize(path)} bytes")
+        print(f"{rel}: {path.stat().st_size} bytes")
 
     for rel, seed in PNG_IMAGES:
-        path = os.path.join(RESOURCES_DIR, rel)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path = RESOURCES_DIR / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
         make_image(seed, hazy=False).save(path, "PNG")
-        print(f"{rel}: {os.path.getsize(path)} bytes")
+        print(f"{rel}: {path.stat().st_size} bytes")
 
     for rel, seed, hazy in DATASET_IMAGES:
-        path = os.path.join(DATASETS_DIR, rel)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path = DATASETS_DIR / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
         make_image(seed, hazy).save(path, "JPEG", quality=90)
-        print(f"datasets/{rel}: {os.path.getsize(path)} bytes")
+        print(f"datasets/{rel}: {path.stat().st_size} bytes")
 
 
 if __name__ == "__main__":

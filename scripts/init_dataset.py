@@ -18,6 +18,7 @@ OTS / Haze4K 的 A+β 双参数格式需 --haze-format 显式指定。
 nginx-static 后端 baseUrl 为服务根地址（如 http://host:19000），object_name 必须含资源前缀
 （数据集为 datasets/），运行时 url = baseUrl + "/" + object_name 拼出 http://host:19000/datasets/...。
 """
+
 import argparse
 import hashlib
 import re
@@ -97,7 +98,7 @@ def scan_dataset_dir(dataset_dir: Path) -> dict:
 
 def md5_file(path: Path) -> str:
     h = hashlib.md5()
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         for chunk in iter(lambda: f.read(1 << 16), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -121,27 +122,36 @@ def get_leaf_dataset_ids(cur) -> list[tuple[int, str, str]]:
     """返回 [(id, name, path), ...]，path 为 sys_dataset.path 字段。"""
     cur.execute(
         "SELECT id, name, path FROM sys_dataset "
-        "WHERE deleted = 0 AND id NOT IN (SELECT DISTINCT parent_id FROM sys_dataset WHERE deleted = 0 AND parent_id IS NOT NULL) "
+        "WHERE deleted = 0 AND id NOT IN ("
+        "SELECT DISTINCT parent_id FROM sys_dataset WHERE deleted = 0 AND parent_id IS NOT NULL) "
         "ORDER BY id"
     )
     return cur.fetchall()
 
 
 def count_items(cur, dataset_id: int) -> int:
-    cur.execute("SELECT COUNT(*) FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,))
+    cur.execute(
+        "SELECT COUNT(*) FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,)
+    )
     return cur.fetchone()[0]
 
 
 def delete_dataset_items(cur, conn, dataset_id: int):
     """级联逻辑删除数据集的所有数据项及关联文件记录（用于 --regenerate）。"""
-    cur.execute("SELECT id FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,))
+    cur.execute(
+        "SELECT id FROM sys_dataset_item WHERE dataset_id = %s AND deleted = 0", (dataset_id,)
+    )
     item_ids = [r[0] for r in cur.fetchall()]
     if not item_ids:
         return
 
     placeholders = ",".join(["%s"] * len(item_ids))
 
-    cur.execute(f"SELECT file_id, thumbnail_file_id FROM sys_item_file WHERE item_id IN ({placeholders}) AND deleted = 0", item_ids)
+    cur.execute(
+        f"SELECT file_id, thumbnail_file_id FROM sys_item_file "
+        f"WHERE item_id IN ({placeholders}) AND deleted = 0",
+        item_ids,
+    )
     file_ids = {fid for row in cur.fetchall() for fid in row if fid}
 
     cur.execute(f"UPDATE sys_item_file SET deleted = 1 WHERE item_id IN ({placeholders})", item_ids)
@@ -171,22 +181,33 @@ def insert_file_record(cur, conn, *, name, object_name, size_bytes, ext, md5) ->
 
 def insert_item_file(cur, *, item_id, file_id, img_type, width, height, haze_level):
     cur.execute(
-        "INSERT INTO sys_item_file (item_id, file_id, type, width, height, haze_level, usage_count) "
+        "INSERT INTO sys_item_file "
+        "(item_id, file_id, type, width, height, haze_level, usage_count) "
         "VALUES (%s, %s, %s, %s, %s, %s, 0)",
         (item_id, file_id, img_type, width, height, haze_level),
     )
 
 
-def init_single_dataset(cur, conn, *, dataset_id, dataset_name, dataset_path_field,
-                        dataset_root: Path, haze_format: str,
-                        regenerate: bool) -> tuple[int, int]:
+def init_single_dataset(
+    cur,
+    conn,
+    *,
+    dataset_id,
+    dataset_name,
+    dataset_path_field,
+    dataset_root: Path,
+    haze_format: str,
+    regenerate: bool,
+) -> tuple[int, int]:
     """初始化单个数据集，返回 (数据项数, 文件数)。"""
     if count_items(cur, dataset_id) > 0:
         if regenerate:
             print(f"  [--regenerate] 清理数据集[{dataset_id}]已有数据项...")
             delete_dataset_items(cur, conn, dataset_id)
         else:
-            print(f"  数据集[{dataset_id}] {dataset_name} 已有数据项，跳过（--regenerate 强制重建）")
+            print(
+                f"  数据集[{dataset_id}] {dataset_name} 已有数据项，跳过（--regenerate 强制重建）"
+            )
             return 0, 0
 
     dataset_dir = dataset_root / dataset_path_field
@@ -225,7 +246,8 @@ def init_single_dataset(cur, conn, *, dataset_id, dataset_name, dataset_path_fie
                     width, height = None, None
 
                 file_id = insert_file_record(
-                    cur, conn,
+                    cur,
+                    conn,
                     name=fp.name,
                     object_name=f"datasets/{rel}",
                     size_bytes=fp.stat().st_size,
@@ -255,12 +277,25 @@ def main():
     parser.add_argument("--db-user", default="root")
     parser.add_argument("--db-password", required=True)
     parser.add_argument("--db-name", default="dehaze")
-    parser.add_argument("--dataset-path", required=True, help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）")
-    parser.add_argument("--nginx-base-url", required=True,
-                        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径")
-    parser.add_argument("--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）")
-    parser.add_argument("--haze-format", choices=["auto", "ots", "haze4k"], default="auto",
-                        help="haze_level 解析格式：auto(默认) / ots(A=,beta=) / haze4k(beta=,A=)")
+    parser.add_argument(
+        "--dataset-path",
+        required=True,
+        help="数据集根目录（仓库内默认 datasets/，与 nginx-dataset 挂载一致）",
+    )
+    parser.add_argument(
+        "--nginx-base-url",
+        required=True,
+        help="nginx 静态服务根地址（如 http://127.0.0.1:19000），不带 /datasets 等资源子路径",
+    )
+    parser.add_argument(
+        "--dataset-id", type=int, help="仅初始化指定数据集 ID（不指定则初始化所有叶子数据集）"
+    )
+    parser.add_argument(
+        "--haze-format",
+        choices=["auto", "ots", "haze4k"],
+        default="auto",
+        help="haze_level 解析格式：auto(默认) / ots(A=,beta=) / haze4k(beta=,A=)",
+    )
     parser.add_argument("--regenerate", action="store_true", help="强制重建（先删后建）")
     args = parser.parse_args()
 
@@ -269,12 +304,21 @@ def main():
         print(f"数据集根目录不存在: {dataset_root}")
         sys.exit(1)
 
-    conn = pymysql.connect(host=args.db_host, port=args.db_port, user=args.db_user,
-                           password=args.db_password, database=args.db_name, autocommit=False)
+    conn = pymysql.connect(
+        host=args.db_host,
+        port=args.db_port,
+        user=args.db_user,
+        password=args.db_password,
+        database=args.db_name,
+        autocommit=False,
+    )
     try:
         with conn.cursor() as cur:
             if args.dataset_id:
-                cur.execute("SELECT id, name, path FROM sys_dataset WHERE id = %s AND deleted = 0", (args.dataset_id,))
+                cur.execute(
+                    "SELECT id, name, path FROM sys_dataset WHERE id = %s AND deleted = 0",
+                    (args.dataset_id,),
+                )
                 datasets = cur.fetchall()
             else:
                 datasets = get_leaf_dataset_ids(cur)
@@ -283,13 +327,17 @@ def main():
                 print("未找到可初始化的数据集")
                 return
 
-            print(f"发现 {len(datasets)} 个数据集，开始初始化（dataset_path={dataset_root}, nginx_base_url={args.nginx_base_url}）")
+            print(
+                f"发现 {len(datasets)} 个数据集，开始初始化"
+                f"（dataset_path={dataset_root}, nginx_base_url={args.nginx_base_url}）"
+            )
             total_items = 0
             total_files = 0
             for ds_id, ds_name, ds_path in datasets:
                 print(f"\n[{ds_id}] {ds_name} (path={ds_path})")
                 items, files = init_single_dataset(
-                    cur, conn,
+                    cur,
+                    conn,
                     dataset_id=ds_id,
                     dataset_name=ds_name,
                     dataset_path_field=ds_path,
