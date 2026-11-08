@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
 	repo "github.com/earthyzinc/clarity-go/internal/repository/aidomain"
 	"github.com/earthyzinc/clarity-go/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -21,20 +22,26 @@ func newMessageCursorFixture(t *testing.T, userID int64) (*MessageService, *gorm
 	t.Helper()
 	db := testutil.NewTestDB(t)
 	convRepo := repo.NewConversationRepository(db)
-	svc := NewMessageService(convRepo, repo.NewMessageRepository(db), repo.NewThoughtRepository(db))
+	svc := NewMessageService(convRepo, repo.NewMessageRepository(db), repo.NewArtifactRepository(db))
 	conv := &model.SysAiConversation{UserID: userID, Title: "游标分页回归", TitleSource: "auto", Status: 1}
 	require.NoError(t, convRepo.Create(context.Background(), conv))
 	return svc, db, conv.ID
 }
 
-// insertMessages 顺序插入 count 条用户消息，返回按插入顺序（id 升序）的 id 列表。
+// insertMessages 顺序插入 count 条消息并以 parent 链首尾相连（会话即一条激活链），
+// 返回按插入顺序（id 升序）的 id 列表。
 func insertMessages(t *testing.T, db *gorm.DB, convID int64, count int) []int64 {
 	t.Helper()
 	ids := make([]int64, 0, count)
+	var parent *int64
 	for i := 0; i < count; i++ {
-		msg := &model.SysAiMessage{ConversationID: convID, Role: "user", Status: 1}
+		msg := &model.SysAiMessage{
+			ConversationID: convID, ParentMessageID: parent,
+			Role: aicontract.RoleUser, Status: aicontract.MessageStatusCompleted,
+		}
 		require.NoError(t, db.Create(msg).Error)
 		ids = append(ids, msg.ID)
+		parent = &msg.ID
 	}
 	return ids
 }
@@ -47,7 +54,7 @@ func reversed(ids []int64) []int64 {
 	return out
 }
 
-func idsOf(list []MessageVO) []int64 {
+func idsOf(list []aicontract.Message) []int64 {
 	out := make([]int64, 0, len(list))
 	for i := range list {
 		out = append(out, list[i].ID)
@@ -162,7 +169,7 @@ func TestMessageListCursorConcurrentInsertNoDupNoMiss(t *testing.T) {
 	db := testutil.NewPoolTestDB(t)
 	ctx := context.Background()
 	convRepo := repo.NewConversationRepository(db)
-	svc := NewMessageService(convRepo, repo.NewMessageRepository(db), repo.NewThoughtRepository(db))
+	svc := NewMessageService(convRepo, repo.NewMessageRepository(db), repo.NewArtifactRepository(db))
 
 	const userID = 770001
 	conv := &model.SysAiConversation{UserID: userID, Title: "游标并发翻页", TitleSource: "auto", Status: 1}
@@ -178,15 +185,23 @@ func TestMessageListCursorConcurrentInsertNoDupNoMiss(t *testing.T) {
 
 	var wg sync.WaitGroup
 	insertErrs := make(chan error, 1)
+	// 并发写入追加到链尾（parent 串成一条链）：激活链随写入增长，但 before=anchor 的快照边界
+	// 仍只覆盖原始消息，回归"翻页不重不漏"。
+	var chainTail int64 = original[len(original)-1]
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 16; i++ {
-			msg := &model.SysAiMessage{ConversationID: conv.ID, Role: "user", Status: 1}
+			parentID := chainTail
+			msg := &model.SysAiMessage{
+				ConversationID: conv.ID, ParentMessageID: &parentID,
+				Role: aicontract.RoleUser, Status: aicontract.MessageStatusCompleted,
+			}
 			if err := db.Create(msg).Error; err != nil {
 				insertErrs <- err
 				return
 			}
+			chainTail = msg.ID
 			time.Sleep(2 * time.Millisecond)
 		}
 	}()

@@ -68,23 +68,26 @@ func TestCreateFillsTimeAndJsonDefaults(t *testing.T) {
 		require.False(t, metadata.Valid, "空 metadata 必须落 NULL")
 	})
 
-	t.Run("消息：metadata/tool_calls/used_memory_ids 空串写 NULL", func(t *testing.T) {
+	t.Run("消息：blocks 零值兜底 []，plan/pending_interrupt/suggestions/used_memory_ids 空串写 NULL", func(t *testing.T) {
 		conv := &model.SysAiConversation{
 			UserID: 990001, Title: "消息归属会话", TitleSource: "auto", Status: 1,
 		}
 		require.NoError(t, NewConversationRepository(db).Create(ctx, conv))
 
-		msg := &model.SysAiMessage{ConversationID: conv.ID, Role: "user", Status: 1}
+		msg := &model.SysAiMessage{ConversationID: conv.ID, Role: "user"}
 		require.NoError(t, db.Create(msg).Error)
 		require.False(t, msg.CreateTime.IsZero())
 
-		var metadata, toolCalls, usedMemoryIDs sql.NullString
+		var blocks, plan, interrupt, suggestions, usedMemoryIDs sql.NullString
 		require.NoError(t, db.Raw(
-			"SELECT metadata, tool_calls, used_memory_ids FROM sys_ai_message WHERE id = ?", msg.ID).
-			Row().Scan(&metadata, &toolCalls, &usedMemoryIDs))
-		require.False(t, metadata.Valid)
-		require.False(t, toolCalls.Valid)
-		require.False(t, usedMemoryIDs.Valid)
+			"SELECT blocks, plan, pending_interrupt, suggestions, used_memory_ids FROM sys_ai_message WHERE id = ?", msg.ID).
+			Row().Scan(&blocks, &plan, &interrupt, &suggestions, &usedMemoryIDs))
+		require.Equal(t, "[]", blocks.String, "NOT NULL 的 blocks 零值必须兜底合法 JSON 数组")
+		require.False(t, plan.Valid, "空 plan 必须落 NULL")
+		require.False(t, interrupt.Valid, "空 pending_interrupt 必须落 NULL")
+		require.False(t, suggestions.Valid, "空 suggestions 必须落 NULL")
+		require.False(t, usedMemoryIDs.Valid, "空 used_memory_ids 必须落 NULL")
+		require.Equal(t, "running", msg.Status, "status 零值由 model 默认值兜底为 running")
 	})
 
 	t.Run("Agent 版本：NOT NULL 的 snapshot 空串兜底写 '{}'", func(t *testing.T) {

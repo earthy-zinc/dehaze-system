@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
 	"github.com/earthyzinc/clarity-go/internal/model/bo"
 	"github.com/earthyzinc/clarity-go/internal/model/vo"
 	airepo "github.com/earthyzinc/clarity-go/internal/repository/ai"
@@ -848,7 +849,8 @@ func timelineMessageToVO(m *model.SysAiMessage) *vo.TimelineMessageVO {
 	}
 	created := m.CreateTime
 	return &vo.TimelineMessageVO{
-		ID: m.ID, Role: m.Role, Content: m.Content, Status: m.Status, Model: m.Model,
+		ID: m.ID, Role: m.Role, Text: aicontract.DeriveText(aicontract.DecodeBlocks(m.Blocks)),
+		Status: m.Status, Model: m.Model,
 		InputTokens: m.InputTokens, OutputTokens: m.OutputTokens, CreateTime: &created,
 	}
 }
@@ -856,7 +858,8 @@ func timelineMessageToVO(m *model.SysAiMessage) *vo.TimelineMessageVO {
 func traceMessageToVO(m *model.SysAiMessage) vo.TraceMessageVO {
 	return vo.TraceMessageVO{
 		ID: m.ID, ConversationID: m.ConversationID, ParentMessageID: m.ParentMessageID,
-		Role: m.Role, Content: m.Content, Status: m.Status, Model: m.Model,
+		Role: m.Role, Text: aicontract.DeriveText(aicontract.DecodeBlocks(m.Blocks)),
+		Status: m.Status, Model: m.Model,
 		InputTokens: m.InputTokens, OutputTokens: m.OutputTokens, CreateTime: m.CreateTime,
 	}
 }

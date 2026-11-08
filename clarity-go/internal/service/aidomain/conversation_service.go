@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
 	"github.com/earthyzinc/clarity-go/internal/model/vo"
 	repo "github.com/earthyzinc/clarity-go/internal/repository/aidomain"
 	"github.com/earthyzinc/clarity-go/pkg/cache/redis"
@@ -523,6 +524,7 @@ func (s *ConversationService) MarkRead(ctx context.Context, id, userID int64) (*
 }
 
 // Export 导出会话（沿当前激活分支回溯 user/assistant 消息）。
+// 消息正文由 blocks 派生（只取 kind=text，按 seq 升序），思考与工具块不进导出正文。
 func (s *ConversationService) Export(ctx context.Context, id, userID int64, format string) (contentType, filename, payload string, err error) {
 	conv, err := s.conversations.GetByIDAndUser(ctx, id, userID)
 	if err != nil {
@@ -538,7 +540,7 @@ func (s *ConversationService) Export(ctx context.Context, id, userID int64, form
 			return "", "", "", common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询消息失败", chainErr)
 		}
 		for _, m := range chain {
-			if m.Role == "user" || m.Role == "assistant" {
+			if m.Role == aicontract.RoleUser || m.Role == aicontract.RoleAssistant {
 				messages = append(messages, m)
 			}
 		}
@@ -547,16 +549,16 @@ func (s *ConversationService) Export(ctx context.Context, id, userID int64, form
 	if format == "json" {
 		type exportMessage struct {
 			Role       string `json:"role"`
-			Content    string `json:"content"`
+			Text       string `json:"text"`
 			CreateTime string `json:"create_time"`
 		}
 		items := make([]exportMessage, 0, len(messages))
 		for _, m := range messages {
-			content := ""
-			if m.Content != nil {
-				content = *m.Content
-			}
-			items = append(items, exportMessage{Role: m.Role, Content: content, CreateTime: formatTime(m.CreateTime)})
+			items = append(items, exportMessage{
+				Role:       m.Role,
+				Text:       aicontract.DeriveText(aicontract.DecodeBlocks(m.Blocks)),
+				CreateTime: formatTime(m.CreateTime),
+			})
 		}
 		body := map[string]any{
 			"conversation": map[string]any{
@@ -575,10 +577,11 @@ func (s *ConversationService) Export(ctx context.Context, id, userID int64, form
 		return "application/json", fmt.Sprintf("conversation_%d.json", id), string(b), nil
 	}
 
-	roleLabel := map[string]string{"user": "用户", "assistant": "助手"}
+	roleLabel := map[string]string{aicontract.RoleUser: "用户", aicontract.RoleAssistant: "助手"}
 	lines := []string{"# " + conv.Title, ""}
 	for _, m := range messages {
-		lines = append(lines, "## "+roleLabel[m.Role], "", derefString(m.Content), "")
+		text := aicontract.DeriveText(aicontract.DecodeBlocks(m.Blocks))
+		lines = append(lines, "## "+roleLabel[m.Role], "", text, "")
 	}
 	return "text/markdown", fmt.Sprintf("conversation_%d.md", id), strings.Join(lines, "\n"), nil
 }
@@ -706,13 +709,13 @@ func (s *ConversationService) attachAuditFields(ctx context.Context, items []Con
 		items[i].CreditsConsumed = &credits
 		statuses := anomalyStatus[items[i].ID]
 		switch {
-		case hasStatus(statuses, 3):
+		case hasStatus(statuses, aicontract.MessageStatusFailed):
 			items[i].AnomalyType, items[i].AnomalyLabel = "failed", "存在失败消息"
 		case hasKey(quotaConvIDs, items[i].ID):
 			items[i].AnomalyType, items[i].AnomalyLabel = "quota", "配额不足中断"
 		case hasKey(riskyConvIDs, items[i].ID):
 			items[i].AnomalyType, items[i].AnomalyLabel = "risky_tool", "存在高风险工具调用"
-		case hasStatus(statuses, 4):
+		case hasStatus(statuses, aicontract.MessageStatusCanceled):
 			items[i].AnomalyType, items[i].AnomalyLabel = "canceled", "存在已取消消息"
 		}
 	}
@@ -745,7 +748,7 @@ func (s *ConversationService) attachMatchedMessages(ctx context.Context, items [
 	return nil
 }
 
-func hasStatus(statuses map[int]struct{}, status int) bool {
+func hasStatus(statuses map[string]struct{}, status string) bool {
 	_, ok := statuses[status]
 	return ok
 }

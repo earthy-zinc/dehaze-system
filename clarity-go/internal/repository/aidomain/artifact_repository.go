@@ -41,6 +41,30 @@ func (r *ArtifactRepository) ListByMessage(ctx context.Context, messageID int64)
 	return items, err
 }
 
+// ListIDsByMessages 批量取多条消息的产物 ID（按 id 升序，即产出顺序），避免逐消息 N+1。
+func (r *ArtifactRepository) ListIDsByMessages(ctx context.Context, messageIDs []int64) (map[int64][]int64, error) {
+	result := make(map[int64][]int64, len(messageIDs))
+	if len(messageIDs) == 0 {
+		return result, nil
+	}
+	var rows []struct {
+		ID        int64 `gorm:"column:id"`
+		MessageID int64 `gorm:"column:message_id"`
+	}
+	err := r.db.WithContext(ctx).Table("sys_ai_artifact").
+		Select("id, message_id").
+		Where("message_id IN ?", messageIDs).
+		Order("id ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.MessageID] = append(result[row.MessageID], row.ID)
+	}
+	return result, nil
+}
+
 func (r *ArtifactRepository) ListByRef(ctx context.Context, refType string, refID int64) ([]model.SysAiArtifact, error) {
 	var items []model.SysAiArtifact
 	err := r.db.WithContext(ctx).

@@ -39,6 +39,7 @@ func TestAIRoutesRegistrationHasNoConflict(t *testing.T) {
 		"GET /api/v1/ai/conversations":                            "",
 		"GET /api/v1/ai/conversations/:id":                        "",
 		"GET /api/v1/ai/conversations/:id/messages":               "",
+		"GET /api/v1/ai/conversations/:id/feedback":               "",
 		"PUT /api/v1/ai/conversations/:id/pin":                    "",
 		"GET /api/v1/ai/memories":                                 "",
 		"POST /api/v1/ai/memories/:id/unarchive":                  "",

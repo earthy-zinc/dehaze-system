@@ -494,13 +494,14 @@ func (a *Application) Init() error {
 	// AI 对话域 A 类端点（会话/消息/反馈/产物/记忆/Agent 与版本/A2A 端点/评测中心/定时任务）
 	aiConvRepo := aidomainrepo.NewConversationRepository(gormDB)
 	aiMsgRepo := aidomainrepo.NewMessageRepository(gormDB)
+	aiArtifactRepo := aidomainrepo.NewArtifactRepository(gormDB)
 	aiEvalRepo := aidomainrepo.NewEvalRepository(gormDB)
 	aiMemoryRepo := aidomainrepo.NewMemoryRepository(gormDB)
 	aiConversationApi := api.NewAiConversationApi(
 		aidomainservice.NewConversationService(aiConvRepo, aiMsgRepo, aiAgentRepo, aiUserPreferenceService),
-		aidomainservice.NewMessageService(aiConvRepo, aiMsgRepo, aidomainrepo.NewThoughtRepository(gormDB)),
-		aidomainservice.NewFeedbackService(aiMsgRepo, aidomainrepo.NewMessageFeedbackRepository(gormDB), aiMemoryRepo),
-		aidomainservice.NewArtifactService(aidomainrepo.NewArtifactRepository(gormDB), aiConvRepo, aiMsgRepo, storageRegistry),
+		aidomainservice.NewMessageService(aiConvRepo, aiMsgRepo, aiArtifactRepo),
+		aidomainservice.NewFeedbackService(aiConvRepo, aiMsgRepo, aidomainrepo.NewMessageFeedbackRepository(gormDB), aiMemoryRepo),
+		aidomainservice.NewArtifactService(aiArtifactRepo, aiConvRepo, aiMsgRepo, storageRegistry),
 	)
 	aiMemoryApi := api.NewAiMemoryApi(aidomainservice.NewMemoryService(aiMemoryRepo, a.auditLogService))
 	aiEvalCenterService := aidomainservice.NewEvalCenterService(aiEvalRepo, aiAgentRepo)

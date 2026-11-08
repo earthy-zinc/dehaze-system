@@ -248,16 +248,17 @@ type TraceArtifactVO struct {
 
 // TraceMessageVO 过程链所属会话消息
 type TraceMessageVO struct {
-	ID              int64     `json:"id"`
-	ConversationID  int64     `json:"conversationId"`
-	ParentMessageID *int64    `json:"parentMessageId,omitempty"`
-	Role            string    `json:"role"`
-	Content         *string   `json:"content,omitempty"`
-	Status          int       `json:"status"`
-	Model           *string   `json:"model,omitempty"`
-	InputTokens     int       `json:"inputTokens"`
-	OutputTokens    int       `json:"outputTokens"`
-	CreateTime      time.Time `json:"createTime"`
+	ID              int64  `json:"id"`
+	ConversationID  int64  `json:"conversationId"`
+	ParentMessageID *int64 `json:"parentMessageId,omitempty"`
+	Role            string `json:"role"`
+	// Text 由 blocks 派生（只取 kind=text，按 seq 升序）——消息不再存 content 列
+	Text         string    `json:"text"`
+	Status       string    `json:"status"`
+	Model        *string   `json:"model,omitempty"`
+	InputTokens  int       `json:"inputTokens"`
+	OutputTokens int       `json:"outputTokens"`
+	CreateTime   time.Time `json:"createTime"`
 }
 
 // TraceDetailVO 过程链详情（上下文快照 + 调用回放 + 推理步骤 + 计费 + 产物）
@@ -346,10 +347,11 @@ type TrendVO struct {
 
 // TimelineMessageVO 时间线消息
 type TimelineMessageVO struct {
-	ID           int64      `json:"id"`
-	Role         string     `json:"role"`
-	Content      *string    `json:"content,omitempty"`
-	Status       int        `json:"status"`
+	ID   int64  `json:"id"`
+	Role string `json:"role"`
+	// Text 由 blocks 派生（只取 kind=text，按 seq 升序）——消息不再存 content 列
+	Text         string     `json:"text"`
+	Status       string     `json:"status"`
 	Model        *string    `json:"model,omitempty"`
 	InputTokens  int        `json:"inputTokens"`
 	OutputTokens int        `json:"outputTokens"`

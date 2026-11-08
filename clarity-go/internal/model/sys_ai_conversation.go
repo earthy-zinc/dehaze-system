@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
+	"gorm.io/gorm"
+)
 
 // SysAiConversation AI 对话会话
 type SysAiConversation struct {
@@ -34,32 +39,49 @@ type SysAiConversation struct {
 
 func (SysAiConversation) TableName() string { return "sys_ai_conversation" }
 
-// SysAiMessage AI 对话消息
+// SysAiMessage AI 对话消息。
+//
+// 消息只有一种形状：正文/思考/工具统一由 blocks(Block[]) 承载，不再有 content / tool_calls /
+// tool_call_id / metadata 列；plan、pending_interrupt、suggestions 分别持久化执行计划、
+// 待恢复中断与追问建议；status 是字符串枚举（running/completed/failed/canceled/awaiting_input）。
+//
+// blocks 为 NOT NULL 且库中无默认值：零值必须落合法 JSON 数组，故用 default:'[]' 让 GORM
+// 在零值时写 "[]"（同 sys_ai_agent_version.snapshot 的处理）。status 不设 GORM 默认值：
+// 状态列的非零 default 会被 GORM 在 Create 时用来吞掉显式零值，仓库守卫测试禁止。
 type SysAiMessage struct {
 	ID                int64      `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	ConversationID    int64      `gorm:"column:conversation_id" json:"conversationId"`
 	ParentMessageID   *int64     `gorm:"column:parent_message_id" json:"parentMessageId"`
 	Role              string     `gorm:"column:role" json:"role"`
-	Content           *string    `gorm:"column:content" json:"content"`
-	ToolCalls         string     `gorm:"column:tool_calls;type:json;default:null" json:"toolCalls"`
-	ToolCallID        *string    `gorm:"column:tool_call_id" json:"toolCallId"`
+	Status            string     `gorm:"column:status" json:"status"`
+	Blocks            string     `gorm:"column:blocks;type:json;not null;default:'[]'" json:"blocks"`
+	Plan              string     `gorm:"column:plan;type:json;default:null" json:"plan"`
+	PendingInterrupt  string     `gorm:"column:pending_interrupt;type:json;default:null" json:"pendingInterrupt"`
+	Suggestions       string     `gorm:"column:suggestions;type:json;default:null" json:"suggestions"`
 	Model             *string    `gorm:"column:model" json:"model"`
-	Status            int        `gorm:"column:status" json:"status"`
 	Error             *string    `gorm:"column:error" json:"error"`
-	Metadata          string     `gorm:"column:metadata;type:json;default:null" json:"metadata"`
 	InputTokens       int        `gorm:"column:input_tokens" json:"inputTokens"`
 	OutputTokens      int        `gorm:"column:output_tokens" json:"outputTokens"`
 	CachedInputTokens int        `gorm:"column:cached_input_tokens" json:"cachedInputTokens"`
 	Credits           int64      `gorm:"column:credits" json:"credits"`
 	TaskID            *string    `gorm:"column:task_id" json:"taskId"`
 	UsedMemoryIDs     string     `gorm:"column:used_memory_ids;type:json;default:null" json:"usedMemoryIds"`
+	SubAgentUsage     string     `gorm:"column:sub_agent_usage;type:json;default:null" json:"subAgentUsage"`
 	Edited            int        `gorm:"column:edited" json:"edited"`
-	OriginalContent   *string    `gorm:"column:original_content" json:"originalContent"`
 	Deleted           int64      `gorm:"column:deleted" json:"deleted"`
 	CreateBy          *int64     `gorm:"column:create_by" json:"createBy"`
 	UpdateBy          *int64     `gorm:"column:update_by" json:"updateBy"`
 	CreateTime        time.Time  `gorm:"column:create_time;autoCreateTime" json:"createTime"`
 	UpdateTime        *time.Time `gorm:"column:update_time;autoUpdateTime" json:"updateTime"`
+}
+
+// BeforeCreate status 零值兜底：status 列禁止携带 GORM 非零 default（会被用来吞掉显式零值），
+// 创建时显式补 running，避免空串落库。
+func (m *SysAiMessage) BeforeCreate(*gorm.DB) error {
+	if m.Status == "" {
+		m.Status = aicontract.MessageStatusRunning
+	}
+	return nil
 }
 
 func (SysAiMessage) TableName() string { return "sys_ai_message" }

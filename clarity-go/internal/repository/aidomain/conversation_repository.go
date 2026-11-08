@@ -3,6 +3,7 @@ package aidomain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
@@ -265,12 +266,12 @@ func (r *ConversationRepository) ListRiskyToolConversationIDs(ctx context.Contex
 
 // MatchMessageRow 会话内消息关键词命中的最新消息。
 type MatchMessageRow struct {
-	ConversationID int64  `gorm:"column:conversation_id"`
-	ID             int64  `gorm:"column:id"`
-	Content        string `gorm:"column:content"`
+	ConversationID int64 `gorm:"column:conversation_id"`
+	ID             int64 `gorm:"column:id"`
 }
 
-// ListMatchedMessageIDs 返回各会话中内容命中关键词的最新消息（供审计视角回填 matchedMessageId）。
+// ListMatchedMessageIDs 返回各会话中正文命中关键词的最新消息（供审计视角回填 matchedMessageId）。
+// 正文由 blocks 派生：content 列已随新契约删除。
 func (r *ConversationRepository) ListMatchedMessageIDs(ctx context.Context, convIDs []int64, keyword string) (map[int64]int64, error) {
 	result := make(map[int64]int64)
 	if len(convIDs) == 0 || keyword == "" {
@@ -279,7 +280,8 @@ func (r *ConversationRepository) ListMatchedMessageIDs(ctx context.Context, conv
 	var rows []MatchMessageRow
 	err := r.db.WithContext(ctx).Table("sys_ai_message").
 		Select("conversation_id, MAX(id) AS id").
-		Where("conversation_id IN ? AND deleted = 0 AND content LIKE ? ESCAPE '\\\\'", convIDs, "%"+escapeLike(keyword)+"%").
+		Where("conversation_id IN ? AND deleted = 0 AND "+fmt.Sprintf(messageTextExpr, "blocks")+" LIKE ? ESCAPE '\\\\'",
+			convIDs, "%"+escapeLike(keyword)+"%").
 		Group("conversation_id").
 		Scan(&rows).Error
 	if err != nil {

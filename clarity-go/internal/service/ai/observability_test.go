@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
 	"github.com/earthyzinc/clarity-go/internal/model/bo"
 	"github.com/earthyzinc/clarity-go/internal/model/vo"
 	airepo "github.com/earthyzinc/clarity-go/internal/repository/ai"
@@ -422,15 +423,23 @@ func seedObservabilityFixture(t *testing.T, db *gorm.DB) observabilityFixture {
 	require.NoError(t, db.WithContext(ctx).Create(&conversation).Error)
 
 	userMessage := model.SysAiMessage{
-		ConversationID: conversation.ID, Role: "user", Content: strPtr("请分析这张图"),
-		ToolCalls: "[]", Metadata: "{}", UsedMemoryIDs: "[]", Status: 2, CreateTime: base,
+		ConversationID: conversation.ID, Role: "user",
+		Blocks: aicontract.EncodeBlocks([]aicontract.Block{
+			{ID: "u1", Kind: aicontract.BlockKindText, Seq: 1, Text: strPtr("请分析这张图")},
+		}),
+		UsedMemoryIDs: "[]", Status: aicontract.MessageStatusCompleted, CreateTime: base,
 	}
 	require.NoError(t, db.WithContext(ctx).Create(&userMessage).Error)
 
 	assistantMessage := model.SysAiMessage{
 		ConversationID: conversation.ID, ParentMessageID: &userMessage.ID, Role: "assistant",
-		Content: strPtr("已生成指标报告"), ToolCalls: "[]", Metadata: "{}", UsedMemoryIDs: "[]",
-		Model: strPtr("m-observability"), Status: 2, InputTokens: 10, OutputTokens: 5,
+		Blocks: aicontract.EncodeBlocks([]aicontract.Block{
+			{ID: "a1", Kind: aicontract.BlockKindThinking, Seq: 1, Text: strPtr("先读指标")},
+			{ID: "a2", Kind: aicontract.BlockKindText, Seq: 2, Text: strPtr("已生成指标报告")},
+		}),
+		UsedMemoryIDs: "[]",
+		Model:         strPtr("m-observability"), Status: aicontract.MessageStatusCompleted,
+		InputTokens: 10, OutputTokens: 5,
 		CreateTime: base.Add(time.Second),
 	}
 	require.NoError(t, db.WithContext(ctx).Create(&assistantMessage).Error)

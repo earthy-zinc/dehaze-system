@@ -20,7 +20,7 @@ type ArtifactVO struct {
 	RefType        string          `json:"refType,omitempty"`
 	RefID          *int64          `json:"refId,omitempty"`
 	Summary        json.RawMessage `json:"summary,omitempty"`
-	IsInvalid      int             `json:"isInvalid"`
+	IsInvalid      bool            `json:"isInvalid"`
 	CreateTime     string          `json:"createTime,omitempty"`
 }
 
@@ -176,7 +176,7 @@ func toArtifactVO(artifact *model.SysAiArtifact) *ArtifactVO {
 		RefType:        derefString(artifact.RefType),
 		RefID:          artifact.RefID,
 		Summary:        rawJSON(artifact.Summary),
-		IsInvalid:      artifact.IsInvalid,
-		CreateTime:     formatTime(artifact.CreateTime),
+		IsInvalid:      artifact.IsInvalid != 0,
+		CreateTime:     formatContractTime(artifact.CreateTime),
 	}
 }

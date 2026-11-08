@@ -316,7 +316,7 @@ func (a *AiConversationApi) ListMessages(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
-// GetMessage 消息详情（含推理步骤）。
+// GetMessage 消息详情（完整 Message：块、计划、待处理中断、用量与产物引用）。
 func (a *AiConversationApi) GetMessage(c *gin.Context) {
 	userID, err := security.RequireUserID(c)
 	if err != nil {
@@ -336,6 +336,32 @@ func (a *AiConversationApi) GetMessage(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
+	common.OkWithData(result, c)
+}
+
+// GetMessageInterrupt 查询消息当前待恢复的中断。
+// 无中断 payload 返回 data=null；过期或消息已不是 awaiting_input 的中断照常返回且
+// actionable=false（不可续），与列表/详情的口径一致。
+func (a *AiConversationApi) GetMessageInterrupt(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	id, ok := parseID(c, "id")
+	if !ok {
+		return
+	}
+	admin := c.Query("view") == "admin"
+	if admin && !requireConversationAudit(c) {
+		return
+	}
+	result, err := a.messages.GetInterrupt(c.Request.Context(), id, userID, admin)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	// result 为 typed nil 时仍作为非 nil 接口下发，序列化成 data:null（前端按 null 判定无中断）
 	common.OkWithData(result, c)
 }
 
@@ -396,6 +422,25 @@ func (a *AiConversationApi) SwitchBranch(c *gin.Context) {
 		return
 	}
 	result, err := a.messages.SwitchBranch(c.Request.Context(), convID, msgID, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(result, c)
+}
+
+// ListConversationFeedback 查询会话内当前用户的全部反馈（批量）。
+func (a *AiConversationApi) ListConversationFeedback(c *gin.Context) {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	id, ok := parseID(c, "id")
+	if !ok {
+		return
+	}
+	result, err := a.feedbacks.ListByConversation(c.Request.Context(), id, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return

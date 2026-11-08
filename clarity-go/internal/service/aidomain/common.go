@@ -12,6 +12,9 @@ import (
 
 const timeFormat = "2006-01-02 15:04:05"
 
+// contractTimeLayout 契约消息时间格式：本地 ISO-8601，秒精度，无时区偏移。
+const contractTimeLayout = "2006-01-02T15:04:05"
+
 // rawJSON 将库中的 JSON 字符串转为可直接序列化的原始消息（空串与 JSON null 文本→nil）。
 // "无配置"在库中落的是 JSON 文本 `null`（4 字节），只判空串会让 `json:"...,omitempty"` 失效、
 // 多下发一个 null 键（java/python 均剔除该键）。
@@ -50,6 +53,20 @@ func jsonColumnValue(v any) any {
 }
 
 func formatTime(t time.Time) string { return t.Format(timeFormat) }
+
+// formatContractTime 契约时间字段统一为本地 ISO-8601（秒精度，无时区偏移）。
+// 与 Python strftime("%%Y-%%m-%%dT%%H:%%M:%%S")、Java @JsonFormat 同形，保证三端对拍一致；
+// 会话等旧 VO 仍走 formatTime。
+func formatContractTime(t time.Time) string { return t.Format(contractTimeLayout) }
+
+// formatContractTimePtr 可空契约时间的指针形态（无值为 nil → 序列化为 null）。
+func formatContractTimePtr(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	value := t.Format(contractTimeLayout)
+	return &value
+}
 
 func formatTimePtr(t *time.Time) string {
 	if t == nil {

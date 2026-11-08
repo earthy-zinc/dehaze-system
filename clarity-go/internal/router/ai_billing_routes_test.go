@@ -65,4 +65,8 @@ func TestRegisterAiBillingAndObservabilityRoutes(t *testing.T) {
 	for _, route := range append(billingRoutes, observabilityRoutes...) {
 		require.True(t, registered[route], "未注册路由: %s", route)
 	}
+
+	// 消息中断查询是新契约端点：与 /:id 详情、SSE 转发路由共存不 panic
+	require.True(t, registered[http.MethodGet+" /api/v1/ai/messages/:id/interrupt"],
+		"未注册路由: GET /api/v1/ai/messages/:id/interrupt")
 }

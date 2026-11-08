@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/clarity-go/internal/model"
+	"github.com/earthyzinc/clarity-go/internal/model/aicontract"
 	repo "github.com/earthyzinc/clarity-go/internal/repository/aidomain"
 	"github.com/earthyzinc/clarity-go/pkg/common"
 	"github.com/earthyzinc/clarity-go/pkg/logger"
@@ -29,14 +30,15 @@ var dislikePreferenceMemories = map[string]string{
 
 // FeedbackVO 消息反馈响应。
 type FeedbackVO struct {
-	ID         int64           `json:"id"`
-	MessageID  int64           `json:"messageId"`
-	UserID     int64           `json:"userId"`
-	Rating     int             `json:"rating"`
-	Tags       json.RawMessage `json:"tags,omitempty"`
-	Comment    string          `json:"comment,omitempty"`
-	CreateTime string          `json:"createTime,omitempty"`
-	UpdateTime string          `json:"updateTime,omitempty"`
+	ID             int64           `json:"id"`
+	MessageID      int64           `json:"messageId"`
+	UserID         int64           `json:"userId"`
+	ConversationID *int64          `json:"conversationId,omitempty"`
+	Rating         int             `json:"rating"`
+	Tags           json.RawMessage `json:"tags,omitempty"`
+	Comment        string          `json:"comment,omitempty"`
+	CreateTime     string          `json:"createTime,omitempty"`
+	UpdateTime     *string         `json:"updateTime,omitempty"`
 }
 
 // FeedbackCreateForm 提交反馈表单。
@@ -48,17 +50,19 @@ type FeedbackCreateForm struct {
 
 // FeedbackService 消息反馈业务逻辑。
 type FeedbackService struct {
-	messages  *repo.MessageRepository
-	feedbacks *repo.MessageFeedbackRepository
-	memories  *repo.MemoryRepository
+	conversations *repo.ConversationRepository
+	messages      *repo.MessageRepository
+	feedbacks     *repo.MessageFeedbackRepository
+	memories      *repo.MemoryRepository
 }
 
 func NewFeedbackService(
+	conversations *repo.ConversationRepository,
 	messages *repo.MessageRepository,
 	feedbacks *repo.MessageFeedbackRepository,
 	memories *repo.MemoryRepository,
 ) *FeedbackService {
-	return &FeedbackService{messages: messages, feedbacks: feedbacks, memories: memories}
+	return &FeedbackService{conversations: conversations, messages: messages, feedbacks: feedbacks, memories: memories}
 }
 
 // Submit 提交/更新反馈（同一用户同一消息唯一）。
@@ -126,6 +130,28 @@ func (s *FeedbackService) Get(ctx context.Context, messageID, userID int64) (*Fe
 	return toFeedbackVO(feedback), nil
 }
 
+// ListByConversation 当前用户在会话下的全部反馈（一次查询、不分页），供进入会话时批量回填。
+// 归属校验与单条反馈接口一致：会话须属于当前用户，否则报"会话不存在"；只返回本人数据，
+// 不暴露其他用户的反馈。
+func (s *FeedbackService) ListByConversation(ctx context.Context, convID, userID int64) ([]aicontract.Feedback, error) {
+	conv, err := s.conversations.GetByIDAndUser(ctx, convID, userID)
+	if err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询会话失败", err)
+	}
+	if conv == nil {
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "会话不存在")
+	}
+	feedbacks, err := s.feedbacks.ListByUserAndConversation(ctx, userID, convID)
+	if err != nil {
+		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "查询反馈失败", err)
+	}
+	items := make([]aicontract.Feedback, 0, len(feedbacks))
+	for i := range feedbacks {
+		items = append(items, toContractFeedback(&feedbacks[i]))
+	}
+	return items, nil
+}
+
 // Revoke 撤销反馈（软删）。
 func (s *FeedbackService) Revoke(ctx context.Context, messageID, userID int64) error {
 	feedback, err := s.feedbacks.GetByUserAndMessage(ctx, messageID, userID)
@@ -181,13 +207,36 @@ func (s *FeedbackService) spawnPreferenceMemory(userID int64, tags []string, com
 
 func toFeedbackVO(feedback *model.SysAiMessageFeedback) *FeedbackVO {
 	return &FeedbackVO{
-		ID:         feedback.ID,
-		MessageID:  feedback.MessageID,
-		UserID:     feedback.UserID,
-		Rating:     feedback.Rating,
-		Tags:       rawJSON(feedback.Tags),
-		Comment:    derefString(feedback.Comment),
-		CreateTime: formatTime(feedback.CreateTime),
-		UpdateTime: formatTimePtr(feedback.UpdateTime),
+		ID:             feedback.ID,
+		MessageID:      feedback.MessageID,
+		UserID:         feedback.UserID,
+		Rating:         feedback.Rating,
+		Tags:           rawJSON(feedback.Tags),
+		Comment:        derefString(feedback.Comment),
+		ConversationID: feedback.ConversationID,
+		CreateTime:     formatContractTime(feedback.CreateTime),
+		UpdateTime:     formatContractTimePtr(feedback.UpdateTime),
+	}
+}
+
+// toContractFeedback 行 → 契约 Feedback（供会话级批量接口）。
+// tags 列非数组或为空时给 nil：契约允许 null，与 Python isinstance(list) else None 同口径。
+func toContractFeedback(feedback *model.SysAiMessageFeedback) aicontract.Feedback {
+	id := feedback.ID
+	createTime := formatContractTime(feedback.CreateTime)
+	var tags []string
+	if err := json.Unmarshal([]byte(feedback.Tags), &tags); err != nil {
+		tags = nil
+	}
+	return aicontract.Feedback{
+		ID:             &id,
+		MessageID:      feedback.MessageID,
+		UserID:         feedback.UserID,
+		ConversationID: feedback.ConversationID,
+		Rating:         int64(feedback.Rating),
+		Tags:           tags,
+		Comment:        feedback.Comment,
+		CreateTime:     &createTime,
+		UpdateTime:     formatContractTimePtr(feedback.UpdateTime),
 	}
 }

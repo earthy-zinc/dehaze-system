@@ -30,6 +30,16 @@ func (r *MessageFeedbackRepository) GetByUserAndMessage(ctx context.Context, mes
 	return &fb, err
 }
 
+// ListByUserAndConversation 当前用户在指定会话下的全部未删反馈（按消息 id、反馈 id 升序）。
+// 供会话级批量反馈接口一次拉全，替代前端逐条消息请求。
+func (r *MessageFeedbackRepository) ListByUserAndConversation(ctx context.Context, userID, convID int64) ([]model.SysAiMessageFeedback, error) {
+	var items []model.SysAiMessageFeedback
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND conversation_id = ? AND deleted = 0", userID, convID).
+		Order("message_id ASC, id ASC").Find(&items).Error
+	return items, err
+}
+
 // Upsert 存在则更新并复活（deleted=0），不存在则插入；查全表以命中唯一索引。
 func (r *MessageFeedbackRepository) Upsert(ctx context.Context, fb *model.SysAiMessageFeedback) (*model.SysAiMessageFeedback, error) {
 	var existing model.SysAiMessageFeedback
