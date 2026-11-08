@@ -56,13 +56,15 @@ def _conv(**kw):
 
 
 def _msg(**kw):
+    content = kw.pop("content", "你好")
     base = {
         "id": 1,
         "conversation_id": 1,
         "parent_message_id": None,
         "role": "user",
-        "content": "你好",
-        "status": 2,
+        "blocks": [{"id": f"b-{content[:2]}", "kind": "text", "seq": 1, "text": content}],
+        "text": content,
+        "status": "completed",
         "deleted": 0,
         "create_time": datetime(2026, 1, 1),
     }

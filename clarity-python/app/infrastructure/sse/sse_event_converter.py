@@ -1,247 +1,198 @@
 """SseEventConverter：deepagents 流式事件（v2 格式）→ clarity SSE
 
-设计文档 §3.4 SSE 事件转换。deepagents 经 graph.astream(version="v2",
-stream_mode=["messages","updates","custom"]) 产出 {type, ns, data} 事件，
-本转换器逐条转换为 clarity 自定义 SSE 事件并经 sse_emitter_manager 推送：
+deepagents 经 graph.astream(version="v2", stream_mode=["messages","updates","custom"])
+产出 {type, ns, data} 事件，本转换器逐条转换为 clarity 的块事件并经
+sse_emitter_manager 推送。
 
-- messages + 文本增量 → content_block.start（首个 delta 前，type=text）→
-  content_block.delta（text_delta）
-- messages + 工具调用增量 → content_block.start（首见，type=tool_use，index≥2）→
-  content_block.delta（input_json_delta）→ 工具返回时 content_block.stop
-- updates + 工具节点完成 → thought（推理步骤完成，落库 sys_ai_agent_thought）
-- custom → custom
-- updates 中的 __interrupt__ → interrupt
+事件白名单（契约 Event 定义，顺序即生命周期）：
+message.start → block.start → block.delta → block.stop → plan.update / interrupt /
+usage / suggestions → message.end；异常另有 error。
 
-内容块收尾 content_block.stop 由推理层在 message.end 前调用 finish() 推送
-（未收尾的思考/文本/工具块一并兜底关闭）。
+块模型：一条消息的内容只有 Block[]，kind 取 text/thinking/tool_use。
+- 同一时刻只有一个块处于打开态，切换 kind（思考→正文→工具）即关闭前一块；
+- seq 表达"同一条消息内同 kind 块的先后"，按 kind 各自从 1 递增（resume 时从
+  DB 现有最大值续号），渲染按分区保序，不做跨 kind 交错；
+- tool_use 每次调用一个独立块，工具返回时用真实入参/输出/耗时收尾。
 
-ns 标识事件来源（空为主 Agent，非空为子 Agent），子 Agent 的 thought
-来源标记到 ns，计费经 middleware 归集主会话。
+转换器同时持有本轮终态快照（blocks/plan/pendingInterrupt），由推理层在
+finalize 时整体落库，保证刷新后读到的形状与流式终态一致。
 """
 
+import copy
 import json
 import logging
 import time
+import uuid
 from typing import Any
 
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
 from app.database import get_db_session
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
-from app.repository.ai_agent_thought_repository import ai_agent_thought_repository
-from app.service.ai.paradigms import plan_execute
+from app.models.entity.sys_ai_message import (
+    BLOCK_KIND_TEXT,
+    BLOCK_KIND_THINKING,
+    BLOCK_KIND_TOOL_USE,
+)
+from app.repository.ai_message_repository import ai_message_repository
 from app.service.ai.service import trace_collector
+from app.service.ai.service.contract_payload import build_pending_interrupt, to_contract_plan
 from app.utils.pii import StreamingPiiMasker
 
 logger = logging.getLogger(__name__)
+
+# 工具执行状态（ToolStatus）
+_TOOL_STATUS = {1: "success", 2: "failed", 3: "skipped"}
+
+
+def _snapshot(block: dict[str, Any]) -> dict[str, Any]:
+    """块快照：事件载荷与内存态解耦，避免后续增量污染已下发的事件。"""
+    return copy.deepcopy(block)
 
 
 class SseEventConverter:
     """将 deepagents v2 流式事件转换为 clarity SSE 事件。
 
     Args:
-        ctx: 共享运行时上下文（stream_session_id/conversation_id/message_id 等）。
+        ctx: 共享运行时上下文（stream_session_id/conversation_id/message_id/seq_base）。
     """
-
-    # 思考内容块独立索引（文本块固定 index=0）
-    _THINKING_INDEX = 1
 
     def __init__(self, ctx: dict[str, Any]) -> None:
         self.ctx = ctx
-        self._thought_position = 0
-        # 文本内容块是否已推送 content_block.start（首个 text delta 前触发一次）
-        self._text_block_started = False
-        # 思考内容块状态：当前是否打开 / 本轮思考文本累积（用于落库）
-        self._thinking_block_open = False
-        self._thinking_buffer: list[str] = []
-        # 工具调用跟踪：tool_call_id -> {name, args(增量拼接), started_at, block_index}
-        # ToolMessage 返回时按 id 匹配，还原真实入参与耗时
+        self.message_id: int = int(ctx.get("message_id") or 0)
+        # 终态快照：按块的创建顺序保存（读模型按 kind + seq 分区渲染）；
+        # resume 续流时以 DB 已落库的块为基底，只追加本轮新块
+        self.blocks: list[dict[str, Any]] = list(ctx.get("blocks") or [])
+        # 各 kind 的 seq 基线：续流（resume）时由 DB 现有最大 seq 续号
+        self._seq: dict[str, int] = dict(ctx.get("seq_base") or {})
+        self._open_block: dict[str, Any] | None = None
+        self._open_started_at: float = 0.0
+        # 工具调用跟踪：call_id -> {block, args, started_at}
         self._tool_calls: dict[str, dict[str, Any]] = {}
-        # 工具调用内容块索引：text=0、thinking=1 已占用，工具块从 2 起自增，
-        # 多工具并行各占唯一 index（前端按 index 归约 toolBlocks）
-        self._tool_index_seq = self._THINKING_INDEX + 1
-        # 尚未收到 content_block.stop 的工具块索引（finish 兜底关闭）
-        self._tool_blocks_open: set[int] = set()
+        self.plan: dict[str, Any] | None = None
+        self.pending_interrupt: dict[str, Any] | None = None
         # 当前事件来源 Agent 归属（handle 逐事件解析 ns 更新）
         self._agent_code: str | None = None
-        self._is_subagent = 0
+        self._is_subagent = False
         # 流式出口脱敏：PII/凭据逐块外发前脱敏，跨 chunk 的敏感串由 masker 兜住
         self._text_masker = StreamingPiiMasker()
         self._thinking_masker = StreamingPiiMasker()
+
+    # ── 事件出口 ────────────────────────────────────────
 
     async def _emit(self, event_type: str, data: dict) -> None:
         stream_session_id = self.ctx.get("stream_session_id")
         if stream_session_id:
             await sse_emitter_manager.send_event(stream_session_id, event_type, data)
 
-    async def _ensure_text_block_start(self) -> None:
-        """首个文本 delta 前推送 content_block.start（text），仅触发一次（§2.2 契约）。"""
-        if self._text_block_started:
+    def blocks_snapshot(self) -> list[dict[str, Any]]:
+        """本轮块快照（finalize 整体落库用）。"""
+        return copy.deepcopy(self.blocks)
+
+    def _next_seq(self, kind: str) -> int:
+        self._seq[kind] = self._seq.get(kind, 0) + 1
+        return self._seq[kind]
+
+    # ── 块生命周期 ──────────────────────────────────────
+
+    async def _open(self, kind: str, *, tool: dict[str, Any] | None = None) -> dict[str, Any]:
+        await self._close_open_block()
+        block: dict[str, Any] = {
+            "id": uuid.uuid4().hex,
+            "kind": kind,
+            "seq": self._next_seq(kind),
+            "durationMs": None,
+        }
+        if kind == BLOCK_KIND_TOOL_USE:
+            block["tool"] = tool
+        else:
+            block["text"] = ""
+        self.blocks.append(block)
+        self._open_block = block
+        self._open_started_at = time.monotonic()
+        await self._emit("block.start", {"messageId": self.message_id, "block": _snapshot(block)})
+        return block
+
+    async def _close_open_block(self) -> None:
+        block = self._open_block
+        if block is None:
             return
-        self._text_block_started = True
-        await self._emit("content_block.start", {"index": 0, "type": "text"})
+        # 关闭块前先冲刷该通道的脱敏暂存：暂存尾部属于本块内容，若留到下一个块
+        # 再 flush，会整体迁到后续块（跨块丢字/错位）；flush 同时重置 masker
+        if block["kind"] == BLOCK_KIND_THINKING:
+            await self._flush_thinking_tail()
+        elif block["kind"] == BLOCK_KIND_TEXT:
+            await self._flush_text_tail()
+        self._open_block = None
+        block["durationMs"] = max(int((time.monotonic() - self._open_started_at) * 1000), 0)
+        await self._emit("block.stop", {"messageId": self.message_id, "block": _snapshot(block)})
+
+    async def _delta(self, block: dict[str, Any], delta: str) -> None:
+        if not delta:
+            return
+        if block["kind"] != BLOCK_KIND_TOOL_USE:
+            block["text"] = (block.get("text") or "") + delta
+        await self._emit(
+            "block.delta",
+            {"messageId": self.message_id, "blockId": block["id"], "delta": delta},
+        )
+
+    async def _ensure_block(self, kind: str) -> dict[str, Any]:
+        block = self._open_block
+        if block is not None and block["kind"] == kind:
+            return block
+        return await self._open(kind)
 
     async def finish(self) -> None:
-        """流结束收尾：关闭打开的思考/文本/工具内容块并落库残余思考（message.end 前）。"""
-        if self._thinking_block_open:
-            await self._close_thinking_block()
-        # 兜底关闭未收尾的工具内容块（中断/异常态不留半开块，前端据 stop 解析完整参数）
-        for entry in list(self._tool_calls.values()):
-            await self._close_tool_block(entry)
+        """流结束收尾：冲刷脱敏残留、关闭仍打开的块（message.end 之前）。
+
+        _close_open_block 已按块 kind 冲刷对应 masker，此处无需重复 flush。
+        """
+        await self._close_open_block()
+
+    async def flush_final_text(self, fallback: str) -> list[dict[str, Any]]:
+        """终态兜底：整轮没有任何正文块、但图 state 产出了最终答复时补一个 text 块。
+
+        计划执行等范式在 state 里组装答复、未逐字流式下发，若不补块会出现
+        "completed + 空 blocks"，刷新后正文凭空消失。补块同时下发块事件，
+        在线客户端与刷新后读到的内容一致。
+        """
+        has_text = any(b.get("kind") == BLOCK_KIND_TEXT and b.get("text") for b in self.blocks)
+        if fallback and not has_text:
+            block = await self._open(BLOCK_KIND_TEXT)
+            await self._delta(block, fallback)
+            await self._close_open_block()
+        return self.blocks_snapshot()
+
+    async def _flush_text_tail(self) -> None:
+        block = self._open_block
         pending = self._text_masker.flush()
-        if pending:
-            await self._ensure_text_block_start()
-            await self._emit(
-                "content_block.delta",
-                {"index": 0, "delta": {"type": "text_delta", "text": pending}},
-            )
-        if self._text_block_started:
-            await self._emit("content_block.stop", {"index": 0})
+        if block is not None and pending:
+            await self._delta(block, pending)
 
-    async def _close_tool_block(self, entry: dict[str, Any]) -> None:
-        """关闭工具调用内容块（content_block.stop），幂等。"""
-        block_index = entry.get("block_index")
-        if block_index is None or block_index not in self._tool_blocks_open:
-            return
-        self._tool_blocks_open.discard(block_index)
-        await self._emit("content_block.stop", {"index": block_index})
+    async def _flush_thinking_tail(self) -> None:
+        block = self._open_block
+        pending = self._thinking_masker.flush()
+        if block is not None and pending:
+            await self._delta(block, pending)
 
-    async def _open_thinking_block(self) -> None:
-        """推送思考内容块 start（type=thinking，独立 index）。
-
-        支持多段思考（思考→回复→再次思考）：每次打开独立推送 start，
-        供前端按段分组展示；已打开时不重复推送。
-        """
-        if self._thinking_block_open:
-            return
-        self._thinking_block_open = True
-        await self._emit(
-            "content_block.start",
-            {
-                "index": self._THINKING_INDEX,
-                "type": "thinking",
-            },
-        )
-
-    async def _close_thinking_block(self) -> None:
-        """关闭思考内容块并落库该段思考（文本/工具调用开始时，思考段结束）。
-
-        每段思考独立关闭并落库一条 agent_thought（tool=NULL），
-        多段思考各成一条记录，前端按段分组展示。
-        """
-        if not self._thinking_block_open:
-            return
-        self._thinking_block_open = False
-        await self._emit("content_block.stop", {"index": self._THINKING_INDEX})
-        await self._flush_thinking()
-
-    async def _flush_thinking(self) -> None:
-        """把本轮思考文本落为一条 agent_thought（thought=思考全文, tool=NULL）。"""
-        remaining = self._thinking_masker.flush()
-        if remaining:
-            self._thinking_buffer.append(remaining)
-        if not self._thinking_buffer:
-            return
-        text = "".join(self._thinking_buffer).strip()
-        self._thinking_buffer = []
-        if not text:
-            return
-        await self._record_thought(
-            tool=None,
-            tool_input=None,
-            observation=None,
-            thought=text,
-            status=1,
-            error=None,
-            latency_ms=0,
-        )
-
-    async def _record_thought(
-        self,
-        tool: str | None,
-        tool_input: Any,
-        observation: str | None,
-        *,
-        thought: str,
-        status: int,
-        error: str | None,
-        latency_ms: int,
-    ) -> None:
-        """落库推理步骤并推送 thought 事件（思考/工具步骤共用）。
-
-        status: 1 成功 / 2 失败 / 3 跳过；error 为失败原因（status=2 时透出）。
-        """
-        self._thought_position += 1
-        try:
-            async with get_db_session() as db:
-                await ai_agent_thought_repository.create_thought(
-                    db,
-                    message_id=self.ctx.get("message_id"),
-                    conversation_id=self.ctx.get("conversation_id"),
-                    position=self._thought_position,
-                    thought=thought,
-                    tool=tool,
-                    tool_input=tool_input,
-                    observation=observation,
-                    status=status,
-                    error=error,
-                    latency_ms=latency_ms,
-                    agent_code=self._agent_code,
-                    is_subagent=self._is_subagent,
-                )
-        except Exception:
-            logger.warning("thought 落库失败", exc_info=True)
-        await self._emit(
-            "thought",
-            {
-                "position": self._thought_position,
-                "thought": thought,
-                "tool": tool,
-                "toolInput": tool_input,
-                "observation": observation,
-                "status": status,
-                "error": error,
-                "latencyMs": latency_ms,
-            },
-        )
-
-    async def record_thought(
-        self,
-        tool: str,
-        observation: str,
-        *,
-        thought: str | None = None,
-        tool_input: Any = None,
-        position: int | None = None,
-        status: int = 1,
-    ) -> None:
-        """公开的推理步骤记录接口（供多步推理范式 middleware 经 custom 通道调用）。
-
-        position 缺省自增；同批并行子任务可显式指定相同 position 以标注批次归属，
-        并行批 metadata 经 observation 携带 batch 标注。
-        """
-        if position is not None:
-            self._thought_position = max(self._thought_position, position)
-        await self._record_thought(
-            tool=tool,
-            tool_input=tool_input,
-            observation=observation,
-            thought=thought or f"调用工具: {tool}",
-            status=status,
-            error=None,
-            latency_ms=0,
-        )
+    # ── 计划 / 中断 ─────────────────────────────────────
 
     async def record_plan(self, plan: dict[str, Any], phase: str) -> None:
-        """推送 plan SSE 事件（§2.2 契约：{tasks, status, revisions, phase}）。
+        """plan.update 到达即持久化到 message.plan，并推送契约 Plan。
 
-        任务/修订项经 plan_execute.to_wire_plan 归一为对外 camelCase，
-        与 plan_approve 中断共用同一出口，保证两条下发路径形状一致。
+        计划是消息级事实源：刷新后从 message 读回同一份计划（含修订记录 actor/at），
+        不依赖流式期间的内存副本。
         """
-        payload = plan_execute.to_wire_plan(plan)
-        payload["phase"] = phase
-        await self._emit("plan", payload)
-        # 可观测性：计划快照写入过程链上下文事件（旁路：采集失败不影响 SSE 推送）
+        payload = to_contract_plan(plan, phase=phase)
+        self.plan = payload
+        if self.message_id:
+            try:
+                async with get_db_session() as db:
+                    await ai_message_repository.update_plan(db, self.message_id, payload)
+            except Exception:
+                logger.warning("计划持久化失败: msg=%s", self.message_id, exc_info=True)
+        await self._emit("plan.update", {"messageId": self.message_id, "plan": payload})
         collector = trace_collector.current()
         if collector is not None:
             try:
@@ -253,6 +204,31 @@ class SseEventConverter:
             except Exception:
                 logger.warning("plan 过程链事件记录失败", exc_info=True)
 
+    async def _handle_interrupt(self, items: Any) -> None:
+        """__interrupt__ → 契约 Interrupt：落库 pending_interrupt 后下发。"""
+        for item in items or []:
+            value = item.value if isinstance(item.value, dict) else {}
+            itype = str(value.get("type") or "confirm")
+            payload = build_pending_interrupt({"type": itype, "data": value.get("data", value)})
+            if payload is None:
+                continue
+            self.pending_interrupt = payload
+            if self.message_id:
+                try:
+                    async with get_db_session() as db:
+                        await ai_message_repository.update_pending_interrupt(
+                            db, self.message_id, payload
+                        )
+                except Exception:
+                    logger.warning(
+                        "中断落库失败: msg=%s", self.message_id, exc_info=True
+                    )
+            await self._emit(
+                "interrupt", {"messageId": self.message_id, "interrupt": payload}
+            )
+
+    # ── 事件分发 ────────────────────────────────────────
+
     async def handle(self, event: dict[str, Any]) -> None:
         """处理单条 deepagents v2 事件，推送对应的 clarity SSE 事件。"""
         etype = event.get("type")
@@ -262,10 +238,10 @@ class SseEventConverter:
         ns = event.get("ns")
         if ns:
             self._agent_code = str(ns[-1]).split(":")[0]
-            self._is_subagent = 1
+            self._is_subagent = True
         else:
             self._agent_code = None
-            self._is_subagent = 0
+            self._is_subagent = False
 
         if etype == "messages":
             await self._handle_messages(data)
@@ -273,82 +249,37 @@ class SseEventConverter:
             await self._handle_updates(data)
         elif etype == "custom":
             await self._handle_custom(data)
-        else:
-            # 其他类型（values 等）忽略，避免前端收到意外事件
-            return
+        # 其他类型（values 等）忽略，避免前端收到契约外事件
 
     async def _handle_custom(self, data: Any) -> None:
-        """custom 事件：识别多步推理范式推送的 plan/thought 结构化事件，否则原样透传。
-
-        范式 middleware 经图 custom 通道推送 {type, data} 载荷：
-        - type=plan：推送 plan SSE
-        - type=thought：经公开接口落库并推送 thought
-        """
+        """custom 事件：仅识别多步推理范式的 plan 结构化事件，其余忽略。"""
         if isinstance(data, dict) and data.get("type") == "plan":
             payload = data.get("data") or {}
             await self.record_plan(payload.get("plan") or {}, payload.get("phase", "plan"))
-            return
-        if isinstance(data, dict) and data.get("type") == "thought":
-            payload = data.get("data") or {}
-            await self.record_thought(
-                tool=payload.get("tool", ""),
-                observation=payload.get("observation", ""),
-                thought=payload.get("thought"),
-                tool_input=payload.get("tool_input"),
-                position=payload.get("position"),
-            )
-            return
-        await self._emit("custom", {"data": data})
 
     async def _handle_messages(self, data: Any) -> None:
-        """messages 事件：data 形如 [AIMessageChunk, metadata]，提取文本/工具调用增量。
+        """messages 事件：data 形如 [AIMessageChunk, metadata]。
 
-        文本内容块在首个 text delta 前推送 content_block.start；工具调用首见时推送
-        content_block.start(type=tool_use, index≥2) 后逐段推 input_json_delta，工具
-        ToolMessage 返回时推 content_block.stop。工具调用增量同时累积到 _tool_calls
-        （首个 chunk 携带 id/name，后续 chunk 仅携带 args 增量），ToolMessage 返回时
-        按 tool_call_id 匹配还原完整入参。
+        thinking 增量进 thinking 块，正文增量进 text 块；工具调用首见即开一个独立的
+        tool_use 块并累积参数增量，ToolMessage 返回时按 tool_call_id 收尾。
         """
         if not isinstance(data, (list, tuple)) or not data:
             return
         chunk = data[0]
         if not isinstance(chunk, AIMessageChunk):
             return
-        # 思考流：经 DehazeChatModel 透传的 thinking 增量独立成块推送并累积（tool=NULL）
         thinking = chunk.additional_kwargs.get("thinking")
         if thinking:
-            await self._open_thinking_block()
-            masked_thinking = self._thinking_masker.push(thinking)
-            if masked_thinking:
-                self._thinking_buffer.append(masked_thinking)
-                await self._emit(
-                    "content_block.delta",
-                    {
-                        "index": self._THINKING_INDEX,
-                        "delta": {"type": "thinking_delta", "thinking": masked_thinking},
-                    },
-                )
+            block = await self._ensure_block(BLOCK_KIND_THINKING)
+            await self._delta(block, self._thinking_masker.push(thinking))
         if chunk.content:
-            # 文本段开始时关闭思考块（思考在前、回复在后，按模型真实输出序不强行重排）
-            await self._close_thinking_block()
-            await self._ensure_text_block_start()
-            text = (
-                self._text_masker.push(chunk.content)
-                if isinstance(chunk.content, str)
-                else chunk.content
-            )
-            if text:
-                await self._emit(
-                    "content_block.delta",
-                    {
-                        "index": 0,
-                        "delta": {"type": "text_delta", "text": text},
-                    },
-                )
+            # 思考在前、回复在后：正文开始即关闭思考块
+            if self._open_block is not None and self._open_block["kind"] == BLOCK_KIND_THINKING:
+                await self._flush_thinking_tail()
+                await self._close_open_block()
+            block = await self._ensure_block(BLOCK_KIND_TEXT)
+            await self._delta(block, self._text_masker.push(chunk.text))
         latest_tc_id = None
-        if chunk.tool_call_chunks:
-            # 工具调用开始时关闭思考块（思考→行动切换，思考段结束）
-            await self._close_thinking_block()
         for tc in chunk.tool_call_chunks:
             tc_id = tc.get("id") or latest_tc_id
             if not tc_id:
@@ -356,104 +287,81 @@ class SseEventConverter:
             latest_tc_id = tc_id
             entry = self._tool_calls.get(tc_id)
             if entry is None:
-                # 首见该工具调用：分配独立内容块 index 并推送 content_block.start，
-                # 前端据此创建工具参数草稿（缺 start 会导致 input_json_delta 被丢弃）；
-                # 同时携带 id/name，供兼容层（OpenAI/Claude 协议网关）构造工具调用头
-                entry = {
+                tool = {
+                    "callId": tc_id,
                     "name": tc.get("name") or "",
+                    "input": None,
+                    "output": None,
+                    "summary": None,
+                    "status": "running",
+                    "error": None,
+                    "latencyMs": None,
+                    "agentCode": self._agent_code,
+                    "subAgent": self._is_subagent,
+                }
+                block = await self._open(BLOCK_KIND_TOOL_USE, tool=tool)
+                entry = {
+                    "block": block,
                     "args": "",
                     "started_at": time.monotonic(),
-                    "block_index": self._tool_index_seq,
                 }
                 self._tool_calls[tc_id] = entry
-                self._tool_index_seq += 1
-                self._tool_blocks_open.add(entry["block_index"])
-                await self._emit(
-                    "content_block.start",
-                    {
-                        "index": entry["block_index"],
-                        "type": "tool_use",
-                        "id": tc_id,
-                        "name": entry["name"],
-                    },
-                )
-            elif tc.get("name") and not entry["name"]:
-                entry["name"] = tc["name"]
+            elif tc.get("name") and not entry["block"]["tool"]["name"]:
+                entry["block"]["tool"]["name"] = tc["name"]
             if tc.get("args"):
                 entry["args"] += tc["args"]
-                await self._emit(
-                    "content_block.delta",
-                    {
-                        "index": entry["block_index"],
-                        "delta": {
-                            "type": "input_json_delta",
-                            "partial_json": tc["args"],
-                            "name": tc.get("name", ""),
-                        },
-                    },
-                )
+                # 工具入参以增量形式外发，前端按 blockId 累积参数草稿
+                await self._delta(entry["block"], tc["args"])
 
     async def _handle_updates(self, data: Any) -> None:
-        """updates 事件：data 为 {node_name: channel_updates}。
-
-        工具节点完成 → 按 tool_call_id 匹配累积的调用信息记录 thought（含真实入参与耗时）；
-        含 __interrupt__ → 推送 interrupt。
-        """
+        """updates 事件：工具节点完成 → 收尾对应 tool_use 块；__interrupt__ → 中断。"""
         if not isinstance(data, dict):
             return
         for node, updates in data.items():
             if node == "__interrupt__":
-                # 统一推送 interrupt SSE（§3.4 契约 {type, data}）。中断数据源
-                # （如 algorithm_recommend_service.interrupt_data）value 内含 type
-                # 字段，提升到事件顶层对齐契约；data 取 value.data 业务载荷。
-                for item in updates or []:
-                    value = item.value if isinstance(item.value, dict) else {}
-                    itype = value.get("type", "confirm")
-                    payload = value.get("data", value)
-                    # plan_approve 的 plan 在 Redis 中断点内是内部形状（执行器与
-                    # apply_plan_edit 直接消费），仅在出口归一为 camelCase 下发
-                    if (
-                        itype == "plan_approve"
-                        and isinstance(payload, dict)
-                        and isinstance(payload.get("plan"), dict)
-                    ):
-                        payload = {**payload, "plan": plan_execute.to_wire_plan(payload["plan"])}
-                    await self._emit("interrupt", {"type": itype, "data": payload})
+                await self._handle_interrupt(updates)
                 continue
             messages = updates.get("messages") if isinstance(updates, dict) else None
             if not messages:
                 continue
-            # 工具节点返回的 ToolMessage 记录为 thought（先落本条思考，再落工具步骤并列）
             for msg in messages:
                 if isinstance(msg, ToolMessage):
-                    await self._close_thinking_block()
-                    await self._flush_thinking()
-                    entry = self._tool_calls.pop(msg.tool_call_id, None)
-                    if entry is not None:
-                        # 工具执行完成：关闭对应内容块，前端据此解析完整参数
-                        await self._close_tool_block(entry)
-                    latency_ms = (
-                        int((time.monotonic() - entry["started_at"]) * 1000) if entry else 0
-                    )
-                    # 错误恢复状态由 DehazeHooksMiddleware 写入 additional_kwargs，
-                    # 默认成功（status=1）
-                    recovery = msg.additional_kwargs or {}
-                    status = int(recovery.get("_dehaze_status", 1))
-                    error = recovery.get("_dehaze_error")
-                    await self._record_thought(
-                        tool=msg.name or (entry or {}).get("name") or "",
-                        tool_input=_parse_tool_args(entry) if entry else msg.tool_call_id,
-                        observation=str(msg.content)[:500],
-                        thought=f"调用工具: {msg.name or (entry or {}).get('name') or ''}",
-                        status=status,
-                        error=error,
-                        latency_ms=latency_ms,
-                    )
+                    await self._complete_tool(msg)
+
+    async def _complete_tool(self, msg: ToolMessage) -> None:
+        """工具返回：用真实入参、输出、耗时与执行状态收尾该 tool_use 块。"""
+        entry = self._tool_calls.pop(msg.tool_call_id, None)
+        block = (entry or {}).get("block")
+        if block is None:
+            return
+        tool = block["tool"]
+        if msg.name and not tool["name"]:
+            tool["name"] = msg.name
+        tool["input"] = _parse_tool_args(entry)
+        tool["output"] = str(msg.content)
+        tool["latencyMs"] = max(int((time.monotonic() - entry["started_at"]) * 1000), 0)
+        # 错误恢复状态由 DehazeHooksMiddleware 写入 additional_kwargs，默认成功
+        recovery = msg.additional_kwargs or {}
+        status = int(recovery.get("_dehaze_status", 1))
+        tool["status"] = _TOOL_STATUS.get(status, "success")
+        tool["error"] = recovery.get("_dehaze_error")
+        summary = recovery.get("_dehaze_summary")
+        tool["summary"] = summary if summary is not None else None
+        if self._open_block is block:
+            self._open_block = None
+            block["durationMs"] = tool["latencyMs"]
+        await self._emit("block.stop", {"messageId": self.message_id, "block": _snapshot(block)})
 
 
-def _parse_tool_args(entry: dict[str, Any]) -> Any:
-    """将累积的工具调用参数 JSON 文本解析为 dict，解析失败保留原始文本。"""
+def _parse_tool_args(entry: dict[str, Any] | None) -> dict[str, Any] | None:
+    """将累积的工具调用参数 JSON 文本解析为 dict；解析失败时保留原文放在入参外层。"""
+    if entry is None:
+        return None
+    raw = entry["args"]
+    if not raw:
+        return {}
     try:
-        return json.loads(entry["args"]) if entry["args"] else {}
+        parsed = json.loads(raw)
     except ValueError:
-        return entry["args"]
+        return {"_raw": raw}
+    return parsed if isinstance(parsed, dict) else {"_raw": raw}

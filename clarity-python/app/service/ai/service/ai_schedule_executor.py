@@ -455,7 +455,7 @@ class ScheduleExecutor:
         assistant = next((m for m in reversed(messages) if m.role == "assistant"), None)
         if assistant is None:
             raise BusinessException("推理未生成回复消息")
-        if assistant.status == 3:
+        if assistant.status == "failed":
             raise BusinessException(assistant.error or "推理失败")
         credits = float(assistant.credits) if assistant.credits is not None else None
         return conversation_id, credits

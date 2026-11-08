@@ -22,6 +22,11 @@ USER_A = 77
 USER_B = 88
 
 
+def _text_blocks(text: str) -> list[dict]:
+    """构造单 text 块的 blocks 列（消息正文唯一来源）。"""
+    return [{"id": f"blk-{text[:4]}", "kind": "text", "seq": 1, "text": text}]
+
+
 def _body_bytes(chunks) -> bytes:
     """StreamingResponse.body_iterator 声明为 Content（str|bytes|memoryview）流，
     导出实现实际产出 bytes；统一归一为 bytes 后再解码断言。"""
@@ -43,12 +48,14 @@ async def _seed(db):
     await db.flush()
 
     # conv_a 会话消息：user → assistant（assistant 消息即 t1 关联的回复消息）
-    msg_user = SysAiMessage(conversation_id=conv_a.id, role="user", content="你好", status=2)
+    msg_user = SysAiMessage(
+        conversation_id=conv_a.id, role="user", blocks=_text_blocks("你好"), status="completed"
+    )
     msg_assistant = SysAiMessage(
         conversation_id=conv_a.id,
         role="assistant",
-        content="你好，有什么可以帮你？",
-        status=2,
+        blocks=_text_blocks("你好，有什么可以帮你？"),
+        status="completed",
         model="m1",
     )
     db.add_all([msg_user, msg_assistant])
@@ -500,7 +507,11 @@ async def _seed_timeline(db):
     await db.flush()
 
     u1 = SysAiMessage(
-        conversation_id=conv.id, role="user", content="第一问", status=2, create_time=_dt(0)
+        conversation_id=conv.id,
+        role="user",
+        blocks=_text_blocks("第一问"),
+        status="completed",
+        create_time=_dt(0),
     )
     db.add(u1)
     await db.flush()
@@ -508,8 +519,8 @@ async def _seed_timeline(db):
         conversation_id=conv.id,
         parent_message_id=u1.id,
         role="assistant",
-        content="第一答",
-        status=2,
+        blocks=_text_blocks("第一答"),
+        status="completed",
         model="m1",
         input_tokens=10,
         output_tokens=5,
@@ -521,8 +532,8 @@ async def _seed_timeline(db):
         conversation_id=conv.id,
         parent_message_id=a1.id,
         role="user",
-        content="第二问",
-        status=2,
+        blocks=_text_blocks("第二问"),
+        status="completed",
         create_time=_dt(60),
     )
     db.add(u2)
@@ -531,8 +542,8 @@ async def _seed_timeline(db):
         conversation_id=conv.id,
         parent_message_id=u2.id,
         role="assistant",
-        content="第二答",
-        status=2,
+        blocks=_text_blocks("第二答"),
+        status="completed",
         model="m1",
         input_tokens=30,
         output_tokens=20,
@@ -728,10 +739,10 @@ async def test_timeline_rounds_split_by_branch_chain(db):
     assert r1.assistant_message is not None
     assert r2.user_message is not None
     assert r2.assistant_message is not None
-    assert r1.user_message.content == "第一问"
-    assert r1.assistant_message.content == "第一答"
-    assert r2.user_message.content == "第二问"
-    assert r2.assistant_message.content == "第二答"
+    assert r1.user_message.text == "第一问"
+    assert r1.assistant_message.text == "第一答"
+    assert r2.user_message.text == "第二问"
+    assert r2.assistant_message.text == "第二答"
     assert r2.assistant_message.input_tokens == 30
 
 
@@ -937,6 +948,53 @@ def test_trace_events_raw_wire_contract():
     assert llm.raw_response is None
     assert llm.summary is not None
     assert llm.summary["inputSnapshot"] == slim_snapshot
+
+
+def test_trace_events_derives_tool_exec_from_blocks_without_thoughts():
+    """新链路不再写 agent_thought：工具步骤从消息 blocks 的 tool_use 块派生。"""
+    trace = SimpleNamespace(
+        trace_id="blocks-tool",
+        context_snapshot={},
+        create_time=_dt(2),
+        duration_ms=100,
+    )
+    assistant = SimpleNamespace(
+        blocks=[
+            {
+                "id": "t1",
+                "kind": "tool_use",
+                "seq": 3,
+                "tool": {
+                    "callId": "c1",
+                    "name": "algorithm_recommend",
+                    "input": {"scene": "night"},
+                    "output": "dehaze_v3",
+                    "status": "failed",
+                    "error": "timeout",
+                    "latencyMs": 860,
+                    "agentCode": "image_enhance",
+                    "subAgent": True,
+                },
+            },
+            {"id": "k1", "kind": "thinking", "seq": 1, "text": "先看看"},
+        ]
+    )
+
+    events = ai_observability_service._trace_events(
+        trace, [], [], [], None, assistant, include_raw=False
+    )
+    tools = [e for e in events if e.kind == "tool_exec"]
+    assert len(tools) == 1
+    tool = tools[0]
+    assert tool.position == 3
+    assert tool.tool == "algorithm_recommend"
+    assert tool.tool_input == {"scene": "night"}
+    assert tool.observation == "dehaze_v3"
+    assert tool.status == 2
+    assert tool.latency_ms == 860
+    assert tool.agent_code == "image_enhance"
+    assert tool.is_subagent == 1
+    assert tool.ts == _dt(2)
 
 
 async def test_timeline_owner_vs_other_user(db):

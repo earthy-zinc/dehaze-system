@@ -12,6 +12,10 @@ import asyncio
 import json
 import logging
 
+from app.database import get_db_session
+from app.repository.ai_message_repository import ai_message_repository
+from app.service.ai.service.message_view import build_messages, load_sibling_positions
+
 logger = logging.getLogger(__name__)
 
 # 消息 → 流会话反查键（TTL 对齐流缓存窗口）：停止端点据此定位 send 路径消息的流
@@ -45,6 +49,15 @@ return 0
 
 # 后台推理任务引用：流关闭后任务仍须跑完落库，与推理侧一致显式持有
 _pending_tasks: set[asyncio.Task] = set()
+
+
+async def bind_message_stream(redis, msg_id: int, stream_session_id: str) -> None:
+    """登记消息 → 流会话反查键（send/resume 共用）。
+
+    停止端点据此定位消息当前的活跃流；续流用新流会话后必须重绑，
+    否则停止会落到已关闭的旧流上（停止标志仍生效，但 SSE 连接不会收到终帧）。
+    """
+    await redis.set(_MSG_STREAM_KEY.format(msg_id=msg_id), stream_session_id, ex=_MSG_STREAM_TTL)
 
 
 async def _renew_pending(redis, idem_key: str, token: str, ttl: int) -> None:
@@ -101,7 +114,7 @@ async def run_reasoning(
                 1,
                 idem_key,
                 token,
-                json.dumps({"messageId": assistant_msg_id, "status": 2}),
+                json.dumps({"messageId": assistant_msg_id, "status": "completed"}),
                 _IDEM_RESULT_TTL,
             )
     except Exception as e:
@@ -110,7 +123,7 @@ async def run_reasoning(
         # 向客户端推送 SSE error 事件：让前端区分"网络断开"与"后端推理失败"并展示原因
         # （前端 onError 收到 {code, message} 后将该消息置为失败态）
         try:
-            await sse_emitter_manager.send_error(stream_session_id, e)
+            await sse_emitter_manager.send_error(stream_session_id, e, message_id=assistant_msg_id)
         except Exception:
             logger.warning("推送 SSE error 事件失败: stream=%s", stream_session_id, exc_info=True)
     finally:
@@ -128,6 +141,7 @@ async def stream_generator(
     user_id,
     model,
     assistant_msg_id,
+    user_msg_id,
     stream_session_id,
     idem_key,
 ):
@@ -137,18 +151,26 @@ async def stream_generator(
     # 登记消息→流会话反查键：send 路径 assistant 消息 task_id 不存流会话 ID，
     # 停止端点经该键定位流（TTL 对齐流缓存重连窗口，过期后流已终结无需停止）
     redis = await get_redis_client()
-    await redis.set(
-        _MSG_STREAM_KEY.format(msg_id=assistant_msg_id), stream_session_id, ex=_MSG_STREAM_TTL
-    )
+    await bind_message_stream(redis, assistant_msg_id, stream_session_id)
+    # message.start 携带本条 user/assistant 消息的完整契约形状：客户端据此落位占位消息，
+    # 无需另行拉取历史（历史读模型与终态同形状，两处一致）。新 assistant 已落库，兄弟
+    # 序号含自身——重新生成/停止后前端据此保留分支切换器，不必本地推算。
+    async with get_db_session() as db:
+        rows = await ai_message_repository.get_by_ids(db, [user_msg_id, assistant_msg_id])
+        by_id = {m.id: m for m in rows}
+        current = [by_id[i] for i in (user_msg_id, assistant_msg_id) if i in by_id]
+        sibling_positions = await load_sibling_positions(
+            ai_message_repository, db, conv_id, current
+        )
+        started = await build_messages(db, current, sibling_positions=sibling_positions)
+    started_by_id = {m.id: m for m in started}
     await sse_emitter_manager.send_event(
         stream_session_id,
         "message.start",
         {
-            "messageId": assistant_msg_id,
-            "conversationId": conv_id,
-            "model": model,
-            # 断线重连（Last-Event-ID + stream/{stream_session_id} 端点）必需
             "streamSessionId": stream_session_id,
+            "userMessage": started_by_id[user_msg_id].model_dump(mode="json"),
+            "assistantMessage": started_by_id[assistant_msg_id].model_dump(mode="json"),
         },
     )
     task = asyncio.create_task(

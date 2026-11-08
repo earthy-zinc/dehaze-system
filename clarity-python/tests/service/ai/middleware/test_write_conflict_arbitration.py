@@ -286,7 +286,7 @@ class TestMiddlewareWriteArbitration:
         assert "用户拒绝覆盖" in result.content
         _thread_id, itype, data = stub.saved[0]
         assert itype == "confirm"
-        assert data["data"]["confirmKind"] == ConfirmKind.DANGEROUS_OP
+        assert data["data"]["confirmKind"] == ConfirmKind.WRITE_CONFLICT
         assert data["data"]["action"] == "write_conflict"
         assert data["data"]["previousWriter"] == "子AgentA"
         assert data["data"]["resource"] == _RESOURCE

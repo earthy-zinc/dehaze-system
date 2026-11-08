@@ -13,7 +13,6 @@ usage，由 after_agent 主结算统一扣减，不退会与主结算重复扣�
 import logging
 
 from app.database import get_db_session
-from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.service.billing.estimate_service import estimate_service
 from app.service.billing.quota_service import quota_service
 from app.service.billing.rate_provider import rate_provider
@@ -109,34 +108,12 @@ class QuotaRecall:
             pending: 尚未启动的子任务列表。
 
         Returns:
-            被召回的 pending 子任务列表（调用方应取消其执行并记录为 skipped）。
-            召回提示由调用方在临界区外经 notify_partial_skipped 推送。
+            被召回的 pending 子任务列表（调用方应取消其执行并记录为 failed，
+            计划面板据此展示"配额不足未执行"）。
         """
         if self._budget_exhausted(ctx) and pending:
             return list(pending)
         return []
-
-    async def notify_partial_skipped(self, ctx: dict, count: int) -> None:
-        """推送"部分子任务因配额不足未执行"的 thought 事件（status=3 跳过通道）。"""
-        stream_session_id = ctx.get("stream_session_id")
-        if not stream_session_id:
-            return
-        try:
-            await sse_emitter_manager.send_event(
-                stream_session_id,
-                "thought",
-                {
-                    "position": 0,
-                    "thought": f"部分子任务因配额不足未执行（{count} 项）",
-                    "tool": "quota_recall",
-                    "toolInput": {"recalled": count},
-                    "observation": "配额不足，未启动的子任务已跳过",
-                    "status": _SKIPPED_STATUS,
-                    "latencyMs": 0,
-                },
-            )
-        except Exception:
-            logger.warning("配额召回跳过提示推送失败", exc_info=True)
 
     @staticmethod
     def _budget_exhausted(ctx: dict) -> bool:

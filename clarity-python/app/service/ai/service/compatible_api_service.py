@@ -237,6 +237,26 @@ def _extract_last_user_content(messages: list[dict]) -> str:
     return ""
 
 
+def _on_block_start(blocks: dict[str, dict], data: dict) -> dict | None:
+    """记录 block.start 的块元数据，返回该块（供调用方决定是否下发协议头）。"""
+    block = data.get("block") or {}
+    block_id = block.get("id")
+    if not block_id:
+        return None
+    blocks[block_id] = block
+    return block
+
+
+def _apply_block_delta(blocks: dict[str, dict], data: dict) -> tuple[dict, str]:
+    """block.delta 归属到具体块，返回 (块, 增量文本)；未知块按正文处理。"""
+    block = blocks.get(data.get("blockId") or "", {})
+    return block, str(data.get("delta") or "")
+
+
+def _has_tool_blocks(blocks: dict[str, dict]) -> bool:
+    return any(b.get("kind") == "tool_use" for b in blocks.values())
+
+
 async def _openai_stream(
     internal_response, model: str, message_id: str, created: int, audit: dict | None = None
 ):
@@ -244,13 +264,10 @@ async def _openai_stream(
     base = {"id": message_id, "object": "chat.completion.chunk", "created": created, "model": model}
     usage: dict = {}
     error_msg: str | None = None
-    # 内部内容块 index（text=0 / thinking=1 / tool_use≥2）→ OpenAI tool_calls 序号（0 起自增）
-    tool_index_map: dict[int, int] = {}
-
-    def _tool_index(raw: int) -> int:
-        if raw not in tool_index_map:
-            tool_index_map[raw] = len(tool_index_map)
-        return tool_index_map[raw]
+    status = "completed"
+    # 契约块：text/thinking 走正文增量，tool_use 走 tool_calls（按出现顺序编 index）
+    blocks: dict[str, dict] = {}
+    tool_index: dict[str, int] = {}
 
     try:
         yield _openai_sse(
@@ -267,22 +284,11 @@ async def _openai_stream(
         )
         async for chunk in internal_response.body_iterator:
             event_type, data = _parse_internal_sse(chunk)
-            if event_type == "content_block.delta":
-                delta = data.get("delta") or {}
-                if delta.get("type") == "text_delta":
-                    yield _openai_sse(
-                        {
-                            **base,
-                            "choices": [
-                                {
-                                    "index": 0,
-                                    "delta": {"content": delta.get("text", "")},
-                                    "finish_reason": None,
-                                }
-                            ],
-                        }
-                    )
-                elif delta.get("type") == "input_json_delta":
+            if event_type == "block.start":
+                block = _on_block_start(blocks, data)
+                if block is not None and block.get("kind") == "tool_use":
+                    tool = block.get("tool") or {}
+                    tool_index[block["id"]] = len(tool_index)
                     yield _openai_sse(
                         {
                             **base,
@@ -292,34 +298,11 @@ async def _openai_stream(
                                     "delta": {
                                         "tool_calls": [
                                             {
-                                                "index": _tool_index(data.get("index", 0)),
-                                                "function": {
-                                                    "arguments": delta.get("partial_json", "")
-                                                },
-                                            }
-                                        ]
-                                    },
-                                    "finish_reason": None,
-                                }
-                            ],
-                        }
-                    )
-            elif event_type == "content_block.start":
-                if data.get("type") == "tool_use":
-                    yield _openai_sse(
-                        {
-                            **base,
-                            "choices": [
-                                {
-                                    "index": 0,
-                                    "delta": {
-                                        "tool_calls": [
-                                            {
-                                                "index": _tool_index(data.get("index", 0)),
-                                                "id": data.get("id", ""),
+                                                "index": tool_index[block["id"]],
+                                                "id": tool.get("callId", ""),
                                                 "type": "function",
                                                 "function": {
-                                                    "name": data.get("name", ""),
+                                                    "name": tool.get("name", ""),
                                                     "arguments": "",
                                                 },
                                             }
@@ -330,35 +313,60 @@ async def _openai_stream(
                             ],
                         }
                     )
+            elif event_type == "block.delta":
+                block, delta = _apply_block_delta(blocks, data)
+                if block.get("kind") == "text":
+                    yield _openai_sse(
+                        {
+                            **base,
+                            "choices": [
+                                {
+                                    "index": 0,
+                                    "delta": {"content": delta},
+                                    "finish_reason": None,
+                                }
+                            ],
+                        }
+                    )
+                elif block.get("kind") == "tool_use":
+                    yield _openai_sse(
+                        {
+                            **base,
+                            "choices": [
+                                {
+                                    "index": 0,
+                                    "delta": {
+                                        "tool_calls": [
+                                            {
+                                                "index": tool_index.get(block.get("id"), 0),
+                                                "function": {"arguments": delta},
+                                            }
+                                        ]
+                                    },
+                                    "finish_reason": None,
+                                }
+                            ],
+                        }
+                    )
+            elif event_type == "error":
+                error_msg = data.get("message") or "推理失败"
             elif event_type == "message.end":
                 usage = data.get("usage") or {}
+                status = data.get("status") or "completed"
+                finish = "tool_calls" if _has_tool_blocks(blocks) else _openai_finish_reason(status)
                 yield _openai_sse(
                     {
                         **base,
-                        "choices": [
-                            {
-                                "index": 0,
-                                "delta": {},
-                                "finish_reason": _openai_finish_reason(
-                                    data.get("stopReason", "stop")
-                                ),
-                            }
-                        ],
+                        "choices": [{"index": 0, "delta": {}, "finish_reason": finish}],
                         "usage": _openai_usage(usage),
                     }
-                )
-                yield "data: [DONE]\n\n"
-            elif event_type == "error":
-                error_msg = data.get("message") or "推理失败"
-                yield _openai_sse(
-                    {**base, "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
                 )
                 yield "data: [DONE]\n\n"
     finally:
         if audit is not None:
             _record_audit(
                 audit,
-                status_code=500 if error_msg else 200,
+                status_code=500 if error_msg or status == "failed" else 200,
                 input_tokens=usage.get("inputTokens", 0),
                 output_tokens=usage.get("outputTokens", 0),
                 credits=usage.get("credits"),
@@ -372,54 +380,56 @@ async def _openai_non_stream(
     """聚合内部 SSE 事件为 OpenAI 非流式 JSON 响应"""
     content = ""
     tool_calls: list[dict] = []
-    tool_calls_by_block: dict[int, dict] = {}
+    calls_by_block: dict[str, dict] = {}
+    blocks: dict[str, dict] = {}
     usage: dict = {}
-    stop_reason = "stop"
+    status = "completed"
     error_msg: str | None = None
     async for chunk in internal_response.body_iterator:
         event_type, data = _parse_internal_sse(chunk)
-        if event_type == "content_block.delta":
-            delta = data.get("delta") or {}
-            if delta.get("type") == "text_delta":
-                content += delta.get("text", "")
-            elif delta.get("type") == "input_json_delta":
-                call = tool_calls_by_block.get(data.get("index", 0))
-                if call is not None:
-                    call["function"]["arguments"] += delta.get("partial_json", "")
-        elif event_type == "content_block.start":
-            if data.get("type") == "tool_use":
+        if event_type == "block.start":
+            block = _on_block_start(blocks, data)
+            if block is not None and block.get("kind") == "tool_use":
+                tool = block.get("tool") or {}
                 call = {
-                    "id": data.get("id", ""),
+                    "id": tool.get("callId", ""),
                     "type": "function",
-                    "function": {"name": data.get("name", ""), "arguments": ""},
+                    "function": {"name": tool.get("name", ""), "arguments": ""},
                 }
-                tool_calls_by_block[data.get("index", 0)] = call
+                calls_by_block[block["id"]] = call
                 tool_calls.append(call)
-        elif event_type == "message.end":
-            stop_reason = data.get("stopReason", "stop")
-            usage = data.get("usage") or {}
+        elif event_type == "block.delta":
+            block, delta = _apply_block_delta(blocks, data)
+            if block.get("kind") == "text":
+                content += delta
+            elif block.get("kind") == "tool_use":
+                call = calls_by_block.get(block.get("id") or "")
+                if call is not None:
+                    call["function"]["arguments"] += delta
         elif event_type == "error":
             error_msg = data.get("message") or "推理失败"
+        elif event_type == "message.end":
+            usage = data.get("usage") or {}
+            status = data.get("status") or "completed"
     message = {"role": "assistant", "content": content}
     if tool_calls:
         message["tool_calls"] = tool_calls
     if audit is not None:
         _record_audit(
             audit,
-            status_code=500 if error_msg else 200,
+            status_code=500 if error_msg or status == "failed" else 200,
             input_tokens=usage.get("inputTokens", 0),
             output_tokens=usage.get("outputTokens", 0),
             credits=usage.get("credits"),
             error_msg=error_msg,
         )
+    finish = "tool_calls" if tool_calls else _openai_finish_reason(status)
     return {
         "id": message_id,
         "object": "chat.completion",
         "created": created,
         "model": model,
-        "choices": [
-            {"index": 0, "message": message, "finish_reason": _openai_finish_reason(stop_reason)}
-        ],
+        "choices": [{"index": 0, "message": message, "finish_reason": finish}],
         "usage": _openai_usage(usage),
     }
 
@@ -427,15 +437,17 @@ async def _openai_non_stream(
 async def _claude_stream(internal_response, model: str, message_id: str, audit: dict | None = None):
     """将内部 SSE 事件转换为 Anthropic Messages 流式格式"""
     usage: dict = {}
+    status = "completed"
     error_msg: str | None = None
-    # Anthropic 要求 content_block index 从 0 连续；内部 index（text=0/thinking=1/tool_use≥2）
-    # 按首次出现顺序映射为连续序号，保证 start/delta/stop 三事件 index 一致
-    block_index_map: dict[int, int] = {}
+    # Anthropic 要求 content_block index 从 0 连续；内部块按首次出现顺序映射为连续序号，
+    # 保证 start/delta/stop 三事件的 index 一致
+    blocks: dict[str, dict] = {}
+    block_index: dict[str, int] = {}
 
-    def _claude_index(raw: int) -> int:
-        if raw not in block_index_map:
-            block_index_map[raw] = len(block_index_map)
-        return block_index_map[raw]
+    def _claude_index(block_id: str) -> int:
+        if block_id not in block_index:
+            block_index[block_id] = len(block_index)
+        return block_index[block_id]
 
     try:
         yield _claude_sse(
@@ -456,62 +468,69 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
         )
         async for chunk in internal_response.body_iterator:
             event_type, data = _parse_internal_sse(chunk)
-            if event_type == "content_block.delta":
-                delta = data.get("delta") or {}
-                if delta.get("type") == "text_delta":
-                    yield _claude_sse(
-                        "content_block_delta",
-                        {
-                            "type": "content_block_delta",
-                            "index": _claude_index(data.get("index", 0)),
-                            "delta": {"type": "text_delta", "text": delta.get("text", "")},
-                        },
-                    )
-                elif delta.get("type") == "input_json_delta":
-                    yield _claude_sse(
-                        "content_block_delta",
-                        {
-                            "type": "content_block_delta",
-                            "index": _claude_index(data.get("index", 0)),
-                            "delta": {
-                                "type": "input_json_delta",
-                                "partial_json": delta.get("partial_json", ""),
-                            },
-                        },
-                    )
-            elif event_type == "content_block.start":
-                if data.get("type") == "tool_use":
-                    yield _claude_sse(
-                        "content_block_start",
-                        {
-                            "type": "content_block_start",
-                            "index": _claude_index(data.get("index", 0)),
-                            "content_block": {
+            if event_type == "block.start":
+                block = _on_block_start(blocks, data)
+                if block is None:
+                    continue
+                kind = block.get("kind")
+                tool = block.get("tool") or {}
+                yield _claude_sse(
+                    "content_block_start",
+                    {
+                        "type": "content_block_start",
+                        "index": _claude_index(block["id"]),
+                        "content_block": (
+                            {
                                 "type": "tool_use",
-                                "id": data.get("id", ""),
-                                "name": data.get("name", ""),
+                                "id": tool.get("callId", ""),
+                                "name": tool.get("name", ""),
                                 "input": {},
-                            },
+                            }
+                            if kind == "tool_use"
+                            else {"type": "text", "text": ""}
+                        ),
+                    },
+                )
+            elif event_type == "block.delta":
+                block, delta = _apply_block_delta(blocks, data)
+                block_id = block.get("id") or ""
+                if block.get("kind") == "text":
+                    yield _claude_sse(
+                        "content_block_delta",
+                        {
+                            "type": "content_block_delta",
+                            "index": _claude_index(block_id),
+                            "delta": {"type": "text_delta", "text": delta},
                         },
                     )
-            elif event_type == "content_block.stop":
+                elif block.get("kind") == "tool_use":
+                    yield _claude_sse(
+                        "content_block_delta",
+                        {
+                            "type": "content_block_delta",
+                            "index": _claude_index(block_id),
+                            "delta": {"type": "input_json_delta", "partial_json": delta},
+                        },
+                    )
+            elif event_type == "block.stop":
+                block = data.get("block") or {}
+                block_id = block.get("id") or ""
                 yield _claude_sse(
                     "content_block_stop",
                     {
                         "type": "content_block_stop",
-                        "index": _claude_index(data.get("index", 0)),
+                        "index": _claude_index(block_id),
                     },
                 )
             elif event_type == "message.end":
                 usage = data.get("usage") or {}
+                status = data.get("status") or "completed"
+                stop = "tool_use" if _has_tool_blocks(blocks) else _claude_stop_reason(status)
                 yield _claude_sse(
                     "message_delta",
                     {
                         "type": "message_delta",
-                        "delta": {
-                            "stop_reason": _claude_stop_reason(data.get("stopReason", "stop")),
-                            "stop_sequence": None,
-                        },
+                        "delta": {"stop_reason": stop, "stop_sequence": None},
                         "usage": _claude_usage(usage),
                     },
                 )
@@ -529,7 +548,7 @@ async def _claude_stream(internal_response, model: str, message_id: str, audit: 
         if audit is not None:
             _record_audit(
                 audit,
-                status_code=500 if error_msg else 200,
+                status_code=500 if error_msg or status == "failed" else 200,
                 input_tokens=usage.get("inputTokens", 0),
                 output_tokens=usage.get("outputTokens", 0),
                 credits=usage.get("credits"),
@@ -543,48 +562,63 @@ async def _claude_non_stream(
     """聚合内部 SSE 事件为 Anthropic 非流式 JSON 响应"""
     text = ""
     content: list[dict] = []
+    calls_by_block: dict[str, dict] = {}
+    tool_args: dict[str, str] = {}
+    blocks: dict[str, dict] = {}
     usage: dict = {}
-    stop_reason = "stop"
+    status = "completed"
     error_msg: str | None = None
     async for chunk in internal_response.body_iterator:
         event_type, data = _parse_internal_sse(chunk)
-        if event_type == "content_block.delta":
-            delta = data.get("delta") or {}
-            if delta.get("type") == "text_delta":
-                text += delta.get("text", "")
-        elif event_type == "content_block.start":
-            if data.get("type") == "tool_use":
-                content.append(
-                    {
-                        "type": "tool_use",
-                        "id": data.get("id", ""),
-                        "name": data.get("name", ""),
-                        "input": {},
-                    }
-                )
-        elif event_type == "message.end":
-            stop_reason = data.get("stopReason", "stop")
-            usage = data.get("usage") or {}
+        if event_type == "block.start":
+            block = _on_block_start(blocks, data)
+            if block is not None and block.get("kind") == "tool_use":
+                tool = block.get("tool") or {}
+                call = {
+                    "type": "tool_use",
+                    "id": tool.get("callId", ""),
+                    "name": tool.get("name", ""),
+                    "input": {},
+                }
+                calls_by_block[block["id"]] = call
+                content.append(call)
+        elif event_type == "block.delta":
+            block, delta = _apply_block_delta(blocks, data)
+            if block.get("kind") == "text":
+                text += delta
+            elif block.get("kind") == "tool_use":
+                block_id = block.get("id") or ""
+                tool_args[block_id] = tool_args.get(block_id, "") + delta
         elif event_type == "error":
             error_msg = data.get("message") or "推理失败"
+        elif event_type == "message.end":
+            usage = data.get("usage") or {}
+            status = data.get("status") or "completed"
+    for block_id, call in calls_by_block.items():
+        raw = tool_args.get(block_id, "")
+        try:
+            call["input"] = json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            call["input"] = {}
     if text:
         content.insert(0, {"type": "text", "text": text})
     if audit is not None:
         _record_audit(
             audit,
-            status_code=500 if error_msg else 200,
+            status_code=500 if error_msg or status == "failed" else 200,
             input_tokens=usage.get("inputTokens", 0),
             output_tokens=usage.get("outputTokens", 0),
             credits=usage.get("credits"),
             error_msg=error_msg,
         )
+    stop = "tool_use" if calls_by_block else _claude_stop_reason(status)
     return {
         "id": message_id,
         "type": "message",
         "role": "assistant",
         "model": model,
         "content": content,
-        "stop_reason": _claude_stop_reason(stop_reason),
+        "stop_reason": stop,
         "stop_sequence": None,
         "usage": _claude_usage(usage),
     }

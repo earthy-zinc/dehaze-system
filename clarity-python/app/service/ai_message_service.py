@@ -15,14 +15,14 @@ from app.core.exceptions import BusinessException
 from app.core.result import success
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
-from app.models.entity.sys_ai_message import SysAiMessage
-from app.models.schema.ai_conversation import MessageResult
+from app.models.entity.sys_ai_message import SysAiMessage, text_block
 from app.repository.ai_agent_repository import ai_agent_repository
 from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
 from app.service.ai.message_streaming import run_reasoning, stream_generator
 from app.service.ai.middleware.interrupt_handler import interrupt_handler
+from app.service.ai.service.message_view import build_message_detail, load_sibling_positions
 from app.service.ai.service.model_defaults import (
     assert_message_fits_context,
     assert_message_fits_model,
@@ -133,6 +133,7 @@ class AiMessageService:
         user_id: int,
         model: str,
         assistant_msg_id: int,
+        user_msg_id: int,
         stream_session_id: str,
         idem_key: str,
     ):
@@ -145,6 +146,7 @@ class AiMessageService:
             user_id=user_id,
             model=model,
             assistant_msg_id=assistant_msg_id,
+            user_msg_id=user_msg_id,
             stream_session_id=stream_session_id,
             idem_key=idem_key,
         )
@@ -158,12 +160,13 @@ class AiMessageService:
             return JSONResponse(content=success().model_dump())
         msg = await self.ai_message_repository.get_by_id(db, data.get("messageId"))
         if msg:
-            # mode="json"：create_time 等 datetime 须在响应体序列化为 ISO 串，
-            # 否则 JSONResponse 渲染时抛 TypeError，前端拿到无 data 的成功响应
+            # mode="json"：createTime 为 ISO 串，契约 Message 序列化后可直接渲染
+            positions = await load_sibling_positions(
+                self.ai_message_repository, db, msg.conversation_id, [msg]
+            )
+            detail = await build_message_detail(db, msg, sibling_position=positions.get(msg.id))
             return JSONResponse(
-                content=success(
-                    MessageResult.model_validate(msg).model_dump(mode="json", by_alias=True)
-                ).model_dump()
+                content=success(detail.model_dump(mode="json", by_alias=True)).model_dump()
             )
         return JSONResponse(content=success().model_dump())
 
@@ -234,9 +237,9 @@ class AiMessageService:
                 conversation_id=conv_id,
                 parent_message_id=conv.current_branch_message_id,
                 role="user",
-                content=form.content,
                 model=model,
-                status=2,
+                status="completed",
+                blocks=[text_block(form.content)],
             )
             user_msg = await self.ai_message_repository.create(db, user_msg)
 
@@ -244,9 +247,9 @@ class AiMessageService:
                 conversation_id=conv_id,
                 parent_message_id=user_msg.id,
                 role="assistant",
-                content="",
                 model=model,
-                status=1,
+                status="running",
+                blocks=[],
                 # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
                 task_id=None,
             )
@@ -281,6 +284,7 @@ class AiMessageService:
                 user_id=user_id,
                 model=model,
                 assistant_msg_id=assistant_msg.id,
+                user_msg_id=user_msg.id,
                 stream_session_id=stream_session_id,
                 idem_key=idem_key,
             ),
@@ -316,37 +320,29 @@ class AiMessageService:
         await assert_message_fits_context(db, form.content, model)
         stream_session_id = str(uuid4())
         try:
-            # 原消息标记为已编辑，保留原文（content 不变，前端用 original_content 展示编辑前）
+            # 原地更新原 user 消息：保留 id 与分支位置，列表不会多出第二条 user 气泡
+            # （新建 user 消息会让旧消息与新消息并存）；旧 assistant 回复保留为同叉
+            # 兄弟分支（与 regenerate 语义一致，由前端分支视图切换），不破坏分支历史
+            msg.blocks = [text_block(form.content)]
             msg.edited = 1
-            msg.original_content = msg.content
             await db.flush()
 
-            # 新 user 消息：parent 沿用原 user 消息的 parent，保持上下文链
-            user_msg = SysAiMessage(
-                conversation_id=conv_id,
-                parent_message_id=msg.parent_message_id,
-                role="user",
-                content=form.content,
-                model=model,
-                status=2,
-            )
-            user_msg = await self.ai_message_repository.create(db, user_msg)
-
+            # 新 assistant 回复挂在原 user 消息下，与原回复互为兄弟分支
             assistant_msg = SysAiMessage(
                 conversation_id=conv_id,
-                parent_message_id=user_msg.id,
+                parent_message_id=msg.id,
                 role="assistant",
-                content="",
                 model=model,
-                status=1,
+                status="running",
+                blocks=[],
                 # task_id 仅承载异步任务 ID（async_wait 中断时写入），不存流会话标识
                 task_id=None,
             )
             assistant_msg = await self.ai_message_repository.create(db, assistant_msg)
 
-            # 消息计数收敛于 update_last_message 单点（本次追加 user+assistant 两条）
+            # 消息计数收敛于 update_last_message 单点（本次仅追加 assistant 一条）
             await self.ai_conversation_repository.update_last_message(
-                db, conv_id, assistant_msg.id, datetime.now(), message_delta=2
+                db, conv_id, assistant_msg.id, datetime.now(), message_delta=1
             )
             # 显式提交：推理后台任务用独立 session 读取上下文，须先提交本事务
             await db.commit()
@@ -365,6 +361,7 @@ class AiMessageService:
                 user_id=user_id,
                 model=model,
                 assistant_msg_id=assistant_msg.id,
+                user_msg_id=msg.id,
                 stream_session_id=stream_session_id,
                 idem_key=idem_key,
             ),

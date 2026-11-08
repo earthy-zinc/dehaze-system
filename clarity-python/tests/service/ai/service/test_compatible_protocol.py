@@ -16,24 +16,47 @@ def _internal_sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _text_delta(text: str, index: int = 0) -> str:
-    return _internal_sse(
-        "content_block.delta", {"index": index, "delta": {"type": "text_delta", "text": text}}
-    )
+def _block_start(block_id: str = "b1", kind: str = "text", seq: int = 1) -> str:
+    block: dict = {"id": block_id, "kind": kind, "seq": seq}
+    if kind == "tool_use":
+        block["tool"] = {
+            "callId": "c1",
+            "name": "search",
+            "status": "running",
+            "subAgent": False,
+        }
+    return _internal_sse("block.start", {"messageId": 1, "block": block})
 
 
-def _message_end(usage: dict | None = None, stop_reason: str = "stop") -> str:
+def _text_delta(text: str, block_id: str = "b1") -> str:
+    return _internal_sse("block.delta", {"messageId": 1, "blockId": block_id, "delta": text})
+
+
+def _block_stop(block_id: str = "b1", kind: str = "text", text: str = "") -> str:
+    block: dict = {"id": block_id, "kind": kind, "seq": 1, "text": text}
+    if kind == "tool_use":
+        block["tool"] = {
+            "callId": "c1",
+            "name": "search",
+            "status": "success",
+            "subAgent": False,
+        }
+    return _internal_sse("block.stop", {"messageId": 1, "block": block})
+
+
+def _message_end(usage: dict | None = None, status: str = "completed") -> str:
     return _internal_sse(
         "message.end",
         {
-            "stopReason": stop_reason,
+            "messageId": 1,
+            "status": status,
             "usage": usage or {"inputTokens": 10, "outputTokens": 5, "credits": 2},
         },
     )
 
 
-def _thought_event() -> str:
-    return _internal_sse("thought", {"thought": "正在思考..."})
+def _thinking_start() -> str:
+    return _block_start("t1", "thinking")
 
 
 async def _collect(agen):
@@ -110,7 +133,9 @@ async def _pass(*a, **k):
 
 
 async def test_openai_stream_text_delta_and_done():
-    resp = FakeInternalResponse(_text_delta("你好"), _text_delta("世界"), _message_end())
+    resp = FakeInternalResponse(
+        _block_start(), _text_delta("你好"), _text_delta("世界"), _message_end()
+    )
     lines = await _collect(m._openai_stream(resp, "gpt-4", "chatcmpl-1", 1700000000, None))
     first = json.loads(lines[0].removeprefix("data: ").strip())
     assert first["choices"][0]["delta"]["role"] == "assistant"
@@ -127,16 +152,22 @@ async def test_openai_stream_text_delta_and_done():
 
 
 async def test_openai_stream_error_yields_done():
-    resp = FakeInternalResponse(_internal_sse("error", {"message": "推理失败"}))
+    resp = FakeInternalResponse(
+        _internal_sse("error", {"code": "A0500", "message": "推理失败", "messageId": 1}),
+        _message_end(status="failed"),
+    )
     lines = await _collect(m._openai_stream(resp, "gpt-4", "chatcmpl-1", 1700000000, None))
-    error = json.loads(lines[1].removeprefix("data: ").strip())
-    assert error["choices"][0]["finish_reason"] == "stop"
+    end = json.loads(lines[-2].removeprefix("data: ").strip())
+    assert end["choices"][0]["finish_reason"] == "stop"
     assert lines[-1] == "data: [DONE]\n\n"
 
 
 async def test_claude_stream_event_sequence_and_done():
     resp = FakeInternalResponse(
-        _text_delta("你好"), _message_end(usage={"inputTokens": 10, "outputTokens": 5})
+        _block_start(),
+        _text_delta("你好"),
+        _block_stop(text="你好"),
+        _message_end(usage={"inputTokens": 10, "outputTokens": 5}),
     )
     lines = await _collect(m._claude_stream(resp, "claude-3-5", "msg_1", None))
     start = _sse_payload(lines[0])
@@ -144,19 +175,55 @@ async def test_claude_stream_event_sequence_and_done():
     assert start["type"] == "message_start"
     assert start["message"]["id"] == "msg_1"
     assert start["message"]["model"] == "claude-3-5"
-    assert lines[1].startswith("event: content_block_delta")
-    delta = _sse_payload(lines[1])
-    assert delta["delta"] == {"type": "text_delta", "text": "你好"}
-    assert lines[2].startswith("event: message_delta")
-    mdelta = _sse_payload(lines[2])
+    # 块事件：start(text) → delta → stop，index 连续映射
+    assert lines[1].startswith("event: content_block_start")
+    assert _sse_payload(lines[1])["content_block"] == {"type": "text", "text": ""}
+    assert lines[2].startswith("event: content_block_delta")
+    assert _sse_payload(lines[2])["delta"] == {"type": "text_delta", "text": "你好"}
+    assert lines[3].startswith("event: content_block_stop")
+    assert lines[4].startswith("event: message_delta")
+    mdelta = _sse_payload(lines[4])
     assert mdelta["usage"] == {"input_tokens": 10, "output_tokens": 5}
-    assert lines[3].startswith("event: message_stop")
-    assert _sse_payload(lines[3])["type"] == "message_stop"
-    assert len(lines) == 4
+    assert lines[5].startswith("event: message_stop")
+    assert _sse_payload(lines[5])["type"] == "message_stop"
+    assert len(lines) == 6
+
+
+async def test_openai_stream_tool_call_finish_reason():
+    resp = FakeInternalResponse(
+        _block_start("c1", "tool_use"),
+        _text_delta('{"q":', "c1"),
+        _block_stop("c1", "tool_use"),
+        _message_end(),
+    )
+    lines = await _collect(m._openai_stream(resp, "gpt-4", "chatcmpl-1", 1700000000, None))
+    tool_chunk = json.loads(lines[1].removeprefix("data: ").strip())
+    assert tool_chunk["choices"][0]["delta"]["tool_calls"][0]["function"]["name"] == "search"
+    end = json.loads(lines[-2].removeprefix("data: ").strip())
+    assert end["choices"][0]["finish_reason"] == "tool_calls"
+
+
+async def test_claude_non_stream_tool_use_args_parsed():
+    resp = FakeInternalResponse(
+        _block_start("c1", "tool_use"),
+        _text_delta('{"q": "雾"}', "c1"),
+        _block_stop("c1", "tool_use"),
+        _message_end(),
+    )
+    out = await m._claude_non_stream(resp, "claude-3-5", "msg_1", None)
+    assert out["content"][0] == {
+        "type": "tool_use",
+        "id": "c1",
+        "name": "search",
+        "input": {"q": "雾"},
+    }
+    assert out["stop_reason"] == "tool_use"
 
 
 async def test_openai_non_stream_structure():
-    resp = FakeInternalResponse(_text_delta("你好"), _text_delta("世界"), _message_end())
+    resp = FakeInternalResponse(
+        _block_start(), _text_delta("你好"), _text_delta("世界"), _message_end()
+    )
     out = await m._openai_non_stream(resp, "gpt-4", "chatcmpl-1", 1700000000, None)
     assert out["id"] == "chatcmpl-1"
     assert out["object"] == "chat.completion"
@@ -168,9 +235,10 @@ async def test_openai_non_stream_structure():
 
 
 async def test_stream_does_not_expose_thought():
+    """思考块只进 thinking 分区，兼容协议不得出现 thought 字段或旧事件名。"""
     openai_lines = await _collect(
         m._openai_stream(
-            FakeInternalResponse(_thought_event(), _text_delta("正常回复"), _message_end()),
+            FakeInternalResponse(_thinking_start(), _text_delta("正常回复"), _message_end()),
             "gpt-4",
             "chatcmpl-1",
             1700000000,
@@ -179,9 +247,10 @@ async def test_stream_does_not_expose_thought():
     )
     for line in openai_lines:
         assert "thought" not in line
+        assert "content_block." not in line
     claude_lines = await _collect(
         m._claude_stream(
-            FakeInternalResponse(_thought_event(), _text_delta("正常回复"), _message_end()),
+            FakeInternalResponse(_thinking_start(), _text_delta("正常回复"), _message_end()),
             "claude-3-5",
             "msg_1",
             None,

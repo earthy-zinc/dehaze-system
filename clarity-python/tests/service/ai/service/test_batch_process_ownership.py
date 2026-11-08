@@ -32,7 +32,6 @@ def _patch(monkeypatch, owner_id=_OWNER, file_exists=True):
     monkeypatch.setattr(bps, "get_db_session", lambda: NullDBSession())
     monkeypatch.setattr(bps.file_repository, "get_by_object_name", _get_by_object_name)
     monkeypatch.setattr(bps.prediction_service, "predict", _predict)
-    monkeypatch.setattr(bps.sse_emitter_manager, "send_event", _send)
     monkeypatch.setattr(bps.ai_artifact_service, "register_artifact", _register)
     return base, calls, events
 

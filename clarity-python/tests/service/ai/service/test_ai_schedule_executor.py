@@ -130,7 +130,10 @@ def _patch_inference_success(monkeypatch, credits: float = 3, conv_id=10):
         return FakeInternalResponse(b"")
 
     async def _list(db, conv_id, page, size):
-        return ([SimpleNamespace(role="assistant", status=2, credits=credits, error=None)], 1)
+        return (
+            [SimpleNamespace(role="assistant", status="completed", credits=credits, error=None)],
+            1,
+        )
 
     monkeypatch.setattr(ex.ai_message_service, "send_message", _send)
     monkeypatch.setattr(ex.ai_message_repository, "list_by_conversation", _list)

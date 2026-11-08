@@ -9,6 +9,7 @@
 
 import json
 from datetime import datetime
+from types import SimpleNamespace
 
 import pytest
 from fastapi.responses import StreamingResponse
@@ -20,9 +21,10 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.main import app as fastapi_app
+from app.models.schema.ai_contract_gen import Message
 from app.models.schema.ai_conversation import (
     ConversationResult,
-    MessageResult,
+    MessageListResult,
 )
 from app.service.ai_conversation_service import ai_conversation_service
 from app.service.ai_message_service import ai_message_service
@@ -40,22 +42,85 @@ class _FakeUser:
         self.permissions = list(permissions)
 
 
-def _message(**overrides) -> MessageResult:
+def _message(**overrides) -> Message:
+    """构造契约 Message（内容在 blocks，用量在 usage）。"""
+    base = {
+        "id": 55,
+        "conversationId": 3,
+        "parentMessageId": None,
+        "role": "assistant",
+        "status": "completed",
+        "model": "gpt-4o-mini",
+        "error": None,
+        "blocks": [
+            {
+                "id": "b1",
+                "kind": "text",
+                "seq": 1,
+                "text": "你好",
+                "durationMs": 12,
+            }
+        ],
+        "plan": None,
+        "pendingInterrupt": None,
+        "usage": {
+            "inputTokens": 10,
+            "outputTokens": 20,
+            "cachedInputTokens": 0,
+            "credits": 3,
+        },
+        "artifactIds": [],
+        "memoryIds": [],
+        "suggestions": [],
+        "edited": False,
+        "createTime": "2026-08-29T10:00:00",
+        "updateTime": None,
+    }
+    base.update(overrides)
+    return Message.model_validate(base)
+
+
+def _msg_entity(**overrides) -> SimpleNamespace:
+    """消息实体桩（读模型 build_message 消费 ORM 行形状）。"""
     base = {
         "id": 55,
         "conversation_id": 3,
+        "parent_message_id": None,
         "role": "assistant",
-        "content": "你好",
-        "status": 2,
+        "status": "completed",
+        "model": "gpt-4o-mini",
+        "error": None,
+        "blocks": [{"id": "b1", "kind": "text", "seq": 1, "text": "你好", "durationMs": 12}],
+        "plan": None,
+        "pending_interrupt": None,
+        "suggestions": None,
+        "used_memory_ids": None,
         "input_tokens": 10,
         "output_tokens": 20,
         "cached_input_tokens": 0,
         "credits": 3,
         "edited": 0,
         "create_time": datetime(2026, 8, 29, 10, 0, 0),
+        "update_time": None,
     }
     base.update(overrides)
-    return MessageResult.model_validate(base)
+    entity = SimpleNamespace(**base)
+    entity.text = "".join(
+        b["text"]
+        for b in sorted((b for b in entity.blocks if b["kind"] == "text"), key=lambda b: b["seq"])
+    )
+    return entity
+
+
+def _no_artifacts(monkeypatch) -> None:
+    """读模型会批量查询产物 ID：路由测试的 db 是桩，产物查询直接短路为空。"""
+
+    async def _empty(db, msg_ids):
+        return []
+
+    monkeypatch.setattr(
+        "app.service.ai.service.message_view.ai_artifact_repository.list_by_message_ids", _empty
+    )
 
 
 def _conversation(**overrides) -> ConversationResult:
@@ -231,7 +296,7 @@ class TestIdempotency:
 
         async def _fake_msg(db, msg_id):
             captured_ids.append(msg_id)
-            return _message(id=msg_id, create_time=None)
+            return _msg_entity(id=msg_id)
 
         captured_ids: list[int] = []
         monkeypatch.setattr(
@@ -239,6 +304,7 @@ class TestIdempotency:
         )
         monkeypatch.setattr(ai_message_service.ai_message_repository, "get_by_id", _fake_msg)
         monkeypatch.setattr(ai_message_service, "get_redis_client", _fake_redis(mock_redis))
+        _no_artifacts(monkeypatch)
         resp = await client.post(
             "/api/v1/ai/conversations/3/messages",
             json={"content": "你好"},
@@ -261,13 +327,14 @@ class TestIdempotency:
             return _FakeConv()
 
         async def _fake_msg(db, msg_id):
-            return _message(id=msg_id, create_time=datetime(2026, 8, 29, 10, 0, 0))
+            return _msg_entity(id=msg_id)
 
         monkeypatch.setattr(
             ai_message_service.ai_conversation_repository, "get_by_id_and_user", _fake_conv
         )
         monkeypatch.setattr(ai_message_service.ai_message_repository, "get_by_id", _fake_msg)
         monkeypatch.setattr(ai_message_service, "get_redis_client", _fake_redis(mock_redis))
+        _no_artifacts(monkeypatch)
         resp = await client.post(
             "/api/v1/ai/conversations/3/messages",
             json={"content": "你好"},
@@ -349,13 +416,13 @@ class TestResumeAndStop:
 
         async def _fake_stop(db, msg_id, user_id):
             captured.update(msg_id=msg_id, user_id=user_id)
-            return _message(id=msg_id, status=4)
+            return _message(id=msg_id, status="canceled")
 
         monkeypatch.setattr(ai_conversation_service, "stop_message", _fake_stop)
         resp = await client.post("/api/v1/ai/messages/55/stop")
         assert resp.status_code == 200
         assert captured == {"msg_id": 55, "user_id": 8}
-        assert resp.json()["data"]["status"] == 4
+        assert resp.json()["data"]["status"] == "canceled"
 
     async def test_stop_not_streaming_maps_a0502(self, msg_client, monkeypatch):
         client, _ = msg_client
@@ -453,7 +520,7 @@ class TestBranches:
 
         async def _fake_branches(db, conv_id, user_id, msg_id):
             captured.update(conv_id=conv_id, user_id=user_id, msg_id=msg_id)
-            return [_message(id=msg_id), _message(id=99, content="另一版回复")]
+            return [_message(id=msg_id), _message(id=99)]
 
         monkeypatch.setattr(ai_conversation_service, "get_branches", _fake_branches)
         resp = await client.get("/api/v1/ai/conversations/3/messages/55/branches")
@@ -489,49 +556,81 @@ class TestBranches:
 
 
 class TestMessageDetail:
-    async def test_detail_includes_thoughts(self, msg_client, monkeypatch):
+    async def test_detail_returns_contract_message(self, msg_client, monkeypatch):
         client, state = msg_client
         state["user"] = _FakeUser(id=8)
         captured: dict = {}
 
         async def _fake_detail(db, msg_id, user_id, admin=False):
             captured.update(msg_id=msg_id, user_id=user_id, admin=admin)
-            payload = _message(id=msg_id).model_dump(by_alias=True)
-            payload["thoughts"] = [
-                {
-                    "id": 7,
-                    "messageId": msg_id,
-                    "conversationId": 3,
-                    "position": 1,
-                    "status": 2,
-                    "latencyMs": 15,
-                }
-            ]
-            return payload
+            return _message(id=msg_id).model_dump(by_alias=True, mode="json")
 
         monkeypatch.setattr(ai_conversation_service, "get_message", _fake_detail)
         resp = await client.get("/api/v1/ai/messages/55")
         assert resp.status_code == 200
         assert captured == {"msg_id": 55, "user_id": 8, "admin": False}
         data = resp.json()["data"]
-        assert data["thoughts"][0]["position"] == 1
+        assert data["blocks"][0]["kind"] == "text"
+        assert data["blocks"][0]["text"] == "你好"
+        assert data["usage"]["outputTokens"] == 20
+        # 旧字段与旧投影一律不再出现在出参中
+        for legacy in ("content", "thoughts", "toolCalls", "tool_calls", "metadata"):
+            assert legacy not in data
         # 消息详情不再附带过程链扩展（可观测下钻走 /traces/{traceId} 与会话时间线）
         assert "traceId" not in data
         assert "contextSnapshot" not in data
         assert "llmCalls" not in data
 
-    async def test_detail_without_thoughts(self, msg_client, monkeypatch):
+    async def test_detail_without_blocks(self, msg_client, monkeypatch):
         client, _ = msg_client
 
         async def _fake_detail(db, msg_id, user_id, admin=False):
-            payload = _message(id=msg_id).model_dump(by_alias=True)
-            payload["thoughts"] = []
-            return payload
+            return _message(id=msg_id, blocks=[]).model_dump(by_alias=True, mode="json")
 
         monkeypatch.setattr(ai_conversation_service, "get_message", _fake_detail)
         resp = await client.get("/api/v1/ai/messages/55")
         assert resp.status_code == 200
-        assert resp.json()["data"]["thoughts"] == []
+        assert resp.json()["data"]["blocks"] == []
+
+    async def test_interrupt_endpoint_returns_null_without_pending(self, msg_client, monkeypatch):
+        client, state = msg_client
+        state["user"] = _FakeUser(id=8)
+        captured: dict = {}
+
+        async def _fake_interrupt(db, msg_id, user_id, admin=False):
+            captured.update(msg_id=msg_id, user_id=user_id, admin=admin)
+            return
+
+        monkeypatch.setattr(ai_conversation_service, "get_interrupt", _fake_interrupt)
+        resp = await client.get("/api/v1/ai/messages/55/interrupt")
+        assert resp.status_code == 200
+        assert captured == {"msg_id": 55, "user_id": 8, "admin": False}
+        # 全局 NON_NULL 序列化（与 Java Jackson NON_NULL 对齐）：无中断时 data 缺省即 null
+        assert resp.json().get("data") is None
+
+    async def test_interrupt_endpoint_returns_pending(self, msg_client, monkeypatch):
+        client, state = msg_client
+        state["user"] = _FakeUser(id=8)
+
+        async def _fake_interrupt(db, msg_id, user_id, admin=False):
+            return _message(
+                id=msg_id,
+                status="awaiting_input",
+                pendingInterrupt={
+                    "id": "i1",
+                    "type": "confirm",
+                    "confirmKind": "algorithm_recommend",
+                    "createdAt": "2026-08-29T10:00:00",
+                    "expiresAt": "2026-09-28T10:00:00",
+                    "actionable": False,
+                },
+            ).pendingInterrupt
+
+        monkeypatch.setattr(ai_conversation_service, "get_interrupt", _fake_interrupt)
+        resp = await client.get("/api/v1/ai/messages/55/interrupt")
+        assert resp.status_code == 200
+        assert resp.json()["data"]["type"] == "confirm"
+        assert resp.json()["data"]["actionable"] is False
 
     async def test_detail_not_found_maps_a0401(self, msg_client, monkeypatch):
         client, _ = msg_client
@@ -569,6 +668,19 @@ class TestDeleteMessage:
         resp = await client.delete("/api/v1/ai/messages/54")
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0502"
+
+    async def test_delete_non_leaf_maps_a0502_with_guidance(self, msg_client, monkeypatch):
+        """中间回复仍有后续对话：拒绝删除并给出明确指引，客户端按 400 处理。"""
+        client, _ = msg_client
+
+        async def _fake_delete(db, msg_id, user_id):
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "请先删除该回复之后的对话")
+
+        monkeypatch.setattr(ai_conversation_service, "delete_message", _fake_delete)
+        resp = await client.delete("/api/v1/ai/messages/55")
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0502"
+        assert "请先删除该回复之后的对话" in resp.json()["msg"]
 
 
 class TestReconnect:
@@ -628,8 +740,6 @@ class TestMessageList:
             captured.update(
                 conv_id=conv_id, user_id=user_id, before=before, limit=limit, admin=admin
             )
-            from app.models.schema.ai_conversation import MessageListResult
-
             return MessageListResult(list=[_message()], total=1, hasMore=True)
 
         monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)
@@ -650,8 +760,6 @@ class TestMessageList:
 
         async def _fake_list(db, conv_id, user_id, before, limit, admin=False):
             captured.update(before=before, limit=limit)
-            from app.models.schema.ai_conversation import MessageListResult
-
             return MessageListResult(list=[], total=0, hasMore=False)
 
         monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)
@@ -676,8 +784,6 @@ class TestMessageList:
             captured.update(
                 conv_id=conv_id, user_id=user_id, before=before, limit=limit, admin=admin
             )
-            from app.models.schema.ai_conversation import MessageListResult
-
             return MessageListResult(list=[_message()], total=1, hasMore=False)
 
         monkeypatch.setattr(ai_conversation_service, "list_messages", _fake_list)

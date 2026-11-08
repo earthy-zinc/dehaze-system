@@ -33,13 +33,13 @@ def _conv(cid, uid, title):
     )
 
 
-def _msg(mid, cid, role="assistant", content="", status=2, deleted=0):
+def _msg(mid, cid, role="assistant", content="", status="completed", deleted=0):
     return SysAiMessage(
         id=mid,
         conversation_id=cid,
         role=role,
-        content=content,
         status=status,
+        blocks=[{"id": f"b{mid}", "kind": "text", "seq": 1, "text": content}],
         model="qwen3-0.6b",
         deleted=deleted,
     )
@@ -92,7 +92,7 @@ async def _seed_two_conversations(db):
     db.add_all(
         [
             _msg(11, 1, "user", "帮我分析雾霾成因"),
-            _msg(12, 1, "assistant", "RIDCP 算法可处理该场景", status=3),
+            _msg(12, 1, "assistant", "RIDCP 算法可处理该场景", status="failed"),
             _msg(21, 2, "user", "推荐一个算法"),
         ]
     )
@@ -173,7 +173,7 @@ class TestAnomalyLabel:
         db.add_all(
             [
                 _msg(11, 1, "user", "提问"),
-                _msg(12, 1, "assistant", "未完成", status=4),
+                _msg(12, 1, "assistant", "未完成", status="canceled"),
             ]
         )
         await db.flush()
@@ -206,8 +206,8 @@ class TestAnomalyLabel:
         db.add(billing)
         db.add_all(
             [
-                _msg(11, 1, "assistant", "失败回复", status=3),
-                _msg(12, 1, "assistant", "取消回复", status=4),
+                _msg(11, 1, "assistant", "失败回复", status="failed"),
+                _msg(12, 1, "assistant", "取消回复", status="canceled"),
             ]
         )
         await db.flush()
@@ -268,7 +268,7 @@ class TestAnomalyLabel:
     async def test_failed_takes_priority_over_risky_tool(self, db):
         user_a, _ = await _seed_users(db)
         db.add(_conv(1, user_a, "会话"))
-        db.add(_msg(11, 1, "assistant", "失败回复", status=3))
+        db.add(_msg(11, 1, "assistant", "失败回复", status="failed"))
         await db.flush()
         await ai_trace_repository.insert_idempotent(
             db, {"trace_id": "tr-risky", "conversation_id": 1, "status": 4, "duration_ms": 100}
@@ -314,7 +314,7 @@ class TestAnomalyLabel:
 class TestMatchedMessageId:
     async def test_keyword_in_message_content_backfills_latest_match(self, db, monkeypatch):
         user_a, _ = await _seed_two_conversations(db)
-        db.add(_msg(13, 1, "assistant", "再次提到 RIDCP 算法", status=2))
+        db.add(_msg(13, 1, "assistant", "再次提到 RIDCP 算法", status="completed"))
         await db.flush()
 
         async def search(user_id, query, *, status, page, size):
@@ -357,8 +357,8 @@ class TestMatchedMessageId:
         db.add(_conv(1, user_a, "会话"))
         db.add_all(
             [
-                _msg(11, 1, "assistant", "RIDCP 内容", status=2, deleted=1),
-                _msg(12, 1, "assistant", "普通回复", status=2),
+                _msg(11, 1, "assistant", "RIDCP 内容", status="completed", deleted=1),
+                _msg(12, 1, "assistant", "普通回复", status="completed"),
             ]
         )
         await db.flush()
@@ -370,7 +370,7 @@ class TestMatchedMessageId:
         """关键词含 % 时按字面量匹配，不放大为全匹配"""
         user_a, _ = await _seed_users(db)
         db.add(_conv(1, user_a, "会话"))
-        db.add(_msg(11, 1, "assistant", "普通回复", status=2))
+        db.add(_msg(11, 1, "assistant", "普通回复", status="completed"))
         await db.flush()
 
         matched = await ai_message_repository.find_latest_ids_by_keyword(db, [1], "%")

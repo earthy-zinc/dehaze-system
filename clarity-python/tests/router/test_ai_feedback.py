@@ -13,11 +13,15 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 import app.service.ai_feedback_service as feedback_module
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.main import app as fastapi_app
+from app.models.schema.ai_contract_gen import Feedback
 from app.repository.ai_message_feedback_repository import ai_message_feedback_repository
 from app.repository.ai_message_repository import ai_message_repository
+from app.service.ai_feedback_service import ai_feedback_service
 
 pytestmark = pytest.mark.api
 
@@ -85,6 +89,9 @@ def test_feedback_paths_registered(app):
     assert path in schema["paths"], f"缺少路径 {path}"
     for method in ("post", "get", "delete"):
         assert method in schema["paths"][path], f"缺少方法 {method}"
+    batch_path = "/api/v1/ai/conversations/{conv_id}/feedback"
+    assert batch_path in schema["paths"], f"缺少路径 {batch_path}"
+    assert "get" in schema["paths"][batch_path]
 
 
 class TestSubmit:
@@ -322,3 +329,73 @@ class TestQueryAndRevoke:
         resp = await client.delete("/api/v1/ai/messages/55/feedback")
         assert resp.status_code == 400
         assert resp.json()["code"] == "A0543"
+
+
+class TestListByConversation:
+    """会话级批量反馈：一次返回当前用户在该会话下的全部反馈。"""
+
+    async def test_returns_all_feedback_for_conversation(self, feedback_client, monkeypatch):
+        client, _ = feedback_client
+        captured: dict = {}
+
+        async def _fake_list(db, conv_id, user_id):
+            captured.update(conv_id=conv_id, user_id=user_id)
+            return [
+                Feedback(
+                    id=30,
+                    messageId=55,
+                    userId=8,
+                    conversationId=3,
+                    rating=1,
+                    tags=["accurate"],
+                    comment=None,
+                    createTime="2026-08-29T10:00:00",
+                    updateTime=None,
+                ),
+                Feedback(
+                    id=31,
+                    messageId=56,
+                    userId=8,
+                    conversationId=3,
+                    rating=-1,
+                    tags=["too_long"],
+                    comment="太啰嗦",
+                    createTime="2026-08-29T10:01:00",
+                    updateTime=None,
+                ),
+            ]
+
+        monkeypatch.setattr(ai_feedback_service, "list_conversation_feedback", _fake_list)
+        resp = await client.get("/api/v1/ai/conversations/3/feedback")
+
+        assert resp.status_code == 200
+        body = resp.json()["data"]
+        assert [item["messageId"] for item in body] == [55, 56]
+        assert body[1]["rating"] == -1
+        assert body[1]["tags"] == ["too_long"]
+        assert body[1]["comment"] == "太啰嗦"
+        assert captured == {"conv_id": 3, "user_id": 8}
+
+    async def test_returns_empty_list_when_no_feedback(self, feedback_client, monkeypatch):
+        client, _ = feedback_client
+
+        async def _fake_list(db, conv_id, user_id):
+            return []
+
+        monkeypatch.setattr(ai_feedback_service, "list_conversation_feedback", _fake_list)
+        resp = await client.get("/api/v1/ai/conversations/3/feedback")
+
+        assert resp.status_code == 200
+        assert resp.json()["data"] == []
+
+    async def test_missing_conversation_maps_a0401(self, feedback_client, monkeypatch):
+        client, _ = feedback_client
+
+        async def _fake_list(db, conv_id, user_id):
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
+
+        monkeypatch.setattr(ai_feedback_service, "list_conversation_feedback", _fake_list)
+        resp = await client.get("/api/v1/ai/conversations/404/feedback")
+
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "A0401"

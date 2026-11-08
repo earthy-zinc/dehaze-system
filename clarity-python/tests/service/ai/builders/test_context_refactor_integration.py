@@ -147,7 +147,12 @@ class TestSummaryNoReSummarize:
         from app.service.ai.service.summary_service import summary_service
 
         all_rows = [
-            SimpleNamespace(id=i, role="user" if i % 2 else "assistant", content=f"c{i}")
+            SimpleNamespace(
+                id=i,
+                role="user" if i % 2 else "assistant",
+                text=f"c{i}",
+                blocks=[{"id": f"c{i}", "kind": "text", "seq": 1, "text": f"c{i}"}],
+            )
             for i in range(1, 61)
         ]
 
@@ -196,8 +201,8 @@ class TestUsedMemoryIdsE2E:
             conversation_id=conv.id,
             parent_message_id=None,
             role="user",
-            content="处理雾图",
-            status=2,
+            status="completed",
+            blocks=[{"id": "ub1", "kind": "text", "seq": 1, "text": "处理雾图"}],
         )
         db.add(user_msg)
         await db.flush()
@@ -205,8 +210,8 @@ class TestUsedMemoryIdsE2E:
             conversation_id=conv.id,
             parent_message_id=user_msg.id,
             role="assistant",
-            content="",
-            status=1,
+            status="running",
+            blocks=[],
         )
         db.add(asst_msg)
         await db.flush()
@@ -244,10 +249,10 @@ class TestUsedMemoryIdsE2E:
         # 业务结果：build_context 真实注入的记忆可见性落库（含真实记忆 ID），消息完成
         await db.refresh(asst_msg)
         assert asst_msg.used_memory_ids == [prefs[0].id, prefs[1].id]
-        assert asst_msg.status == 2
+        assert asst_msg.status == "completed"
 
     async def test_finalize_writes_used_memory_ids_to_message(self, db):
-        msg = SysAiMessage(conversation_id=1, role="assistant", content="", status=1)
+        msg = SysAiMessage(conversation_id=1, role="assistant", status="running", blocks=[])
         db.add(msg)
         await db.flush()
 
@@ -256,11 +261,17 @@ class TestUsedMemoryIdsE2E:
             "stop_reason": "stop",
             "usage": {"input_tokens": 5, "output_tokens": 3, "cached_input_tokens": 0},
         }
-        await reasoning_service._finalize_message(msg.id, result, "gpt", used_memory_ids=[1, 2])
+        await reasoning_service._finalize_message(
+            msg.id,
+            result,
+            "gpt",
+            blocks=[{"id": "b1", "kind": "text", "seq": 1, "text": "ok"}],
+            used_memory_ids=[1, 2],
+        )
         await db.refresh(msg)
         assert msg.used_memory_ids == [1, 2]
-        assert msg.status == 2
-        assert msg.content == "ok"
+        assert msg.status == "completed"
+        assert msg.text == "ok"
         assert msg.input_tokens == 5
         assert msg.output_tokens == 3
 
@@ -422,7 +433,7 @@ class TestBuildContextCallCount:
         )
         await db.refresh(asst_msg)
         assert len(calls) == 1  # 单次发送仅执行一次 build_context
-        assert asst_msg.status == 2  # 且整条链路真实完成落库
+        assert asst_msg.status == "completed"  # 且整条链路真实完成落库
 
 
 def _llm_stream(*chunks):
@@ -470,9 +481,9 @@ class TestTokenBudgetWindow:
                 conversation_id=conv_id,
                 parent_message_id=parent,
                 role="user" if i % 2 == 0 else "assistant",
-                content=content,
+                blocks=[{"id": f"w{i}", "kind": "text", "seq": 1, "text": content}],
                 model="win-m1",
-                status=2,
+                status="completed",
             )
             db.add(msg)
             await db.flush()
@@ -568,9 +579,9 @@ class TestSummaryOverflowFallback:
                 conversation_id=conv.id,
                 parent_message_id=parent,
                 role="user" if i % 2 == 0 else "assistant",
-                content=f"消息{i}",
+                blocks=[{"id": f"s{i}", "kind": "text", "seq": 1, "text": f"消息{i}"}],
                 model="sum-m1",
-                status=2,
+                status="completed",
             )
             db.add(msg)
             await db.flush()
@@ -599,7 +610,7 @@ class TestSummaryOverflowFallback:
     async def test_no_summary_when_window_covers_all(self, db, monkeypatch):
         """窗口覆盖全链（无裁剪）：不触发压缩，LLM 不被调用"""
         conv, msgs = await self._seed_conv_with_chain(db)
-        window_messages = [{"id": m.id, "role": m.role, "content": m.content} for m in msgs]
+        window_messages = [{"id": m.id, "role": m.role, "content": m.text} for m in msgs]
         with patch("app.service.ai.service.summary_service.llm_client.stream_chat") as stream:
             await summary_service.maybe_compress(db, conv, "sum-m1", window_messages)
         stream.assert_not_called()

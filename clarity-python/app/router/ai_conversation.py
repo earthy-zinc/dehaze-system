@@ -8,6 +8,7 @@ from app.database import get_db
 from app.decorators.permission import _match_permission
 from app.dependencies.auth import UserContext, get_current_user
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
+from app.models.schema.ai_contract_gen import Interrupt, Message
 from app.models.schema.ai_conversation import (
     ConversationBatchAction,
     ConversationCreate,
@@ -18,7 +19,6 @@ from app.models.schema.ai_conversation import (
     MessageEdit,
     MessageListQuery,
     MessageListResult,
-    MessageResult,
     MessageResume,
     MessageSend,
 )
@@ -256,7 +256,7 @@ async def reconnect(
     )
 
 
-@router.get("/messages/{msg_id}", summary="消息详情（含推理步骤）")
+@router.get("/messages/{msg_id}", summary="消息详情")
 async def get_message(
     msg_id: int,
     view: str | None = Query(
@@ -270,6 +270,27 @@ async def get_message(
     if admin:
         _require_conversation_audit(user)
     result = await ai_conversation_service.get_message(db, msg_id, user.id, admin=admin)
+    return success(result)
+
+
+@router.get(
+    "/messages/{msg_id}/interrupt",
+    response_model=Result[Interrupt | None],
+    summary="查询消息的待恢复中断",
+)
+async def get_message_interrupt(
+    msg_id: int,
+    view: str | None = Query(
+        default=None,
+        description="视角(admin:管理端审计,读取任意用户消息的中断,需ai:conversation:audit;默认当前用户)",
+    ),
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    admin = view == "admin"
+    if admin:
+        _require_conversation_audit(user)
+    result = await ai_conversation_service.get_interrupt(db, msg_id, user.id, admin=admin)
     return success(result)
 
 
@@ -316,7 +337,7 @@ async def edit_message(
 
 @router.get(
     "/conversations/{conv_id}/messages/{msg_id}/branches",
-    response_model=Result[list[MessageResult]],
+    response_model=Result[list[Message]],
     summary="查询消息的分支列表",
 )
 async def get_branches(
@@ -345,7 +366,7 @@ async def switch_branch(
 
 
 @router.post(
-    "/messages/{msg_id}/stop", response_model=Result[MessageResult], summary="停止流式输出"
+    "/messages/{msg_id}/stop", response_model=Result[Message], summary="停止流式输出"
 )
 async def stop_message(
     msg_id: int,

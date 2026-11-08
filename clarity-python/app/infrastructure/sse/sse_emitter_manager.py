@@ -2,14 +2,15 @@
 
 管理 AI 对话的 SSE 连接与事件推送：
 - 连接管理：维护会话与 SSE 连接的映射，同会话同一时间只允许一个活跃连接
-- 事件推送：message.start / content_block.start|delta|stop / thought / interrupt / ping /
-  error / message.end
+- 事件推送：message.start / block.start|delta|stop / plan.update / interrupt / usage /
+  suggestions / ping / error / message.end
+- 终态唯一：message.end 由 send_message_end 幂等写出（Redis SETNX），正常完成、异常、
+  取消、中断都只有一条终帧；stop_stream 只结束连接，不再补写 canceled 终帧
 - 心跳保活：每 15 秒推送 ping 事件，防止代理超时断连
 - token 缓存：每个事件写入 Redis list（ai:stream:{streamSessionId}，TTL 5 分钟），支撑断线重连
 - 断线重连：客户端携带 Last-Event-ID 重连时，从 Redis 缓存重放断点之后的事件
 - 并发锁：Redis 分布式锁（ai:streaming:{conversationId}，TTL 120 秒），
   同会话同一时间只允许一个流式输出
-- 流被停止/取消且无活跃连接时，向缓存追加标准 message.end 终结事件，重连客户端重放后正确结束
 
 部署约束：多实例部署需 sticky session（同一 stream_session 的活跃队列仅存在于单实例内存），
 断线重连仅重放 Redis 缓存，续流能力不做 Redis pub/sub 跨实例同步。
@@ -116,71 +117,69 @@ class SseEmitterManager:
         if queue is not None:
             await queue.put(event)
 
-    async def send_error(self, stream_session_id: str, error: Exception) -> None:
-        """推送 error 事件并补 message.end(error) 收尾（异常→客户端载荷的唯一出口）。
+    async def send_message_end(
+        self,
+        stream_session_id: str,
+        *,
+        message_id: int,
+        status: str,
+        error: str | None = None,
+        usage: dict | None = None,
+    ) -> bool:
+        """写出唯一的终结帧 message.end，返回本次是否实际写出。
 
-        补 message.end 保证客户端总能走统一的完成处理逻辑，不因缺终结事件而挂起。
-        """
-        await self.send_event(stream_session_id, "error", public_error(error))
-        await self.send_event(
-            stream_session_id,
-            "message.end",
-            {
-                "stopReason": "error",
-                "usage": {
-                    "inputTokens": 0,
-                    "outputTokens": 0,
-                    "cachedInputTokens": 0,
-                    "credits": 0,
-                },
-            },
-        )
-
-    async def _cache_terminal(self, stream_session_id: str) -> None:
-        """在 Redis 缓存追加标准终结事件 message.end（stopReason=canceled），
-        供重连客户端重放后走与正常完成一致的收尾逻辑而非挂起。
-        仅写缓存，不进入活跃队列（活跃流由结束哨兵收尾）。
-
-        幂等标记存 Redis（SETNX + TTL 与流缓存一致）：跨实例一致、
-        进程重启不失效，且不随会话数无界增长（替代进程内集合）。
+        幂等标记存 Redis（SETNX + TTL 与流缓存一致）：正常完成、异常、取消、中断
+        都可能从不同路径触发收尾，只有第一条生效，客户端不会收到两条终帧而重复结束。
         """
         redis = await get_redis_client()
         first = await redis.set(
-            f"{_STREAM_CACHE_PREFIX}{stream_session_id}:terminated",
+            f"{_STREAM_CACHE_PREFIX}{stream_session_id}:ended",
             "1",
             nx=True,
             ex=_STREAM_CACHE_TTL,
         )
         if not first:
-            return  # 已终结过（重复 stop / 多实例并发），不重复追加
-        event_id = await self._next_event_id(stream_session_id)
-        await self._cache_event(
+            return False
+        payload: dict = {"messageId": message_id, "status": status}
+        if error is not None:
+            payload["error"] = error
+        if usage is not None:
+            payload["usage"] = usage
+        await self.send_event(stream_session_id, "message.end", payload)
+        return True
+
+    async def send_error(
+        self,
+        stream_session_id: str,
+        error: Exception,
+        *,
+        message_id: int,
+        usage: dict | None = None,
+    ) -> None:
+        """推送 error 事件并补一条 failed 终帧（异常→客户端载荷的唯一出口）。
+
+        error 说明"为什么失败"，message.end(failed) 说明"本轮到此结束"；终帧幂等，
+        推理侧已写过终态时不会重复。
+        """
+        payload = public_error(error)
+        await self.send_event(stream_session_id, "error", {**payload, "messageId": message_id})
+        await self.send_message_end(
             stream_session_id,
-            {
-                "id": event_id,
-                "event": "message.end",
-                "data": {
-                    "stopReason": "canceled",
-                    "usage": {
-                        "inputTokens": 0,
-                        "outputTokens": 0,
-                        "cachedInputTokens": 0,
-                        "credits": 0,
-                    },
-                },
-            },
+            message_id=message_id,
+            status="failed",
+            error=payload["message"],
+            usage=usage,
         )
 
     async def stop_stream(self, stream_session_id: str) -> None:
-        """结束流式输出：向队列放入结束哨兵；无活跃队列时在缓存追加终结事件。
+        """结束流式输出：向队列放入结束哨兵。
 
-        客户端取消/断连后重连需能收到 message.end 终结事件走统一收尾，故无论
-        是否有活跃队列都确保缓存中存在终结标记（已有则幂等跳过）。
+        终态帧由收尾方（推理 finalize / 异常出口）唯一写出，本方法不再补写
+        canceled 终帧——那会让同一条消息出现"取消"与真实终态两条结论。
         """
         queue = self._queues.get(stream_session_id)
         if queue is not None:
             await queue.put(_STREAM_END)
-        await self._cache_terminal(stream_session_id)
 
     # ── 流生成 ──────────────────────────────────────────
 
@@ -191,9 +190,15 @@ class SseEmitterManager:
         return f"id: {event['id']}\nevent: {event['event']}\ndata: {data}\n\n"
 
     async def _stream_from_queue(
-        self, stream_session_id: str, queue: asyncio.Queue
+        self, stream_session_id: str, queue: asyncio.Queue, *, watermark: int = 0
     ) -> AsyncGenerator[str, None]:
-        """从队列读取事件并推送，空闲时发送心跳，空闲超时则结束本条连接"""
+        """从队列读取事件并推送，空闲时发送心跳，空闲超时则结束本条连接。
+
+        watermark 为重连重放已覆盖的最大事件 ID：队列中 id<=watermark 的事件
+        已随重放下发过，必须丢弃，否则重连窗口内（register 与读缓存之间）写入的
+        事件会重复出现在重放与活跃队列两条路径上（前端重复拼接 delta）。
+        实时路径 watermark=0，不丢弃任何事件。
+        """
         heartbeat = settings.AI_MESSAGE_HEARTBEAT_INTERVAL
         timeout = settings.AI_MESSAGE_STREAM_TIMEOUT
         loop = asyncio.get_running_loop()
@@ -217,6 +222,9 @@ class SseEmitterManager:
                 continue
             if event is _STREAM_END:
                 break
+            if event.get("id", 0) <= watermark:
+                # 已由重放列表下发（重连竞态窗口内写入缓存的事件同时进了活跃队列）
+                continue
             last_activity = loop.time()
             yield self._format_event(event)
 
@@ -263,6 +271,9 @@ class SseEmitterManager:
             events, has_cache = await self._get_cached_events(stream_session_id, last_event_id)
             for event in events:
                 yield self._format_event(event)
+            # 重放覆盖到的最大事件 ID：活跃队列中不大于它的事件已下发过（竞态窗口
+            # 内写入的事件同时在缓存与队列），续流时必须去重，否则 delta 重复拼接
+            watermark = max([last_event_id, *(event.get("id", 0) for event in events)])
             # 重放内容已含终结事件 → 流已结束（含停止时追加的终结事件），无需再挂队列
             if any(event.get("event") == "message.end" for event in events):
                 return
@@ -270,7 +281,9 @@ class SseEmitterManager:
             # 立即结束连接，否则挂队列空等到空闲超时，客户端只能拿到超时错误
             if created and not has_cache:
                 return
-            async for chunk in self._stream_from_queue(stream_session_id, queue):
+            async for chunk in self._stream_from_queue(
+                stream_session_id, queue, watermark=watermark
+            ):
                 yield chunk
         finally:
             if created:

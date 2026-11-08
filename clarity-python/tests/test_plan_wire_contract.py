@@ -2,11 +2,12 @@
 
 两条不变量：
 
-1. **`PlanEvent` 全域不存在**（含 `PlanEventVO` 这类衍生名）。计划下发已收敛为 SSE `plan` 事件 +
-   `plan_approve` 中断两种载荷，`PlanEvent` 类事件类型再现即回退。
-2. **`to_wire_plan` 是唯一 wire 归一出口**。内部计划恒为 snake_case（Redis 中断点与执行器直接
-   消费），只在 SSE 出口归一一次为 camelCase；出现第二个归一位置＝某条下发路径自己拼形状，
-   两条路径会漂移，而三端各自单测仍全绿（静默契约破损）。
+1. **`PlanEvent` 全域不存在**（含 `PlanEventVO` 这类衍生名）。计划下发已收敛为 `plan.update`
+   事件 + `plan_approve` 中断两种载荷，`PlanEvent` 类事件类型再现即回退。
+2. **`to_contract_plan` 是唯一 wire 归一出口**。内部计划恒为 snake_case（Redis 中断点与执行器
+   直接消费），只在出口归一一次为契约 Plan（含 awaitingApproval 与修订 actor/at）；
+   出现第二个归一位置＝某条下发路径自己拼形状，两条路径会漂移，
+   而三端各自单测仍全绿（静默契约破损）。
 
 口径：本文件只做源码级扫描，无运行时断言；识别式各自带对照组自证（见各用例），避免负向断言
 因检测式失效而恒绿。
@@ -19,12 +20,17 @@ APP_DIR = Path(__file__).resolve().parent.parent / "app"
 
 FORBIDDEN_IDENTIFIER = "PlanEvent"
 
-# 允许出现 `to_wire_plan` 的位置：(相对 app/ 的路径, 限定名)；`<module>`＝模块顶层（定义处）。
+# 允许出现 `to_contract_plan` 的位置：(相对 app/ 的路径, 限定名)；
+# `<module>`＝模块顶层（定义/引用处）。
 # 新增下发路径只能复用该出口；确实需要第二处时在此显式登记（登记动作本身就是评审点）。
 ALLOWED_WIRE_EXITS: set[tuple[str, str]] = {
-    ("service/ai/paradigms/plan_execute.py", "<module>"),
+    # 定义处：内部结构 → 契约 Plan / Interrupt 的唯一归一实现
+    ("service/ai/service/contract_payload.py", "<module>"),
+    # 同模块内复用：plan_approve 中断的任务项归一走同一实现
+    ("service/ai/service/contract_payload.py", "_interrupt_plan"),
+    # 引用处：SSE 出口（plan.update 与中断载荷）
+    ("infrastructure/sse/sse_event_converter.py", "<module>"),
     ("infrastructure/sse/sse_event_converter.py", "SseEventConverter.record_plan"),
-    ("infrastructure/sse/sse_event_converter.py", "SseEventConverter._handle_updates"),
 }
 
 
@@ -41,13 +47,13 @@ def _forbidden_identifier_lines(text: str) -> list[int]:
 
 
 def _wire_exit_sites_in(rel: str, text: str) -> set[tuple[str, str]]:
-    """扫出单份源码里引用/定义 `to_wire_plan` 的位置：(相对路径, 限定名)。"""
+    """扫出单份源码里引用/定义 `to_contract_plan` 的位置：(相对路径, 限定名)。"""
     sites: set[tuple[str, str]] = set()
 
     def walk(node: ast.AST, stack: tuple[str, ...]) -> None:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             # 定义处归属其**父**作用域：模块顶层的 `def to_wire_plan` 记为 `<module>`
-            if node.name == "to_wire_plan":
+            if node.name == "to_contract_plan":
                 sites.add((rel, ".".join(stack) or "<module>"))
             for child in node.body:
                 walk(child, (*stack, node.name))
@@ -60,7 +66,7 @@ def _wire_exit_sites_in(rel: str, text: str) -> set[tuple[str, str]]:
             identifier = node.name.rsplit(".", 1)[-1]
         else:
             identifier = None
-        if identifier == "to_wire_plan":
+        if identifier == "to_contract_plan":
             sites.add((rel, ".".join(stack) or "<module>"))
         for child in ast.iter_child_nodes(node):
             walk(child, stack)
@@ -97,22 +103,22 @@ def test_wire_exit_detector_is_effective():
         "\n"
         "class SomeConverter:\n"
         "    async def emit(self, plan):\n"
-        "        return plan_execute.to_wire_plan(plan)\n"
+        "        return contract_payload.to_contract_plan(plan)\n"
     )
     assert _wire_exit_sites_in("x.py", novel_call) == {("x.py", "SomeConverter.emit")}
-    assert _wire_exit_sites_in("p.py", "def to_wire_plan(plan):\n    return plan\n") == {
+    assert _wire_exit_sites_in("p.py", "def to_contract_plan(plan):\n    return plan\n") == {
         ("p.py", "<module>")
     }
 
 
-def test_to_wire_plan_is_the_only_wire_normalizer():
-    """`to_wire_plan` 的位置必须与白名单逐条相等：新增出口或出口被删都红。"""
+def test_to_contract_plan_is_the_only_wire_normalizer():
+    """`to_contract_plan` 的位置必须与白名单逐条相等：新增出口或出口被删都红。"""
     sites = _wire_exit_sites()
     unexpected = sorted(sites - ALLOWED_WIRE_EXITS)
     missing = sorted(ALLOWED_WIRE_EXITS - sites)
     assert not unexpected, "出现白名单外的 wire 归一出口：\n" + "\n".join(
         f"{rel}::{qual}" for rel, qual in unexpected
     )
-    assert not missing, "wire 归一出口丢失（下发路径不再经 to_wire_plan）：\n" + "\n".join(
+    assert not missing, "wire 归一出口丢失（下发路径不再经 to_contract_plan）：\n" + "\n".join(
         f"{rel}::{qual}" for rel, qual in missing
     )

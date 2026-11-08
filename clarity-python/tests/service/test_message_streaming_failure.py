@@ -17,6 +17,7 @@ import pytest
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.sse import sse_emitter_manager as sse_module
+from app.models.schema.ai_contract_gen import Message
 from app.service.ai import message_streaming
 
 _IDEM_KEY = "ai:msg:idempotent:2:key"
@@ -91,6 +92,7 @@ async def test_unknown_exception_pushes_single_sanitized_error(emitter):
     assert errors[0]["data"] == {
         "code": ResultCode.AI_LLM_CALL_FAILED.code,
         "message": ResultCode.AI_LLM_CALL_FAILED.msg,
+        "messageId": 100,
     }
     # 内部细节（连接串/异常文本）不随 error 事件外泄
     assert "postgresql" not in json.dumps(events, ensure_ascii=False)
@@ -106,22 +108,16 @@ async def test_business_exception_preserves_business_code(emitter):
     assert "积分" in errors[0]["data"]["message"]
 
 
-async def test_error_is_followed_by_message_end(emitter):
+async def test_error_is_followed_by_single_message_end(emitter):
+    """异常只落一条 failed 终帧：stop_stream 不再追加 canceled 终帧。"""
     await _run(emitter, exc=RuntimeError("boom"))
 
     events = await _cached_events(emitter[1])
     types = [ev["event"] for ev in events]
-    assert types.index("error") < types.index("message.end")
-    end = next(ev for ev in events if ev["event"] == "message.end")
-    assert end["data"]["stopReason"] == "error"
-    assert end["data"]["usage"] == {
-        "inputTokens": 0,
-        "outputTokens": 0,
-        "cachedInputTokens": 0,
-        "credits": 0,
-    }
-    # stop_stream 收尾：终结事件与流关闭各一次
-    assert types == ["error", "message.end", "message.end"]
+    assert types == ["error", "message.end"]
+    end = events[-1]
+    assert end["data"]["status"] == "failed"
+    assert end["data"]["messageId"] == 100
 
 
 async def test_failure_clears_idempotent_key(emitter):
@@ -138,7 +134,7 @@ async def test_success_writes_idempotent_result(emitter):
 
     await _run(emitter, result={"stop_reason": "stop"})
 
-    assert json.loads(await redis.get(_IDEM_KEY)) == {"messageId": 100, "status": 2}
+    assert json.loads(await redis.get(_IDEM_KEY)) == {"messageId": 100, "status": "completed"}
 
 
 async def test_canceled_clears_idempotent_key(emitter):
@@ -150,8 +146,57 @@ async def test_canceled_clears_idempotent_key(emitter):
     assert await redis.get(_IDEM_KEY) is None
 
 
+class _NullSession:
+    async def __aenter__(self):
+        return object()
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _StartRepo:
+    async def get_by_ids(self, db, ids):
+        return [SimpleNamespace(id=i) for i in ids]
+
+
+def _patch_message_start(monkeypatch) -> None:
+    """message.start 需要读本轮 user/assistant 消息：以契约 DTO 桩替代 DB。"""
+
+    async def _build(db, msgs, **_kwargs):
+        return [
+            Message(
+                id=m.id,
+                conversationId=1,
+                role="assistant",
+                status="running",
+                blocks=[],
+                usage={
+                    "inputTokens": 0,
+                    "outputTokens": 0,
+                    "cachedInputTokens": 0,
+                    "credits": 0,
+                },
+                artifactIds=[],
+                memoryIds=[],
+                suggestions=[],
+                edited=False,
+                createTime="2026-01-01T00:00:00",
+            )
+            for m in msgs
+        ]
+
+    async def _no_siblings(_repository, _db, _conv_id, _msgs):
+        return {}
+
+    monkeypatch.setattr(message_streaming, "get_db_session", lambda: _NullSession())
+    monkeypatch.setattr(message_streaming, "ai_message_repository", _StartRepo())
+    monkeypatch.setattr(message_streaming, "load_sibling_positions", _no_siblings)
+    monkeypatch.setattr(message_streaming, "build_messages", _build)
+
+
 async def test_stream_generator_closes_without_waiting_for_reasoning(emitter, monkeypatch):
     """空闲超时后生成器立即返回关闭连接，不得挂起等待后台推理（否则代理超时保护失效）。"""
+    _patch_message_start(monkeypatch)
     manager, redis = emitter
     monkeypatch.setattr(sse_module.settings, "AI_MESSAGE_HEARTBEAT_INTERVAL", 0.06)
     monkeypatch.setattr(sse_module.settings, "AI_MESSAGE_STREAM_TIMEOUT", 0.05)
@@ -177,6 +222,7 @@ async def test_stream_generator_closes_without_waiting_for_reasoning(emitter, mo
             user_id=2,
             model="qwen3-0.6b",
             assistant_msg_id=100,
+            user_msg_id=99,
             stream_session_id="stream-gen",
             idem_key=_IDEM_KEY,
         )
@@ -188,6 +234,71 @@ async def test_stream_generator_closes_without_waiting_for_reasoning(emitter, mo
     # 推理仍在跑（连接已关闭，执行与连接解耦）
     assert finished.is_set() is False
     await asyncio.wait_for(finished.wait(), 3)
+
+
+async def test_message_start_reports_assistant_sibling_position(db, emitter):
+    """message.start 的新 assistant 自带兄弟序号（含自身）：同父第 2 条回复 = (2, 2)。
+
+    前端据此在重新生成/停止后保留分支切换器，不再本地推算。
+    """
+    from app.models.entity.sys_ai_conversation import SysAiConversation
+    from app.models.entity.sys_ai_message import SysAiMessage
+
+    conv = SysAiConversation(user_id=1, model="gpt")
+    db.add(conv)
+    await db.flush()
+    user = SysAiMessage(
+        conversation_id=conv.id,
+        parent_message_id=None,
+        role="user",
+        status="completed",
+        blocks=[{"id": "u", "kind": "text", "seq": 1, "text": "问题"}],
+    )
+    db.add(user)
+    await db.flush()
+    old = SysAiMessage(
+        conversation_id=conv.id,
+        parent_message_id=user.id,
+        role="assistant",
+        status="completed",
+        blocks=[{"id": "a1", "kind": "text", "seq": 1, "text": "旧回复"}],
+    )
+    new = SysAiMessage(
+        conversation_id=conv.id,
+        parent_message_id=user.id,
+        role="assistant",
+        status="running",
+        blocks=[],
+    )
+    db.add_all([old, new])
+    await db.flush()
+
+    manager, redis = emitter
+
+    async def get_redis_client():
+        return redis
+
+    async for _ in message_streaming.stream_generator(
+        sse_emitter_manager=manager,
+        reasoning_service=_FakeReasoning(result={"stop_reason": "stop"}),
+        get_redis_client=get_redis_client,
+        conv_id=conv.id,
+        user_id=1,
+        model="gpt",
+        assistant_msg_id=new.id,
+        user_msg_id=user.id,
+        stream_session_id="start-siblings",
+        idem_key=_IDEM_KEY,
+    ):
+        pass
+    await asyncio.gather(*tuple(message_streaming._pending_tasks))
+
+    events = await _cached_events(redis, "start-siblings")
+    start = next(ev for ev in events if ev["event"] == "message.start")
+    assistant_message = start["data"]["assistantMessage"]
+    assert (assistant_message["siblingIndex"], assistant_message["siblingCount"]) == (2, 2)
+    # 同父兄弟按 id 升序：旧回复是第 1 条，新回复是第 2 条
+    assert start["data"]["userMessage"]["siblingIndex"] is None
 
 
 async def test_long_reasoning_keeps_pending_alive(emitter):
@@ -207,7 +318,7 @@ async def test_long_reasoning_keeps_pending_alive(emitter):
     assert await redis.ttl(_IDEM_KEY) > 0
 
     await task
-    assert json.loads(await redis.get(_IDEM_KEY)) == {"messageId": 100, "status": 2}
+    assert json.loads(await redis.get(_IDEM_KEY)) == {"messageId": 100, "status": "completed"}
 
 
 async def test_completed_write_keeps_other_attempt_pending(emitter):

@@ -12,7 +12,6 @@ from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.database import get_db_session
-from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.repository.file_repository import file_repository
 from app.service.ai_artifact_service import ai_artifact_service
 from app.service.prediction.prediction_service import prediction_service
@@ -67,10 +66,11 @@ async def process_batch(
     model: str,
     stream_session_id: str,
 ) -> dict:
-    """批量处理调度：按策略调度预测 → 注册产物 → 推送进度 → 生成摘要
+    """批量处理调度：按策略调度预测 → 注册产物 → 生成摘要
 
     预测服务为异步任务模式（立即返回 taskId），产物先注册、结果由后台任务完成，
-    用户通过产物/进度事件感知处理进度。评估需参考图且依赖预测完成，暂不执行。
+    用户经产物列表感知处理进度（会话流只承载契约内的块/计划/中断事件）。
+    评估需参考图且依赖预测完成，暂不执行。
     """
     image_urls = image_urls[:BATCH_MAX_IMAGES]
     total = len(image_urls)
@@ -100,13 +100,9 @@ async def process_batch(
                 )
             )
 
-    summary = _build_summary(total, results)
-    await sse_emitter_manager.send_event(
-        stream_session_id,
-        "content_block.delta",
-        {"index": total, "total": total, "status": "summary", "summary": summary},
-    )
-    return summary
+    # 批处理进度不再走会话 SSE：契约只允许块/计划/中断/用量/推荐/终帧八类事件，
+    # 逐图进度由工具返回值（summary）与产物（artifact）承载
+    return _build_summary(total, results)
 
 
 async def _run_parallel(
@@ -175,17 +171,6 @@ async def _process_single(
         metrics = None
         metric_artifact_id = None
 
-        await sse_emitter_manager.send_event(
-            stream_session_id,
-            "content_block.delta",
-            {
-                "index": index,
-                "total": total,
-                "imageId": image_url,
-                "status": "success",
-                "artifactId": artifact.id,
-            },
-        )
         return {
             "index": index,
             "image_id": image_url,
@@ -197,17 +182,6 @@ async def _process_single(
         }
     except Exception as e:
         logger.warning("Batch process failed for image %d: %s", index, e)
-        await sse_emitter_manager.send_event(
-            stream_session_id,
-            "content_block.delta",
-            {
-                "index": index,
-                "total": total,
-                "imageId": image_url,
-                "status": "failed",
-                "artifactId": None,
-            },
-        )
         return {
             "index": index,
             "image_id": image_url,

@@ -6,6 +6,7 @@
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 
 import pytest
 
@@ -18,13 +19,22 @@ from app.service.ai.service import reasoning_service as rs_mod
 
 
 async def test_stop_sets_flag_and_cleans_up(mock_redis, monkeypatch):
-    calls = {"stop_stream": [], "update_status": [], "cancel_task": [], "clear_interrupt": []}
+    calls = {
+        "stop_stream": [],
+        "update_status": [],
+        "update_pending_interrupt": [],
+        "cancel_task": [],
+        "clear_interrupt": [],
+    }
 
     async def _stop_stream(sid):
         calls["stop_stream"].append(sid)
 
     async def _update_status(db, msg_id, status, error=None):
         calls["update_status"].append((msg_id, status))
+
+    async def _update_pending(db, msg_id, interrupt):
+        calls["update_pending_interrupt"].append((msg_id, interrupt))
 
     async def _cancel_task(task_id):
         calls["cancel_task"].append(task_id)
@@ -34,18 +44,60 @@ async def test_stop_sets_flag_and_cleans_up(mock_redis, monkeypatch):
 
     monkeypatch.setattr(rs_mod.sse_emitter_manager, "stop_stream", _stop_stream)
     monkeypatch.setattr(rs_mod.ai_message_repository, "update_status", _update_status)
+    monkeypatch.setattr(
+        rs_mod.ai_message_repository, "update_pending_interrupt", _update_pending
+    )
     monkeypatch.setattr(rs_mod.async_resume, "cancel_task", _cancel_task)
     monkeypatch.setattr(rs_mod.interrupt_handler, "clear_interrupt", _clear_interrupt)
 
     await rs_mod.reasoning_service.stop(1, 2, "s1")
 
     assert calls["stop_stream"] == ["s1"]
-    assert calls["update_status"] == [(2, 4)]
+    assert calls["update_status"] == [(2, "canceled")]
+    # 停止即终结：中断点一并清空，不再可续
+    assert calls["update_pending_interrupt"] == [(2, None)]
     assert calls["cancel_task"] == ["s1"]
     assert calls["clear_interrupt"] == ["1:2"]
     # 协作式停止标志已落 Redis：推理循环据此在事件间隙中断收尾
     flag = await mock_redis.get(rs_mod.reasoning_service._stop_key(1, 2))
     assert flag in ("1", b"1")
+
+
+async def test_stop_flushes_active_blocks_snapshot(mock_redis, monkeypatch):
+    """停止前先把活跃流的块快照刷库并返回，避免停止响应拿空 blocks 覆盖前端。"""
+
+    class _Converter:
+        def blocks_snapshot(self):
+            return [{"id": "b1", "kind": "text", "seq": 1, "text": "已生成"}]
+
+    @asynccontextmanager
+    async def _db_session():
+        yield object()
+
+    saved = {}
+
+    async def _update_blocks(db, msg_id, blocks):
+        saved["blocks"] = blocks
+
+    async def _noop(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(rs_mod, "get_db_session", _db_session)
+    monkeypatch.setattr(rs_mod.ai_message_repository, "update_blocks", _update_blocks)
+    monkeypatch.setattr(rs_mod.ai_message_repository, "update_status", _noop)
+    monkeypatch.setattr(rs_mod.ai_message_repository, "update_pending_interrupt", _noop)
+    monkeypatch.setattr(rs_mod.sse_emitter_manager, "stop_stream", _noop)
+    monkeypatch.setattr(rs_mod.async_resume, "cancel_task", _noop)
+    monkeypatch.setattr(rs_mod.interrupt_handler, "clear_interrupt", _noop)
+
+    rs_mod.reasoning_service._converters[2] = _Converter()
+    try:
+        blocks = await rs_mod.reasoning_service.stop(1, 2, "s1")
+    finally:
+        rs_mod.reasoning_service._converters.pop(2, None)
+
+    assert blocks == [{"id": "b1", "kind": "text", "seq": 1, "text": "已生成"}]
+    assert saved["blocks"] == blocks
 
 
 async def test_cancel_task_clears_mapping_and_cancels():

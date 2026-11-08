@@ -126,34 +126,6 @@ def _new_task(
     }
 
 
-def to_wire_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    """把内部计划归一为对外 camelCase 形状（plan 事件与 plan_approve 中断的唯一出口）。
-
-    内部结构保持 snake_case（Redis 中断点与执行器直接消费），仅在 SSE 出口归一一次；
-    可选键（paradigm/toolHint/result）缺失即不下发，不塞 None。
-    """
-    tasks = []
-    for t in plan.get("tasks") or []:
-        task = {
-            "id": t.get("id"),
-            "description": t.get("description"),
-            "dependsOn": t.get("depends_on") or [],
-            "status": t.get("status", "pending"),
-        }
-        if t.get("paradigm") is not None:
-            task["paradigm"] = t["paradigm"]
-        if t.get("tool_hint") is not None:
-            task["toolHint"] = t["tool_hint"]
-        if t.get("result") is not None:
-            task["result"] = t["result"]
-        tasks.append(task)
-    return {
-        "tasks": tasks,
-        "status": plan.get("status", "pending"),
-        "revisions": plan.get("revisions") or [],
-    }
-
-
 # ── Planner ──────────────────────────────────────────
 
 

@@ -117,6 +117,19 @@ def _slim_input_snapshot(snapshot: dict | None) -> dict | None:
     return slim
 
 
+def _timeline_message(msg) -> TimelineMessage:
+    """消息实体 → 时间线展示模型：正文由 blocks 派生，状态为契约字符串。"""
+    return TimelineMessage(
+        id=msg.id,
+        role=msg.role,
+        text=msg.text,
+        status=msg.status,
+        model=msg.model,
+        input_tokens=msg.input_tokens or 0,
+        output_tokens=msg.output_tokens or 0,
+        create_time=msg.create_time,
+    )
+
 class AiObservabilityService:
     async def summary(self, db: AsyncSession) -> SummaryResult:
         """异常总览统计：状态分布 + 配额拒绝 + 高风险调用"""
@@ -308,6 +321,7 @@ class AiObservabilityService:
                     else [],
                     billing or [],
                     r["user"] if is_primary else None,
+                    r["assistant"] if is_primary else None,
                     include_raw=include_raw,
                 )
                 timeline_traces.append(
@@ -325,8 +339,8 @@ class AiObservabilityService:
                 )
             timeline_rounds.append(
                 TimelineRound(
-                    user_message=TimelineMessage.model_validate(r["user"]) if r["user"] else None,
-                    assistant_message=TimelineMessage.model_validate(r["assistant"])
+                    user_message=_timeline_message(r["user"]) if r["user"] else None,
+                    assistant_message=_timeline_message(r["assistant"])
                     if r["assistant"]
                     else None,
                     traces=timeline_traces,
@@ -390,6 +404,7 @@ class AiObservabilityService:
         thoughts: list,
         billing_rows: list,
         user_message,
+        assistant_message=None,
         *,
         include_raw: bool,
     ) -> list[TimelineEvent]:
@@ -438,22 +453,45 @@ class AiObservabilityService:
                     },
                 )
             )
-        events.extend(
-            TimelineEvent(
-                kind="tool_exec",
-                ts=t.create_time,
-                position=t.position,
-                tool=t.tool,
-                thought=t.thought,
-                tool_input=t.tool_input,
-                observation=t.observation,
-                status=t.status,
-                latency_ms=t.latency_ms,
-                agent_code=t.agent_code,
-                is_subagent=t.is_subagent,
+        if thoughts:
+            events.extend(
+                TimelineEvent(
+                    kind="tool_exec",
+                    ts=t.create_time,
+                    position=t.position,
+                    tool=t.tool,
+                    thought=t.thought,
+                    tool_input=t.tool_input,
+                    observation=t.observation,
+                    status=t.status,
+                    latency_ms=t.latency_ms,
+                    agent_code=t.agent_code,
+                    is_subagent=t.is_subagent,
+                )
+                for t in thoughts
             )
-            for t in thoughts
-        )
+        elif assistant_message is not None:
+            # 新链路不再写 sys_ai_agent_thought：工具步骤从消息 blocks 的 tool_use 块派生，
+            # 保证过程透明在 chat 读模型切换后仍有数据。
+            for block in assistant_message.blocks or []:
+                if not isinstance(block, dict) or block.get("kind") != "tool_use":
+                    continue
+                tool = block.get("tool") or {}
+                status = {"failed": 2, "skipped": 3}.get(tool.get("status"), 1)
+                events.append(
+                    TimelineEvent(
+                        kind="tool_exec",
+                        ts=trace.create_time,
+                        position=block.get("seq"),
+                        tool=tool.get("name"),
+                        tool_input=tool.get("input"),
+                        observation=tool.get("output") or tool.get("summary"),
+                        status=status,
+                        latency_ms=tool.get("latencyMs"),
+                        agent_code=tool.get("agentCode"),
+                        is_subagent=1 if tool.get("subAgent") else 0,
+                    )
+                )
         events.extend(
             TimelineEvent(
                 kind="billing",
@@ -473,7 +511,7 @@ class AiObservabilityService:
                 TimelineEvent(
                     kind="input",
                     ts=user_message.create_time,
-                    message=TimelineMessage.model_validate(user_message),
+                    message=_timeline_message(user_message),
                 )
             )
         events.sort(

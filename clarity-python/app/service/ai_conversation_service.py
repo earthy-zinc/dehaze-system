@@ -19,11 +19,10 @@ from app.infrastructure.llm.call.llm_client import llm_client
 from app.infrastructure.sse.sse_emitter_manager import sse_emitter_manager
 from app.models.entity.sys_ai_conversation import SysAiConversation
 from app.models.entity.sys_ai_message import SysAiMessage
+from app.models.schema.ai_contract_gen import Interrupt, Message
 from app.models.schema.ai_conversation import (
-    AgentThoughtResult,
     ConversationResult,
     MessageListResult,
-    MessageResult,
     MessageResume,
 )
 from app.models.schema.common import PageResult
@@ -39,6 +38,12 @@ from app.service.ai.middleware.interrupt_handler import interrupt_handler
 from app.service.ai.service.conversation_search_service import (
     defer_conversation_sync,
     search_conversations,
+)
+from app.service.ai.service.message_view import (
+    build_message_detail,
+    build_messages,
+    interrupt_view,
+    load_sibling_positions,
 )
 from app.service.ai.service.model_defaults import resolve_default_chat_model
 from app.service.ai.service.reasoning_service import reasoning_service
@@ -145,7 +150,9 @@ class AiConversationService:
     ) -> None:
         """后台任务：恢复中断推理，结束后关闭 SSE 流"""
         try:
-            await self.reasoning_service.resume(conv_id, user_id, msg_id, resume_data)
+            await self.reasoning_service.resume(
+                conv_id, user_id, msg_id, resume_data, stream_session_id
+            )
         except Exception as e:
             logger.error("AI 推理恢复失败: %s", e, exc_info=True)
         finally:
@@ -297,13 +304,13 @@ class AiConversationService:
             result.token_consumed = stat.get("token", 0)
             result.credits_consumed = stat.get("credits", 0)
             statuses = anomaly_status.get(result.id, set())
-            if 3 in statuses:
+            if "failed" in statuses:
                 result.anomaly_type, result.anomaly_label = "failed", "存在失败消息"
             elif result.id in quota_conv_ids:
                 result.anomaly_type, result.anomaly_label = "quota", "配额不足中断"
             elif result.id in risky_tool_conv_ids:
                 result.anomaly_type, result.anomaly_label = "risky_tool", "存在高风险工具调用"
-            elif 4 in statuses:
+            elif "canceled" in statuses:
                 result.anomaly_type, result.anomaly_label = "canceled", "存在已取消消息"
 
     async def _attach_matched_messages(
@@ -467,9 +474,16 @@ class AiConversationService:
         """会话消息列表（游标分页，admin=True 为管理端审计视角，
         路由层已校验 ai:conversation:audit）。
 
-        按 id 倒序取一页（id 单调自增等价时间倒序）：before 为游标，仅返回 id < before 的
-        消息，缺省取最新一页；hasMore 表示是否还存在更早消息；total 为会话消息总数（展示用）。
-        assistant 消息批量附带推理步骤（思考链，position 正序）。
+        self 视角（默认）只返回当前激活链：以会话 current_branch_message_id 为链尾沿
+        parent_message_id 回溯（指针为空/悬空/指向已删消息时回退到会话最大 id 的未删
+        消息），链即用户实际看到的对话。分页在链上切：before 之前的最后 limit 条按 id
+        倒序返回，hasMore 表示链上是否还有更早消息，total 为链长——分支消息不再混入
+        列表，前端无需再做"每个分叉取最新"的选择算法。
+
+        admin 视角保持全量分支分页（审计需要看到所有分叉），total 为会话消息总数。
+        siblingIndex/siblingCount 仅在 self 视角的 assistant 消息上填充。
+
+        出参为契约 Message：内容在 blocks，计划与中断挂在消息上，刷新后与流式终态同形。
         """
         if admin:
             conv = await self.ai_conversation_repository.get_by_id(db, conv_id)
@@ -477,34 +491,76 @@ class AiConversationService:
             conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
-        msgs, total, has_more = await self.ai_message_repository.list_by_conversation_cursor(
-            db, conv_id, before, limit
+        if admin:
+            msgs, total, has_more = await self.ai_message_repository.list_by_conversation_cursor(
+                db, conv_id, before, limit
+            )
+            # 契约 Message 一次批量装配（产物 ID 单次 IN 查询，避免逐条 N+1）
+            return MessageListResult(
+                list=await build_messages(db, msgs), total=total, hasMore=has_more
+            )
+        chain = await self._load_active_chain(db, conv)
+        eligible = chain if before is None else [m for m in chain if m.id < before]
+        has_more = len(eligible) > limit
+        # 链回溯按 id 升序，接口契约仍按 id 倒序返回（最新一页在前）
+        page = list(reversed(eligible[-limit:]))
+        sibling_positions = await load_sibling_positions(
+            self.ai_message_repository, db, conv_id, page
         )
-        assistant_ids = [m.id for m in msgs if m.role == "assistant"]
-        thoughts_map = await ai_agent_thought_repository.list_by_messages(db, assistant_ids)
-        results = []
-        for m in msgs:
-            r = MessageResult.model_validate(m)
-            r.thoughts = [AgentThoughtResult.model_validate(t) for t in thoughts_map.get(m.id, [])]
-            results.append(r)
-        return MessageListResult(list=results, total=total, hasMore=has_more)
+        return MessageListResult(
+            list=await build_messages(db, page, sibling_positions=sibling_positions),
+            total=len(chain),
+            hasMore=has_more,
+        )
+
+    async def _load_active_chain(
+        self,
+        db: AsyncSession,
+        conv: SysAiConversation,
+    ) -> list[SysAiMessage]:
+        """当前激活链（id 升序）：指针为空/悬空/指向已删消息时回退到最新未删消息。"""
+        tail_id = conv.current_branch_message_id
+        if tail_id is not None:
+            tail = await self.ai_message_repository.get_by_id(db, tail_id)
+            if tail is None or tail.conversation_id != conv.id:
+                tail_id = None
+        if tail_id is None:
+            tail_id = await self.ai_message_repository.get_max_message_id(db, conv.id)
+        if tail_id is None:
+            return []
+        return await self.ai_message_repository.get_chain_by_id(db, conv.id, tail_id)
 
     async def get_message(
         self, db: AsyncSession, msg_id: int, user_id: int, admin: bool = False
     ) -> dict:
-        """消息详情（含推理步骤与过程链）。admin=True 为管理端审计视角：不限归属用户"""
+        """消息详情。admin=True 为管理端审计视角：不限归属用户"""
+        msg = await self._load_message(db, msg_id, user_id, admin=admin)
+        positions = await load_sibling_positions(
+            self.ai_message_repository, db, msg.conversation_id, [msg]
+        )
+        detail = await build_message_detail(db, msg, sibling_position=positions.get(msg.id))
+        return detail.model_dump(by_alias=True, mode="json")
+
+    async def _load_message(
+        self, db: AsyncSession, msg_id: int, user_id: int, *, admin: bool = False
+    ) -> SysAiMessage:
         if admin:
             msg = await self.ai_message_repository.get_by_id(db, msg_id)
         else:
             msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
-        result = MessageResult.model_validate(msg).model_dump(by_alias=True)
-        thoughts = await self.ai_agent_thought_repository.list_by_message(db, msg_id)
-        result["thoughts"] = [
-            AgentThoughtResult.model_validate(t).model_dump(by_alias=True) for t in thoughts
-        ]
-        return result
+        return msg
+
+    async def get_interrupt(
+        self, db: AsyncSession, msg_id: int, user_id: int, admin: bool = False
+    ) -> Interrupt | None:
+        """查询消息的待恢复中断：无中断返回 null，已过期返回 actionable=false。
+
+        DB 的 pending_interrupt 是事实源：刷新、重启、跨实例后仍能查到同一条中断。
+        """
+        msg = await self._load_message(db, msg_id, user_id, admin=admin)
+        return interrupt_view(msg.pending_interrupt)
 
     async def get_branches(
         self,
@@ -512,16 +568,49 @@ class AiConversationService:
         conv_id: int,
         user_id: int,
         msg_id: int,
-    ) -> list[MessageResult]:
-        """查询某消息的所有子消息（分支列表），按时间倒序"""
+    ) -> list[Message]:
+        """查询某消息的分支回复（assistant 子消息），按时间倒序。
+
+        只列 assistant：user 子消息不是可切换的分支（分支切换器选择的是助手回复）；
+        删除校验仍取全部子消息，两者口径不同见 delete_message。
+        """
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg or msg.conversation_id != conv_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
-        children = await self.ai_message_repository.get_children(db, conv_id, msg_id)
-        return [MessageResult.model_validate(m) for m in children]
+        children = await self.ai_message_repository.get_children(
+            db, conv_id, msg_id, role="assistant"
+        )
+        return await build_messages(db, children)
+
+    async def _assert_not_suspended(self, db: AsyncSession, conv: SysAiConversation) -> None:
+        """当前指针存在待恢复中断时拒绝改变会话状态。
+
+        why: 推理中断时图暂停、SSE 流挂起等待 resume，此时切换分支或重新生成会改变
+        会话上下文，与 send/edit 的挂起校验同口径，避免闯入挂起流。
+
+        Redis 中断句柄只是同一次运行内的快速通道，DB 的 pending_interrupt 才是事实源：
+        句柄丢失（重启/换实例）时继续按当前指针消息判定——status=awaiting_input 且
+        interrupt_view 判定 actionable（未过期）仍视为挂起，否则待确认中断会因切换分支
+        失去入口，用户再也无法恢复或停止。
+        """
+        tail_id = conv.current_branch_message_id
+        if tail_id is None:
+            return
+        if await self.interrupt_handler.get_interrupt(f"{conv.id}:{tail_id}"):
+            raise BusinessException(
+                ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止"
+            )
+        msg = await self.ai_message_repository.get_by_id(db, tail_id)
+        if msg is None or msg.conversation_id != conv.id or msg.status != "awaiting_input":
+            return
+        pending = interrupt_view(msg.pending_interrupt)
+        if pending is not None and pending.actionable:
+            raise BusinessException(
+                ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止"
+            )
 
     async def switch_branch(
         self,
@@ -530,13 +619,18 @@ class AiConversationService:
         user_id: int,
         msg_id: int,
     ) -> ConversationResult:
-        """切换当前激活分支（更新 current_branch_message_id）"""
+        """切换当前激活分支（更新 current_branch_message_id）。
+
+        挂起期间拒绝切换：send/regenerate 的挂起校验依赖当前指针，指针移走后检查
+        对象随之改变，会让待确认的中断失去入口。
+        """
         conv = await self.ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
         if not conv:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
         msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg or msg.conversation_id != conv_id:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
+        await self._assert_not_suspended(db, conv)
         await self.ai_conversation_repository.update_current_branch(db, conv_id, msg_id)
         conv.current_branch_message_id = msg_id
         return ConversationResult.model_validate(conv)
@@ -562,12 +656,7 @@ class AiConversationService:
         if conv.status != 1:
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "会话已归档，无法重新生成")
         # 中断挂起（待确认）时拒绝重新生成，避免闯入挂起流
-        if conv.current_branch_message_id and await self.interrupt_handler.get_interrupt(
-            f"{conv.id}:{conv.current_branch_message_id}"
-        ):
-            raise BusinessException(
-                ResultCode.BUSINESS_ERROR, "会话有未完成的中断确认，请先确认或停止"
-            )
+        await self._assert_not_suspended(db, conv)
         if not await self.sse_emitter_manager.acquire_lock(conv.id):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
@@ -583,9 +672,9 @@ class AiConversationService:
                 conversation_id=msg.conversation_id,
                 parent_message_id=msg.parent_message_id,
                 role="assistant",
-                content="",
                 model=model,
-                status=1,
+                status="running",
+                blocks=[],
                 task_id=stream_session_id,
             )
             new_msg = await self.ai_message_repository.create(db, new_msg)
@@ -610,6 +699,8 @@ class AiConversationService:
                 user_id=user_id,
                 model=model,
                 assistant_msg_id=new_msg.id,
+                # 契约 message.start 必须携带本轮 user 消息：重生成沿用原 assistant 的父 user
+                user_msg_id=msg.parent_message_id,
                 stream_session_id=stream_session_id,
                 idem_key=idem_key,
             ),
@@ -617,24 +708,39 @@ class AiConversationService:
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )
 
-    async def stop_message(self, db: AsyncSession, msg_id: int, user_id: int) -> MessageResult:
+    async def stop_message(self, db: AsyncSession, msg_id: int, user_id: int) -> Message:
         msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
-        if msg.role != "assistant" or msg.status != 1:
+        # 中断挂起（awaiting_input）同样允许停止：推理已暂停等待确认，用户放弃本轮
+        # 时必须能终结消息，否则会话被"待确认"永久卡住（新消息与重新生成均被拒绝）
+        if msg.role != "assistant" or msg.status not in ("running", "awaiting_input"):
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "当前消息不可停止")
         # 任务标识优先级：async_wait 批量任务 ID（task_id 列）> 消息→流会话反查键
-        # （send 路径 task_id 不存流会话 ID，见 message_streaming 登记键）
+        # （send/resume 路径 task_id 不存流会话 ID，见 message_streaming 登记键）
         target_id = msg.task_id
         if not target_id:
             redis = await self.get_redis_client()
             target_id = await redis.get(f"ai:msg:stream:{msg_id}")
+        blocks = None
         if target_id:
-            await self.reasoning_service.stop(msg.conversation_id, msg_id, target_id)
+            # 推理侧先把当前块快照刷库并返回：流式期间 blocks 只在内存累积，
+            # 直接读库会拿到 []，响应会把前端已渲染内容清空
+            blocks = await self.reasoning_service.stop(msg.conversation_id, msg_id, target_id)
         else:
-            await self.ai_message_repository.update_status(db, msg_id, 4)
-        msg.status = 4
-        return MessageResult.model_validate(msg)
+            # 无活跃流（中断挂起且流会话键已过期）：仍须清中断点并终结，
+            # 否则 pending_interrupt 留在库里，刷新后仍显示"待确认"
+            await self.interrupt_handler.clear_interrupt(f"{msg.conversation_id}:{msg_id}")
+            await self.ai_message_repository.update_status(db, msg_id, "canceled")
+            await self.ai_message_repository.update_pending_interrupt(db, msg_id, None)
+        if blocks is not None:
+            msg.blocks = blocks
+        msg.status = "canceled"
+        msg.pending_interrupt = None
+        positions = await load_sibling_positions(
+            self.ai_message_repository, db, msg.conversation_id, [msg]
+        )
+        return await build_message_detail(db, msg, sibling_position=positions.get(msg.id))
 
     async def resume_message(
         self,
@@ -648,29 +754,41 @@ class AiConversationService:
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
         conv_id = msg.conversation_id
-        thread_id = f"{conv_id}:{msg_id}"
-        interrupt = await self.interrupt_handler.get_interrupt(thread_id)
-        if not interrupt:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "未找到中断点，无法恢复")
-        stream_session_id = (interrupt.get("data") or {}).get("stream_session_id", "")
-        if not stream_session_id:
-            raise BusinessException(ResultCode.BUSINESS_ERROR, "中断点缺少流会话，无法恢复")
+        # 中断以 DB 的 pending_interrupt 为准：Redis 句柄丢失（重启/换实例）不影响恢复
+        pending = interrupt_view(msg.pending_interrupt)
+        if pending is None:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "未找到中断，无法恢复")
+        if not pending.actionable:
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "中断已过期，无法恢复")
         if not await self.sse_emitter_manager.acquire_lock(conv_id):
             raise BusinessException(ResultCode.BUSINESS_ERROR, "该会话正在生成回复，请稍后再试")
 
         # 按中断类型组装恢复载荷：
         # - confirm：确认/拒绝算法推荐，需 confirmed + 可选 modelId
-        # - plan_approve：计划确认/干预（Plan-and-Execute），透传 plan_edit
+        # - plan_approve：计划确认/干预（Plan-and-Execute），透传 planEdit
         # - quota：用户升级 VIP 后直接恢复，无需业务载荷（reasoning 层转 Command(resume=True)）
         # - async_wait：由任务完成回调自动恢复，不走本端点（此处兜底按空载荷继续）
-        if interrupt.get("type") == "confirm":
+        if pending.type == "confirm":
             if form.confirm is None:
+                await self.sse_emitter_manager.release_lock(conv_id)
                 raise BusinessException(ResultCode.PARAM_ERROR, "confirm 中断必须携带确认结果")
             resume_data = {"confirmed": form.confirm, **(form.params or {})}
-        elif interrupt.get("type") == "plan_approve":
+        elif pending.type == "plan_approve":
             resume_data = {"plan_edit": form.plan_edit, **(form.params or {})}
         else:
             resume_data = form.params or {}
+        # 续流用新的流会话：旧流已在上一次终结时关闭，续写下发必须落在新流上
+        stream_session_id = str(uuid4())
+        # 重绑消息→流反查键：停止端点按该键定位当前续流，否则仍停在旧流上
+        # （旧流已关闭，停止标志虽生效但客户端收不到终帧）；同时清掉 async_wait
+        # 遗留的批量任务 ID（任务已完成，停止应作用于当前流而非已结束的后台任务）
+        msg.task_id = None
+        await self.ai_message_repository.update_task_id(db, msg_id, None)
+        redis = await self.get_redis_client()
+        await message_streaming.bind_message_stream(redis, msg_id, stream_session_id)
+        # 显式提交：停止端点用独立 session 读 task_id，不提交会读到已失效的旧任务标识
+        await db.commit()
+        await self.sse_emitter_manager.register_stream(stream_session_id)
         task = asyncio.create_task(
             self._run_resume(conv_id, user_id, msg_id, resume_data, stream_session_id)
         )
@@ -681,13 +799,43 @@ class AiConversationService:
         )
 
     async def delete_message(self, db: AsyncSession, msg_id: int, user_id: int) -> None:
-        """删除助手消息（软删除）；仅 assistant 消息可删，删除后不参与上下文"""
+        """删除助手消息（软删除）。
+
+        删除策略（user/assistant 交替，不做链桥接）：
+        - 仍有未删子消息（非叶子）拒绝删除：中间节点软删会让后续消息失去父链、历史不可读，
+          须先删该回复之后的对话；
+        - 被删消息恰为当前分支指针时，指针回退到其父消息（可为空），避免指针悬空导致
+          链回溯在已删节点断开；
+        - 非激活分支上的旧消息允许删除，指针不动。
+
+        并发：进入临界区先对会话行 SELECT ... FOR UPDATE——children 校验、软删、指针回退
+        全部在持锁期间完成，与并发 send 的 update_last_message 天然串行（同一会话行互斥），
+        指针回退再用 CAS 兜底，避免本请求读到的旧指针覆盖 send 已推进的新指针。
+        """
         msg = await self.ai_message_repository.get_by_id_and_user(db, msg_id, user_id)
         if not msg:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "消息不存在")
         if msg.role != "assistant":
             raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "仅助手消息可删除")
+        conv = await self.ai_conversation_repository.get_by_id_and_user(
+            db, msg.conversation_id, user_id, for_update=True
+        )
+        if not conv:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
+        children = await self.ai_message_repository.get_children(db, msg.conversation_id, msg.id)
+        if children:
+            raise BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "请先删除该回复之后的对话")
         await self.ai_message_repository.soft_delete_by_ids(db, [msg.id])
+        # 指针回退与软删同事务提交（事务边界由 DBSessionMiddleware 统一管理）
+        if conv.current_branch_message_id == msg.id:
+            moved = await self.ai_conversation_repository.update_current_branch_if(
+                db,
+                conv.id,
+                expected_message_id=msg.id,
+                message_id=msg.parent_message_id,
+            )
+            if moved:
+                conv.current_branch_message_id = msg.parent_message_id
 
     # ==================== 会话生命周期扩展 ====================
 
@@ -826,7 +974,10 @@ class AiConversationService:
         user_id: int,
         fmt: str = "markdown",
     ) -> StreamingResponse:
-        """导出会话：沿当前激活分支回溯全部消息，过滤推理/工具调用，仅导 user/assistant content。"""
+        """导出会话：沿当前激活分支回溯全部消息，仅导 user/assistant 的正文块。
+
+        正文由 blocks 中的 text 块按 seq 拼接（思考与工具块不导出）。
+        """
         conv = await self._get_owned_active(db, conv_id, user_id)
         tail_msg_id = conv.current_branch_message_id
         messages: list[SysAiMessage] = []
@@ -855,7 +1006,7 @@ class AiConversationService:
                     "messages": [
                         {
                             "role": m.role,
-                            "content": m.content or "",
+                            "content": m.text,
                             "create_time": m.create_time.isoformat() if m.create_time else None,
                         }
                         for m in messages
@@ -871,7 +1022,7 @@ class AiConversationService:
             for m in messages:
                 lines.append(f"## {role_label.get(m.role, m.role)}")
                 lines.append("")
-                lines.append(m.content or "")
+                lines.append(m.text)
                 lines.append("")
             payload = "\n".join(lines)
             media_type = "text/markdown"

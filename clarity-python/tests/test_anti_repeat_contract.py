@@ -30,7 +30,7 @@ from app.middleware.anti_repeat import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 JAVA_CONTROLLER_DIR = (
-    REPO_ROOT / "clarity-java" / "src" / "main" / "java" / "com" / "pei" / "dehaze" / "controller"
+    REPO_ROOT / "clarity-java" / "src" / "main" / "java" / "com" / "pei" / "clarity" / "controller"
 )
 GO_ROUTER_DIR = REPO_ROOT / "clarity-go" / "internal" / "router"
 
@@ -42,13 +42,15 @@ JAVA_ASPECT = (
     / "java"
     / "com"
     / "pei"
-    / "dehaze"
+    / "clarity"
     / "plugin"
     / "dupsubmit"
     / "aspect"
     / "DuplicateSubmitAspect.java"
 )
-GO_MIDDLEWARE = REPO_ROOT / "clarity-go" / "pkg" / "server" / "gin" / "middleware" / "anti_repeat.go"
+GO_MIDDLEWARE = (
+    REPO_ROOT / "clarity-go" / "pkg" / "server" / "gin" / "middleware" / "anti_repeat.go"
+)
 PY_MIDDLEWARE = REPO_ROOT / "clarity-python" / "app" / "middleware" / "anti_repeat.py"
 
 # 期望白名单（单一信息源）：8 条。入选标准＝创建/导入类且重复提交有副作用；

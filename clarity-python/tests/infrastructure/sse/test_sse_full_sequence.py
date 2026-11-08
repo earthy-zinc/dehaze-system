@@ -6,16 +6,28 @@ from app.infrastructure.sse.sse_event_converter import SseEventConverter
 from tests.stubs.fakes import RecorderEmitter
 
 
+class _Session:
+    async def __aenter__(self):
+        return object()
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _Repo:
+    async def update_plan(self, db, msg_id, plan):
+        return None
+
+    async def update_pending_interrupt(self, db, msg_id, interrupt):
+        return None
+
+
 def _make_converter(emitter, monkeypatch):
     ctx = {"stream_session_id": "s1", "message_id": 7, "conversation_id": 100}
     monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter)
-
-    async def _noop_create(db, **kw):
-        return None
-
+    monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.ai_message_repository", _Repo())
     monkeypatch.setattr(
-        "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository",
-        type("R", (), {"create_thought": staticmethod(_noop_create)})(),
+        "app.infrastructure.sse.sse_event_converter.get_db_session", lambda: _Session()
     )
     return SseEventConverter(ctx)
 
@@ -25,10 +37,7 @@ class TestFullSequence:
         emitter = RecorderEmitter()
         converter = _make_converter(emitter, monkeypatch)
 
-        await emitter.send_event(
-            "s1", "message.start", {"messageId": 7, "conversationId": 100, "model": "gpt"}
-        )
-
+        await emitter.send_event("s1", "message.start", {"streamSessionId": "s1"})
         await converter.handle(
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="你好")]}
         )
@@ -36,42 +45,28 @@ class TestFullSequence:
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="世界")]}
         )
         await converter.finish()
-        await emitter.send_event(
-            "s1",
-            "message.end",
-            {
-                "stopReason": "stop",
-                "usage": {
-                    "inputTokens": 5,
-                    "outputTokens": 10,
-                    "cachedInputTokens": 2,
-                    "credits": 3,
-                },
-            },
-        )
+        usage = {"inputTokens": 5, "outputTokens": 10, "cachedInputTokens": 2, "credits": 3}
+        await emitter.send_event("s1", "usage", {"messageId": 7, "usage": usage})
+        await emitter.send_message_end("s1", message_id=7, status="completed", usage=usage)
 
         types = [e[0] for e in emitter.events]
         assert types == [
             "message.start",
-            "content_block.start",
-            "content_block.delta",
-            "content_block.delta",
-            "content_block.stop",
+            "block.start",
+            "block.delta",
+            "block.delta",
+            "block.stop",
+            "usage",
             "message.end",
         ]
-        assert emitter.events[0][1] == {"messageId": 7, "conversationId": 100, "model": "gpt"}
-        assert emitter.events[1][1] == {"index": 0, "type": "text"}
-        assert emitter.events[2][1]["delta"] == {"type": "text_delta", "text": "你好"}
-        assert emitter.events[4][1] == {"index": 0}
-        assert emitter.events[5][1]["stopReason"] == "stop"
-        assert emitter.events[5][1]["usage"] == {
-            "inputTokens": 5,
-            "outputTokens": 10,
-            "cachedInputTokens": 2,
-            "credits": 3,
+        assert emitter.events[1][1]["block"]["kind"] == "text"
+        assert emitter.events[-1][1] == {
+            "messageId": 7,
+            "status": "completed",
+            "usage": usage,
         }
 
-    async def test_tool_reply_sequence_with_thought(self, monkeypatch):
+    async def test_tool_reply_sequence(self, monkeypatch):
         emitter = RecorderEmitter()
         converter = _make_converter(emitter, monkeypatch)
 
@@ -98,20 +93,18 @@ class TestFullSequence:
             }
         )
         await converter.finish()
-        await emitter.send_event("s1", "message.end", {"stopReason": "tool_calls", "usage": {}})
+        await emitter.send_message_end("s1", message_id=7, status="completed")
 
         types = [e[0] for e in emitter.events]
-        # 工具调用同样走完整内容块生命周期：start(type=tool_use, index≥2, 带 id/name) → delta → stop
-        assert emitter.events[0] == (
-            "content_block.start",
-            {"index": 2, "type": "tool_use", "id": "c1", "name": "search"},
-        )
-        assert ("content_block.stop", {"index": 2}) in emitter.events
-        assert types.index("thought") < types.index("message.end")
-        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
-        assert delta[1]["index"] == 2
-        assert delta[1]["delta"]["type"] == "input_json_delta"
-        assert emitter.events[-1][1]["stopReason"] == "tool_calls"
+        assert types == [
+            "block.start",
+            "block.delta",
+            "block.delta",
+            "block.stop",
+            "message.end",
+        ]
+        assert emitter.events[0][1]["block"]["tool"]["callId"] == "c1"
+        assert emitter.events[3][1]["block"]["tool"]["input"] == {"q": "雾"}
 
     async def test_interrupt_before_message_end(self, monkeypatch):
         emitter = RecorderEmitter()
@@ -124,51 +117,22 @@ class TestFullSequence:
                 "ns": [],
                 "data": {
                     "__interrupt__": [
-                        Interrupt(
-                            value={
-                                "type": "confirm",
-                                "data": {"artifactId": 5, "recommendation": "x"},
-                            }
-                        )
+                        Interrupt(value={"type": "confirm", "data": {"artifactId": 5}})
                     ]
                 },
             }
         )
-        await emitter.send_event("s1", "message.end", {"stopReason": "stop", "usage": {}})
+        await emitter.send_message_end("s1", message_id=7, status="awaiting_input")
         types = [e[0] for e in emitter.events]
-        assert "interrupt" in types
-        assert types.index("interrupt") < types.index("message.end")
-        assert emitter.events[0][1] == {
-            "type": "confirm",
-            "data": {"artifactId": 5, "recommendation": "x"},
-        }
+        assert types == ["interrupt", "message.end"]
+        assert emitter.events[1][1]["status"] == "awaiting_input"
 
-    async def test_interrupt_defaults_type_confirm(self, monkeypatch):
-        emitter = RecorderEmitter()
-        converter = _make_converter(emitter, monkeypatch)
-        from langgraph.types import Interrupt
-
-        await converter.handle(
-            {
-                "type": "updates",
-                "ns": [],
-                "data": {"__interrupt__": [Interrupt(value={"artifactId": 7})]},
-            }
-        )
-        assert emitter.events[0][1] == {
-            "type": "confirm",
-            "data": {"artifactId": 7},
-        }
-
-    async def test_no_content_no_content_block(self, monkeypatch):
+    async def test_no_content_no_block(self, monkeypatch):
         emitter = RecorderEmitter()
         converter = _make_converter(emitter, monkeypatch)
         await converter.finish()
-        await emitter.send_event("s1", "message.end", {"stopReason": "stop", "usage": {}})
-        types = [e[0] for e in emitter.events]
-        assert types == ["message.end"]
-        assert "content_block.start" not in types
-        assert "content_block.stop" not in types
+        await emitter.send_message_end("s1", message_id=7, status="completed")
+        assert [e[0] for e in emitter.events] == ["message.end"]
 
 
 class TestStreamTimeoutStateMachine:

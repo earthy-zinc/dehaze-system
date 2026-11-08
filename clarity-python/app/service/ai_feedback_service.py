@@ -8,13 +8,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.models.schema.ai_contract_gen import Feedback
 from app.models.schema.ai_feedback import FeedbackCreateRequest, FeedbackResult
+from app.repository.ai_conversation_repository import ai_conversation_repository
 from app.repository.ai_message_feedback_repository import ai_message_feedback_repository
 from app.repository.ai_message_repository import ai_message_repository
 
 logger = logging.getLogger(__name__)
 
 FEEDBACK_VALID_DAYS = 30
+
+
+def _iso(value: datetime | None) -> str | None:
+    """契约时间统一为本地 ISO-8601（秒精度），与消息读模型同口径。"""
+    return value.strftime("%Y-%m-%dT%H:%M:%S") if value else None
+
 
 # 标签白名单（对齐需求规格 §2.9.3）
 LIKE_TAGS = {"accurate", "detailed", "concise", "creative"}
@@ -134,6 +142,38 @@ class AiFeedbackService:
         if not feedback:
             return None
         return FeedbackResult.model_validate(feedback)
+
+    async def list_conversation_feedback(
+        self,
+        db: AsyncSession,
+        conv_id: int,
+        user_id: int,
+    ) -> list[Feedback]:
+        """当前用户在会话下的全部反馈（一次查询、不分页），供进入会话时批量回填。
+
+        归属校验与单条反馈接口一致：会话须属于当前用户，否则 A0401；返回本人数据，
+        不暴露其他用户的反馈。
+        """
+        conv = await ai_conversation_repository.get_by_id_and_user(db, conv_id, user_id)
+        if not conv:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在")
+        rows = await ai_message_feedback_repository.list_by_user_and_conversation(
+            db, user_id, conv_id
+        )
+        return [
+            Feedback(
+                id=row.id,
+                messageId=row.message_id,
+                userId=row.user_id,
+                conversationId=row.conversation_id,
+                rating=row.rating,
+                tags=list(row.tags) if isinstance(row.tags, list) else None,
+                comment=row.comment,
+                createTime=_iso(row.create_time),
+                updateTime=_iso(row.update_time),
+            )
+            for row in rows
+        ]
 
     async def revoke_feedback(
         self,

@@ -11,6 +11,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.llm.call.llm_client import llm_client
+from app.models.entity.sys_ai_message import blocks_context_text
 from app.repository.ai_message_repository import ai_message_repository
 from app.repository.ai_model_repository import ai_model_repository
 from app.repository.knowledge_base_repository import knowledge_base_repository
@@ -162,9 +163,9 @@ class ContextManager:
     async def _load_candidate_messages(db: AsyncSession, conv) -> list[dict]:
         """加载分支链上的候选对话历史（沿 current_branch_message_id 回溯）。
 
-        过滤已软删行，只取 user/assistant 且 content 非空，按时间正序。
-        工具调用结果（role=tool）折叠为文本追加到前一条 assistant 消息，
-        使后续轮次模型能看到历史工具调用结果；保留 message_id 以支撑产物引用关联。
+        过滤已软删行，只取有正文的 user/assistant 消息，按时间正序。
+        正文由 blocks 派生（assistant 的工具调用结果折叠回本轮文本，使后续轮次
+        模型仍能看到工具产出）；保留 message_id 以支撑产物引用关联。
         产物引用行在此追加（裁剪前），使其 token 计入窗口预算。
         """
         msgs = await ai_message_repository.get_chain_by_id(
@@ -175,17 +176,15 @@ class ContextManager:
         )
         result: list[dict] = []
         for m in msgs:
-            if m.role == "tool" and m.content:
-                # 工具结果折叠进前一条 assistant 消息（无对应 assistant 时忽略，
-                # 避免孤立 tool 文本破坏 user/assistant 交替结构）
-                if result and result[-1]["role"] == "assistant":
-                    tool_text = m.content
-                    if len(tool_text) > _TOOL_RESULT_MAX_LEN:
-                        tool_text = tool_text[:_TOOL_RESULT_MAX_LEN] + "…"
-                    result[-1]["content"] = f"{result[-1]['content']}\n[工具调用结果] {tool_text}"
+            if m.role not in ("user", "assistant"):
                 continue
-            if m.role in ("user", "assistant") and m.content:
-                result.append({"id": m.id, "role": m.role, "content": m.content})
+            content = (
+                blocks_context_text(m.blocks, tool_max_len=_TOOL_RESULT_MAX_LEN)
+                if m.role == "assistant"
+                else m.text
+            )
+            if content:
+                result.append({"id": m.id, "role": m.role, "content": content})
         # 关联产物引用行（按 message_id 查询，仅在对应消息后追加引用，绝不注入全文/URL）
         await ContextManager._attach_artifact_refs(db, result)
         return result

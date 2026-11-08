@@ -129,29 +129,42 @@ class RecorderEmitter:
     """SSE 发射器假件：按序捕获 send_event 调用。
 
     events 即断言面：[(event_type, data), ...]，按发送顺序排列。
-    send_error 与真实 SseEmitterManager 同为 error + message.end 两次事件。
+    send_error / send_message_end 与真实 SseEmitterManager 同语义：
+    error 事件 + 一条幂等的 message.end 终帧。
     """
 
     def __init__(self):
         self.events = []
+        self._ended: set[str] = set()
 
     async def send_event(self, stream_session_id, event_type, data):
         self.events.append((event_type, data))
 
-    async def send_error(self, stream_session_id, error):
-        await self.send_event(stream_session_id, "error", public_error(error))
+    async def send_message_end(
+        self, stream_session_id, *, message_id, status, error=None, usage=None
+    ):
+        if stream_session_id in self._ended:
+            return False
+        self._ended.add(stream_session_id)
+        payload = {"messageId": message_id, "status": status}
+        if error is not None:
+            payload["error"] = error
+        if usage is not None:
+            payload["usage"] = usage
+        await self.send_event(stream_session_id, "message.end", payload)
+        return True
+
+    async def send_error(self, stream_session_id, error, *, message_id=0, usage=None):
+        payload = public_error(error)
         await self.send_event(
+            stream_session_id, "error", {**payload, "messageId": message_id}
+        )
+        await self.send_message_end(
             stream_session_id,
-            "message.end",
-            {
-                "stopReason": "error",
-                "usage": {
-                    "inputTokens": 0,
-                    "outputTokens": 0,
-                    "cachedInputTokens": 0,
-                    "credits": 0,
-                },
-            },
+            message_id=message_id,
+            status="failed",
+            error=payload["message"],
+            usage=usage,
         )
 
 

@@ -2,12 +2,12 @@
 AI 对话模块 Schema 模型
 """
 
-import builtins
 from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.models.schema.ai_contract_gen import MessageList
 from app.models.schema.common import BasePageQuery, OrmResult
 
 AiModelType = Literal[
@@ -284,40 +284,10 @@ class MessageResume(BaseModel):
     )
     plan_edit: dict[str, Any] | None = Field(
         default=None,
+        validation_alias="planEdit",
+        serialization_alias="planEdit",
         description="Plan-and-Execute 计划干预（仅计划待执行时允许）：{remove: [taskId], "
         "reorder: [taskId...], add: {description, dependsOn, toolHint?, paradigm?}}",
-    )
-
-
-class MessageResult(OrmResult):
-    id: int = Field(description="主键")
-    conversation_id: int = Field(description="会话ID")
-    parent_message_id: int | None = Field(default=None, description="父消息ID")
-    role: str = Field(description="消息角色")
-    content: str | None = Field(default=None, description="消息内容")
-    tool_calls: Any | None = Field(default=None, description="工具调用列表")
-    tool_call_id: str | None = Field(default=None, description="工具调用结果关联ID")
-    model: str | None = Field(default=None, description="本条消息使用的模型标识")
-    status: int = Field(description="消息状态")
-    error: str | None = Field(default=None, description="错误信息")
-    metadata_: Any | None = Field(
-        default=None,
-        serialization_alias="metadata",
-        description="元数据",
-    )
-    input_tokens: int = Field(description="输入Token数")
-    output_tokens: int = Field(description="输出Token数")
-    cached_input_tokens: int = Field(description="缓存命中的输入Token数")
-    credits: int = Field(description="消耗积分数")
-    task_id: str | None = Field(default=None, description="关联异步任务ID")
-    edited: int = Field(description="是否已编辑")
-    original_content: str | None = Field(default=None, description="编辑前原文")
-    used_memory_ids: list[int] | None = Field(
-        default=None, description="本次回复注入的长期记忆ID清单（注入可见性）"
-    )
-    create_time: datetime | None = Field(default=None, description="创建时间")
-    thoughts: list["AgentThoughtResult"] | None = Field(
-        default=None, description="推理步骤(消息列表附带,按position正序)"
     )
 
 
@@ -334,12 +304,13 @@ class MessageListQuery(BaseModel):
     limit: int = Field(default=50, ge=1, le=100, description="每页条数(1..100，默认50)")
 
 
-class MessageListResult(BaseModel):
-    """消息列表游标分页结果"""
+class MessageListResult(MessageList):
+    """消息列表游标分页结果（契约 MessageList：list/total/hasMore）。
 
-    list: builtins.list[MessageResult] = Field(description="消息列表(id 倒序)")
-    total: int = Field(description="会话消息总数(展示用)")
-    hasMore: bool = Field(description="是否还存在比本页最后一条更早的消息")
+    self 视角：list 为当前激活链的一页（id 倒序）、before 游标向前翻页、total 为链长，
+    仅此视角的 assistant 消息带 siblingIndex/siblingCount（1 起，同父未删兄弟按 id 升序）。
+    admin 视角：list 为会话全量分支的一页、total 为会话消息总数，兄弟字段恒为 null。
+    """
 
 
 class AgentThoughtResult(OrmResult):

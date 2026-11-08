@@ -46,6 +46,17 @@ def patch_reasoning_boundaries(
         async def send_event(self, stream_session_id, event_type, data):
             self.events.append((event_type, data))
 
+        async def send_message_end(
+            self, stream_session_id, *, message_id, status, error=None, usage=None
+        ):
+            payload = {"messageId": message_id, "status": status}
+            if error is not None:
+                payload["error"] = error
+            if usage is not None:
+                payload["usage"] = usage
+            self.events.append(("message.end", payload))
+            return True
+
         async def release_lock(self, conv_id):
             self.released.append(conv_id)
 
@@ -88,9 +99,6 @@ def patch_reasoning_boundaries(
 
     monkeypatch.setattr("app.service.ai.service.memory_injection.search_memories", _empty_search)
 
-    monkeypatch.setattr(
-        "app.service.ai.service.reasoning_service.schedule_step_summaries", lambda *a, **k: None
-    )
     # _trigger_suggestions 为实例静态方法，patch 到单例实例属性
     monkeypatch.setattr(reasoning_service, "_trigger_suggestions", lambda *a, **k: None)
     monkeypatch.setattr(

@@ -122,8 +122,14 @@ class TraceMessageItem(OrmResult):
     conversation_id: int = Field(description="会话ID")
     parent_message_id: int | None = Field(default=None, description="父消息ID")
     role: str = Field(description="消息角色(system;user;assistant;tool)")
-    content: str | None = Field(default=None, description="消息内容")
-    status: int = Field(description="消息状态(1:流式输出中;2:已完成;3:失败;4:已取消)")
+    content: str = Field(
+        default="",
+        validation_alias="text",
+        description="消息正文(由 blocks 中的 text 块按 seq 拼接派生)",
+    )
+    status: str = Field(
+        description="消息状态(running;completed;failed;canceled;awaiting_input)"
+    )
     model: str | None = Field(default=None, description="本条消息使用的模型标识")
     input_tokens: int = Field(description="输入Token数")
     output_tokens: int = Field(description="输出Token数")
@@ -239,8 +245,8 @@ class TimelineConversation(OrmResult):
 class TimelineMessage(OrmResult):
     id: int = Field(description="消息ID")
     role: str = Field(description="消息角色")
-    content: str | None = Field(default=None, description="消息内容")
-    status: int = Field(description="消息状态(1:流式输出中;2:已完成;3:失败;4:已取消)")
+    text: str | None = Field(default=None, description="消息正文(由 blocks 的 text 块派生)")
+    status: str = Field(description="消息状态(running/completed/failed/canceled/awaiting_input)")
     model: str | None = Field(default=None, description="本条消息使用的模型标识")
     input_tokens: int = Field(default=0, description="输入Token数")
     output_tokens: int = Field(default=0, description="输出Token数")

@@ -190,31 +190,43 @@ async def test_pending_taken_over_by_stream_raises_conflict(mock_redis):
     assert exc.value.code == ResultCode.REPEAT_SUBMIT_ERROR
 
 
-async def test_completed_hit_returns_existing(mock_redis):
+async def test_completed_hit_returns_existing(mock_redis, monkeypatch):
     await mock_redis.set("ai:msg:idempotent:7:key-1", json.dumps({"messageId": 99, "status": 2}))
 
+    fake = SimpleNamespace(
+        id=99,
+        conversation_id=1,
+        parent_message_id=None,
+        role="assistant",
+        blocks=[{"id": "b1", "kind": "text", "seq": 1, "text": "已有回复"}],
+        plan=None,
+        pending_interrupt=None,
+        suggestions=[],
+        model="gpt-4o",
+        status="completed",
+        input_tokens=10,
+        output_tokens=5,
+        cached_input_tokens=0,
+        credits=3,
+        error=None,
+        deleted=0,
+        task_id=None,
+        edited=0,
+        used_memory_ids=[],
+        sub_agent_usage=None,
+        create_time=None,
+        update_time=None,
+    )
+
+    from app.service.ai.service.message_view import build_message
+
+    async def _detail(db, msg, *, now=None, sibling_position=None):
+        return build_message(msg, artifact_ids=[], now=now)
+
+    monkeypatch.setattr("app.service.ai_message_service.build_message_detail", _detail)
+
     def get_by_id(db, msg_id):
-        return SimpleNamespace(
-            id=99,
-            conversation_id=1,
-            role="assistant",
-            content="已有回复",
-            model="gpt-4o",
-            status=2,
-            input_tokens=10,
-            output_tokens=5,
-            cached_input_tokens=0,
-            credits=3,
-            error=None,
-            deleted=0,
-            task_id=None,
-            edited=0,
-            original_content=None,
-            tool_calls=None,
-            metadata_=None,
-            create_time=None,
-            update_time=None,
-        )
+        return fake
 
     svc = _make_service(mock_redis, message_get_by_id=get_by_id)
     resp = await _call(svc, mock_redis)

@@ -29,7 +29,8 @@ async def sync_conversation_to_es(conv_id: int) -> None:
         if not conv:
             return
         msgs, _ = await ai_message_repository.list_by_conversation(db, conv_id, 1, 1000)
-        contents = "\n".join(f"{m.role}: {m.content}" for m in msgs if m.content)
+        # 正文由 blocks 派生：ES 只是读模型，不引入第二份正文事实
+        contents = "\n".join(f"{m.role}: {m.text}" for m in msgs if m.text)
         await sync_conversation(
             conv_id, conv.user_id, conv.title, contents, conv.status, conv.deleted
         )

@@ -465,7 +465,7 @@ class DehazeHooksMiddleware(AgentMiddleware):
             "type": "confirm",
             "stream_session_id": self.ctx.get("stream_session_id"),
             "data": {
-                "confirmKind": ConfirmKind.DANGEROUS_OP,
+                "confirmKind": ConfirmKind.WRITE_CONFLICT,
                 "action": "write_conflict",
                 "tool": tool_name,
                 "resource": resource,

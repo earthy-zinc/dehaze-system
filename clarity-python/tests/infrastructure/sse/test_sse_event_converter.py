@@ -1,3 +1,12 @@
+"""SseEventConverter：deepagents 事件 → 契约块事件。
+
+只允许 message.start / block.start|delta|stop / plan.update / interrupt / usage /
+suggestions / message.end / error 八类事件；旧的 content_block.*、thought、custom
+一律不得出现。
+"""
+
+import re
+
 import pytest
 from langchain_core.messages import AIMessageChunk, ToolMessage
 
@@ -5,111 +14,275 @@ from app.infrastructure.sse.sse_event_converter import SseEventConverter
 from app.service.ai.service import trace_collector
 from tests.stubs.fakes import RecorderEmitter
 
+_HEX32 = re.compile(r"^[0-9a-f]{32}$")
+
+_FORBIDDEN = (
+    "content_block.start",
+    "content_block.delta",
+    "content_block.stop",
+    "thought",
+    "custom",
+)
+
+
+class _Repo:
+    def __init__(self):
+        self.plans = []
+        self.interrupts = []
+
+    async def update_plan(self, db, msg_id, plan):
+        self.plans.append((msg_id, plan))
+
+    async def update_pending_interrupt(self, db, msg_id, interrupt):
+        self.interrupts.append((msg_id, interrupt))
+
+
+class _Session:
+    async def __aenter__(self):
+        return object()
+
+    async def __aexit__(self, *exc):
+        return False
+
 
 @pytest.fixture
 def conv(monkeypatch):
-    ctx = {
-        "stream_session_id": "s1",
-        "message_id": 1,
-        "conversation_id": 100,
-    }
+    ctx = {"stream_session_id": "s1", "message_id": 1, "conversation_id": 100}
     emitter = RecorderEmitter()
+    repo = _Repo()
     monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter)
-
-    async def _noop_create(db, **kw):
-        return None
-
+    monkeypatch.setattr("app.infrastructure.sse.sse_event_converter.ai_message_repository", repo)
     monkeypatch.setattr(
-        "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository",
-        type("R", (), {"create_thought": staticmethod(_noop_create)})(),
+        "app.infrastructure.sse.sse_event_converter.get_db_session", lambda: _Session()
+    )
+    return SseEventConverter(ctx), emitter, repo
+
+
+def _types(emitter) -> list[str]:
+    return [e[0] for e in emitter.events]
+
+
+def _texts(emitter) -> str:
+    return "".join(
+        e[1]["delta"]
+        for e in emitter.events
+        if e[0] == "block.delta" and e[1]["blockId"] == _text_block_id(emitter)
     )
 
-    return SseEventConverter(ctx), emitter
+
+def _text_block_id(emitter) -> str:
+    return next(
+        (
+            e[1]["block"]["id"]
+            for e in emitter.events
+            if e[0] == "block.start" and e[1]["block"]["kind"] == "text"
+        ),
+        "",
+    )
 
 
-class TestEventMapping:
-    async def test_text_delta(self, conv):
-        converter, emitter = conv
+def _block_deltas(emitter, kind: str) -> str:
+    """按块 kind 归集增量（块类型从 block.start 反查）。"""
+    kinds = {
+        e[1]["block"]["id"]: e[1]["block"]["kind"] for e in emitter.events if e[0] == "block.start"
+    }
+    return "".join(
+        e[1]["delta"]
+        for e in emitter.events
+        if e[0] == "block.delta" and kinds.get(e[1]["blockId"]) == kind
+    )
+
+
+class TestTextBlocks:
+    async def test_block_start_then_delta_then_stop(self, conv):
+        converter, emitter, _ = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="你好")]}
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="世界")]}
+        )
+        await converter.finish()
+
+        assert _types(emitter) == ["block.start", "block.delta", "block.delta", "block.stop"]
+        start = emitter.events[0][1]
+        assert start["messageId"] == 1
+        assert start["block"]["kind"] == "text"
+        assert start["block"]["seq"] == 1
+        assert _HEX32.match(start["block"]["id"])
+        assert [e[1]["delta"] for e in emitter.events if e[0] == "block.delta"] == ["你好", "世界"]
+        stop = emitter.events[-1][1]["block"]
+        assert stop["text"] == "你好世界"
+        assert stop["durationMs"] >= 0
+
+    async def test_no_text_no_block(self, conv):
+        converter, emitter, _ = conv
+        await converter.finish()
+        assert _types(emitter) == []
+
+    async def test_text_block_seq_increases_after_tool(self, conv):
+        """同 kind 多块 seq 递增：正文→工具→正文，第二段正文 seq=2。"""
+        converter, emitter, _ = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="甲")]}
+        )
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "search", "args": "{}", "id": "c1", "index": 0}]
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="乙")]}
+        )
+        await converter.finish()
+
+        text_starts = [
+            e[1]["block"]
+            for e in emitter.events
+            if e[0] == "block.start" and e[1]["block"]["kind"] == "text"
+        ]
+        assert [b["seq"] for b in text_starts] == [1, 2]
+        # 打开新块前先关上一块：块生命周期成对出现
+        assert _types(emitter).count("block.start") == _types(emitter).count("block.stop")
+
+    async def test_seq_base_continues_on_resume(self, monkeypatch):
+        """续流：seq 从 DB 现有最大值续号，已有块作为快照基底保留。"""
+        existing = [{"id": "old", "kind": "text", "seq": 3, "text": "旧正文", "durationMs": 5}]
+        emitter = RecorderEmitter()
+        monkeypatch.setattr(
+            "app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter
+        )
+        converter = SseEventConverter(
+            {
+                "stream_session_id": "s2",
+                "message_id": 1,
+                "conversation_id": 100,
+                "blocks": existing,
+                "seq_base": {"text": 3},
+            }
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="续")]}
+        )
+        await converter.finish()
+
+        start = next(e[1]["block"] for e in emitter.events if e[0] == "block.start")
+        assert start["seq"] == 4
+        snapshot = converter.blocks_snapshot()
+        assert [b["seq"] for b in snapshot] == [3, 4]
+        assert snapshot[0]["text"] == "旧正文"
+
+
+class TestThinkingBlocks:
+    async def test_thinking_is_own_block(self, conv):
+        converter, emitter, _ = conv
         await converter.handle(
             {
                 "type": "messages",
                 "ns": [],
-                "data": [AIMessageChunk(content="你好")],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "思考A"})],
             }
         )
-        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
-        assert delta[1]["delta"] == {"type": "text_delta", "text": "你好"}
-
-    async def test_content_block_start_before_first_text_delta(self, conv):
-        converter, emitter = conv
         await converter.handle(
-            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="第一段")]}
-        )
-        await converter.handle(
-            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="第二段")]}
-        )
-        assert emitter.events[0][0] == "content_block.start"
-        assert emitter.events[0][1] == {"index": 0, "type": "text"}
-        starts = [e for e in emitter.events if e[0] == "content_block.start"]
-        assert len(starts) == 1
-        assert emitter.events[1][0] == "content_block.delta"
-
-    async def test_content_block_stop_on_finish(self, conv):
-        converter, emitter = conv
-        await converter.finish()
-        assert not [e for e in emitter.events if e[0] == "content_block.stop"]
-        await converter.handle(
-            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="内容")]}
+            {
+                "type": "messages",
+                "ns": [],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "思考B"})],
+            }
         )
         await converter.finish()
-        assert emitter.events[-1] == ("content_block.stop", {"index": 0})
 
-    async def test_tool_use_block_start_emitted(self, conv):
-        """工具调用首见即推送 content_block.start(type=tool_use)，index 从 2 起（0/1 已占用）"""
-        converter, emitter = conv
+        start = emitter.events[0][1]["block"]
+        assert start["kind"] == "thinking"
+        assert start["seq"] == 1
+        assert _block_deltas(emitter, "thinking") == "思考A思考B"
+        assert emitter.events[-1][1]["block"]["text"] == "思考A思考B"
+
+    async def test_text_closes_thinking_block(self, conv):
+        converter, emitter, _ = conv
+        await converter.handle(
+            {
+                "type": "messages",
+                "ns": [],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "先想"})],
+            }
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="正文")]}
+        )
+        await converter.finish()
+
+        stops = [e[1]["block"] for e in emitter.events if e[0] == "block.stop"]
+        assert stops[0]["kind"] == "thinking"
+        assert stops[0]["text"] == "先想"
+        assert stops[1]["kind"] == "text"
+
+    async def test_each_thinking_segment_own_block(self, conv):
+        converter, emitter, _ = conv
+        await converter.handle(
+            {
+                "type": "messages",
+                "ns": [],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "思考1"})],
+            }
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复1")]}
+        )
+        await converter.handle(
+            {
+                "type": "messages",
+                "ns": [],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "思考2"})],
+            }
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="回复2")]}
+        )
+        await converter.finish()
+
+        thinking = [
+            e[1]["block"]
+            for e in emitter.events
+            if e[0] == "block.start" and e[1]["block"]["kind"] == "thinking"
+        ]
+        assert [b["seq"] for b in thinking] == [1, 2]
+        assert [b["seq"] for b in converter.blocks_snapshot() if b["kind"] == "thinking"] == [1, 2]
+
+
+class TestToolBlocks:
+    async def test_tool_call_opens_independent_block(self, conv):
+        converter, emitter, _ = conv
         chunk = AIMessageChunk(content="")
-        chunk.tool_call_chunks = [
-            {"name": "search", "args": '{"query":', "id": "c1", "index": 0},
-        ]
+        chunk.tool_call_chunks = [{"name": "search", "args": '{"q":', "id": "c1", "index": 0}]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        starts = [e for e in emitter.events if e[0] == "content_block.start"]
-        assert starts == [
-            ("content_block.start", {"index": 2, "type": "tool_use", "id": "c1", "name": "search"})
-        ]
 
-    async def test_tool_call_delta_uses_tool_block_index(self, conv):
-        """工具参数增量使用工具块自身 index（不再与文本块共用 0）"""
-        converter, emitter = conv
-        chunk = AIMessageChunk(content="")
-        chunk.tool_call_chunks = [
-            {"name": "search", "args": '{"query":', "id": "c1", "index": 0},
-        ]
-        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        delta = next(e for e in emitter.events if e[0] == "content_block.delta")
-        assert delta[1]["index"] == 2
-        assert delta[1]["delta"]["type"] == "input_json_delta"
+        start = emitter.events[0][1]["block"]
+        assert start["kind"] == "tool_use"
+        assert start["seq"] == 1
+        assert start["tool"]["callId"] == "c1"
+        assert start["tool"]["name"] == "search"
+        assert start["tool"]["status"] == "running"
+        assert start["tool"]["subAgent"] is False
+        assert emitter.events[1][0] == "block.delta"
+        assert emitter.events[1][1]["delta"] == '{"q":'
 
-    async def test_parallel_tool_calls_distinct_indices(self, conv):
-        """并行工具调用各占唯一 index，首见顺序自增"""
-        converter, emitter = conv
+    async def test_parallel_tool_calls_two_blocks(self, conv):
+        converter, emitter, _ = conv
         chunk = AIMessageChunk(content="")
         chunk.tool_call_chunks = [
             {"name": "a", "args": "{}", "id": "c1", "index": 0},
             {"name": "b", "args": "{}", "id": "c2", "index": 1},
         ]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        starts = [e[1] for e in emitter.events if e[0] == "content_block.start"]
-        assert starts == [
-            {"index": 2, "type": "tool_use", "id": "c1", "name": "a"},
-            {"index": 3, "type": "tool_use", "id": "c2", "name": "b"},
-        ]
 
-    async def test_tool_block_stop_on_tool_message(self, conv):
-        """工具返回时关闭对应工具内容块（content_block.stop 用该块 index）"""
-        converter, emitter = conv
-        chunk = AIMessageChunk(
-            content="", tool_call_chunks=[{"name": "search", "args": "{}", "id": "c1", "index": 0}]
-        )
+        tool_blocks = [e[1]["block"] for e in emitter.events if e[0] == "block.start"]
+        assert [b["tool"]["callId"] for b in tool_blocks] == ["c1", "c2"]
+        assert [b["seq"] for b in tool_blocks] == [1, 2]
+        assert tool_blocks[0]["id"] != tool_blocks[1]["id"]
+
+    async def test_tool_message_completes_block(self, conv):
+        converter, emitter, _ = conv
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "search", "args": '{"q": "雾"}', "id": "c1", "index": 0}]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
         await converter.handle(
             {
@@ -122,77 +295,99 @@ class TestEventMapping:
                 },
             }
         )
-        stops = [e for e in emitter.events if e[0] == "content_block.stop"]
-        assert stops == [("content_block.stop", {"index": 2})]
 
-    async def test_finish_closes_open_tool_block(self, conv):
-        """中断/异常致工具块未收尾时，finish 兜底补发 content_block.stop"""
-        converter, emitter = conv
-        chunk = AIMessageChunk(
-            content="", tool_call_chunks=[{"name": "search", "args": "{", "id": "c1", "index": 0}]
-        )
+        stop = next(e[1]["block"] for e in emitter.events if e[0] == "block.stop")
+        assert stop["tool"]["status"] == "success"
+        assert stop["tool"]["input"] == {"q": "雾"}
+        assert stop["tool"]["output"] == "ok"
+        assert stop["tool"]["latencyMs"] >= 0
+
+    async def test_tool_failure_status_mapped(self, conv):
+        converter, emitter, _ = conv
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "dehaze", "args": "{}", "id": "c2", "index": 0}]
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
-        await converter.finish()
-        assert ("content_block.stop", {"index": 2}) in emitter.events
-
-    async def test_thought_on_tool_message(self, conv):
-        converter, emitter = conv
-        chunk1 = AIMessageChunk(
-            content="",
-            tool_call_chunks=[{"name": "search", "args": '{"query":', "id": "c1", "index": None}],
-        )
-        chunk2 = AIMessageChunk(
-            content="",
-            tool_call_chunks=[{"name": None, "args": '"去雾"}', "id": "c1", "index": None}],
-        )
-        await converter.handle({"type": "messages", "ns": [], "data": [chunk1]})
-        await converter.handle({"type": "messages", "ns": [], "data": [chunk2]})
         await converter.handle(
             {
                 "type": "updates",
-                "ns": ["subagent"],
+                "ns": [],
                 "data": {
                     "tool_node": {
                         "messages": [
-                            ToolMessage(content="ok", tool_call_id="c1", name="search"),
+                            ToolMessage(
+                                content="超时",
+                                tool_call_id="c2",
+                                name="dehaze",
+                                status="error",
+                                additional_kwargs={"_dehaze_status": 2, "_dehaze_error": "超时"},
+                            )
                         ]
                     }
                 },
             }
         )
-        thought = [e for e in emitter.events if e[0] == "thought"]
-        assert thought, "应推送 thought"
-        assert thought[0][1]["tool"] == "search"
-        assert thought[0][1]["toolInput"] == {"query": "去雾"}
-        assert thought[0][1]["latencyMs"] >= 0
-        assert thought[0][1]["position"] == 1
+        tool = next(e[1]["block"] for e in emitter.events if e[0] == "block.stop")["tool"]
+        assert tool["status"] == "failed"
+        assert tool["error"] == "超时"
 
-    async def test_custom_event(self, conv):
-        converter, emitter = conv
-        await converter.handle({"type": "custom", "ns": [], "data": {"k": 1}})
-        assert emitter.events[0][0] == "custom"
-        assert emitter.events[0][1]["data"] == {"k": 1}
+    async def test_subagent_tool_attribution(self, conv):
+        converter, emitter, _ = conv
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "search", "args": "{}", "id": "c3", "index": 0}]
+        await converter.handle({"type": "messages", "ns": ["task:abc"], "data": [chunk]})
+        tool = next(e[1]["block"] for e in emitter.events if e[0] == "block.start")["tool"]
+        assert tool["agentCode"] == "task"
+        assert tool["subAgent"] is True
 
-    async def test_unknown_type_ignored(self, conv):
-        converter, emitter = conv
-        await converter.handle({"type": "values", "ns": [], "data": {}})
-        assert emitter.events == []
+    async def test_finish_closes_open_tool_block(self, conv):
+        converter, emitter, _ = conv
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "search", "args": "{", "id": "c9", "index": 0}]
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
+        await converter.finish()
+        assert _types(emitter)[-1] == "block.stop"
 
-    async def test_no_stream_session_skips_emit(self, monkeypatch):
-        converter = SseEventConverter({"stream_session_id": None})
-        emitter = RecorderEmitter()
-        monkeypatch.setattr(
-            "app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter
+
+class TestPlanAndInterrupt:
+    async def test_plan_update_persisted_and_emitted(self, conv):
+        converter, emitter, repo = conv
+        await converter.record_plan(
+            {
+                "tasks": [
+                    {"id": "A", "description": "分析", "depends_on": ["B"], "status": "done"},
+                    {"id": "B", "description": "执行", "status": "pending"},
+                ],
+                "status": "executing",
+                "revisions": [{"revisionNo": 1, "reason": "依赖调整"}],
+            },
+            phase="plan",
         )
-        await converter.handle({"type": "custom", "ns": [], "data": {"x": 1}})
-        assert emitter.events == []
 
+        event = emitter.events[0]
+        assert event[0] == "plan.update"
+        plan = event[1]["plan"]
+        assert event[1]["messageId"] == 1
+        assert plan["status"] == "running"
+        assert plan["phase"] == "plan"
+        assert plan["awaitingApproval"] is False
+        assert [t["status"] for t in plan["tasks"]] == ["completed", "pending"]
+        assert plan["tasks"][0]["dependsOn"] == ["B"]
+        # 修订记录补齐 actor 与 at
+        assert plan["revisions"][0]["actor"] == "assistant"
+        assert plan["revisions"][0]["at"]
+        # 到达即落库
+        assert repo.plans[0][0] == 1
+        assert repo.plans[0][1]["status"] == "running"
 
-class TestInterrupt:
-    async def test_interrupt_mapping_contract(self, conv):
+    async def test_plan_pending_awaits_approval(self, conv):
+        converter, emitter, _ = conv
+        await converter.record_plan({"tasks": [], "status": "pending"}, phase="plan")
+        assert emitter.events[0][1]["plan"]["awaitingApproval"] is True
+
+    async def test_interrupt_is_contract_shaped_and_persisted(self, conv):
         from langgraph.types import Interrupt
 
-        converter, emitter = conv
+        converter, emitter, repo = conv
         await converter.handle(
             {
                 "type": "updates",
@@ -202,40 +397,34 @@ class TestInterrupt:
                         Interrupt(
                             value={
                                 "type": "confirm",
-                                "data": {"artifactId": 1, "recommendation": {"modelName": "A"}},
+                                "data": {
+                                    "confirmKind": "algorithm_recommend",
+                                    "recommendation": {"modelId": "m1", "modelName": "去雾A"},
+                                },
                             }
                         )
                     ]
                 },
             }
         )
-        assert emitter.events[0] == (
-            "interrupt",
-            {
-                "type": "confirm",
-                "data": {"artifactId": 1, "recommendation": {"modelName": "A"}},
-            },
-        )
 
-    async def test_interrupt_defaults_type_when_absent(self, conv):
+        event = emitter.events[0]
+        assert event[0] == "interrupt"
+        interrupt = event[1]["interrupt"]
+        assert interrupt["type"] == "confirm"
+        assert interrupt["confirmKind"] == "algorithm_recommend"
+        assert interrupt["recommendation"]["modelName"] == "去雾A"
+        assert interrupt["actionable"] is True
+        assert interrupt["createdAt"]
+        assert interrupt["expiresAt"]
+        assert interrupt["id"]
+        assert repo.interrupts[0][1]["id"] == interrupt["id"]
+        assert converter.pending_interrupt == interrupt
+
+    async def test_plan_approve_carries_contract_tasks(self, conv):
         from langgraph.types import Interrupt
 
-        converter, emitter = conv
-        await converter.handle(
-            {
-                "type": "updates",
-                "ns": [],
-                "data": {"__interrupt__": [Interrupt(value={"foo": "bar"})]},
-            }
-        )
-        assert emitter.events[0] == ("interrupt", {"type": "confirm", "data": {"foo": "bar"}})
-
-    async def test_plan_approve_payload_normalized(self, conv):
-        """plan_approve 的 plan 在中断点内是内部 snake_case，仅在 SSE 出口归一，
-        且不带 phase（phase 只属于 plan 事件）。"""
-        from langgraph.types import Interrupt
-
-        converter, emitter = conv
+        converter, emitter, _ = conv
         await converter.handle(
             {
                 "type": "updates",
@@ -245,28 +434,12 @@ class TestInterrupt:
                         Interrupt(
                             value={
                                 "type": "plan_approve",
-                                "stream_session_id": "s1",
                                 "data": {
                                     "plan": {
                                         "tasks": [
-                                            {
-                                                "id": "A",
-                                                "description": "分析",
-                                                "depends_on": ["B"],
-                                                "tool_hint": "analyze",
-                                                "paradigm": "react",
-                                                "status": "pending",
-                                                "result": None,
-                                            }
+                                            {"id": "A", "description": "分析", "tool_hint": "x"}
                                         ],
                                         "status": "pending",
-                                        "revisions": [
-                                            {
-                                                "revisionNo": 1,
-                                                "reason": "B",
-                                                "changedTaskIds": ["B2"],
-                                            }
-                                        ],
                                     }
                                 },
                             }
@@ -275,43 +448,70 @@ class TestInterrupt:
                 },
             }
         )
-        assert emitter.events[0] == (
-            "interrupt",
+        interrupt = emitter.events[0][1]["interrupt"]
+        assert interrupt["type"] == "plan_approve"
+        assert interrupt["plan"] == [
             {
-                "type": "plan_approve",
-                "data": {
-                    "plan": {
-                        "tasks": [
-                            {
-                                "id": "A",
-                                "description": "分析",
-                                "dependsOn": ["B"],
-                                "status": "pending",
-                                "paradigm": "react",
-                                "toolHint": "analyze",
-                            }
-                        ],
-                        "status": "pending",
-                        "revisions": [{"revisionNo": 1, "reason": "B", "changedTaskIds": ["B2"]}],
-                    }
-                },
-            },
+                "id": "A",
+                "description": "分析",
+                "dependsOn": [],
+                "status": "pending",
+                "paradigm": None,
+            }
+        ]
+
+
+class TestEventWhitelist:
+    async def test_only_contract_events_emitted(self, conv):
+        from langgraph.types import Interrupt
+
+        converter, emitter, _ = conv
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="正文")]}
         )
+        await converter.handle(
+            {
+                "type": "messages",
+                "ns": [],
+                "data": [AIMessageChunk(content="", additional_kwargs={"thinking": "想"})],
+            }
+        )
+        await converter.handle({"type": "custom", "ns": [], "data": {"k": 1}})
+        await converter.handle(
+            {"type": "custom", "ns": [], "data": {"type": "thought", "data": {}}}
+        )
+        await converter.handle({"type": "values", "ns": [], "data": {}})
+        await converter.handle(
+            {
+                "type": "updates",
+                "ns": [],
+                "data": {"__interrupt__": [Interrupt(value={"foo": "bar"})]},
+            }
+        )
+        await converter.finish()
+
+        types = set(_types(emitter))
+        assert types <= {"block.start", "block.delta", "block.stop", "interrupt"}
+        for forbidden in _FORBIDDEN:
+            assert forbidden not in types
+
+    async def test_no_stream_session_skips_emit(self, monkeypatch):
+        converter = SseEventConverter({"stream_session_id": None})
+        emitter = RecorderEmitter()
+        monkeypatch.setattr(
+            "app.infrastructure.sse.sse_event_converter.sse_emitter_manager", emitter
+        )
+        await converter.handle(
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="x")]}
+        )
+        assert emitter.events == []
 
 
 class TestPiiMaskingAtStreamExit:
     """PII 脱敏必须在 SSE 推送前完成：事后脱敏等于已经把敏感信息推给了客户端。"""
 
-    @staticmethod
-    def _texts(emitter):
-        return "".join(
-            e[1]["delta"]["text"]
-            for e in emitter.events
-            if e[0] == "content_block.delta" and e[1]["delta"].get("type") == "text_delta"
-        )
-
     async def test_phone_split_across_chunks_masked(self, conv):
-        converter, emitter = conv
+        converter, emitter, _ = conv
         await converter.handle(
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="联系138")]}
         )
@@ -319,108 +519,53 @@ class TestPiiMaskingAtStreamExit:
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="12345678，谢谢")]}
         )
         await converter.finish()
-        text = self._texts(emitter)
-        assert "13812345678" not in text
-        assert text == "联系***，谢谢"
+        assert _texts(emitter) == "联系***，谢谢"
 
     async def test_secret_key_masked(self, conv):
-        converter, emitter = conv
+        converter, emitter, _ = conv
         await converter.handle(
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="key: sk-abcdef123456")]}
         )
         await converter.finish()
-        assert self._texts(emitter) == "key: ***"
+        assert _texts(emitter) == "key: ***"
 
     async def test_thinking_channel_masked(self, conv):
-        converter, emitter = conv
+        converter, emitter, _ = conv
         chunk = AIMessageChunk(content="", additional_kwargs={"thinking": "手机号13812345678"})
         await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
         await converter.finish()
-        thinking = "".join(
-            e[1]["delta"]["thinking"]
-            for e in emitter.events
-            if e[0] == "content_block.delta" and e[1]["delta"].get("type") == "thinking_delta"
-        )
-        assert "13812345678" not in thinking
-        assert thinking == "手机号***"
+        assert _block_deltas(emitter, "thinking") == "手机号***"
 
     async def test_plain_text_not_delayed(self, conv):
-        """无敏感串前缀时不得压住不推送（尾部保留窗口只用于跨 chunk 的敏感串）。"""
-        converter, emitter = conv
+        converter, emitter, _ = conv
         await converter.handle(
             {"type": "messages", "ns": [], "data": [AIMessageChunk(content="你好")]}
         )
-        assert self._texts(emitter) == "你好"
+        assert _texts(emitter) == "你好"
 
-
-class TestSubagentAttribution:
-    """子 Agent/Team 推理步骤归属：ns 非空即子图事件，agent_code 取末段节点名"""
-
-    async def _capture_create(self, monkeypatch):
-        captured = []
-
-        async def _capture(db, **kw):
-            captured.append(kw)
-            return
-
-        monkeypatch.setattr(
-            "app.infrastructure.sse.sse_event_converter.ai_agent_thought_repository",
-            type("R", (), {"create_thought": staticmethod(_capture)})(),
-        )
-        return captured
-
-    async def test_subagent_thought_attribution(self, conv, monkeypatch):
-        converter, _emitter = conv
-        captured = await self._capture_create(monkeypatch)
-        # 子图事件（ns 非空，段格式"节点名:task_id"）：归属子 Agent
+    async def test_pending_tail_flushed_before_block_switch(self, conv):
+        """关闭 text 块前冲刷脱敏暂存：否则暂存尾部会迁移到下一个 text 块。"""
+        converter, emitter, _ = conv
         await converter.handle(
-            {
-                "type": "updates",
-                "ns": ["task:abc123"],
-                "data": {
-                    "tool_node": {
-                        "messages": [ToolMessage(content="ok", tool_call_id="c9", name="search")]
-                    }
-                },
-            }
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="电话138")]}
         )
-        assert captured[-1]["agent_code"] == "task"
-        assert captured[-1]["is_subagent"] == 1
-        # 主图事件（ns 空）：归属主 Agent
+        chunk = AIMessageChunk(content="")
+        chunk.tool_call_chunks = [{"name": "search", "args": "{}", "id": "c1", "index": 0}]
+        await converter.handle({"type": "messages", "ns": [], "data": [chunk]})
         await converter.handle(
-            {
-                "type": "updates",
-                "ns": [],
-                "data": {
-                    "tool_node": {
-                        "messages": [ToolMessage(content="ok", tool_call_id="c10", name="search")]
-                    }
-                },
-            }
+            {"type": "messages", "ns": [], "data": [AIMessageChunk(content="12345678，谢谢")]}
         )
-        assert captured[-1]["agent_code"] is None
-        assert captured[-1]["is_subagent"] == 0
+        await converter.finish()
 
-    async def test_nested_subgraph_takes_last_segment(self, conv, monkeypatch):
-        """嵌套子图 ns 多段，取最后一段去 task_id 后缀"""
-        converter, _emitter = conv
-        captured = await self._capture_create(monkeypatch)
-        await converter.handle(
-            {
-                "type": "updates",
-                "ns": ["task:a", "inner:b"],
-                "data": {
-                    "tool_node": {
-                        "messages": [ToolMessage(content="ok", tool_call_id="c11", name="search")]
-                    }
-                },
-            }
-        )
-        assert captured[-1]["agent_code"] == "inner"
-        assert captured[-1]["is_subagent"] == 1
+        text_stops = [
+            e[1]["block"]
+            for e in emitter.events
+            if e[0] == "block.stop" and e[1]["block"]["kind"] == "text"
+        ]
+        assert [b["text"] for b in text_stops] == ["电话138", "12345678，谢谢"]
 
-    async def test_plan_recorded_to_collector(self, conv):
-        converter, _emitter = conv
+    async def test_plan_trace_event_recorded(self, conv):
+        converter, _emitter, _ = conv
         collector = trace_collector.start(
             conversation_id=1, message_id=1, user_id=1, agent_code=None, model_id="m"
         )
@@ -430,70 +575,3 @@ class TestSubagentAttribution:
             assert collector.context_events[-1]["phase"] == "plan"
         finally:
             trace_collector._current_collector.set(None)
-
-
-class TestRecordPlanTaskFields:
-    """plan 事件任务项：既有字段保口径，paradigm/toolHint/result 补齐且缺失不下发。"""
-
-    async def _plan_task(self, conv, task):
-        converter, emitter = conv
-        await converter.record_plan({"tasks": [task]}, phase="plan")
-        event = next(e for e in emitter.events if e[0] == "plan")[1]
-        return event["tasks"][0]
-
-    async def test_optional_fields_present_when_provided(self, conv):
-        task = await self._plan_task(
-            conv,
-            {
-                "id": "A",
-                "description": "分析",
-                "depends_on": [],
-                "paradigm": "reflexion",
-                "tool_hint": "analyze",
-                "result": "结论",
-                "status": "done",
-            },
-        )
-        assert task["id"] == "A"
-        assert task["dependsOn"] == []
-        assert task["status"] == "done"
-        assert task["paradigm"] == "reflexion"
-        assert task["toolHint"] == "analyze"
-        assert task["result"] == "结论"
-
-    async def test_missing_optional_fields_omitted(self, conv):
-        """plan task 缺 paradigm/tool_hint/result：整个键不下发（不塞 None）。"""
-        task = await self._plan_task(conv, {"id": "A", "description": "分析"})
-        assert set(task.keys()) == {"id", "description", "dependsOn", "status"}
-        assert task["dependsOn"] == []
-        assert task["status"] == "pending"
-
-    async def test_none_optional_fields_omitted(self, conv):
-        """可选字段显式为 None 时同样不下发，既有 dependsOn 不受影响。"""
-        task = await self._plan_task(
-            conv,
-            {
-                "id": "A",
-                "description": "分析",
-                "depends_on": ["X"],
-                "paradigm": None,
-                "tool_hint": None,
-                "result": None,
-            },
-        )
-        assert "paradigm" not in task
-        assert "toolHint" not in task
-        assert "result" not in task
-        assert task["dependsOn"] == ["X"]
-
-    async def test_empty_string_result_emitted(self, conv):
-        """空串 result 非 None：按有值下发（'null 不下发'仅针对 None）。"""
-        task = await self._plan_task(conv, {"id": "A", "description": "分析", "result": ""})
-        assert task["result"] == ""
-
-    async def test_no_tasks_emits_empty_list(self, conv):
-        converter, emitter = conv
-        await converter.record_plan({}, phase="plan")
-        event = next(e for e in emitter.events if e[0] == "plan")[1]
-        assert event["tasks"] == []
-        assert event["status"] == "pending"

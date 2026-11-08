@@ -18,7 +18,7 @@ class ArtifactResult(OrmResult):
     ref_type: str | None = Field(default=None, description="引用业务表")
     ref_id: int | None = Field(default=None, description="引用业务表ID")
     summary: Any | None = Field(default=None, description="业务摘要元数据")
-    is_invalid: int = Field(description="引用对象是否已失效")
+    is_invalid: bool = Field(description="引用对象是否已失效")
     create_time: datetime | None = Field(default=None, description="创建时间")
 
 

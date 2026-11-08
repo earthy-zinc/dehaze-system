@@ -1,7 +1,7 @@
 import pytest
 
 from app.service.ai.strategies.quota_recall import quota_recall
-from tests.stubs.fakes import NullDBSession, RecorderEmitter
+from tests.stubs.fakes import NullDBSession
 
 
 @pytest.fixture(autouse=True)
@@ -216,13 +216,6 @@ async def test_check_and_recall_recalls_pending_when_exhausted(monkeypatch):
 
     pending = ["p1", "p2", "p3"]
     assert quota_recall.check_and_recall(ctx, pending) == ["p1", "p2", "p3"]
-
-    emitter = RecorderEmitter()
-    monkeypatch.setattr("app.service.ai.strategies.quota_recall.sse_emitter_manager", emitter)
-    await quota_recall.notify_partial_skipped(ctx, 3)
-    assert emitter.events[0][0] == "thought"
-    assert emitter.events[0][1]["status"] == 3
-    assert "配额不足" in emitter.events[0][1]["thought"]
 
 
 async def test_check_and_recall_no_pending_when_ok():

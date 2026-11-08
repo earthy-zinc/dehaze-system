@@ -230,12 +230,22 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         db: AsyncSession,
         conv_id: int,
         user_id: int,
+        *,
+        for_update: bool = False,
     ) -> SysAiConversation | None:
+        """按主键查本人会话；for_update 时加悲观行锁并读库内最新值。
+
+        why: 删除消息须在会话级临界区内完成子消息校验、软删与指针回退，与并发 send
+        的 update_last_message 争用同一会话行——行锁让两者天然串行。populate_existing
+        保证返回的是加锁时库内最新状态，而非 identity map 中的旧快照。
+        """
         stmt = select(SysAiConversation).where(
             SysAiConversation.id == conv_id,
             SysAiConversation.user_id == user_id,
             SysAiConversation.deleted == 0,
         )
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -275,15 +285,42 @@ class AiConversationRepository(BaseRepository[SysAiConversation]):
         self,
         db: AsyncSession,
         conv_id: int,
-        message_id: int,
+        message_id: int | None,
     ) -> None:
-        """切换当前激活分支（仅更新分支指针，不改动最后消息时间）"""
+        """切换当前激活分支（仅更新分支指针，不改动最后消息时间）。
+
+        message_id 可为 None：删除链尾回复时指针回退到其父消息，root 级删除后置空。
+        """
         stmt = (
             update(SysAiConversation)
             .where(SysAiConversation.id == conv_id)
             .values(current_branch_message_id=message_id)
         )
         await db.execute(stmt)
+
+    async def update_current_branch_if(
+        self,
+        db: AsyncSession,
+        conv_id: int,
+        expected_message_id: int,
+        message_id: int | None,
+    ) -> bool:
+        """CAS 回写分支指针：仅当指针仍为 expected_message_id 时更新，返回是否命中。
+
+        why: 删除旧链尾后的回退不能覆盖并发 send 已推进的新指针。条件更新把
+        "读到的指针"与"写回的指针"绑成一次原子写，即便调用方读到的是加锁前的旧值，
+        也不会把激活分支拉回已删节点。
+        """
+        stmt = (
+            update(SysAiConversation)
+            .where(
+                SysAiConversation.id == conv_id,
+                SysAiConversation.current_branch_message_id == expected_message_id,
+            )
+            .values(current_branch_message_id=message_id)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount > 0
 
     async def update_title(
         self,

@@ -30,6 +30,9 @@ def _patch_service(monkeypatch, *, conv, msg, gen_result):
         async def get_by_id(self, db, mid):
             return msg
 
+        async def update_suggestions(self, db, mid, suggestions):
+            msg.suggestions = suggestions
+
     async def _settle(
         db, redis, user_id, conversation_id, message_id, model_id, actual_model_id, usage, **kwargs
     ):
@@ -79,7 +82,9 @@ async def test_generate_success_counts_token_and_pushes(monkeypatch):
     assert msg.input_tokens == 110
     assert msg.output_tokens == 70
     assert emitter.events[-1][0] == "suggestions"
-    assert emitter.events[-1][1] == {"questions": [{"question": "追问一"}, {"question": "追问二"}]}
+    assert emitter.events[-1][1] == {"messageId": 2, "suggestions": ["追问一", "追问二"]}
+    # 推荐问题同时落在消息上：刷新后与事件同源
+    assert msg.suggestions == ["追问一", "追问二"]
 
 
 async def test_generate_failure_returns_none(monkeypatch):

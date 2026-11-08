@@ -239,10 +239,12 @@ async def test_success_non_stream_audit_fields(monkeypatch):
 
     async def _handler(body, audit, api_key):
         internal = FakeInternalResponse(
-            'event: content_block.delta\ndata: {"type":"text_delta","text":"你好，世界"}\n\n',
+            'event: block.start\ndata: {"messageId":1,"block":'
+            '{"id":"b1","kind":"text","seq":1}}\n\n',
+            'event: block.delta\ndata: {"messageId":1,"blockId":"b1","delta":"你好，世界"}\n\n',
             "event: message.end\n"
-            'data: {"stopReason":"stop","usage":{"inputTokens":10,"outputTokens":5,'
-            '"credits":2}}\n\n',
+            'data: {"messageId":1,"status":"completed","usage":{"inputTokens":10,'
+            '"outputTokens":5,"cachedInputTokens":0,"credits":2}}\n\n',
         )
         return await m._openai_non_stream(internal, "gpt-4", "chatcmpl-x", 1234567, audit)
 

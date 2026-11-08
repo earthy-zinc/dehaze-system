@@ -14,6 +14,7 @@ class FeedbackResult(OrmResult):
     id: int = Field(description="主键")
     message_id: int = Field(description="消息ID")
     user_id: int = Field(description="用户ID")
+    conversation_id: int | None = Field(default=None, description="消息所属会话ID")
     rating: int = Field(description="评分(1:点赞;-1:点踩)")
     tags: Any | None = Field(default=None, description="预设标签(JSON数组)")
     comment: str | None = Field(default=None, description="反馈内容")

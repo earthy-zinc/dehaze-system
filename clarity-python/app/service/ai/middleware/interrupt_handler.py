@@ -1,9 +1,14 @@
 """中断处理器
 
-管理推理中断点与恢复，仅负责 Redis 存取，不涉及业务逻辑。
+管理推理中断点的运行时句柄，仅负责 Redis 存取，不涉及业务逻辑。
 
-中断类型：confirm（用户确认）/ quota（配额不足）/ async_wait（异步任务等待）
-存储键：ai:interrupt:{thread_id}，TTL 24 小时，resume 成功后清除。
+中断类型：confirm（用户确认）/ quota（配额不足）/ async_wait（异步任务等待）/
+plan_approve（计划确认）
+存储键：ai:interrupt:{thread_id}，TTL 与推理检查点一致（30 天），resume 成功后清除。
+
+事实源不在 Redis：待恢复中断以 message.pending_interrupt 落库（含 id/createdAt/
+expiresAt/actionable），刷新、重启、跨实例都能查能续；Redis 只是同一次运行内
+resume 与中间件之间的快速句柄，丢失时按 DB 记录判定不可续。
 
 confirm 有多个来源，恢复动作各不相同，故 interrupt.data 内带 confirmKind 子类型
 （见 ConfirmKind），resume 据此路由；中断点只在恢复成功后清理，恢复失败须保留
@@ -20,20 +25,22 @@ class ConfirmKind:
 
     - ALGORITHM_RECOMMEND：算法推荐确认，接受时提交推荐正向反馈
     - TOOL_PERMISSION：工具权限确认，通过后在中间件重放该工具调用
-    - DANGEROUS_OP：高风险操作确认——Shell/高风险代码执行（通过后在沙箱重放该次执行），
-      以及并行子 Agent 写冲突（通过后覆盖写入，拒绝则放弃本次写入保留原结果）
+    - DANGEROUS_OP：高风险操作确认——Shell/高风险代码执行（通过后在沙箱重放该次执行）
+    - WRITE_CONFLICT：并行子 Agent 写冲突（通过后覆盖写入，拒绝则放弃本次写入保留原结果）
     """
 
     ALGORITHM_RECOMMEND = "algorithm_recommend"
     TOOL_PERMISSION = "tool_permission"
     DANGEROUS_OP = "dangerous_op"
+    WRITE_CONFLICT = "write_conflict"
 
 
 class InterruptHandler:
     """推理中断处理器"""
 
     INTERRUPT_KEY = "ai:interrupt:{thread_id}"
-    INTERRUPT_TTL = 86400  # 24 小时
+    # 中断可续窗口：与 checkpoint_manager 的检查点 TTL 对齐（30 天）
+    INTERRUPT_TTL = 30 * 24 * 3600
 
     async def save_interrupt(self, thread_id: str, interrupt_type: str, data: dict) -> None:
         """保存中断点信息到 Redis"""

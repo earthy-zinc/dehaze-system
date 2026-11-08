@@ -191,11 +191,14 @@ async def notify_task_completed(task_id: str, task_result: dict | None) -> None:
             user_id=mapping.get("user_id", 0),
             msg_id=mapping.get("msg_id", 0),
             resume_data=resume_data,
+            stream_session_id=mapping.get("stream_session_id", ""),
         )
     except Exception as e:
         logger.error("异步任务自动恢复失败: task_id=%s, error=%s", task_id, e, exc_info=True)
         stream_session_id = mapping.get("stream_session_id", "")
         if stream_session_id:
-            await sse_emitter_manager.send_error(stream_session_id, e)
+            await sse_emitter_manager.send_error(
+                stream_session_id, e, message_id=mapping.get("msg_id", 0)
+            )
     finally:
         await sse_emitter_manager.release_lock(conv_id)

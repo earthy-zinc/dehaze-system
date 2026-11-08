@@ -139,9 +139,9 @@ class SummaryService:
         if window_start_id is not None:
             rows = [m for m in rows if m.id < window_start_id]
         return [
-            {"id": m.id, "role": m.role, "content": m.content}
+            {"id": m.id, "role": m.role, "content": m.text}
             for m in rows
-            if m.role in ("user", "assistant") and m.content
+            if m.role in ("user", "assistant") and m.text
         ]
 
     @staticmethod

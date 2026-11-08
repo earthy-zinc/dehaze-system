@@ -4,10 +4,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
+from app.models.schema.ai_contract_gen import Feedback
 from app.models.schema.ai_feedback import FeedbackCreateRequest, FeedbackResult
 from app.service.ai_feedback_service import ai_feedback_service
 
 router = APIRouter(prefix="/api/v1/ai", tags=["AI对话"])
+
+
+@router.get(
+    "/conversations/{conv_id}/feedback",
+    response_model=Result[list[Feedback]],
+    summary="查询会话内当前用户的全部反馈（批量）",
+)
+async def list_conversation_feedback(
+    conv_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: UserContext = Depends(get_current_user),
+):
+    result = await ai_feedback_service.list_conversation_feedback(db, conv_id, user.id)
+    return success(result)
 
 
 @router.post(

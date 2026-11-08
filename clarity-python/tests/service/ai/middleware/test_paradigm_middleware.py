@@ -472,19 +472,12 @@ async def test_executor_releases_precharge_when_batch_aborted(monkeypatch):
 
 
 async def test_executor_recalls_pending_when_budget_exhausted(monkeypatch):
-    """配额召回：未启动任务跳过并推送提示，且提示推送在锁外（不阻塞并行）。"""
-    notified = []
-
-    async def _notify(ctx, count):
-        notified.append(count)
-
-    monkeypatch.setattr(quota_recall, "notify_partial_skipped", _notify)
+    """配额召回：未启动任务记为失败（计划面板据此展示"配额不足未执行"）。"""
     ctx = _ctx(token_used=1000, token_budget=100)
     plan = _plan(_task("A"), _task("B"), _task("C"))
 
     await _executor(_model_call_returns({"A": "ra"}), max_parallel=1, ctx=ctx).run(plan)
 
-    assert notified == [3]
     assert all(t["status"] == "failed" and "配额不足" in t["result"] for t in plan["tasks"])
 
 

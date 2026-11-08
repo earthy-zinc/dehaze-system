@@ -229,17 +229,20 @@ class TestPushEndAdditive:
 
         await reasoning_service._push_end(
             "s1",
+            42,
             {
                 "stop_reason": "stop",
                 "usage": {"input_tokens": 10, "output_tokens": 5, "cached_input_tokens": 2},
             },
+            status="completed",
             credits=7,
         )
 
         event_type, data = emitter.events[-1]
         assert event_type == "message.end"
         assert data == {
-            "stopReason": "stop",
+            "messageId": 42,
+            "status": "completed",
             "usage": {
                 "inputTokens": 10,
                 "outputTokens": 5,
@@ -257,10 +260,12 @@ class TestPushEndAdditive:
 
         await reasoning_service._push_end(
             "s1",
+            42,
             {
                 "stop_reason": "stop",
                 "usage": {"input_tokens": 10, "output_tokens": 5, "cached_input_tokens": 2},
             },
+            status="completed",
             credits=7,
         )
 

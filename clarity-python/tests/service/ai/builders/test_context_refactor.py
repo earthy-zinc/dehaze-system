@@ -9,7 +9,7 @@ from app.service.ai.service.summary_service import _PRIOR_SUMMARY_MAX_LEN, summa
 from app.service.ai.strategies.agent_config_resolver import REASONING_DEFAULTS
 from app.service.ai.strategies.prompt_composer import STABLE_SYSTEM_PROMPT, compose_system_prompt
 from app.service.ai.strategies.scene_templates import SCENE_VALUES, get_scene_prompt
-from tests.stubs.factories import make_conv, repo_returns
+from tests.stubs.factories import make_conv
 from tests.stubs.fakes import NullDBSession
 
 
@@ -27,10 +27,25 @@ class _Conv:
 
 
 class _Msg:
-    def __init__(self, mid, role, content):
+    """消息桩：正文由 blocks 的 text 块派生（与实体 SysAiMessage.text 同语义）。"""
+
+    def __init__(self, mid, role, content, tool_outputs: list[str] | None = None):
         self.id = mid
         self.role = role
-        self.content = content
+        self.blocks = [{"id": f"b{mid}", "kind": "text", "seq": 1, "text": content}]
+        for i, output in enumerate(tool_outputs or [], start=1):
+            self.blocks.append(
+                {
+                    "id": f"t{mid}-{i}",
+                    "kind": "tool_use",
+                    "seq": i,
+                    "tool": {"callId": f"c{mid}-{i}", "name": "tool", "output": output},
+                }
+            )
+
+    @property
+    def text(self):
+        return "".join(b.get("text") or "" for b in self.blocks if b["kind"] == "text")
 
 
 class _FakeGraph:
@@ -39,16 +54,49 @@ class _FakeGraph:
 
 def _finalize_msg(**overrides):
     fields = {
-        "content": None,
-        "input_tokens": None,
-        "output_tokens": None,
-        "cached_input_tokens": None,
-        "credits": None,
-        "status": None,
+        "id": 1,
+        "blocks": [],
+        "plan": None,
+        "pending_interrupt": None,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cached_input_tokens": 0,
+        "credits": 0,
+        "status": "running",
         "used_memory_ids": None,
     }
     fields.update(overrides)
     return SimpleNamespace(**fields)
+
+
+class _FinalizeRepo:
+    """收尾仓储桩：记录 finalize 的逐项写库调用（内容/计划/中断/用量/记忆/终态）。"""
+
+    def __init__(self, msg):
+        self.msg = msg
+        self.calls: dict = {}
+
+    async def get_by_id(self, db, msg_id):
+        return self.msg
+
+    async def update_blocks(self, db, msg_id, blocks):
+        self.calls["blocks"] = blocks
+
+    async def update_plan(self, db, msg_id, plan):
+        self.calls["plan"] = plan
+
+    async def update_pending_interrupt(self, db, msg_id, interrupt):
+        self.calls["pending_interrupt"] = interrupt
+
+    async def update_usage(self, db, msg_id, **kw):
+        self.calls["usage"] = kw
+
+    async def update_memory_ids(self, db, msg_id, memory_ids):
+        self.calls["memory_ids"] = memory_ids
+
+    async def update_status(self, db, msg_id, status, error=None):
+        self.calls["status"] = status
+        self.calls["error"] = error
 
 
 def _install_summary_mocks(monkeypatch, prior_summary, load_messages, recompress=None):
@@ -113,16 +161,15 @@ def _install_build_context_mocks(monkeypatch, chain_msgs, memory, artifact_refs=
 
 
 def _install_finalize_mocks(monkeypatch, msg, credits):
-    monkeypatch.setattr(
-        "app.service.ai.service.reasoning_service.ai_message_repository", repo_returns(msg)
-    )
+    repo = _FinalizeRepo(msg)
+    monkeypatch.setattr("app.service.ai.service.reasoning_service.ai_message_repository", repo)
     monkeypatch.setattr("app.service.ai.service.reasoning_service.get_db_session", NullDBSession)
 
     async def _calc(db, model_id, it, ot, cit):
         return credits
 
     monkeypatch.setattr("app.service.ai.service.reasoning_service.calculate_credits", _calc)
-    return msg
+    return repo
 
 
 def test_compose_system_prompt_three_layers_stable_first():
@@ -198,10 +245,7 @@ async def test_builder_system_prompt_excludes_conversation(monkeypatch):
 
 
 async def test_summary_watermark_selects_only_after_watermark(monkeypatch):
-    all_rows = [
-        SimpleNamespace(id=i, role="user" if i % 2 else "assistant", content=f"c{i}")
-        for i in range(1, 41)
-    ]
+    all_rows = [_Msg(i, "user" if i % 2 else "assistant", f"c{i}") for i in range(1, 41)]
     conv = SimpleNamespace(id=1, summary_upto_message_id=10, current_branch_message_id=40)
 
     async def _get_chain(db, conv_id, start_id, limit=None, max_hops=200):
@@ -257,11 +301,10 @@ def test_artifact_ref_line_format():
 
 
 async def test_recent_messages_folds_tool_result_into_assistant(monkeypatch):
-    """工具调用结果（role=tool）折叠为文本追加到前一条 assistant 消息，跨轮可见"""
+    """工具结果（tool_use 块）折叠进本轮 assistant 文本，跨轮可见"""
     chain = [
         _Msg(1, "user", "你好"),
-        _Msg(2, "assistant", "我来调用工具"),
-        _Msg(3, "tool", "工具结果：成功返回数据"),
+        _Msg(2, "assistant", "我来调用工具", tool_outputs=["工具结果：成功返回数据"]),
         _Msg(4, "assistant", "工具执行完成"),
     ]
 
@@ -284,7 +327,7 @@ async def test_recent_messages_folds_tool_result_into_assistant(monkeypatch):
     assert msgs[1] == {
         "id": 2,
         "role": "assistant",
-        "content": "我来调用工具\n[工具调用结果] 工具结果：成功返回数据",
+        "content": "我来调用工具\n[工具调用结果 tool] 工具结果：成功返回数据",
     }
     assert msgs[2] == {"id": 4, "role": "assistant", "content": "工具执行完成"}
 
@@ -451,15 +494,18 @@ async def test_finalize_message_writes_used_memory_ids(monkeypatch):
         "stop_reason": "stop",
         "usage": {"input_tokens": 10, "output_tokens": 5, "cached_input_tokens": 2},
     }
-    await reasoning_service._finalize_message(1, result, "gpt", used_memory_ids=[7, 8, 9])
-    assert msg.used_memory_ids == [7, 8, 9]
-    assert msg.status == 2
-    assert msg.credits == 9
+    await reasoning_service._finalize_message(
+        1, result, "gpt", blocks=[], used_memory_ids=[7, 8, 9]
+    )
+    assert msg.calls["memory_ids"] == [7, 8, 9]
+    assert msg.calls["status"] == "completed"
+    assert msg.calls["usage"]["credits"] == 9
+    assert msg.calls["blocks"] == []
 
 
 async def test_finalize_message_skips_empty_used_memory_ids(monkeypatch):
     msg = _install_finalize_mocks(monkeypatch, _finalize_msg(used_memory_ids="keep"), 0)
 
     result = {"final_response": "ok", "stop_reason": "stop", "usage": {}}
-    await reasoning_service._finalize_message(1, result, "gpt", used_memory_ids=[])
-    assert msg.used_memory_ids == "keep"
+    await reasoning_service._finalize_message(1, result, "gpt", blocks=[], used_memory_ids=[])
+    assert "memory_ids" not in msg.calls

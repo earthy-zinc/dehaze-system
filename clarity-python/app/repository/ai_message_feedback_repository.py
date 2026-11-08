@@ -71,6 +71,28 @@ class AiMessageFeedbackRepository(BaseRepository[SysAiMessageFeedback]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def list_by_user_and_conversation(
+        self,
+        db: AsyncSession,
+        user_id: int,
+        conversation_id: int,
+    ) -> list[SysAiMessageFeedback]:
+        """当前用户在指定会话下的全部未删反馈（一次查询，按消息 id 正序）。
+
+        供会话级批量反馈接口使用：进入会话一次拉全，替代前端逐条消息请求。
+        """
+        stmt = (
+            select(SysAiMessageFeedback)
+            .where(
+                SysAiMessageFeedback.user_id == user_id,
+                SysAiMessageFeedback.conversation_id == conversation_id,
+                SysAiMessageFeedback.deleted == 0,
+            )
+            .order_by(SysAiMessageFeedback.message_id.asc(), SysAiMessageFeedback.id.asc())
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def soft_delete(
         self,
         db: AsyncSession,

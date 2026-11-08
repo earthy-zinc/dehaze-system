@@ -34,31 +34,18 @@ async def _cached(e, redis, stream_session_id: str) -> list[dict]:
     return [json.loads(r) for r in raw]
 
 
-async def test_stop_stream_no_queue_appends_message_end(emitter):
+async def test_stop_stream_no_queue_writes_nothing(emitter):
+    """停止只结束连接：不补写 canceled 终帧（终帧由收尾方唯一写出）。"""
     e, redis = emitter
     await e.stop_stream("s-noqueue")
-    key = "ai:stream:s-noqueue"
-    raw = await redis.lrange(key, 0, -1)
-    events = [json.loads(r) for r in raw]
-    assert [ev["event"] for ev in events] == ["message.end"]
-    data = events[0]["data"]
-    assert data["stopReason"] == "canceled"
-    assert data["usage"] == {
-        "inputTokens": 0,
-        "outputTokens": 0,
-        "cachedInputTokens": 0,
-        "credits": 0,
-    }
+    assert await redis.lrange("ai:stream:s-noqueue", 0, -1) == []
 
 
-async def test_stop_stream_terminal_idempotent(emitter):
+async def test_stop_stream_idempotent(emitter):
     e, redis = emitter
     await e.stop_stream("s-idem")
     await e.stop_stream("s-idem")
-    key = "ai:stream:s-idem"
-    raw = await redis.lrange(key, 0, -1)
-    events = [json.loads(r) for r in raw]
-    assert [ev["event"] for ev in events] == ["message.end"]
+    assert await redis.lrange("ai:stream:s-idem", 0, -1) == []
 
 
 async def test_stop_stream_with_queue_puts_end_and_terminates(emitter):
@@ -67,10 +54,34 @@ async def test_stop_stream_with_queue_puts_end_and_terminates(emitter):
     e._queues["s-q"] = queue
     await e.stop_stream("s-q")
     assert queue.qsize() == 1
-    key = "ai:stream:s-q"
-    raw = await redis.lrange(key, 0, -1)
-    events = [json.loads(r) for r in raw]
+    assert await redis.lrange("ai:stream:s-q", 0, -1) == []
+
+
+async def test_send_message_end_written_once(emitter):
+    """终态唯一：四条收尾路径共享同一个幂等键，只有第一条 message.end 生效。"""
+    e, redis = emitter
+    first = await e.send_message_end("s-end", message_id=7, status="completed")
+    second = await e.send_message_end("s-end", message_id=7, status="canceled")
+    assert first is True
+    assert second is False
+    events = await _cached(e, redis, "s-end")
     assert [ev["event"] for ev in events] == ["message.end"]
+    assert events[0]["data"] == {"messageId": 7, "status": "completed"}
+
+
+async def test_send_message_end_carries_error_and_usage(emitter):
+    e, redis = emitter
+    await e.send_message_end(
+        "s-end2",
+        message_id=9,
+        status="failed",
+        error="模型不可用",
+        usage={"inputTokens": 1, "outputTokens": 2, "cachedInputTokens": 0, "credits": 0},
+    )
+    event = (await _cached(e, redis, "s-end2"))[0]
+    assert event["data"]["status"] == "failed"
+    assert event["data"]["error"] == "模型不可用"
+    assert event["data"]["usage"]["outputTokens"] == 2
 
 
 async def test_send_event_and_replay(emitter):
@@ -95,28 +106,42 @@ async def test_get_cached_events_reports_missing_cache(emitter):
 async def test_send_error_sanitizes_unknown_exception(emitter):
     e, redis = emitter
 
-    await e.send_error("s-err", RuntimeError("minio 连接失败 secret=abc123"))
+    await e.send_error("s-err", RuntimeError("minio 连接失败 secret=abc123"), message_id=3)
 
     events = await _cached(e, redis, "s-err")
     assert [ev["event"] for ev in events] == ["error", "message.end"]
     assert events[0]["data"] == {
         "code": ResultCode.AI_LLM_CALL_FAILED.code,
         "message": ResultCode.AI_LLM_CALL_FAILED.msg,
+        "messageId": 3,
     }
     assert "secret=abc123" not in json.dumps(events, ensure_ascii=False)
-    assert events[1]["data"]["stopReason"] == "error"
+    assert events[1]["data"]["status"] == "failed"
+    assert events[1]["data"]["messageId"] == 3
 
 
 async def test_send_error_keeps_business_code(emitter):
     e, redis = emitter
 
-    await e.send_error("s-err2", BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在"))
+    await e.send_error(
+        "s-err2", BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在"), message_id=4
+    )
 
     events = await _cached(e, redis, "s-err2")
     assert events[0]["data"] == {
         "code": ResultCode.RESOURCE_NOT_FOUND.code,
         "message": "会话不存在",
+        "messageId": 4,
     }
+
+
+async def test_send_error_does_not_duplicate_end_after_finalize(emitter):
+    """推理侧已写出终态时，异常出口不再补第二条 message.end。"""
+    e, redis = emitter
+    await e.send_message_end("s-err3", message_id=5, status="completed")
+    await e.send_error("s-err3", RuntimeError("late failure"), message_id=5)
+    events = await _cached(e, redis, "s-err3")
+    assert [ev["event"] for ev in events] == ["message.end", "error"]
 
 
 async def test_idle_timeout_ends_stream_without_error(emitter, monkeypatch):
@@ -129,7 +154,7 @@ async def test_idle_timeout_ends_stream_without_error(emitter, monkeypatch):
 
     async def _late_event():
         await asyncio.sleep(0.5)
-        await e.send_event("s-idle", "content_block.delta", {"text": "迟到 token"})
+        await e.send_event("s-idle", "block.delta", {"blockId": "b", "delta": "迟到 token"})
 
     task = asyncio.create_task(_late_event())
     chunks = [chunk async for chunk in e.create_stream(1, "s-idle")]
@@ -139,7 +164,7 @@ async def test_idle_timeout_ends_stream_without_error(emitter, monkeypatch):
 
     # 连接结束后后台推理继续推送，事件照常进缓存供重连重放
     await task
-    assert [ev["event"] for ev in await _cached(e, redis, "s-idle")] == ["content_block.delta"]
+    assert [ev["event"] for ev in await _cached(e, redis, "s-idle")] == ["block.delta"]
 
 
 async def test_heartbeat_reaches_client_without_feeding_queue(emitter, monkeypatch):
@@ -161,7 +186,7 @@ async def test_heartbeat_reaches_client_without_feeding_queue(emitter, monkeypat
 async def test_reconnect_registers_queue_before_replay(emitter, monkeypatch):
     """重放前队列必须已注册，否则重放期间到达的事件无处可落。"""
     e, _redis = emitter
-    await e.send_event("s-recon", "content_block.delta", {"text": "a"})
+    await e.send_event("s-recon", "block.delta", {"blockId": "b", "delta": "a"})
     real_get = e._get_cached_events
     seen = {}
 
@@ -174,7 +199,7 @@ async def test_reconnect_registers_queue_before_replay(emitter, monkeypatch):
 
     gen = e.reconnect("s-recon", 0)
     first = await gen.__anext__()
-    assert _types([first]) == ["content_block.delta"]
+    assert _types([first]) == ["block.delta"]
     assert seen["has_queue"] is True
     await gen.aclose()
     assert "s-recon" not in e._queues
@@ -188,7 +213,7 @@ async def test_reconnect_delivers_event_produced_during_replay(emitter, monkeypa
     async def _push_during_replay(stream_session_id, last_event_id):
         events, has_cache = await real_get(stream_session_id, last_event_id)
         # 重放 await 期间推理推来的新事件：队列已注册则应送达重连客户端
-        await e.send_event("s-race", "content_block.delta", {"text": "b"})
+        await e.send_event("s-race", "block.delta", {"blockId": "b", "delta": "b"})
         return events, has_cache
 
     monkeypatch.setattr(e, "_get_cached_events", _push_during_replay)
@@ -197,18 +222,41 @@ async def test_reconnect_delivers_event_produced_during_replay(emitter, monkeypa
     chunks = [await gen.__anext__(), await gen.__anext__()]
     await gen.aclose()
 
-    assert _types(chunks) == ["message.start", "content_block.delta"]
+    assert _types(chunks) == ["message.start", "block.delta"]
+
+
+async def test_reconnect_dedups_event_racing_replay_read(emitter, monkeypatch):
+    """register 与读缓存之间写入的事件同时在重放列表与活跃队列，只能下发一次。"""
+    e, _redis = emitter
+    monkeypatch.setattr(m.settings, "AI_MESSAGE_HEARTBEAT_INTERVAL", 0.05)
+    monkeypatch.setattr(m.settings, "AI_MESSAGE_STREAM_TIMEOUT", 0.2)
+    await e.send_event("s-dup", "message.start", {"messageId": 1})
+    real_get = e._get_cached_events
+
+    async def _push_before_read(stream_session_id, last_event_id):
+        # 读缓存前到达：事件写入缓存的同时也进入已注册的活跃队列
+        await e.send_event(stream_session_id, "block.delta", {"blockId": "b", "delta": "x"})
+        return await real_get(stream_session_id, last_event_id)
+
+    monkeypatch.setattr(e, "_get_cached_events", _push_before_read)
+
+    chunks = [chunk async for chunk in e.reconnect("s-dup", 0)]
+
+    types = [t for t in _types(chunks) if t != "ping"]
+    # 重放已下发两条；队列里的同一条 delta 必须按 watermark 丢弃，不能再拼一次
+    assert types == ["message.start", "block.delta"]
 
 
 async def test_reconnect_stops_after_replaying_terminal_event(emitter):
     """流已终结（缓存含 message.end）时重放完即结束，不残留队列空等。"""
     e, _redis = emitter
-    await e.send_event("s-done", "content_block.delta", {"text": "a"})
+    await e.send_event("s-done", "block.delta", {"blockId": "b", "delta": "a"})
+    await e.send_message_end("s-done", message_id=1, status="completed")
     await e.stop_stream("s-done")
 
     chunks = [chunk async for chunk in e.reconnect("s-done", 0)]
 
-    assert _types(chunks) == ["content_block.delta", "message.end"]
+    assert _types(chunks) == ["block.delta", "message.end"]
     assert "s-done" not in e._queues
 
 

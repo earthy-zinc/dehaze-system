@@ -203,7 +203,6 @@ class ParadigmMiddleware(AgentMiddleware):
             )
             usage.raise_if_blocked()
             await emit({"type": "plan", "data": {"plan": plan, "phase": "plan"}})
-            await self._emit_thought(runtime, tool="planner", observation=_plan_summary(plan))
 
         # 计划确认/干预：status=executing 表示本轮已确认过；否则经 plan_approve 中断
         # 等待用户 resume（透传 plan_edit），resume 时 interrupt() 返回确认载荷。
@@ -259,14 +258,6 @@ class ParadigmMiddleware(AgentMiddleware):
                     "strategy": reflection,
                 },
             )
-        await self._emit_thought(
-            runtime,
-            tool="evaluator",
-            observation=(
-                f"自评最高分 {max((r['score'] for r in rounds), default=0):.2f}，"
-                f"共 {len(rounds)} 轮"
-            ),
-        )
         return self._finish(state, None, best, usage)
 
     # ── 内部工具 ────────────────────────────────────────
@@ -436,16 +427,6 @@ class ParadigmMiddleware(AgentMiddleware):
         except Exception:
             logger.warning("反思记忆写入失败", exc_info=True)
 
-    async def _emit_thought(self, runtime: Any, tool: str, observation: str, **extra: Any) -> None:
-        """经 custom 事件通道推送 thought（由 SseEventConverter 公开接口落库+推 SSE）。"""
-        runtime.stream_writer(
-            {
-                "type": "thought",
-                "data": {"tool": tool, "observation": observation, **extra},
-            }
-        )
-
-
 class _PlanExecutor:
     """计划执行器：按依赖拓扑分批并行执行子任务，失败走 Replanner。
 
@@ -548,8 +529,8 @@ class _PlanExecutor:
                 task_id = None
                 recalled = 0
                 async with lock:
-                    # 配额召回为纯 ctx 判定（无 IO），在临界区内完成；召回提示的
-                    # SSE 推送放到临界区外，避免持锁 await 把批内并行退化为串行
+                    # 配额召回为纯 ctx 判定（无 IO），临界区内完成；被召回任务按
+                    # failed 记录，计划面板据任务状态展示"配额不足未执行"
                     for tid in quota_recall.check_and_recall(self.ctx, pending):
                         pending.remove(tid)
                         results[tid] = (False, "配额不足未执行")
@@ -557,8 +538,6 @@ class _PlanExecutor:
                     if pending:
                         task_id = pending.pop(0)
                         running.add(task_id)
-                if recalled:
-                    await quota_recall.notify_partial_skipped(self.ctx, recalled)
                 if task_id is None:
                     return
                 # 执行当前子任务（进行中的等当前步完成，不中断）
@@ -651,11 +630,6 @@ def _plan_context(plan: dict[str, Any], task_id: str) -> str:
         if t.get("status") == "done" and t.get("result")
     ]
     return "\n".join(done) or "（尚无已完成子任务）"
-
-
-def _plan_summary(plan: dict[str, Any]) -> str:
-    tasks = plan.get("tasks") or []
-    return f"分解任务为 {len(tasks)} 个子任务: " + "、".join(t["id"] for t in tasks)
 
 
 def _compose_plan_answer(plan: dict[str, Any], user_task: str = "") -> str:

@@ -23,9 +23,19 @@ async def _db_session():
 
 def _patch_failed_deps(monkeypatch, emitter, update_status=None):
     monkeypatch.setattr("app.service.ai.service.reasoning_service.sse_emitter_manager", emitter)
+    async def _update_blocks(db, msg_id, blocks):
+        return None
+
+    async def _update_plan(db, msg_id, plan):
+        return None
+
     monkeypatch.setattr(
         "app.service.ai.service.reasoning_service.ai_message_repository",
-        SimpleNamespace(update_status=update_status),
+        SimpleNamespace(
+            update_status=update_status,
+            update_blocks=_update_blocks,
+            update_plan=_update_plan,
+        ),
     )
     monkeypatch.setattr("app.service.ai.service.reasoning_service.get_db_session", _db_session)
 
@@ -43,7 +53,7 @@ async def test_mark_failed_only_persists_failed_status(monkeypatch):
 
     await service._mark_failed(1, RuntimeError("minio 连接失败 secret=abc123"))
 
-    assert updates == [(1, 3, ResultCode.AI_LLM_CALL_FAILED.msg)]
+    assert updates == [(1, "failed", ResultCode.AI_LLM_CALL_FAILED.msg)]
     assert emitter.events == []
 
 
@@ -59,7 +69,7 @@ async def test_mark_failed_keeps_business_message(monkeypatch):
 
     await service._mark_failed(2, BusinessException(ResultCode.RESOURCE_NOT_FOUND, "会话不存在"))
 
-    assert updates == [(2, 3, "会话不存在")]
+    assert updates == [(2, "failed", "会话不存在")]
 
 
 async def test_mark_failed_logs_persistence_error(monkeypatch, caplog):
@@ -255,8 +265,9 @@ async def test_run_direct_masks_pii_before_persisting(monkeypatch):
     monkeypatch.setattr(ai_model_repository, "get_by_model_id", _no_model)
     persisted = {}
 
-    async def _finalize(msg_id, result, model_id, used_memory_ids=None):
+    async def _finalize(msg_id, result, model_id, **kwargs):
         persisted.update(result)
+        persisted["blocks"] = kwargs.get("blocks")
         return 0
 
     monkeypatch.setattr(service, "_finalize_message", _finalize)
@@ -273,6 +284,8 @@ async def test_run_direct_masks_pii_before_persisting(monkeypatch):
     )
 
     assert persisted["final_response"] == "联系我 ***，密钥 ***"
+    # 落库正文即块正文（SSE 出口脱敏后同源落库，不再二次脱敏）
+    assert persisted["blocks"][0]["text"] == "联系我 ***，密钥 ***"
     assert "13812345678" not in persisted["final_response"]
     assert result["final_response"] == persisted["final_response"]
     # direct 路径补记忆抽取：以 (user_id, model_id, messages, conv_id) 交给后台抽取
@@ -296,6 +309,60 @@ def test_state_result_raises_when_values_missing():
 
     with pytest.raises(RuntimeError, match=r"推理未产出有效 state\.values"):
         reasoning_service._state_result(_BrokenState())
+
+
+def _patch_finalize_deps(monkeypatch, calls: list):
+    async def _get_by_id(db, msg_id):
+        return SimpleNamespace(id=msg_id)
+
+    async def _update_blocks(db, msg_id, blocks):
+        calls.append(("blocks", blocks))
+
+    async def _update_plan(db, msg_id, plan):
+        calls.append(("plan", plan))
+
+    async def _noop(*_args, **_kwargs):
+        return None
+
+    async def _credits(*_args, **_kwargs):
+        return 0
+
+    monkeypatch.setattr(
+        "app.service.ai.service.reasoning_service.ai_message_repository",
+        SimpleNamespace(
+            get_by_id=_get_by_id,
+            update_blocks=_update_blocks,
+            update_plan=_update_plan,
+            update_pending_interrupt=_noop,
+            update_usage=_noop,
+            update_status=_noop,
+            update_memory_ids=_noop,
+        ),
+    )
+    monkeypatch.setattr("app.service.ai.service.reasoning_service.get_db_session", _db_session)
+    monkeypatch.setattr(
+        "app.service.ai.service.reasoning_service.calculate_credits", _credits
+    )
+    monkeypatch.setattr(
+        "app.service.ai.service.reasoning_service.trace_collector",
+        SimpleNamespace(current=lambda: None),
+    )
+
+
+async def test_finalize_does_not_overwrite_plan_with_none(monkeypatch):
+    """resume 续流未再发 plan.update（converter.plan=None）时，不得把已落库计划写 NULL。"""
+    calls: list = []
+    _patch_finalize_deps(monkeypatch, calls)
+
+    await reasoning_service._finalize_message(7, {"usage": {}}, "m", blocks=[], plan=None)
+
+    assert ("plan", None) not in calls
+    assert not [c for c in calls if c[0] == "plan"]
+
+    await reasoning_service._finalize_message(
+        7, {"usage": {}}, "m", blocks=[], plan={"phase": "plan"}
+    )
+    assert ("plan", {"phase": "plan"}) in calls
 
 
 def test_state_result_extracts_from_values():

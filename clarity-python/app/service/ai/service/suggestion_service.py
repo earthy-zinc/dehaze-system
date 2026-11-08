@@ -180,6 +180,8 @@ class SuggestionService:
             msg.output_tokens = new_output
             msg.cached_input_tokens = new_cached
             msg.credits = await calculate_credits(db, model_id, new_input, new_output, new_cached)
+            # 推荐问题落在消息上：刷新后与 suggestions 事件同源，不依赖流式内存态
+            await ai_message_repository.update_suggestions(db, message_id, questions)
             await db.flush()
 
             # 补充结算：与回复同一条计费记录（settle 按 message_id 定位并差额退补）。
@@ -204,7 +206,7 @@ class SuggestionService:
 
         # 推送 suggestions 事件（异步触发方保证 message.end 已推送）
         await sse_emitter_manager.send_event(
-            stream_session_id, "suggestions", {"questions": [{"question": q} for q in questions]}
+            stream_session_id, "suggestions", {"messageId": message_id, "suggestions": questions}
         )
         return questions
 
