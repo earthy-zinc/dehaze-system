@@ -1,0 +1,56 @@
+# Ruff 配置：clarity-algorithm（去雾算法研究与训练仓库）
+#
+# 本仓库是论文研究代码（BasicSR / RIDCP 血统），没有 pyproject.toml（依赖与打包走
+# requirements.txt + setup.py），因此单独用 ruff.toml 承载配置，而非并入其他项目。
+# 注意：ruff.toml 是 ruff 自有格式，表名是 [lint] 而非 [tool.ruff.lint]。
+#
+# 与 clarity-python / clarity-service/* 保持同一规则集，只在“代码来源”上做区分：
+# basicsr/ 与 setup.py 是从上游 vendored 进来的框架代码，保持与上游一致，不参与格式化。
+target-version = "py311"
+line-length = 100
+# pre-commit 会显式传入暂存文件路径，而 ruff 默认对显式路径不应用 exclude；
+# 打开后 basicsr/、setup.py、notebook/ 在 hook 里也会被排除。
+force-exclude = true
+
+extend-exclude = [
+    "basicsr",  # vendored BasicSR 框架及其上的网络实现，随上游更新，不重排/不改写
+    "setup.py", # vendored BasicSR 打包脚本（author/url 均为 BasicSR）
+    "options",  # 训练配置目录，仅 yml
+    # notebook/ 是作者的实验草稿：8 个 .py + 23 个 .ipynb，脚本里硬编码本机绝对路径
+    # （/mnt/e/DeepLearningCopies/...），以 print 为主、部分文件 0 函数，仓库内无任何模块 import 它。
+    # ruff 0.15 默认也会 lint .ipynb 代码单元，纳入门禁只会为了这些一次性脚本改写 notebook JSON。
+    "notebook",
+]
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes（未使用导入/变量等）
+    "I",    # isort 导入排序
+    "B",    # bugbear 常见 bug 模式
+    "UP",   # pyupgrade 语法现代化
+    "RET",  # return 语句卫生（消除多余 else 分支、return 后死代码）
+    "ISC",  # 隐式字符串拼接检测
+    "PT",   # pytest 最佳实践
+    "FLY",  # join/format 旧写法 → f-string
+    "SIM",  # 常见可简化写法
+    "C4",   # comprehensions 推导式现代化
+    "RUF",  # ruff 自有规则（含无效 noqa 校验）
+    "N",    # PEP 8 命名规范
+    "EM",   # 异常消息规范
+    "PERF", # 性能反模式
+    "PTH",  # os.path → pathlib 现代路径写法
+]
+ignore = [
+    "RUF001", # 中文字符串中的全角标点，误报
+    "RUF002", # 中文 docstring 中的全角标点，误报
+    "RUF003", # 中文注释中的全角标点，误报
+    "EM101",  # 异常消息内联字面量即可，不必强制模块级常量
+    "EM102",  # 同上，f-string 异常消息可 grep
+    "N999",   # 目录名 clarity-algorithm 含连字符导致的模块名推断误报
+]
+
+[lint.isort]
+# basicsr 是本仓库自带的框架包（虽然代码源自上游），import 归属本地第一方
+known-first-party = ["basicsr"]
